@@ -1,0 +1,325 @@
+/* =========================================================
+   Sebastião Freitas — portfolio
+   One stylesheet. Edit the tokens below to re-skin the site.
+   ========================================================= */
+
+:root {
+  --petrol:    #141a1d;   /* page background — deep blue-grey, not black */
+  --petrol-up: #1b2327;   /* raised surfaces (cards) */
+  --sage:      #c6ccc6;   /* body text */
+  --sage-dim:  #7d8783;   /* secondary text, labels */
+  --lamp:      #f5d06b;   /* the light. used sparingly, on purpose */
+  --brick:     #b0685a;   /* IDs, small accents */
+  --line:      #2b3438;   /* hairlines */
+
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body:    "IBM Plex Sans", system-ui, sans-serif;
+  --mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --gutter: clamp(1.25rem, 5vw, 5rem);
+  --measure: 62ch;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--petrol);
+  color: var(--sage);
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--lamp); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 3px;
+}
+
+/* ---------------- top bar ---------------- */
+
+.topbar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem var(--gutter);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  color: var(--sage);
+  text-decoration: none;
+}
+
+.topbar nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.topbar nav a { color: var(--sage-dim); text-decoration: none; }
+.topbar nav a:hover { color: var(--lamp); }
+
+/* ---------------- hero ---------------- */
+
+.hero {
+  position: relative;
+  min-height: 78vh;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 var(--gutter) clamp(3rem, 8vh, 6rem);
+  overflow: hidden;
+}
+
+#light-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 2;
+  max-width: 46ch;
+  pointer-events: none;               /* let the cursor drive the demo */
+}
+.hero-copy a, .hero-copy .cta { pointer-events: auto; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+  margin: 0 0 1rem;
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 7vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  margin: 0 0 1.25rem;
+  color: #fff;
+}
+
+.lede { margin: 0 0 1.75rem; max-width: var(--measure); }
+
+.cta {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--petrol);
+  background: var(--lamp);
+  padding: 0.7rem 1.4rem;
+}
+.cta:hover { background: #fff; color: var(--petrol); }
+
+.hint {
+  position: absolute;
+  z-index: 2;
+  right: var(--gutter);
+  top: 40%;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+  transition: opacity 0.6s;
+}
+.hint.gone { opacity: 0; }
+
+/* ---------------- shared section furniture ---------------- */
+
+.section-title {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+  margin: 0 0 2.5rem;
+}
+
+.work, .experience {
+  padding: clamp(3rem, 10vh, 7rem) var(--gutter);
+}
+
+/* ---------------- project objects ---------------- */
+
+.work { display: grid; gap: 1px; background: var(--line); }
+.work .section-title { background: var(--petrol); margin-bottom: 0; padding: 0 0 0.75rem; border-top: 0; }
+
+.obj {
+  display: block;
+  position: relative;
+  background: var(--petrol);
+  color: inherit;
+  text-decoration: none;
+  padding: 2rem 0 2.25rem;
+  transition: background 0.25s;
+}
+.obj:hover, .obj:focus-visible { background: var(--petrol-up); color: inherit; }
+
+.obj-id {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--brick);
+}
+
+.obj h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0.4rem 0 0.75rem;
+  color: #fff;
+}
+.obj:hover h3 { color: var(--lamp); }
+
+.obj-line { margin: 0 0 1.25rem; max-width: var(--measure); color: var(--sage); }
+
+/* property readout — lifted from Sector Zero's inspect mechanic */
+.props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2.5rem;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+.props div { display: flex; gap: 0.5rem; }
+.props dt { color: var(--sage-dim); text-transform: uppercase; }
+.props dd { margin: 0; color: var(--sage); }
+
+/* ---------------- experience ---------------- */
+
+.xp { list-style: none; margin: 0; padding: 0; }
+.xp li {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.25rem 2rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--line);
+}
+.xp-when {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--sage-dim);
+  grid-row: span 2;
+}
+.xp-what strong { color: #fff; font-weight: 500; }
+.xp-note { color: var(--sage-dim); font-size: 0.92rem; }
+
+/* ---------------- project pages ---------------- */
+
+.case { padding: clamp(2rem, 6vh, 4rem) var(--gutter) 0; max-width: 72rem; }
+
+.case h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 0.5rem 0 1rem;
+  color: #fff;
+}
+
+.case .props { margin-bottom: 2.5rem; }
+
+.case h2 {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+  margin: 2.5rem 0 0.75rem;
+}
+
+.case p, .case ul { max-width: var(--measure); }
+.case ul { padding-left: 1.1rem; }
+.case li { margin-bottom: 0.4rem; }
+
+.clip {
+  display: block;
+  width: 100%;
+  max-width: 72rem;
+  margin: 1.5rem 0 0.5rem;
+  background: #000;
+  border: 1px solid var(--line);
+}
+.caption {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--sage-dim);
+  margin: 0 0 2rem;
+}
+
+.embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.back {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--sage-dim);
+}
+.back:hover { color: var(--lamp); }
+
+/* ---------------- footer ---------------- */
+
+footer {
+  padding: 3rem var(--gutter) 4rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--sage-dim);
+}
+footer p { margin: 0 0 0.4rem; }
+
+/* ---------------- small screens ---------------- */
+
+@media (max-width: 640px) {
+  .hero { min-height: 68vh; }
+  .hint { display: none; }
+  .xp li { grid-template-columns: 1fr; }
+  .xp-when { grid-row: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}

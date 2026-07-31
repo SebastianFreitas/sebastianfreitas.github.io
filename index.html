@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sebastião Freitas — Gameplay Programmer</title>
+<meta name="description" content="Gameplay and systems programmer. Unity, Unreal, C#, C++.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="index.html">SF</a>
+  <nav>
+    <a href="#work">Work</a>
+    <a href="#experience">Experience</a>
+    <a href="https://github.com/sebastianfreitas">GitHub</a>
+    <a href="mailto:sebsfrets@gmail.com">Email</a>
+  </nav>
+</header>
+
+<!-- ================= HERO: the signature =================
+     The canvas below runs the core mechanic from HeavyLight:
+     light has weight. Your cursor is the light source and it
+     physically shoves the crates around. ~150 lines, no engine.
+========================================================== -->
+<section class="hero">
+  <canvas id="light-canvas" aria-label="Interactive demo: move your cursor to push the crates with light"></canvas>
+  <div class="hero-copy">
+    <p class="eyebrow">Gameplay &amp; systems programmer — Braga, Portugal</p>
+    <h1>Light has weight.<br>So does everything else.</h1>
+    <p class="lede">I build the systems underneath games: movement, combat loops, tools.
+       Move your cursor — the light is pushing those crates. That's the mechanic
+       from <a href="projects/heavylight.html">HeavyLight</a>, rewritten here in plain JavaScript.</p>
+    <a class="cta" href="#work">See the work</a>
+  </div>
+  <p class="hint" id="hint">Move your cursor</p>
+</section>
+
+<!-- ================= WORK =================
+     Structure borrowed from Sector Zero's hover-inspect:
+     every project is an object with an ID and readable properties.
+========================================================== -->
+<section id="work" class="work">
+  <h2 class="section-title">Work</h2>
+
+  <a class="obj" href="projects/sector-zero.html">
+    <span class="obj-id">OBJ_0001</span>
+    <h3>Sector Zero</h3>
+    <p class="obj-line">A horror game where the debug console is the main mechanic. Full in-game Linux-style
+       terminal with command history; edit any object's properties at runtime — set weight negative and it
+       leaves the floor.</p>
+    <dl class="props">
+      <div><dt>Engine</dt><dd>Unreal 5</dd></div>
+      <div><dt>Language</dt><dd>C++ / Blueprint</dd></div>
+      <div><dt>Status</dt><dd>Prototype</dd></div>
+    </dl>
+  </a>
+
+  <a class="obj" href="projects/voidscape.html">
+    <span class="obj-id">OBJ_0002</span>
+    <h3>VoidScape</h3>
+    <p class="obj-line">First-person roguelike. The second loop scales on player skill instead of stats,
+       so a lucky build can't delete a boss in one shot. 50+ gameplay modifiers, craftable weapons that
+       persist between runs.</p>
+    <dl class="props">
+      <div><dt>Engine</dt><dd>Unity</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Status</dt><dd>Playable, 2 bosses</dd></div>
+    </dl>
+  </a>
+
+  <a class="obj" href="projects/heavylight.html">
+    <span class="obj-id">OBJ_0003</span>
+    <h3>HeavyLight</h3>
+    <p class="obj-line">2D puzzle platformer built around one rule: light carries momentum. It pushes
+       crates, and it pushes you. Shipped for WebGL and reused as the base for Conclusus.</p>
+    <dl class="props">
+      <div><dt>Engine</dt><dd>Unity — WebGL</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Status</dt><dd>Shipped, playable</dd></div>
+    </dl>
+  </a>
+
+  <a class="obj" href="projects/conclusus.html">
+    <span class="obj-id">OBJ_0004</span>
+    <h3>Conclusus</h3>
+    <p class="obj-line">30 levels and four new mechanics on top of the HeavyLight base, built in less
+       time than the original. The point of the exercise was proving the base was actually reusable.</p>
+    <dl class="props">
+      <div><dt>Engine</dt><dd>Unity — WebGL</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Status</dt><dd>Shipped, playable</dd></div>
+    </dl>
+  </a>
+</section>
+
+<!-- ================= EXPERIENCE ================= -->
+<section id="experience" class="experience">
+  <h2 class="section-title">Experience</h2>
+  <ul class="xp">
+    <li>
+      <span class="xp-when">2022 — now</span>
+      <span class="xp-what"><strong>QA &amp; systems analyst</strong>, G.Round (freelance)</span>
+      <span class="xp-note">Top 4.3% globally. 28 pre-release titles, 12 reports picked up and implemented by studios.</span>
+    </li>
+    <li>
+      <span class="xp-when">2025 — 2026</span>
+      <span class="xp-what"><strong>Security systems technician</strong>, DF Block</span>
+      <span class="xp-note">100+ interlocking hardware nodes deployed across retail sites; on-call fault diagnosis.</span>
+    </li>
+    <li>
+      <span class="xp-when">2026</span>
+      <span class="xp-what"><strong>BSc Computer Engineering</strong>, University of Minho</span>
+      <span class="xp-note"></span>
+    </li>
+  </ul>
+</section>
+
+<footer>
+  <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
+  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="cv.pdf">CV (PDF)</a></p>
+</footer>
+
+<script src="light.js"></script>
+</body>
+</html>

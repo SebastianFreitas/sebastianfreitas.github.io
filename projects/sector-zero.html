@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sector Zero — Sebastião Freitas</title>
+<meta name="description" content="A horror prototype about a room that keeps losing itself, and a terminal that holds it in place. Unreal 5.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../storm.css?v=7">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/"
+  }
+}
+</script>
+
+</head>
+<body>
+
+<div class="storm-field" id="storm-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html">SF</a>
+  <nav>
+    <a href="../index.html#work">Work</a>
+    <a href="https://github.com/sebastianfreitas">GitHub</a>
+    <a href="mailto:sebsfrets@gmail.com">Email</a>
+  </nav>
+</header>
+
+<main class="case">
+  <span class="obj-id">OBJ_0001</span>
+  <h1>Sector Zero</h1>
+
+  <dl class="props">
+    <div><dt>Engine</dt><dd>Unreal 5</dd></div>
+    <div><dt>Language</dt><dd>C++ / Blueprint</dd></div>
+    <div><dt>Role</dt><dd>Solo — everything</dd></div>
+    <div><dt>Status</dt><dd>Prototype</dd></div>
+  </dl>
+
+  <p>A first-person horror prototype set in one room. The room is an experiment and it is coming
+     apart — objects periodically lose gravity and drift. The only thing that holds anything in
+     place is the terminal, and only for the objects you've taken the trouble to catalogue.</p>
+
+  <!-- ============ CLIP 1 — media/sector-zero/login.mp4 ============ -->
+  <video class="clip" src="../media/sector-zero/login.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Credentials come off a note in the room. Tab completion, command history, and a
+     real error on a bad path — the shell is a parser, not a prop.</p>
+
+  <h2>The storm</h2>
+  <p>Every so often, gravity stops applying to a random selection of objects and each one gets a
+     push. Things you were looking at a second ago are now above you. When it passes, the loose
+     objects drift back toward the positions and rotations they started in.</p>
+  <p>They don't quite make it. The lights go out for a moment, and in the dark everything is
+     teleported the rest of the way back to its exact original state. The drift is what the player
+     sees; the blackout is what hides the snap. Reality holds together only because you weren't
+     looking at the moment it was corrected.</p>
+
+  <h2>Cataloguing is the counter-mechanic</h2>
+  <p>Registering an object in the terminal removes it from the storm. It stops being picked. It
+     stays where it is.</p>
+  <p>So the room starts almost entirely unstable and becomes solid one object at a time, at exactly
+     the rate the player is willing to pay attention. Nobody tells you this is happening. You notice
+     it because the corner you documented first is the corner that stopped moving.</p>
+
+  <h2>The economy</h2>
+  <p>The same act that anchors an object also pays for changing it.</p>
+  <ul>
+    <li>Registering a new object earns <strong>1 point</strong>.</li>
+    <li>Editing text costs points equal to the number of characters changed. If the edit is longer
+        than your balance, it's refused.</li>
+    <li>Every interaction feeds the balance: inspect, earn, spend, inspect again.</li>
+  </ul>
+  <p>Which means one verb does three jobs at once — it gives you the lore, it stops the storm taking
+     that object, and it buys you the right to rewrite something. You can only hold and alter as
+     much of the room as you've bothered to examine.</p>
+
+  <!-- ============ CLIP 2 — media/sector-zero/object-edit.mp4 ============ -->
+  <video class="clip" src="../media/sector-zero/createEntryFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Creating an object after discovering it. Every object has basic properties such as size and weight, while rarer or more specialized objects may include additional attributes that can be viewed and edited.</p>
+
+  <!-- ============ CLIP 3 — media/sector-zero/player-edit.mp4 ============ -->
+  <video class="clip" src="../media/sector-zero/editplayerFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">The player is an object too. Changing your own height turns a spatial problem
+     into a text edit.</p>
+
+  <h2>Lore you have to go looking for</h2>
+  <p>Nothing in the room explains itself. Objects carry an ID and, sometimes, one line from whoever
+     used them last — a complaint about a blank disc, someone else's cold pizza. Nobody narrates who
+     Amy or Jason are. You assemble them out of what they left behind and how they left it.</p>
+  <p>The fit with the storm is the part I'm happiest with: the people who worked here are being lost
+     the same way the furniture is, and writing them down is the only thing that keeps either.</p>
+
+  <!-- ============ CLIP 4 — media/sector-zero/inspect.mp4 ============ -->
+  <video class="clip" src="../media/sector-zero/checkItemsFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Inspecting objects. Character comes out of the details, in whatever order the
+     player happens to find them.</p>
+
+  <h2>Movement</h2>
+  <p>The player can walk freely throughout the environment, but can also interact with an office chair and sit down to move using it. While seated, locomotion switches to tank controls: you propel yourself by kicking off the floor in short impulses and steer the chair directly. Rotation speed is dynamic, allowing for quick turns while remaining precise for fine adjustments, and collisions cause the chair to skid and bounce instead of stopping abruptly. The entire game can be completed while seated, making the office chair a fully viable—and immersive—way to play.</p>
+
+  <!-- ============ CLIP 5 — media/sector-zero/chair.mp4 ============ -->
+  <video class="clip" src="../media/sector-zero/chairUseFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Office chair locomotion: leg impulses for thrust, tank controls, wall bounce.</p>
+
+  <h2>What I'd change</h2>
+  <p>The code grew faster than its structure and the creature design never got where it needed to be.
+     If I restarted it, the storm and the catalogue would be the first things built and the room
+     would be authored around them, instead of the other way round.</p>
+
+  <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
+</main>
+
+<footer>
+  <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
+  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
+</footer>
+
+<script src="../lazy-video.js"></script>
+<script type="module" src="../storm3d.js?v=7"></script>
+</body>
+</html>

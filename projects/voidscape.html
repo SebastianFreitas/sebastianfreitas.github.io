@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoidScape — Sebastião Freitas</title>
+<meta name="description" content="First-person roguelike with a second loop that scales on skill instead of stats. Unity, C#.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html">SF</a>
+  <nav>
+    <a href="../index.html#work">Work</a>
+    <a href="https://github.com/sebastianfreitas">GitHub</a>
+    <a href="mailto:sebsfrets@gmail.com">Email</a>
+  </nav>
+</header>
+
+<main class="case">
+  <span class="obj-id">OBJ_0002</span>
+  <h1>VoidScape</h1>
+
+  <dl class="props">
+    <div><dt>Engine</dt><dd>Unity</dd></div>
+    <div><dt>Language</dt><dd>C#</dd></div>
+    <div><dt>Role</dt><dd>Solo — everything</dd></div>
+    <div><dt>Status</dt><dd>Playable, 2 bosses</dd></div>
+  </dl>
+
+  <p>A first-person roguelike with procedurally generated dungeons, craftable weapons, and more than
+     fifty gameplay-modifying mechanics. The part worth talking about is what happens after you win.</p>
+
+  <!-- ============ CLIP — media/voidscape/loop.mp4 ============
+  <video class="clip" src="../media/voidscape/loop.mp4" autoplay muted loop playsinline></video>
+  <p class="caption">The second loop. Enemies stop scaling on numbers and start scaling on what the
+     player can actually execute.</p>
+  ========================================================== -->
+
+  <h2>The problem</h2>
+  <p>Every roguelike I played had the same failure: the god run. The item drops line up, damage goes
+     exponential, and the boss you were supposed to fear dies in a single shot. The run you waited
+     ten hours for is the least interesting one you'll play, because the game stopped asking anything
+     of you at the exact moment it should have asked the most.</p>
+  <p>Stat scaling causes it. If power is a number and enemies are a number, one of them eventually
+     runs away from the other, and no amount of tuning fixes it — it just moves where the break
+     happens.</p>
+
+  <h2>What I built</h2>
+  <ul>
+    <li><strong>Two loops per run.</strong> The normal run ends. Then a second, infinitely scalable
+        run begins, and that one escalates on execution rather than on stats — the difficulty comes
+        from what the encounter demands of the player, not from bigger health bars.</li>
+    <li><strong>A skill tree fed by the second loop.</strong> Points earned there persist, so the
+        long-term progression is attached to the part of the game that tests you.</li>
+    <li><strong>Boons in the Binding of Isaac mould</strong> — run-defining modifiers that combine in
+        ways I didn't explicitly author.</li>
+    <li><strong>Craftable weapons that survive between runs</strong>, so building something is a
+        decision with consequences past the current session.</li>
+  </ul>
+
+  <h2>What it cost</h2>
+  <p>Fifty interacting modifiers means the combinations are not testable by hand. Most of the work
+     wasn't writing mechanics, it was making them compose without producing states I never
+     anticipated — and accepting that some of those states are the reason the game is interesting.</p>
+
+  <h2>What I'd change</h2>
+  <p>It's playable through two bosses and unfinished past that. If I picked it back up, I'd cut the
+     modifier count hard and spend the time on the second loop instead — that's the idea, and the
+     first loop is mostly there to set it up.</p>
+
+  <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
+</main>
+
+<footer>
+  <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
+  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
+</footer>
+
+</body>
+</html>
