@@ -9,16 +9,13 @@
    any more. Click a catalogued object to release it again.
    ========================================================= */
 
-import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+// Fetched only if we're going to run — see boot() below.
+let THREE, GLTFLoader, DRACOLoader;
 
 // ---- your objects --------------------------------------------
 const OBJECTS = [
   { model: "../media/models/SM_ComputerTower_A01_N1.glb",              size: 210 },
   { model: "../media/models/SM_ComputerMonitor_A02_N1.glb",                 size: 200 },
-  { model: "../media/models/SM_CRTMonitor.glb",              size: 210 },
-  { model: "../media/models/SM_PCTower.glb",                 size: 200 },
   { model: "../media/models/SM_ComputerKeyboard_A01_N1.glb", size: 190 },
   { model: "../media/models/SM_ComputerParts_A04_N1.glb",    size: 130 },
   { model: "../media/models/SM_ComputerCards_A01_N1.glb",    size: 115 },
@@ -46,7 +43,19 @@ const FACE_RATE   = 3;         // how fast a catalogued object turns to face you
 
 const DRAG_SLOP   = 6;         // px of movement before it counts as a drag
 
-if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) init();
+const STORM_MIN_WIDTH = 900;   // phones skip the storm entirely
+
+async function boot() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (window.innerWidth < STORM_MIN_WIDTH) return;
+
+  // ~800 KB of library + decoder, never fetched on mobile
+  THREE = await import("three");
+  ({ GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js"));
+  ({ DRACOLoader } = await import("three/addons/loaders/DRACOLoader.js"));
+  init();
+}
+boot();
 
 function init() {
   const field = document.getElementById("storm-field");
