@@ -49,6 +49,11 @@ async function boot() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   if (window.innerWidth < STORM_MIN_WIDTH) return;
 
+  // slow or metered connection: skip it, the page reads fine without
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (c && (c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""))) return;
+  if (navigator.deviceMemory && navigator.deviceMemory <= 2) return;
+
   // ~800 KB of library + decoder, never fetched on mobile
   THREE = await import("three");
   ({ GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js"));
