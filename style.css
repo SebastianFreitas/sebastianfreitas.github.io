@@ -323,3 +323,71 @@ footer p { margin: 0 0 0.4rem; }
   html { scroll-behavior: auto; }
   * { transition: none !important; }
 }
+
+/* =========================================================
+   Project card artwork.
+
+   A screenshot bleeds in from the right edge of each card and
+   fades to nothing before it reaches the text, so the copy stays
+   on flat background and stays readable.
+
+   Add to a card with:
+     <img class="obj-shot" src="..." alt="" loading="lazy">
+   as the FIRST child of the <a class="obj">.
+   ========================================================= */
+
+.obj {
+  overflow: hidden;              /* the artwork bleeds to the card edge */
+}
+
+.obj-shot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 62%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+
+  /* transparent at the left edge, solid at the right */
+  -webkit-mask-image: linear-gradient(to right,
+      transparent 0%,
+      rgba(0,0,0,0.25) 28%,
+      rgba(0,0,0,0.7) 60%,
+      #000 100%);
+          mask-image: linear-gradient(to right,
+      transparent 0%,
+      rgba(0,0,0,0.25) 28%,
+      rgba(0,0,0,0.7) 60%,
+      #000 100%);
+
+  transition: opacity 0.4s ease, transform 0.6s ease;
+}
+
+/* the card lights up on hover — the artwork comes with it */
+.obj:hover .obj-shot,
+.obj:focus-visible .obj-shot {
+  opacity: 0.8;
+  transform: scale(1.03);
+}
+
+/* text sits above the artwork */
+.obj-id, .obj h3, .obj-line, .obj .props {
+  position: relative;
+  z-index: 1;
+}
+
+/* narrow screens: the text runs the full width, so pull the
+   artwork right back rather than fighting it */
+@media (max-width: 900px) {
+  .obj-shot { width: 100%; opacity: 0.18; }
+  .obj:hover .obj-shot { opacity: 0.22; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obj-shot, .obj:hover .obj-shot { transition: none; transform: none; }
+}
