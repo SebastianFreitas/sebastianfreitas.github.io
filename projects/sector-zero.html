@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sector Zero — Sebastião Freitas</title>
-<meta name="description" content="A horror prototype where a text terminal rewrites physical reality. Unreal 5.">
+<meta name="description" content="A horror prototype where a text file is the physics engine. Unreal 5.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -44,25 +44,16 @@
     <div><dt>Status</dt><dd>Prototype</dd></div>
   </dl>
 
-  <p>A first-person horror game where a text file is the physics engine. You play Brian, a
-     contractor sent into a dead Obscura Dynamics research site with no memory of arriving. The
-     terminal in the room — RealityTXT — holds a record of every object around you, and whatever
-     the record says, reality obeys. Change a number in a text file and the object changes in
-     front of you. Brian has a record too.</p>
+  <p>A first-person horror game where a text file is the physics engine. You play Brian, sent into
+     a dead research site with no memory of arriving. The terminal — RealityTXT — holds a record of
+     every object in the room, and whatever the record says, reality obeys. Brian has a record
+     too.</p>
 
-  <!-- ============ MAP — media/sector-zero/map.jpg ============ -->
-  <img class="clip" src="../media/sector-zero/map.jpg"
-       alt="Top-down layout of the Sector Zero room, captured from the Unreal editor">
-  <p class="caption">One room. Everything in the game happens here.</p>
-
-  <p><strong>The design bet:</strong> condense the whole experience into one small space so every
-     object in it can be built to a standard a larger map could never afford.</p>
-
-  <p>The chair is a real chair you can sit in and drive. A screwdriver charges, shakes, spasms at
-     full power and returns to your hand when you throw it too far. The lantern flickers, and
-     sometimes decides not to. Nothing here is a generic interact prompt. The trade-off is
-     absolute: with this little floor space, anything dull has to look dull at a glance, so the
-     player never spends attention on something that won't pay it back.</p>
+  <p>One room. Everything happens here, condensed on purpose so every object can be built to a
+     standard a larger map couldn't afford. The chair is a real chair you sit in and drive. A
+     screwdriver charges, shakes, and flies back to your hand when thrown too far. Nothing is a
+     generic interact prompt — and with this little floor space, anything dull has to look dull at
+     a glance.</p>
 
   <!-- ============ CLIP 1 — media/sector-zero/login.mp4 ============ -->
   <video class="clip" src="../media/sector-zero/login.mp4" muted loop playsinline preload="none" data-lazy></video>
@@ -70,105 +61,84 @@
      real error on a bad path — the shell is a parser, not a prop.</p>
 
   <h2>A real shell, not a menu in disguise</h2>
-  <p>RealityTXT runs a working command set — <code>ls</code>, <code>cd</code>, <code>cat</code>,
-     <code>create</code>, <code>edit</code>, <code>rm</code>, <code>mail</code> — over a virtual
-     filesystem, with tab completion, command history, and genuine errors on bad paths. Anyone who
-     has used a terminal already knows how to play, and anyone who hasn't learns a real skill by
-     accident.</p>
-  <p>That choice pays off everywhere else. Every mechanic in the game becomes a text operation, so
-     new features cost a command instead of a UI.</p>
+  <p>RealityTXT runs <code>ls</code>, <code>cd</code>, <code>cat</code>, <code>create</code>,
+     <code>edit</code>, <code>rm</code> and <code>mail</code> over a virtual filesystem. Anyone
+     who has used a terminal already knows how to play. And because every mechanic is a text
+     operation, a new feature costs a command instead of a UI.</p>
 
   <h2>The terminal talks back</h2>
-  <p>An in-fiction mail client runs inside the shell. Messages arrive, you <code>read</code> them,
-     and <code>reply</code> gives you a numbered set of responses to choose from — never one
-     correct answer, always a choice you make with incomplete information.</p>
-  <p>This is the cheapest and most flexible narrative surface in the game. Anything can write to
-     it: a coworker who may still be alive somewhere in the building, the company that sent you,
-     or something using the mail system that shouldn't have access to it. It doubles as the hint
-     system — a stuck player gets pointed at possibilities rather than told where to go.</p>
+  <p>A mail client runs inside the shell. Messages arrive, you <code>read</code> them, and
+     <code>reply</code> gives you numbered options — never one correct answer. It's the cheapest
+     narrative surface in the game: a coworker who might still be alive, the company that sent you,
+     or something that shouldn't have access to the inbox. It doubles as the hint system.</p>
 
   <h2>The storm</h2>
   <p>Every so often the room loses its grip. Gravity stops applying to a set of objects, each one
-     takes a push, and the things you were looking at a second ago are above you. Storm severity
-     rolls on a curve that makes mild ones common and violent ones rare, so the room is never
-     quite predictable and never quite settled.</p>
-  <p>When it passes, the loose objects drift back toward where they started — and don't quite make
-     it. The lights cut for a moment, and in the dark everything is teleported the rest of the way
-     into its exact original state. The drift is what the player sees; the blackout is what hides
-     the snap. Reality holds together only because you weren't looking when it was corrected.</p>
-  <p>The storm is the foundation everything else sits on, and it's built to keep growing. Rare
-     events layered on top of the ordinary cycle mean the room can still surprise a player hours
-     in — and one object is already singled out each storm as a target, which is where the
-     creature design hooks in.</p>
+     takes a push, and what you were looking at a second ago is above you. Severity rolls on a
+     curve — mild storms common, violent ones rare.</p>
+  <p>When it passes they drift back toward where they started, and don't quite make it. The lights
+     cut, and in the dark everything is teleported the rest of the way home. The drift is what you
+     see; the blackout hides the snap. Reality holds together only because you weren't looking.</p>
+  <p>One object is singled out each storm as a target. That's where the creature hooks in.</p>
 
   <h2>Cataloguing is the counter-mechanic</h2>
-  <p>Register an object in RealityTXT and the storm can't touch it any more. It stops being
-     picked. It stays where it is.</p>
-  <p>So the room starts unstable and becomes solid one object at a time, at exactly the rate the
-     player is willing to pay attention. Nothing announces this. You notice because the corner you
-     documented first is the corner that stopped moving.</p>
-  <p>Registering is also what makes an object <em>usable</em>. Some objects are gadgets — a bucket
-     that shelters whatever you drop in it, scissors that work as a weapon but freeze in place
-     after a hit — and a gadget on file is a gadget you can rewrite. Many arrive with deliberately
-     bad numbers. Fixing them, or pushing them further out of spec on purpose, is where the
-     economy below actually gets spent.</p>
+  <p>Register an object and the storm can't touch it. The room starts unstable and goes solid one
+     object at a time, at exactly the rate you're willing to pay attention. Nothing announces it —
+     you notice because the corner you documented first is the corner that stopped moving.</p>
+  <p>Registering also makes an object <em>usable</em>. Gadgets — a bucket that shelters whatever
+     you drop in it, scissors that work as a weapon but freeze in place after a hit — arrive with
+     deliberately bad numbers. Fixing them, or breaking them further on purpose, is where the
+     economy gets spent.</p>
 
   <h2>The economy</h2>
-  <p>Editing reality costs something you earn by looking at it.</p>
+  <p>Editing reality costs what you earn by looking at it.</p>
   <ul>
-    <li>Registering a new object earns <strong>1 point</strong>.</li>
-    <li>Editing costs points equal to the number of characters changed. Overspend and the edit is
-        refused and the file reverts.</li>
-    <li>The balance lives inside the file itself, visible in the same text you're editing.</li>
+    <li>Registering an object earns <strong>1 point</strong>.</li>
+    <li>Editing costs one point per character changed. Overspend and the file reverts.</li>
+    <li>The balance lives inside the file you're editing.</li>
   </ul>
-  <p>The character-count cost is what makes it a design problem rather than a cheat menu.
-     <code>1</code> to <code>9</code> is one character. Turning a weight into something absurd
-     costs real budget. Every edit becomes a question of what's worth spending on — and the answer
-     changes depending on how much of the room you've bothered to examine.</p>
+  <p>Character count is what makes this a design problem instead of a cheat menu.
+     <code>1</code> to <code>9</code> is one character. An absurd weight costs real budget.</p>
 
   <!-- ============ CLIP 2 — media/sector-zero/createEntryFinal.mp4 ============ -->
   <video class="clip" src="../media/sector-zero/createEntryFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Creating an object after discovering it. Every object has basic properties such as size and weight, while rarer or more specialized objects may include additional attributes that can be viewed and edited.</p>
+  <p class="caption">Creating an object after discovering it. Everything has size and weight; rarer
+     objects carry extra attributes you can read and rewrite.</p>
 
   <h2>Brian is an object</h2>
-  <p>The player has a file like everything else, and editing it rewrites how the game feels to
-     play. Height rescales the character capsule, so a shelf that was out of reach isn't any more.
-     Weight drives movement and gravity on a curve: drop near zero and you move two and a half
-     times faster in near-freefall, push past 120 and you slow to a crawl under four times normal
-     gravity.</p>
-  <p>Set the weight <strong>negative</strong> and gravity inverts. Brian falls upward. It's one
-     character in a text file, and it turns the ceiling into the floor.</p>
+  <p>The player has a file too. Height rescales the character capsule, so a shelf out of reach
+     isn't any more. Weight drives speed and gravity on a curve: near zero and you move 2.5× faster
+     in near-freefall; past 120 and you crawl under 4× gravity.</p>
+  <p>Set the weight <strong>negative</strong> and gravity inverts. Brian falls upward. One
+     character in a text file, and the ceiling becomes the floor.</p>
 
   <!-- ============ CLIP 3 — media/sector-zero/editplayerFinal.mp4 ============ -->
   <video class="clip" src="../media/sector-zero/editplayerFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Editing the player's own record. Height and weight are movement parameters,
-     so a spatial problem becomes a text problem.</p>
+  <p class="caption">Editing the player's own record. A spatial problem becomes a text problem.</p>
 
   <h2>Found, not told</h2>
-  <p>Objects carry an ID and, sometimes, one line from whoever used them last — a complaint about
-     a blank disc, someone else's cold pizza. Nothing narrates who left them. A player either
-     notices or doesn't, and either way the room keeps working.</p>
+  <p>Objects carry an ID and, sometimes, one line from whoever used them last — a complaint about a
+     blank disc, someone else's cold pizza. Nothing narrates who left them.</p>
 
   <!-- ============ CLIP 4 — media/sector-zero/checkItemsFinal.mp4 ============ -->
   <video class="clip" src="../media/sector-zero/checkItemsFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
   <p class="caption">Inspecting objects. Character comes out of the details, in whatever order the
-     player happens to find them.</p>
+     player finds them.</p>
 
   <h2>Movement</h2>
-  <p>The player can walk freely throughout the environment, but can also interact with an office chair and sit down to move using it. While seated, locomotion switches to tank controls: you propel yourself by kicking off the floor in short impulses and steer the chair directly. Rotation speed is dynamic, allowing for quick turns while remaining precise for fine adjustments, and collisions cause the chair to skid and bounce instead of stopping abruptly. The entire game can be completed while seated, making the office chair a fully viable—and immersive—way to play.</p>
+  <p>You can walk, or you can sit in the office chair and drive. Seated, locomotion switches to
+     tank controls: you push off the floor in short impulses and steer directly. Rotation speed is
+     dynamic — fast when you commit, precise at low speed — and hitting a wall makes you skid and
+     bounce instead of stopping dead. The entire game can be completed from the chair.</p>
 
   <!-- ============ CLIP 5 — media/sector-zero/chairUseFinal.mp4 ============ -->
   <video class="clip" src="../media/sector-zero/chairUseFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Office chair locomotion: leg impulses for thrust, tank controls, wall bounce.</p>
+  <p class="caption">Leg impulses for thrust, tank controls, wall bounce.</p>
 
   <h2>Where it goes</h2>
-  <p>Everything above is running. The reason this design is worth building out is that the
-     expensive part is already paid for: once the world is a filesystem and reality reads from it,
-     a new mechanic is a new field in a text file. A gadget, a storm event, a character who writes
-     to your inbox — each one slots into a system that already exists.</p>
-  <p>The room is deliberately small so it can absorb that. The next version scales the storm's
-     rare events, wires the creature to the target it already selects, and pushes the gadget count
-     up — none of which requires rebuilding what's here.</p>
+  <p>Everything above runs. The expensive part is already paid for: once the world is a filesystem
+     and reality reads from it, a new mechanic is a new field in a text file. More gadgets, rarer
+     storm events, a character writing to your inbox — each one slots into what already exists.</p>
 
   <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
 </main>
