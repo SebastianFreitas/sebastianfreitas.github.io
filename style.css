@@ -391,3 +391,8 @@ footer p { margin: 0 0 0.4rem; }
 @media (prefers-reduced-motion: reduce) {
   .obj-shot, .obj:hover .obj-shot { transition: none; transform: none; }
 }
+
+/* topbar over the hero */
+.topbar { position: absolute; top: 0; left: 0; right: 0; }
+body { padding-top: 0; }
+.work, .experience { position: relative; z-index: 1; background: var(--petrol); }

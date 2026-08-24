@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sebastião Freitas — Gameplay Programmer</title>
-<meta name="description" content="Gameplay and systems programmer. Unity, Unreal, C#, C++.">
+<title>Sebastião Freitas — Games, Systems, Worlds</title>
+<meta name="description" content="I make worlds and the systems that make them fun. Gameplay and systems programmer — Unity, Unreal, C#, C++.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="bridge.css?v=1">
 </head>
 <body>
 
@@ -22,23 +23,95 @@
   </nav>
 </header>
 
-<!-- ================= HERO: the signature =================
-     The canvas below runs the core mechanic from HeavyLight:
-     light has weight. Your cursor is the light source and it
-     physically shoves the crates around. ~150 lines, no engine.
+<!-- ================= HERO: the bridge =================
+     A traversable slice of Arcanis Primordia. Push the cursor
+     toward a screen edge to cross; slow down near a landmark
+     and it tells you what it is.
 ========================================================== -->
-<section class="hero">
-  <canvas id="light-canvas" aria-label="Interactive demo: move your cursor to push the crates with light"></canvas>
-  <div class="hero-copy">
-    <p class="eyebrow">Gameplay &amp; systems programmer — Braga, Portugal</p>
-    <h1>Light has weight.<br>So does everything else.</h1>
-    <p class="lede">I build the systems underneath games: movement, combat loops, tools.
-       Move your cursor — the light is pushing those crates. That's the mechanic
-       from <a href="projects/heavylight.html">HeavyLight</a>, rewritten here in plain JavaScript.</p>
-    <a class="cta" href="#work">See the work</a>
+<section class="bridge-hero" id="bridge-hero">
+  <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
+
+  <div class="edge l"></div>
+  <div class="edge r"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <div class="bridge-copy" id="bridge-copy">
+    <p class="eyebrow">Sebastião Freitas — Braga, Portugal</p>
+    <h1>I build worlds<br>and the systems<br>that make them fun.</h1>
+    <p class="lede">Games, mechanics, and a tabletop setting I've been running for years.
+       This is a piece of it — a bridge across the void, anchored at one end by a god who
+       became matter.</p>
+    <div class="bridge-actions">
+      <a class="cta" href="#" id="bridge-begin">Explore the setting</a>
+      <a class="cta-ghost" href="#work">Game projects ↓</a>
+    </div>
   </div>
-  <p class="hint" id="hint">Move your cursor</p>
+
+  <!-- HUD, revealed once you start moving -->
+  <div class="bridge-hud" id="bridge-region">
+    <span class="name" id="bregname">Rex Immotus</span>
+    <span id="bregsub">The god that became the matter</span>
+  </div>
+
+  <div class="bridge-hud" id="bridge-telemetry">
+    <div class="row"><span class="k lbl">Velocity</span><span class="v" id="bvel">0</span><span class="k">&nbsp;u/s</span><span class="bar"><i id="bvelbar"></i></span></div>
+    <div class="row"><span class="k lbl">Travelled</span><span class="v" id="bdist">0</span><span class="k">&nbsp;u</span></div>
+    <div class="row"><span class="k lbl">Span crossed</span><span class="v" id="bpct">0.0</span><span class="k">&nbsp;%</span></div>
+    <div class="row"><span class="k lbl">Catalogued</span><span class="v" id="bcat">0</span><span class="k">&nbsp;/ unknown</span></div>
+  </div>
+
+  <div class="bridge-hud" id="bridge-map">
+    <div class="track" id="btrack"><div class="you" id="byou"></div></div>
+    <div class="labels"><span>West · the future</span><span>East · the past</span></div>
+  </div>
+
+  <div class="bridge-hud" id="bridge-hint">Move toward the edges of the screen to travel</div>
+
+  <a class="bridge-scroll" href="#work">The work ↓</a>
+
+  <!-- ---- landmark notes ---- -->
+  <aside class="bnote right" id="bnote-rex">
+    <p class="tag">Eastern reach</p>
+    <h3>Rex Immotus</h3>
+    <p class="body">An Ouroboros does not hold a law. It is one. Rex stopped being a god the
+       moment he became the matter everything else is made of — which is why the bridge has
+       anything to be anchored to at all.</p>
+    <p class="stat"><span>Class <b>Ouroboros</b></span><span>Law <b>Matter</b></span><span>CR <b>86</b></span></p>
+    <a href="#" data-link="rex">The nine laws →</a>
+  </aside>
+
+  <aside class="bnote right" id="bnote-wall">
+    <p class="tag">Terminus — no further</p>
+    <h3>Primordisentia</h3>
+    <p class="body">The first mass of souls, and the last thing east of anywhere. It doesn't end
+       so much as stop being passable. Everything on this side has already happened.</p>
+    <p class="stat"><span>State <b>Impassable</b></span><span>Reads as <b>The past</b></span></p>
+    <a href="#" data-link="primordisentia">Before the first law →</a>
+  </aside>
+
+  <aside class="bnote right" id="bnote-watcher">
+    <p class="tag">Overhead</p>
+    <h3>The Watcher</h3>
+    <p class="body">Rex's sun, and an Old One that used to have a job. Observation was the whole
+       of it once — sit above the matter, record what the matter does. Something in that role
+       outgrew itself. It still watches. It is no longer only watching.</p>
+    <p class="stat"><span>Class <b>Great Old One</b></span><span>Was <b>Observer</b></span><span>Now <b>Unclassified</b></span></p>
+    <a href="#" data-link="watcher">What it became →</a>
+  </aside>
+
+  <aside class="bnote left" id="bnote-land">
+    <p class="tag">Western reach</p>
+    <h3>The Mainland</h3>
+    <p class="body">Every living thing here has a file, or will. Libertech runs the census, and the
+       census has never once finished — not because the work is slow, but because insects turned out
+       clever enough to count, and there are more of them than there are numbers anyone has named.</p>
+    <p class="stat"><span>Authority <b>Libertech</b></span><span>Status <b>Open</b></span><span>Counted <b id="bnote-cat">—</b></span></p>
+    <a href="#" data-link="mainland">Inside the census →</a>
+  </aside>
 </section>
+
+<div id="bridge-cursor"></div>
 
 <!-- ================= WORK =================
      Structure borrowed from Sector Zero's hover-inspect:
@@ -129,6 +202,6 @@
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="cv.pdf">CV (PDF)</a></p>
 </footer>
 
-<script src="light.js"></script>
+<script src="bridge.js?v=1"></script>
 </body>
 </html>

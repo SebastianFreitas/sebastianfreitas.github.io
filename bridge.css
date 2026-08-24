@@ -1,0 +1,186 @@
+/* =========================================================
+   THE BRIDGE — homepage hero.
+   A traversable section, not a fixed page takeover. The page
+   scrolls normally past it into the work.
+   ========================================================= */
+
+.bridge-hero {
+  position: relative;
+  height: 100vh;
+  min-height: 620px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0d1114;
+  cursor: none;
+}
+
+#bridge-canvas {
+  position: absolute; inset: 0;
+  display: block; width: 100%; height: 100%;
+  z-index: 0;
+}
+
+.bridge-hero .vignette,
+.bridge-hero .grain { position: absolute; inset: 0; pointer-events: none; }
+.bridge-hero .vignette {
+  z-index: 4;
+  background: radial-gradient(ellipse 92% 74% at 50% 52%, transparent 32%, rgba(0,0,0,0.62) 100%);
+}
+.bridge-hero .grain {
+  z-index: 5; opacity: 0.05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.bridge-hero .edge {
+  position: absolute; top: 0; bottom: 0; width: 20vw; z-index: 6;
+  pointer-events: none; opacity: 0; transition: opacity 0.25s;
+}
+.bridge-hero .edge.l { left: 0;  background: linear-gradient(to right, rgba(245,208,107,0.07), transparent); }
+.bridge-hero .edge.r { right: 0; background: linear-gradient(to left,  rgba(245,208,107,0.07), transparent); }
+
+/* ---- the pitch, over the scene ---- */
+.bridge-copy {
+  position: absolute; z-index: 12;
+  left: clamp(1.5rem, 6vw, 6rem);
+  top: 50%; transform: translateY(-50%);
+  max-width: 34ch;
+  transition: opacity 0.7s, transform 0.7s;
+}
+.bridge-copy.faded { opacity: 0; transform: translateY(-50%) translateX(-16px); pointer-events: none; }
+
+.bridge-copy .eyebrow {
+  font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1rem;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.95);
+}
+.bridge-copy h1 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.4rem, 6vw, 4.6rem); line-height: 0.95;
+  letter-spacing: -0.03em; margin: 0 0 1.1rem; color: #fff;
+  text-shadow: 0 2px 44px rgba(0,0,0,0.95);
+}
+.bridge-copy .lede {
+  margin: 0 0 2rem; color: var(--sage); max-width: 40ch;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.95);
+}
+.bridge-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+.bridge-actions .cta,
+.bridge-actions .cta-ghost {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em;
+  text-transform: uppercase; text-decoration: none;
+  padding: 0.75rem 1.4rem; cursor: pointer; border: 1px solid transparent;
+  background: none;
+}
+.bridge-actions .cta { color: var(--petrol); background: var(--lamp); }
+.bridge-actions .cta:hover { background: #fff; }
+.bridge-actions .cta-ghost { color: var(--sage); border-color: rgba(198,204,198,0.28); }
+.bridge-actions .cta-ghost:hover { color: #fff; border-color: #fff; }
+
+/* ---- HUD ---- */
+.bridge-hud {
+  position: absolute; z-index: 10; pointer-events: none;
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim);
+  text-shadow: 0 1px 12px rgba(0,0,0,0.95);
+  opacity: 0; transition: opacity 0.6s;
+}
+.bridge-hero.live .bridge-hud { opacity: 1; }
+.bridge-hud .k { color: #5f6a68; }
+.bridge-hud .v { color: var(--sage); }
+
+#bridge-telemetry { left: 2rem; bottom: 2rem; line-height: 1.9; }
+#bridge-telemetry .row { display: flex; gap: 0.7rem; align-items: center; }
+#bridge-telemetry .lbl { width: 7.5rem; }
+#bridge-telemetry .bar { width: 80px; height: 3px; background: #1e262a; margin-left: 0.4rem; }
+#bridge-telemetry .bar i { display: block; height: 100%; width: 0; background: var(--lamp); }
+
+#bridge-region { right: 2rem; top: 6rem; text-align: right; line-height: 1.9; }
+#bridge-region .name {
+  font-family: var(--display); font-size: 1.3rem; font-weight: 800;
+  letter-spacing: -0.01em; text-transform: none; color: #fff;
+  display: block; margin-bottom: 0.1rem;
+}
+
+#bridge-map { left: 50%; transform: translateX(-50%); bottom: 2rem; width: min(40rem, 52vw); }
+#bridge-map .track { position: relative; height: 1px; background: #232c31; margin-bottom: 0.55rem; }
+#bridge-map .mk { position: absolute; top: -3px; width: 1px; height: 7px; background: #46545a; }
+#bridge-map .mk.big { height: 11px; top: -5px; background: var(--sage-dim); }
+#bridge-map .you { position: absolute; top: -5px; width: 2px; height: 11px; background: var(--lamp); box-shadow: 0 0 10px var(--lamp); }
+#bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
+
+#bridge-hint {
+  left: 50%; transform: translateX(-50%); bottom: 5.6rem;
+  opacity: 0; transition: opacity 0.6s;
+}
+.bridge-hero.live #bridge-hint { opacity: 1; }
+.bridge-hero.live.moving #bridge-hint { opacity: 0; }
+
+/* ---- landmark notes ---- */
+.bnote {
+  position: absolute; z-index: 14; top: 50%;
+  width: min(27rem, 38vw); padding: 1.5rem 1.7rem;
+  background: rgba(13,17,20,0.76);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(198,204,198,0.13);
+  border-left: 2px solid var(--lamp);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.7,.3,1), visibility 0.6s;
+}
+.bnote.show { opacity: 1; visibility: visible; pointer-events: auto; }
+.bnote.right { right: 3rem; transform: translate(24px, -50%); }
+.bnote.left  { left: 3rem;  transform: translate(-24px, -50%); }
+.bnote.right.show, .bnote.left.show { transform: translate(0, -50%); }
+
+.bnote .tag {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--brick); margin: 0 0 0.5rem;
+}
+.bnote h3 {
+  font-family: var(--display); font-size: 1.7rem; font-weight: 800;
+  letter-spacing: -0.02em; line-height: 1; margin: 0 0 0.8rem; color: #fff;
+}
+.bnote p.body { font-size: 0.88rem; line-height: 1.6; color: var(--sage); margin: 0 0 1.1rem; }
+.bnote .stat {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.1rem;
+  display: flex; gap: 1.2rem; flex-wrap: wrap;
+}
+.bnote .stat b { color: var(--sage); font-weight: 400; }
+.bnote a {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lamp); text-decoration: none;
+  border-bottom: 1px solid rgba(245,208,107,0.4); padding-bottom: 3px;
+}
+.bnote a:hover { color: #fff; border-color: #fff; }
+
+/* ---- scroll cue ---- */
+.bridge-scroll {
+  position: absolute; z-index: 12; right: 2rem; bottom: 2rem;
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim); text-decoration: none;
+}
+.bridge-scroll:hover { color: var(--lamp); }
+
+/* ---- cursor ---- */
+#bridge-cursor {
+  position: fixed; z-index: 60; pointer-events: none;
+  width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border: 1px solid rgba(245,208,107,0.45); border-radius: 50%;
+  opacity: 0; transition: opacity 0.2s;
+}
+#bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
+#bridge-cursor.on { opacity: 1; }
+
+@media (max-width: 900px) {
+  .bridge-hero { cursor: auto; }
+  .bnote, .bnote.left, .bnote.right {
+    width: calc(100vw - 2.5rem); left: 1.25rem; right: 1.25rem; transform: translate(0, -50%);
+  }
+  #bridge-telemetry, #bridge-map, #bridge-region { display: none; }
+  #bridge-cursor { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bridge-hero { cursor: auto; }
+  #bridge-cursor { display: none; }
+}
