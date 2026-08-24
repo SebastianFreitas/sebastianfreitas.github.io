@@ -37,14 +37,9 @@
     brakeZone: 9000,
   };
 
-  /* Landmarks capture you as you pass, so nothing gets blitzed past.
-     Hold a screen edge for ESCAPE_HOLD seconds to break free. */
   const DOCK = {
-    radius: 3400,       // capture range
-    pull: 2.8,          // lerp rate onto the exact centre
-    escapeHold: 0.34,   // seconds of steering needed to leave
-    cooldown: 1.8,      // that landmark can't recapture for this long
-    minSpeed: 60,       // below this you're parked, not passing
+    radius: 3400, pull: 2.8,
+    escapeHold: 0.34, cooldown: 1.8, minSpeed: 60,
   };
 
   const NOTES = [
@@ -54,9 +49,10 @@
     { id: "bnote-wall",    x: CAM.max,       r: 2200, dock: false, name: "Primordisentia", sub: "The past. No further" },
   ];
 
-  /* ---- layout: bridge sits high, the masses sit low ---- */
-  const DECK  = 0.50;   // deck height as a fraction of the hero
-  const FLOOR = 1.12;   // landmass baseline, pushed below the frame
+  /* ---- layout ---- */
+  const DECK  = 0.40;   // deck height as a fraction of the hero
+  const FLOOR = 1.14;   // landmass baseline, pushed below the frame
+  const BAY   = 150;    // world units between legs
 
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
@@ -75,6 +71,13 @@
     x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
     return ((x ^ x >>> 14) >>> 0) / 4294967296;
   };
+  /* stable per-integer noise, so brick damage never flickers or slides */
+  function hash1(n) {
+    n = (n ^ 61) ^ (n >>> 16);
+    n = n + (n << 3); n = n ^ (n >>> 4);
+    n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15);
+    return (n >>> 0) / 4294967296;
+  }
 
   /* ---- the mainland ---- */
   const CITY_FROM = LAND.mainland - SLOT * 0.7;
@@ -117,7 +120,7 @@
     }
     for (let i = 0; i < 46; i++)
       rex.shards.push({ x: LAND.rex - SLOT * 1.6 + r() * SLOT * 3.2,
-                        y: 0.16 + r() * 0.5, s: 12 + r() * 86,
+                        y: 0.14 + r() * 0.46, s: 12 + r() * 86,
                         rot: r() * 6.28, spin: (r() - 0.5) * 0.04, a: 0.16 + r() * 0.5 });
   })();
 
@@ -133,7 +136,7 @@
       motes.push({ u: r(), y: r(), rr: 0.4 + r() * 1.5, ph: r() * 6.28, a: 0.06 + r() * 0.3 });
     for (let i = 0; i < 620; i++)
       swarm.push({ x: CITY_FROM - 900 + r() * (CITY_TO - CITY_FROM + 1800),
-                   y: 0.34 + r() * 0.64, rr: 0.3 + r() * 0.95,
+                   y: 0.36 + r() * 0.6, rr: 0.3 + r() * 0.95,
                    ph: r() * 6.28, amp: 6 + r() * 30, a: 0.15 + r() * 0.5 });
   })();
 
@@ -142,9 +145,9 @@
   let catalogued = 4182993201, lastRegion = "", started = false, visible = true;
   let docked = null, escapeHeld = 0;
   const cooldown = {};
-  cooldown["bnote-rex"] = 2.5;      // free to leave the starting point
+  cooldown["bnote-rex"] = 2.5;
 
-  let flyTo = null;                 // {from, to, elapsed, dur}
+  let flyTo = null;
   let scrubbing = false, armed = false, armX = 0, armMoved = 0;
 
   const cursor = document.getElementById("bridge-cursor");
@@ -154,29 +157,12 @@
   const scale = () => W / CAM.viewUnits;
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const fmt = n => Math.round(n).toLocaleString("en-US");
-
-  /* Canvas misbehaves with enormous coordinates — the world is
-     400,000+ units wide, so cull hard before anything is drawn. */
   const onScreen = (x, pad) => x > -pad && x < W + pad;
 
-  /* ---- input ---- */
-  function onMove(e) {
-    const r = host.getBoundingClientRect();
-    const inside = e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) { steer = 0; if (cursor) cursor.classList.remove("on"); return; }
-
-    if (cursor) {
-      cursor.classList.add("on");
-      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    }
-
-    const n = ((e.clientX - r.left) / r.width - 0.5) * 2, dz = CAM.deadzone;
-    steer = Math.abs(n) < dz ? 0 : Math.sign(n) * Math.pow((Math.abs(n) - dz) / (1 - dz), 1.6);
-    if (steer !== 0) { begin(); if (flyTo && Math.abs(steer) > 0.4) flyTo = null; }
-  }
-  addEventListener("pointermove", onMove, { passive: true });
-  addEventListener("pointerleave", () => { steer = 0; if (cursor) cursor.classList.remove("on"); });
-
+  /* ---- starting is a deliberate act ----------------------------
+     Merely moving the pointer across the hero is not intent, so the
+     intro stays up until the visitor clicks something.
+  ------------------------------------------------------------- */
   const copy = document.getElementById("bridge-copy");
   function begin() {
     if (started) return;
@@ -184,12 +170,51 @@
     host.classList.add("live");
     if (copy) copy.classList.add("faded");
   }
+
   const beginBtn = document.getElementById("bridge-begin");
   if (beginBtn) beginBtn.addEventListener("click", e => { e.preventDefault(); begin(); });
+  cv.addEventListener("pointerdown", begin);
+
+  /* ---- input ---- */
+  let lastPointer = { x: 0, y: 0 };
+
+  function applySteer(clientX) {
+    const r = host.getBoundingClientRect();
+    const n = ((clientX - r.left) / r.width - 0.5) * 2, dz = CAM.deadzone;
+    steer = Math.abs(n) < dz ? 0 : Math.sign(n) * Math.pow((Math.abs(n) - dz) / (1 - dz), 1.6);
+    if (steer !== 0 && flyTo && Math.abs(steer) > 0.4) flyTo = null;
+  }
+
+  function stopSteering() {
+    steer = 0;
+    if (cursor) cursor.classList.remove("on");
+  }
+
+  addEventListener("pointermove", e => {
+    lastPointer = { x: e.clientX, y: e.clientY };
+    const r = host.getBoundingClientRect();
+    const inside = e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) { stopSteering(); return; }
+
+    if (cursor) {
+      cursor.classList.add("on");
+      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    }
+    if (started) applySteer(e.clientX);
+  }, { passive: true });
+
+  /* the pointer leaving the window doesn't reliably fire pointerleave,
+     so catch every way focus can be lost */
+  document.documentElement.addEventListener("mouseleave", stopSteering);
+  addEventListener("blur", stopSteering);
+  addEventListener("pointercancel", stopSteering);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopSteering(); });
 
   if ("IntersectionObserver" in window) {
-    new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0.02 })
-      .observe(host);
+    new IntersectionObserver(es => {
+      visible = es[0].isIntersecting;
+      if (!visible) stopSteering();
+    }, { threshold: 0.02 }).observe(host);
   }
 
   /* ---- minimap: click to fly, drag to scrub ---- */
@@ -218,32 +243,28 @@
       if (!armed) return;
       armMoved += Math.abs(e.clientX - armX);
       armX = e.clientX;
-      // past a few pixels it's a drag, so scrub directly
       if (armMoved > 5) {
         scrubbing = true; flyTo = null; docked = null;
         camX = posFromEvent(e); vel = 0; boost = 0;
       }
     });
 
-    const release = e => {
+    track.addEventListener("pointerup", e => {
       if (!armed) return;
-      // no meaningful movement: treat it as a click and travel there
       if (!scrubbing) {
-        const to = posFromEvent(e);
-        const dist = Math.abs(to - camX);
+        const to = posFromEvent(e), dist = Math.abs(to - camX);
         flyTo = { from: camX, to, elapsed: 0,
                   dur: Math.min(2.4, Math.max(0.7, dist / 40000 * 2.2)) };
         docked = null; vel = 0; boost = 0;
       }
       armed = false; scrubbing = false;
-    };
-    track.addEventListener("pointerup", release);
+    });
     track.addEventListener("pointercancel", () => { armed = false; scrubbing = false; });
   }
 
   const easeInOut = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 
-  /* ---- draw ---- */
+  /* ---- draw: void ---- */
   function drawVoid() {
     const s = scale(), span = W * 2.4, off = camX * 0.06 * s;
     for (const b of blobs) {
@@ -280,9 +301,9 @@
 
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
-    const R = Math.min(W, H) * 0.28;
+    const R = Math.min(W, H) * 0.26;
     if (!onScreen(x, R * 3.2)) return;
-    const y = H * 0.24;
+    const y = H * 0.21;
 
     const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 3.1);
     g.addColorStop(0, "rgba(245,208,107,0.16)");
@@ -313,8 +334,7 @@
     for (const tw of list) {
       const x = wx(tw.x, par);
       if (!onScreen(x, 200)) continue;
-      const w = Math.max(1, tw.w * s * par), h = tw.h * H;
-      ctx.fillRect(x, floor - h, w, h);
+      ctx.fillRect(x, floor - tw.h * H, Math.max(1, tw.w * s * par), tw.h * H);
     }
     ctx.globalAlpha = 1;
   }
@@ -367,9 +387,7 @@
     ctx.globalAlpha = 1;
 
     const par = 0.62;
-    const first = wx(rex.ridge[0].x, par);
-    const lastX = wx(rex.ridge[rex.ridge.length - 1].x, par);
-    if (lastX < -160 || first > W + 160) return;
+    if (wx(rex.ridge[rex.ridge.length - 1].x, par) < -160 || wx(rex.ridge[0].x, par) > W + 160) return;
 
     const pts = rex.ridge.map(p => ({
       x: Math.max(-400, Math.min(W + 400, wx(p.x, par))),
@@ -400,32 +418,99 @@
     ctx.fillStyle = "rgba(143,176,184,0.13)"; ctx.fillRect(cx - 1, 0, 1.5, H);
   }
 
-  /* the bridge never ends, and the legs go down forever */
+  /* ===========================================================
+     THE BRIDGE — line art.
+
+     A lit rule across the whole frame, thin legs dropping into
+     shadow, a shallow arch turned between each pair, and a few
+     small things standing on top. Nothing solid: at this distance
+     the span is barely more than a line, and that's the point.
+     =========================================================== */
+
   function drawBridge() {
-    const par = 0.94, s = scale(), deckY = H * DECK;
+    const par = 0.94, s = scale();
+    const deckY = H * DECK;
 
-    const g = ctx.createLinearGradient(0, deckY - 110, 0, deckY + 46);
-    g.addColorStop(0, "rgba(245,208,107,0)");
-    g.addColorStop(0.82, "rgba(245,208,107,0.085)");
-    g.addColorStop(1, "rgba(245,208,107,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, deckY - 110, W, 156);
+    const bayPx  = Math.max(24, BAY * s * par);
+    const legW   = Math.min(4, Math.max(1.4, bayPx * 0.014));
+    const deckH  = Math.min(7, Math.max(2.5, bayPx * 0.028));
+    const rise   = bayPx * 0.30;          // how far the arch drops from the deck
+    const legBot = H * 1.22;
 
-    const step = 420;
-    const from = Math.floor((camX - CAM.viewUnits) / step) * step;
-    const legW = Math.max(1.5, 6 * s * par);
-    const lg = ctx.createLinearGradient(0, deckY, 0, H);
-    lg.addColorStop(0, "#151c20");
-    lg.addColorStop(0.55, "rgba(21,28,32,0.75)");
-    lg.addColorStop(1, "rgba(21,28,32,0)");
+    /* haze the deck sits in */
+    const gl = ctx.createLinearGradient(0, deckY - 90, 0, deckY + 40);
+    gl.addColorStop(0, "rgba(245,208,107,0)");
+    gl.addColorStop(0.78, "rgba(245,208,107,0.055)");
+    gl.addColorStop(1, "rgba(245,208,107,0)");
+    ctx.fillStyle = gl; ctx.fillRect(0, deckY - 90, W, 130);
+
+    /* shadow the legs fall into */
+    const sh = ctx.createLinearGradient(0, deckY + deckH, 0, H);
+    sh.addColorStop(0, "rgba(4,6,8,0.55)");
+    sh.addColorStop(1, "rgba(4,6,8,0)");
+    ctx.fillStyle = sh; ctx.fillRect(0, deckY + deckH, W, H - deckY);
+
+    const first = Math.floor((camX - CAM.viewUnits) / BAY) - 1;
+    const last  = Math.ceil((camX + CAM.viewUnits) / BAY) + 1;
+
+    /* --- legs ------------------------------------------------ */
+    const lg = ctx.createLinearGradient(0, deckY, 0, legBot);
+    lg.addColorStop(0, "rgba(126,143,152,0.55)");
+    lg.addColorStop(0.35, "rgba(96,112,120,0.30)");
+    lg.addColorStop(1, "rgba(70,84,92,0)");
     ctx.fillStyle = lg;
-    for (let p = from; p < camX + CAM.viewUnits * 1.4; p += step) {
-      const px = wx(p, par);
-      if (!onScreen(px, 40)) continue;
-      ctx.fillRect(px, deckY + 14, legW, H - deckY);
+    for (let b = first; b <= last; b++) {
+      if (hash1(b * 5701 + 17) < 0.05) continue;      // one fell, long ago
+      const x = wx(b * BAY, par);
+      if (!onScreen(x, 20)) continue;
+      ctx.fillRect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
     }
 
-    ctx.fillStyle = "#232c31"; ctx.fillRect(0, deckY, W, Math.max(6, 15 * s * par));
-    ctx.fillStyle = "rgba(245,208,107,0.55)"; ctx.fillRect(0, deckY - 2, W, 3);
+    /* --- the turn between each pair -------------------------- */
+    ctx.strokeStyle = "rgba(132,150,159,0.26)";
+    ctx.lineWidth = Math.max(0.8, legW * 0.55);
+    for (let b = first; b <= last; b++) {
+      const x0 = wx(b * BAY, par);
+      if (!onScreen(x0, bayPx + 20)) continue;
+      const mid = x0 + bayPx / 2;
+      ctx.beginPath();
+      ctx.ellipse(mid, deckY + deckH + rise, bayPx / 2 - legW, rise, 0, Math.PI, 0);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+
+    /* --- what stands on top ---------------------------------- */
+    for (let b = first; b <= last; b++) {
+      const x = wx(b * BAY, par);
+      if (!onScreen(x, 24)) continue;
+      const r = hash1(b * 911 + 7);
+
+      // a short post over every leg
+      ctx.fillStyle = "rgba(120,138,147,0.4)";
+      ctx.fillRect(x - legW * 0.4, deckY - deckH * 1.9, legW * 0.8, deckH * 1.9);
+
+      // and now and then something taller, with a light on it
+      if (r < 0.13) {
+        const mh = deckH * (4.5 + r * 22);
+        ctx.fillStyle = "rgba(120,138,147,0.34)";
+        ctx.fillRect(x - legW * 0.3, deckY - mh, legW * 0.6, mh);
+        ctx.fillStyle = "rgba(245,208,107,0.75)";
+        ctx.fillRect(x - legW * 0.55, deckY - mh - legW * 0.7, legW * 1.1, legW * 1.1);
+      }
+    }
+
+    /* --- the deck itself, last and brightest ----------------- */
+    ctx.fillStyle = "rgba(36,45,51,0.92)";
+    ctx.fillRect(0, deckY, W, deckH);
+
+    // the lit rule, with the occasional stretch gone dark
+    ctx.fillStyle = "rgba(245,208,107,0.62)";
+    for (let b = first; b <= last; b++) {
+      if (hash1(b * 3391 + 29) < 0.06) continue;
+      const x = wx(b * BAY, par);
+      if (!onScreen(x, bayPx + 20)) continue;
+      ctx.fillRect(x, deckY - 1.6, bayPx + 1, 2.4);
+    }
   }
 
   /* ---- notes ---- */
@@ -447,7 +532,7 @@
   }
 
   function checkNotes() {
-    if (Math.abs(vel) > 420 || scrubbing) { setNote(null); return; }
+    if (!started || Math.abs(vel) > 420 || scrubbing) { setNote(null); return; }
     let best = null, bestD = Infinity;
     for (const n of NOTES) {
       const d = Math.abs(camX - n.x);
@@ -513,11 +598,9 @@
   /* ---- movement ---- */
   function step(dt) {
     for (const k in cooldown) if (cooldown[k] > 0) cooldown[k] -= dt;
-
-    // 1. minimap drag wins outright
+    if (!started) { vel = 0; return; }
     if (scrubbing) { vel = 0; return; }
 
-    // 2. click-to-travel tween
     if (flyTo) {
       flyTo.elapsed += dt;
       const u = Math.min(1, flyTo.elapsed / flyTo.dur);
@@ -529,7 +612,6 @@
       return;
     }
 
-    // 3. docked at a landmark — lerp onto its centre and hold
     if (docked) {
       const prev = camX;
       camX += (docked.x - camX) * Math.min(1, dt * DOCK.pull);
@@ -541,13 +623,12 @@
         if (escapeHeld >= DOCK.escapeHold) {
           cooldown[docked.id] = DOCK.cooldown;
           docked = null; escapeHeld = 0;
-          vel = steer * CAM.baseSpeed * 0.6;   // a shove in the chosen direction
+          vel = steer * CAM.baseSpeed * 0.6;
         }
       } else escapeHeld = 0;
       return;
     }
 
-    // 4. free travel
     if (Math.abs(steer) > 0.55) boost = Math.min(1, boost + dt * CAM.boostRamp);
     else boost = Math.max(0, boost - dt * CAM.boostDecay);
     const cap = CAM.baseSpeed + (CAM.boostSpeed - CAM.baseSpeed) * boost * boost;
@@ -563,14 +644,13 @@
     const prev = camX;
     camX += vel * dt;
 
-    // 5. landmark capture — checked against the whole step, so nothing
-    //    is skipped over even at 26,000 u/s
     if (Math.abs(vel) > DOCK.minSpeed) {
       for (const n of NOTES) {
         if (!n.dock || (cooldown[n.id] || 0) > 0) continue;
-        const crossed = (prev - n.x) * (camX - n.x) <= 0;      // passed straight through
-        const inRange = Math.abs(camX - n.x) < DOCK.radius;
-        if (crossed || inRange) { docked = n; boost = 0; escapeHeld = 0; break; }
+        const crossed = (prev - n.x) * (camX - n.x) <= 0;
+        if (crossed || Math.abs(camX - n.x) < DOCK.radius) {
+          docked = n; boost = 0; escapeHeld = 0; break;
+        }
       }
     }
 
@@ -599,7 +679,7 @@
     drawBand(city.mid, 0.46, "#182025", 0.78);
     drawCityNear();
     drawWall();
-    drawBridge();          // drawn last: the bridge sits above everything
+    drawBridge();
 
     updateHUD(dt);
     checkNotes();
