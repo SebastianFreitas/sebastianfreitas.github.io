@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VoidScape — Sebastião Freitas</title>
-<meta name="description" content="First-person roguelike with a second loop that scales on skill instead of stats. Unity, C#.">
+<meta name="description" content="A first-person roguelike where the player rolls their own difficulty and the game pays proportionally. Unity, C#.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../style.css?v=2">
 </head>
 <body>
 
@@ -32,46 +32,109 @@
     <div><dt>Status</dt><dd>Playable, 2 bosses</dd></div>
   </dl>
 
-  <p>A first-person roguelike with procedurally generated dungeons, craftable weapons, and more than
-     fifty gameplay-modifying mechanics. The part worth talking about is what happens after you win.</p>
+  <p>A first-person roguelike where the player writes their own difficulty. Nothing here is a
+     difficulty slider — every hard choice is one the player made on purpose, and the game pays out
+     in proportion. Runs, weapons, and modifiers are all rolled, not authored.</p>
 
-  <!-- ============ CLIP — media/voidscape/loop.mp4 ============
-  <video class="clip" src="../media/voidscape/loop.mp4" autoplay muted loop playsinline></video>
-  <p class="caption">The second loop. Enemies stop scaling on numbers and start scaling on what the
-     player can actually execute.</p>
+  <!-- ============ CLIP — media/voidscape/mission.mp4 ============
+       Suggested: reading a mission's rolled modifiers on the monitors,
+       then opening the portal into it.
+  <video class="clip" src="../media/voidscape/mission.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Choosing a run. Every drawback on the board raises the payout.</p>
   ========================================================== -->
 
   <h2>The problem</h2>
-  <p>Every roguelike I played had the same failure: the god run. The item drops line up, damage goes
-     exponential, and the boss you were supposed to fear dies in a single shot. The run you waited
-     ten hours for is the least interesting one you'll play, because the game stopped asking anything
-     of you at the exact moment it should have asked the most.</p>
-  <p>Stat scaling causes it. If power is a number and enemies are a number, one of them eventually
-     runs away from the other, and no amount of tuning fixes it — it just moves where the break
-     happens.</p>
+  <p>Every roguelike I played had the same failure: the god run. The drops line up, damage goes
+     exponential, and the boss you were supposed to fear dies in one shot. The run you waited ten
+     hours for is the least interesting one you'll play, because the game stopped asking anything of
+     you at exactly the moment it should have asked the most.</p>
+  <p>Stat scaling causes it. If power is a number and enemies are a number, one eventually runs away
+     from the other. Tuning doesn't fix that — it just moves where the break happens.</p>
 
-  <h2>What I built</h2>
-  <ul>
-    <li><strong>Two loops per run.</strong> The normal run ends. Then a second, infinitely scalable
-        run begins, and that one escalates on execution rather than on stats — the difficulty comes
-        from what the encounter demands of the player, not from bigger health bars.</li>
-    <li><strong>A skill tree fed by the second loop.</strong> Points earned there persist, so the
-        long-term progression is attached to the part of the game that tests you.</li>
-    <li><strong>Boons in the Binding of Isaac mould</strong> — run-defining modifiers that combine in
-        ways I didn't explicitly author.</li>
-    <li><strong>Craftable weapons that survive between runs</strong>, so building something is a
-        decision with consequences past the current session.</li>
-  </ul>
+  <h2>The answer: let the player set the terms</h2>
+  <p>The run itself is a rolled item. Before entering, you stand at a bank of monitors, each showing
+     a generated mission with its own set of modifiers — monster health, damage and action speed;
+     reduced healing; grenades disabled; entire damage types made immune.</p>
+  <p>Every one of those drawbacks automatically raises elite chance, special-room frequency and drop
+     rate, with a random component on top so two equally-loaded missions aren't equally worth taking.
+     You read the board, weigh it, and choose. Missions can be rerolled or pushed further for a
+     price.</p>
+  <p>Four of the modifiers don't explain themselves at all — <code>Danger</code>, <code>ERROR</code>,
+     <code>UnknownX</code>, <code>UnknownY</code>. They carry the lowest weights in the table. The
+     only way to find out is to take one.</p>
+
+  <h2>Colour is a commitment</h2>
+  <p>Boons drop as Red or Blue. Taking one shifts the dungeon's influence toward that colour — and
+     the influence cuts both ways: <strong>lean into a colour and its rooms turn hostile, while the
+     opposite colour's rooms turn generous.</strong></p>
+  <p>Blue turns monsters temporarily invisible and slows you when they connect. Red makes them faster
+     and detonate on death. The compensation runs in the other direction: doubled monsters, doubled
+     drops, higher elite chance. A dedicated room type lets you flip your influence mid-run, which
+     makes it a decision you keep revisiting instead of one you make once.</p>
+
+  <!-- ============ CLIP — media/voidscape/boons.mp4 ============
+  <video class="clip" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Boons are mostly trade-offs, not upgrades.</p>
+  ========================================================== -->
+
+  <h2>Fifty boons, and most of them cost something</h2>
+  <p>Boons stack for the rest of the run and are weighted by rarity. The flat upgrades exist, but
+     they're the boring ones. The interesting half are trades: lose 20 max HP for +10 fire damage.
+     Shrink your explosion radius by 90% to double its damage. Deal all your poison damage instantly,
+     at half value. Halve your bullet speed for +50 physical.</p>
+  <p>They also convert between elements — poison feeding fire, physical becoming cold on crits,
+     chilled enemies taking more poison. Elements aren't separate lanes, so builds collide in ways I
+     never wrote down. Every boon is implemented to be reversible, applying and unapplying through
+     the same path, which is what lets the influence system move them around at runtime.</p>
+
+  <h2>Weapons are generated, not designed</h2>
+  <p>A gun rolls a base type, a level, and a set of modifiers drawn from three grades: interior
+     (damage), exterior (handling), and special (build-defining effects like ignite chance, freeze
+     chance, or double damage).</p>
+  <p>The part that keeps them interesting is that grade weights decay per weapon as they roll. Land
+     an interior mod and the next interior mod becomes far less likely on that gun; land a special
+     and the odds barely move. Weapons come out mixed instead of stacking five of the same thing,
+     and specials stay rare without needing a hard cap on them.</p>
+
+  <!-- ============ CLIP — media/voidscape/crafting.mp4 ============
+  <video class="clip" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">Adding, removing, and scrapping mods at the bench.</p>
+  ========================================================== -->
+
+  <h2>Crafting gets more expensive the better you're doing</h2>
+  <p>Gun parts drop from enemies and pay for adding mods, removing them, or scrapping a weapon
+     outright. Price scales with both the weapon's level and how many mods it already carries — so
+     pushing a good gun further costs progressively more, and a near-miss weapon is worth real money
+     if you break it down instead. Weapons and layouts persist between runs, so building one is a
+     decision with consequences past the session.</p>
+
+  <h2>The second loop</h2>
+  <p>Finishing a run doesn't end it. A second loop opens, and that one scales on execution rather
+     than on numbers — the difficulty comes from what an encounter demands of the player, not from
+     larger health bars. Points earned there persist into a skill tree, which attaches long-term
+     progression to the part of the game that actually tests you.</p>
+  <p>This is where the god run gets its answer. A build that trivialises the first loop still has to
+     be played in the second.</p>
+
+  <h2>Feel</h2>
+  <p>Movement carries coyote time and jump buffering so inputs land when the player means them,
+     side and jump dashes on independent cooldowns, and locked input direction during a dash so
+     momentum carries instead of letting you steer mid-air. Enemy hits and explosions apply real
+     knockback through a mass-weighted impact vector — and one boon turns being launched by your own
+     fire explosion into a speed buff, which makes shooting the floor to travel a legitimate build.</p>
 
   <h2>What it cost</h2>
-  <p>Fifty interacting modifiers means the combinations are not testable by hand. Most of the work
-     wasn't writing mechanics, it was making them compose without producing states I never
-     anticipated — and accepting that some of those states are the reason the game is interesting.</p>
+  <p>Fifty interacting modifiers on top of rolled weapons and rolled missions means the combination
+     space isn't testable by hand. Most of the work wasn't writing mechanics — it was making them
+     compose without producing states I never anticipated, and accepting that some of those states
+     are the reason the game is worth playing. A Red-heavy build inside a mission that rolled fire
+     immunity is a problem nobody authored, and the player has to solve it with what they brought.</p>
 
-  <h2>What I'd change</h2>
-  <p>It's playable through two bosses and unfinished past that. If I picked it back up, I'd cut the
-     modifier count hard and spend the time on the second loop instead — that's the idea, and the
-     first loop is mostly there to set it up.</p>
+  <h2>Where it stands</h2>
+  <p>Playable through two bosses. The generators are all in place — missions, weapons, mods, boons,
+     rooms — and what's missing is content volume rather than architecture. Adding a new modifier
+     means adding a row to a table; adding a new room means adding a prefab. That was the point of
+     building it this way.</p>
 
   <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
 </main>
@@ -81,5 +144,6 @@
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
 </footer>
 
+<script src="../lazy-video.js"></script>
 </body>
 </html>

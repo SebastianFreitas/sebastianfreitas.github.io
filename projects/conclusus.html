@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../style.css?v=2">
 </head>
 <body>
 
@@ -33,12 +33,8 @@
   </dl>
 
   <p>Thirty levels and four new mechanics built on top of <a href="heavylight.html">HeavyLight</a>,
-     finished in less time than the original took. That was the whole point of building it.</p>
+     finished in less time than the original took. Proving that was the point of building it.</p>
 
-  <!-- ============ PLAYABLE EMBED ============
-       itch.io → Edit game → Distribute → Embed game.
-       Paste the embed-upload URL into src below.
-  ======================================== -->
   <iframe class="embed"
           src="https://itch.io/embed-upload/14396412?color=141a1d"
           allowfullscreen
@@ -47,19 +43,42 @@
 
   <h2>Why it exists</h2>
   <p>I wrote HeavyLight as a base rather than a one-off, which is easy to claim and hard to prove.
-     Conclusus was the test: take the same foundation, build something bigger on it, and see whether
-     the second project is cheaper than the first or whether the "reusable" code quietly costs more
+     Conclusus was the test: take the same foundation, build something bigger on it, and find out
+     whether the second project is genuinely cheaper or whether "reusable" code quietly costs more
      than starting over.</p>
 
+  <h2>What went on top</h2>
+  <p><strong>Shadow.</strong> Plant a shadow on the ground, then teleport back to it at any point.
+     Position and scale both transfer, so it's a checkpoint you place yourself and a way to undo a
+     commitment you've already made.</p>
+  <p><strong>Symbols.</strong> Collectibles that drift and spin on their own, with a rotation
+     coroutine that stutters and reverses at random intervals so they never look scripted. Some are
+     whole; others break into pieces that have to be gathered in sequence, each one chaining to the
+     next.</p>
+  <p><strong>Time dilation.</strong> A burst state that drops the timescale to 0.6 for a few
+     seconds — the level slows down while your inputs don't.</p>
+  <p><strong>Grid movement</strong> for the sections that switch from platforming to cell-by-cell
+     positioning, snapping to tile centres with its own interpolation.</p>
+
+  <h2>What the reuse actually bought</h2>
+  <p>The character controller carried over untouched, and it's the expensive part: separate scripts
+     for jump, movement, ground detection, hurt states and juice, with jump height, apex time,
+     independent up and down gravity multipliers, jump cutoff, coyote time and jump buffering all
+     exposed as tuned ranges. None of that had to be rebuilt or retuned.</p>
+  <p>Everything else came from one convention. Every mechanic implements its own
+     <code>Reset()</code>, and levels live as objects in a single scene that get switched on and off
+     rather than loaded. Adding a mechanic meant writing its behaviour and its reset, and level
+     transitions kept working — no scene loading, no save plumbing, no restart bugs to chase.</p>
+
   <h2>The result</h2>
-  <p>Twenty levels became thirty. Four mechanics that didn't exist in the original went in on top of
-     the light-weight rule without rewriting it. And it shipped faster, which is the number that
-     actually settles the question.</p>
+  <p>Twenty levels became thirty. Four mechanics that didn't exist in the original went in without
+     touching the light-weight rule underneath them. And it shipped faster, which is the number that
+     settles the question.</p>
 
   <h2>What I'd change</h2>
-  <p>Reuse worked at the systems level and not at the content level — every level was still hand-placed
-     from nothing. The next version of this argument would put the same effort into authoring tools
-     that went into the mechanics.</p>
+  <p>Reuse worked at the systems level and not at the content level — thirty levels were still
+     hand-placed from nothing. The next version of this argument puts the same effort into authoring
+     tools that went into the mechanics.</p>
 
   <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
 </main>
