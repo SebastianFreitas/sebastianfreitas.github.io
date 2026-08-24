@@ -1,6 +1,6 @@
 /* =========================================================
    THE BRIDGE — homepage hero.
-   A traversable section, not a fixed page takeover. The page
+   A traversable section, not a page takeover. The page
    scrolls normally past it into the work.
    ========================================================= */
 
@@ -38,7 +38,7 @@
 .bridge-hero .edge.l { left: 0;  background: linear-gradient(to right, rgba(245,208,107,0.07), transparent); }
 .bridge-hero .edge.r { right: 0; background: linear-gradient(to left,  rgba(245,208,107,0.07), transparent); }
 
-/* ---- the pitch, over the scene ---- */
+/* ---- the pitch ---- */
 .bridge-copy {
   position: absolute; z-index: 12;
   left: clamp(1.5rem, 6vw, 6rem);
@@ -101,15 +101,41 @@
   display: block; margin-bottom: 0.1rem;
 }
 
-#bridge-map { left: 50%; transform: translateX(-50%); bottom: 2rem; width: min(40rem, 52vw); }
-#bridge-map .track { position: relative; height: 1px; background: #232c31; margin-bottom: 0.55rem; }
-#bridge-map .mk { position: absolute; top: -3px; width: 1px; height: 7px; background: #46545a; }
-#bridge-map .mk.big { height: 11px; top: -5px; background: var(--sage-dim); }
-#bridge-map .you { position: absolute; top: -5px; width: 2px; height: 11px; background: var(--lamp); box-shadow: 0 0 10px var(--lamp); }
+/* ---- minimap: click to travel, drag to scrub ---- */
+#bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
+.bridge-hero.live #bridge-map { pointer-events: auto; }
+
+#bridge-map .track {
+  position: relative; height: 18px; margin-bottom: 0.3rem;
+  cursor: pointer; touch-action: none;
+}
+/* the visible line sits inside a taller, easier-to-hit strip */
+#bridge-map .track::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%;
+  height: 1px; background: #232c31;
+}
+#bridge-map .track:hover::before { background: #33403f; }
+
+#bridge-map .mk { position: absolute; top: 50%; margin-top: -3px; width: 1px; height: 7px; background: #46545a; }
+#bridge-map .mk.big { margin-top: -6px; height: 12px; background: var(--sage-dim); }
+#bridge-map .track:hover .mk.big { background: var(--sage); }
+
+#bridge-map .you {
+  position: absolute; top: 50%; margin-top: -7px;
+  width: 2px; height: 14px; background: var(--lamp);
+  box-shadow: 0 0 10px var(--lamp);
+}
+#bridge-map .ghost {
+  position: absolute; top: 50%; margin-top: -7px;
+  width: 1px; height: 14px; background: rgba(245,208,107,0.45);
+  opacity: 0; transition: opacity 0.15s;
+}
+#bridge-map .track:hover .ghost { opacity: 1; }
+
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 
 #bridge-hint {
-  left: 50%; transform: translateX(-50%); bottom: 5.6rem;
+  left: 50%; transform: translateX(-50%); bottom: 5.4rem;
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
@@ -161,23 +187,31 @@
 }
 .bridge-scroll:hover { color: var(--lamp); }
 
-/* ---- cursor ---- */
+/* ---- cursor ----
+   left/top must be set: a fixed element with no offsets keeps its
+   static-flow position, so translate() would move it from wherever
+   it happened to land in the document instead of from the viewport
+   origin — which put it below the fold entirely.
+*/
 #bridge-cursor {
-  position: fixed; z-index: 60; pointer-events: none;
+  position: fixed; left: 0; top: 0; z-index: 60;
+  pointer-events: none; will-change: transform;
   width: 26px; height: 26px; margin: -13px 0 0 -13px;
   border: 1px solid rgba(245,208,107,0.45); border-radius: 50%;
   opacity: 0; transition: opacity 0.2s;
 }
 #bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
 #bridge-cursor.on { opacity: 1; }
+#bridge-cursor.docked { border-color: rgba(245,208,107,0.9); }
 
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
   .bnote, .bnote.left, .bnote.right {
     width: calc(100vw - 2.5rem); left: 1.25rem; right: 1.25rem; transform: translate(0, -50%);
   }
-  #bridge-telemetry, #bridge-map, #bridge-region { display: none; }
+  #bridge-telemetry, #bridge-region { display: none; }
   #bridge-cursor { display: none; }
+  #bridge-map { width: calc(100vw - 2.5rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {

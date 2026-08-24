@@ -2,13 +2,13 @@
    THE BRIDGE — homepage hero traversal.
 
    Map:  ___________M____________________________________________________W__RP
-   69 slots, one slot ≈ one mainland width.
-       M  11   the mainland        W  64   the Watcher
-       R  67   Rex                 P  68   Primordisentia (the wall)
+   69 slots, one slot ~ one mainland width.
+       M  11  the mainland      W  64  the Watcher
+       R  67  Rex               P  68  Primordisentia (the wall)
 
    Projection:  screenX = (worldX - camX) * parallax * scale + W/2
-   so an object sits at screen centre exactly when the camera
-   reaches its world coordinate, at any depth.
+   An object sits at screen centre exactly when the camera reaches
+   its world coordinate, at any depth.
    =========================================================== */
 
 (function () {
@@ -22,12 +22,7 @@
   /* ---- world ---- */
   const SLOT = 6000;
   const at = i => i * SLOT;
-  const LAND = {
-    mainland: at(11.5),
-    watcher:  at(64.5),
-    rex:      at(67.5),
-    wall:     at(68.6),
-  };
+  const LAND = { mainland: at(11.5), watcher: at(64.5), rex: at(67.5), wall: at(68.6) };
 
   const CAM = {
     min: LAND.mainland,
@@ -42,12 +37,26 @@
     brakeZone: 9000,
   };
 
+  /* Landmarks capture you as you pass, so nothing gets blitzed past.
+     Hold a screen edge for ESCAPE_HOLD seconds to break free. */
+  const DOCK = {
+    radius: 3400,       // capture range
+    pull: 2.8,          // lerp rate onto the exact centre
+    escapeHold: 0.34,   // seconds of steering needed to leave
+    cooldown: 1.8,      // that landmark can't recapture for this long
+    minSpeed: 60,       // below this you're parked, not passing
+  };
+
   const NOTES = [
-    { id: "bnote-land",    x: LAND.mainland, r: 5200, name: "The Mainland",    sub: "Libertech census in progress" },
-    { id: "bnote-watcher", x: LAND.watcher,  r: 4200, name: "The Watcher",     sub: "It is no longer only watching" },
-    { id: "bnote-rex",     x: LAND.rex,      r: 3600, name: "Rex Immotus",     sub: "The god that became the matter" },
-    { id: "bnote-wall",    x: CAM.max,       r: 2200, name: "Primordisentia",  sub: "The past. No further" },
+    { id: "bnote-land",    x: LAND.mainland, r: 5200, dock: false, name: "The Mainland",   sub: "Libertech census in progress" },
+    { id: "bnote-watcher", x: LAND.watcher,  r: 4200, dock: true,  name: "The Watcher",    sub: "It is no longer only watching" },
+    { id: "bnote-rex",     x: LAND.rex,      r: 3600, dock: true,  name: "Rex Immotus",    sub: "The god that became the matter" },
+    { id: "bnote-wall",    x: CAM.max,       r: 2200, dock: false, name: "Primordisentia", sub: "The past. No further" },
   ];
+
+  /* ---- layout: bridge sits high, the masses sit low ---- */
+  const DECK  = 0.50;   // deck height as a fraction of the hero
+  const FLOOR = 1.12;   // landmass baseline, pushed below the frame
 
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
@@ -108,7 +117,7 @@
     }
     for (let i = 0; i < 46; i++)
       rex.shards.push({ x: LAND.rex - SLOT * 1.6 + r() * SLOT * 3.2,
-                        y: 0.08 + r() * 0.5, s: 12 + r() * 86,
+                        y: 0.16 + r() * 0.5, s: 12 + r() * 86,
                         rot: r() * 6.28, spin: (r() - 0.5) * 0.04, a: 0.16 + r() * 0.5 });
   })();
 
@@ -124,13 +133,19 @@
       motes.push({ u: r(), y: r(), rr: 0.4 + r() * 1.5, ph: r() * 6.28, a: 0.06 + r() * 0.3 });
     for (let i = 0; i < 620; i++)
       swarm.push({ x: CITY_FROM - 900 + r() * (CITY_TO - CITY_FROM + 1800),
-                   y: 0.26 + r() * 0.64, rr: 0.3 + r() * 0.95,
+                   y: 0.34 + r() * 0.64, rr: 0.3 + r() * 0.95,
                    ph: r() * 6.28, amp: 6 + r() * 30, a: 0.15 + r() * 0.5 });
   })();
 
   /* ---- state ---- */
   let camX = LAND.rex, vel = 0, steer = 0, boost = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, lastRegion = "", started = false, visible = true;
+  let docked = null, escapeHeld = 0;
+  const cooldown = {};
+  cooldown["bnote-rex"] = 2.5;      // free to leave the starting point
+
+  let flyTo = null;                 // {from, to, elapsed, dur}
+  let scrubbing = false, armed = false, armX = 0, armMoved = 0;
 
   const cursor = document.getElementById("bridge-cursor");
   const edgeL  = host.querySelector(".edge.l");
@@ -140,38 +155,93 @@
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
-  /* ---- input, only while the pointer is over the hero ---- */
+  /* Canvas misbehaves with enormous coordinates — the world is
+     400,000+ units wide, so cull hard before anything is drawn. */
+  const onScreen = (x, pad) => x > -pad && x < W + pad;
+
+  /* ---- input ---- */
   function onMove(e) {
     const r = host.getBoundingClientRect();
     const inside = e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) { steer = 0; cursor.classList.remove("on"); return; }
+    if (!inside) { steer = 0; if (cursor) cursor.classList.remove("on"); return; }
 
-    cursor.classList.add("on");
-    cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    if (cursor) {
+      cursor.classList.add("on");
+      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    }
 
     const n = ((e.clientX - r.left) / r.width - 0.5) * 2, dz = CAM.deadzone;
     steer = Math.abs(n) < dz ? 0 : Math.sign(n) * Math.pow((Math.abs(n) - dz) / (1 - dz), 1.6);
-    if (steer !== 0) begin();
+    if (steer !== 0) { begin(); if (flyTo && Math.abs(steer) > 0.4) flyTo = null; }
   }
   addEventListener("pointermove", onMove, { passive: true });
-  addEventListener("pointerleave", () => { steer = 0; cursor.classList.remove("on"); });
+  addEventListener("pointerleave", () => { steer = 0; if (cursor) cursor.classList.remove("on"); });
 
-  /* the pitch fades once you actually start moving */
   const copy = document.getElementById("bridge-copy");
   function begin() {
     if (started) return;
     started = true;
     host.classList.add("live");
-    copy.classList.add("faded");
+    if (copy) copy.classList.add("faded");
   }
   const beginBtn = document.getElementById("bridge-begin");
   if (beginBtn) beginBtn.addEventListener("click", e => { e.preventDefault(); begin(); });
 
-  /* pause when scrolled away */
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0.02 })
       .observe(host);
   }
+
+  /* ---- minimap: click to fly, drag to scrub ---- */
+  const track = document.getElementById("btrack");
+  const ghost = document.getElementById("bghost");
+
+  const posFromEvent = e => {
+    const r = track.getBoundingClientRect();
+    const u = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    return CAM.min + u * (CAM.max - CAM.min);
+  };
+
+  if (track) {
+    track.addEventListener("pointerdown", e => {
+      begin();
+      armed = true; armMoved = 0; armX = e.clientX;
+      track.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    track.addEventListener("pointermove", e => {
+      if (ghost) {
+        const r = track.getBoundingClientRect();
+        ghost.style.left = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%";
+      }
+      if (!armed) return;
+      armMoved += Math.abs(e.clientX - armX);
+      armX = e.clientX;
+      // past a few pixels it's a drag, so scrub directly
+      if (armMoved > 5) {
+        scrubbing = true; flyTo = null; docked = null;
+        camX = posFromEvent(e); vel = 0; boost = 0;
+      }
+    });
+
+    const release = e => {
+      if (!armed) return;
+      // no meaningful movement: treat it as a click and travel there
+      if (!scrubbing) {
+        const to = posFromEvent(e);
+        const dist = Math.abs(to - camX);
+        flyTo = { from: camX, to, elapsed: 0,
+                  dur: Math.min(2.4, Math.max(0.7, dist / 40000 * 2.2)) };
+        docked = null; vel = 0; boost = 0;
+      }
+      armed = false; scrubbing = false;
+    };
+    track.addEventListener("pointerup", release);
+    track.addEventListener("pointercancel", () => { armed = false; scrubbing = false; });
+  }
+
+  const easeInOut = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 
   /* ---- draw ---- */
   function drawVoid() {
@@ -180,8 +250,9 @@
       b.y += b.vy * 0.02;
       if (b.y > 1.3) b.y = -0.25; if (b.y < -0.3) b.y = 1.25;
       const x = ((b.u * span - off) % span + span) % span - span * 0.2;
-      const y = b.y * H, rad = b.rad * Math.max(W, H);
-      if (x < -rad || x > W + rad) continue;
+      const rad = b.rad * Math.max(W, H);
+      if (!onScreen(x, rad)) continue;
+      const y = b.y * H;
       const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
       g.addColorStop(0, `rgba(${b.hue},${b.a})`); g.addColorStop(1, `rgba(${b.hue},0)`);
       ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
@@ -192,7 +263,7 @@
     ctx.strokeStyle = "#c6ccc6"; ctx.fillStyle = "#c6ccc6";
     for (const m of motes) {
       const x = ((m.u * span - off2) % span + span) % span - span * 0.2;
-      if (x < -80 || x > W + 80) continue;
+      if (!onScreen(x, 80)) continue;
       const y = m.y * H + Math.sin(t * 0.5 + m.ph) * 16;
       ctx.globalAlpha = m.a * (0.55 + 0.45 * Math.sin(t * 1.6 + m.ph));
       if (streak > 3) {
@@ -204,14 +275,14 @@
         ctx.beginPath(); ctx.arc(x, y, m.rr, 0, 6.283); ctx.fill();
       }
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
-    const R = Math.min(W, H) * 0.30;
-    if (x < -R * 3.2 || x > W + R * 3.2) return;
-    const y = H * 0.27;
+    const R = Math.min(W, H) * 0.28;
+    if (!onScreen(x, R * 3.2)) return;
+    const y = H * 0.24;
 
     const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 3.1);
     g.addColorStop(0, "rgba(245,208,107,0.16)");
@@ -233,31 +304,32 @@
       ctx.arc(0, 0, R * (0.34 + (i % 3) * 0.2), a2, a2 + 0.7 + Math.sin(t * 0.3 + i) * 0.2);
       ctx.stroke();
     }
-    ctx.restore(); ctx.globalAlpha = 1;
+    ctx.restore(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
   function drawBand(list, par, colour, alpha) {
-    const s = scale();
+    const s = scale(), floor = H * FLOOR;
     ctx.fillStyle = colour; ctx.globalAlpha = alpha;
     for (const tw of list) {
-      const x = wx(tw.x, par), w = Math.max(1, tw.w * s * par);
-      if (x + w < -40 || x > W + 40) continue;
-      const h = tw.h * H; ctx.fillRect(x, H - h, w, h);
+      const x = wx(tw.x, par);
+      if (!onScreen(x, 200)) continue;
+      const w = Math.max(1, tw.w * s * par), h = tw.h * H;
+      ctx.fillRect(x, floor - h, w, h);
     }
     ctx.globalAlpha = 1;
   }
 
   function drawCityNear() {
-    const par = 0.66, s = scale(), k = s * par * 0.9;
+    const par = 0.66, s = scale(), k = s * par * 0.9, floor = H * FLOOR;
     for (const tw of city.near) {
-      const x = wx(tw.x, par), w = Math.max(1, tw.w * s * par);
-      if (x + w < -90 || x > W + 90) continue;
-      const h = tw.h * H;
-      ctx.fillStyle = "#1b2327"; ctx.fillRect(x, H - h, w, h);
+      const x = wx(tw.x, par);
+      if (!onScreen(x, 220)) continue;
+      const w = Math.max(1, tw.w * s * par), h = tw.h * H;
+      ctx.fillStyle = "#1b2327"; ctx.fillRect(x, floor - h, w, h);
       if (w > 18) {
         for (const win of tw.windows) {
-          const px = x + win.dx * k, py = H - h + win.dy * k;
-          if (px < -4 || px > W + 4 || py > H) continue;
+          const px = x + win.dx * k, py = floor - h + win.dy * k;
+          if (!onScreen(px, 6) || py > H) continue;
           ctx.globalAlpha = win.a * (0.75 + 0.25 * Math.sin(t * 2.1 + win.fl)) * 0.85;
           ctx.fillStyle = win.warm ? "#f5d06b" : "#8fb0b8";
           ctx.fillRect(px, py, 2.2, 3);
@@ -267,7 +339,7 @@
     }
     for (const c of swarm) {
       const x = wx(c.x + Math.sin(t * 0.5 + c.ph) * c.amp, par);
-      if (x < -12 || x > W + 12) continue;
+      if (!onScreen(x, 14)) continue;
       ctx.globalAlpha = c.a * (0.4 + 0.6 * Math.sin(t * 3 + c.ph));
       ctx.fillStyle = "#d8cfa8";
       ctx.beginPath();
@@ -278,9 +350,10 @@
   }
 
   function drawRex() {
+    const floor = H * FLOOR;
     for (const sh of rex.shards) {
       const x = wx(sh.x, 0.38);
-      if (x < -170 || x > W + 170) continue;
+      if (!onScreen(x, 180)) continue;
       sh.rot += sh.spin * 0.01;
       ctx.save();
       ctx.translate(x, sh.y * H + Math.sin(t * 0.3 + sh.x * 0.001) * 12);
@@ -294,34 +367,42 @@
     ctx.globalAlpha = 1;
 
     const par = 0.62;
-    const pts = rex.ridge.map(p => ({ x: wx(p.x, par), y: H - p.h * H }));
-    if (pts[pts.length - 1].x < -120 || pts[0].x > W + 120) return;
+    const first = wx(rex.ridge[0].x, par);
+    const lastX = wx(rex.ridge[rex.ridge.length - 1].x, par);
+    if (lastX < -160 || first > W + 160) return;
+
+    const pts = rex.ridge.map(p => ({
+      x: Math.max(-400, Math.min(W + 400, wx(p.x, par))),
+      y: floor - p.h * H
+    }));
 
     ctx.beginPath(); ctx.moveTo(pts[0].x, H + 10);
     for (const p of pts) ctx.lineTo(p.x, p.y);
     ctx.lineTo(pts[pts.length - 1].x, H + 10); ctx.closePath();
-    const g = ctx.createLinearGradient(0, H * 0.12, 0, H);
+    const g = ctx.createLinearGradient(0, H * 0.2, 0, H);
     g.addColorStop(0, "#2c363c"); g.addColorStop(1, "#141b1f");
     ctx.fillStyle = g; ctx.fill();
 
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (const p of pts) ctx.lineTo(p.x, p.y);
     ctx.strokeStyle = "rgba(143,176,184,0.38)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.lineWidth = 1;
   }
 
   function drawWall() {
     const x = wx(LAND.wall, 0.7);
     if (x > W + 60) return;
-    const g = ctx.createLinearGradient(x - 220, 0, x, 0);
+    const cx = Math.max(-400, x);
+    const g = ctx.createLinearGradient(cx - 220, 0, cx, 0);
     g.addColorStop(0, "rgba(2,4,5,0)"); g.addColorStop(1, "rgba(2,4,5,1)");
-    ctx.fillStyle = g; ctx.fillRect(x - 220, 0, 220, H);
-    ctx.fillStyle = "#020405"; ctx.fillRect(x, 0, W - x + 60, H);
-    ctx.fillStyle = "rgba(143,176,184,0.13)"; ctx.fillRect(x - 1, 0, 1.5, H);
+    ctx.fillStyle = g; ctx.fillRect(cx - 220, 0, 220, H);
+    ctx.fillStyle = "#020405"; ctx.fillRect(cx, 0, W - cx + 60, H);
+    ctx.fillStyle = "rgba(143,176,184,0.13)"; ctx.fillRect(cx - 1, 0, 1.5, H);
   }
 
-  /* the bridge never ends, in either direction, and the legs go down forever */
+  /* the bridge never ends, and the legs go down forever */
   function drawBridge() {
-    const par = 0.94, s = scale(), deckY = H * 0.64;
+    const par = 0.94, s = scale(), deckY = H * DECK;
 
     const g = ctx.createLinearGradient(0, deckY - 110, 0, deckY + 46);
     g.addColorStop(0, "rgba(245,208,107,0)");
@@ -339,7 +420,7 @@
     ctx.fillStyle = lg;
     for (let p = from; p < camX + CAM.viewUnits * 1.4; p += step) {
       const px = wx(p, par);
-      if (px < -30 || px > W + 30) continue;
+      if (!onScreen(px, 40)) continue;
       ctx.fillRect(px, deckY + 14, legW, H - deckY);
     }
 
@@ -347,7 +428,7 @@
     ctx.fillStyle = "rgba(245,208,107,0.55)"; ctx.fillRect(0, deckY - 2, W, 3);
   }
 
-  /* ---- notes: proximity, not clamps ---- */
+  /* ---- notes ---- */
   const noteEls = {};
   NOTES.forEach(n => noteEls[n.id] = document.getElementById(n.id));
   const noteCat = document.getElementById("bnote-cat");
@@ -362,11 +443,11 @@
     noteTimer = setTimeout(() => {
       if (noteEls[id]) noteEls[id].classList.add("show");
       if (id === "bnote-land" && noteCat) noteCat.textContent = fmt(catalogued);
-    }, 520);
+    }, 420);
   }
 
   function checkNotes() {
-    if (Math.abs(vel) > 420) { setNote(null); return; }
+    if (Math.abs(vel) > 420 || scrubbing) { setNote(null); return; }
     let best = null, bestD = Infinity;
     for (const n of NOTES) {
       const d = Math.abs(camX - n.x);
@@ -381,29 +462,29 @@
     dist: document.getElementById("bdist"), pct: document.getElementById("bpct"),
     cat:  document.getElementById("bcat"),
     regname: document.getElementById("bregname"), regsub: document.getElementById("bregsub"),
-    you: document.getElementById("byou"), track: document.getElementById("btrack"),
+    you: document.getElementById("byou"),
   };
 
-  if (el.track) {
+  if (track) {
     for (const n of NOTES) {
       const d = document.createElement("div");
       d.className = "mk big";
       d.style.left = ((n.x - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
-      el.track.appendChild(d);
+      track.appendChild(d);
     }
     for (let i = 0; i < 24; i++) {
       const d = document.createElement("div");
       d.className = "mk"; d.style.left = (i / 23 * 100) + "%";
-      el.track.appendChild(d);
+      track.appendChild(d);
     }
   }
 
   function updateHUD(dt) {
-    if (el.vel)  el.vel.textContent = fmt(Math.abs(vel));
+    if (el.vel)    el.vel.textContent = fmt(Math.abs(vel));
     if (el.velbar) el.velbar.style.width = Math.min(100, Math.abs(vel) / CAM.boostSpeed * 100) + "%";
-    if (el.dist) el.dist.textContent = fmt(travelled);
-    if (el.pct)  el.pct.textContent = ((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1);
-    if (el.you)  el.you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
+    if (el.dist)   el.dist.textContent = fmt(travelled);
+    if (el.pct)    el.pct.textContent = ((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1);
+    if (el.you)    el.you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
 
     if (Math.abs(camX - LAND.mainland) < SLOT * 1.4)
       catalogued += (160 + Math.abs(vel) * 0.02) * dt;
@@ -423,9 +504,79 @@
     }
 
     host.classList.toggle("moving", Math.abs(vel) > 200);
+    if (cursor) cursor.classList.toggle("docked", !!docked);
     const sv = Math.min(1, Math.abs(steer));
     if (edgeL) edgeL.style.opacity = steer < 0 ? sv : 0;
     if (edgeR) edgeR.style.opacity = steer > 0 ? sv : 0;
+  }
+
+  /* ---- movement ---- */
+  function step(dt) {
+    for (const k in cooldown) if (cooldown[k] > 0) cooldown[k] -= dt;
+
+    // 1. minimap drag wins outright
+    if (scrubbing) { vel = 0; return; }
+
+    // 2. click-to-travel tween
+    if (flyTo) {
+      flyTo.elapsed += dt;
+      const u = Math.min(1, flyTo.elapsed / flyTo.dur);
+      const prev = camX;
+      camX = flyTo.from + (flyTo.to - flyTo.from) * easeInOut(u);
+      vel = (camX - prev) / dt;
+      travelled += Math.abs(camX - prev);
+      if (u >= 1) { flyTo = null; vel = 0; }
+      return;
+    }
+
+    // 3. docked at a landmark — lerp onto its centre and hold
+    if (docked) {
+      const prev = camX;
+      camX += (docked.x - camX) * Math.min(1, dt * DOCK.pull);
+      vel = (camX - prev) / dt;
+      if (Math.abs(docked.x - camX) < 2) { camX = docked.x; vel = 0; }
+
+      if (Math.abs(steer) > 0.5) {
+        escapeHeld += dt;
+        if (escapeHeld >= DOCK.escapeHold) {
+          cooldown[docked.id] = DOCK.cooldown;
+          docked = null; escapeHeld = 0;
+          vel = steer * CAM.baseSpeed * 0.6;   // a shove in the chosen direction
+        }
+      } else escapeHeld = 0;
+      return;
+    }
+
+    // 4. free travel
+    if (Math.abs(steer) > 0.55) boost = Math.min(1, boost + dt * CAM.boostRamp);
+    else boost = Math.max(0, boost - dt * CAM.boostDecay);
+    const cap = CAM.baseSpeed + (CAM.boostSpeed - CAM.baseSpeed) * boost * boost;
+
+    let target = steer * cap;
+    const toMin = camX - CAM.min, toMax = CAM.max - camX;
+    if (target < 0 && toMin < CAM.brakeZone) target *= Math.max(0.04, toMin / CAM.brakeZone);
+    if (target > 0 && toMax < CAM.brakeZone) target *= Math.max(0.04, toMax / CAM.brakeZone);
+
+    vel += (target - vel) * Math.min(1, dt * (steer === 0 ? CAM.drag : CAM.accel));
+    if (Math.abs(vel) < 0.5) vel = 0;
+
+    const prev = camX;
+    camX += vel * dt;
+
+    // 5. landmark capture — checked against the whole step, so nothing
+    //    is skipped over even at 26,000 u/s
+    if (Math.abs(vel) > DOCK.minSpeed) {
+      for (const n of NOTES) {
+        if (!n.dock || (cooldown[n.id] || 0) > 0) continue;
+        const crossed = (prev - n.x) * (camX - n.x) <= 0;      // passed straight through
+        const inRange = Math.abs(camX - n.x) < DOCK.radius;
+        if (crossed || inRange) { docked = n; boost = 0; escapeHeld = 0; break; }
+      }
+    }
+
+    travelled += Math.abs(camX - prev);
+    if (camX < CAM.min) { camX = CAM.min; vel = 0; boost = 0; }
+    if (camX > CAM.max) { camX = CAM.max; vel = 0; boost = 0; }
   }
 
   /* ---- loop ---- */
@@ -437,26 +588,9 @@
     if (!visible) return;
     t += dt;
 
-    if (Math.abs(steer) > 0.55) boost = Math.min(1, boost + dt * CAM.boostRamp);
-    else boost = Math.max(0, boost - dt * CAM.boostDecay);
-    const cap = CAM.baseSpeed + (CAM.boostSpeed - CAM.baseSpeed) * boost * boost;
+    step(dt);
 
-    let target = steer * cap;
-
-    // ease down near the ends, but never fully to zero — a 4% floor
-    // keeps you creeping in so you always actually reach the surface
-    const toMin = camX - CAM.min, toMax = CAM.max - camX;
-    if (target < 0 && toMin < CAM.brakeZone) target *= Math.max(0.04, toMin / CAM.brakeZone);
-    if (target > 0 && toMax < CAM.brakeZone) target *= Math.max(0.04, toMax / CAM.brakeZone);
-
-    vel += (target - vel) * Math.min(1, dt * (steer === 0 ? CAM.drag : CAM.accel));
-    if (Math.abs(vel) < 0.5) vel = 0;
-
-    camX += vel * dt;
-    travelled += Math.abs(vel) * dt;
-    if (camX < CAM.min) { camX = CAM.min; vel = 0; boost = 0; }
-    if (camX > CAM.max) { camX = CAM.max; vel = 0; boost = 0; }
-
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
     ctx.fillStyle = "#0d1114"; ctx.fillRect(0, 0, W, H);
     drawVoid();
     drawWatcher();
@@ -464,8 +598,8 @@
     drawRex();
     drawBand(city.mid, 0.46, "#182025", 0.78);
     drawCityNear();
-    drawBridge();
     drawWall();
+    drawBridge();          // drawn last: the bridge sits above everything
 
     updateHUD(dt);
     checkNotes();
