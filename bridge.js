@@ -35,12 +35,8 @@
   const CAM = {
     min: at(1.6),                 // keep going west, into what hasn't happened
     max: LAND.root - 1600,
-    baseSpeed: 3200,
-    boostSpeed: 26000,
-    boostRamp: 0.34,
-    boostDecay: 2.2,
-    accel: 2.4, drag: 3.0,
-    deadzone: 0.20,
+    maxFling: 34000,      // ceiling on a hard flick
+    drag: 1.35,           // how quickly a fling bleeds off
     viewUnits: 2100,
     brakeZone: 9000,
   };
@@ -71,7 +67,7 @@
   MARKS.forEach(m => { m.x = m.cam + (m.off * CAM.viewUnits) / m.par; });
   MARKS.forEach((m, i) => { m.phase = i * 1.7; m.vis = 0; });
 
-  const HIT = 26;
+  const HIT = (window.Beacon && Beacon.HIT) || 26;
 
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
@@ -218,15 +214,14 @@
   const FRAG_CHUNK = 5400;
 
   /* ---- state ---- */
-  let camX = LAND.bridge, vel = 0, steer = 0, boost = 0, travelled = 0, t = 0;
+  let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
   let flyTo = null, activeMark = null, hoverMark = null;
+  let dragging = false, dragId = null, dragLastX = 0, dragLastT = 0, dragMoved = 0, dragVel = 0;
   let scrubbing = false, armed = false, armX = 0, armMoved = 0;
   let chaosNow = 0, futureNow = 0;
 
   const cursor = document.getElementById("bridge-cursor");
-  const edgeL  = host.querySelector(".edge.l");
-  const edgeR  = host.querySelector(".edge.r");
 
   const scale = () => W / CAM.viewUnits;
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
@@ -312,23 +307,22 @@
       const p = markScreen(m), r = host.getBoundingClientRect();
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
     }
+    pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     activeMark = m; showNote(null);
     const dist = Math.abs(m.cam - camX);
     flyTo = { from: camX, to: m.cam, elapsed: 0,
               dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)),
               then: () => showNote(m) };
-    vel = 0; boost = 0;
+    vel = 0;
   }
   function clearMark() { if (activeMark) { activeMark = null; showNote(null); } }
 
-  /* ---- input ---- */
-  function applySteer(clientX) {
-    const r = host.getBoundingClientRect();
-    const n = ((clientX - r.left) / r.width - 0.5) * 2, dz = CAM.deadzone;
-    steer = Math.abs(n) < dz ? 0 : Math.sign(n) * Math.pow((Math.abs(n) - dz) / (1 - dz), 1.6);
-    if (steer !== 0 && flyTo && Math.abs(steer) > 0.4) { flyTo = null; clearMark(); }
-  }
-  function stopSteering() { steer = 0; if (cursor) cursor.classList.remove("on"); }
+  /* ---- input: grab the world and move it -------------------
+     No edge steering. Dragging works the same with a mouse or a
+     finger, and a flick carries momentum into the normal drag.
+  --------------------------------------------------------- */
+  const DRAG_PAR = 0.94;                 // drag tracks the deck 1:1
+  const worldPerPx = () => 1 / (scale() * DRAG_PAR);
 
   function markAt(clientX, clientY) {
     const r = host.getBoundingClientRect();
@@ -342,28 +336,65 @@
     return best;
   }
 
-  addEventListener("pointermove", e => {
-    const r = host.getBoundingClientRect();
-    if (e.clientY < r.top || e.clientY > r.bottom) { stopSteering(); hoverMark = null; return; }
-    if (cursor) {
-      cursor.classList.add("on");
-      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    }
-    hoverMark = markAt(e.clientX, e.clientY);
-    if (cursor) cursor.classList.toggle("over", !!hoverMark);
-    if (started && !hoverMark) applySteer(e.clientX);
-    else if (hoverMark) steer = 0;
-  }, { passive: true });
-
-  document.documentElement.addEventListener("mouseleave", stopSteering);
-  addEventListener("blur", stopSteering);
-  addEventListener("pointercancel", stopSteering);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) stopSteering(); });
+  function stopSteering() { if (cursor) cursor.classList.remove("on"); }
 
   cv.addEventListener("pointerdown", e => {
+    begin();
     const m = markAt(e.clientX, e.clientY);
-    if (m) selectMark(m); else { begin(); clearMark(); }
+    if (m) { selectMark(m); return; }
+    dragging = true; dragId = e.pointerId;
+    dragLastX = e.clientX; dragLastT = performance.now();
+    dragMoved = 0; dragVel = 0;
+    flyTo = null; vel = 0;
+    host.classList.add("grabbing");
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   });
+
+  addEventListener("pointermove", e => {
+    const r = host.getBoundingClientRect();
+    const inside = e.clientY >= r.top && e.clientY <= r.bottom;
+
+    if (cursor) {
+      if (inside || dragging) {
+        cursor.classList.add("on");
+        cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      } else cursor.classList.remove("on");
+    }
+
+    if (dragging && e.pointerId === dragId) {
+      const now = performance.now();
+      const dx = e.clientX - dragLastX;
+      const dt2 = Math.max(1, now - dragLastT) / 1000;
+      dragMoved += Math.abs(dx);
+      camX -= dx * worldPerPx();
+      dragVel = -(dx * worldPerPx()) / dt2;
+      dragLastX = e.clientX; dragLastT = now;
+      if (camX < CAM.min) camX = CAM.min;
+      if (camX > CAM.max) camX = CAM.max;
+      if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
+      return;
+    }
+
+    if (!inside) { hoverMark = null; if (cursor) cursor.classList.remove("over"); return; }
+    hoverMark = markAt(e.clientX, e.clientY);
+    if (cursor) cursor.classList.toggle("over", !!hoverMark);
+  }, { passive: true });
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false; dragId = null;
+    host.classList.remove("grabbing");
+    // a flick keeps going; a slow drag just stops
+    if (dragMoved > 6 && Math.abs(dragVel) > 200)
+      vel = Math.max(-CAM.maxFling, Math.min(CAM.maxFling, dragVel));
+    else vel = 0;
+  }
+  addEventListener("pointerup", endDrag);
+  addEventListener("pointercancel", () => { endDrag(); stopSteering(); });
+
+  document.documentElement.addEventListener("mouseleave", stopSteering);
+  addEventListener("blur", () => { endDrag(); stopSteering(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { endDrag(); stopSteering(); } });
 
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(es => {
@@ -405,14 +436,14 @@
       }
       if (!armed) return;
       armMoved += Math.abs(e.clientX - armX); armX = e.clientX;
-      if (armMoved > 5) { scrubbing = true; flyTo = null; clearMark(); camX = posFromEvent(e); vel = 0; boost = 0; }
+      if (armMoved > 5) { scrubbing = true; flyTo = null; clearMark(); camX = posFromEvent(e); vel = 0; }
     });
     track.addEventListener("pointerup", e => {
       if (!armed) return;
       if (!scrubbing) {
         const to = posFromEvent(e), dist = Math.abs(to - camX);
         flyTo = { from: camX, to, elapsed: 0, dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)) };
-        clearMark(); vel = 0; boost = 0;
+        clearMark(); vel = 0;
       }
       armed = false; scrubbing = false;
     });
@@ -435,7 +466,7 @@
       ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
     }
     const off2 = camX * 0.14 * s;
-    const streak = Math.min(60, Math.abs(vel) / CAM.boostSpeed * 220);
+    const streak = Math.min(60, Math.abs(vel) / CAM.maxFling * 220);
     ctx.strokeStyle = "#c6ccc6"; ctx.fillStyle = "#c6ccc6";
     for (const m of motes) {
       const x = ((m.u * span - off2) % span + span) % span - span * 0.2;
@@ -840,105 +871,111 @@
   function drawMarks(dt) {
     for (const m of MARKS) {
       const p = markScreen(m);
-      const near = onScreen(p.x, 60);
-      m.vis = approach(m.vis, near ? 1 : 0, 3.2, dt);
+      m.vis = approach(m.vis, onScreen(p.x, 60) ? 1 : 0, 3.2, dt);
       if (m.vis < 0.02) continue;
-
-      const active = activeMark === m, hover = hoverMark === m;
-      const blink = active ? 1 : 0.42 + 0.58 * Math.pow(0.5 + 0.5 * Math.sin(t * 1.15 + m.phase), 2.2);
-      const k = (hover ? 1.35 : 1) * (active ? 1.2 : 1);
-      const A = m.vis;
-
-      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 26 * k);
-      glow.addColorStop(0, `rgba(245,208,107,${0.30 * blink * A})`);
-      glow.addColorStop(1, "rgba(245,208,107,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(p.x - 30 * k, p.y - 30 * k, 60 * k, 60 * k);
-
-      const arm = (5 + 9 * blink) * k;
-      ctx.strokeStyle = `rgba(255,240,205,${0.55 * blink * A})`;
-      ctx.beginPath();
-      ctx.moveTo(p.x - arm, p.y); ctx.lineTo(p.x + arm, p.y);
-      ctx.moveTo(p.x, p.y - arm); ctx.lineTo(p.x, p.y + arm);
-      ctx.stroke();
-
-      ctx.fillStyle = `rgba(255,245,220,${(0.6 + 0.4 * blink) * A})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 1.9 * k, 0, 6.283); ctx.fill();
-
-      if (active || hover) {
-        ctx.strokeStyle = `rgba(245,208,107,${(active ? 0.7 : 0.4) * A})`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 13 * k, 0, 6.283); ctx.stroke();
-      }
-      if (!active) {
-        const ring = (t * 0.5 + m.phase * 0.2) % 1;
-        ctx.strokeStyle = `rgba(245,208,107,${(1 - ring) * 0.20 * A})`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 8 + ring * 22, 0, 6.283); ctx.stroke();
-      }
-
-      // unclaimed beacons advertise what they're worth
-      const claimed = window.XP && XP.has("beacon-" + m.id);
-      if (!claimed) {
-        const bb = 0.5 + 0.5 * Math.sin(t * 2.1 + m.phase);
-        ctx.font = `600 ${Math.round(11 * k)}px "IBM Plex Mono", monospace`;
-        ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        ctx.fillStyle = `rgba(245,208,107,${(0.45 + 0.45 * bb) * A})`;
-        ctx.fillText("+" + m.xp, p.x + 15 * k, p.y - 11 * k);
-        ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
-      }
+      Beacon.draw(ctx, p.x, p.y, {
+        t, phase: m.phase, alpha: m.vis,
+        active: activeMark === m, hover: hoverMark === m,
+        claimed: window.XP && XP.has("beacon-" + m.id),
+        xp: m.xp,
+      });
     }
   }
 
-  /* ---- HUD, with the region name crossfading ---- */
+  /* ---- the readout: a log that keeps writing, numbers beneath ---- */
   const el = {
-    vel:  document.getElementById("bvel"),  velbar: document.getElementById("bvelbar"),
-    dist: document.getElementById("bdist"), pct: document.getElementById("bpct"),
+    vel:  document.getElementById("bvel"),
+    dist: document.getElementById("bdist"),
+    pct:  document.getElementById("bpct"),
     cat:  document.getElementById("bcat"),
-    regname: document.getElementById("bregname"), regsub: document.getElementById("bregsub"),
-    region: document.getElementById("bridge-region"),
-    you: document.getElementById("byou"),
+    log:  document.getElementById("btlog"),
   };
-  let lastRegion = "", regionTimer = null;
-  function setRegion(name, sub) {
-    if (name === lastRegion) return;
-    lastRegion = name;
-    if (!el.region) return;
-    el.region.classList.add("swapping");
-    clearTimeout(regionTimer);
-    regionTimer = setTimeout(() => {
-      if (el.regname) el.regname.textContent = name;
-      if (el.regsub)  el.regsub.textContent = sub;
-      el.region.classList.remove("swapping");
-    }, 260);
+
+  const LOG_MAX = 5;
+  let logHead = null, logQueue = [], nextIdle = 3.5;
+
+  function pushLog(text, kind) {
+    if (!el.log) return;
+    logQueue.push({ text, kind: kind || "" });
+    if (logQueue.length > 3) logQueue.splice(0, logQueue.length - 3);
   }
 
-  function updateHUD(dt) {
-    if (el.vel)    el.vel.textContent = fmt(Math.abs(vel));
-    if (el.velbar) el.velbar.style.width = Math.min(100, Math.abs(vel) / CAM.boostSpeed * 100) + "%";
-    if (el.dist)   el.dist.textContent = fmt(travelled);
-    if (el.pct)    el.pct.textContent = ((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1);
-    if (el.you)    el.you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
+  function commitLog(entry) {
+    const line = document.createElement("div");
+    line.className = "tl " + entry.kind;
+    line.textContent = "";
+    el.log.appendChild(line);
+    while (el.log.children.length > LOG_MAX) el.log.removeChild(el.log.firstChild);
+    logHead = { line, full: entry.text, shown: 0 };
+  }
 
-    if (Math.abs(camX - LAND.mainland) < SLOT * 1.4)
-      catalogued += (160 + Math.abs(vel) * 0.02) * dt;
-    if (el.cat) el.cat.textContent = fmt(catalogued);
+  function runLog(dt) {
+    if (!el.log) return;
+    if (logHead) {
+      // type it out rather than dropping it in whole
+      logHead.shown = Math.min(logHead.full.length, logHead.shown + dt * 58);
+      const n = Math.floor(logHead.shown);
+      logHead.line.textContent = logHead.full.slice(0, n) + (n < logHead.full.length ? "_" : "");
+      if (n >= logHead.full.length) logHead = null;
+      return;
+    }
+    if (logQueue.length) commitLog(logQueue.shift());
+  }
 
+  /* idle readings, so it's never silent */
+  const READINGS = [
+    () => `bearing ${fmt(camX)} · drift ${Math.abs(vel).toFixed(0)}`,
+    () => `chaos ${(chaosNow).toFixed(2)} · unformed ${(futureNow).toFixed(2)}`,
+    () => `span ${((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1)}% crossed`,
+    () => `filed ${fmt(catalogued)} · remainder unknown`,
+    () => `structure holding · no report`,
+    () => `listening · nothing answered`,
+  ];
+  let readingAt = 0;
+
+  let lastRegion = "";
+  function checkRegion() {
     let near = null, nd = Infinity;
     for (const m of MARKS) {
       const d = Math.abs(camX - m.cam);
       if (d < SLOT * 1.6 && d < nd) { near = m; nd = d; }
     }
-    setRegion(near ? near.name : "The Bridge",
-              near ? near.sub  : "First law. It holds because it must");
-
-    host.classList.toggle("moving", Math.abs(vel) > 200);
-    const sv = Math.min(1, Math.abs(steer));
-    if (edgeL) edgeL.style.opacity = steer < 0 ? sv : 0;
-    if (edgeR) edgeR.style.opacity = steer > 0 ? sv : 0;
+    const name = near ? near.name : "open span";
+    if (name === lastRegion) return;
+    lastRegion = name;
+    if (near) pushLog(`entering ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
+    else pushLog("open span · nothing charted here", "loc");
   }
 
-  /* ---- movement ---- */
+  function updateHUD(dt) {
+    if (el.vel)  el.vel.textContent  = fmt(Math.abs(vel));
+    if (el.dist) el.dist.textContent = fmt(travelled);
+    if (el.pct)  el.pct.textContent  = ((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1);
+
+    const you = document.getElementById("byou");
+    if (you) you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
+
+    if (Math.abs(camX - LAND.mainland) < SLOT * 1.4)
+      catalogued += (160 + Math.abs(vel) * 0.02) * dt;
+    if (el.cat) el.cat.textContent = fmt(catalogued);
+
+    checkRegion();
+
+    readingAt += dt;
+    if (readingAt > nextIdle && !logHead && !logQueue.length) {
+      readingAt = 0;
+      nextIdle = 3.2 + Math.random() * 3.4;
+      pushLog(READINGS[Math.floor(Math.random() * READINGS.length)]());
+    }
+    runLog(dt);
+
+    host.classList.toggle("moving", Math.abs(vel) > 200);
+  }
+
+  /* ---- movement: only a fly-to or the coast off a fling ---- */
   function step(dt) {
-    if (!started || scrubbing) { vel = 0; return; }
+    if (!started || dragging || scrubbing) { if (dragging) vel = 0; return; }
+
     if (flyTo) {
       flyTo.elapsed += dt;
       const u = Math.min(1, flyTo.elapsed / flyTo.dur);
@@ -949,24 +986,16 @@
       if (u >= 1) { const cb = flyTo.then; flyTo = null; vel = 0; if (cb) cb(); }
       return;
     }
-    if (Math.abs(steer) > 0.55) boost = Math.min(1, boost + dt * CAM.boostRamp);
-    else boost = Math.max(0, boost - dt * CAM.boostDecay);
-    const cap = CAM.baseSpeed + (CAM.boostSpeed - CAM.baseSpeed) * boost * boost;
 
-    let target = steer * cap;
-    const toMin = camX - CAM.min, toMax = CAM.max - camX;
-    if (target < 0 && toMin < CAM.brakeZone) target *= Math.max(0.04, toMin / CAM.brakeZone);
-    if (target > 0 && toMax < CAM.brakeZone) target *= Math.max(0.04, toMax / CAM.brakeZone);
-
-    vel += (target - vel) * Math.min(1, dt * (steer === 0 ? CAM.drag : CAM.accel));
-    if (Math.abs(vel) < 0.5) vel = 0;
+    vel *= Math.pow(1 / (1 + CAM.drag), dt * 6);
+    if (Math.abs(vel) < 6) vel = 0;
 
     const prev = camX;
     camX += vel * dt;
     travelled += Math.abs(camX - prev);
     if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
-    if (camX < CAM.min) { camX = CAM.min; vel = 0; boost = 0; }
-    if (camX > CAM.max) { camX = CAM.max; vel = 0; boost = 0; }
+    if (camX < CAM.min) { camX = CAM.min; vel = 0; }
+    if (camX > CAM.max) { camX = CAM.max; vel = 0; }
   }
 
   /* ---- loop ---- */
@@ -1027,12 +1056,10 @@
       if (l) l.textContent = XP.level;
       loadEl.classList.add("entry-on");
       const go = document.getElementById("entry-go");
-      // closes the card only — the intro and its two choices stay up
-      if (go) go.addEventListener("click", () => {
-        XP.award("entry-beacon", 1, "Filed");
-        XP.seen();
-        loadEl.classList.add("done");
-      }, { once: true });
+      if (go && window.Beacon) Beacon.attach(go, {
+        id: "entry-beacon", xp: 1, label: "Filed",
+        onClaim: () => { XP.seen(); loadEl.classList.add("done"); },
+      });
     } else {
       loadEl.classList.add("done");
     }

@@ -9,12 +9,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
-<link rel="stylesheet" href="bridge.css?v=7">
+<link rel="stylesheet" href="beacon.css?v=1">
+<link rel="stylesheet" href="bridge.css?v=9">
 </head>
 <body>
 
 <header class="topbar">
   <a class="wordmark" href="index.html">SF</a>
+  <div class="xp-slot" id="xp-slot"></div>
   <nav>
     <a href="#work">Work</a>
     <a href="#experience">Experience</a>
@@ -41,18 +43,14 @@
       <p class="say">The census counts what it finds. Anything still unfiled is
          marked by a beacon — reach one and you go up a <em>level</em>.</p>
 
-      <button type="button" class="entry-beacon" id="entry-go" aria-label="Claim this beacon">
-        <span class="bx"><i></i><i></i><span class="core"></span><span class="ring"></span></span>
-        <span class="plus">+1</span>
-        <span class="lbl">Claim this one</span>
+      <button type="button" id="entry-go" aria-label="Claim this beacon">
+        <span class="bcn-lbl">Claim this one</span>
       </button>
     </div>
   </div>
 
   <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
 
-  <div class="edge l"></div>
-  <div class="edge r"></div>
   <div class="vignette"></div>
   <div class="grain"></div>
 
@@ -69,16 +67,15 @@
   </div>
 
   <!-- HUD, revealed once you start moving -->
-  <div class="bridge-hud" id="bridge-region">
-    <span class="name" id="bregname">Rex Immotus</span>
-    <span id="bregsub">The god that became the matter</span>
-  </div>
-
-  <div class="bridge-hud" id="bridge-telemetry">
-    <div class="row"><span class="k lbl">Velocity</span><span class="v" id="bvel">0</span><span class="k">&nbsp;u/s</span><span class="bar"><i id="bvelbar"></i></span></div>
-    <div class="row"><span class="k lbl">Travelled</span><span class="v" id="bdist">0</span><span class="k">&nbsp;u</span></div>
-    <div class="row"><span class="k lbl">Span crossed</span><span class="v" id="bpct">0.0</span><span class="k">&nbsp;%</span></div>
-    <div class="row"><span class="k lbl">Catalogued</span><span class="v" id="bcat">0</span><span class="k">&nbsp;/ unknown</span></div>
+  <!-- one readout: a log that keeps writing, with the numbers under it -->
+  <div class="bridge-hud" id="bridge-term">
+    <div class="tlog" id="btlog"></div>
+    <div class="trow">
+      <span><b class="k">VEL</b> <b class="v" id="bvel">0</b><b class="k">u/s</b></span>
+      <span><b class="k">DIST</b> <b class="v" id="bdist">0</b></span>
+      <span><b class="k">SPAN</b> <b class="v" id="bpct">0.0</b><b class="k">%</b></span>
+      <span><b class="k">FILED</b> <b class="v" id="bcat">0</b></span>
+    </div>
   </div>
 
   <div class="bridge-hud" id="bridge-map">
@@ -86,7 +83,7 @@
     <div class="labels"><span>West · the future</span><span>East · the past</span></div>
   </div>
 
-  <div class="bridge-hud" id="bridge-hint">Push toward a screen edge to travel — click a light to look at it</div>
+  <div class="bridge-hud" id="bridge-hint">Drag to travel — click a beacon to inspect it</div>
 
   <a class="bridge-scroll" href="#work">The work ↓</a>
 
@@ -253,7 +250,8 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="xp.js?v=1"></script>
-<script src="bridge.js?v=10"></script>
+<script src="xp.js?v=2"></script>
+<script src="beacon.js?v=1"></script>
+<script src="bridge.js?v=12"></script>
 </body>
 </html>

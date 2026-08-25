@@ -18,6 +18,7 @@
   position: absolute; inset: 0;
   display: block; width: 100%; height: 100%;
   z-index: 0;
+  touch-action: pan-y;      /* we take horizontal drags, the page keeps vertical */
 }
 
 .bridge-hero .vignette,
@@ -31,12 +32,7 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.bridge-hero .edge {
-  position: absolute; top: 0; bottom: 0; width: 20vw; z-index: 6;
-  pointer-events: none; opacity: 0; transition: opacity 0.25s;
-}
-.bridge-hero .edge.l { left: 0;  background: linear-gradient(to right, rgba(245,208,107,0.07), transparent); }
-.bridge-hero .edge.r { right: 0; background: linear-gradient(to left,  rgba(245,208,107,0.07), transparent); }
+.bridge-hero .edge { display: none; }
 
 /* ---- the pitch ---- */
 .bridge-copy {
@@ -88,20 +84,34 @@
 .bridge-hud .k { color: #5f6a68; }
 .bridge-hud .v { color: var(--sage); }
 
-#bridge-telemetry { left: 2rem; bottom: 2rem; line-height: 1.9; }
-#bridge-telemetry .row { display: flex; gap: 0.7rem; align-items: center; }
-#bridge-telemetry .lbl { width: 7.5rem; }
-#bridge-telemetry .bar { width: 80px; height: 3px; background: #1e262a; margin-left: 0.4rem; }
-#bridge-telemetry .bar i { display: block; height: 100%; width: 0; background: var(--lamp); }
-
-#bridge-region { left: 50%; transform: translateX(-50%); bottom: 6.6rem; text-align: center; line-height: 1.8; }
-#bridge-region .name {
-  font-family: var(--display); font-size: 1.3rem; font-weight: 800;
-  letter-spacing: -0.01em; text-transform: none; color: #fff;
-  display: block; margin-bottom: 0.1rem;
+/* ---- the readout ---- */
+#bridge-term {
+  left: 2rem; bottom: 2rem; width: min(30rem, 42vw);
 }
+#bridge-term .tlog {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 0.28rem; min-height: 6.2rem; margin-bottom: 0.7rem;
+}
+#bridge-term .tl {
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.09em;
+  text-transform: lowercase; color: #58635f; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: tlIn 0.45s ease both;
+}
+#bridge-term .tl::before { content: "> "; color: #3d4644; }
+#bridge-term .tl:last-child { color: var(--sage); }
+#bridge-term .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
+#bridge-term .tl.good { color: var(--lamp) !important; }
+@keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-/* ---- minimap: click to travel, drag to scrub ---- */
+#bridge-term .trow {
+  display: flex; gap: 1.4rem; flex-wrap: wrap;
+  padding-top: 0.6rem; border-top: 1px solid #1e262a;
+}
+#bridge-term .trow b { font-weight: 400; }
+#bridge-term .trow .k { color: #4e5956; margin-right: 0.35rem; }
+#bridge-term .trow .v { color: var(--sage); }
+
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
 
@@ -206,7 +216,7 @@
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
   .bnote { width: calc(100vw - 2.5rem); }
-  #bridge-telemetry, #bridge-region { display: none; }
+  #bridge-term .trow { display: none; }
   #bridge-cursor { display: none; }
   #bridge-map { width: calc(100vw - 2.5rem); }
 }
@@ -270,42 +280,111 @@ footer .rights {
 
 
 /* region readout crossfades instead of snapping */
-#bridge-region .name, #bridge-region span { transition: opacity 0.26s ease; }
-#bridge-region.swapping .name, #bridge-region.swapping span { opacity: 0; }
+
+
+
+
+/* the panel that greets a new entry, shown after the bar fills */
+.bridge-loading .entry {
+  display: none; text-align: center; max-width: 30rem; padding: 0 1.5rem;
+}
+.bridge-loading.entry-on .entry { display: block; }
+.bridge-loading.entry-on .lt,
+.bridge-loading.entry-on .lbar { display: none; }
+.entry .kicker {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--brick); margin: 0 0 0.9rem;
+}
+.entry h2 {
+  font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+  letter-spacing: -0.02em; margin: 0 0 0.3rem; color: #fff;
+}
+.entry .ref {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.5rem;
+}
+.entry .lvl {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--sage); margin: 0 0 1.5rem;
+}
+.entry .lvl b { color: var(--lamp); font-size: 1.5rem; font-weight: 600; display: block; margin-top: 0.3rem; }
+.entry p.say { color: var(--sage-dim); font-size: 0.88rem; line-height: 1.65; margin: 0 0 2rem; }
+.entry p.say em { color: var(--lamp); font-style: normal; }
+@media (max-width: 900px) {
+  .bridge-hero { cursor: auto; }
+  .bnote { width: calc(100vw - 2.5rem); }
+  #bridge-term .trow { display: none; }
+  #bridge-cursor { display: none; }
+  #bridge-map { width: calc(100vw - 2.5rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bridge-hero { cursor: auto; }
+  #bridge-cursor { display: none; }
+}
+
+
+/* =========================================================
+   Loading, markers, minimap ticks, rights line
+   ========================================================= */
+
+.bridge-loading {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1rem;
+  background: #0d1114;
+  transition: opacity 0.7s ease, visibility 0.7s;
+}
+.bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.bridge-loading .lt {
+  margin: 0; font-family: var(--mono); font-size: 0.66rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-dim);
+}
+.bridge-loading .lbar {
+  width: min(22rem, 46vw); height: 2px; background: #1e262a; overflow: hidden;
+}
+.bridge-loading .lbar i {
+  display: block; height: 100%; width: 0; background: var(--lamp);
+  transition: width 0.35s cubic-bezier(.3,.8,.4,1);
+}
+
+/* the ticks that mark something worth stopping at */
+#bridge-map .mk.poi {
+  margin-top: -9px; height: 18px; width: 2px;
+  background: rgba(245,208,107,0.75);
+  box-shadow: 0 0 8px rgba(245,208,107,0.5);
+  pointer-events: auto; cursor: pointer;
+}
+#bridge-map .mk.poi::after {
+  content: ""; position: absolute; left: -2px; top: -6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 8px rgba(245,208,107,0.7);
+}
+#bridge-map .mk.poi:hover { background: #fff; }
+#bridge-map .mk.poi:hover::after { background: #fff; }
+
+/* cursor over something inspectable */
+#bridge-cursor.over {
+  width: 40px; height: 40px; margin: -20px 0 0 -20px;
+  border-color: rgba(245,208,107,0.9);
+}
+#bridge-cursor.over::after { inset: 17px; }
+
+footer .rights {
+  margin-top: 1.4rem; font-size: 0.68rem; line-height: 1.7;
+  color: #5f6a68; max-width: 52ch;
+}
+
+
+/* region readout crossfades instead of snapping */
+
+
 
 
 /* =========================================================
    Provisional entry: chip, new-user card, floating awards
    ========================================================= */
 
-.xp-chip {
-  position: fixed; z-index: 55; right: 2rem; top: 4.4rem;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem;
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--sage-dim);
-  text-shadow: 0 1px 12px rgba(0,0,0,0.95);
-  transition: transform 0.3s cubic-bezier(.2,.8,.3,1);
-}
-.xp-chip.bump { transform: scale(1.09); }
-.xp-chip .xp-lv { color: var(--sage); }
-.xp-chip .xp-lv b { color: var(--lamp); font-weight: 500; font-size: 0.86rem; }
-.xp-chip .xp-track { width: 96px; height: 2px; background: #1e262a; display: block; }
-.xp-chip .xp-track i { display: block; height: 100%; width: 0; background: var(--lamp); transition: width 0.5s ease; }
-
-.xp-pop {
-  position: fixed; z-index: 70; pointer-events: none;
-  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--lamp);
-  text-shadow: 0 2px 18px rgba(0,0,0,0.95);
-  transform: translate(-50%, 0); opacity: 0;
-  transition: transform 1.5s cubic-bezier(.15,.7,.3,1), opacity 1.5s ease;
-  white-space: nowrap; text-align: center;
-}
-.xp-pop.corner { left: auto; right: 2rem; top: 7.4rem; transform: translate(0,0); }
-.xp-pop b { font-size: 1.15rem; font-weight: 600; display: block; }
-.xp-pop span { color: var(--sage-dim); font-size: 0.58rem; }
-.xp-pop.go { opacity: 1; transform: translate(-50%, -54px); }
-.xp-pop.corner.go { transform: translate(0, -22px); }
 
 /* the panel that greets a new entry, shown after the bar fills */
 .bridge-loading .entry {
@@ -334,50 +413,18 @@ footer .rights {
 .entry p.say { color: var(--sage-dim); font-size: 0.88rem; line-height: 1.65; margin: 0 0 2rem; }
 .entry p.say em { color: var(--lamp); font-style: normal; }
 /* the first beacon: the same object they'll be clicking out on the span */
-.entry-beacon {
-  position: relative; background: none; border: 0; cursor: pointer;
-  display: inline-flex; flex-direction: column; align-items: center; gap: 0.9rem;
-  padding: 1.4rem 2rem 1rem;
-}
-.entry-beacon .bx { position: relative; width: 46px; height: 46px; display: block; }
-.entry-beacon .bx i {
-  position: absolute; left: 50%; top: 50%; background: rgba(255,240,205,0.85);
-  animation: beaconArm 2.4s ease-in-out infinite;
-}
-.entry-beacon .bx i:nth-child(1) { width: 30px; height: 1px; margin: 0 0 0 -15px; }
-.entry-beacon .bx i:nth-child(2) { width: 1px; height: 30px; margin: -15px 0 0 0; }
-.entry-beacon .core {
-  position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
-  border-radius: 50%; background: #fff5dc;
-  box-shadow: 0 0 16px 6px rgba(245,208,107,0.4);
-  animation: beaconCore 2.4s ease-in-out infinite;
-}
-.entry-beacon .ring {
-  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
-  border: 1px solid rgba(245,208,107,0.5); border-radius: 50%;
-  animation: beaconRing 2.4s ease-out infinite;
-}
-.entry-beacon .plus {
-  position: absolute; right: 1.1rem; top: 1.1rem;
-  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--lamp);
-  animation: beaconCore 2.4s ease-in-out infinite;
-}
-.entry-beacon .lbl {
-  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--sage-dim);
-}
-.entry-beacon:hover .lbl { color: var(--lamp); }
-.entry-beacon:hover .ring { border-color: #fff; }
-
-@keyframes beaconArm  { 0%,100% { opacity: 0.25; transform: scale(0.7); } 55% { opacity: 1; transform: scale(1); } }
-@keyframes beaconCore { 0%,100% { opacity: 0.45; } 55% { opacity: 1; } }
-@keyframes beaconRing { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(1.5); opacity: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .entry-beacon .bx i, .entry-beacon .core, .entry-beacon .ring, .entry-beacon .plus { animation: none; }
-}
 
 @media (max-width: 900px) {
-  .xp-chip { right: 1.25rem; top: 3.6rem; }
   .bnote { width: calc(100vw - 2.5rem) !important; }
+}
+
+
+/* grabbing the world */
+.bridge-hero { cursor: grab; }
+.bridge-hero.grabbing { cursor: grabbing; }
+#bridge-cursor.over { border-color: rgba(245,208,107,0.9); }
+
+@media (max-width: 760px) {
+  #bridge-term { width: calc(100vw - 2.5rem); left: 1.25rem; }
+  #bridge-term .tlog { min-height: 3.6rem; }
 }

@@ -48,10 +48,13 @@ window.XP = (function () {
     chip = document.createElement("div");
     chip.className = "xp-chip";
     chip.innerHTML =
-      '<span class="xp-ref"></span>' +
       '<span class="xp-lv">LEVEL <b>0</b></span>' +
-      '<span class="xp-track"><i></i></span>';
-    document.body.appendChild(chip);
+      '<span class="xp-track"><i></i></span>' +
+      '<span class="xp-ref"></span>';
+    // the level belongs to the whole site, so it lives in the top bar
+    const slot = document.getElementById("xp-slot");
+    if (slot) slot.appendChild(chip);
+    else { chip.classList.add("floating"); document.body.appendChild(chip); }
     chipName  = chip.querySelector(".xp-ref");
     chipLevel = chip.querySelector(".xp-lv b");
     chipFill  = chip.querySelector(".xp-track i");
