@@ -220,6 +220,12 @@
   let dragging = false, dragId = null, dragLastX = 0, dragLastT = 0, dragMoved = 0, dragVel = 0;
   let scrubbing = false, armed = false, armX = 0, armMoved = 0;
   let chaosNow = 0, futureNow = 0;
+  let frozen = false;
+  document.addEventListener("xp:freeze", e => {
+    frozen = !!e.detail.on;
+    host.classList.toggle("held", frozen);
+    if (frozen) { vel = 0; endDrag && endDrag(); }
+  });
 
   const cursor = document.getElementById("bridge-cursor");
 
@@ -303,6 +309,7 @@
 
   function selectMark(m) {
     begin();
+    hintDone("beacon");
     if (window.XP) {
       const p = markScreen(m), r = host.getBoundingClientRect();
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
@@ -316,6 +323,34 @@
     vel = 0;
   }
   function clearMark() { if (activeMark) { activeMark = null; showNote(null); } }
+
+  /* ---- the hint: names one thing at a time, then goes away ---- */
+  const HINT_KEY = "arcanis.hints.v1";
+  const HINT_STEPS = [
+    { id: "drag",   text: "Drag anywhere to travel the span" },
+    { id: "beacon", text: "Click a beacon to inspect it — each one is a level" },
+    { id: "map",    text: "Or use the span below to jump straight to anything" },
+  ];
+  const hintEl = document.getElementById("bridge-hint");
+  let hintsDone = {};
+  try { hintsDone = JSON.parse(localStorage.getItem(HINT_KEY) || "{}"); } catch (e) {}
+
+  function paintHint() {
+    if (!hintEl) return;
+    const next = HINT_STEPS.find(h => !hintsDone[h.id]);
+    if (!next) { hintEl.classList.add("retired"); return; }
+    if (hintEl.textContent !== next.text) {
+      hintEl.classList.add("fading");
+      setTimeout(() => { hintEl.textContent = next.text; hintEl.classList.remove("fading"); }, 260);
+    }
+  }
+  function hintDone(id) {
+    if (hintsDone[id]) return;
+    hintsDone[id] = true;
+    try { localStorage.setItem(HINT_KEY, JSON.stringify(hintsDone)); } catch (e) {}
+    paintHint();
+  }
+  paintHint();
 
   /* ---- input: grab the world and move it -------------------
      No edge steering. Dragging works the same with a mouse or a
@@ -338,16 +373,20 @@
 
   function stopSteering() { if (cursor) cursor.classList.remove("on"); }
 
-  cv.addEventListener("pointerdown", e => {
+  host.addEventListener("pointerdown", e => {
+    // links, buttons and the map keep their own behaviour
+    if (frozen) return;
+    if (e.target.closest && e.target.closest("a, button, #bridge-map, .bcn")) return;
     begin();
     const m = markAt(e.clientX, e.clientY);
     if (m) { selectMark(m); return; }
     dragging = true; dragId = e.pointerId;
     dragLastX = e.clientX; dragLastT = performance.now();
     dragMoved = 0; dragVel = 0;
+    hintDone("drag");
     flyTo = null; vel = 0;
     host.classList.add("grabbing");
-    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    try { host.setPointerCapture(e.pointerId); } catch (err) {}
   });
 
   addEventListener("pointermove", e => {
@@ -382,6 +421,7 @@
 
   function endDrag() {
     if (!dragging) return;
+    if (dragMoved < 4) clearMark();     // a tap on nothing dismisses the panel
     dragging = false; dragId = null;
     host.classList.remove("grabbing");
     // a flick keeps going; a slow drag just stops
@@ -426,7 +466,7 @@
       track.appendChild(d);
     }
     track.addEventListener("pointerdown", e => {
-      begin(); armed = true; armMoved = 0; armX = e.clientX;
+      begin(); hintDone("map"); armed = true; armMoved = 0; armX = e.clientX;
       track.setPointerCapture(e.pointerId); e.preventDefault();
     });
     track.addEventListener("pointermove", e => {
@@ -882,14 +922,9 @@
     }
   }
 
-  /* ---- the readout: a log that keeps writing, numbers beneath ---- */
-  const el = {
-    vel:  document.getElementById("bvel"),
-    dist: document.getElementById("bdist"),
-    pct:  document.getElementById("bpct"),
-    cat:  document.getElementById("bcat"),
-    log:  document.getElementById("btlog"),
-  };
+  /* ---- the readout: a log that keeps writing, instruments under it ---- */
+  const el = { log: document.getElementById("btlog") };
+  if (window.Instruments) Instruments.mount(document.getElementById("binst"));
 
   const LOG_MAX = 5;
   let logHead = null, logQueue = [], nextIdle = 3.5;
@@ -912,7 +947,6 @@
   function runLog(dt) {
     if (!el.log) return;
     if (logHead) {
-      // type it out rather than dropping it in whole
       logHead.shown = Math.min(logHead.full.length, logHead.shown + dt * 58);
       const n = Math.floor(logHead.shown);
       logHead.line.textContent = logHead.full.slice(0, n) + (n < logHead.full.length ? "_" : "");
@@ -922,24 +956,31 @@
     if (logQueue.length) commitLog(logQueue.shift());
   }
 
-  /* idle readings, so it's never silent */
   const READINGS = [
     () => `bearing ${fmt(camX)} · drift ${Math.abs(vel).toFixed(0)}`,
-    () => `chaos ${(chaosNow).toFixed(2)} · unformed ${(futureNow).toFixed(2)}`,
+    () => `chaos ${chaosNow.toFixed(2)} · unformed ${futureNow.toFixed(2)}`,
     () => `span ${((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1)}% crossed`,
-    () => `filed ${fmt(catalogued)} · remainder unknown`,
     () => `structure holding · no report`,
     () => `listening · nothing answered`,
+    () => `sweep complete · ${MARKS.filter(m => Math.abs(m.cam - camX) < 22000).length} in range`,
   ];
   let readingAt = 0;
 
-  let lastRegion = "";
+  /* which landmark's voice the signal instrument should show */
+  const VOICE_OF = {
+    "bnote-land": "mainland", "bnote-rex": "rex", "bnote-root": "root",
+    "bnote-watcher": "watcher", "bnote-bridge": "bridge", "bnote-future": "future",
+    "bnote-void": "void",
+  };
+
+  let lastRegion = "", nearest = null;
   function checkRegion() {
     let near = null, nd = Infinity;
     for (const m of MARKS) {
       const d = Math.abs(camX - m.cam);
       if (d < SLOT * 1.6 && d < nd) { near = m; nd = d; }
     }
+    nearest = near;
     const name = near ? near.name : "open span";
     if (name === lastRegion) return;
     lastRegion = name;
@@ -947,19 +988,29 @@
     else pushLog("open span · nothing charted here", "loc");
   }
 
-  function updateHUD(dt) {
-    if (el.vel)  el.vel.textContent  = fmt(Math.abs(vel));
-    if (el.dist) el.dist.textContent = fmt(travelled);
-    if (el.pct)  el.pct.textContent  = ((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1);
+  /* the census only reports in, it doesn't sit on the panel */
+  let filedMark = 0, filedAt = 0;
+  function reportFiled(dt) {
+    const inCity = Math.abs(camX - LAND.mainland) < SLOT * 1.4;
+    if (!inCity) { filedAt = 0; return; }
+    filedAt += dt;
+    if (filedAt > 6) {
+      filedAt = 0;
+      const since = Math.round(catalogued - filedMark);
+      filedMark = catalogued;
+      if (since > 0) pushLog(`filed ${fmt(since)} more · remainder unknown`);
+    }
+  }
 
+  function updateHUD(dt) {
     const you = document.getElementById("byou");
     if (you) you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
 
     if (Math.abs(camX - LAND.mainland) < SLOT * 1.4)
       catalogued += (160 + Math.abs(vel) * 0.02) * dt;
-    if (el.cat) el.cat.textContent = fmt(catalogued);
 
     checkRegion();
+    reportFiled(dt);
 
     readingAt += dt;
     if (readingAt > nextIdle && !logHead && !logQueue.length) {
@@ -969,11 +1020,28 @@
     }
     runLog(dt);
 
+    if (window.Instruments) {
+      Instruments.draw(dt, {
+        camX, vel,
+        speedN: Math.min(1, Math.abs(vel) / CAM.maxFling),
+        chaos: chaosNow,
+        future: futureNow,
+        spanPct: (CAM.max - camX) / (CAM.max - CAM.min) * 100,
+        voice: nearest ? (VOICE_OF[nearest.id] || "void")
+                       : (futureNow > 0.45 ? "future" : "void"),
+        marks: MARKS.map(m => ({
+          id: m.id, cam: m.cam, oy: m.oy,
+          claimed: !!(window.XP && XP.has("beacon-" + m.id)),
+        })),
+      });
+    }
+
     host.classList.toggle("moving", Math.abs(vel) > 200);
   }
 
   /* ---- movement: only a fly-to or the coast off a fling ---- */
   function step(dt) {
+    if (frozen) { vel = 0; return; }
     if (!started || dragging || scrubbing) { if (dragging) vel = 0; return; }
 
     if (flyTo) {
@@ -1001,10 +1069,13 @@
   /* ---- loop ---- */
   let last = performance.now(), firstFrame = true;
   function frame(now) {
-    const dt = Math.min((now - last) / 1000, 1 / 20);
+    const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
     if (!visible) return;
+
+    // a claim holds the whole scene still while the level lands
+    const dt = frozen ? 0 : raw;
     t += dt;
 
     step(dt);

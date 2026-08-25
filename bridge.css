@@ -104,13 +104,13 @@
 #bridge-term .tl.good { color: var(--lamp) !important; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-#bridge-term .trow {
-  display: flex; gap: 1.4rem; flex-wrap: wrap;
-  padding-top: 0.6rem; border-top: 1px solid #1e262a;
+/* the instrument panel sits under the log */
+#bridge-term .tinst {
+  display: block; width: 100%; max-width: 352px;
+  aspect-ratio: 352 / 280;
+  padding-top: 0.55rem; border-top: 1px solid #1e262a;
+  box-sizing: content-box;
 }
-#bridge-term .trow b { font-weight: 400; }
-#bridge-term .trow .k { color: #4e5956; margin-right: 0.35rem; }
-#bridge-term .trow .v { color: var(--sage); }
 
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
@@ -216,7 +216,7 @@
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
   .bnote { width: calc(100vw - 2.5rem); }
-  #bridge-term .trow { display: none; }
+  #bridge-term .tinst { max-width: 100%; }
   #bridge-cursor { display: none; }
   #bridge-map { width: calc(100vw - 2.5rem); }
 }
@@ -313,7 +313,7 @@ footer .rights {
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
   .bnote { width: calc(100vw - 2.5rem); }
-  #bridge-term .trow { display: none; }
+  #bridge-term .tinst { max-width: 100%; }
   #bridge-cursor { display: none; }
   #bridge-map { width: calc(100vw - 2.5rem); }
 }
@@ -428,3 +428,13 @@ footer .rights {
   #bridge-term { width: calc(100vw - 2.5rem); left: 1.25rem; }
   #bridge-term .tlog { min-height: 3.6rem; }
 }
+
+
+/* the hint names one thing at a time, then stops appearing */
+#bridge-hint { transition: opacity 0.5s ease; }
+#bridge-hint.fading { opacity: 0 !important; }
+#bridge-hint.retired { display: none; }
+
+/* held while a level lands */
+.bridge-hero.held { cursor: default; }
+.bridge-hero.held .bnote { transition: opacity .4s ease; }

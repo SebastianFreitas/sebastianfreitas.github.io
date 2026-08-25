@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
 <link rel="stylesheet" href="beacon.css?v=1">
-<link rel="stylesheet" href="bridge.css?v=9">
+<link rel="stylesheet" href="bridge.css?v=10">
 </head>
 <body>
 
@@ -70,12 +70,8 @@
   <!-- one readout: a log that keeps writing, with the numbers under it -->
   <div class="bridge-hud" id="bridge-term">
     <div class="tlog" id="btlog"></div>
-    <div class="trow">
-      <span><b class="k">VEL</b> <b class="v" id="bvel">0</b><b class="k">u/s</b></span>
-      <span><b class="k">DIST</b> <b class="v" id="bdist">0</b></span>
-      <span><b class="k">SPAN</b> <b class="v" id="bpct">0.0</b><b class="k">%</b></span>
-      <span><b class="k">FILED</b> <b class="v" id="bcat">0</b></span>
-    </div>
+    <canvas class="tinst" id="binst"
+            aria-label="Instrument panel: radar, signal, phase, recorder"></canvas>
   </div>
 
   <div class="bridge-hud" id="bridge-map">
@@ -252,6 +248,7 @@
 
 <script src="xp.js?v=2"></script>
 <script src="beacon.js?v=1"></script>
-<script src="bridge.js?v=12"></script>
+<script src="instruments.js?v=1"></script>
+<script src="bridge.js?v=13"></script>
 </body>
 </html>

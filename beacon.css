@@ -30,21 +30,66 @@
 .xp-chip .xp-track i { display: block; height: 100%; width: 0; background: var(--lamp); transition: width 0.5s ease; }
 .xp-chip .xp-ref { color: #4e5956; white-space: nowrap; }
 
-/* ---- the +N that rises when something is filed ---- */
+/* ---- the badge, and how it changes with rank ---- */
+.xp-badge { display: block; width: 15px; height: 15px; }
+.xp-badge svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.xp-badge path {
+  fill: none; stroke: var(--lamp); stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: d 0.45s ease;
+}
+.xp-chip[data-rank="dot"] .xp-badge path { fill: var(--sage-dim); stroke: none; }
+.xp-chip[data-rank="star"] .xp-badge path { fill: rgba(245,208,107,0.18); }
+
+/* ---- the claim ---- */
+.xp-mote {
+  position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  font-family: var(--mono); font-weight: 600; font-size: 0.95rem;
+  color: #0d1114; will-change: transform;
+}
+.xp-mote b {
+  display: block; padding: 0.28rem 0.55rem; background: var(--lamp);
+  box-shadow: 0 0 26px 8px rgba(245,208,107,0.45);
+}
+.xp-tag {
+  position: fixed; z-index: 89; pointer-events: none;
+  transform: translate(-50%, 6px); opacity: 0;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--sage);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.95); white-space: nowrap;
+  transition: opacity 0.35s ease, transform 0.7s cubic-bezier(.2,.7,.3,1);
+}
+.xp-tag.go { opacity: 1; transform: translate(-50%, 22px); }
+
+/* while the level is landing */
+.xp-chip.landing .xp-track i { box-shadow: 0 0 12px 2px rgba(245,208,107,0.7); }
+.xp-chip.landing .xp-lv b { color: #fff; }
+
+/* crossing into a new rank */
+.xp-chip.rankup .xp-badge { animation: rankPop 1.1s cubic-bezier(.2,.8,.3,1); }
+.xp-chip.rankup .xp-badge::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px;
+  border: 1px solid var(--lamp); border-radius: 50%;
+  animation: rankRing 1.1s ease-out;
+}
+.xp-chip .xp-badge { position: relative; }
+@keyframes rankPop  { 0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+                      45% { transform: scale(1.5) rotate(6deg); opacity: 1; }
+                      100% { transform: none; opacity: 1; } }
+@keyframes rankRing { 0% { transform: scale(0.6); opacity: 0.9; }
+                      100% { transform: scale(5); opacity: 0; } }
+
+/* the old corner pop, still used when there's nowhere to fly from */
 .xp-pop {
   position: fixed; z-index: 70; pointer-events: none;
   font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--lamp);
-  text-shadow: 0 2px 18px rgba(0,0,0,0.95);
   transform: translate(-50%, 0); opacity: 0;
   transition: transform 1.5s cubic-bezier(.15,.7,.3,1), opacity 1.5s ease;
-  white-space: nowrap; text-align: center;
+  white-space: nowrap;
 }
-.xp-pop.corner { left: auto; right: 2rem; top: 5.2rem; transform: translate(0,0); }
-.xp-pop b { font-size: 1.15rem; font-weight: 600; display: block; }
-.xp-pop span { color: var(--sage-dim); font-size: 0.58rem; }
 .xp-pop.go { opacity: 1; transform: translate(-50%, -54px); }
-.xp-pop.corner.go { transform: translate(0, -22px); }
 
 /* =========================================================
    The beacon, as a thing you can put anywhere.
