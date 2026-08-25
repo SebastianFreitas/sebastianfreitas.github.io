@@ -94,7 +94,7 @@
 #bridge-telemetry .bar { width: 80px; height: 3px; background: #1e262a; margin-left: 0.4rem; }
 #bridge-telemetry .bar i { display: block; height: 100%; width: 0; background: var(--lamp); }
 
-#bridge-region { right: 2rem; top: 6rem; text-align: right; line-height: 1.9; }
+#bridge-region { left: 50%; transform: translateX(-50%); bottom: 6.6rem; text-align: center; line-height: 1.8; }
 #bridge-region .name {
   font-family: var(--display); font-size: 1.3rem; font-weight: 800;
   letter-spacing: -0.01em; text-transform: none; color: #fff;
@@ -135,27 +135,26 @@
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 
 #bridge-hint {
-  left: 50%; transform: translateX(-50%); bottom: 5.4rem;
+  left: 50%; transform: translateX(-50%); bottom: 10.2rem;
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
 .bridge-hero.live.moving #bridge-hint { opacity: 0; }
 
-/* ---- landmark notes ---- */
+/* ---- landmark notes: positioned next to their beacon by JS ---- */
 .bnote {
-  position: absolute; z-index: 14; top: 50%;
-  width: min(27rem, 38vw); padding: 1.5rem 1.7rem;
-  background: rgba(13,17,20,0.76);
+  position: absolute; z-index: 14; left: 0; top: 0;
+  width: min(25rem, 34vw); padding: 1.4rem 1.6rem;
+  background: rgba(13,17,20,0.80);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(198,204,198,0.13);
   border-left: 2px solid var(--lamp);
   opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.7,.3,1), visibility 0.6s;
+  transform: translate(-14px, 8px) scale(0.985);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(.2,.7,.3,1), visibility 0.5s;
 }
-.bnote.show { opacity: 1; visibility: visible; pointer-events: auto; }
-.bnote.right { right: 3rem; transform: translate(24px, -50%); }
-.bnote.left  { left: 3rem;  transform: translate(-24px, -50%); }
-.bnote.right.show, .bnote.left.show { transform: translate(0, -50%); }
+.bnote.from-left { border-left: none; border-right: 2px solid var(--lamp); transform: translate(14px, 8px) scale(0.985); }
+.bnote.show { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(0,0) scale(1); }
 
 .bnote .tag {
   font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em;
@@ -206,9 +205,7 @@
 
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
-  .bnote, .bnote.left, .bnote.right {
-    width: calc(100vw - 2.5rem); left: 1.25rem; right: 1.25rem; transform: translate(0, -50%);
-  }
+  .bnote { width: calc(100vw - 2.5rem); }
   #bridge-telemetry, #bridge-region { display: none; }
   #bridge-cursor { display: none; }
   #bridge-map { width: calc(100vw - 2.5rem); }
@@ -275,3 +272,112 @@ footer .rights {
 /* region readout crossfades instead of snapping */
 #bridge-region .name, #bridge-region span { transition: opacity 0.26s ease; }
 #bridge-region.swapping .name, #bridge-region.swapping span { opacity: 0; }
+
+
+/* =========================================================
+   Provisional entry: chip, new-user card, floating awards
+   ========================================================= */
+
+.xp-chip {
+  position: fixed; z-index: 55; right: 2rem; top: 4.4rem;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim);
+  text-shadow: 0 1px 12px rgba(0,0,0,0.95);
+  transition: transform 0.3s cubic-bezier(.2,.8,.3,1);
+}
+.xp-chip.bump { transform: scale(1.09); }
+.xp-chip .xp-lv { color: var(--sage); }
+.xp-chip .xp-lv b { color: var(--lamp); font-weight: 500; font-size: 0.86rem; }
+.xp-chip .xp-track { width: 96px; height: 2px; background: #1e262a; display: block; }
+.xp-chip .xp-track i { display: block; height: 100%; width: 0; background: var(--lamp); transition: width 0.5s ease; }
+
+.xp-pop {
+  position: fixed; z-index: 70; pointer-events: none;
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lamp);
+  text-shadow: 0 2px 18px rgba(0,0,0,0.95);
+  transform: translate(-50%, 0); opacity: 0;
+  transition: transform 1.5s cubic-bezier(.15,.7,.3,1), opacity 1.5s ease;
+  white-space: nowrap; text-align: center;
+}
+.xp-pop.corner { left: auto; right: 2rem; top: 7.4rem; transform: translate(0,0); }
+.xp-pop b { font-size: 1.15rem; font-weight: 600; display: block; }
+.xp-pop span { color: var(--sage-dim); font-size: 0.58rem; }
+.xp-pop.go { opacity: 1; transform: translate(-50%, -54px); }
+.xp-pop.corner.go { transform: translate(0, -22px); }
+
+/* the panel that greets a new entry, shown after the bar fills */
+.bridge-loading .entry {
+  display: none; text-align: center; max-width: 30rem; padding: 0 1.5rem;
+}
+.bridge-loading.entry-on .entry { display: block; }
+.bridge-loading.entry-on .lt,
+.bridge-loading.entry-on .lbar { display: none; }
+.entry .kicker {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--brick); margin: 0 0 0.9rem;
+}
+.entry h2 {
+  font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+  letter-spacing: -0.02em; margin: 0 0 0.3rem; color: #fff;
+}
+.entry .ref {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.5rem;
+}
+.entry .lvl {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--sage); margin: 0 0 1.5rem;
+}
+.entry .lvl b { color: var(--lamp); font-size: 1.5rem; font-weight: 600; display: block; margin-top: 0.3rem; }
+.entry p.say { color: var(--sage-dim); font-size: 0.88rem; line-height: 1.65; margin: 0 0 2rem; }
+.entry p.say em { color: var(--lamp); font-style: normal; }
+/* the first beacon: the same object they'll be clicking out on the span */
+.entry-beacon {
+  position: relative; background: none; border: 0; cursor: pointer;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 0.9rem;
+  padding: 1.4rem 2rem 1rem;
+}
+.entry-beacon .bx { position: relative; width: 46px; height: 46px; display: block; }
+.entry-beacon .bx i {
+  position: absolute; left: 50%; top: 50%; background: rgba(255,240,205,0.85);
+  animation: beaconArm 2.4s ease-in-out infinite;
+}
+.entry-beacon .bx i:nth-child(1) { width: 30px; height: 1px; margin: 0 0 0 -15px; }
+.entry-beacon .bx i:nth-child(2) { width: 1px; height: 30px; margin: -15px 0 0 0; }
+.entry-beacon .core {
+  position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%; background: #fff5dc;
+  box-shadow: 0 0 16px 6px rgba(245,208,107,0.4);
+  animation: beaconCore 2.4s ease-in-out infinite;
+}
+.entry-beacon .ring {
+  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  border: 1px solid rgba(245,208,107,0.5); border-radius: 50%;
+  animation: beaconRing 2.4s ease-out infinite;
+}
+.entry-beacon .plus {
+  position: absolute; right: 1.1rem; top: 1.1rem;
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--lamp);
+  animation: beaconCore 2.4s ease-in-out infinite;
+}
+.entry-beacon .lbl {
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--sage-dim);
+}
+.entry-beacon:hover .lbl { color: var(--lamp); }
+.entry-beacon:hover .ring { border-color: #fff; }
+
+@keyframes beaconArm  { 0%,100% { opacity: 0.25; transform: scale(0.7); } 55% { opacity: 1; transform: scale(1); } }
+@keyframes beaconCore { 0%,100% { opacity: 0.45; } 55% { opacity: 1; } }
+@keyframes beaconRing { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(1.5); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-beacon .bx i, .entry-beacon .core, .entry-beacon .ring, .entry-beacon .plus { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .xp-chip { right: 1.25rem; top: 3.6rem; }
+  .bnote { width: calc(100vw - 2.5rem) !important; }
+}

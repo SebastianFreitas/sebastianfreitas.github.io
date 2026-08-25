@@ -45,26 +45,30 @@
     brakeZone: 9000,
   };
 
-  const DECK  = 0.40;
+  const DECK  = 0.64;   // deck height as a fraction of the hero. Bigger = lower.
   const FLOOR = 1.14;
-  const BAY   = 150;
+  const BAY   = 300;   // spacing between legs
 
+  /* off = where the beacon sits relative to the subject, as a share of
+     the viewport width. Converted to world units per marker so parallax
+     never throws it off screen once the camera settles. */
   const MARKS = [
-    { id: "bnote-future",  x: LAND.future - 900,     cam: LAND.future,   oy: 0.34, par: 0.30,
+    { id: "bnote-future",  cam: LAND.future,   off: -0.20, oy: 0.26, par: 0.30, xp: 1,
       name: "The Unwritten",  sub: "West of the last recorded thing" },
-    { id: "bnote-land",    x: LAND.mainland + 1900,  cam: LAND.mainland, oy: 0.55, par: 0.66,
+    { id: "bnote-land",    cam: LAND.mainland, off:  0.22, oy: 0.40, par: 0.66, xp: 1,
       name: "The Mainland",   sub: "Libertech census in progress" },
-    { id: "bnote-void",    x: LAND.voidmark,         cam: LAND.voidmark, oy: 0.20, par: 0.30,
+    { id: "bnote-void",    cam: LAND.voidmark, off:  0.08, oy: 0.20, par: 0.30, xp: 1,
       name: "Unmapped",       sub: "Nothing has been recorded here" },
-    { id: "bnote-bridge",  x: LAND.bridge + 520,     cam: LAND.bridge,   oy: 0.30, par: 0.94,
+    { id: "bnote-bridge",  cam: LAND.bridge,   off:  0.16, oy: 0.46, par: 0.94, xp: 1,
       name: "The Bridge",     sub: "First law. It holds because it must" },
-    { id: "bnote-watcher", x: LAND.watcher + 2600,   cam: LAND.watcher,  oy: 0.46, par: 0.24,
+    { id: "bnote-watcher", cam: LAND.watcher,  off:  0.23, oy: 0.30, par: 0.24, xp: 1,
       name: "The Watcher",    sub: "It is no longer only watching" },
-    { id: "bnote-rex",     x: LAND.rex - 1100,       cam: LAND.rex,      oy: 0.62, par: 0.62,
+    { id: "bnote-rex",     cam: LAND.rex,      off: -0.21, oy: 0.42, par: 0.62, xp: 1,
       name: "Rex Immotus",    sub: "The god that became the matter" },
-    { id: "bnote-root",    x: CAM.max - 300,         cam: CAM.max,       oy: 0.28, par: 0.70,
+    { id: "bnote-root",    cam: CAM.max,       off: -0.17, oy: 0.24, par: 0.70, xp: 1,
       name: "The Root",       sub: "It is still growing" },
   ];
+  MARKS.forEach(m => { m.x = m.cam + (m.off * CAM.viewUnits) / m.par; });
   MARKS.forEach((m, i) => { m.phase = i * 1.7; m.vis = 0; });
 
   const HIT = 26;
@@ -249,7 +253,23 @@
     if (copy) copy.classList.add("faded");
   }
   const beginBtn = document.getElementById("bridge-begin");
-  if (beginBtn) beginBtn.addEventListener("click", e => { e.preventDefault(); begin(); });
+  if (beginBtn) beginBtn.addEventListener("click", e => {
+    e.preventDefault();
+    begin();
+    if (window.XP) XP.award("act-explore", 1, "Set out");
+  });
+
+  // reaching the work counts for something too
+  const workSec = document.getElementById("work");
+  if (workSec && "IntersectionObserver" in window) {
+    const io2 = new IntersectionObserver(es => {
+      if (es[0].isIntersecting) {
+        io2.disconnect();
+        if (window.XP) XP.award("act-work", 1, "Found the work");
+      }
+    }, { threshold: 0.25 });
+    io2.observe(workSec);
+  }
 
   /* ---- notes ---- */
   const noteEls = {};
@@ -264,15 +284,34 @@
     const el2 = noteEls[mark.id];
     if (!el2) return;
     noteTimer = setTimeout(() => {
-      const sx = markScreen(mark).x;
-      el2.classList.toggle("left",  sx > W * 0.5);
-      el2.classList.toggle("right", sx <= W * 0.5);
+      placeNote(el2, mark);
       el2.classList.add("show");
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(catalogued);
     }, 280);
   }
+  /* put the panel next to the beacon it belongs to, on whichever side
+     has room, clamped so it never leaves the hero */
+  function placeNote(el2, mark) {
+    if (!el2 || !mark) return;
+    const p = markScreen(mark);
+    const pw = el2.offsetWidth || 380, ph = el2.offsetHeight || 260;
+    const pad = 22, edge = 20;
+    const right = p.x + pad + pw < W - edge;
+    let left = right ? p.x + pad : p.x - pad - pw;
+    left = Math.min(W - pw - edge, Math.max(edge, left));
+    let top = p.y - ph * 0.45;
+    top = Math.min(H - ph - edge, Math.max(edge + 40, top));
+    el2.style.left = left + "px";
+    el2.style.top  = top + "px";
+    el2.classList.toggle("from-left", !right);
+  }
+
   function selectMark(m) {
     begin();
+    if (window.XP) {
+      const p = markScreen(m), r = host.getBoundingClientRect();
+      XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
+    }
     activeMark = m; showNote(null);
     const dist = Math.abs(m.cam - camX);
     flyTo = { from: camX, to: m.cam, elapsed: 0,
@@ -736,9 +775,9 @@
     const par = 0.94, s = scale();
     const deckY = H * DECK;
     const bayPx = Math.max(24, BAY * s * par);
-    const legW  = Math.min(4, Math.max(1.4, bayPx * 0.014));
-    const deckH = Math.min(7, Math.max(2.5, bayPx * 0.028));
-    const rise  = bayPx * 0.30;
+    const legW  = Math.min(3, Math.max(1.2, bayPx * 0.007));
+    const deckH = Math.min(6, Math.max(2.5, bayPx * 0.013));
+    const rise  = bayPx * 0.20;
     const legBot = H * 1.22;
 
     const gl = ctx.createLinearGradient(0, deckY - 90, 0, deckY + 40);
@@ -747,16 +786,13 @@
     gl.addColorStop(1, "rgba(245,208,107,0)");
     ctx.fillStyle = gl; ctx.fillRect(0, deckY - 90, W, 130);
 
-    const sh = ctx.createLinearGradient(0, deckY + deckH, 0, H);
-    sh.addColorStop(0, "rgba(4,6,8,0.55)"); sh.addColorStop(1, "rgba(4,6,8,0)");
-    ctx.fillStyle = sh; ctx.fillRect(0, deckY + deckH, W, H - deckY);
-
     const first = Math.floor((camX - CAM.viewUnits) / BAY) - 1;
     const last  = Math.ceil((camX + CAM.viewUnits) / BAY) + 1;
 
     const lg = ctx.createLinearGradient(0, deckY, 0, legBot);
-    lg.addColorStop(0, "rgba(126,143,152,0.55)");
-    lg.addColorStop(0.35, "rgba(96,112,120,0.30)");
+    lg.addColorStop(0, "rgba(150,168,178,0.62)");
+    lg.addColorStop(0.28, "rgba(112,130,140,0.30)");
+    lg.addColorStop(0.72, "rgba(86,102,112,0.08)");
     lg.addColorStop(1, "rgba(70,84,92,0)");
     ctx.fillStyle = lg;
     for (let b = first; b <= last; b++) {
@@ -837,6 +873,17 @@
         const ring = (t * 0.5 + m.phase * 0.2) % 1;
         ctx.strokeStyle = `rgba(245,208,107,${(1 - ring) * 0.20 * A})`;
         ctx.beginPath(); ctx.arc(p.x, p.y, 8 + ring * 22, 0, 6.283); ctx.stroke();
+      }
+
+      // unclaimed beacons advertise what they're worth
+      const claimed = window.XP && XP.has("beacon-" + m.id);
+      if (!claimed) {
+        const bb = 0.5 + 0.5 * Math.sin(t * 2.1 + m.phase);
+        ctx.font = `600 ${Math.round(11 * k)}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillStyle = `rgba(245,208,107,${(0.45 + 0.45 * bb) * A})`;
+        ctx.fillText("+" + m.xp, p.x + 15 * k, p.y - 11 * k);
+        ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
       }
     }
   }
@@ -954,13 +1001,40 @@
     drawBridge();
     drawMarks(dt);
 
+    if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
+      placeNote(activeMark, noteEls[activeMark.id]);
+
     updateHUD(dt);
 
     if (firstFrame) {
       firstFrame = false;
       setLoad(1, "Ready");
       const wait = Math.max(0, 700 - (performance.now() - bootAt));
-      setTimeout(() => { if (loadEl) loadEl.classList.add("done"); }, wait);
+      setTimeout(finishLoading, wait);
+    }
+  }
+
+  /* the bar fills, then a new visitor is filed before the span opens */
+  function finishLoading() {
+    if (!loadEl) return;
+    const entry = document.getElementById("bridge-entry");
+    if (entry && window.XP && XP.isNew) {
+      const n = document.getElementById("entry-name");
+      const r = document.getElementById("entry-ref");
+      const l = document.getElementById("entry-lvl");
+      if (n) n.textContent = XP.name;
+      if (r) r.textContent = "REF " + XP.ref;
+      if (l) l.textContent = XP.level;
+      loadEl.classList.add("entry-on");
+      const go = document.getElementById("entry-go");
+      // closes the card only — the intro and its two choices stay up
+      if (go) go.addEventListener("click", () => {
+        XP.award("entry-beacon", 1, "Filed");
+        XP.seen();
+        loadEl.classList.add("done");
+      }, { once: true });
+    } else {
+      loadEl.classList.add("done");
     }
   }
 

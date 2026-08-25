@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
-<link rel="stylesheet" href="bridge.css?v=5">
+<link rel="stylesheet" href="bridge.css?v=7">
 </head>
 <body>
 
@@ -32,6 +32,21 @@
   <div class="bridge-loading" id="bridge-loading">
     <p class="lt" id="bridge-loadtxt">Reading the span</p>
     <div class="lbar"><i id="bridge-loadbar"></i></div>
+
+    <div class="entry" id="bridge-entry">
+      <p class="kicker">Provisional entry created</p>
+      <h2 id="entry-name">Unfiled Surveyor</h2>
+      <p class="ref" id="entry-ref">REF ————</p>
+      <p class="lvl">Level <b id="entry-lvl">0</b></p>
+      <p class="say">The census counts what it finds. Anything still unfiled is
+         marked by a beacon — reach one and you go up a <em>level</em>.</p>
+
+      <button type="button" class="entry-beacon" id="entry-go" aria-label="Claim this beacon">
+        <span class="bx"><i></i><i></i><span class="core"></span><span class="ring"></span></span>
+        <span class="plus">+1</span>
+        <span class="lbl">Claim this one</span>
+      </button>
+    </div>
   </div>
 
   <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
@@ -76,7 +91,7 @@
   <a class="bridge-scroll" href="#work">The work ↓</a>
 
   <!-- ---- landmark notes ---- -->
-  <aside class="bnote left" id="bnote-future">
+  <aside class="bnote" id="bnote-future">
     <p class="tag">Western reach</p>
     <h3>The Unwritten</h3>
     <p class="body">Past the last street the ground stops being the present. Nothing out here has
@@ -86,7 +101,7 @@
     <a href="#" data-link="future">What comes next →</a>
   </aside>
 
-  <aside class="bnote left" id="bnote-bridge">
+  <aside class="bnote" id="bnote-bridge">
     <p class="tag">Mid-span</p>
     <h3>The Bridge</h3>
     <p class="body">Placeholder — write this one yourself. It holds because it must, and
@@ -95,7 +110,7 @@
     <a href="#" data-link="bridge">Follow the span →</a>
   </aside>
 
-  <aside class="bnote left" id="bnote-void">
+  <aside class="bnote" id="bnote-void">
     <p class="tag">Open dark</p>
     <h3>Unmapped</h3>
     <p class="body">Nothing has been recorded at this bearing. The survey passed through it twice
@@ -104,7 +119,7 @@
     <a href="#" data-link="void">Nothing here yet →</a>
   </aside>
 
-  <aside class="bnote right" id="bnote-rex">
+  <aside class="bnote" id="bnote-rex">
     <p class="tag">Eastern reach</p>
     <h3>Rex Immotus</h3>
     <p class="body">An Ouroboros does not hold a law. It is one. Rex stopped being a god the
@@ -114,7 +129,7 @@
     <a href="#" data-link="rex">The nine laws →</a>
   </aside>
 
-  <aside class="bnote right" id="bnote-root">
+  <aside class="bnote" id="bnote-root">
     <p class="tag">Terminus — no further</p>
     <h3>The Root</h3>
     <p class="body">The first mass of souls, and it never stopped being one. Everything east of
@@ -124,7 +139,7 @@
     <a href="#" data-link="root">Before the first law →</a>
   </aside>
 
-  <aside class="bnote right" id="bnote-watcher">
+  <aside class="bnote" id="bnote-watcher">
     <p class="tag">Overhead</p>
     <h3>The Watcher</h3>
     <p class="body">Rex's sun, and an Old One that used to have a job. Observation was the whole
@@ -134,7 +149,7 @@
     <a href="#" data-link="watcher">What it became →</a>
   </aside>
 
-  <aside class="bnote left" id="bnote-land">
+  <aside class="bnote" id="bnote-land">
     <p class="tag">Western reach</p>
     <h3>The Mainland</h3>
     <p class="body">Every living thing here has a file, or will. Libertech runs the census, and the
@@ -238,6 +253,7 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="bridge.js?v=8"></script>
+<script src="xp.js?v=1"></script>
+<script src="bridge.js?v=10"></script>
 </body>
 </html>
