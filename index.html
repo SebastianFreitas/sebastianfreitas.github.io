@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
-<link rel="stylesheet" href="bridge.css?v=3">
+<link rel="stylesheet" href="bridge.css?v=5">
 </head>
 <body>
 
@@ -29,6 +29,11 @@
      and it tells you what it is.
 ========================================================== -->
 <section class="bridge-hero" id="bridge-hero">
+  <div class="bridge-loading" id="bridge-loading">
+    <p class="lt" id="bridge-loadtxt">Reading the span</p>
+    <div class="lbar"><i id="bridge-loadbar"></i></div>
+  </div>
+
   <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
 
   <div class="edge l"></div>
@@ -66,11 +71,39 @@
     <div class="labels"><span>West · the future</span><span>East · the past</span></div>
   </div>
 
-  <div class="bridge-hud" id="bridge-hint">Push toward a screen edge to travel — or click anywhere on the span below</div>
+  <div class="bridge-hud" id="bridge-hint">Push toward a screen edge to travel — click a light to look at it</div>
 
   <a class="bridge-scroll" href="#work">The work ↓</a>
 
   <!-- ---- landmark notes ---- -->
+  <aside class="bnote left" id="bnote-future">
+    <p class="tag">Western reach</p>
+    <h3>The Unwritten</h3>
+    <p class="body">Past the last street the ground stops being the present. Nothing out here has
+       happened yet, which is why there is so little of it. Placeholder — this one still needs
+       writing.</p>
+    <p class="stat"><span>Recorded <b>None</b></span><span>Status <b>Pending</b></span></p>
+    <a href="#" data-link="future">What comes next →</a>
+  </aside>
+
+  <aside class="bnote left" id="bnote-bridge">
+    <p class="tag">Mid-span</p>
+    <h3>The Bridge</h3>
+    <p class="body">Placeholder — write this one yourself. It holds because it must, and
+       almost nobody has ever stood on it.</p>
+    <p class="stat"><span>Law <b>First</b></span><span>Span <b>Unmeasured</b></span></p>
+    <a href="#" data-link="bridge">Follow the span →</a>
+  </aside>
+
+  <aside class="bnote left" id="bnote-void">
+    <p class="tag">Open dark</p>
+    <h3>Unmapped</h3>
+    <p class="body">Nothing has been recorded at this bearing. The survey passed through it twice
+       and filed the same page both times. Placeholder — something belongs here eventually.</p>
+    <p class="stat"><span>Survey <b>Blank</b></span><span>Filed <b>Twice</b></span></p>
+    <a href="#" data-link="void">Nothing here yet →</a>
+  </aside>
+
   <aside class="bnote right" id="bnote-rex">
     <p class="tag">Eastern reach</p>
     <h3>Rex Immotus</h3>
@@ -81,13 +114,14 @@
     <a href="#" data-link="rex">The nine laws →</a>
   </aside>
 
-  <aside class="bnote right" id="bnote-wall">
+  <aside class="bnote right" id="bnote-root">
     <p class="tag">Terminus — no further</p>
-    <h3>Primordisentia</h3>
-    <p class="body">The first mass of souls, and the last thing east of anywhere. It doesn't end
-       so much as stop being passable. Everything on this side has already happened.</p>
-    <p class="stat"><span>State <b>Impassable</b></span><span>Reads as <b>The past</b></span></p>
-    <a href="#" data-link="primordisentia">Before the first law →</a>
+    <h3>The Root</h3>
+    <p class="body">The first mass of souls, and it never stopped being one. Everything east of
+       here has already happened, and it has been happening in the same place long enough to grow
+       into something. What comes out of it comes out hungry, and it is still growing.</p>
+    <p class="stat"><span>State <b>Impassable</b></span><span>Reads as <b>The past</b></span><span>Condition <b>Alive</b></span></p>
+    <a href="#" data-link="root">Before the first law →</a>
   </aside>
 
   <aside class="bnote right" id="bnote-watcher">
@@ -200,8 +234,10 @@
 <footer>
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="cv.pdf">CV (PDF)</a></p>
+  <p class="rights">The Warlocks © 2026 Sebastião Freitas. All rights reserved.<br>
+     Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="bridge.js?v=6"></script>
+<script src="bridge.js?v=8"></script>
 </body>
 </html>

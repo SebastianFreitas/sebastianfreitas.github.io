@@ -218,3 +218,60 @@
   .bridge-hero { cursor: auto; }
   #bridge-cursor { display: none; }
 }
+
+
+/* =========================================================
+   Loading, markers, minimap ticks, rights line
+   ========================================================= */
+
+.bridge-loading {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1rem;
+  background: #0d1114;
+  transition: opacity 0.7s ease, visibility 0.7s;
+}
+.bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.bridge-loading .lt {
+  margin: 0; font-family: var(--mono); font-size: 0.66rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-dim);
+}
+.bridge-loading .lbar {
+  width: min(22rem, 46vw); height: 2px; background: #1e262a; overflow: hidden;
+}
+.bridge-loading .lbar i {
+  display: block; height: 100%; width: 0; background: var(--lamp);
+  transition: width 0.35s cubic-bezier(.3,.8,.4,1);
+}
+
+/* the ticks that mark something worth stopping at */
+#bridge-map .mk.poi {
+  margin-top: -9px; height: 18px; width: 2px;
+  background: rgba(245,208,107,0.75);
+  box-shadow: 0 0 8px rgba(245,208,107,0.5);
+  pointer-events: auto; cursor: pointer;
+}
+#bridge-map .mk.poi::after {
+  content: ""; position: absolute; left: -2px; top: -6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 8px rgba(245,208,107,0.7);
+}
+#bridge-map .mk.poi:hover { background: #fff; }
+#bridge-map .mk.poi:hover::after { background: #fff; }
+
+/* cursor over something inspectable */
+#bridge-cursor.over {
+  width: 40px; height: 40px; margin: -20px 0 0 -20px;
+  border-color: rgba(245,208,107,0.9);
+}
+#bridge-cursor.over::after { inset: 17px; }
+
+footer .rights {
+  margin-top: 1.4rem; font-size: 0.68rem; line-height: 1.7;
+  color: #5f6a68; max-width: 52ch;
+}
+
+
+/* region readout crossfades instead of snapping */
+#bridge-region .name, #bridge-region span { transition: opacity 0.26s ease; }
+#bridge-region.swapping .name, #bridge-region.swapping span { opacity: 0; }
