@@ -48,10 +48,10 @@ window.XP = (function () {
   const RANKS = [
     { at: 0,  key: "dot",      d: "M12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z" },
     { at: 1,  key: "triangle", d: "M12 3 22 20H2z" },
-    { at: 10, key: "square",   d: "M4 4h16v16H4z" },
-    { at: 20, key: "squircle", d: "M12 3c7 0 9 2 9 9s-2 9-9 9-9-2-9-9 2-9 9-9z" },
-    { at: 30, key: "circle",   d: "M12 2.6A9.4 9.4 0 1 0 12 21.4 9.4 9.4 0 0 0 12 2.6z" },
-    { at: 40, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
+    { at: 2, key: "square",   d: "M4 4h16v16H4z" },
+    { at: 3, key: "squircle", d: "M12 3c7 0 9 2 9 9s-2 9-9 9-9-2-9-9 2-9 9-9z" },
+    { at: 4, key: "circle",   d: "M12 2.6A9.4 9.4 0 1 0 12 21.4 9.4 9.4 0 0 0 12 2.6z" },
+    { at: 5, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
   ];
   const rankFor = lv => RANKS.slice().reverse().find(r => lv >= r.at) || RANKS[0];
   function rankProgress(lv) {

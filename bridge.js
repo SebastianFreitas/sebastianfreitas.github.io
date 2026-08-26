@@ -27,14 +27,28 @@
     mainland: at(11.5),
     voidmark: at(30),
     bridge:   at(41),
-    watcher:  at(64.5),
-    rex:      at(67.5),
-    root:     at(68.6),
+    watcher:  at(56),
+    rex:      at(61.5),    // the prime mass
+    edgefall: at(65.5),    // the second
+    unnamed:  at(68.2),    // the third, unsurveyed
+    root:     at(70.6),    // the flesh begins here
+    rootEnd:  at(80),
   };
+
+  /* the three pieces of Rex, each a body with a surface, an underground
+     and something deeper under that */
+  const MASSES = [
+    { key: "rexA", at: LAND.rex,      half: 2.1, crust: 0.50, deep: "hell",
+      label: "REX · PRIME",      sub: "castle · warzone · hell" },
+    { key: "rexB", at: LAND.edgefall, half: 1.2, crust: 0.56, deep: "cold",
+      label: "REX · EDGEFALL",   sub: "surface · under · deep" },
+    { key: "rexC", at: LAND.unnamed,  half: 1.1, crust: 0.58, deep: "cold",
+      label: "REX · UNSURVEYED", sub: "no report filed" },
+  ];
 
   const CAM = {
     min: at(1.6),                 // keep going west, into what hasn't happened
-    max: LAND.root - 1600,
+    max: LAND.root + SLOT * 1.6,   // far enough in to be surrounded by it
     maxFling: 38000,      // ceiling on a hard flick
     glideTau: 0.95,       // seconds for a fling to fall to ~37% of its speed
     carry: 0.62,          // how much of the last throw a new one inherits
@@ -61,9 +75,9 @@
     { id: "bnote-watcher", cam: LAND.watcher,  off:  0.23, oy: 0.30, par: 0.24, xp: 1,
       name: "The Watcher",    sub: "It holds the void off Rex" },
     { id: "bnote-rex",     cam: LAND.rex,      off: -0.21, oy: 0.42, par: 0.62, xp: 1,
-      name: "Rex",            sub: "The giant who paid for our bodies" },
-    { id: "bnote-root",    cam: CAM.max,       off: -0.17, oy: 0.24, par: 0.70, xp: 1,
-      name: "The Root",       sub: "It is still growing" },
+      name: "Rex",            sub: "Three masses, three layers, one war" },
+    { id: "bnote-root",    cam: CAM.max,       off: -0.10, oy: 0.24, par: 0.70, xp: 1,
+      name: "The Root",       sub: "Every arm of it is still climbing" },
   ];
   MARKS.forEach(m => { m.x = m.cam + (m.off * CAM.viewUnits) / m.par; });
   MARKS.forEach((m, i) => { m.phase = i * 1.7; m.vis = 0; });
@@ -169,21 +183,71 @@
   })();
   setLoad(0, "mainland located · census open");
 
-  /* ---- Rex ---- */
-  const rex = { ridge: [] };
-  (function () {
+  /* ---- Rex ------------------------------------------------
+     Not stacked layers — a run. Travelling east the ground climbs
+     as three nested ranges, each smaller and further back than the
+     one in front, until the surface leaves the top of the frame.
+     Past that you're inside it: underground for a long while, then
+     hell opening downward and to the right, and then the Root.
+  --------------------------------------------------------- */
+  const REX_FROM = LAND.rex - SLOT * 6.0;   // the ground starts here
+  const REX_END  = LAND.rex + SLOT * 1.6;   // the surface exits the frame here
+  const HELL_AT  = LAND.rex + SLOT * 2.6;   // and it starts turning
+
+  /* value noise, so a range is stable and seamless at any zoom */
+  function vnoise(x, seed) {
+    const i = Math.floor(x), f = x - i;
+    const a = hash1((i * 73856093) ^ seed);
+    const b = hash1(((i + 1) * 73856093) ^ seed);
+    return a + (b - a) * (f * f * (3 - 2 * f));
+  }
+  function ridge(x, seed) {
+    return vnoise(x, seed) * 0.55 + vnoise(x * 2.3, seed + 17) * 0.3
+         + vnoise(x * 5.1, seed + 91) * 0.15;
+  }
+
+  /* near band is biggest and darkest; the ones behind are smaller,
+     higher and paler, which is what makes the joins disappear */
+  const REX_BANDS = [
+    // furthest back: highest and climbs hardest, so it leaves the frame first
+    { par: 0.50, seed: 1201, amp: 0.13, base: 0.30, climb: 2.10, cell: 2600,
+      fill: ["#39485a", "#26313d"], edge: "rgba(178,204,214,0.30)" },
+    { par: 0.59, seed: 3307, amp: 0.17, base: 0.17, climb: 1.70, cell: 1900,
+      fill: ["#2b3742", "#1c242d"], edge: "rgba(172,198,208,0.38)" },
+    // nearest: lowest and slowest, so the two behind stay visible over it
+    { par: 0.68, seed: 5501, amp: 0.22, base: 0.04, climb: 1.30, cell: 1400,
+      fill: ["#233039", "#2a2320"], edge: "rgba(186,208,214,0.55)" },
+  ];
+
+  /* height of a band at a world position, as a share of the hero */
+  function rexHeight(worldX, b) {
+    const u = (worldX - REX_FROM) / (REX_END - REX_FROM);
+    if (u <= 0) return 0;
+    const entry = Math.min(1, u / 0.10);                 // rises out of nothing
+    const climb = Math.pow(u, 1.22) * b.climb;
+    return (b.base + climb + ridge(worldX / b.cell, b.seed) * b.amp) * entry;
+  }
+
+  /* what stands on the near band */
+  const rexProps = { wrecks: [], caves: [], castle: null, kingdom: null };
+  (function buildRex() {
     const r = mulberry(77341);
-    const from = LAND.rex - SLOT * 1.9, to = LAND.rex + SLOT * 1.0;
-    for (let i = 0; i <= 90; i++) {
-      const u = i / 90;
-      // ends taper to nothing, so the silhouette meets the floor instead of
-      // being cut off by a vertical wall where the polygon closes
-      const skirt = Math.min(1, u / 0.28);
-      const body = 0.20 + u * 0.50 + Math.sin(u * 11) * 0.04 + (r() - 0.5) * 0.045;
-      rex.ridge.push({ x: from + u * (to - from), h: Math.max(0, body * skirt) });
-    }
+    for (let i = 0; i < 34; i++)
+      rexProps.wrecks.push({ x: REX_FROM + r() * (REX_END - REX_FROM) * 0.95,
+                             w: 90 + r() * 460, h: 12 + r() * 54,
+                             tilt: (r() - 0.5) * 0.55, mast: r() < 0.4 });
+    for (let i = 0; i < 90; i++)
+      rexProps.caves.push({ x: REX_FROM + SLOT * 2 + r() * (LAND.root - REX_FROM - SLOT * 2),
+                            y: 0.12 + r() * 0.86, w: 70 + r() * 340, h: 20 + r() * 90,
+                            a: 0.3 + r() * 0.55 });
+    rexProps.castle = { x: LAND.rex - SLOT * 1.1, blocks: [] };
+    for (let i = 0; i < 8; i++)
+      rexProps.castle.blocks.push({ dx: (i - 3.5) * 44, w: 24 + r() * 32, h: 44 + r() * 104 });
+    rexProps.kingdom = { x: LAND.rex + SLOT * 0.75, towers: [] };
+    for (let i = 0; i < 16; i++)
+      rexProps.kingdom.towers.push({ dx: (i - 8) * 58, w: 12 + r() * 24,
+                                     h: 26 + r() * 96, lit: r() < 0.55 });
   })();
-  setLoad(0, "matter settled · span holding");
 
   /* ---- void: stars, chaos, and things older than the span ---- */
   const blobs = [], motes = [], swarm = [], presences = [], tendrils = [];
@@ -816,84 +880,236 @@
   }
 
   function drawRex() {
-    const floor = H * FLOOR;
-    ctx.globalAlpha = 1;
-    const par = 0.62;
-    if (wx(rex.ridge[rex.ridge.length - 1].x, par) < -160 || wx(rex.ridge[0].x, par) > W + 160) return;
-    const pts = rex.ridge.map(p => ({
-      x: Math.max(-400, Math.min(W + 400, wx(p.x, par))), y: floor - p.h * H }));
-    ctx.beginPath(); ctx.moveTo(pts[0].x, H + 10);
-    for (const p of pts) ctx.lineTo(p.x, p.y);
-    ctx.lineTo(pts[pts.length - 1].x, H + 10); ctx.closePath();
-    const g = ctx.createLinearGradient(0, H * 0.2, 0, H);
-    g.addColorStop(0, "#2c363c"); g.addColorStop(1, "#141b1f");
-    ctx.fillStyle = g; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (const p of pts) ctx.lineTo(p.x, p.y);
-    ctx.strokeStyle = "rgba(143,176,184,0.38)"; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.lineWidth = 1;
+    const sc = scale();
+    const bottom = H * 1.3;
+    const toWorld = (px, par) => camX + (px - W * 0.5) / (par * sc);
+
+    let nearPath = null, nearPts = null;
+
+    for (let bi = 0; bi < REX_BANDS.length; bi++) {
+      const b = REX_BANDS[bi];
+      if (toWorld(W + 60, b.par) < REX_FROM) continue;
+
+      const pts = [];
+      for (let px = -60; px <= W + 60; px += 7)
+        pts.push([px, H * 1.06 - rexHeight(toWorld(px, b.par), b) * H]);
+      if (!pts.length) continue;
+
+      const path = new Path2D();
+      path.moveTo(pts[0][0], bottom);
+      for (const p of pts) path.lineTo(p[0], Math.max(-H * 0.6, p[1]));
+      path.lineTo(pts[pts.length - 1][0], bottom);
+      path.closePath();
+
+      const g = ctx.createLinearGradient(0, H * 0.05, 0, bottom);
+      g.addColorStop(0, b.fill[0]); g.addColorStop(1, b.fill[1]);
+      ctx.fillStyle = g; ctx.fill(path);
+
+      if (bi === REX_BANDS.length - 1) { nearPath = path; nearPts = pts; }
+      else {
+        ctx.strokeStyle = b.edge; ctx.lineWidth = 1.2;
+        strokeSkyline(pts);
+      }
+    }
+
+    /* everything below is inside the nearest mass */
+    if (nearPath) {
+      ctx.save();
+      ctx.clip(nearPath);
+      rexInterior(sc, bottom);
+      ctx.restore();
+
+      ctx.strokeStyle = REX_BANDS[2].edge; ctx.lineWidth = 1.5;
+      strokeSkyline(nearPts);
+      ctx.lineWidth = 1;
+
+      rexSurface(sc);
+    }
   }
 
-  /* ---- THE ROOT — a wall of flesh, and it is breathing ---- */
-  function drawRoot() {
-    const par = 0.7;
-    const x = wx(LAND.root, par);
-    if (x > W + 120) return;
-    const cx = Math.max(-500, x);
-    const breath = 0.5 + 0.5 * Math.sin(t * 0.34);
-    const near = smooth(1 - Math.min(1, Math.abs(camX - CAM.max) / (SLOT * 3)));
+  function strokeSkyline(pts) {
+    ctx.beginPath();
+    let drawing = false;
+    for (const p of pts) {
+      if (p[1] < -30) { drawing = false; continue; }
+      drawing ? ctx.lineTo(p[0], p[1]) : (ctx.moveTo(p[0], p[1]), drawing = true);
+    }
+    ctx.stroke();
+  }
 
-    // approach glow — you feel it before you see it
-    const halo = ctx.createLinearGradient(cx - 460, 0, cx, 0);
-    halo.addColorStop(0, "rgba(120,26,32,0)");
-    halo.addColorStop(1, `rgba(132,30,36,${0.09 + 0.05 * breath})`);
-    ctx.fillStyle = halo; ctx.fillRect(cx - 460, 0, 460, H);
+  /* ---- what the rock looks like once you're in it -------------
+     Without this the underground is a flat fill and reads as void,
+     which is exactly how it looked.
+  --------------------------------------------------------- */
+  function rexInterior(sc, bottom) {
+    const nb = REX_BANDS[2], par = nb.par;
 
-    // the mass
-    const g = ctx.createLinearGradient(cx - 60, 0, W, 0);
-    g.addColorStop(0, "#3a0f14");
-    g.addColorStop(0.28, "#2a0a0f");
-    g.addColorStop(1, "#12060a");
-    ctx.fillStyle = g; ctx.fillRect(cx - 60, 0, W - cx + 120, H);
-
-    // sinew running down the face, drifting
-    ctx.lineWidth = 1.4;
-    for (let i = 0; i < 26; i++) {
-      const sx = cx + 10 + hash1(i * 811) * (W - cx + 40);
-      if (sx > W + 20) continue;
-      const wob = 12 + hash1(i * 97) * 26;
-      ctx.strokeStyle = `rgba(190,58,62,${0.05 + 0.07 * hash1(i * 13) * (0.4 + 0.6 * breath)})`;
+    // bedding planes, sagging the way strata do
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 16; i++) {
+      const y0 = H * (0.16 + i * 0.075);
+      const off = camX * par * sc * 0.06;
+      ctx.strokeStyle = `rgba(150,168,180,${0.05 + 0.03 * (i % 3)})`;
       ctx.beginPath();
-      for (let k = 0; k <= 8; k++) {
-        const u = k / 8, y = u * H;
-        const px = sx + Math.sin(u * 5.2 + t * 0.5 + i) * wob;
-        if (k === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+      for (let px = -40; px <= W + 40; px += 26) {
+        const y = y0 + Math.sin((px + off) * 0.004 + i) * 12 + Math.sin((px + off) * 0.011 + i * 2) * 5;
+        px === -40 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
       }
       ctx.stroke();
     }
-    ctx.lineWidth = 1;
 
-    // pores, and things behind them
-    for (let i = 0; i < 34; i++) {
-      const px = cx + 20 + hash1(i * 331) * (W - cx + 20);
-      if (px > W + 10) continue;
-      const py = hash1(i * 617) * H;
-      const rr = 3 + hash1(i * 43) * 13;
-      const pulse = 0.5 + 0.5 * Math.sin(t * (0.3 + hash1(i * 7) * 0.5) + i);
-      const pg = ctx.createRadialGradient(px, py, 0, px, py, rr * 3);
-      pg.addColorStop(0, `rgba(226,74,66,${0.16 * pulse * (0.4 + 0.6 * near)})`);
-      pg.addColorStop(1, "rgba(226,74,66,0)");
-      ctx.fillStyle = pg; ctx.fillRect(px - rr * 3, py - rr * 3, rr * 6, rr * 6);
+    // rubble, so it has grain rather than being a wash
+    for (let i = 0; i < 90; i++) {
+      const u = hash1(i * 911);
+      const wxp = wx(REX_FROM + u * (LAND.root - REX_FROM), par);
+      if (!onScreen(wxp, 20)) continue;
+      const y = H * (0.12 + hash1(i * 337) * 1.1);
+      ctx.fillStyle = `rgba(196,206,212,${0.03 + 0.05 * hash1(i * 53)})`;
+      ctx.fillRect(wxp, y, 1 + hash1(i * 7) * 3, 1 + hash1(i * 13) * 2);
     }
 
-    // the boundary: raw, not a clean edge
-    ctx.strokeStyle = `rgba(214,72,68,${0.28 + 0.16 * breath})`;
+    // caves
+    for (const c of rexProps.caves) {
+      const cx = wx(c.x, par);
+      if (!onScreen(cx, 240)) continue;
+      const topY = H * 1.06 - rexHeight(c.x, nb) * H;
+      const cy = topY + 40 + c.y * (bottom - topY - 80);
+      if (cy < -40 || cy > H + 60) continue;
+      const rw = c.w * sc * par * 0.5, rh = c.h * sc * par * 0.5;
+      ctx.fillStyle = `rgba(4,6,9,${c.a})`;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = `rgba(150,180,190,${0.10 * c.a})`;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, 6.283); ctx.stroke();
+    }
+
+    /* ---- hell: no gap between it and the Root ---- */
+    const hx = wx(HELL_AT, par);
+    const rx = wx(LAND.root, par);
+    if (hx < W + 60) {
+      const x0 = Math.max(hx, -120);
+      const rg = ctx.createLinearGradient(hx, 0, hx + (rx - hx) * 0.55, 0);
+      rg.addColorStop(0, "rgba(140,26,26,0)");
+      rg.addColorStop(0.35, `rgba(150,30,28,${0.45 + 0.06 * Math.sin(t * 0.4)})`);
+      rg.addColorStop(1, `rgba(176,36,32,${0.85 + 0.1 * Math.sin(t * 0.4)})`);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = rg; ctx.fillRect(x0, 0, W - x0 + 120, H + 60);
+      ctx.restore();
+
+      // hotter the lower you look
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      const dg = ctx.createLinearGradient(0, H * 0.1, 0, bottom);
+      dg.addColorStop(0, "rgba(30,30,34,1)"); dg.addColorStop(1, "rgba(0,0,0,1)");
+      ctx.fillStyle = dg; ctx.fillRect(x0, 0, W - x0 + 120, H + 60);
+      ctx.restore();
+
+      for (let i = 0; i < 30; i++) {
+        const u = hash1(i * 401), span = Math.max(80, W - x0);
+        const ex = x0 + ((u * span + t * (18 + u * 40)) % span);
+        const ey = H - ((t * (26 + u * 60) + u * H) % (H * 0.95));
+        ctx.fillStyle = `rgba(244,120,72,${0.12 + 0.3 * hash1(i * 77)})`;
+        ctx.fillRect(ex, ey, 1.7, 1.7);
+      }
+
+      /* the threshold, torn the same way the Root's face is */
+      if (hx > -60 && hx < W + 60) {
+        ctx.strokeStyle = `rgba(206,68,60,${0.42 + 0.16 * Math.sin(t * 0.34)})`;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (let k = 0; k <= 28; k++) {
+          const u = k / 28, y = u * (H + 40);
+          const px = hx + Math.sin(u * 7 + t * 0.35) * 11 + Math.sin(u * 17 - t * 0.2) * 5;
+          k ? ctx.lineTo(px, y) : ctx.moveTo(px, y);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    }
+  }
+
+  /* ---- what stands on the surface, while there is one ---- */
+  function rexSurface(sc) {
+    const nb = REX_BANDS[2], par = nb.par;
+    const surfY = worldX => H * 1.06 - rexHeight(worldX, nb) * H;
+
+    for (const wr of rexProps.wrecks) {
+      const px = wx(wr.x, par);
+      if (!onScreen(px, 280)) continue;
+      const y = surfY(wr.x);
+      if (y > H + 60 || y < -80) continue;
+      const ww = wr.w * sc * par, wh = wr.h * sc * par;
+      ctx.save(); ctx.translate(px, y); ctx.rotate(wr.tilt);
+      ctx.fillStyle = "#0b1014"; ctx.fillRect(-ww / 2, -wh, ww, wh);
+      ctx.fillStyle = "rgba(143,176,184,0.2)"; ctx.fillRect(-ww / 2, -wh, ww, 1.2);
+      if (wr.mast) ctx.fillRect(-ww * 0.12, -wh * 2.4, Math.max(1, ww * 0.04), wh * 1.4);
+      ctx.restore();
+    }
+
+    const cas = rexProps.castle, cxp = wx(cas.x, par);
+    if (onScreen(cxp, 460)) {
+      const base = surfY(cas.x);
+      if (base < H + 80) for (const b2 of cas.blocks) {
+        const bx = cxp + b2.dx * sc * par;
+        const bw = b2.w * sc * par, bh = b2.h * sc * par;
+        ctx.fillStyle = "#161f26"; ctx.fillRect(bx, base - bh, bw, bh);
+        ctx.strokeStyle = "rgba(176,104,90,0.45)";
+        ctx.strokeRect(bx + 0.5, base - bh + 0.5, Math.max(1, bw - 1), bh - 1);
+      }
+    }
+
+    const kg = rexProps.kingdom, kxp = wx(kg.x, par);
+    if (onScreen(kxp, 560)) {
+      for (const tw of kg.towers) {
+        const bx = kxp + tw.dx * sc * par;
+        if (!onScreen(bx, 40)) continue;
+        const base = surfY(kg.x + tw.dx);
+        if (base > H + 40) continue;
+        const bw = tw.w * sc * par, bh = tw.h * sc * par;
+        ctx.fillStyle = "#0f171d"; ctx.fillRect(bx, base - bh, bw, bh);
+        if (tw.lit) {
+          ctx.fillStyle = `rgba(126,168,214,${0.35 + 0.3 * Math.sin(t * 1.4 + tw.dx)})`;
+          ctx.fillRect(bx + bw * 0.25, base - bh * 0.78, Math.max(1, bw * 0.5), 2);
+        }
+      }
+    }
+  }
+
+  /* ---- THE ROOT ------------------------------------------
+     Deliberately almost nothing: a reach of red before it, and one
+     torn edge. Everything past that line is simply not passable,
+     and showing more of it made it smaller.
+  --------------------------------------------------------- */
+  function drawRoot() {
+    const par = 0.70;
+    const face = wx(LAND.root, par);
+    if (face > W + 160) return;
+
+    const breath = 0.5 + 0.5 * Math.sin(t * 0.34);
+
+    // you feel it before you see it
+    const halo = ctx.createLinearGradient(face - 560, 0, face + 40, 0);
+    halo.addColorStop(0, "rgba(120,22,26,0)");
+    halo.addColorStop(1, `rgba(150,30,32,${0.12 + 0.07 * breath})`);
+    ctx.fillStyle = halo;
+    ctx.fillRect(face - 560, 0, 600, H);
+
+    // and past the line there is nothing to look at
+    const cx = Math.max(face, -80);
+    const body = ctx.createLinearGradient(cx, 0, cx + 420, 0);
+    body.addColorStop(0, "#22070b");
+    body.addColorStop(1, "#120407");
+    ctx.fillStyle = body;
+    ctx.fillRect(cx, 0, W - cx + 80, H);
+
+    // the edge, which is the only part worth drawing
+    ctx.strokeStyle = `rgba(214,72,68,${0.34 + 0.2 * breath})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let k = 0; k <= 22; k++) {
-      const u = k / 22, y = u * H;
-      const px = cx + Math.sin(u * 9 + t * 0.4) * 7 + Math.sin(u * 21 - t * 0.25) * 3;
-      if (k === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    for (let k = 0; k <= 30; k++) {
+      const u = k / 30, y = u * H;
+      const px = face + Math.sin(u * 8 + t * 0.4) * 9 + Math.sin(u * 19 - t * 0.25) * 4;
+      k ? ctx.lineTo(px, y) : ctx.moveTo(px, y);
     }
     ctx.stroke();
     ctx.lineWidth = 1;
