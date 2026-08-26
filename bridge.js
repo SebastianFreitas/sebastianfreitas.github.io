@@ -133,6 +133,9 @@
     if (n >= full.length) { bootIdx++; bootLine = null; bootHold = 0.13; }
   }
 
+  // nothing should begin part-way down the page
+  try { scrollTo(0, 0); } catch (e) {}
+
   setLoad(0, "link established");
   setLoad(0, touch ? "input: touch · drag with one finger"
                    : "input: pointer · drag anywhere to travel");
@@ -170,11 +173,14 @@
   const rex = { ridge: [] };
   (function () {
     const r = mulberry(77341);
-    const from = LAND.rex - SLOT * 1.1, to = LAND.rex + SLOT * 1.0;
-    for (let i = 0; i <= 70; i++) {
-      const u = i / 70;
-      rex.ridge.push({ x: from + u * (to - from),
-        h: 0.26 + u * 0.62 + Math.sin(u * 11) * 0.045 + (r() - 0.5) * 0.05 });
+    const from = LAND.rex - SLOT * 1.9, to = LAND.rex + SLOT * 1.0;
+    for (let i = 0; i <= 90; i++) {
+      const u = i / 90;
+      // ends taper to nothing, so the silhouette meets the floor instead of
+      // being cut off by a vertical wall where the polygon closes
+      const skirt = Math.min(1, u / 0.28);
+      const body = 0.20 + u * 0.50 + Math.sin(u * 11) * 0.04 + (r() - 0.5) * 0.045;
+      rex.ridge.push({ x: from + u * (to - from), h: Math.max(0, body * skirt) });
     }
   })();
   setLoad(0, "matter settled · span holding");
@@ -1137,6 +1143,15 @@
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
+
+    // the sign-in runs whether or not the scene is on screen
+    bootTick(raw);
+    warmFrames++;
+    if (warmFrames === 12) {
+      const wait = Math.max(0, 900 - (performance.now() - bootAt));
+      setTimeout(finishLoading, wait);
+    }
+
     if (!visible) return;
 
     // a claim holds the whole scene still while the level lands
@@ -1167,19 +1182,10 @@
     drawMarks(dt);
 
     if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
-      placeNote(activeMark, noteEls[activeMark.id]);
+      placeNote(noteEls[activeMark.id], activeMark);
 
     updateHUD(dt);
 
-    bootTick(raw);
-
-    // let the world draw for a moment before the log can sign anyone in,
-    // so the first thing behind the panel is a settled frame
-    warmFrames++;
-    if (warmFrames === 12) {
-      const wait = Math.max(0, 900 - (performance.now() - bootAt));
-      setTimeout(finishLoading, wait);
-    }
   }
 
   /* the log always plays through — a returning visitor still waits for

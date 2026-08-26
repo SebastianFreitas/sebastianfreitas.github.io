@@ -118,6 +118,7 @@
 /* the instrument panel sits under the log */
 #bridge-term .tinst {
   display: block; width: 352px; height: auto; max-width: 100%;
+  background: rgba(9,13,15,0.35);
   aspect-ratio: 352 / 280; cursor: pointer;
   pointer-events: auto;          /* .bridge-hud is none — opt back in */
 }
