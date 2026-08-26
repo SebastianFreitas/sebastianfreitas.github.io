@@ -33,6 +33,8 @@ window.Instruments = (function () {
   const TOTAL_H = CELL_H * 2 + GAP;
 
   let cv, ctx, dpr = 1, t = 0;
+  let focusKey = null;          // when set, that panel fills the whole rig
+  let uiScale = 1;              // the -/+ control
 
   /* ---- persistent instrument state ---- */
   const BANDS = 24;
@@ -61,7 +63,30 @@ window.Instruments = (function () {
     ctx = cv.getContext("2d");
     resize();
     addEventListener("resize", resize);
+
+    // click a panel to blow it up, click again to drop back
+    cv.addEventListener("pointerdown", e => {
+      e.stopPropagation();
+      const r = cv.getBoundingClientRect();
+      if (focusKey) { focusKey = null; return; }
+      const px = (e.clientX - r.left) / r.width  * TOTAL_W;
+      const py = (e.clientY - r.top)  / r.height * TOTAL_H;
+      for (const p of PANELS) {
+        const x0 = p.col * (CELL_W + GAP), y0 = p.row * (CELL_H + GAP);
+        if (px >= x0 && px <= x0 + CELL_W && py >= y0 && py <= y0 + CELL_H) {
+          focusKey = p.key; return;
+        }
+      }
+    });
   }
+
+  function setScale(v) {
+    uiScale = Math.max(0.7, Math.min(1.7, v));
+    if (cv) cv.style.width = Math.round(TOTAL_W * uiScale) + "px";
+    return uiScale;
+  }
+  const getScale = () => uiScale;
+  const focus = k => { focusKey = k; };
 
   function resize() {
     if (!cv) return;
@@ -77,16 +102,32 @@ window.Instruments = (function () {
     t += dt;
     ctx.clearRect(0, 0, TOTAL_W, TOTAL_H);
 
+    if (focusKey) {
+      const p = PANELS.find(q => q.key === focusKey);
+      if (p) {
+        const big = { key: p.key, label: p.label, w: TOTAL_W, h: TOTAL_H, focused: true };
+        ctx.save();
+        chrome(big, r);
+        paint(big, r, dt);
+        ctx.restore();
+        return;
+      }
+    }
+
     for (const p of PANELS) {
       ctx.save();
       ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
       chrome(p, r);
-      if (p.key === "radar")  radar(p, r, dt);
-      if (p.key === "signal") signal(p, r, dt);
-      if (p.key === "phase")  phase(p, r, dt);
-      if (p.key === "rec")    recorder(p, r, dt);
+      paint(p, r, dt);
       ctx.restore();
     }
+  }
+
+  function paint(p, r, dt) {
+    if (p.key === "radar")  radar(p, r, dt);
+    if (p.key === "signal") signal(p, r, dt);
+    if (p.key === "phase")  phase(p, r, dt);
+    if (p.key === "rec")    recorder(p, r, dt);
   }
 
   /* the frame and caption every panel shares */
@@ -98,6 +139,20 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillText(p.label, 0, p.h - 3);
+
+    // expand / collapse affordance
+    const gx = p.w - 11, gy = 7;
+    ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (p.focused) {
+      ctx.moveTo(gx, gy + 5); ctx.lineTo(gx + 5, gy + 5); ctx.lineTo(gx + 5, gy);
+      ctx.moveTo(gx + 5, gy + 5); ctx.lineTo(gx - 1, gy - 1);
+    } else {
+      ctx.moveTo(gx, gy); ctx.lineTo(gx + 5, gy); ctx.lineTo(gx + 5, gy + 5);
+      ctx.moveTo(gx + 5, gy); ctx.lineTo(gx - 1, gy + 6);
+    }
+    ctx.stroke();
   }
 
   /* =========================================================
@@ -308,5 +363,5 @@ window.Instruments = (function () {
     ctx.fillText(r.spanPct.toFixed(1) + "% CROSSED", 5, 12);
   }
 
-  return { mount, draw, TOTAL_W, TOTAL_H };
+  return { mount, draw, setScale, getScale, focus, TOTAL_W, TOTAL_H };
 })();

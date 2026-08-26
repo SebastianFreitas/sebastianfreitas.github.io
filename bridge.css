@@ -7,20 +7,20 @@
 .bridge-hero {
   position: relative;
   height: 100vh;
-  min-height: 620px;
+  height: 100svh;              /* mobile browser chrome shouldn't push it taller */
+  max-height: 100vh;
+  min-height: 560px;
   overflow: hidden;
   isolation: isolate;
   background: #0d1114;
   cursor: none;
 }
-
 #bridge-canvas {
   position: absolute; inset: 0;
   display: block; width: 100%; height: 100%;
   z-index: 0;
   touch-action: pan-y;      /* we take horizontal drags, the page keeps vertical */
 }
-
 .bridge-hero .vignette,
 .bridge-hero .grain { position: absolute; inset: 0; pointer-events: none; }
 .bridge-hero .vignette {
@@ -31,9 +31,7 @@
   z-index: 5; opacity: 0.05; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-
 .bridge-hero .edge { display: none; }
-
 /* ---- the pitch ---- */
 .bridge-copy {
   position: absolute; z-index: 12;
@@ -43,7 +41,6 @@
   transition: opacity 0.7s, transform 0.7s;
 }
 .bridge-copy.faded { opacity: 0; transform: translateY(-50%) translateX(-16px); pointer-events: none; }
-
 .bridge-copy .eyebrow {
   font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1rem;
@@ -71,7 +68,6 @@
 .bridge-actions .cta:hover { background: #fff; }
 .bridge-actions .cta-ghost { color: var(--sage); border-color: rgba(198,204,198,0.28); }
 .bridge-actions .cta-ghost:hover { color: #fff; border-color: #fff; }
-
 /* ---- HUD ---- */
 .bridge-hud {
   position: absolute; z-index: 10; pointer-events: none;
@@ -83,10 +79,12 @@
 .bridge-hero.live .bridge-hud { opacity: 1; }
 .bridge-hud .k { color: #5f6a68; }
 .bridge-hud .v { color: var(--sage); }
-
 /* ---- the readout ---- */
 #bridge-term {
-  left: 2rem; bottom: 2rem; width: min(30rem, 42vw);
+  left: 2rem; bottom: 2rem; width: auto; max-width: 46vw;
+  /* never taller than the space between the top bar and the map strip */
+  max-height: calc(100% - 11rem);
+  display: flex; flex-direction: column; justify-content: flex-end;
 }
 #bridge-term .tlog {
   display: flex; flex-direction: column; justify-content: flex-end;
@@ -103,18 +101,30 @@
 #bridge-term .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
 #bridge-term .tl.good { color: var(--lamp) !important; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-
+/* cockpit controls */
+.tinst-wrap { position: relative; display: inline-block; padding-top: 0.55rem; border-top: 1px solid #1e262a; }
+.tinst-ctl {
+  position: absolute; right: 0; top: -0.75rem;
+  display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.25s;
+}
+.tinst-wrap:hover .tinst-ctl { opacity: 1; }
+.tinst-ctl button {
+  font-family: var(--mono); font-size: 0.7rem; line-height: 1;
+  width: 18px; height: 18px; padding: 0; cursor: pointer;
+  color: var(--sage-dim); background: rgba(13,17,20,0.8);
+  border: 1px solid rgba(255,255,255,0.09);
+}
+.tinst-ctl button:hover { color: var(--lamp); border-color: rgba(245,208,107,0.5); }
 /* the instrument panel sits under the log */
 #bridge-term .tinst {
-  display: block; width: 100%; max-width: 352px;
-  aspect-ratio: 352 / 280;
-  padding-top: 0.55rem; border-top: 1px solid #1e262a;
-  box-sizing: content-box;
+  display: block; width: 352px; height: auto; max-width: 100%;
+  aspect-ratio: 352 / 280; cursor: pointer;
+  pointer-events: auto;          /* .bridge-hud is none — opt back in */
 }
-
+.tinst-wrap { max-width: 100%; pointer-events: none; }
+.tinst-ctl { pointer-events: auto; }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
-
 #bridge-map .track {
   position: relative; height: 18px; margin-bottom: 0.3rem;
   cursor: pointer; touch-action: none;
@@ -125,11 +135,9 @@
   height: 1px; background: #232c31;
 }
 #bridge-map .track:hover::before { background: #33403f; }
-
 #bridge-map .mk { position: absolute; top: 50%; margin-top: -3px; width: 1px; height: 7px; background: #46545a; }
 #bridge-map .mk.big { margin-top: -6px; height: 12px; background: var(--sage-dim); }
 #bridge-map .track:hover .mk.big { background: var(--sage); }
-
 #bridge-map .you {
   position: absolute; top: 50%; margin-top: -7px;
   width: 2px; height: 14px; background: var(--lamp);
@@ -141,16 +149,13 @@
   opacity: 0; transition: opacity 0.15s;
 }
 #bridge-map .track:hover .ghost { opacity: 1; }
-
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
-
 #bridge-hint {
   left: 50%; transform: translateX(-50%); bottom: 10.2rem;
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
 .bridge-hero.live.moving #bridge-hint { opacity: 0; }
-
 /* ---- landmark notes: positioned next to their beacon by JS ---- */
 .bnote {
   position: absolute; z-index: 14; left: 0; top: 0;
@@ -165,7 +170,6 @@
 }
 .bnote.from-left { border-left: none; border-right: 2px solid var(--lamp); transform: translate(14px, 8px) scale(0.985); }
 .bnote.show { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(0,0) scale(1); }
-
 .bnote .tag {
   font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--brick); margin: 0 0 0.5rem;
@@ -187,7 +191,6 @@
   border-bottom: 1px solid rgba(245,208,107,0.4); padding-bottom: 3px;
 }
 .bnote a:hover { color: #fff; border-color: #fff; }
-
 /* ---- scroll cue ---- */
 .bridge-scroll {
   position: absolute; z-index: 12; right: 2rem; bottom: 2rem;
@@ -195,7 +198,6 @@
   text-transform: uppercase; color: var(--sage-dim); text-decoration: none;
 }
 .bridge-scroll:hover { color: var(--lamp); }
-
 /* ---- cursor ----
    left/top must be set: a fixed element with no offsets keeps its
    static-flow position, so translate() would move it from wherever
@@ -212,21 +214,17 @@
 #bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
 #bridge-cursor.on { opacity: 1; }
 #bridge-cursor.docked { border-color: rgba(245,208,107,0.9); }
-
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
-  .bnote { width: calc(100vw - 2.5rem); }
-  #bridge-term .tinst { max-width: 100%; }
-  #bridge-cursor { display: none; }
-  #bridge-map { width: calc(100vw - 2.5rem); }
+.bnote { width: calc(100vw - 2.5rem); }
+#bridge-term .tinst { width: 100%; }
+#bridge-cursor { display: none; }
+#bridge-map { width: calc(100vw - 2.5rem); }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .bridge-hero { cursor: auto; }
-  #bridge-cursor { display: none; }
+#bridge-cursor { display: none; }
 }
-
-
 /* =========================================================
    Loading, markers, minimap ticks, rights line
    ========================================================= */
@@ -239,18 +237,27 @@
   transition: opacity 0.7s ease, visibility 0.7s;
 }
 .bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
-.bridge-loading .lt {
-  margin: 0; font-family: var(--mono); font-size: 0.66rem;
-  letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-dim);
+/* ---- boot terminal ---- */
+.bridge-loading .boot {
+  width: min(34rem, 78vw);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1.6rem;
 }
-.bridge-loading .lbar {
-  width: min(22rem, 46vw); height: 2px; background: #1e262a; overflow: hidden;
+.boot-log { width: 100%; min-height: 8.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.boot-log .bl {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.09em;
+  color: var(--sage-dim); line-height: 1.5; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  animation: blIn 0.3s ease both;
 }
-.bridge-loading .lbar i {
-  display: block; height: 100%; width: 0; background: var(--lamp);
-  transition: width 0.35s cubic-bezier(.3,.8,.4,1);
+.boot-log .bl::before { content: "> "; color: #3d4644; }
+.boot-log .bl:last-child { color: var(--sage); }
+@keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.boot-gate {
+  align-self: center;
+  opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.8,.3,1);
 }
-
+.boot-gate.on { opacity: 1; transform: none; pointer-events: auto; }
 /* the ticks that mark something worth stopping at */
 #bridge-map .mk.poi {
   margin-top: -9px; height: 18px; width: 2px;
@@ -265,7 +272,14 @@
 }
 #bridge-map .mk.poi:hover { background: #fff; }
 #bridge-map .mk.poi:hover::after { background: #fff; }
-
+/* read: still there, no longer asking for attention */
+#bridge-map .mk.poi.read {
+  background: rgba(125,135,131,0.5); box-shadow: none; height: 12px; margin-top: -6px;
+}
+#bridge-map .mk.poi.read::after {
+  background: rgba(125,135,131,0.6); box-shadow: none; width: 4px; height: 4px; left: -1px; top: -5px;
+}
+#bridge-map .mk.poi.read:hover { background: var(--sage); }
 /* cursor over something inspectable */
 #bridge-cursor.over {
   width: 40px; height: 40px; margin: -20px 0 0 -20px;
@@ -277,8 +291,6 @@ footer .rights {
   margin-top: 1.4rem; font-size: 0.68rem; line-height: 1.7;
   color: #5f6a68; max-width: 52ch;
 }
-
-
 /* region readout crossfades instead of snapping */
 
 
@@ -288,42 +300,17 @@ footer .rights {
 .bridge-loading .entry {
   display: none; text-align: center; max-width: 30rem; padding: 0 1.5rem;
 }
-.bridge-loading.entry-on .entry { display: block; }
-.bridge-loading.entry-on .lt,
-.bridge-loading.entry-on .lbar { display: none; }
-.entry .kicker {
-  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em;
-  text-transform: uppercase; color: var(--brick); margin: 0 0 0.9rem;
-}
-.entry h2 {
-  font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 3.6vw, 2.6rem);
-  letter-spacing: -0.02em; margin: 0 0 0.3rem; color: #fff;
-}
-.entry .ref {
-  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.5rem;
-}
-.entry .lvl {
-  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--sage); margin: 0 0 1.5rem;
-}
-.entry .lvl b { color: var(--lamp); font-size: 1.5rem; font-weight: 600; display: block; margin-top: 0.3rem; }
-.entry p.say { color: var(--sage-dim); font-size: 0.88rem; line-height: 1.65; margin: 0 0 2rem; }
-.entry p.say em { color: var(--lamp); font-style: normal; }
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
-  .bnote { width: calc(100vw - 2.5rem); }
-  #bridge-term .tinst { max-width: 100%; }
-  #bridge-cursor { display: none; }
-  #bridge-map { width: calc(100vw - 2.5rem); }
+.bnote { width: calc(100vw - 2.5rem); }
+#bridge-term .tinst { width: 100%; }
+#bridge-cursor { display: none; }
+#bridge-map { width: calc(100vw - 2.5rem); }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .bridge-hero { cursor: auto; }
-  #bridge-cursor { display: none; }
+#bridge-cursor { display: none; }
 }
-
-
 /* =========================================================
    Loading, markers, minimap ticks, rights line
    ========================================================= */
@@ -336,18 +323,27 @@ footer .rights {
   transition: opacity 0.7s ease, visibility 0.7s;
 }
 .bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
-.bridge-loading .lt {
-  margin: 0; font-family: var(--mono); font-size: 0.66rem;
-  letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-dim);
+/* ---- boot terminal ---- */
+.bridge-loading .boot {
+  width: min(34rem, 78vw);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1.6rem;
 }
-.bridge-loading .lbar {
-  width: min(22rem, 46vw); height: 2px; background: #1e262a; overflow: hidden;
+.boot-log { width: 100%; min-height: 8.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.boot-log .bl {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.09em;
+  color: var(--sage-dim); line-height: 1.5; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  animation: blIn 0.3s ease both;
 }
-.bridge-loading .lbar i {
-  display: block; height: 100%; width: 0; background: var(--lamp);
-  transition: width 0.35s cubic-bezier(.3,.8,.4,1);
+.boot-log .bl::before { content: "> "; color: #3d4644; }
+.boot-log .bl:last-child { color: var(--sage); }
+@keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.boot-gate {
+  align-self: center;
+  opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.8,.3,1);
 }
-
+.boot-gate.on { opacity: 1; transform: none; pointer-events: auto; }
 /* the ticks that mark something worth stopping at */
 #bridge-map .mk.poi {
   margin-top: -9px; height: 18px; width: 2px;
@@ -362,7 +358,14 @@ footer .rights {
 }
 #bridge-map .mk.poi:hover { background: #fff; }
 #bridge-map .mk.poi:hover::after { background: #fff; }
-
+/* read: still there, no longer asking for attention */
+#bridge-map .mk.poi.read {
+  background: rgba(125,135,131,0.5); box-shadow: none; height: 12px; margin-top: -6px;
+}
+#bridge-map .mk.poi.read::after {
+  background: rgba(125,135,131,0.6); box-shadow: none; width: 4px; height: 4px; left: -1px; top: -5px;
+}
+#bridge-map .mk.poi.read:hover { background: var(--sage); }
 /* cursor over something inspectable */
 #bridge-cursor.over {
   width: 40px; height: 40px; margin: -20px 0 0 -20px;
@@ -374,8 +377,6 @@ footer .rights {
   margin-top: 1.4rem; font-size: 0.68rem; line-height: 1.7;
   color: #5f6a68; max-width: 52ch;
 }
-
-
 /* region readout crossfades instead of snapping */
 
 
@@ -390,51 +391,23 @@ footer .rights {
 .bridge-loading .entry {
   display: none; text-align: center; max-width: 30rem; padding: 0 1.5rem;
 }
-.bridge-loading.entry-on .entry { display: block; }
-.bridge-loading.entry-on .lt,
-.bridge-loading.entry-on .lbar { display: none; }
-.entry .kicker {
-  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em;
-  text-transform: uppercase; color: var(--brick); margin: 0 0 0.9rem;
-}
-.entry h2 {
-  font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 3.6vw, 2.6rem);
-  letter-spacing: -0.02em; margin: 0 0 0.3rem; color: #fff;
-}
-.entry .ref {
-  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.5rem;
-}
-.entry .lvl {
-  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--sage); margin: 0 0 1.5rem;
-}
-.entry .lvl b { color: var(--lamp); font-size: 1.5rem; font-weight: 600; display: block; margin-top: 0.3rem; }
-.entry p.say { color: var(--sage-dim); font-size: 0.88rem; line-height: 1.65; margin: 0 0 2rem; }
-.entry p.say em { color: var(--lamp); font-style: normal; }
 /* the first beacon: the same object they'll be clicking out on the span */
 
 @media (max-width: 900px) {
   .bnote { width: calc(100vw - 2.5rem) !important; }
 }
-
-
 /* grabbing the world */
 .bridge-hero { cursor: grab; }
 .bridge-hero.grabbing { cursor: grabbing; }
 #bridge-cursor.over { border-color: rgba(245,208,107,0.9); }
-
 @media (max-width: 760px) {
   #bridge-term { width: calc(100vw - 2.5rem); left: 1.25rem; }
-  #bridge-term .tlog { min-height: 3.6rem; }
+#bridge-term .tlog { min-height: 3.6rem; }
 }
-
-
 /* the hint names one thing at a time, then stops appearing */
 #bridge-hint { transition: opacity 0.5s ease; }
 #bridge-hint.fading { opacity: 0 !important; }
 #bridge-hint.retired { display: none; }
-
 /* held while a level lands */
 .bridge-hero.held { cursor: default; }
 .bridge-hero.held .bnote { transition: opacity .4s ease; }

@@ -11,6 +11,9 @@
 
 window.XP = (function () {
   const KEY = "arcanis.profile.v1";
+  /* every level the site currently has to give — the underline under the
+     top bar reads against this, so raising it is a one-line change */
+  const TOTAL = 19;
 
   const FIRST = ["Unfiled", "Provisional", "Uncounted", "Late", "Second",
                  "Marginal", "Absent", "Recovered", "Partial", "Quiet"];
@@ -51,6 +54,12 @@ window.XP = (function () {
     { at: 40, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
   ];
   const rankFor = lv => RANKS.slice().reverse().find(r => lv >= r.at) || RANKS[0];
+  function rankProgress(lv) {
+    const i = RANKS.findIndex(r => lv < r.at);
+    if (i === -1) return { u: (lv % 10) / 10, next: null };
+    const prev = i > 0 ? RANKS[i - 1].at : 0;
+    return { u: (lv - prev) / (RANKS[i].at - prev), next: RANKS[i].at };
+  }
   const MILESTONES = new Set(RANKS.map(r => r.at).filter(n => n > 0));
 
   /* ---- the chip ---- */
@@ -70,6 +79,7 @@ window.XP = (function () {
     const slot = document.getElementById("xp-slot");
     if (slot) slot.appendChild(chip);
     else { chip.classList.add("floating"); document.body.appendChild(chip); }
+
     chipName  = chip.querySelector(".xp-ref");
     chipLevel = chip.querySelector(".xp-lv b");
     chipFill  = chip.querySelector(".xp-track i");
@@ -88,8 +98,12 @@ window.XP = (function () {
       chip.dataset.rank = rk.key;
       chipPath.setAttribute("d", rk.d);
     }
-    // levels don't cap, so the track shows progress through the current ten
-    chipFill.style.width = ((fillOverride == null ? (lv % 10) / 10 : fillOverride) * 100) + "%";
+    // the chip bar is the level being earned right now, nothing more
+    chipFill.style.width = ((fillOverride == null ? 0 : fillOverride) * 100) + "%";
+
+    // everything earned so far rides quietly as the top bar's underline
+    document.documentElement.style.setProperty("--xp-progress",
+      (Math.min(1, lv / TOTAL) * 100).toFixed(2) + "%");
   }
 
   /* =========================================================
@@ -162,20 +176,23 @@ window.XP = (function () {
     function fill() {
       chip.classList.add("landing");
       if (milestone) chip.classList.add("rankup");
-      let f0 = null;
-      const startFill = (fromLevel % 10) / 10;
-      const rawEnd = ((fromLevel % 10) + n) / 10;
-      const endFill = Math.min(1, rawEnd);
+
+      /* one sweep of the bar per level gained: it fills to the top, and
+         only at the moment it's full does the number turn over */
+      const per = Math.max(240, FILL / n);
+      let step = 0, f0 = null;
 
       function run(now) {
         if (f0 === null) f0 = now;
-        const u = Math.min(1, (now - f0) / FILL);
-        const e = easeIn(u);
-        const shown = fromLevel + Math.round(n * e);
-        paint(shown, startFill + (endFill - startFill) * e);
+        const u = Math.min(1, (now - f0) / per);
+        paint(fromLevel + step, easeIn(u));
         if (u < 1) return requestAnimationFrame(run);
 
-        // committed
+        step++;
+        paint(fromLevel + step, 0);
+        tick();
+        if (step < n) { f0 = null; return requestAnimationFrame(run); }
+
         chip.classList.remove("landing");
         paint();
         bump();
@@ -184,6 +201,12 @@ window.XP = (function () {
         freeze(false);
       }
       requestAnimationFrame(run);
+    }
+
+    function tick() {
+      chip.classList.remove("tick");
+      void chip.offsetWidth;
+      chip.classList.add("tick");
     }
   }
 
@@ -216,6 +239,7 @@ window.XP = (function () {
     get busy() { return ceremonyBusy; },
 
     seen() { fresh = false; save(); },
+    get total() { return TOTAL; },
     mount: buildChip,
 
     reset() { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); },

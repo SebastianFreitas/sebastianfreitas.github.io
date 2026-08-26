@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
-<link rel="stylesheet" href="beacon.css?v=1">
-<link rel="stylesheet" href="bridge.css?v=10">
+<link rel="stylesheet" href="beacon.css?v=4">
+<link rel="stylesheet" href="bridge.css?v=13">
 </head>
 <body>
 
@@ -32,20 +32,13 @@
 ========================================================== -->
 <section class="bridge-hero" id="bridge-hero">
   <div class="bridge-loading" id="bridge-loading">
-    <p class="lt" id="bridge-loadtxt">Reading the span</p>
-    <div class="lbar"><i id="bridge-loadbar"></i></div>
-
-    <div class="entry" id="bridge-entry">
-      <p class="kicker">Provisional entry created</p>
-      <h2 id="entry-name">Unfiled Surveyor</h2>
-      <p class="ref" id="entry-ref">REF ————</p>
-      <p class="lvl">Level <b id="entry-lvl">0</b></p>
-      <p class="say">The census counts what it finds. Anything still unfiled is
-         marked by a beacon — reach one and you go up a <em>level</em>.</p>
-
-      <button type="button" id="entry-go" aria-label="Claim this beacon">
-        <span class="bcn-lbl">Claim this one</span>
-      </button>
+    <div class="boot">
+      <div class="boot-log" id="boot-log"></div>
+      <div class="boot-gate" id="boot-gate">
+        <button type="button" id="entry-go" aria-label="Claim this beacon">
+          <span class="bcn-lbl">Enter</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -70,8 +63,14 @@
   <!-- one readout: a log that keeps writing, with the numbers under it -->
   <div class="bridge-hud" id="bridge-term">
     <div class="tlog" id="btlog"></div>
-    <canvas class="tinst" id="binst"
-            aria-label="Instrument panel: radar, signal, phase, recorder"></canvas>
+    <div class="tinst-wrap">
+      <div class="tinst-ctl">
+        <button type="button" id="binst-out" title="Smaller">&minus;</button>
+        <button type="button" id="binst-in"  title="Bigger">+</button>
+      </div>
+      <canvas class="tinst" id="binst"
+              aria-label="Instrument panel: radar, signal, phase, recorder"></canvas>
+    </div>
   </div>
 
   <div class="bridge-hud" id="bridge-map">
@@ -91,7 +90,6 @@
        happened yet, which is why there is so little of it. Placeholder — this one still needs
        writing.</p>
     <p class="stat"><span>Recorded <b>None</b></span><span>Status <b>Pending</b></span></p>
-    <a href="#" data-link="future">What comes next →</a>
   </aside>
 
   <aside class="bnote" id="bnote-bridge">
@@ -100,26 +98,25 @@
     <p class="body">Placeholder — write this one yourself. It holds because it must, and
        almost nobody has ever stood on it.</p>
     <p class="stat"><span>Law <b>First</b></span><span>Span <b>Unmeasured</b></span></p>
-    <a href="#" data-link="bridge">Follow the span →</a>
   </aside>
 
   <aside class="bnote" id="bnote-void">
     <p class="tag">Open dark</p>
-    <h3>Unmapped</h3>
-    <p class="body">Nothing has been recorded at this bearing. The survey passed through it twice
-       and filed the same page both times. Placeholder — something belongs here eventually.</p>
-    <p class="stat"><span>Survey <b>Blank</b></span><span>Filed <b>Twice</b></span></p>
-    <a href="#" data-link="void">Nothing here yet →</a>
+    <h3>The Void</h3>
+    <p class="body">Emptiness, and the chaos in it. Not distance between things — the
+       uncertainty of whether there are things at all. People do cross it. They tend not
+       to come back, and the ones who do are not reliably the ones who left.</p>
+    <p class="stat"><span>Nature <b>Uncertainty</b></span><span>Returned <b>Few</b></span></p>
   </aside>
 
   <aside class="bnote" id="bnote-rex">
     <p class="tag">Eastern reach</p>
-    <h3>Rex Immotus</h3>
-    <p class="body">An Ouroboros does not hold a law. It is one. Rex stopped being a god the
-       moment he became the matter everything else is made of — which is why the bridge has
-       anything to be anchored to at all.</p>
-    <p class="stat"><span>Class <b>Ouroboros</b></span><span>Law <b>Matter</b></span><span>CR <b>86</b></span></p>
-    <a href="#" data-link="rex">The nine laws →</a>
+    <h3>Rex</h3>
+    <p class="body">Not a place — a piece of one. Rex Immotus was a giant who stood against
+       a fleeting evil and lost, and dying he left his body behind to be used. Every soul
+       that came after got a vessel out of it. He paid, once, for the whole of the soul
+       race to have somewhere to live.</p>
+    <p class="stat"><span>Was <b>Rex Immotus</b></span><span>Left <b>His body</b></span><span>Paid for <b>All of us</b></span></p>
   </aside>
 
   <aside class="bnote" id="bnote-root">
@@ -129,27 +126,28 @@
        here has already happened, and it has been happening in the same place long enough to grow
        into something. What comes out of it comes out hungry, and it is still growing.</p>
     <p class="stat"><span>State <b>Impassable</b></span><span>Reads as <b>The past</b></span><span>Condition <b>Alive</b></span></p>
-    <a href="#" data-link="root">Before the first law →</a>
   </aside>
 
   <aside class="bnote" id="bnote-watcher">
     <p class="tag">Overhead</p>
     <h3>The Watcher</h3>
-    <p class="body">Rex's sun, and an Old One that used to have a job. Observation was the whole
-       of it once — sit above the matter, record what the matter does. Something in that role
-       outgrew itself. It still watches. It is no longer only watching.</p>
-    <p class="stat"><span>Class <b>Great Old One</b></span><span>Was <b>Observer</b></span><span>Now <b>Unclassified</b></span></p>
-    <a href="#" data-link="watcher">What it became →</a>
+    <p class="body">Older than any of it. It once took the shape of an observer and did
+       nothing but look — into the first states of a life, inside the womb, before there
+       was anything to name. It has since found other work. What it does now is hold the
+       void off Rex, and it does not appear to have been asked.</p>
+    <p class="stat"><span>Age <b>Before record</b></span><span>Was <b>Observer</b></span><span>Now <b>Warden</b></span></p>
   </aside>
 
   <aside class="bnote" id="bnote-land">
     <p class="tag">Western reach</p>
     <h3>The Mainland</h3>
-    <p class="body">Every living thing here has a file, or will. Libertech runs the census, and the
-       census has never once finished — not because the work is slow, but because insects turned out
-       clever enough to count, and there are more of them than there are numbers anyone has named.</p>
-    <p class="stat"><span>Authority <b>Libertech</b></span><span>Status <b>Open</b></span><span>Counted <b id="bnote-cat">—</b></span></p>
-    <a href="#" data-link="mainland">Inside the census →</a>
+    <p class="body">This ground was made by a war — pure souls against corrupted ones, and
+       those who watched called them angels and demons. Out of the angels came the first
+       mortal, pure angel blood, who caged demons and took what they had. That was only
+       where it started: he was the first of the five warlocks born here. What stands on
+       it now is a city holding civilians in the quintillions, and Libertech has never
+       finished counting them.</p>
+    <p class="stat"><span>Founded <b>By war</b></span><span>Warlocks <b>Five</b></span><span>Counted <b id="bnote-cat">—</b></span></p>
   </aside>
 </section>
 
@@ -246,9 +244,9 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="xp.js?v=2"></script>
+<script src="xp.js?v=4"></script>
 <script src="beacon.js?v=1"></script>
-<script src="instruments.js?v=1"></script>
-<script src="bridge.js?v=13"></script>
+<script src="instruments.js?v=2"></script>
+<script src="bridge.js?v=15"></script>
 </body>
 </html>

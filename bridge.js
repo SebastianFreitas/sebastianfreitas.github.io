@@ -35,8 +35,9 @@
   const CAM = {
     min: at(1.6),                 // keep going west, into what hasn't happened
     max: LAND.root - 1600,
-    maxFling: 34000,      // ceiling on a hard flick
-    drag: 1.35,           // how quickly a fling bleeds off
+    maxFling: 38000,      // ceiling on a hard flick
+    glideTau: 0.95,       // seconds for a fling to fall to ~37% of its speed
+    carry: 0.62,          // how much of the last throw a new one inherits
     viewUnits: 2100,
     brakeZone: 9000,
   };
@@ -52,15 +53,15 @@
     { id: "bnote-future",  cam: LAND.future,   off: -0.20, oy: 0.26, par: 0.30, xp: 1,
       name: "The Unwritten",  sub: "West of the last recorded thing" },
     { id: "bnote-land",    cam: LAND.mainland, off:  0.22, oy: 0.40, par: 0.66, xp: 1,
-      name: "The Mainland",   sub: "Libertech census in progress" },
+      name: "The Mainland",   sub: "Born of a war between souls" },
     { id: "bnote-void",    cam: LAND.voidmark, off:  0.08, oy: 0.20, par: 0.30, xp: 1,
-      name: "Unmapped",       sub: "Nothing has been recorded here" },
+      name: "The Void",       sub: "The uncertainty of reality itself" },
     { id: "bnote-bridge",  cam: LAND.bridge,   off:  0.16, oy: 0.46, par: 0.94, xp: 1,
       name: "The Bridge",     sub: "First law. It holds because it must" },
     { id: "bnote-watcher", cam: LAND.watcher,  off:  0.23, oy: 0.30, par: 0.24, xp: 1,
-      name: "The Watcher",    sub: "It is no longer only watching" },
+      name: "The Watcher",    sub: "It holds the void off Rex" },
     { id: "bnote-rex",     cam: LAND.rex,      off: -0.21, oy: 0.42, par: 0.62, xp: 1,
-      name: "Rex Immotus",    sub: "The god that became the matter" },
+      name: "Rex",            sub: "The giant who paid for our bodies" },
     { id: "bnote-root",    cam: CAM.max,       off: -0.17, oy: 0.24, par: 0.70, xp: 1,
       name: "The Root",       sub: "It is still growing" },
   ];
@@ -95,19 +96,46 @@
   const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
   const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
 
-  /* ---- loading ---- */
-  const loadEl  = document.getElementById("bridge-loading");
-  const loadBar = document.getElementById("bridge-loadbar");
-  const loadTxt = document.getElementById("bridge-loadtxt");
+  /* ---- boot: a short log, then the way in ------------------
+     The old panel asked people to read a paragraph before they'd
+     seen anything. This states four facts and stops.
+  --------------------------------------------------------- */
+  const loadEl   = document.getElementById("bridge-loading");
+  const bootLog  = document.getElementById("boot-log");
+  const bootGate = document.getElementById("boot-gate");
   const bootAt = performance.now();
-  let loadPct = 0;
-  function setLoad(p, label) {
-    loadPct = Math.max(loadPct, p);
-    if (loadBar) loadBar.style.width = (loadPct * 100).toFixed(1) + "%";
-    if (loadTxt && label) loadTxt.textContent = label;
-  }
-  setLoad(0.05, "Reading the span");
+  const touch = matchMedia("(pointer: coarse)").matches;
 
+  const bootLines = [];
+  let bootIdx = 0, bootChar = 0, bootLine = null, bootHold = 0, bootReady = false;
+
+  function setLoad(_p, label) { if (label) bootLines.push(label); }
+
+  function bootTick(dt) {
+    if (!bootLog || bootReady) return;
+    if (bootHold > 0) { bootHold -= dt; return; }
+
+    if (!bootLine) {
+      if (bootIdx >= bootLines.length) {
+        bootReady = true;
+        if (bootGate) bootGate.classList.add("on");
+        return;
+      }
+      bootLine = document.createElement("div");
+      bootLine.className = "bl";
+      bootLog.appendChild(bootLine);
+      bootChar = 0;
+    }
+    const full = bootLines[bootIdx];
+    bootChar = Math.min(full.length, bootChar + dt * 90);
+    const n = Math.floor(bootChar);
+    bootLine.textContent = full.slice(0, n) + (n < full.length ? "_" : "");
+    if (n >= full.length) { bootIdx++; bootLine = null; bootHold = 0.13; }
+  }
+
+  setLoad(0, "link established");
+  setLoad(0, touch ? "input: touch · drag with one finger"
+                   : "input: pointer · drag anywhere to travel");
   /* ---- the mainland ---- */
   const CITY_FROM = LAND.mainland - SLOT * 0.7;
   const CITY_TO   = LAND.mainland + SLOT * 0.7;
@@ -136,10 +164,10 @@
     band(city.mid,  320, 0.22, 0.56,  30,  84, false, 0.46);
     band(city.near, 190, 0.14, 0.44,  46, 124, true,  0.66);
   })();
-  setLoad(0.3, "Counting the mainland");
+  setLoad(0, "mainland located · census open");
 
   /* ---- Rex ---- */
-  const rex = { ridge: [], shards: [] };
+  const rex = { ridge: [] };
   (function () {
     const r = mulberry(77341);
     const from = LAND.rex - SLOT * 1.1, to = LAND.rex + SLOT * 1.0;
@@ -148,12 +176,8 @@
       rex.ridge.push({ x: from + u * (to - from),
         h: 0.26 + u * 0.62 + Math.sin(u * 11) * 0.045 + (r() - 0.5) * 0.05 });
     }
-    for (let i = 0; i < 46; i++)
-      rex.shards.push({ x: LAND.rex - SLOT * 1.6 + r() * SLOT * 3.2,
-                        y: 0.14 + r() * 0.46, s: 12 + r() * 86,
-                        rot: r() * 6.28, spin: (r() - 0.5) * 0.04, a: 0.16 + r() * 0.5 });
   })();
-  setLoad(0.5, "Settling the matter");
+  setLoad(0, "matter settled · span holding");
 
   /* ---- void: stars, chaos, and things older than the span ---- */
   const blobs = [], motes = [], swarm = [], presences = [], tendrils = [];
@@ -194,7 +218,7 @@
                       ph: r() * 6.28, par: 0.2 + r() * 0.3,
                       dir: r() < 0.5 ? -1 : 1, a: 0.05 + r() * 0.12 });
   })();
-  setLoad(0.72, "Stirring the chaos");
+  setLoad(0, "searching census for you ... not found");
 
   /* ---- fragments of record, drifting in the empty stretches ---- */
   const FRAGMENTS = [
@@ -217,7 +241,8 @@
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
   let flyTo = null, activeMark = null, hoverMark = null;
-  let dragging = false, dragId = null, dragLastX = 0, dragLastT = 0, dragMoved = 0, dragVel = 0;
+  let dragging = false, dragId = null, dragLastX = 0, dragMoved = 0, dragCarry = 0;
+  const dragTrack = [];   // recent {t, x} for working out the throw
   let scrubbing = false, armed = false, armX = 0, armMoved = 0;
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
@@ -307,6 +332,17 @@
     el2.classList.toggle("from-left", !right);
   }
 
+  /* travel to a landmark without touching it: what the map strip does */
+  function travelTo(m) {
+    begin();
+    clearMark();
+    const dist = Math.abs(m.cam - camX);
+    flyTo = { from: camX, to: m.cam, elapsed: 0,
+              dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)) };
+    vel = 0;
+  }
+
+  /* claiming is only ever done by clicking the beacon itself */
   function selectMark(m) {
     begin();
     hintDone("beacon");
@@ -376,13 +412,17 @@
   host.addEventListener("pointerdown", e => {
     // links, buttons and the map keep their own behaviour
     if (frozen) return;
-    if (e.target.closest && e.target.closest("a, button, #bridge-map, .bcn")) return;
+    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, .bcn")) return;
     begin();
     const m = markAt(e.clientX, e.clientY);
     if (m) { selectMark(m); return; }
     dragging = true; dragId = e.pointerId;
-    dragLastX = e.clientX; dragLastT = performance.now();
-    dragMoved = 0; dragVel = 0;
+    dragLastX = e.clientX;
+    dragMoved = 0;
+    // keep whatever the last throw left, so swiping again builds speed
+    dragCarry = vel;
+    dragTrack.length = 0;
+    dragTrack.push({ t: performance.now(), x: e.clientX });
     hintDone("drag");
     flyTo = null; vel = 0;
     host.classList.add("grabbing");
@@ -403,11 +443,13 @@
     if (dragging && e.pointerId === dragId) {
       const now = performance.now();
       const dx = e.clientX - dragLastX;
-      const dt2 = Math.max(1, now - dragLastT) / 1000;
       dragMoved += Math.abs(dx);
       camX -= dx * worldPerPx();
-      dragVel = -(dx * worldPerPx()) / dt2;
-      dragLastX = e.clientX; dragLastT = now;
+      dragLastX = e.clientX;
+
+      dragTrack.push({ t: now, x: e.clientX });
+      while (dragTrack.length > 2 && now - dragTrack[0].t > 110) dragTrack.shift();
+
       if (camX < CAM.min) camX = CAM.min;
       if (camX > CAM.max) camX = CAM.max;
       if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
@@ -424,10 +466,22 @@
     if (dragMoved < 4) clearMark();     // a tap on nothing dismisses the panel
     dragging = false; dragId = null;
     host.classList.remove("grabbing");
-    // a flick keeps going; a slow drag just stops
-    if (dragMoved > 6 && Math.abs(dragVel) > 200)
-      vel = Math.max(-CAM.maxFling, Math.min(CAM.maxFling, dragVel));
-    else vel = 0;
+
+    // throw speed from the last ~110ms of travel, not one jittery frame
+    let thrown = 0;
+    if (dragTrack.length >= 2) {
+      const a = dragTrack[0], b = dragTrack[dragTrack.length - 1];
+      const secs = Math.max(0.016, (b.t - a.t) / 1000);
+      thrown = -((b.x - a.x) * worldPerPx()) / secs;
+    }
+
+    if (dragMoved > 5 && Math.abs(thrown) > 60) {
+      // a second throw in the same direction stacks on the first
+      const same = dragCarry !== 0 && Math.sign(dragCarry) === Math.sign(thrown);
+      const total = thrown + (same ? dragCarry * CAM.carry : 0);
+      vel = Math.max(-CAM.maxFling, Math.min(CAM.maxFling, total));
+    } else vel = 0;
+    dragTrack.length = 0;
   }
   addEventListener("pointerup", endDrag);
   addEventListener("pointercancel", () => { endDrag(); stopSteering(); });
@@ -457,7 +511,9 @@
       d.className = "mk poi";
       d.style.left = ((m.cam - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
       d.title = m.name;
-      d.addEventListener("pointerdown", ev => { ev.stopPropagation(); selectMark(m); });
+      d.dataset.mark = m.id;
+      if (window.XP && XP.has("beacon-" + m.id)) d.classList.add("read");
+      d.addEventListener("pointerdown", ev => { ev.stopPropagation(); hintDone("map"); travelTo(m); });
       track.appendChild(d);
     }
     for (let i = 0; i < 30; i++) {
@@ -489,6 +545,14 @@
     });
     track.addEventListener("pointercancel", () => { armed = false; scrubbing = false; });
   }
+  /* a tick that's been read stops shouting, so what's left is obvious */
+  document.addEventListener("xp:award", e => {
+    if (!track || !/^beacon-/.test(e.detail.id)) return;
+    const id = e.detail.id.replace(/^beacon-/, "");
+    const d = track.querySelector(`[data-mark="${id}"]`);
+    if (d) d.classList.add("read");
+  });
+
   const easeInOut = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 
   /* ---- draw: stars ---- */
@@ -747,19 +811,6 @@
 
   function drawRex() {
     const floor = H * FLOOR;
-    for (const sh of rex.shards) {
-      const x = wx(sh.x, 0.38);
-      if (!onScreen(x, 180)) continue;
-      sh.rot += sh.spin * 0.01;
-      ctx.save();
-      ctx.translate(x, sh.y * H + Math.sin(t * 0.3 + sh.x * 0.001) * 12);
-      ctx.rotate(sh.rot);
-      ctx.globalAlpha = sh.a * 0.72; ctx.fillStyle = "#243036";
-      ctx.beginPath();
-      ctx.moveTo(-sh.s * .5, -sh.s * .2); ctx.lineTo(sh.s * .4, -sh.s * .5);
-      ctx.lineTo(sh.s * .5, sh.s * .3);   ctx.lineTo(-sh.s * .2, sh.s * .5);
-      ctx.closePath(); ctx.fill(); ctx.restore();
-    }
     ctx.globalAlpha = 1;
     const par = 0.62;
     if (wx(rex.ridge[rex.ridge.length - 1].x, par) < -160 || wx(rex.ridge[0].x, par) > W + 160) return;
@@ -924,7 +975,20 @@
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
   const el = { log: document.getElementById("btlog") };
-  if (window.Instruments) Instruments.mount(document.getElementById("binst"));
+  if (window.Instruments) {
+    Instruments.mount(document.getElementById("binst"));
+    const IK = "arcanis.inst.scale";
+    let iscale = parseFloat(localStorage.getItem(IK) || "1") || 1;
+    Instruments.setScale(iscale);
+    const step = d => {
+      iscale = Instruments.setScale(iscale + d);
+      try { localStorage.setItem(IK, String(iscale)); } catch (e) {}
+    };
+    const bIn = document.getElementById("binst-in");
+    const bOut = document.getElementById("binst-out");
+    if (bIn)  bIn.addEventListener("pointerdown", e => { e.stopPropagation(); step(0.15); });
+    if (bOut) bOut.addEventListener("pointerdown", e => { e.stopPropagation(); step(-0.15); });
+  }
 
   const LOG_MAX = 5;
   let logHead = null, logQueue = [], nextIdle = 3.5;
@@ -1055,8 +1119,9 @@
       return;
     }
 
-    vel *= Math.pow(1 / (1 + CAM.drag), dt * 6);
-    if (Math.abs(vel) < 6) vel = 0;
+    // exponential coast — a hard throw carries a long way before it settles
+    vel *= Math.exp(-dt / CAM.glideTau);
+    if (Math.abs(vel) < 8) vel = 0;
 
     const prev = camX;
     camX += vel * dt;
@@ -1067,7 +1132,7 @@
   }
 
   /* ---- loop ---- */
-  let last = performance.now(), firstFrame = true;
+  let last = performance.now(), warmFrames = 0;
   function frame(now) {
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
@@ -1106,37 +1171,48 @@
 
     updateHUD(dt);
 
-    if (firstFrame) {
-      firstFrame = false;
-      setLoad(1, "Ready");
-      const wait = Math.max(0, 700 - (performance.now() - bootAt));
+    bootTick(raw);
+
+    // let the world draw for a moment before the log can sign anyone in,
+    // so the first thing behind the panel is a settled frame
+    warmFrames++;
+    if (warmFrames === 12) {
+      const wait = Math.max(0, 900 - (performance.now() - bootAt));
       setTimeout(finishLoading, wait);
     }
   }
 
-  /* the bar fills, then a new visitor is filed before the span opens */
+  /* the log always plays through — a returning visitor still waits for
+     the scene to settle rather than being dropped into a half-drawn frame */
   function finishLoading() {
     if (!loadEl) return;
-    const entry = document.getElementById("bridge-entry");
-    if (entry && window.XP && XP.isNew) {
-      const n = document.getElementById("entry-name");
-      const r = document.getElementById("entry-ref");
-      const l = document.getElementById("entry-lvl");
-      if (n) n.textContent = XP.name;
-      if (r) r.textContent = "REF " + XP.ref;
-      if (l) l.textContent = XP.level;
-      loadEl.classList.add("entry-on");
-      const go = document.getElementById("entry-go");
-      if (go && window.Beacon) Beacon.attach(go, {
-        id: "entry-beacon", xp: 1, label: "Filed",
-        onClaim: () => { XP.seen(); loadEl.classList.add("done"); },
-      });
+    const known = !(window.XP && XP.isNew);
+
+    if (known) {
+      setLoad(0, `entry found: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
+      setLoad(0, `level ${XP.level} of ${XP.total} · resuming`);
     } else {
-      loadEl.classList.add("done");
+      setLoad(0, `provisional entry: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
+      setLoad(0, "level 0 · one unfiled beacon in reach");
+    }
+
+    const go = document.getElementById("entry-go");
+    if (!go) return;
+
+    if (known) {
+      // nothing left to claim here — it's just the way in
+      const lbl = go.querySelector(".bcn-lbl");
+      if (lbl) lbl.textContent = "Continue";
+      go.classList.add("plain");
+      go.addEventListener("click", () => loadEl.classList.add("done"), { once: true });
+    } else if (window.Beacon) {
+      Beacon.attach(go, {
+        id: "entry-beacon", xp: 1, label: "Filed",
+        onClaim: () => { XP.seen(); setTimeout(() => loadEl.classList.add("done"), 900); },
+      });
     }
   }
 
-  setLoad(0.92, "Lighting the span");
   if (!reduced) requestAnimationFrame(frame);
   else {
     ctx.fillStyle = "#0d1114"; ctx.fillRect(0, 0, W, H);
