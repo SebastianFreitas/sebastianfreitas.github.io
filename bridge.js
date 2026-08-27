@@ -97,76 +97,41 @@
   const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
   const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
 
-  /* ---- boot: a short log, then the way in ------------------
-     The old panel asked people to read a paragraph before they'd
-     seen anything. This states four facts and stops.
-  --------------------------------------------------------- */
-  const loadEl   = document.getElementById("bridge-loading");
-  const bootLog  = document.getElementById("boot-log");
-  const bootGate = document.getElementById("boot-gate");
-  const bootAt = performance.now();
-  const touch = matchMedia("(pointer: coarse)").matches;
-
-  const bootLines = [];
-  let bootIdx = 0, bootChar = 0, bootLine = null, bootHold = 0, bootReady = false;
-  // finishLoading pushes the identity lines ~900ms in. The first two
-  // generic lines type out faster than that, so the gate used to open
-  // and lock bootReady before those lines existed — returning visitors
-  // never saw "entry found" / "Continue", and nobody got signed in.
-  let bootSigned = false;
-
-  function setLoad(_p, label) { if (label) bootLines.push(label); }
-
-  function revealGate() {
-    if (bootReady) return;
-    bootReady = true;
-    if (bootGate) bootGate.classList.add("on");
-  }
-
-  function bootTick(dt) {
-    if (!bootLog || bootReady) return;
-    if (bootHold > 0) { bootHold -= dt; return; }
-
-    if (!bootLine) {
-      if (bootIdx >= bootLines.length) {
-        if (!bootSigned) return;
-        revealGate();
-        return;
-      }
-      bootLine = document.createElement("div");
-      bootLine.className = "bl";
-      bootLog.appendChild(bootLine);
-      bootChar = 0;
-    }
-    const full = bootLines[bootIdx];
-    bootChar = Math.min(full.length, bootChar + dt * 90);
-    const n = Math.floor(bootChar);
-    bootLine.textContent = full.slice(0, n) + (n < full.length ? "_" : "");
-    if (n >= full.length) { bootIdx++; bootLine = null; bootHold = 0.13; }
-  }
-
   // nothing should begin part-way down the page
   try { scrollTo(0, 0); } catch (e) {}
 
-  /* the way in is wired once, unconditionally. Whether the visitor is
-     new, known, or arriving on a different origin with empty storage,
-     this button opens the site. */
-  (function wireGate() {
-    const go = document.getElementById("entry-go");
-    if (!go) return;
-    go.addEventListener("click", () => {
-      if (window.XP) XP.seen();
-      setTimeout(() => {
-        if (loadEl) loadEl.classList.add("done");
-        begin();                 // .live is what reveals the whole HUD
-      }, 620);
-    });
-  })();
+  /* ---- defer interaction until the gate picks a path ---- */
+  let loopOn = false, bridgeReady = false;
 
-  setLoad(0, "link established");
-  setLoad(0, touch ? "input: touch · hold to burn toward a point"
-                   : "input: pointer · hold to burn toward a point");
-  setLoad(0, `build bridge-v33 · voidship · motion ${reduced ? "reduce" : "full"}`);
+  function readyBridge() {
+    if (bridgeReady) return;
+    bridgeReady = true;
+    begin();
+  }
+
+  function startLoop() {
+    if (loopOn) return;
+    loopOn = true;
+    last = performance.now();
+    requestAnimationFrame(frame);
+  }
+
+  document.addEventListener("site:preload", () => startLoop());
+
+  document.addEventListener("site:enter", e => {
+    startLoop();
+    if (e.detail.bridge !== false) readyBridge();
+    else {
+      const wake = () => {
+        if (window.scrollY < window.innerHeight * 0.45) {
+          removeEventListener("scroll", wake);
+          readyBridge();
+        }
+      };
+      addEventListener("scroll", wake, { passive: true });
+    }
+  });
+
   /* ---- state ---- */
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
@@ -218,17 +183,7 @@
     }
   }
 
-  // reaching the work counts for something too
-  const workSec = document.getElementById("work");
-  if (workSec && "IntersectionObserver" in window) {
-    const io2 = new IntersectionObserver(es => {
-      if (es[0].isIntersecting) {
-        io2.disconnect();
-        if (window.XP) XP.award("act-work", 1, "Found the work");
-      }
-    }, { threshold: 0.25 });
-    io2.observe(workSec);
-  }
+  // path-projects is awarded from intro.js (click or visiting #work)
 
   /* ---- notes ---- */
   const noteEls = {};
@@ -411,7 +366,7 @@
   }
 
   host.addEventListener("pointerdown", e => {
-    if (frozen) return;
+    if (frozen || document.body.classList.contains("site-frozen")) return;
     if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, .bcn")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
@@ -720,19 +675,12 @@
   }
 
   /* ---- loop ---- */
-  let last = performance.now(), warmFrames = 0;
+  let last = performance.now();
   function frame(now) {
+    if (!loopOn) return;
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
-
-    // the sign-in runs whether or not the scene is on screen
-    bootTick(raw);
-    warmFrames++;
-    if (warmFrames === 12) {
-      const wait = Math.max(0, 900 - (performance.now() - bootAt));
-      setTimeout(finishLoading, wait);
-    }
 
     if (!visible) return;
 
@@ -742,7 +690,7 @@
 
     step(dt);
 
-    // ambience eases toward where you are, never cuts
+    // render behind the gate while assets warm up
     chaosNow  = approach(chaosNow,  World.chaosAt(camX),  1.4, dt);
     futureNow = approach(futureNow, World.futureAt(camX), 1.4, dt);
 
@@ -760,45 +708,13 @@
       if (ship) {
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
       }
-      if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
+      if (bridgeReady && activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
         placeNote(noteEls[activeMark.id], activeMark);
     } catch (err) {
       if (!frame._warned) { frame._warned = 1; console.warn("beacon layer:", err); }
     }
 
-    updateHUD(dt);
+    if (bridgeReady) updateHUD(dt);
 
   }
-
-  /* the log signs you in; the gate itself is already wired above */
-  function finishLoading() {
-    if (bootSigned) return;
-    if (window.XP) {
-      if (XP.isNew) {
-        setLoad(0, `provisional entry: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
-        setLoad(0, "level 0 · claim the beacon to enter");
-      } else {
-        setLoad(0, `entry found: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
-        setLoad(0, `level ${XP.level} of ${XP.total} · resuming`);
-        const lbl = document.querySelector("#entry-go .bcn-lbl");
-        if (lbl) lbl.textContent = "Continue";
-      }
-    }
-    bootSigned = true;
-  }
-
-  if (reduced) {
-    // still type the gate lines immediately — loop runs either way
-    finishLoading();
-    if (bootLog) {
-      bootLines.forEach(full => {
-        const line = document.createElement("div");
-        line.className = "bl";
-        line.textContent = full;
-        bootLog.appendChild(line);
-      });
-    }
-    revealGate();
-  }
-  requestAnimationFrame(frame);
 })();

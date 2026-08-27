@@ -429,6 +429,3 @@ footer .rights {
 .bridge-hero.held { cursor: default; }
 .bridge-hero.held .bnote { transition: opacity .4s ease; }
 
-
-/* the way in is a beacon, never a browser button */
-#entry-go { appearance: none; -webkit-appearance: none; background: none; border: 0; }

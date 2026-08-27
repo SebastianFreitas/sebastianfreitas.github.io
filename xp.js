@@ -13,7 +13,7 @@ window.XP = (function () {
   const KEY = "arcanis.profile.v1";
   /* every level the site currently has to give — the underline under the
      top bar reads against this, so raising it is a one-line change */
-  const TOTAL = 19;
+  const TOTAL = 20;
 
   const FIRST = ["Unfiled", "Provisional", "Uncounted", "Late", "Second",
                  "Marginal", "Absent", "Recovered", "Partial", "Quiet"];
@@ -43,6 +43,15 @@ window.XP = (function () {
     fresh = true;
   }
   if (!state.claimed) state.claimed = {};
+  /* legacy */
+  if (!state.seen && (state.level > 0 || state.claimed["entry-beacon"])) {
+    state.seen = true;
+    save();
+  }
+  if (state.claimed["act-work"] && !state.claimed["path-projects"]) {
+    state.claimed["path-projects"] = true;
+    save();
+  }
 
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
@@ -253,6 +262,7 @@ window.XP = (function () {
     get name()   { return state.name; },
     get ref()    { return state.ref; },
     get isNew()  { return fresh; },
+    get known()  { return !!state.seen; },
     has: id => !!state.claimed[id],
 
     /* awards once and only once per id */
@@ -269,7 +279,7 @@ window.XP = (function () {
 
     get busy() { return ceremonyBusy; },
 
-    seen() { fresh = false; save(); },
+    seen() { fresh = false; state.seen = true; save(); },
     get total() { return TOTAL; },
     mount: buildChip,
 

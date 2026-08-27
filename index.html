@@ -8,9 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=8">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=18">
+<link rel="stylesheet" href="bridge.css?v=20">
+<script src="xp.js?v=12"></script>
+<script>
+/* One rule for skip: seen. Must run after xp.js, before body paints. */
+try {
+  if (window.XP && XP.known)
+    document.documentElement.classList.add("gate-done");
+} catch (e) {}
+</script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
    them; http://127.0.0.1:8000 often did, and they served ghost JS. */
@@ -40,30 +48,32 @@
   </nav>
 </header>
 
+<!-- ================= GATE: first visit ================= -->
+<div class="site-gate" id="site-gate">
+  <div class="gate-stage">
+    <div class="gate-shell" id="gate-shell">
+      <div class="gate-log" id="gate-log" aria-live="polite"></div>
+    </div>
+    <div class="gate-panel" id="gate-panel" hidden>
+      <p class="gate-eyebrow">Sebastião Freitas</p>
+      <h1 class="gate-title">Worlds, and the <em>systems</em> that make them fun.</h1>
+      <p class="gate-lede">Gameplay and systems programmer — Unity, Unreal, C#, C++.
+         I build places people want to stay in, then the rules that make those places
+         worth exploring.</p>
+      <div class="gate-actions">
+        <button type="button" id="gate-world" class="gate-btn">World building</button>
+        <button type="button" id="gate-projects" class="gate-btn">Game Projects</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= HERO: the bridge =================
      A traversable slice of Arcanis Primordia. Push the cursor
      toward a screen edge to cross; slow down near a landmark
      and it tells you what it is.
 ========================================================== -->
 <section class="bridge-hero" id="bridge-hero">
-  <div class="bridge-loading" id="bridge-loading">
-    <div class="boot">
-      <div class="boot-log" id="boot-log"></div>
-      <div class="boot-gate" id="boot-gate">
-        <button type="button" id="entry-go" class="bcn"
-                data-beacon data-beacon-id="entry-beacon" data-xp="1" data-label="Filed"
-                aria-label="Claim this beacon">
-          <span class="bcn-mark" aria-hidden="true">
-            <i class="bcn-arm"></i><i class="bcn-arm"></i>
-            <i class="bcn-core"></i><i class="bcn-ring"></i>
-          </span>
-          <span class="bcn-xp">+1</span>
-          <span class="bcn-lbl">Claim this one</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
 
   <div class="vignette"></div>
@@ -259,12 +269,12 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="xp.js?v=10"></script>
 <script src="surge.js?v=3"></script>
 <script src="lamp.js?v=1"></script>
 <script src="instruments.js?v=9"></script>
 <script src="world.js?v=7"></script>
 <script src="voidship.js?v=10"></script>
-<script src="bridge.js?v=39"></script>
+<script src="bridge.js?v=42"></script>
+<script src="intro.js?v=4"></script>
 </body>
 </html>

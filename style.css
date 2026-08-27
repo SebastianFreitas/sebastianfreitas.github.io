@@ -70,6 +70,109 @@ a:hover { color: #fff; }
 .topbar nav a { color: var(--sage-dim); text-decoration: none; }
 .topbar nav a:hover { color: var(--lamp); }
 
+/* ---------------- site gate (first visit) ---------------- */
+
+html.gate-done .site-gate { display: none; }
+
+body.site-frozen { overflow: hidden; }
+body.site-frozen > *:not(.site-gate) {
+  pointer-events: none;
+  user-select: none;
+}
+
+.site-gate {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  background: rgba(13, 17, 20, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  transition: opacity 0.55s ease, visibility 0.55s;
+}
+.site-gate.done {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  display: none;
+}
+
+/* one centred stage — terminal box, then bio replaces it */
+.gate-stage {
+  position: relative;
+  width: min(34rem, 90vw);
+  min-height: 12rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---- terminal window ---- */
+.gate-shell {
+  width: 100%;
+  text-align: left;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.gate-shell.out {
+  opacity: 0; transform: translateY(-6px);
+  pointer-events: none; position: absolute; inset: 0;
+}
+
+.gate-log {
+  min-height: 9.5rem;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0.28rem;
+}
+.gate-log .bl {
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.09em;
+  text-transform: lowercase; color: #58635f; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+  text-align: left;
+  animation: blIn 0.3s ease both;
+}
+.gate-log .bl::before { content: "> "; color: #3d4644; }
+.gate-log .bl:last-child { color: var(--sage); }
+@keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* ---- bio panel (replaces terminal) ---- */
+.gate-panel {
+  width: 100%;
+  text-align: center;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(.2,.8,.3,1);
+}
+.gate-panel.on { opacity: 1; transform: none; pointer-events: auto; }
+
+.gate-eyebrow {
+  font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 0.85rem;
+}
+.gate-title {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(1.75rem, 4.8vw, 2.55rem); line-height: 1.08;
+  letter-spacing: -0.03em; margin: 0 0 1rem;
+  color: #fff;
+}
+.gate-title em {
+  font-style: normal; color: var(--lamp);
+}
+.gate-lede {
+  margin: 0 0 2rem; color: var(--sage);
+  font-size: 0.96rem; line-height: 1.65;
+}
+.gate-actions {
+  display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap;
+}
+.gate-btn {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em;
+  text-transform: uppercase; cursor: pointer;
+  padding: 0.75rem 1.35rem;
+  color: var(--sage);
+  background: rgba(20, 26, 29, 0.65);
+  border: 1px solid rgba(198, 204, 198, 0.32);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.gate-btn:hover {
+  color: var(--lamp);
+  border-color: rgba(245, 208, 107, 0.55);
+  background: rgba(27, 35, 39, 0.9);
+}
+
 /* ---------------- hero ---------------- */
 
 .hero {
