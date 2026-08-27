@@ -51,7 +51,6 @@
 .xp-badge path {
   fill: none; stroke: var(--lamp); stroke-width: 1.6;
   stroke-linejoin: round;
-  transition: d 0.45s ease;
 }
 .xp-chip[data-rank="dot"] .xp-badge path { fill: var(--sage-dim); stroke: none; }
 .xp-chip[data-rank="star"] .xp-badge path { fill: rgba(245,208,107,0.18); }
@@ -120,8 +119,14 @@
      <button data-beacon data-beacon-id="x" data-xp="2"
              data-label="Name"><span class="bcn-lbl">Text</span></button>
    ========================================================= */
+.bcn,
+button.bcn,
+#entry-go {
+  -webkit-appearance: none; appearance: none;
+  background: none !important; border: 0; box-shadow: none; color: inherit;
+}
 .bcn {
-  position: relative; background: none; border: 0; cursor: pointer;
+  position: relative; cursor: pointer;
   display: inline-flex; flex-direction: column; align-items: center; gap: 0.85rem;
   padding: 1.3rem 1.9rem 0.9rem; color: inherit; text-decoration: none;
   font: inherit;
@@ -185,60 +190,87 @@
 }
 
 
-/* =========================================================
-   THE SURGE — light running the edge of the page on level-up.
-   Each leg is a strip whose lit fraction is --reach (0 to 1).
-   JS walks reach around the four legs in order.
-   ========================================================= */
-.xp-surge {
-  position: fixed; inset: 0; z-index: 95;
-  pointer-events: none;
-  --origin: 50%;
+/* ---- claiming a beacon ---- */
+.bcn.claiming .bcn-mark::after,
+.bcn.claiming .bcn-mark::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  border-radius: 50%; pointer-events: none;
 }
-.xp-surge i {
+.bcn.claiming .bcn-mark::after {
+  width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  border: 2px solid var(--lamp);
+  animation: bcnBurst 0.7s cubic-bezier(.15,.7,.3,1) forwards;
+}
+.bcn.claiming .bcn-mark::before {
+  width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  background: radial-gradient(circle, rgba(255,248,225,0.75), rgba(255,248,225,0));
+  animation: bcnFlash 0.45s ease-out forwards;
+}
+.bcn.claiming .bcn-core { animation: bcnKick 0.55s cubic-bezier(.2,.9,.3,1); }
+@keyframes bcnBurst { 0% { transform: scale(0.35); opacity: 0.95; }
+                      100% { transform: scale(3.4); opacity: 0; } }
+@keyframes bcnFlash { 0% { transform: scale(0.4); opacity: 0.9; }
+                      100% { transform: scale(2.4); opacity: 0; } }
+@keyframes bcnKick  { 0% { transform: scale(1); } 30% { transform: scale(2.6); } 100% { transform: scale(1); } }
+
+/* ---- the rank shape leaves before the next one arrives ---- */
+.xp-badge { transition: none; }
+.xp-badge.swapping { animation: rankOut 0.22s ease-in forwards; }
+.xp-badge.arrived  { animation: rankIn 0.5s cubic-bezier(.2,.9,.3,1); }
+@keyframes rankOut { 0% { transform: scale(1) rotate(0); opacity: 1; }
+                     100% { transform: scale(0.1) rotate(140deg); opacity: 0; } }
+@keyframes rankIn  { 0% { transform: scale(0.15) rotate(-120deg); opacity: 0; }
+                     55% { transform: scale(1.45) rotate(8deg); opacity: 1; }
+                     100% { transform: none; opacity: 1; } }
+
+/* the surge flash scales with how far the light reached */
+
+
+/* =========================================================
+   SURGE — six rails of light around the edge of the page.
+
+   Two branches leave the level number, run opposite ways along
+   the top, turn down the sides and meet underneath. surge.js
+   sets the length of each rail; everything else is here.
+   ========================================================= */
+.surge {
+  position: fixed; inset: 0; z-index: 96; pointer-events: none;
+  --surge-x: 50%;
+  --surge-heat: 0.4;
+  opacity: 0; transition: opacity 0.2s linear;
+}
+.surge.on { opacity: 1; }
+
+.surge-rail {
   position: absolute; display: block;
-  --reach: 0;
   background: linear-gradient(var(--dir, 90deg),
     rgba(245,208,107,0) 0%,
-    rgba(245,208,107,0.75) 35%,
+    rgba(245,208,107,calc(0.55 + 0.45 * var(--surge-heat))) 55%,
     #fff6dd 100%);
-  box-shadow: 0 0 14px 2px rgba(245,208,107,0.55);
-  opacity: var(--reach);
+  box-shadow: 0 0 calc(8px + 16px * var(--surge-heat)) rgba(245,208,107,0.7);
+  height: 2px; width: 0;
 }
+.surge.rank .surge-rail { height: 3px; }
 
-/* top: grows out of the chip toward the right-hand corner */
-.xp-surge .s-top {
-  top: 0; left: var(--origin); height: 2px;
-  width: calc((100% - var(--origin)) * var(--reach));
-}
-/* right: down the side */
-.xp-surge .s-right {
-  top: 0; right: 0; width: 2px;
-  height: calc(100% * var(--reach));
-  --dir: 180deg;
-}
-/* bottom: back across, right to left */
-.xp-surge .s-bottom {
-  bottom: 0; right: 0; height: 2px;
-  width: calc(100% * var(--reach));
-  --dir: 270deg;
-}
-/* left: up the side, closing the loop */
-.xp-surge .s-left {
-  bottom: 0; left: 0; width: 2px;
-  height: calc(100% * var(--reach));
-  --dir: 0deg;
-}
+/* along the top, both ways out of the number */
+.surge-rail.topL { top: 0; right: calc(100% - var(--surge-x)); --dir: 270deg; }
+.surge-rail.topR { top: 0; left: var(--surge-x); --dir: 90deg; }
 
-.xp-surge .s-flash {
+/* down the sides */
+.surge-rail.sideL { top: 0; left: 0;  width: 2px; height: 0; --dir: 180deg; }
+.surge-rail.sideR { top: 0; right: 0; width: 2px; height: 0; --dir: 180deg; }
+.surge.rank .surge-rail.sideL,
+.surge.rank .surge-rail.sideR { width: 3px; }
+
+/* and back along the bottom to meet in the middle */
+.surge-rail.botL { bottom: 0; left: 0;  --dir: 90deg; }
+.surge-rail.botR { bottom: 0; right: 0; --dir: 270deg; }
+
+.surge-flash {
   position: absolute; inset: 0; display: block;
   background: #fff; opacity: 0;
-  transition: opacity 0.09s ease-out;
+  transition: opacity 0.1s ease-out;
 }
-.xp-surge .s-flash.go { opacity: 0.12; }
+.surge-flash.go { opacity: 0.14; }
 
-@media (prefers-reduced-motion: reduce) { .xp-surge { display: none; } }
-
-
-/* the way back in for someone already on file — no claim, no badge */
-.bcn.plain .bcn-xp { display: none; }
+@media (prefers-reduced-motion: reduce) { .surge { display: none; } }

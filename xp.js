@@ -48,10 +48,10 @@ window.XP = (function () {
   const RANKS = [
     { at: 0,  key: "dot",      d: "M12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z" },
     { at: 1,  key: "triangle", d: "M12 3 22 20H2z" },
-    { at: 2, key: "square",   d: "M4 4h16v16H4z" },
-    { at: 3, key: "squircle", d: "M12 3c7 0 9 2 9 9s-2 9-9 9-9-2-9-9 2-9 9-9z" },
-    { at: 4, key: "circle",   d: "M12 2.6A9.4 9.4 0 1 0 12 21.4 9.4 9.4 0 0 0 12 2.6z" },
-    { at: 5, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
+    { at: 10, key: "square",   d: "M4 4h16v16H4z" },
+    { at: 20, key: "squircle", d: "M12 3c7 0 9 2 9 9s-2 9-9 9-9-2-9-9 2-9 9-9z" },
+    { at: 30, key: "circle",   d: "M12 2.6A9.4 9.4 0 1 0 12 21.4 9.4 9.4 0 0 0 12 2.6z" },
+    { at: 40, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
   ];
   const rankFor = lv => RANKS.slice().reverse().find(r => lv >= r.at) || RANKS[0];
   function rankProgress(lv) {
@@ -85,18 +85,30 @@ window.XP = (function () {
     chipFill  = chip.querySelector(".xp-track i");
     chipBadge = chip.querySelector(".xp-badge");
     chipPath  = chip.querySelector(".xp-badge path");
+    if (!chipName || !chipLevel || !chipFill) return;   // markup changed under us
     paint();
   }
 
   function paint(levelOverride, fillOverride) {
-    if (!chip) return;
+    if (!chip || !chipName || !chipLevel || !chipFill) return;
     const lv = levelOverride == null ? state.level : levelOverride;
     chipName.textContent = state.name + " · " + state.ref;
     chipLevel.textContent = lv;
     const rk = rankFor(lv);
-    if (chipPath && chip.dataset.rank !== rk.key) {
+    if (chipPath && chipBadge && chip.dataset.rank !== rk.key) {
+      const first = !chip.dataset.rank;
       chip.dataset.rank = rk.key;
-      chipPath.setAttribute("d", rk.d);
+      if (first) chipPath.setAttribute("d", rk.d);
+      else {
+        // the old shape leaves before the new one arrives
+        chipBadge.classList.add("swapping");
+        setTimeout(() => {
+          chipPath.setAttribute("d", rk.d);
+          chipBadge.classList.remove("swapping");
+          chipBadge.classList.add("arrived");
+          setTimeout(() => chipBadge.classList.remove("arrived"), 520);
+        }, 220);
+      }
     }
     // the chip bar is the level being earned right now, nothing more
     chipFill.style.width = ((fillOverride == null ? 0 : fillOverride) * 100) + "%";
@@ -131,7 +143,7 @@ window.XP = (function () {
 
     ceremonyBusy = true;
     freeze(true);
-    paint(fromLevel, (fromLevel % 10) / 10);
+    paint(fromLevel, 0);          // the run-up always starts empty
 
     const target = chip.getBoundingClientRect();
     const tx = target.left + target.width * 0.5;
@@ -191,6 +203,9 @@ window.XP = (function () {
         step++;
         paint(fromLevel + step, 0);
         tick();
+        document.dispatchEvent(new CustomEvent("xp:surge", {
+          detail: { level: fromLevel + step, total: TOTAL, milestone },
+        }));
         if (step < n) { f0 = null; return requestAnimationFrame(run); }
 
         chip.classList.remove("landing");

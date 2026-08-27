@@ -30,10 +30,12 @@ window.Beacon = (function () {
        alpha   overall fade, for entering/leaving the frame
   --------------------------------------------------------- */
   function draw(ctx, x, y, o) {
-    const t      = o.t || 0;
-    const phase  = o.phase || 0;
-    const A      = o.alpha == null ? 1 : o.alpha;
-    if (A < 0.02) return;
+    const t      = Number.isFinite(o.t) ? o.t : 0;
+    const phase  = Number.isFinite(o.phase) ? o.phase : 0;
+    // a non-finite alpha must make a beacon invisible, never reach
+    // addColorStop as rgba(...,NaN) — that throws and takes the frame
+    const A = Number.isFinite(o.alpha) ? o.alpha : (o.alpha == null ? 1 : 0);
+    if (!(A >= 0.02)) return;
 
     const active = !!o.active, hover = !!o.hover;
     const k = (o.k || 1) * (hover ? 1.35 : 1) * (active ? 1.2 : 1);
@@ -69,6 +71,37 @@ window.Beacon = (function () {
       ctx.beginPath(); ctx.arc(x, y, 8 + ring * 22, 0, 6.283); ctx.stroke();
     }
 
+    // the moment it's taken
+    if (o.pop > 0.001) {
+      const p = 1 - o.pop;                       // 0 at the instant of the click
+      const ring = 10 + p * 90 * k;
+      ctx.lineWidth = 3 * o.pop;
+      ctx.strokeStyle = `rgba(${LAMP},${o.pop * 0.85})`;
+      ctx.beginPath(); ctx.arc(x, y, ring, 0, 6.283); ctx.stroke();
+
+      ctx.lineWidth = 1.5 * o.pop;
+      ctx.strokeStyle = `rgba(${CORE},${o.pop * 0.5})`;
+      ctx.beginPath(); ctx.arc(x, y, ring * 0.55, 0, 6.283); ctx.stroke();
+
+      // shards thrown out of it
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * 6.283 + 0.4;
+        const d0 = 8 + p * 54 * k, d1 = d0 + 10 * o.pop;
+        ctx.strokeStyle = `rgba(${CORE},${o.pop * 0.7})`;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0);
+        ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1);
+        ctx.stroke();
+      }
+
+      const fg = ctx.createRadialGradient(x, y, 0, x, y, 34 * k * (0.5 + p));
+      fg.addColorStop(0, `rgba(255,248,225,${o.pop * 0.55})`);
+      fg.addColorStop(1, "rgba(255,248,225,0)");
+      ctx.fillStyle = fg;
+      ctx.fillRect(x - 40 * k, y - 40 * k, 80 * k, 80 * k);
+      ctx.lineWidth = 1;
+    }
+
     // what it's worth, until it's been taken
     if (!o.claimed && o.xp) {
       const bb = 0.5 + 0.5 * Math.sin(t * 2.1 + phase);
@@ -99,10 +132,13 @@ window.Beacon = (function () {
     el.classList.add("bcn");
     if (!el.querySelector(".bcn-mark")) el.insertAdjacentHTML("afterbegin", VISUAL);
 
-    const badge = document.createElement("span");
-    badge.className = "bcn-xp";
+    let badge = el.querySelector(".bcn-xp");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "bcn-xp";
+      el.appendChild(badge);
+    }
     badge.textContent = "+" + xp;
-    el.appendChild(badge);
 
     const claimed = () => window.XP && XP.has(id);
     const paint = () => el.classList.toggle("claimed", claimed());
@@ -114,6 +150,10 @@ window.Beacon = (function () {
         const r = el.getBoundingClientRect();
         XP.award(id, xp, label, r.left + r.width / 2, r.top + r.height / 2);
       }
+      el.classList.remove("claiming");
+      void el.offsetWidth;
+      el.classList.add("claiming");
+      setTimeout(() => el.classList.remove("claiming"), 750);
       paint();
       if (onClaim) onClaim();
     });

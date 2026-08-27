@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=3">
-<link rel="stylesheet" href="beacon.css?v=4">
-<link rel="stylesheet" href="bridge.css?v=14">
+<link rel="stylesheet" href="beacon.css?v=6">
+<link rel="stylesheet" href="bridge.css?v=15">
 </head>
 <body>
 
@@ -35,8 +35,15 @@
     <div class="boot">
       <div class="boot-log" id="boot-log"></div>
       <div class="boot-gate" id="boot-gate">
-        <button type="button" id="entry-go" aria-label="Claim this beacon">
-          <span class="bcn-lbl">Enter</span>
+        <button type="button" id="entry-go" class="bcn"
+                data-beacon data-beacon-id="entry-beacon" data-xp="1" data-label="Filed"
+                aria-label="Claim this beacon">
+          <span class="bcn-mark" aria-hidden="true">
+            <i class="bcn-arm"></i><i class="bcn-arm"></i>
+            <i class="bcn-core"></i><i class="bcn-ring"></i>
+          </span>
+          <span class="bcn-xp">+1</span>
+          <span class="bcn-lbl">Claim this one</span>
         </button>
       </div>
     </div>
@@ -46,18 +53,6 @@
 
   <div class="vignette"></div>
   <div class="grain"></div>
-
-  <div class="bridge-copy" id="bridge-copy">
-    <p class="eyebrow">Sebastião Freitas — Braga, Portugal</p>
-    <h1>I build worlds<br>and the systems<br>that make them fun.</h1>
-    <p class="lede">Games, mechanics, and a tabletop setting I've been running for years.
-       This is a piece of it — a bridge across the void, anchored at one end by a god who
-       became matter.</p>
-    <div class="bridge-actions">
-      <a class="cta" href="#" id="bridge-begin">Explore the setting</a>
-      <a class="cta-ghost" href="#work">Game projects ↓</a>
-    </div>
-  </div>
 
   <!-- HUD, revealed once you start moving -->
   <!-- one readout: a log that keeps writing, with the numbers under it -->
@@ -249,9 +244,11 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="xp.js?v=4"></script>
-<script src="beacon.js?v=1"></script>
+<script src="xp.js?v=7"></script>
+<script src="surge.js?v=1"></script>
+<script src="beacon.js?v=6"></script>
 <script src="instruments.js?v=3"></script>
-<script src="bridge.js?v=19"></script>
+<script src="world.js?v=1"></script>
+<script src="bridge.js?v=24"></script>
 </body>
 </html>
