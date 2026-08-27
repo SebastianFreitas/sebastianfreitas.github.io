@@ -82,18 +82,26 @@ window.Instruments = (function () {
 
   function setScale(v) {
     uiScale = Math.max(0.7, Math.min(1.7, v));
-    if (cv) cv.style.width = Math.round(TOTAL_W * uiScale) + "px";
+    resize();
     return uiScale;
   }
   const getScale = () => uiScale;
   const focus = k => { focusKey = k; };
 
   function resize() {
-    if (!cv) return;
+    if (!cv || !ctx) return;
     dpr = Math.min(devicePixelRatio || 1, 2);
-    cv.width  = Math.round(TOTAL_W * dpr);
-    cv.height = Math.round(TOTAL_H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const wrap = cv.parentElement;
+    const maxW = wrap ? wrap.clientWidth : TOTAL_W * uiScale;
+    const fit = maxW > 0 ? Math.min(uiScale, maxW / TOTAL_W) : uiScale;
+    const dispW = Math.round(TOTAL_W * fit);
+    const dispH = Math.round(TOTAL_H * fit);
+    cv.style.width = dispW + "px";
+    cv.style.height = dispH + "px";
+    cv.width = Math.max(1, Math.round(TOTAL_W * dpr * fit));
+    cv.height = Math.max(1, Math.round(TOTAL_H * dpr * fit));
+    ctx.setTransform(dpr * fit, 0, 0, dpr * fit, 0, 0);
+    ctx.imageSmoothingEnabled = true;
   }
 
   function draw(dt, r) {
@@ -373,9 +381,13 @@ window.Instruments = (function () {
     cruiseNeedle = approach(cruiseNeedle, hold, 6, dt);
 
     const inner = p.h - 15;
-    const tankX = 8, tankW = 18, tankH = inner - 36;
-    const tankY = 18;
+    const pad = 6;
+    const tankW = Math.max(14, Math.round(p.w * 0.11));
+    const tankX = pad;
+    const tankY = 12;
+    const tankH = inner - 28;
 
+    // fuel tank — left rail
     ctx.strokeStyle = `rgba(${LAMP},0.3)`;
     ctx.strokeRect(tankX + 0.5, tankY + 0.5, tankW - 1, tankH - 1);
     for (let i = 1; i < 4; i++) {
@@ -392,15 +404,24 @@ window.Instruments = (function () {
     ctx.fillStyle = fg;
     ctx.fillRect(tankX + 2, tankY + tankH - fillH, tankW - 4, fillH);
 
-    // thrust arc
-    const cx = 78, cy = 48, R = 28;
+    // main zone — thrust arc centered in the space right of the tank
+    const zoneL = tankX + tankW + 8;
+    const zoneR = p.w - pad;
+    const zoneW = Math.max(40, zoneR - zoneL);
+    const zoneCx = zoneL + zoneW * 0.5;
+    const cruiseBand = 20;
+    const zoneTop = 12;
+    const zoneBot = inner - cruiseBand;
+    const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.46;
+    const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.4, 34);
+
     ctx.strokeStyle = `rgba(${DIM},0.3)`;
     ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0.75 * Math.PI, 2.25 * Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(zoneCx, zoneCy, R, 0.75 * Math.PI, 2.25 * Math.PI); ctx.stroke();
     ctx.strokeStyle = `rgba(${LAMP},0.9)`;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0.75 * Math.PI, 0.75 * Math.PI + 1.5 * Math.PI * thrustNeedle);
+    ctx.arc(zoneCx, zoneCy, R, 0.75 * Math.PI, 0.75 * Math.PI + 1.5 * Math.PI * thrustNeedle);
     ctx.stroke();
     ctx.lineCap = "butt";
     ctx.lineWidth = 1;
@@ -408,13 +429,32 @@ window.Instruments = (function () {
     ctx.font = '600 11px "IBM Plex Mono", monospace';
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${LAMP},0.95)`;
-    ctx.fillText(Math.round(thrustNeedle * 100) + "%", cx, cy + 2);
+    ctx.fillText(Math.round(thrustNeedle * 100) + "%", zoneCx, zoneCy + 2);
     ctx.font = '500 6px "IBM Plex Mono", monospace';
     ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("THRUST", cx, cy + 12);
+    ctx.fillText("THRUST", zoneCx, zoneCy + 12);
 
-    // cruise
-    const bx = 36, by = inner - 22, bw = p.w - 44;
+    // burn + power — flanking the arc, not pinned to the corner
+    const statY = zoneCy + R + 10;
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(${DIM},0.95)`;
+    ctx.fillText("BURN", zoneCx - zoneW * 0.22, statY);
+    ctx.fillText("PWR", zoneCx + zoneW * 0.22, statY);
+    const burnRate = s && s.burning ? (7.5 * (s.power && s.power.burn || 1)) : 0;
+    const secsLeft = (!infinite && burnRate > 0.1)
+      ? (s.fuel / burnRate)
+      : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
+    ctx.fillStyle = `rgba(${LAMP},0.9)`;
+    if (infinite) ctx.fillText("∞", zoneCx - zoneW * 0.22, statY + 11);
+    else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", zoneCx - zoneW * 0.22, statY + 11);
+    else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", zoneCx - zoneW * 0.22, statY + 11);
+    const pow = s && s.power ? s.power.accel : 1;
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText("×" + pow.toFixed(1), zoneCx + zoneW * 0.22, statY + 11);
+
+    // cruise — full width of main zone
+    const bx = zoneL, by = inner - 18, bw = zoneW;
     ctx.fillStyle = `rgba(${DIM},0.22)`;
     ctx.fillRect(bx, by, bw, 6);
     const cg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
@@ -428,40 +468,20 @@ window.Instruments = (function () {
     ctx.fillText("CRUISE BUILD", bx, by - 3);
     ctx.textAlign = "right";
     ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", p.w - 5, by - 3);
+    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 3);
 
-    // burn budget estimate + absolute fuel
-    const burnRate = s && s.burning ? (7.5 * (s.power && s.power.burn || 1)) : 0;
-    const secsLeft = (!infinite && burnRate > 0.1)
-      ? (s.fuel / burnRate)
-      : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    // header row
     ctx.textAlign = "left";
-    ctx.fillStyle = `rgba(${DIM},0.95)`;
-    ctx.fillText("BURN", 36, 28);
-    ctx.fillStyle = `rgba(${LAMP},0.9)`;
-    if (infinite) ctx.fillText("∞", 36, 40);
-    else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", 36, 40);
-    else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", 36, 40);
-
-    ctx.fillStyle = `rgba(${DIM},0.95)`;
-    ctx.fillText("PWR", 36, 54);
-    const pow = s && s.power ? s.power.accel : 1;
-    ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText("×" + pow.toFixed(1), 36, 66);
-
-    // right column: status
-    ctx.textAlign = "right";
     ctx.font = '500 8px "IBM Plex Mono", monospace';
     if (infinite) {
       ctx.fillStyle = `rgba(${LAMP},0.9)`;
-      ctx.fillText("OPEN", p.w - 5, 12);
+      ctx.fillText("OPEN", zoneL, 12);
     } else {
       ctx.fillStyle = low ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
-      ctx.fillText(low ? "LOW" : "FUEL", 5, 12);
+      ctx.fillText(low ? "LOW" : "FUEL", zoneL, 12);
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${col},0.95)`;
-      ctx.fillText(Math.round(fuelNeedle * 100) + "%", p.w - 5, 12);
+      ctx.fillText(Math.round(fuelNeedle * 100) + "%", zoneR, 12);
     }
 
     const mode = s && s.burning ? "HARD BURN"
@@ -469,7 +489,7 @@ window.Instruments = (function () {
     ctx.textAlign = "right";
     ctx.font = '500 7px "IBM Plex Mono", monospace';
     ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
-    ctx.fillText(mode, p.w - 5, inner - 4);
+    ctx.fillText(mode, zoneR, inner - 4);
   }
 
   /* =========================================================

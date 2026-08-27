@@ -117,9 +117,9 @@
 .tinst-ctl button:hover { color: var(--lamp); border-color: rgba(245,208,107,0.5); }
 /* the instrument panel sits under the log */
 #bridge-term .tinst {
-  display: block; width: 352px; height: auto; max-width: 100%;
+  display: block; width: auto; height: auto; max-width: 100%;
   background: rgba(9,13,15,0.35);
-  aspect-ratio: 352 / 280; cursor: pointer;
+  cursor: pointer;
   pointer-events: auto;          /* .bridge-hud is none — opt back in */
 }
 .tinst-wrap { max-width: 100%; pointer-events: none; }
@@ -218,7 +218,6 @@
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
 .bnote { width: calc(100vw - 2.5rem); }
-#bridge-term .tinst { width: 100%; }
 #bridge-cursor { display: none; }
 #bridge-map { width: calc(100vw - 2.5rem); }
 }
@@ -309,7 +308,6 @@ footer .rights {
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
 .bnote { width: calc(100vw - 2.5rem); }
-#bridge-term .tinst { width: 100%; }
 #bridge-cursor { display: none; }
 #bridge-map { width: calc(100vw - 2.5rem); }
 }

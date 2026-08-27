@@ -71,7 +71,6 @@
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
   let ship = null;
-  let FUEL_CANS = [];
   function resize() {
     dpr = Math.min(devicePixelRatio || 1, 2);
     W = host.clientWidth; H = host.clientHeight;
@@ -179,7 +178,6 @@
   if (!window.Voidship) {
     console.error("voidship.js did not load — travel is dead");
   } else {
-    FUEL_CANS = Voidship.seedFuel(CAM.min, CAM.max, 20, LAND.bridge);
     Voidship.resize(ship, W, H);
   }
 
@@ -292,7 +290,7 @@
   const HINT_STEPS = [
     { id: "burn",   text: "Hold anywhere to burn the voidship toward it" },
     { id: "beacon", text: "Click a beacon to set course — contact files it" },
-    { id: "fuel",   text: "Fuel is finite — short burns cost less" },
+    { id: "fuel",   text: "Fuel refills when you stop burning" },
   ];
   const hintEl = document.getElementById("bridge-hint");
   let hintsDone = {};
@@ -689,14 +687,6 @@
       if (camX < CAM.min) { camX = CAM.min; ship.vel = 0; vel = 0; }
       if (camX > CAM.max) { camX = CAM.max; ship.vel = 0; vel = 0; }
 
-      const gained = Voidship.collectFuel(ship, FUEL_CANS, {
-        W, H, camX, viewUnits: CAM.viewUnits,
-      }, dt);
-      if (gained > 0) {
-        pushLog(`tanks +${gained.toFixed(0)} · ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)}`, "good");
-        hintDone("fuel");
-      }
-
       // beacon contact → file only when the hull actually reaches it
       if (ship.courseMark && performance.now() >= courseArmAt) {
         const m = ship.courseMark;
@@ -712,7 +702,7 @@
       if (!ship.infinite && ship.fuel <= 0.05) {
         if (!fuelWarned) {
           fuelWarned = true;
-          pushLog("tanks dry · drive offline until refill", "loc");
+          pushLog("tanks dry · release to regen", "loc");
         }
       } else {
         fuelWarned = false;
@@ -768,7 +758,6 @@
     try {
       drawMarks(raw);
       if (ship) {
-        Voidship.drawFuel(ctx, FUEL_CANS, { W, H, t, camX, viewUnits: CAM.viewUnits });
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
       }
       if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))

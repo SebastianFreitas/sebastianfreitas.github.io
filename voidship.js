@@ -29,7 +29,8 @@ window.Voidship = (function () {
     yMax: 220,             // screen px/s
     yBand: 0.24,           // ± of H — must cover every beacon oy (0.20–0.46)
     fuelMax: 100,
-    burnFull: 7.5,         // fuel/s at hard burn — enough to cross, not infinite
+    burnFull: 7.5,         // fuel/s at hard burn
+    fuelRegen: 14,         // fuel/s when not burning — tanks refill on their own
     burnIdle: 0,           // no drip while coasting
     size: 72,              // nose-to-tail drawing length
     arriveWorld: 18,       // snap-stop distance
@@ -252,10 +253,12 @@ window.Voidship = (function () {
     if (ship.y < mid - band) { ship.y = mid - band; ship.vy = Math.max(0, ship.vy); }
     if (ship.y > mid + band) { ship.y = mid + band; ship.vy = Math.min(0, ship.vy); }
 
-    // fuel
+    // fuel — burns under thrust; refills when the drive is idle
     if (burning && !ship.infinite) {
       const rate = BASE.burnFull * ship.power.burn * (0.35 + 0.65 * demand);
       ship.fuel = Math.max(0, ship.fuel - rate * dt);
+    } else if (!ship.infinite && ship.fuel < ship.fuelMax) {
+      ship.fuel = Math.min(ship.fuelMax, ship.fuel + BASE.fuelRegen * ship.power.fuelMax * dt);
     }
 
     ship.thrustAmt = approach(ship.thrustAmt, burning ? (0.45 + 0.55 * demand) : 0, burning ? 10 : 5, dt);
@@ -384,13 +387,13 @@ window.Voidship = (function () {
       ctx.restore();
     }
 
-    // soft motion smear behind the craft
+    // motion smear — kept faint so the hull stays sharp
     for (let i = 0; i < ship.trail.length; i++) {
       const tr = ship.trail[i];
       ctx.save();
       ctx.translate(tr.x, tr.y);
       ctx.rotate(tr.a);
-      ctx.globalAlpha = a * tr.life * 0.18;
+      ctx.globalAlpha = a * tr.life * 0.10;
       ctx.fillStyle = rgba(COLD, 0.5);
       ctx.beginPath();
       ctx.moveTo(S * 0.15, 0);
@@ -420,75 +423,81 @@ window.Voidship = (function () {
   }
 
   function drawGlow(ctx, S, ship, t) {
-    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, S * 0.9);
-    g.addColorStop(0, rgba(LAMP, 0.10 + ship.thrustAmt * 0.08));
-    g.addColorStop(0.45, rgba(COLD, 0.05));
+    const a = ship.thrustAmt;
+    const r = S * (a > 0.05 ? 0.42 : 0.55);
+    const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r);
+    g.addColorStop(0, rgba(LAMP, 0.06 + a * 0.10));
+    g.addColorStop(0.55, rgba(COLD, 0.03));
     g.addColorStop(1, rgba(COLD, 0));
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, S * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
-    // under-light on the void
-    const ug = ctx.createRadialGradient(0, S * 0.35, 0, 0, S * 0.5, S * 0.7);
-    ug.addColorStop(0, rgba(LAMP, 0.07 + 0.06 * Math.sin(t * 3)));
-    ug.addColorStop(1, rgba(LAMP, 0));
-    ctx.fillStyle = ug;
-    ctx.beginPath(); ctx.ellipse(0, S * 0.4, S * 0.55, S * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+    if (a < 0.05) {
+      const ug = ctx.createRadialGradient(0, S * 0.35, 0, 0, S * 0.5, S * 0.55);
+      ug.addColorStop(0, rgba(LAMP, 0.06 + 0.04 * Math.sin(t * 3)));
+      ug.addColorStop(1, rgba(LAMP, 0));
+      ctx.fillStyle = ug;
+      ctx.beginPath(); ctx.ellipse(0, S * 0.4, S * 0.45, S * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   function drawExhaust(ctx, S, ship, t) {
     const a = ship.thrustAmt;
     if (a < 0.02) {
-      // idle pilot lights in the bells
-      ctx.fillStyle = rgba(LAMP, 0.25 + 0.15 * Math.sin(t * 5));
-      ctx.beginPath(); ctx.arc(-S * 0.42, -S * 0.11, 1.4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(-S * 0.42,  S * 0.11, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = rgba(LAMP, 0.35 + 0.12 * Math.sin(t * 5));
+      ctx.beginPath(); ctx.arc(-S * 0.42, -S * 0.11, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-S * 0.42,  S * 0.11, 1.2, 0, Math.PI * 2); ctx.fill();
       return;
     }
 
-    const flick = 0.85 + 0.15 * Math.sin(t * 47 + a * 9);
-    const len = S * (0.55 + a * 1.15) * flick;
+    const flick = 0.92 + 0.08 * Math.sin(t * 38 + a * 7);
+    const len = S * (0.38 + a * 0.72) * flick;
+    const nx = -S * 0.48;
 
     for (const side of [-1, 1]) {
-      const oy = side * S * 0.11;
-      // outer wash
-      const wash = ctx.createLinearGradient(-S * 0.4, 0, -S * 0.4 - len, 0);
-      wash.addColorStop(0, rgba(BRICK, 0.55 * a));
-      wash.addColorStop(0.35, rgba(LAMP, 0.45 * a));
-      wash.addColorStop(1, rgba(LAMP, 0));
-      ctx.fillStyle = wash;
-      const wob = Math.sin(t * 60 + side * 2.1) * 1.6 * a;
+      const oy = side * S * 0.105;
+      const tip = nx - len;
+
+      // outer cone — flat fills read sharper than wide gradients
+      ctx.fillStyle = rgba(BRICK, 0.55 * a);
       ctx.beginPath();
-      ctx.moveTo(-S * 0.38, oy - 5.5);
-      ctx.quadraticCurveTo(-S * 0.38 - len * 0.55, oy + wob,
-                           -S * 0.38 - len, oy);
-      ctx.quadraticCurveTo(-S * 0.38 - len * 0.55, oy - wob * 0.4,
-                           -S * 0.38, oy + 5.5);
+      ctx.moveTo(nx, oy - 4.5);
+      ctx.lineTo(tip, oy);
+      ctx.lineTo(nx, oy + 4.5);
       ctx.closePath();
       ctx.fill();
 
-      // hot core
-      ctx.fillStyle = rgba([255, 244, 210], 0.75 * a);
+      ctx.fillStyle = rgba(LAMP, 0.72 * a);
       ctx.beginPath();
-      ctx.moveTo(-S * 0.38, oy - 2.2);
-      ctx.lineTo(-S * 0.38 - len * 0.62 * flick, oy);
-      ctx.lineTo(-S * 0.38, oy + 2.2);
+      ctx.moveTo(nx, oy - 2.8);
+      ctx.lineTo(tip + len * 0.18, oy);
+      ctx.lineTo(nx, oy + 2.8);
       ctx.closePath();
       ctx.fill();
-    }
 
-    // centre plume at high thrust
-    if (a > 0.55) {
-      const cl = len * 0.75;
-      const cg = ctx.createLinearGradient(-S * 0.3, 0, -S * 0.3 - cl, 0);
-      cg.addColorStop(0, rgba(LAMP, 0.35));
-      cg.addColorStop(1, rgba(LAMP, 0));
-      ctx.fillStyle = cg;
+      // hot core + nozzle point
+      ctx.fillStyle = rgba([255, 248, 228], 0.92 * a);
       ctx.beginPath();
-      ctx.moveTo(-S * 0.3, -3);
-      ctx.lineTo(-S * 0.3 - cl, 0);
-      ctx.lineTo(-S * 0.3, 3);
+      ctx.moveTo(nx + 1.5, oy - 1.4);
+      ctx.lineTo(tip + len * 0.28, oy);
+      ctx.lineTo(nx + 1.5, oy + 1.4);
       ctx.closePath();
       ctx.fill();
+
+      ctx.fillStyle = rgba([255, 255, 255], 0.85 * a);
+      ctx.fillRect(nx - 0.5, oy - 0.5, 2.5, 1);
+
+      // twin streaks — structured, not a soft blob
+      ctx.strokeStyle = rgba(LAMP, 0.65 * a);
+      ctx.lineWidth = 1;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(nx + 0.5, oy - 1.8);
+      ctx.lineTo(tip + len * 0.42, oy - 0.6);
+      ctx.moveTo(nx + 0.5, oy + 1.8);
+      ctx.lineTo(tip + len * 0.42, oy + 0.6);
+      ctx.stroke();
+      ctx.lineCap = "butt";
     }
   }
 
@@ -679,140 +688,9 @@ window.Voidship = (function () {
     return cur + d;
   }
 
-  /* ---- fuel caches scattered along the span -------------------- */
-
-  function seedFuel(minX, maxX, count, nearX) {
-    const cans = [];
-    const n = count || 18;
-    let s = 0xFEEDCA5E | 0;
-    const rnd = () => {
-      s = s + 0x6D2B79F5 | 0;
-      let x = Math.imul(s ^ s >>> 15, 1 | s);
-      x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
-      return ((x ^ x >>> 14) >>> 0) / 4294967296;
-    };
-    const span = maxX - minX;
-    const mid = nearX != null ? nearX : (minX + maxX) * 0.5;
-    cans.push(
-      { id: "fuel-near-0", x: mid - 2800, oy: 0.36, amt: 48, taken: false, phase: 1.1, pop: 0 },
-      { id: "fuel-near-1", x: mid + 4200, oy: 0.44, amt: 52, taken: false, phase: 2.7, pop: 0 }
-    );
-    for (let i = 0; i < n; i++) {
-      const u = rnd();
-      const x = minX + span * (0.08 + u * 0.84);
-      if (Math.abs(x - mid) < 5500) continue;
-      // keep cans inside the ship's vertical band so none are stranded
-      const oy = 0.32 + rnd() * 0.20;
-      cans.push({
-        id: "fuel-" + i,
-        x,
-        oy,
-        amt: 40 + Math.floor(rnd() * 35),
-        taken: false,
-        phase: rnd() * 6.283,
-        pop: 0,
-      });
-    }
-    return cans;
-  }
-
-  function drawFuel(ctx, cans, env) {
-    const { W, H, camX, t, viewUnits } = env;
-    const sc = W / viewUnits;
-    for (const c of cans) {
-      if (c.taken && c.pop <= 0) continue;
-      const sx = (c.x - camX) * 0.94 * sc + W * 0.5;
-      const sy = c.oy * H;
-      if (sx < -40 || sx > W + 40) continue;
-
-      const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3.2 + c.phase));
-      ctx.save();
-      ctx.translate(sx, sy);
-
-      if (c.taken) {
-        // claim burst
-        const u = 1 - c.pop;
-        ctx.globalAlpha = c.pop;
-        ctx.strokeStyle = rgba(LAMP, 0.8);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, 0, 6 + u * 18, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-        continue;
-      }
-
-      // soft halo
-      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, 16);
-      g.addColorStop(0, rgba(LAMP, 0.35 * pulse));
-      g.addColorStop(1, rgba(LAMP, 0));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.fill();
-
-      // canister body
-      ctx.fillStyle = rgba([22, 28, 30], 0.95);
-      ctx.strokeStyle = rgba(LAMP, 0.7 * pulse);
-      ctx.lineWidth = 1.2;
-      roundRect(ctx, -5, -8, 10, 14, 2);
-      ctx.fill(); ctx.stroke();
-
-      // fuel fill
-      ctx.fillStyle = rgba(LAMP, 0.75);
-      ctx.fillRect(-3.2, 1, 6.4, 3.5);
-
-      // droplet mark on the can
-      ctx.fillStyle = rgba(LAMP, 0.95);
-      ctx.beginPath();
-      ctx.moveTo(0, -5.5);
-      ctx.bezierCurveTo(2.4, -3.2, 2.4, -0.6, 0, 0.8);
-      ctx.bezierCurveTo(-2.4, -0.6, -2.4, -3.2, 0, -5.5);
-      ctx.fill();
-
-      // cap
-      ctx.fillStyle = rgba(HULL_HI, 1);
-      ctx.fillRect(-3, -10, 6, 2.5);
-
-      ctx.restore();
-    }
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  /* collect any cache the hull is on; returns total fuel gained */
-  function collectFuel(ship, cans, env, dt) {
-    const { W, H, camX, viewUnits } = env;
-    const sc = W / viewUnits;
-    const sp = screenPos(ship, W);
-    let gained = 0;
-    for (const c of cans) {
-      if (c.pop > 0) c.pop = Math.max(0, c.pop - dt * 2.2);
-      if (c.taken) continue;
-      const sx = (c.x - camX) * 0.94 * sc + W * 0.5;
-      const sy = c.oy * H;
-      if (Math.hypot(sx - sp.x, sy - sp.y) < 28) {
-        c.taken = true;
-        c.pop = 1;
-        gained += addFuel(ship, c.amt);
-      }
-    }
-    return gained;
-  }
-
-  function fuelForRadar(cans) {
-    return cans.filter(c => !c.taken).map(c => ({
-      id: c.id, cam: c.x, oy: c.oy, fuel: true,
-    }));
-  }
-
   return {
     BASE, create, resize, setPower, setCourse, setThrusting,
     clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn,
-    addFuel, seedFuel, drawFuel, collectFuel, fuelForRadar,
+    addFuel,
   };
 })();
