@@ -322,11 +322,15 @@ window.Voidship = (function () {
     return Math.hypot(px - p.x, py - p.y) < (radius || 28);
   }
 
-  /* beacon claim: world X is what matters. Screen Y used to miss
-     high/low marks (Void at oy 0.20 sat outside the old flight band). */
-  function touchingMark(ship, camX, mark, pad) {
-    const reach = pad != null ? pad : 720;
-    return Math.abs(camX - mark.x) < reach;
+  /* beacon claim: must actually reach the mark — screen overlap plus
+     a tight world seat. A wide world-only pad claimed on-screen clicks. */
+  function touchingMark(ship, camX, mark, screen, pad) {
+    const worldPad = pad != null ? pad : 220;
+    if (Math.abs(camX - mark.x) > worldPad) return false;
+    if (!screen) return false;
+    const p = screenPos(ship, screen.W);
+    const hit = screen.hit != null ? screen.hit : 34;
+    return Math.hypot(screen.x - p.x, screen.y - p.y) < hit;
   }
 
   function stats(ship) {

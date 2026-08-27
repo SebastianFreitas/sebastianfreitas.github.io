@@ -350,8 +350,10 @@
      the light on screen or the ship peels off toward the wrong seat. */
   function courseForMark(m) {
     const mid = H * 0.42;
-    const band = H * ((window.Voidship && Voidship.BASE.yBand) || 0.16);
-    const screenY = Math.min(mid + band, Math.max(mid - band, m.oy * H));
+    const band = H * ((window.Voidship && Voidship.BASE.yBand) || 0.24);
+    // prefer the true beacon seat; clamp only if it sits outside the band
+    const rawY = m.oy * H;
+    const screenY = Math.min(mid + band, Math.max(mid - band, rawY));
     return { worldX: m.x, screenY };
   }
 
@@ -360,6 +362,7 @@
   let thrustId = null;
   let lastPtr = { x: 0, y: 0 };
   let fuelWarned = false;
+  let courseArmAt = 0; // ignore contact briefly after locking a course
 
   function beginBurn(e, mark) {
     if (!ship) return;
@@ -371,10 +374,12 @@
     if (mark) {
       const seat = courseForMark(mark);
       Voidship.setCourse(ship, seat.worldX, seat.screenY, mark);
+      courseArmAt = performance.now() + 180; // ship must actually move in
       pushLog(`course: ${mark.name.toLowerCase()}`, "loc");
       hintDone("beacon");
     } else {
       Voidship.setCourse(ship, c.worldX, c.screenY, null);
+      courseArmAt = 0;
       hintDone("burn");
     }
     Voidship.setThrusting(ship, true);
@@ -430,6 +435,7 @@
       lastPtr.y = e.clientY;
       const m = markAt(e.clientX, e.clientY);
       if (m) {
+        if (ship.courseMark !== m) courseArmAt = performance.now() + 180;
         const seat = courseForMark(m);
         Voidship.setCourse(ship, seat.worldX, seat.screenY, m);
       } else if (!ship.courseMark) {
@@ -691,11 +697,13 @@
         hintDone("fuel");
       }
 
-      // beacon contact → file (world X, so high/low marks like Void still claim)
-      if (ship.courseMark) {
+      // beacon contact → file only when the hull actually reaches it
+      if (ship.courseMark && performance.now() >= courseArmAt) {
         const m = ship.courseMark;
-        if (Voidship.touchingMark(ship, camX, m)) {
+        const p = markScreen(m);
+        if (Voidship.touchingMark(ship, camX, m, { W, x: p.x, y: p.y, hit: HIT + 10 })) {
           selectMark(m);
+          courseArmAt = 0;
         }
       }
 
