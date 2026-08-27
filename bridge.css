@@ -407,10 +407,18 @@ footer .rights {
 @media (max-width: 900px) {
   .bnote { width: calc(100vw - 2.5rem) !important; }
 }
-/* grabbing the world */
-.bridge-hero { cursor: grab; }
-.bridge-hero.grabbing { cursor: grabbing; }
+/* burning the voidship */
+.bridge-hero { cursor: crosshair; }
+.bridge-hero.burning { cursor: crosshair; }
 #bridge-cursor.over { border-color: rgba(245,208,107,0.9); }
+/* span strip is a readout — not a jump drive */
+#bridge-map .track.readonly,
+#bridge-map .track.readonly .mk.poi {
+  cursor: default;
+  pointer-events: none;
+}
+#bridge-map .track.readonly { pointer-events: auto; } /* still show ghost on hover */
+#bridge-map .track.readonly .mk.poi { pointer-events: none; }
 @media (max-width: 760px) {
   #bridge-term { width: calc(100vw - 2.5rem); left: 1.25rem; }
 #bridge-term .tlog { min-height: 3.6rem; }

@@ -9,6 +9,10 @@
    the deep void is never actually empty — chaos churns through
    it, things older than the bridge surface and submerge, and
    fragments of record drift past while you travel.
+
+   Travel is the voidship (voidship.js): hold to burn toward a
+   point, brake onto it, claim a beacon when the hull reaches it.
+   The span strip is a readout, not a jump drive.
    =========================================================== */
 
 (function () {
@@ -157,19 +161,21 @@
   })();
 
   setLoad(0, "link established");
-  setLoad(0, touch ? "input: touch · drag with one finger"
-                   : "input: pointer · drag anywhere to travel");
-  setLoad(0, `build bridge-v30 · motion ${reduced ? "reduce" : "full"}`);
+  setLoad(0, touch ? "input: touch · hold to burn toward a point"
+                   : "input: pointer · hold to burn toward a point");
+  setLoad(0, `build bridge-v31 · voidship · motion ${reduced ? "reduce" : "full"}`);
   /* ---- state ---- */
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
-  let flyTo = null, activeMark = null, hoverMark = null;
-  let dragging = false, dragId = null, dragLastX = 0, dragMoved = 0, dragCarry = 0;
-  const dragTrack = [];   // recent {t, x} for working out the throw
-  let scrubbing = false, armed = false, armX = 0, armMoved = 0;
+  let activeMark = null, hoverMark = null;
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
   let freezeGuard = null;
+  const ship = window.Voidship ? Voidship.create() : null;
+  if (!window.Voidship) {
+    console.error("voidship.js did not load — travel is dead");
+  }
+
   document.addEventListener("xp:freeze", e => {
     frozen = !!e.detail.on;
     clearTimeout(freezeGuard);
@@ -179,7 +185,10 @@
       if (frozen) { frozen = false; host.classList.remove("held"); console.warn("scene un-held by guard"); }
     }, 5000);
     host.classList.toggle("held", frozen);
-    if (frozen) { vel = 0; endDrag && endDrag(); }
+    if (frozen) {
+      vel = 0;
+      if (ship) Voidship.setThrusting(ship, false);
+    }
   });
 
   const cursor = document.getElementById("bridge-cursor");
@@ -247,17 +256,7 @@
     el2.classList.toggle("from-left", !right);
   }
 
-  /* travel to a landmark without touching it: what the map strip does */
-  function travelTo(m) {
-    begin();
-    clearMark();
-    const dist = Math.abs(m.cam - camX);
-    flyTo = { from: camX, to: m.cam, elapsed: 0,
-              dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)) };
-    vel = 0;
-  }
-
-  /* claiming is only ever done by clicking the beacon itself */
+  /* claiming fires when the voidship reaches the beacon */
   function selectMark(m) {
     begin();
     hintDone("beacon");
@@ -267,21 +266,22 @@
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
     }
     pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
-    activeMark = m; showNote(null);
-    const dist = Math.abs(m.cam - camX);
-    flyTo = { from: camX, to: m.cam, elapsed: 0,
-              dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)),
-              then: () => showNote(m) };
+    activeMark = m;
+    showNote(m);
+    if (ship) {
+      Voidship.setThrusting(ship, false);
+      Voidship.clearCourse(ship);
+    }
     vel = 0;
   }
   function clearMark() { if (activeMark) { activeMark = null; showNote(null); } }
 
   /* ---- the hint: names one thing at a time, then goes away ---- */
-  const HINT_KEY = "arcanis.hints.v1";
+  const HINT_KEY = "arcanis.hints.v2";
   const HINT_STEPS = [
-    { id: "drag",   text: "Drag anywhere to travel the span" },
-    { id: "beacon", text: "Click a beacon to inspect it — each one is a level" },
-    { id: "map",    text: "Or use the span below to jump straight to anything" },
+    { id: "burn",   text: "Hold anywhere to burn the voidship toward it" },
+    { id: "beacon", text: "Click a beacon to set course — contact files it" },
+    { id: "fuel",   text: "Fuel is finite — short burns cost less" },
   ];
   const hintEl = document.getElementById("bridge-hint");
   let hintsDone = {};
@@ -304,11 +304,12 @@
   }
   paintHint();
 
-  /* ---- input: grab the world and move it -------------------
-     No edge steering. Dragging works the same with a mouse or a
-     finger, and a flick carries momentum into the normal drag.
+  /* ---- input: burn the voidship toward the pointer ----------
+     Click empty space or a beacon to set course. Hold to keep
+     the throttle open (speed builds). Release and the drive
+     brakes onto the mark. Beacons file on hull contact.
   --------------------------------------------------------- */
-  const DRAG_PAR = 0.94;                 // drag tracks the deck 1:1
+  const DRAG_PAR = 0.94;
   const worldPerPx = () => 1 / (scale() * DRAG_PAR);
 
   function markAt(clientX, clientY) {
@@ -323,26 +324,76 @@
     return best;
   }
 
+  function clientToCourse(clientX, clientY) {
+    const r = host.getBoundingClientRect();
+    const px = clientX - r.left;
+    const py = clientY - r.top;
+    const worldX = camX + (px - W * 0.5) * worldPerPx();
+    const mid = H * 0.42;
+    const band = H * ((window.Voidship && Voidship.BASE.yBand) || 0.16);
+    const screenY = Math.min(mid + band, Math.max(mid - band, py));
+    return { worldX, screenY, px, py };
+  }
+
   function stopSteering() { if (cursor) cursor.classList.remove("on"); }
 
+  let thrustId = null;
+  let lastPtr = { x: 0, y: 0 };
+  let fuelWarned = false;
+
+  function beginBurn(e, mark) {
+    if (!ship) return;
+    begin();
+    clearMark();
+    lastPtr.x = e.clientX;
+    lastPtr.y = e.clientY;
+    const c = clientToCourse(e.clientX, e.clientY);
+    // beacon course aims at the beacon's world cam / screen seat
+    if (mark) {
+      const p = markScreen(mark);
+      Voidship.setCourse(ship, mark.cam, p.y, mark);
+      pushLog(`course: ${mark.name.toLowerCase()}`, "loc");
+      hintDone("beacon");
+    } else {
+      Voidship.setCourse(ship, c.worldX, c.screenY, null);
+      hintDone("burn");
+    }
+    Voidship.setThrusting(ship, true);
+    thrustId = e.pointerId;
+    host.classList.add("burning");
+    try { host.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+
+  function endBurn(e) {
+    if (thrustId == null) return;
+    if (e && e.pointerId != null && e.pointerId !== thrustId) return;
+    thrustId = null;
+    host.classList.remove("burning");
+    if (ship) Voidship.setThrusting(ship, false);
+    // a tap on nothing with almost no burn dismisses a note
+    if (ship && ship.arrived) clearMark();
+  }
+
+  /* while the throttle is open, the pointer's screen seat is the aim —
+     holding the right edge keeps the destination ahead of the camera,
+     so a long press can cross the span without the waypoint going stale. */
+  function retargetFromPointer() {
+    if (!ship || thrustId == null || !ship.thrusting) return;
+    if (ship.courseMark) {
+      const m = ship.courseMark;
+      const p = markScreen(m);
+      Voidship.setCourse(ship, m.cam, p.y, m);
+      return;
+    }
+    const c = clientToCourse(lastPtr.x, lastPtr.y);
+    Voidship.setCourse(ship, c.worldX, c.screenY, null);
+  }
+
   host.addEventListener("pointerdown", e => {
-    // links, buttons and the map keep their own behaviour
     if (frozen) return;
     if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, .bcn")) return;
-    begin();
     const m = markAt(e.clientX, e.clientY);
-    if (m) { selectMark(m); return; }
-    dragging = true; dragId = e.pointerId;
-    dragLastX = e.clientX;
-    dragMoved = 0;
-    // keep whatever the last throw left, so swiping again builds speed
-    dragCarry = vel;
-    dragTrack.length = 0;
-    dragTrack.push({ t: performance.now(), x: e.clientX });
-    hintDone("drag");
-    flyTo = null; vel = 0;
-    host.classList.add("grabbing");
-    try { host.setPointerCapture(e.pointerId); } catch (err) {}
+    beginBurn(e, m);
   });
 
   addEventListener("pointermove", e => {
@@ -350,25 +401,27 @@
     const inside = e.clientY >= r.top && e.clientY <= r.bottom;
 
     if (cursor) {
-      if (inside || dragging) {
+      if (inside || thrustId != null) {
         cursor.classList.add("on");
         cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
       } else cursor.classList.remove("on");
     }
 
-    if (dragging && e.pointerId === dragId) {
-      const now = performance.now();
-      const dx = e.clientX - dragLastX;
-      dragMoved += Math.abs(dx);
-      camX -= dx * worldPerPx();
-      dragLastX = e.clientX;
-
-      dragTrack.push({ t: now, x: e.clientX });
-      while (dragTrack.length > 2 && now - dragTrack[0].t > 110) dragTrack.shift();
-
-      if (camX < CAM.min) camX = CAM.min;
-      if (camX > CAM.max) camX = CAM.max;
-      if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
+    if (thrustId != null && e.pointerId === thrustId && ship) {
+      lastPtr.x = e.clientX;
+      lastPtr.y = e.clientY;
+      const m = markAt(e.clientX, e.clientY);
+      if (m && (!ship.courseMark || ship.courseMark === m)) {
+        // started on / slid onto a beacon: lock course to it
+        const p = markScreen(m);
+        Voidship.setCourse(ship, m.cam, p.y, m);
+      } else if (m && ship.courseMark && ship.courseMark !== m) {
+        const p = markScreen(m);
+        Voidship.setCourse(ship, m.cam, p.y, m);
+      } else if (!ship.courseMark) {
+        const c = clientToCourse(e.clientX, e.clientY);
+        Voidship.setCourse(ship, c.worldX, c.screenY, null);
+      }
       return;
     }
 
@@ -377,51 +430,25 @@
     if (cursor) cursor.classList.toggle("over", !!hoverMark);
   }, { passive: true });
 
-  function endDrag() {
-    if (!dragging) return;
-    if (dragMoved < 4) clearMark();     // a tap on nothing dismisses the panel
-    dragging = false; dragId = null;
-    host.classList.remove("grabbing");
-
-    // throw speed from the last ~110ms of travel, not one jittery frame
-    let thrown = 0;
-    if (dragTrack.length >= 2) {
-      const a = dragTrack[0], b = dragTrack[dragTrack.length - 1];
-      const secs = Math.max(0.016, (b.t - a.t) / 1000);
-      thrown = -((b.x - a.x) * worldPerPx()) / secs;
-    }
-
-    if (dragMoved > 5 && Math.abs(thrown) > 60) {
-      // a second throw in the same direction stacks on the first
-      const same = dragCarry !== 0 && Math.sign(dragCarry) === Math.sign(thrown);
-      const total = thrown + (same ? dragCarry * CAM.carry : 0);
-      vel = Math.max(-CAM.maxFling, Math.min(CAM.maxFling, total));
-    } else vel = 0;
-    dragTrack.length = 0;
-  }
-  addEventListener("pointerup", endDrag);
-  addEventListener("pointercancel", () => { endDrag(); stopSteering(); });
-
+  addEventListener("pointerup", endBurn);
+  addEventListener("pointercancel", () => { endBurn(); stopSteering(); });
   document.documentElement.addEventListener("mouseleave", stopSteering);
-  addEventListener("blur", () => { endDrag(); stopSteering(); });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { endDrag(); stopSteering(); } });
+  addEventListener("blur", () => { endBurn(); stopSteering(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { endBurn(); stopSteering(); }
+  });
 
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(es => {
       visible = es[0].isIntersecting;
-      if (!visible) stopSteering();
+      if (!visible) { endBurn(); stopSteering(); }
     }, { threshold: 0.02 }).observe(host);
   }
 
-  /* ---- minimap ---- */
+  /* ---- minimap: readout only — no jump, no scrub ---- */
   const track = document.getElementById("btrack");
-  const ghost = document.getElementById("bghost");
-  const posFromEvent = e => {
-    const r = track.getBoundingClientRect();
-    const u = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    return CAM.min + u * (CAM.max - CAM.min);
-  };
   if (track) {
+    track.classList.add("readonly");
     for (const m of MARKS) {
       const d = document.createElement("div");
       d.className = "mk poi";
@@ -429,7 +456,6 @@
       d.title = m.name;
       d.dataset.mark = m.id;
       if (window.XP && XP.has("beacon-" + m.id)) d.classList.add("read");
-      d.addEventListener("pointerdown", ev => { ev.stopPropagation(); hintDone("map"); travelTo(m); });
       track.appendChild(d);
     }
     for (let i = 0; i < 30; i++) {
@@ -437,39 +463,20 @@
       d.className = "mk"; d.style.left = (i / 29 * 100) + "%";
       track.appendChild(d);
     }
-    track.addEventListener("pointerdown", e => {
-      begin(); hintDone("map"); armed = true; armMoved = 0; armX = e.clientX;
-      track.setPointerCapture(e.pointerId); e.preventDefault();
-    });
+    // ghost follows the pointer for orientation, but never moves the camera
     track.addEventListener("pointermove", e => {
-      if (ghost) {
-        const r = track.getBoundingClientRect();
-        ghost.style.left = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%";
-      }
-      if (!armed) return;
-      armMoved += Math.abs(e.clientX - armX); armX = e.clientX;
-      if (armMoved > 5) { scrubbing = true; flyTo = null; clearMark(); camX = posFromEvent(e); vel = 0; }
+      const ghost = document.getElementById("bghost");
+      if (!ghost) return;
+      const r = track.getBoundingClientRect();
+      ghost.style.left = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%";
     });
-    track.addEventListener("pointerup", e => {
-      if (!armed) return;
-      if (!scrubbing) {
-        const to = posFromEvent(e), dist = Math.abs(to - camX);
-        flyTo = { from: camX, to, elapsed: 0, dur: Math.min(2.4, Math.max(0.6, dist / 40000 * 2.0)) };
-        clearMark(); vel = 0;
-      }
-      armed = false; scrubbing = false;
-    });
-    track.addEventListener("pointercancel", () => { armed = false; scrubbing = false; });
   }
-  /* a tick that's been read stops shouting, so what's left is obvious */
   document.addEventListener("xp:award", e => {
     if (!track || !/^beacon-/.test(e.detail.id)) return;
     const id = e.detail.id.replace(/^beacon-/, "");
     const d = track.querySelector(`[data-mark="${id}"]`);
     if (d) d.classList.add("read");
   });
-
-  const easeInOut = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 
   /* ---- markers ---- */
   let markDebug = 0;
@@ -605,14 +612,21 @@
     if (readingAt > nextIdle && !logHead && !logQueue.length) {
       readingAt = 0;
       nextIdle = 3.2 + Math.random() * 3.4;
-      pushLog(READINGS[Math.floor(Math.random() * READINGS.length)]());
+      const fuelLine = ship
+        ? () => ship.infinite
+            ? "drive: unlimited · tanks open"
+            : `fuel ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)} · hold builds cruise`
+        : null;
+      const pool = fuelLine ? READINGS.concat([fuelLine]) : READINGS;
+      pushLog(pool[Math.floor(Math.random() * pool.length)]());
     }
     runLog(dt);
 
     if (window.Instruments) {
+      const st = ship ? Voidship.stats(ship) : null;
       Instruments.draw(dt, {
         camX, vel,
-        speedN: Math.min(1, Math.abs(vel) / CAM.maxFling),
+        speedN: st ? st.speedN : Math.min(1, Math.abs(vel) / CAM.maxFling),
         chaos: chaosNow,
         future: futureNow,
         spanPct: (CAM.max - camX) / (CAM.max - CAM.min) * 100,
@@ -622,36 +636,58 @@
           id: m.id, cam: m.cam, oy: m.oy,
           claimed: !!(window.XP && XP.has("beacon-" + m.id)),
         })),
+        ship: st,
       });
     }
 
     host.classList.toggle("moving", Math.abs(vel) > 200);
   }
 
-  /* ---- movement: only a fly-to or the coast off a fling ---- */
+  /* ---- movement: the voidship owns travel ---- */
   function step(dt) {
     if (frozen) { vel = 0; return; }
-    if (!started || dragging || scrubbing) { if (dragging) vel = 0; return; }
+    if (!started) return;
 
-    if (flyTo) {
-      flyTo.elapsed += dt;
-      const u = Math.min(1, flyTo.elapsed / flyTo.dur);
+    if (ship) {
+      retargetFromPointer();
       const prev = camX;
-      camX = flyTo.from + (flyTo.to - flyTo.from) * easeInOut(u);
-      vel = (camX - prev) / dt;
+      const out = Voidship.step(ship, dt, {
+        camX, W, H, frozen, viewUnits: CAM.viewUnits,
+      });
+      camX = out.camX;
+      vel = out.vel;
       travelled += Math.abs(camX - prev);
-      if (u >= 1) { const cb = flyTo.then; flyTo = null; vel = 0; if (cb) cb(); }
+
+      if (camX < CAM.min) { camX = CAM.min; ship.vel = 0; vel = 0; }
+      if (camX > CAM.max) { camX = CAM.max; ship.vel = 0; vel = 0; }
+
+      // beacon contact → file
+      if (ship.courseMark) {
+        const m = ship.courseMark;
+        const p = markScreen(m);
+        if (Voidship.touching(ship, W, p.x, p.y, HIT + 6)) {
+          selectMark(m);
+        }
+      }
+
+      if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
+      if (ship.thrustAmt > 0.15) hintDone("fuel");
+      if (!ship.infinite && ship.fuel <= 0.05) {
+        if (!fuelWarned) {
+          fuelWarned = true;
+          pushLog("tanks dry · drive offline until refill", "loc");
+        }
+      } else {
+        fuelWarned = false;
+      }
       return;
     }
 
-    // exponential coast — a hard throw carries a long way before it settles
     vel *= Math.exp(-dt / CAM.glideTau);
     if (Math.abs(vel) < 8) vel = 0;
-
     const prev = camX;
     camX += vel * dt;
     travelled += Math.abs(camX - prev);
-    if (activeMark && Math.abs(camX - activeMark.cam) > SLOT * 0.9) clearMark();
     if (camX < CAM.min) { camX = CAM.min; vel = 0; }
     if (camX > CAM.max) { camX = CAM.max; vel = 0; }
   }
@@ -694,6 +730,9 @@
     // so the span looked empty (and stayed empty if unfreeze glitched).
     try {
       drawMarks(raw);
+      if (ship) {
+        Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
+      }
       if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
         placeNote(noteEls[activeMark.id], activeMark);
     } catch (err) {

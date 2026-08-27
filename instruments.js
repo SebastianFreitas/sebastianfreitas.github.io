@@ -6,8 +6,8 @@
 
      RADAR      space     — what's around you and how far
      SIGNAL     frequency — what this place sounds like
-     PHASE      shape     — the character of the local field
-     RECORDER   time      — where you've just been
+     DRIVE      tanks     — fuel, thrust, hold-boost on the voidship
+     NAV        time      — speed and how much of the span you've crossed
 
    All four share one canvas. Feed it a readings object each
    frame; it owns everything else.
@@ -23,10 +23,10 @@ window.Instruments = (function () {
   /* two by two, big enough to actually read at a glance */
   const CELL_W = 168, CELL_H = 132, GAP = 16;
   const PANELS = [
-    { key: "radar",  col: 0, row: 0, label: "RADAR"    },
-    { key: "signal", col: 1, row: 0, label: "SIGNAL"   },
-    { key: "phase",  col: 0, row: 1, label: "PHASE"    },
-    { key: "rec",    col: 1, row: 1, label: "RECORDER" },
+    { key: "radar",  col: 0, row: 0, label: "RADAR"  },
+    { key: "signal", col: 1, row: 0, label: "SIGNAL" },
+    { key: "phase",  col: 0, row: 1, label: "DRIVE"  },
+    { key: "rec",    col: 1, row: 1, label: "NAV"    },
   ];
   PANELS.forEach(p => { p.w = CELL_W; p.h = CELL_H; });
   const TOTAL_W = CELL_W * 2 + GAP;
@@ -42,9 +42,10 @@ window.Instruments = (function () {
   const peaks = new Float32Array(BANDS);
   let sweep = 0;
   const blips = new Map();          // mark id -> freshness
-  const trace = [];                 // phase plot points
-  const strip = [];                 // recorder samples
+  const strip = [];                 // nav samples
   let stripAcc = 0;
+  let fuelNeedle = 1;
+  let thrustNeedle = 0;
 
   /* what each place sounds like: [centre band, width, amplitude, roughness] */
   const VOICES = {
@@ -126,8 +127,8 @@ window.Instruments = (function () {
   function paint(p, r, dt) {
     if (p.key === "radar")  radar(p, r, dt);
     if (p.key === "signal") signal(p, r, dt);
-    if (p.key === "phase")  phase(p, r, dt);
-    if (p.key === "rec")    recorder(p, r, dt);
+    if (p.key === "phase")  drive(p, r, dt);
+    if (p.key === "rec")    nav(p, r, dt);
   }
 
   /* the frame and caption every panel shares */
@@ -283,58 +284,98 @@ window.Instruments = (function () {
   }
 
   /* =========================================================
-     PHASE — x against y. The shape closes into a clean figure
-     where the world is calm and tangles where it isn't.
+     DRIVE — voidship tanks and throttle. Fuel as a vertical
+     column, thrust as a ring, hold-boost as a side tick.
      ========================================================= */
-  function phase(p, r, dt) {
-    const cx = p.w / 2, cy = (p.h - 15) / 2, R = Math.min(cx, cy) - 12;
+  function drive(p, r, dt) {
+    const s = r.ship;
+    const fuelN = s ? s.fuelN : 1;
+    const thrust = s ? s.thrust : 0;
+    const hold = s ? s.holdT : 0;
+    const infinite = s && s.infinite;
+    fuelNeedle += (fuelN - fuelNeedle) * Math.min(1, dt * 8);
+    thrustNeedle += (thrust - thrustNeedle) * Math.min(1, dt * 10);
 
-    ctx.strokeStyle = `rgba(${LAMP},0.10)`;
-    for (let i = -1; i <= 1; i++) {
-      ctx.beginPath();
-      ctx.moveTo(cx + i * R * 0.6, cy - R); ctx.lineTo(cx + i * R * 0.6, cy + R);
-      ctx.moveTo(cx - R, cy + i * R * 0.6); ctx.lineTo(cx + R, cy + i * R * 0.6);
-      ctx.stroke();
+    const inner = p.h - 15;
+    const tankX = 14, tankW = 22, tankH = inner - 28;
+    const tankY = 18;
+
+    // tank shell
+    ctx.strokeStyle = `rgba(${LAMP},0.28)`;
+    ctx.strokeRect(tankX + 0.5, tankY + 0.5, tankW - 1, tankH - 1);
+    for (let i = 1; i < 4; i++) {
+      const y = tankY + tankH * i / 4;
+      ctx.strokeStyle = `rgba(${DIM},0.35)`;
+      ctx.beginPath(); ctx.moveTo(tankX + 2, y); ctx.lineTo(tankX + tankW - 2, y); ctx.stroke();
     }
 
-    // ratio drifts with chaos, so a stable place draws a stable figure
-    const a = 2 + r.chaos * 1.6;
-    const b = 3 + Math.sin(r.camX * 0.00002) * 0.5 + r.speedN * 2.2;
-    const wob = 0.25 + r.chaos * 1.5;
+    const fillH = tankH * (infinite ? (0.85 + 0.15 * Math.sin(t * 2)) : fuelNeedle);
+    const low = !infinite && fuelNeedle < 0.22;
+    const col = low ? BAD : LAMP;
+    const fg = ctx.createLinearGradient(0, tankY + tankH - fillH, 0, tankY + tankH);
+    fg.addColorStop(0, `rgba(${col},0.95)`);
+    fg.addColorStop(1, `rgba(${col},0.35)`);
+    ctx.fillStyle = fg;
+    ctx.fillRect(tankX + 2, tankY + tankH - fillH, tankW - 4, fillH);
 
-    trace.length = 0;
-    for (let i = 0; i <= 110; i++) {
-      const u = i / 110 * 6.283;
-      trace.push([
-        cx + Math.sin(a * u + t * 0.6) * R * (0.82 + Math.sin(t + u) * 0.05 * wob),
-        cy + Math.sin(b * u + t * 0.35) * R * 0.82,
-      ]);
-    }
-    ctx.strokeStyle = `rgba(${LAMP},0.8)`;
-    ctx.lineWidth = 1.3;
+    // thrust ring
+    const cx = 98, cy = inner * 0.48, R = 34;
+    ctx.strokeStyle = `rgba(${DIM},0.35)`;
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = `rgba(${LAMP},0.85)`;
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    trace.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
+    ctx.arc(cx, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * thrustNeedle);
     ctx.stroke();
+    ctx.lineCap = "butt";
+    ctx.lineWidth = 1;
 
-    // the live point running the figure
-    const hu = (t * 0.9 % 6.283);
-    ctx.fillStyle = "rgba(255,245,220,0.9)";
-    ctx.beginPath();
-    ctx.arc(cx + Math.sin(a * hu + t * 0.6) * R * 0.82,
-            cy + Math.sin(b * hu + t * 0.35) * R * 0.82, 1.6, 0, 6.283);
-    ctx.fill();
+    ctx.font = '500 9px "IBM Plex Mono", monospace';
+    ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(${LAMP},0.9)`;
+    ctx.fillText(Math.round(thrustNeedle * 100) + "%", cx, cy + 3);
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("THRUST", cx, cy + 14);
+
+    // hold-boost bar
+    const bx = 58, by = inner - 16, bw = p.w - 66;
+    ctx.fillStyle = `rgba(${DIM},0.25)`;
+    ctx.fillRect(bx, by, bw, 5);
+    ctx.fillStyle = `rgba(${COLD},0.85)`;
+    ctx.fillRect(bx, by, bw * hold, 5);
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("CRUISE", bx, by - 3);
+
+    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    if (infinite) {
+      ctx.fillStyle = `rgba(${LAMP},0.9)`;
+      ctx.fillText("TANKS OPEN", 5, 12);
+    } else {
+      ctx.fillStyle = low ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
+      ctx.fillText(low ? "FUEL LOW" : "FUEL", 5, 12);
+      ctx.textAlign = "right";
+      ctx.fillStyle = `rgba(${col},0.95)`;
+      ctx.fillText(Math.round(fuelNeedle * 100) + "%", p.w - 5, 12);
+    }
   }
 
   /* =========================================================
-     RECORDER — the last half minute, scrolling. Two pens:
-     speed on top, disturbance beneath.
+     NAV — speed strip and span progress for the voidship.
      ========================================================= */
-  function recorder(p, r, dt) {
+  function nav(p, r, dt) {
     const inner = p.h - 15;
+    const s = r.ship;
+    const speedN = s ? s.speedN : r.speedN;
     stripAcc += dt;
     if (stripAcc > 0.05) {
       stripAcc = 0;
-      strip.push([r.speedN, r.chaos]);
+      strip.push([speedN, s ? s.thrust : r.chaos]);
       if (strip.length > 150) strip.shift();
     }
 
@@ -346,7 +387,7 @@ window.Instruments = (function () {
 
     const stepX = (p.w - 8) / 149;
     for (const pen of [0, 1]) {
-      ctx.strokeStyle = pen === 0 ? `rgba(${LAMP},0.75)` : `rgba(${BAD},0.55)`;
+      ctx.strokeStyle = pen === 0 ? `rgba(${LAMP},0.75)` : `rgba(${COLD},0.5)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       strip.forEach((sm, i) => {
@@ -357,7 +398,6 @@ window.Instruments = (function () {
       ctx.stroke();
     }
 
-    // the live edge
     if (strip.length) {
       const lastS = strip[strip.length - 1];
       const x = 4 + (strip.length - 1) * stepX;
@@ -374,6 +414,17 @@ window.Instruments = (function () {
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(r.spanPct.toFixed(1) + "% CROSSED", 5, 12);
+
+    // course chip
+    if (s && s.courseMark) {
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${COLD},0.9)`;
+      ctx.fillText("COURSE LOCK", 5, inner - 4);
+    } else if (s && s.burning) {
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${LAMP},0.75)`;
+      ctx.fillText("BURNING", 5, inner - 4);
+    }
   }
 
   return { mount, draw, setScale, getScale, focus, TOTAL_W, TOTAL_H };
