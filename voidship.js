@@ -20,14 +20,14 @@ window.Voidship = (function () {
 
   /* Tunables that later unlocks multiply. Keep them named. */
   const BASE = {
-    accel: 14000,          // world u/s² — arrives fast enough to feel alive
+    accel: 3800,           // world u/s² — heavy; max speed still comes from a long hold
     maxSpeed: 9000,        // base cruise; hold ramps this up
     holdBoost: 3.4,        // max cruise multiplier while held
-    holdBuild: 0.55,       // seconds toward full boost
-    holdDecay: 1.8,        // seconds to shed boost after release
-    yAccel: 520,           // screen px/s²
-    yMax: 280,             // screen px/s
-    yBand: 0.16,           // ± fraction of H from deck centre
+    holdBuild: 1.35,       // seconds toward full boost
+    holdDecay: 1.6,        // seconds to shed boost after release
+    yAccel: 180,           // screen px/s²
+    yMax: 220,             // screen px/s
+    yBand: 0.24,           // ± of H — must cover every beacon oy (0.20–0.46)
     fuelMax: 100,
     burnFull: 7.5,         // fuel/s at hard burn — enough to cross, not infinite
     burnIdle: 0,           // no drip while coasting
@@ -65,6 +65,7 @@ window.Voidship = (function () {
       trail: [],
       sparks: [],
       bob: 0,
+      alpha: 1,             // seated under the boot veil — no pop-in later
 
       // power multipliers (unlocks later)
       power: { accel: 1, maxSpeed: 1, fuelMax: 1, burn: 1 },
@@ -74,6 +75,7 @@ window.Voidship = (function () {
   function deckY(H) { return H * 0.42; }
 
   function resize(ship, W, H) {
+    if (!W || !H) return;
     if (!ship._seated) {
       ship.y = deckY(H);
       ship._seated = true;
@@ -81,6 +83,13 @@ window.Voidship = (function () {
     const mid = deckY(H);
     const band = H * BASE.yBand;
     ship.y = Math.min(mid + band, Math.max(mid - band, ship.y));
+  }
+
+  function addFuel(ship, n) {
+    if (!ship || ship.infinite || !(n > 0)) return 0;
+    const before = ship.fuel;
+    ship.fuel = Math.min(ship.fuelMax, ship.fuel + n);
+    return ship.fuel - before;
   }
 
   function setPower(ship, p) {
@@ -148,9 +157,11 @@ window.Voidship = (function () {
     if (steering) {
       const dx = ship.targetX - camX;
       const dy = ship.targetY - ship.y;
-      // map remaining screen-ish offset into a stick (-1..1)
-      const stickX = clamp(dx / (env.viewUnits * 0.42), -1, 1);
-      const stickY = clamp(dy / (H * BASE.yBand + 1), -1, 1);
+      // soft stick: short offsets stay gentle; edge holds still reach full cruise
+      const rawX = clamp(dx / (env.viewUnits * 0.42), -1, 1);
+      const rawY = clamp(dy / (H * BASE.yBand + 1), -1, 1);
+      const stickX = rawX * Math.abs(rawX);
+      const stickY = rawY * Math.abs(rawY);
       const vWant = stickX * cruise;
       const vyWant = stickY * BASE.yMax;
 
@@ -305,10 +316,17 @@ window.Voidship = (function () {
     return { x: W * 0.5, y: ship.y };
   }
 
-  /* true when the hull is on top of a beacon screen point */
+  /* true when the hull is on a screen point */
   function touching(ship, W, px, py, radius) {
     const p = screenPos(ship, W);
     return Math.hypot(px - p.x, py - p.y) < (radius || 28);
+  }
+
+  /* beacon claim: world X is what matters. Screen Y used to miss
+     high/low marks (Void at oy 0.20 sat outside the old flight band). */
+  function touchingMark(ship, camX, mark, pad) {
+    const reach = pad != null ? pad : 720;
+    return Math.abs(camX - mark.x) < reach;
   }
 
   function stats(ship) {
@@ -324,6 +342,8 @@ window.Voidship = (function () {
       burning: ship.thrustAmt > 0.08,
       arrived: ship.arrived,
       courseMark: ship.courseMark && ship.courseMark.id,
+      courseName: ship.courseMark && ship.courseMark.name,
+      angle: ship.angle,
       power: ship.power,
     };
   }
@@ -332,12 +352,23 @@ window.Voidship = (function () {
 
   function draw(ship, ctx, env) {
     const { W, H, t } = env;
+    if (!ship._seated) resize(ship, W, H);
+    if (!ship._seated) return;
+
     const p = screenPos(ship, W);
     const S = BASE.size;
+    const a = ship.alpha == null ? 1 : ship.alpha;
+    if (a < 0.01) return;
 
-    // destination ghost
-    if (hasTarget(ship) && !ship.arrived) {
-      const tx = W * 0.5 + (ship.targetX - env.camX) * (W / env.viewUnits) * 0.94;
+    ctx.save();
+    ctx.globalAlpha = a;
+
+    // destination ghost — only for a locked beacon or a released stop.
+    // free-hold steering retargets every frame, so a lead line thrashes.
+    const showCue = hasTarget(ship) && !ship.arrived &&
+      (ship.courseMark || !ship.thrusting);
+    if (showCue) {
+      const tx = W * 0.5 + (ship.targetX - env.camX) * (W / env.viewUnits);
       const ty = ship.targetY;
       const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 4));
       ctx.save();
@@ -346,11 +377,6 @@ window.Voidship = (function () {
       ctx.beginPath(); ctx.arc(tx, ty, 10 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = rgba(LAMP, 0.55 * pulse);
       ctx.beginPath(); ctx.arc(tx, ty, 2.2, 0, Math.PI * 2); ctx.stroke();
-      // thin lead line
-      ctx.strokeStyle = rgba(LAMP, 0.12);
-      ctx.setLineDash([3, 6]);
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke();
-      ctx.setLineDash([]);
       ctx.restore();
     }
 
@@ -360,7 +386,7 @@ window.Voidship = (function () {
       ctx.save();
       ctx.translate(tr.x, tr.y);
       ctx.rotate(tr.a);
-      ctx.globalAlpha = tr.life * 0.18;
+      ctx.globalAlpha = a * tr.life * 0.18;
       ctx.fillStyle = rgba(COLD, 0.5);
       ctx.beginPath();
       ctx.moveTo(S * 0.15, 0);
@@ -384,9 +410,8 @@ window.Voidship = (function () {
     drawHull(ctx, S, ship, t);
     drawSparks(ctx, ship);
 
-    ctx.restore();
-
-    // keep unused H referenced for linters that care
+    ctx.restore(); // hull
+    ctx.restore(); // alpha
     void H;
   }
 
@@ -650,8 +675,140 @@ window.Voidship = (function () {
     return cur + d;
   }
 
+  /* ---- fuel caches scattered along the span -------------------- */
+
+  function seedFuel(minX, maxX, count, nearX) {
+    const cans = [];
+    const n = count || 18;
+    let s = 0xFEEDCA5E | 0;
+    const rnd = () => {
+      s = s + 0x6D2B79F5 | 0;
+      let x = Math.imul(s ^ s >>> 15, 1 | s);
+      x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
+      return ((x ^ x >>> 14) >>> 0) / 4294967296;
+    };
+    const span = maxX - minX;
+    const mid = nearX != null ? nearX : (minX + maxX) * 0.5;
+    cans.push(
+      { id: "fuel-near-0", x: mid - 2800, oy: 0.36, amt: 48, taken: false, phase: 1.1, pop: 0 },
+      { id: "fuel-near-1", x: mid + 4200, oy: 0.44, amt: 52, taken: false, phase: 2.7, pop: 0 }
+    );
+    for (let i = 0; i < n; i++) {
+      const u = rnd();
+      const x = minX + span * (0.08 + u * 0.84);
+      if (Math.abs(x - mid) < 5500) continue;
+      // keep cans inside the ship's vertical band so none are stranded
+      const oy = 0.32 + rnd() * 0.20;
+      cans.push({
+        id: "fuel-" + i,
+        x,
+        oy,
+        amt: 40 + Math.floor(rnd() * 35),
+        taken: false,
+        phase: rnd() * 6.283,
+        pop: 0,
+      });
+    }
+    return cans;
+  }
+
+  function drawFuel(ctx, cans, env) {
+    const { W, H, camX, t, viewUnits } = env;
+    const sc = W / viewUnits;
+    for (const c of cans) {
+      if (c.taken && c.pop <= 0) continue;
+      const sx = (c.x - camX) * 0.94 * sc + W * 0.5;
+      const sy = c.oy * H;
+      if (sx < -40 || sx > W + 40) continue;
+
+      const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3.2 + c.phase));
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      if (c.taken) {
+        // claim burst
+        const u = 1 - c.pop;
+        ctx.globalAlpha = c.pop;
+        ctx.strokeStyle = rgba(LAMP, 0.8);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(0, 0, 6 + u * 18, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      // soft halo
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, 16);
+      g.addColorStop(0, rgba(LAMP, 0.35 * pulse));
+      g.addColorStop(1, rgba(LAMP, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.fill();
+
+      // canister body
+      ctx.fillStyle = rgba([22, 28, 30], 0.95);
+      ctx.strokeStyle = rgba(LAMP, 0.7 * pulse);
+      ctx.lineWidth = 1.2;
+      roundRect(ctx, -5, -8, 10, 14, 2);
+      ctx.fill(); ctx.stroke();
+
+      // fuel fill
+      ctx.fillStyle = rgba(LAMP, 0.75);
+      ctx.fillRect(-3.2, 1, 6.4, 3.5);
+
+      // droplet mark on the can
+      ctx.fillStyle = rgba(LAMP, 0.95);
+      ctx.beginPath();
+      ctx.moveTo(0, -5.5);
+      ctx.bezierCurveTo(2.4, -3.2, 2.4, -0.6, 0, 0.8);
+      ctx.bezierCurveTo(-2.4, -0.6, -2.4, -3.2, 0, -5.5);
+      ctx.fill();
+
+      // cap
+      ctx.fillStyle = rgba(HULL_HI, 1);
+      ctx.fillRect(-3, -10, 6, 2.5);
+
+      ctx.restore();
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  /* collect any cache the hull is on; returns total fuel gained */
+  function collectFuel(ship, cans, env, dt) {
+    const { W, H, camX, viewUnits } = env;
+    const sc = W / viewUnits;
+    const sp = screenPos(ship, W);
+    let gained = 0;
+    for (const c of cans) {
+      if (c.pop > 0) c.pop = Math.max(0, c.pop - dt * 2.2);
+      if (c.taken) continue;
+      const sx = (c.x - camX) * 0.94 * sc + W * 0.5;
+      const sy = c.oy * H;
+      if (Math.hypot(sx - sp.x, sy - sp.y) < 28) {
+        c.taken = true;
+        c.pop = 1;
+        gained += addFuel(ship, c.amt);
+      }
+    }
+    return gained;
+  }
+
+  function fuelForRadar(cans) {
+    return cans.filter(c => !c.taken).map(c => ({
+      id: c.id, cam: c.x, oy: c.oy, fuel: true,
+    }));
+  }
+
   return {
     BASE, create, resize, setPower, setCourse, setThrusting,
-    clearCourse, step, draw, screenPos, touching, stats, canBurn,
+    clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn,
+    addFuel, seedFuel, drawFuel, collectFuel, fuelForRadar,
   };
 })();

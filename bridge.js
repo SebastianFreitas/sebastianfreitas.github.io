@@ -70,11 +70,15 @@
 
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
+  let ship = null;
+  let FUEL_CANS = [];
   function resize() {
     dpr = Math.min(devicePixelRatio || 1, 2);
     W = host.clientWidth; H = host.clientHeight;
     cv.width = W * dpr; cv.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // seat the voidship under the boot veil so it never pops in later
+    if (ship) Voidship.resize(ship, W, H);
   }
   addEventListener("resize", resize);
   resize();
@@ -163,7 +167,7 @@
   setLoad(0, "link established");
   setLoad(0, touch ? "input: touch · hold to burn toward a point"
                    : "input: pointer · hold to burn toward a point");
-  setLoad(0, `build bridge-v31 · voidship · motion ${reduced ? "reduce" : "full"}`);
+  setLoad(0, `build bridge-v33 · voidship · motion ${reduced ? "reduce" : "full"}`);
   /* ---- state ---- */
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
@@ -171,9 +175,12 @@
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
   let freezeGuard = null;
-  const ship = window.Voidship ? Voidship.create() : null;
+  ship = window.Voidship ? Voidship.create() : null;
   if (!window.Voidship) {
     console.error("voidship.js did not load — travel is dead");
+  } else {
+    FUEL_CANS = Voidship.seedFuel(CAM.min, CAM.max, 20, LAND.bridge);
+    Voidship.resize(ship, W, H);
   }
 
   document.addEventListener("xp:freeze", e => {
@@ -207,6 +214,10 @@
     visible = true;
     host.classList.add("live");
     resize();
+    if (ship) {
+      Voidship.resize(ship, W, H);
+      ship.bob = 0;
+    }
   }
 
   // reaching the work counts for something too
@@ -335,6 +346,15 @@
     return { worldX, screenY, px, py };
   }
 
+  /* beacons are drawn at m.x (parallax), not m.cam — course must match
+     the light on screen or the ship peels off toward the wrong seat. */
+  function courseForMark(m) {
+    const mid = H * 0.42;
+    const band = H * ((window.Voidship && Voidship.BASE.yBand) || 0.16);
+    const screenY = Math.min(mid + band, Math.max(mid - band, m.oy * H));
+    return { worldX: m.x, screenY };
+  }
+
   function stopSteering() { if (cursor) cursor.classList.remove("on"); }
 
   let thrustId = null;
@@ -348,10 +368,9 @@
     lastPtr.x = e.clientX;
     lastPtr.y = e.clientY;
     const c = clientToCourse(e.clientX, e.clientY);
-    // beacon course aims at the beacon's world cam / screen seat
     if (mark) {
-      const p = markScreen(mark);
-      Voidship.setCourse(ship, mark.cam, p.y, mark);
+      const seat = courseForMark(mark);
+      Voidship.setCourse(ship, seat.worldX, seat.screenY, mark);
       pushLog(`course: ${mark.name.toLowerCase()}`, "loc");
       hintDone("beacon");
     } else {
@@ -380,9 +399,8 @@
   function retargetFromPointer() {
     if (!ship || thrustId == null || !ship.thrusting) return;
     if (ship.courseMark) {
-      const m = ship.courseMark;
-      const p = markScreen(m);
-      Voidship.setCourse(ship, m.cam, p.y, m);
+      const seat = courseForMark(ship.courseMark);
+      Voidship.setCourse(ship, seat.worldX, seat.screenY, ship.courseMark);
       return;
     }
     const c = clientToCourse(lastPtr.x, lastPtr.y);
@@ -411,13 +429,9 @@
       lastPtr.x = e.clientX;
       lastPtr.y = e.clientY;
       const m = markAt(e.clientX, e.clientY);
-      if (m && (!ship.courseMark || ship.courseMark === m)) {
-        // started on / slid onto a beacon: lock course to it
-        const p = markScreen(m);
-        Voidship.setCourse(ship, m.cam, p.y, m);
-      } else if (m && ship.courseMark && ship.courseMark !== m) {
-        const p = markScreen(m);
-        Voidship.setCourse(ship, m.cam, p.y, m);
+      if (m) {
+        const seat = courseForMark(m);
+        Voidship.setCourse(ship, seat.worldX, seat.screenY, m);
       } else if (!ship.courseMark) {
         const c = clientToCourse(e.clientX, e.clientY);
         Voidship.setCourse(ship, c.worldX, c.screenY, null);
@@ -630,10 +644,12 @@
         chaos: chaosNow,
         future: futureNow,
         spanPct: (CAM.max - camX) / (CAM.max - CAM.min) * 100,
+        travelled,
+        region: lastRegion,
         voice: nearest ? (VOICE_OF[nearest.id] || "void")
                        : (futureNow > 0.45 ? "future" : "void"),
         marks: MARKS.map(m => ({
-          id: m.id, cam: m.cam, oy: m.oy,
+          id: m.id, cam: m.cam, oy: m.oy, name: m.name,
           claimed: !!(window.XP && XP.has("beacon-" + m.id)),
         })),
         ship: st,
@@ -646,6 +662,12 @@
   /* ---- movement: the voidship owns travel ---- */
   function step(dt) {
     if (frozen) { vel = 0; return; }
+
+    // keep the craft alive under the boot veil (bob only)
+    if (ship && !started) {
+      ship.bob += dt;
+      return;
+    }
     if (!started) return;
 
     if (ship) {
@@ -661,11 +683,18 @@
       if (camX < CAM.min) { camX = CAM.min; ship.vel = 0; vel = 0; }
       if (camX > CAM.max) { camX = CAM.max; ship.vel = 0; vel = 0; }
 
-      // beacon contact → file
+      const gained = Voidship.collectFuel(ship, FUEL_CANS, {
+        W, H, camX, viewUnits: CAM.viewUnits,
+      }, dt);
+      if (gained > 0) {
+        pushLog(`tanks +${gained.toFixed(0)} · ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)}`, "good");
+        hintDone("fuel");
+      }
+
+      // beacon contact → file (world X, so high/low marks like Void still claim)
       if (ship.courseMark) {
         const m = ship.courseMark;
-        const p = markScreen(m);
-        if (Voidship.touching(ship, W, p.x, p.y, HIT + 6)) {
+        if (Voidship.touchingMark(ship, camX, m)) {
           selectMark(m);
         }
       }
@@ -731,6 +760,7 @@
     try {
       drawMarks(raw);
       if (ship) {
+        Voidship.drawFuel(ctx, FUEL_CANS, { W, H, t, camX, viewUnits: CAM.viewUnits });
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
       }
       if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))

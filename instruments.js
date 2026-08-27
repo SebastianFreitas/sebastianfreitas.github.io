@@ -1,13 +1,12 @@
 /* ===========================================================
    INSTRUMENTS
 
-   Four readings, four different domains, so a glance tells you
-   something a number never would:
+   Four readings for the voidship bridge:
 
-     RADAR      space     — what's around you and how far
-     SIGNAL     frequency — what this place sounds like
-     DRIVE      tanks     — fuel, thrust, hold-boost on the voidship
-     NAV        time      — speed and how much of the span you've crossed
+     RADAR   contacts — beacons by bearing/range, nearest callout
+     SIGNAL  field    — local spectrum, chaos, unformed
+     DRIVE   tanks    — fuel, thrust, cruise, burn budget
+     NAV     course   — speed, bearing, span, lock status
 
    All four share one canvas. Feed it a readings object each
    frame; it owns everything else.
@@ -19,8 +18,8 @@ window.Instruments = (function () {
   const COLD = "143,176,184";
   const DIM  = "125,135,131";
   const BAD  = "196,74,68";
+  const GOOD = "120,170,140";
 
-  /* two by two, big enough to actually read at a glance */
   const CELL_W = 168, CELL_H = 132, GAP = 16;
   const PANELS = [
     { key: "radar",  col: 0, row: 0, label: "RADAR"  },
@@ -33,21 +32,22 @@ window.Instruments = (function () {
   const TOTAL_H = CELL_H * 2 + GAP;
 
   let cv, ctx, dpr = 1, t = 0;
-  let focusKey = null;          // when set, that panel fills the whole rig
-  let uiScale = 1;              // the -/+ control
+  let focusKey = null;
+  let uiScale = 1;
 
-  /* ---- persistent instrument state ---- */
-  const BANDS = 24;
+  const BANDS = 28;
   const bars = new Float32Array(BANDS);
   const peaks = new Float32Array(BANDS);
   let sweep = 0;
-  const blips = new Map();          // mark id -> freshness
-  const strip = [];                 // nav samples
+  const blips = new Map();
+  const strip = [];
   let stripAcc = 0;
   let fuelNeedle = 1;
   let thrustNeedle = 0;
+  let cruiseNeedle = 0;
+  let chaosNeedle = 0;
+  let futureNeedle = 0;
 
-  /* what each place sounds like: [centre band, width, amplitude, roughness] */
   const VOICES = {
     mainland: { c: 0.42, w: 0.55, a: 0.80, rough: 0.55, name: "dense · many sources" },
     rex:      { c: 0.10, w: 0.22, a: 0.70, rough: 0.10, name: "sub · one source" },
@@ -65,7 +65,6 @@ window.Instruments = (function () {
     resize();
     addEventListener("resize", resize);
 
-    // click a panel to blow it up, click again to drop back
     cv.addEventListener("pointerdown", e => {
       e.stopPropagation();
       const r = cv.getBoundingClientRect();
@@ -97,7 +96,6 @@ window.Instruments = (function () {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  /* ---- frame ---- */
   function draw(dt, r) {
     if (!ctx) return;
     t += dt;
@@ -108,7 +106,7 @@ window.Instruments = (function () {
       if (p) {
         const big = { key: p.key, label: p.label, w: TOTAL_W, h: TOTAL_H, focused: true };
         ctx.save();
-        chrome(big, r);
+        chrome(big);
         paint(big, r, dt);
         ctx.restore();
         return;
@@ -118,7 +116,7 @@ window.Instruments = (function () {
     for (const p of PANELS) {
       ctx.save();
       ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
-      chrome(p, r);
+      chrome(p);
       paint(p, r, dt);
       ctx.restore();
     }
@@ -131,20 +129,24 @@ window.Instruments = (function () {
     if (p.key === "rec")    nav(p, r, dt);
   }
 
-  /* the frame and caption every panel shares */
-  function chrome(p, r) {
-    // a panel you can actually read against a moving scene
-    ctx.fillStyle = "rgba(9,13,15,0.82)";
+  function chrome(p) {
+    ctx.fillStyle = "rgba(9,13,15,0.86)";
     ctx.fillRect(0, 0, p.w, p.h - 14);
-    ctx.strokeStyle = "rgba(198,204,198,0.16)";
+    ctx.strokeStyle = "rgba(198,204,198,0.18)";
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, p.w - 1, p.h - 15);
+    // corner ticks
+    ctx.strokeStyle = `rgba(${LAMP},0.35)`;
+    ctx.beginPath();
+    ctx.moveTo(0, 8); ctx.lineTo(0, 0); ctx.lineTo(8, 0);
+    ctx.moveTo(p.w, 8); ctx.lineTo(p.w, 0); ctx.lineTo(p.w - 8, 0);
+    ctx.stroke();
+
     ctx.font = '500 8px "IBM Plex Mono", monospace';
     ctx.fillStyle = "rgba(125,135,131,1)";
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillText(p.label, 0, p.h - 3);
 
-    // expand / collapse affordance
     const gx = p.w - 11, gy = 7;
     ctx.strokeStyle = `rgba(${LAMP},0.5)`;
     ctx.lineWidth = 1;
@@ -159,79 +161,111 @@ window.Instruments = (function () {
     ctx.stroke();
   }
 
+  function lerp(a, b, u) { return a + (b - a) * u; }
+  function approach(cur, tgt, rate, dt) {
+    return cur + (tgt - cur) * Math.min(1, dt * rate);
+  }
+  function fmtK(n) {
+    const a = Math.abs(n);
+    if (a >= 100000) return (n / 1000).toFixed(0) + "k";
+    if (a >= 10000) return (n / 1000).toFixed(1) + "k";
+    return Math.round(n).toLocaleString("en-US");
+  }
+
   /* =========================================================
-     RADAR — a sweep, and everything worth reaching plotted by
-     bearing and range. Blips light as the line passes them.
+     RADAR — contacts only. Nearest beacon named. Heading pip.
      ========================================================= */
   const RANGE = 22000;
 
   function radar(p, r, dt) {
-    const cx = p.w / 2, cy = (p.h - 15) / 2, R = Math.min(cx, cy) - 10;
+    const inner = p.h - 15;
+    const cx = p.w / 2, cy = inner * 0.52, R = Math.min(cx - 8, cy - 14);
 
-    ctx.strokeStyle = `rgba(${LAMP},0.16)`;
+    // range rings + labels
     for (let i = 1; i <= 3; i++) {
+      ctx.strokeStyle = `rgba(${LAMP},${0.10 + i * 0.02})`;
       ctx.beginPath(); ctx.arc(cx, cy, R * i / 3, 0, 6.283); ctx.stroke();
     }
-    ctx.strokeStyle = `rgba(${LAMP},0.11)`;
+    ctx.fillStyle = `rgba(${DIM},0.7)`;
+    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillText("7k", cx + 3, cy - R * 0.33 + 3);
+    ctx.fillText("14k", cx + 3, cy - R * 0.66 + 3);
+    ctx.fillText("22k", cx + 3, cy - R + 3);
+
+    // cross + compass
+    ctx.strokeStyle = `rgba(${LAMP},0.12)`;
     ctx.beginPath();
     ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
     ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
     ctx.stroke();
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${DIM},0.85)`;
+    ctx.textAlign = "center";
+    ctx.fillText("W", cx - R + 7, cy + 3);
+    ctx.fillText("E", cx + R - 7, cy + 3);
 
-    sweep += dt * 1.5;
+    sweep += dt * 1.35;
     const ang = sweep % 6.283;
-
-    // the lit wedge trailing the line
-    for (let i = 0; i < 14; i++) {
-      const a = ang - i * 0.055;
-      ctx.strokeStyle = `rgba(${LAMP},${0.26 * (1 - i / 14)})`;
+    for (let i = 0; i < 16; i++) {
+      const a = ang - i * 0.05;
+      ctx.strokeStyle = `rgba(${LAMP},${0.28 * (1 - i / 16)})`;
       ctx.beginPath(); ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
       ctx.stroke();
     }
-    ctx.strokeStyle = `rgba(${LAMP},0.85)`;
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = `rgba(${LAMP},0.9)`;
+    ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R);
     ctx.stroke();
+    ctx.lineWidth = 1;
 
+    let nearest = null, nearestD = Infinity;
     for (const m of (r.marks || [])) {
       const d = m.cam - r.camX;
-      const rr = Math.min(1, Math.abs(d) / RANGE);
+      const ad = Math.abs(d);
+      if (ad < nearestD) { nearestD = ad; nearest = m; }
+      const rr = Math.min(1, ad / RANGE);
       if (rr >= 1) continue;
-      // west sits left, east right; height on screen tilts it up or down
       const lift = (m.oy - 0.5) * 1.4;
       const base = d >= 0 ? 0 : Math.PI;
-      const a = base + Math.atan2(lift, 0.001 + Math.abs(d) / RANGE) * (d >= 0 ? 1 : -1) * 0.5;
+      const a = base + Math.atan2(lift, 0.001 + ad / RANGE) * (d >= 0 ? 1 : -1) * 0.5;
       const bx = cx + Math.cos(a) * rr * R;
       const by = cy + Math.sin(a) * rr * R;
 
-      // freshness: bright the moment the sweep crosses it
       const diff = Math.abs(((a - ang + Math.PI * 3) % 6.283) - Math.PI);
       let lit = blips.get(m.id) || 0;
       if (diff > Math.PI - 0.12) lit = 1;
       lit = Math.max(0, lit - dt * 0.55);
       blips.set(m.id, lit);
 
-      const col = m.claimed ? "150,164,160" : LAMP;
-      // a soft halo so a blip reads even sitting on a grid line
-      const hg = ctx.createRadialGradient(bx, by, 0, bx, by, 9);
-      hg.addColorStop(0, `rgba(${col},${0.5 * (0.35 + 0.65 * lit)})`);
+      const locked = r.ship && r.ship.courseMark === m.id;
+      const col = locked ? COLD : (m.claimed ? "150,164,160" : LAMP);
+      const hg = ctx.createRadialGradient(bx, by, 0, bx, by, 10);
+      hg.addColorStop(0, `rgba(${col},${0.55 * (0.35 + 0.65 * lit)})`);
       hg.addColorStop(1, `rgba(${col},0)`);
-      ctx.fillStyle = hg; ctx.fillRect(bx - 9, by - 9, 18, 18);
+      ctx.fillStyle = hg; ctx.fillRect(bx - 10, by - 10, 20, 20);
 
       ctx.fillStyle = `rgba(${col},${0.55 + 0.45 * lit})`;
-      ctx.beginPath(); ctx.arc(bx, by, m.claimed ? 2 : 3.1, 0, 6.283); ctx.fill();
-      if (!m.claimed && lit > 0.2) {
-        ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(bx, by, m.claimed ? 2 : 3.2, 0, 6.283); ctx.fill();
+      if (locked) {
+        ctx.strokeStyle = `rgba(${COLD},0.9)`;
+        ctx.strokeRect(bx - 5, by - 5, 10, 10);
+      } else if (!m.claimed && lit > 0.2) {
         ctx.strokeStyle = `rgba(${LAMP},${lit * 0.75})`;
-        ctx.beginPath(); ctx.arc(bx, by, 4 + (1 - lit) * 9, 0, 6.283); ctx.stroke();
-        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(bx, by, 4 + (1 - lit) * 8, 0, 6.283); ctx.stroke();
       }
     }
 
-    // you, at the centre
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    // ship heading pip
+    const head = (r.ship && r.ship.angle != null) ? r.ship.angle : 0;
+    ctx.strokeStyle = `rgba(${COLD},0.7)`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(head) * 10, cy + Math.sin(head) * 10);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
 
     const inRange = (r.marks || []).filter(m => Math.abs(m.cam - r.camX) < RANGE);
@@ -239,53 +273,94 @@ window.Instruments = (function () {
     ctx.font = '500 8px "IBM Plex Mono", monospace';
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText(inRange.length + " IN RANGE", 5, 12);
-    if (unclaimed) {
-      ctx.textAlign = "right";
-      ctx.fillStyle = `rgba(${LAMP},0.9)`;
-      ctx.fillText(unclaimed + " UNFILED", p.w - 5, 12);
+    ctx.fillText(inRange.length + " CONTACT", 5, 12);
+    ctx.textAlign = "right";
+    ctx.fillStyle = unclaimed ? `rgba(${LAMP},0.9)` : `rgba(${DIM},1)`;
+    ctx.fillText(unclaimed ? unclaimed + " OPEN" : "FILED", p.w - 5, 12);
+
+    // nearest callout
+    if (nearest && nearestD < RANGE) {
+      const label = (nearest.name || nearest.id || "mark").toUpperCase();
+      const short = label.length > 14 ? label.slice(0, 13) + "…" : label;
+      const side = nearest.cam >= r.camX ? "E" : "W";
       ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${LAMP},0.85)`;
+      ctx.font = '500 7px "IBM Plex Mono", monospace';
+      ctx.fillText(short, 5, inner - 4);
+      ctx.textAlign = "right";
+      ctx.fillStyle = `rgba(${COLD},0.9)`;
+      ctx.fillText(side + " " + fmtK(nearestD), p.w - 5, inner - 4);
     }
   }
 
   /* =========================================================
-     SIGNAL — what this place sounds like. Mostly a noise floor
-     out in the dark; each landmark has its own shape.
+     SIGNAL — spectrum + chaos / unformed meters + strength.
      ========================================================= */
   function signal(p, r, dt) {
     const v = VOICES[r.voice] || VOICES.void;
     const inner = p.h - 15;
+    chaosNeedle = approach(chaosNeedle, r.chaos || 0, 4, dt);
+    futureNeedle = approach(futureNeedle, r.future || 0, 4, dt);
+
+    const spectrumTop = 16;
+    const spectrumBot = inner - 28;
+    const spectrumH = spectrumBot - spectrumTop;
     const bw = (p.w - 10) / BANDS;
 
+    let peak = 0;
     for (let i = 0; i < BANDS; i++) {
       const u = i / (BANDS - 1);
-      // a band's loudness: distance from this voice's centre, plus its roughness
       const near = Math.exp(-Math.pow((u - v.c) / (v.w * 0.6 + 0.02), 2));
       const grain = (Math.sin(t * (3 + i * 1.7) + i * 2.1) * 0.5 + 0.5);
       const churn = (Math.sin(t * 11 + i * 5.3) * 0.5 + 0.5) * v.rough;
       const target = Math.max(0.02, v.a * near * (0.55 + 0.45 * grain) * (1 - 0.35 * churn)
-                    + 0.03 + r.chaos * 0.10 * churn);
+                    + 0.03 + chaosNeedle * 0.12 * churn);
 
       bars[i] += (target - bars[i]) * Math.min(1, dt * 9);
       peaks[i] = Math.max(peaks[i] - dt * 0.35, bars[i]);
+      peak = Math.max(peak, bars[i]);
 
-      const h = Math.max(1, bars[i] * (inner - 16));
+      const h = Math.max(1, bars[i] * (spectrumH - 4));
       const x = 5 + i * bw;
-      ctx.fillStyle = `rgba(${COLD},${0.45 + 0.5 * bars[i]})`;
-      ctx.fillRect(x, inner - 6 - h, bw - 1.6, h);
-      ctx.fillStyle = `rgba(${LAMP},0.7)`;
-      ctx.fillRect(x, inner - 6 - Math.max(1, peaks[i] * (inner - 16)) - 1, bw - 1.6, 1);
+      ctx.fillStyle = `rgba(${COLD},${0.4 + 0.55 * bars[i]})`;
+      ctx.fillRect(x, spectrumBot - h, bw - 1.4, h);
+      ctx.fillStyle = `rgba(${LAMP},0.75)`;
+      ctx.fillRect(x, spectrumBot - Math.max(1, peaks[i] * (spectrumH - 4)) - 1, bw - 1.4, 1);
     }
 
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
-    ctx.fillStyle = `rgba(${DIM},1)`;
+    // dual meters
+    const mx = 5, mw = p.w - 10, my = inner - 18, mh = 5;
+    ctx.fillStyle = `rgba(${DIM},0.25)`;
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.fillStyle = `rgba(${BAD},0.75)`;
+    ctx.fillRect(mx, my, mw * chaosNeedle, mh);
+    ctx.fillStyle = `rgba(${DIM},0.25)`;
+    ctx.fillRect(mx, my + 8, mw, mh);
+    ctx.fillStyle = `rgba(${COLD},0.8)`;
+    ctx.fillRect(mx, my + 8, mw * futureNeedle, mh);
+
+    ctx.font = '500 6px "IBM Plex Mono", monospace';
     ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},0.9)`;
+    ctx.fillText("CHAOS", mx, my - 2);
+    ctx.fillText("UNFORMED", mx, my + 6);
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(${BAD},0.85)`;
+    ctx.fillText(chaosNeedle.toFixed(2), p.w - 5, my - 2);
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText(futureNeedle.toFixed(2), p.w - 5, my + 6);
+
+    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(v.name.toUpperCase(), 5, 12);
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(${LAMP},0.9)`;
+    ctx.fillText("STR " + Math.round(peak * 100), p.w - 5, 12);
   }
 
   /* =========================================================
-     DRIVE — voidship tanks and throttle. Fuel as a vertical
-     column, thrust as a ring, hold-boost as a side tick.
+     DRIVE — tanks, thrust, cruise, burn budget, power.
      ========================================================= */
   function drive(p, r, dt) {
     const s = r.ship;
@@ -293,138 +368,213 @@ window.Instruments = (function () {
     const thrust = s ? s.thrust : 0;
     const hold = s ? s.holdT : 0;
     const infinite = s && s.infinite;
-    fuelNeedle += (fuelN - fuelNeedle) * Math.min(1, dt * 8);
-    thrustNeedle += (thrust - thrustNeedle) * Math.min(1, dt * 10);
+    fuelNeedle = approach(fuelNeedle, fuelN, 8, dt);
+    thrustNeedle = approach(thrustNeedle, thrust, 10, dt);
+    cruiseNeedle = approach(cruiseNeedle, hold, 6, dt);
 
     const inner = p.h - 15;
-    const tankX = 14, tankW = 22, tankH = inner - 28;
+    const tankX = 8, tankW = 18, tankH = inner - 36;
     const tankY = 18;
 
-    // tank shell
-    ctx.strokeStyle = `rgba(${LAMP},0.28)`;
+    ctx.strokeStyle = `rgba(${LAMP},0.3)`;
     ctx.strokeRect(tankX + 0.5, tankY + 0.5, tankW - 1, tankH - 1);
     for (let i = 1; i < 4; i++) {
       const y = tankY + tankH * i / 4;
-      ctx.strokeStyle = `rgba(${DIM},0.35)`;
+      ctx.strokeStyle = `rgba(${DIM},0.3)`;
       ctx.beginPath(); ctx.moveTo(tankX + 2, y); ctx.lineTo(tankX + tankW - 2, y); ctx.stroke();
     }
-
     const fillH = tankH * (infinite ? (0.85 + 0.15 * Math.sin(t * 2)) : fuelNeedle);
     const low = !infinite && fuelNeedle < 0.22;
     const col = low ? BAD : LAMP;
     const fg = ctx.createLinearGradient(0, tankY + tankH - fillH, 0, tankY + tankH);
     fg.addColorStop(0, `rgba(${col},0.95)`);
-    fg.addColorStop(1, `rgba(${col},0.35)`);
+    fg.addColorStop(1, `rgba(${col},0.3)`);
     ctx.fillStyle = fg;
     ctx.fillRect(tankX + 2, tankY + tankH - fillH, tankW - 4, fillH);
 
-    // thrust ring
-    const cx = 98, cy = inner * 0.48, R = 34;
-    ctx.strokeStyle = `rgba(${DIM},0.35)`;
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.stroke();
-    ctx.strokeStyle = `rgba(${LAMP},0.85)`;
-    ctx.lineWidth = 6;
+    // thrust arc
+    const cx = 78, cy = 48, R = 28;
+    ctx.strokeStyle = `rgba(${DIM},0.3)`;
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0.75 * Math.PI, 2.25 * Math.PI); ctx.stroke();
+    ctx.strokeStyle = `rgba(${LAMP},0.9)`;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.arc(cx, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * thrustNeedle);
+    ctx.arc(cx, cy, R, 0.75 * Math.PI, 0.75 * Math.PI + 1.5 * Math.PI * thrustNeedle);
     ctx.stroke();
     ctx.lineCap = "butt";
     ctx.lineWidth = 1;
 
-    ctx.font = '500 9px "IBM Plex Mono", monospace';
+    ctx.font = '600 11px "IBM Plex Mono", monospace';
     ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(${LAMP},0.95)`;
+    ctx.fillText(Math.round(thrustNeedle * 100) + "%", cx, cy + 2);
+    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("THRUST", cx, cy + 12);
+
+    // cruise
+    const bx = 36, by = inner - 22, bw = p.w - 44;
+    ctx.fillStyle = `rgba(${DIM},0.22)`;
+    ctx.fillRect(bx, by, bw, 6);
+    const cg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    cg.addColorStop(0, `rgba(${COLD},0.5)`);
+    cg.addColorStop(1, `rgba(${LAMP},0.9)`);
+    ctx.fillStyle = cg;
+    ctx.fillRect(bx, by, bw * cruiseNeedle, 6);
+    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("CRUISE BUILD", bx, by - 3);
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", p.w - 5, by - 3);
+
+    // burn budget estimate + absolute fuel
+    const burnRate = s && s.burning ? (7.5 * (s.power && s.power.burn || 1)) : 0;
+    const secsLeft = (!infinite && burnRate > 0.1)
+      ? (s.fuel / burnRate)
+      : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},0.95)`;
+    ctx.fillText("BURN", 36, 28);
     ctx.fillStyle = `rgba(${LAMP},0.9)`;
-    ctx.fillText(Math.round(thrustNeedle * 100) + "%", cx, cy + 3);
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
-    ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("THRUST", cx, cy + 14);
+    if (infinite) ctx.fillText("∞", 36, 40);
+    else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", 36, 40);
+    else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", 36, 40);
 
-    // hold-boost bar
-    const bx = 58, by = inner - 16, bw = p.w - 66;
-    ctx.fillStyle = `rgba(${DIM},0.25)`;
-    ctx.fillRect(bx, by, bw, 5);
-    ctx.fillStyle = `rgba(${COLD},0.85)`;
-    ctx.fillRect(bx, by, bw * hold, 5);
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
-    ctx.textAlign = "left";
-    ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("CRUISE", bx, by - 3);
+    ctx.fillStyle = `rgba(${DIM},0.95)`;
+    ctx.fillText("PWR", 36, 54);
+    const pow = s && s.power ? s.power.accel : 1;
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText("×" + pow.toFixed(1), 36, 66);
 
+    // right column: status
+    ctx.textAlign = "right";
     ctx.font = '500 8px "IBM Plex Mono", monospace';
-    ctx.textAlign = "left";
     if (infinite) {
       ctx.fillStyle = `rgba(${LAMP},0.9)`;
-      ctx.fillText("TANKS OPEN", 5, 12);
+      ctx.fillText("OPEN", p.w - 5, 12);
     } else {
       ctx.fillStyle = low ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
-      ctx.fillText(low ? "FUEL LOW" : "FUEL", 5, 12);
+      ctx.fillText(low ? "LOW" : "FUEL", 5, 12);
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${col},0.95)`;
       ctx.fillText(Math.round(fuelNeedle * 100) + "%", p.w - 5, 12);
     }
+
+    const mode = s && s.burning ? "HARD BURN"
+      : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
+    ctx.textAlign = "right";
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
+    ctx.fillText(mode, p.w - 5, inner - 4);
   }
 
   /* =========================================================
-     NAV — speed strip and span progress for the voidship.
+     NAV — speed history, bearing, span bar, course lock.
      ========================================================= */
   function nav(p, r, dt) {
     const inner = p.h - 15;
     const s = r.ship;
     const speedN = s ? s.speedN : r.speedN;
     stripAcc += dt;
-    if (stripAcc > 0.05) {
+    if (stripAcc > 0.045) {
       stripAcc = 0;
-      strip.push([speedN, s ? s.thrust : r.chaos]);
-      if (strip.length > 150) strip.shift();
+      strip.push([speedN, Math.min(1, Math.abs(r.vel) / 30000), r.chaos || 0]);
+      if (strip.length > 160) strip.shift();
     }
 
-    ctx.strokeStyle = `rgba(${LAMP},0.09)`;
-    for (let i = 1; i < 4; i++) {
-      const y = inner * i / 4;
-      ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(p.w - 2, y); ctx.stroke();
-    }
+    // big digital speed
+    ctx.font = '600 16px "IBM Plex Mono", monospace';
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${LAMP},0.95)`;
+    ctx.fillText(Math.round(Math.abs(r.vel)).toLocaleString("en-US"), 5, 22);
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("U/S", 5, 32);
 
-    const stepX = (p.w - 8) / 149;
-    for (const pen of [0, 1]) {
-      ctx.strokeStyle = pen === 0 ? `rgba(${LAMP},0.75)` : `rgba(${COLD},0.5)`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      strip.forEach((sm, i) => {
-        const x = 4 + i * stepX;
-        const y = inner - 5 - sm[pen] * (inner - 14);
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      });
-      ctx.stroke();
-    }
+    ctx.textAlign = "right";
+    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText("BRG " + fmtK(r.camX), p.w - 5, 14);
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText(r.spanPct.toFixed(1) + "% SPAN", p.w - 5, 26);
 
+    // strip chart
+    const chartTop = 38, chartBot = inner - 20;
+    const chartH = chartBot - chartTop;
+    ctx.strokeStyle = `rgba(${LAMP},0.08)`;
+    for (let i = 1; i < 3; i++) {
+      const y = chartTop + chartH * i / 3;
+      ctx.beginPath(); ctx.moveTo(4, y); ctx.lineTo(p.w - 4, y); ctx.stroke();
+    }
+    const stepX = (p.w - 10) / Math.max(1, 159);
+    ctx.strokeStyle = `rgba(${LAMP},0.8)`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    strip.forEach((sm, i) => {
+      const x = 5 + i * stepX;
+      const y = chartBot - sm[0] * (chartH - 2);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(${COLD},0.4)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    strip.forEach((sm, i) => {
+      const x = 5 + i * stepX;
+      const y = chartBot - sm[1] * (chartH - 2) * 0.85;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
     if (strip.length) {
-      const lastS = strip[strip.length - 1];
-      const x = 4 + (strip.length - 1) * stepX;
+      const last = strip[strip.length - 1];
+      const x = 5 + (strip.length - 1) * stepX;
       ctx.fillStyle = `rgba(${LAMP},0.95)`;
       ctx.beginPath();
-      ctx.arc(x, inner - 5 - lastS[0] * (inner - 14), 1.7, 0, 6.283);
+      ctx.arc(x, chartBot - last[0] * (chartH - 2), 2, 0, 6.283);
       ctx.fill();
     }
 
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
-    ctx.textAlign = "right";
+    // span position bar
+    const u = Math.min(1, Math.max(0, 1 - (r.spanPct || 0) / 100));
+    // spanPct is "% crossed" from east-ish; bar shows you on the line
+    const you = Math.min(1, Math.max(0, (r.spanPct || 0) / 100));
+    const barY = inner - 10;
+    ctx.fillStyle = `rgba(${DIM},0.25)`;
+    ctx.fillRect(5, barY, p.w - 10, 3);
     ctx.fillStyle = `rgba(${LAMP},0.85)`;
-    ctx.fillText(Math.round(Math.abs(r.vel)) + " U/S", p.w - 5, 12);
+    ctx.fillRect(5 + (p.w - 10) * you - 1, barY - 2, 2, 7);
+    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.fillStyle = `rgba(${DIM},0.8)`;
     ctx.textAlign = "left";
-    ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText(r.spanPct.toFixed(1) + "% CROSSED", 5, 12);
+    ctx.fillText("W", 5, barY - 4);
+    ctx.textAlign = "right";
+    ctx.fillText("E", p.w - 5, barY - 4);
 
-    // course chip
-    if (s && s.courseMark) {
-      ctx.textAlign = "left";
-      ctx.fillStyle = `rgba(${COLD},0.9)`;
-      ctx.fillText("COURSE LOCK", 5, inner - 4);
+    // status line
+    ctx.textAlign = "left";
+    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    if (s && s.courseName) {
+      ctx.fillStyle = `rgba(${COLD},0.95)`;
+      const nm = s.courseName.toUpperCase();
+      ctx.fillText("LOCK " + (nm.length > 12 ? nm.slice(0, 11) + "…" : nm), 5, chartBot + 10);
     } else if (s && s.burning) {
-      ctx.textAlign = "left";
-      ctx.fillStyle = `rgba(${LAMP},0.75)`;
-      ctx.fillText("BURNING", 5, inner - 4);
+      ctx.fillStyle = `rgba(${LAMP},0.85)`;
+      ctx.fillText("BURNING", 5, chartBot + 10);
+    } else if (r.region) {
+      ctx.fillStyle = `rgba(${DIM},0.95)`;
+      const reg = String(r.region).toUpperCase();
+      ctx.fillText(reg.length > 18 ? reg.slice(0, 17) + "…" : reg, 5, chartBot + 10);
     }
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(${GOOD},0.85)`;
+    if (r.travelled != null) ctx.fillText(fmtK(r.travelled) + " RUN", p.w - 5, chartBot + 10);
+
+    void u; void lerp;
   }
 
   return { mount, draw, setScale, getScale, focus, TOTAL_W, TOTAL_H };
