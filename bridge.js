@@ -684,9 +684,10 @@
 
     if (!visible) return;
 
-    // a claim holds the whole scene still while the level lands
-    const dt = frozen ? 0 : raw;
-    t += dt;
+    // a claim holds travel still while the level lands
+    // but the world keeps animating (t advances)
+    t += raw;
+    const dt = raw;
 
     step(dt);
 

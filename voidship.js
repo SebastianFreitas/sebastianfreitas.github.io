@@ -124,11 +124,17 @@ window.Voidship = (function () {
   function step(ship, dt, env) {
     const { W, H, frozen } = env;
     let camX = env.camX;
-    if (frozen || dt <= 0) {
+    
+    if (frozen) {
       ship.vel = 0;
       ship.vy = 0;
       ship.thrustAmt = approach(ship.thrustAmt, 0, 8, dt || 0.016);
+      ship.bob += dt; // keep bobbing
       return { camX, vel: 0 };
+    }
+    
+    if (dt <= 0) {
+      return { camX, vel: ship.vel };
     }
 
     resize(ship, W, H);
