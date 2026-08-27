@@ -143,6 +143,16 @@ window.XP = (function () {
 
     ceremonyBusy = true;
     freeze(true);
+
+    // whatever happens next, the world starts again
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      ceremonyBusy = false;
+      freeze(false);
+    };
+    setTimeout(release, (milestone ? 1250 : 820) + (milestone ? 1150 : 780) + 1500);
     paint(fromLevel, 0);          // the run-up always starts empty
 
     const target = chip.getBoundingClientRect();
@@ -180,10 +190,11 @@ window.XP = (function () {
       mote.style.transform =
         `translate(${px}px, ${py}px) translate(-50%,-50%) scale(${1 + (1 - e) * 0.9})`;
       mote.style.opacity = u > 0.86 ? String((1 - u) / 0.14) : "1";
-      if (u < 1) requestAnimationFrame(fly);
-      else { mote.remove(); tag.remove(); fill(); }
+      if (u < 1) return requestAnimationFrame(step2);
+      mote.remove(); tag.remove(); fill();
     }
-    requestAnimationFrame(fly);
+    const step2 = now2 => { try { fly(now2); } catch (e) { console.warn("claim:", e); release(); } };
+    requestAnimationFrame(step2);
 
     function fill() {
       chip.classList.add("landing");
@@ -203,19 +214,20 @@ window.XP = (function () {
         step++;
         paint(fromLevel + step, 0);
         tick();
-        document.dispatchEvent(new CustomEvent("xp:surge", {
-          detail: { level: fromLevel + step, total: TOTAL, milestone },
-        }));
+        try {
+          document.dispatchEvent(new CustomEvent("xp:surge", {
+            detail: { level: fromLevel + step, total: TOTAL, milestone },
+          }));
+        } catch (e) { console.warn("surge:", e); }
         if (step < n) { f0 = null; return requestAnimationFrame(run); }
 
         chip.classList.remove("landing");
         paint();
         bump();
         setTimeout(() => chip.classList.remove("rankup"), 1400);
-        ceremonyBusy = false;
-        freeze(false);
+        release();
       }
-      requestAnimationFrame(run);
+      requestAnimationFrame(now2 => { try { run(now2); } catch (e) { console.warn("claim:", e); release(); } });
     }
 
     function tick() {

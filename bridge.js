@@ -151,8 +151,15 @@
   let scrubbing = false, armed = false, armX = 0, armMoved = 0;
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
+  let freezeGuard = null;
   document.addEventListener("xp:freeze", e => {
     frozen = !!e.detail.on;
+    clearTimeout(freezeGuard);
+    // nothing is allowed to stop the world indefinitely: if a claim
+    // never reports back, the scene starts itself again
+    if (frozen) freezeGuard = setTimeout(() => {
+      if (frozen) { frozen = false; host.classList.remove("held"); console.warn("scene un-held by guard"); }
+    }, 5000);
     host.classList.toggle("held", frozen);
     if (frozen) { vel = 0; endDrag && endDrag(); }
   });
@@ -445,19 +452,30 @@
   const easeInOut = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 
   /* ---- markers ---- */
+  let markDebug = 0;
+  window.beaconReport = () => MARKS.map(m => {
+    const p = markScreen(m);
+    return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
+  }).join("\n") + `\ncamX=${camX.toFixed(0)} frozen=${frozen} W=${W} H=${H}`;
+
   function drawMarks(dt) {
+    let shown = 0;
     for (const m of MARKS) {
       const p = markScreen(m);
       m.vis = approach(m.vis, onScreen(p.x, 60) ? 1 : 0, 3.2, dt);
       if (m.pop > 0) m.pop = Math.max(0, m.pop - dt * 1.6);
       if (m.vis < 0.02 && m.pop <= 0) continue;
+      shown++;
       Beacon.draw(ctx, p.x, p.y, {
         t, phase: m.phase, alpha: m.vis,
         active: activeMark === m, hover: hoverMark === m,
         claimed: window.XP && XP.has("beacon-" + m.id),
-        xp: m.xp, pop: m.pop,
+        xp: m.xp, pop: m.pop, label: m.name,
       });
     }
+    // if none ever appear, say so once — beaconReport() has the detail
+    if (!shown && ++markDebug === 240)
+      console.warn("no beacons drawn in 4s — run beaconReport() for why");
   }
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
