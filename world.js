@@ -170,18 +170,24 @@ window.World = (function () {
     return (b.base + drift + ramp + relief) * entry;
   }
 
-  /* what stands on the near band */
+  /* what stands on the surface plateau — west of the climb-out,
+     so it never reads as furniture between underground and hell */
+  const REX_SURF_SPAN = REX_END - REX_FROM;
+  const REX_SURF_LO   = REX_FROM + REX_SURF_SPAN * 0.12; // past the entry rise
+  const REX_SURF_HI   = REX_FROM + REX_SURF_SPAN * 0.62; // before rampAt (~0.80)
   const rexProps = { wrecks: [], castle: null, kingdom: null };
   (function buildRex() {
     const r = mulberry(77341);
     for (let i = 0; i < 34; i++)
-      rexProps.wrecks.push({ x: REX_FROM + r() * (REX_END - REX_FROM) * 0.95,
+      rexProps.wrecks.push({ x: REX_SURF_LO + r() * (REX_SURF_HI - REX_SURF_LO),
                              w: 90 + r() * 460, h: 12 + r() * 54,
                              tilt: (r() - 0.5) * 0.55, mast: r() < 0.4 });
-    rexProps.castle = { x: LAND.rex - SLOT * 1.1, blocks: [] };
+    // mountains with the uncleared castle — mid-surface, on top of Rex
+    rexProps.castle = { x: LAND.rex - SLOT * 2.8, blocks: [] };
     for (let i = 0; i < 8; i++)
       rexProps.castle.blocks.push({ dx: (i - 3.5) * 44, w: 24 + r() * 32, h: 44 + r() * 104 });
-    rexProps.kingdom = { x: LAND.rex + SLOT * 0.75, towers: [] };
+    // nocturnals further east, still on the surface — not into the climb
+    rexProps.kingdom = { x: LAND.rex - SLOT * 0.9, towers: [] };
     for (let i = 0; i < 16; i++)
       rexProps.kingdom.towers.push({ dx: (i - 8) * 58, w: 12 + r() * 24,
                                      h: 26 + r() * 96, lit: r() < 0.55 });
@@ -626,16 +632,24 @@ window.World = (function () {
 
   }
 
-  /* ---- what stands on the surface, while there is one ---- */
+  /* ---- what stands on the surface, while there is one ----
+     Only while the silhouette still reads as a ground top. Once it
+     has climbed out of the frame it is a cliff into the underground,
+     and props there looked like they sat between under and hell.
+  --------------------------------------------------------- */
   function rexSurface(sc) {
-    const nb = REX_BANDS[2], par = nb.par;
+    // tall / light band (far), not the near floor of the cutaway
+    const nb = REX_BANDS[0], par = nb.par;
     const surfY = worldX => H * 1.06 - rexHeight(worldX, nb) * H;
+    // upper silhouette only — never deep between under and hell
+    const onTop = y => y > H * 0.04 && y < H * 0.58;
+    if (camX > REX_SURF_HI + SLOT * 0.4) return;
 
     for (const wr of rexProps.wrecks) {
       const px = wx(wr.x, par);
       if (!onScreen(px, 280)) continue;
       const y = surfY(wr.x);
-      if (y > H + 60 || y < -80) continue;
+      if (!onTop(y)) continue;
       const ww = wr.w * sc * par, wh = wr.h * sc * par;
       ctx.save(); ctx.translate(px, y); ctx.rotate(wr.tilt);
       ctx.fillStyle = "#0b1014"; ctx.fillRect(-ww / 2, -wh, ww, wh);
@@ -647,7 +661,7 @@ window.World = (function () {
     const cas = rexProps.castle, cxp = wx(cas.x, par);
     if (onScreen(cxp, 460)) {
       const base = surfY(cas.x);
-      if (base < H + 80) for (const b2 of cas.blocks) {
+      if (onTop(base)) for (const b2 of cas.blocks) {
         const bx = cxp + b2.dx * sc * par;
         const bw = b2.w * sc * par, bh = b2.h * sc * par;
         ctx.fillStyle = "#161f26"; ctx.fillRect(bx, base - bh, bw, bh);
@@ -662,7 +676,7 @@ window.World = (function () {
         const bx = kxp + tw.dx * sc * par;
         if (!onScreen(bx, 40)) continue;
         const base = surfY(kg.x + tw.dx);
-        if (base > H + 40) continue;
+        if (!onTop(base)) continue;
         const bw = tw.w * sc * par, bh = tw.h * sc * par;
         ctx.fillStyle = "#0f171d"; ctx.fillRect(bx, base - bh, bw, bh);
         if (tw.lit) {
