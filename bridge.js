@@ -96,8 +96,19 @@
 
   const bootLines = [];
   let bootIdx = 0, bootChar = 0, bootLine = null, bootHold = 0, bootReady = false;
+  // finishLoading pushes the identity lines ~900ms in. The first two
+  // generic lines type out faster than that, so the gate used to open
+  // and lock bootReady before those lines existed — returning visitors
+  // never saw "entry found" / "Continue", and nobody got signed in.
+  let bootSigned = false;
 
   function setLoad(_p, label) { if (label) bootLines.push(label); }
+
+  function revealGate() {
+    if (bootReady) return;
+    bootReady = true;
+    if (bootGate) bootGate.classList.add("on");
+  }
 
   function bootTick(dt) {
     if (!bootLog || bootReady) return;
@@ -105,8 +116,8 @@
 
     if (!bootLine) {
       if (bootIdx >= bootLines.length) {
-        bootReady = true;
-        if (bootGate) bootGate.classList.add("on");
+        if (!bootSigned) return;
+        revealGate();
         return;
       }
       bootLine = document.createElement("div");
@@ -683,23 +694,34 @@
 
   /* the log signs you in; the gate itself is already wired above */
   function finishLoading() {
-    if (!window.XP) return;
-    if (XP.isNew) {
-      setLoad(0, `provisional entry: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
-      setLoad(0, "level 0 · claim the beacon to enter");
-    } else {
-      setLoad(0, `entry found: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
-      setLoad(0, `level ${XP.level} of ${XP.total} · resuming`);
-      const lbl = document.querySelector("#entry-go .bcn-lbl");
-      if (lbl) lbl.textContent = "Continue";
+    if (window.XP) {
+      if (XP.isNew) {
+        setLoad(0, `provisional entry: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
+        setLoad(0, "level 0 · claim the beacon to enter");
+      } else {
+        setLoad(0, `entry found: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
+        setLoad(0, `level ${XP.level} of ${XP.total} · resuming`);
+        const lbl = document.querySelector("#entry-go .bcn-lbl");
+        if (lbl) lbl.textContent = "Continue";
+      }
     }
+    bootSigned = true;
   }
 
   if (!reduced) requestAnimationFrame(frame);
   else {
+    // still sign in and wait on the gate — just skip the canvas loop
     World.draw(ctx, { W, H, camX, t: 0, vel: 0, chaos: 0, future: 0 });
     drawMarks(0.016);
-    setLoad(1, "Ready");
-    if (loadEl) loadEl.classList.add("done");
+    finishLoading();
+    if (bootLog) {
+      bootLines.forEach(full => {
+        const line = document.createElement("div");
+        line.className = "bl";
+        line.textContent = full;
+        bootLog.appendChild(line);
+      });
+    }
+    revealGate();
   }
 })();
