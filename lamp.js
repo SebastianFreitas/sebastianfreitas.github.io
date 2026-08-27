@@ -1,7 +1,12 @@
 /* ===========================================================
-   BEACON — one definition, two surfaces.
+   LAMP — one definition, two surfaces. (was beacon.js)
 
-   A beacon marks something unfiled. Claiming it raises a level.
+   Renamed off beacon.js because uBlock/EasyList and friends
+   silently drop any http://…/beacon.js request. file:// was
+   fine; the local server looked like the span had no marks
+   and entry claims never grew a flying +1.
+
+   A lamp marks something unfiled. Claiming it raises a level.
    It exists in two forms and both come from here:
 
      Beacon.draw(ctx, x, y, opts)   painted into a canvas scene

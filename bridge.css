@@ -237,7 +237,12 @@
   background: #0d1114;
   transition: opacity 0.7s ease, visibility 0.7s;
 }
-.bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.bridge-loading.done {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  /* Firefox can keep a faded full-screen layer over the canvas
+     after the opacity transition; drop it from layout entirely. */
+  display: none;
+}
 /* ---- boot terminal ---- */
 .bridge-loading .boot {
   width: min(34rem, 78vw);
@@ -323,7 +328,12 @@ footer .rights {
   background: #0d1114;
   transition: opacity 0.7s ease, visibility 0.7s;
 }
-.bridge-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.bridge-loading.done {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  /* Firefox can keep a faded full-screen layer over the canvas
+     after the opacity transition; drop it from layout entirely. */
+  display: none;
+}
 /* ---- boot terminal ---- */
 .bridge-loading .boot {
   width: min(34rem, 78vw);

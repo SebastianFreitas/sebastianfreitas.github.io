@@ -29,6 +29,10 @@ window.XP = (function () {
 
   let state, fresh = false;
   try {
+    // http:// and file:// store profiles separately — ?reset=1 clears
+    // the one for this origin so claim animations can be re-tested
+    if (/(?:[?&])reset(?:=1)?(?:&|$)/.test(location.search))
+      localStorage.removeItem(KEY);
     const raw = localStorage.getItem(KEY);
     if (raw) state = JSON.parse(raw);
   } catch (e) { /* storage unavailable — run for this session only */ }

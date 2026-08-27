@@ -18,6 +18,9 @@
 
   const ctx = cv.getContext("2d");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* reduced-motion used to skip the frame loop and blank the span on
+     http:// in Firefox while file:// still looked fine — same files.
+     The loop always runs; we only soften travel when reduced. */
 
   /* ---- the map, borrowed from world.js ---- */
   const SLOT   = World.SLOT;
@@ -57,6 +60,9 @@
     m.pop = 0;            // the burst when one is claimed
   });
   const HIT = (window.Beacon && Beacon.HIT) || 26;
+  if (!window.Beacon) {
+    console.error("lamp.js did not load — canvas marks and claim flights are dead");
+  }
 
   /* ---- canvas ---- */
   let W = 0, H = 0, dpr = 1;
@@ -153,6 +159,7 @@
   setLoad(0, "link established");
   setLoad(0, touch ? "input: touch · drag with one finger"
                    : "input: pointer · drag anywhere to travel");
+  setLoad(0, `build bridge-v30 · motion ${reduced ? "reduce" : "full"}`);
   /* ---- state ---- */
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
   let catalogued = 4182993201, started = false, visible = true;
@@ -188,7 +195,9 @@
   function begin() {
     if (started) return;
     started = true;
+    visible = true;
     host.classList.add("live");
+    resize();
   }
 
   // reaching the work counts for something too
@@ -679,9 +688,12 @@
       maxFling: CAM.maxFling,
       chaos: chaosNow, future: futureNow,
     });
-    // a fault in the scene must not take the readout with it
+    // a claim holds travel still while the level lands — but beacon
+    // fade-in must keep using real time. With dt=0 here, the first
+    // entry claim left every mark at vis=0 for the whole ceremony,
+    // so the span looked empty (and stayed empty if unfreeze glitched).
     try {
-      drawMarks(dt);
+      drawMarks(raw);
       if (activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
         placeNote(noteEls[activeMark.id], activeMark);
     } catch (err) {
@@ -694,6 +706,7 @@
 
   /* the log signs you in; the gate itself is already wired above */
   function finishLoading() {
+    if (bootSigned) return;
     if (window.XP) {
       if (XP.isNew) {
         setLoad(0, `provisional entry: ${XP.name.toLowerCase()} · ref ${XP.ref}`);
@@ -708,11 +721,8 @@
     bootSigned = true;
   }
 
-  if (!reduced) requestAnimationFrame(frame);
-  else {
-    // still sign in and wait on the gate — just skip the canvas loop
-    World.draw(ctx, { W, H, camX, t: 0, vel: 0, chaos: 0, future: 0 });
-    drawMarks(0.016);
+  if (reduced) {
+    // still type the gate lines immediately — loop runs either way
     finishLoading();
     if (bootLog) {
       bootLines.forEach(full => {
@@ -724,4 +734,5 @@
     }
     revealGate();
   }
+  requestAnimationFrame(frame);
 })();

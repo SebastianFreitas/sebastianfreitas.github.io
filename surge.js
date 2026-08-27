@@ -12,11 +12,10 @@
    =========================================================== */
 
 (function () {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-  /* ---- the six runs of light, in the order they light up ----
-     Each branch travels: half the top, one full side, half the
-     bottom. Two branches, mirrored, meeting underneath.        */
+  /* This page's claim language IS the motion. Honouring OS
+     "reduce motion" here was blanking the surge in Firefox on
+     http:// (file:// often reports no preference), so the span
+     looked dead next to the same files opened as a document. */
   const RAIL = ["topL", "topR", "sideL", "sideR", "botL", "botR"];
 
   let root, rails = {}, flash, built = false;

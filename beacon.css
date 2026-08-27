@@ -115,7 +115,7 @@
 
 /* =========================================================
    The beacon, as a thing you can put anywhere.
-   Markup is handled by beacon.js:
+   Markup is handled by lamp.js:
      <button data-beacon data-beacon-id="x" data-xp="2"
              data-label="Name"><span class="bcn-lbl">Text</span></button>
    ========================================================= */
@@ -273,4 +273,4 @@ button.bcn,
 }
 .surge-flash.go { opacity: 0.14; }
 
-@media (prefers-reduced-motion: reduce) { .surge { display: none; } }
+/* keep .surge visible — claim light is the feedback, not decoration */
