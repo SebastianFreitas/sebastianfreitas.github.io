@@ -379,6 +379,8 @@ window.Voidship = (function () {
       courseMark: ship.courseMark && ship.courseMark.id,
       courseName: ship.courseMark && ship.courseMark.name,
       angle: ship.angle,
+      bank: ship.bank,
+      vy: ship.vy,
       power: ship.power,
     };
   }

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=8">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=21">
+<link rel="stylesheet" href="bridge.css?v=26">
 <script src="xp.js?v=12"></script>
 <script>
 /* One rule for skip: seen. Must run after xp.js, before body paints. */
@@ -80,9 +80,7 @@ try {
   <div class="grain"></div>
 
   <!-- HUD, revealed once you start moving -->
-  <!-- one readout: a log that keeps writing, with the numbers under it -->
   <div class="bridge-hud" id="bridge-term">
-    <div class="tlog" id="btlog"></div>
     <div class="tinst-wrap">
       <div class="tinst-ctl">
         <button type="button" id="binst-out" title="Smaller">&minus;</button>
@@ -93,6 +91,10 @@ try {
     </div>
   </div>
 
+  <div class="bridge-hud" id="bridge-log">
+    <div class="tlog" id="btlog"></div>
+  </div>
+
   <div class="bridge-hud" id="bridge-map">
     <div class="track" id="btrack"><div class="ghost" id="bghost"></div><div class="you" id="byou"></div></div>
     <div class="labels"><span>West · the future</span><span>East · the past</span></div>
@@ -100,7 +102,14 @@ try {
 
   <div class="bridge-hud" id="bridge-hint">Hold to burn — click a beacon to set course</div>
 
-  <a class="bridge-scroll" href="#work">The work ↓</a>
+  <div class="bridge-hud" id="bridge-sys">
+    <div class="tinst-wrap">
+      <canvas class="tinst" id="binst-sys"
+              aria-label="Systems panel: life support, radiation, hull, power"></canvas>
+    </div>
+  </div>
+
+  <a class="bridge-scroll" href="#work">The work</a>
 
   <!-- ---- landmark notes ---- -->
   <aside class="bnote" id="bnote-future">
@@ -271,10 +280,10 @@ try {
 
 <script src="surge.js?v=3"></script>
 <script src="lamp.js?v=1"></script>
-<script src="instruments.js?v=11"></script>
+<script src="instruments.js?v=16"></script>
 <script src="world.js?v=7"></script>
-<script src="voidship.js?v=13"></script>
-<script src="bridge.js?v=46"></script>
+<script src="voidship.js?v=14"></script>
+<script src="bridge.js?v=49"></script>
 <script src="intro.js?v=4"></script>
 </body>
 </html>

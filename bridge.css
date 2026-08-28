@@ -81,29 +81,10 @@
 .bridge-hud .v { color: var(--sage); }
 /* ---- the readout ---- */
 #bridge-term {
-  left: 2rem; bottom: 2rem; width: auto; max-width: 46vw;
-  /* never taller than the space between the top bar and the map strip */
-  max-height: calc(100% - 11rem);
-  display: flex; flex-direction: column; justify-content: flex-end;
+  left: 2rem; bottom: 2rem; width: auto;
   overflow: visible;
 }
-#bridge-term .tlog {
-  display: flex; flex-direction: column; justify-content: flex-end;
-  gap: 0.28rem; min-height: 6.2rem; margin-bottom: 0.7rem;
-}
-#bridge-term .tl {
-  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.09em;
-  text-transform: lowercase; color: #58635f; line-height: 1.5;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  animation: tlIn 0.45s ease both;
-}
-#bridge-term .tl::before { content: "> "; color: #3d4644; }
-#bridge-term .tl:last-child { color: var(--sage); }
-#bridge-term .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
-#bridge-term .tl.good { color: var(--lamp) !important; }
-@keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-/* cockpit controls */
-.tinst-wrap { position: relative; display: inline-block; padding-top: 0.55rem; border-top: 1px solid #1e262a; overflow: visible; }
+.tinst-wrap { position: relative; display: inline-block; overflow: visible; }
 .tinst-ctl {
   position: absolute; right: 0; top: -0.75rem; z-index: 2;
   display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
@@ -117,16 +98,37 @@
   border: 1px solid rgba(255,255,255,0.09);
 }
 .tinst-ctl button:hover { color: var(--lamp); border-color: rgba(245,208,107,0.5); }
-/* the instrument panel sits under the log */
 #bridge-term .tinst {
   display: block; width: auto; height: auto;
   background: rgba(9,13,15,0.35);
   cursor: pointer;
-  pointer-events: auto;          /* .bridge-hud is none — opt back in */
+  pointer-events: auto;
 }
 .tinst-wrap { pointer-events: none; }
 .tinst-ctl { pointer-events: auto; }
-#bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
+/* log: gutter between the left bank and the span strip */
+#bridge-log {
+  left: calc(2rem + var(--inst-w, 352px) + 1.35rem);
+  right: calc(50% + min(17rem, 19vw) + 1.6rem);
+  bottom: 2rem;
+  min-width: 12rem;
+}
+#bridge-log .tlog {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 0.28rem; margin: 0;
+}
+#bridge-log .tl {
+  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
+  text-transform: lowercase; color: #58635f; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: tlIn 0.45s ease both;
+}
+#bridge-log .tl::before { content: "> "; color: #3d4644; }
+#bridge-log .tl:last-child { color: var(--sage); }
+#bridge-log .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
+#bridge-log .tl.good { color: var(--lamp) !important; }
+@keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+#bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
 #bridge-map .track {
   position: relative; height: 18px; margin-bottom: 0.3rem;
@@ -154,7 +156,7 @@
 #bridge-map .track:hover .ghost { opacity: 1; }
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 #bridge-hint {
-  left: 50%; transform: translateX(-50%); bottom: 10.2rem;
+  left: 50%; transform: translateX(-50%); bottom: 4.6rem;
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
@@ -196,11 +198,26 @@
 .bnote a:hover { color: #fff; border-color: #fff; }
 /* ---- scroll cue ---- */
 .bridge-scroll {
-  position: absolute; z-index: 12; right: 2rem; bottom: 2rem;
-  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+  position: absolute; z-index: 12;
+  right: 0.9rem; left: auto; top: 40%;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--sage-dim); text-decoration: none;
+  pointer-events: auto;
 }
 .bridge-scroll:hover { color: var(--lamp); }
+#bridge-sys {
+  right: 2rem; left: auto; bottom: 2rem;
+  width: auto; max-width: 46vw;
+}
+#bridge-sys .tinst {
+  display: block; width: auto; height: auto;
+  background: rgba(9,13,15,0.35);
+  cursor: pointer;
+  pointer-events: auto;
+}
+#bridge-sys .tinst-wrap { padding-top: 0; border-top: none; }
 /* ---- cursor ----
    left/top must be set: a fixed element with no offsets keeps its
    static-flow position, so translate() would move it from wherever
@@ -420,8 +437,16 @@ footer .rights {
 #bridge-map .track.readonly { pointer-events: auto; } /* still show ghost on hover */
 #bridge-map .track.readonly .mk.poi { pointer-events: none; }
 @media (max-width: 760px) {
-  #bridge-term { width: calc(100vw - 2.5rem); left: 1.25rem; }
-#bridge-term .tlog { min-height: 3.6rem; }
+  #bridge-term { left: 1.25rem; }
+  #bridge-log { display: none; }
+  .bridge-scroll { right: 0.6rem; }
+}
+@media (max-width: 1100px) {
+  #bridge-sys .tinst-wrap { display: none; }
+  #bridge-log {
+    left: calc(2rem + var(--inst-w, 352px) + 1rem);
+    right: 2rem;
+  }
 }
 /* the hint names one thing at a time, then stops appearing */
 #bridge-hint { transition: opacity 0.5s ease; }

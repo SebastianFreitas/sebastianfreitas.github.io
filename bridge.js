@@ -389,7 +389,7 @@
 
   host.addEventListener("pointerdown", e => {
     if (frozen || document.body.classList.contains("site-frozen")) return;
-    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, .bcn")) return;
+    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bcn")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -504,6 +504,7 @@
   const el = { log: document.getElementById("btlog") };
   if (window.Instruments) {
     Instruments.mount(document.getElementById("binst"));
+    Instruments.mountSys(document.getElementById("binst-sys"));
     const IK = "arcanis.inst.scale";
     const termEl = document.getElementById("bridge-term");
     let iscale = parseFloat(localStorage.getItem(IK));
@@ -512,8 +513,14 @@
       iscale = Math.min(1, maxW / Instruments.TOTAL_W);
     }
     Instruments.setScale(iscale);
+    const syncInstW = () => {
+      const hero = document.getElementById("bridge-hero");
+      if (hero) hero.style.setProperty("--inst-w", (Instruments.TOTAL_W * Instruments.getScale()) + "px");
+    };
+    syncInstW();
     const step = d => {
       iscale = Instruments.setScale(iscale + d);
+      syncInstW();
       try { localStorage.setItem(IK, String(iscale)); } catch (e) {}
     };
     const bindScale = (el, delta) => {
