@@ -25,6 +25,8 @@ window.Voidship = (function () {
     holdBoost: 3.4,        // max cruise multiplier while held
     holdBuild: 1.35,       // seconds toward full boost
     holdDecay: 1.6,        // seconds to shed boost after release
+    brakeMult: 5,          // emergency-brake accel vs. normal thrust accel
+    coastAbove: 1600,      // release speed above which free-hold means "go this way", not "go to that spot"
     yAccel: 180,           // screen px/s²
     yMax: 220,             // screen px/s
     yBand: 0.24,           // ± of H — must cover every beacon oy (0.20–0.46)
@@ -144,7 +146,7 @@ window.Voidship = (function () {
     const maxBase = BASE.maxSpeed * ship.power.maxSpeed;
 
     // hold builds a cruise multiplier so a long press can cross the span
-    if (ship.thrusting && canBurn(ship) && hasTarget(ship)) {
+    if (ship.thrusting && canBurn(ship) && (hasTarget(ship) || env.aim)) {
       ship.holdT = Math.min(1, ship.holdT + dt / BASE.holdBuild);
     } else {
       ship.holdT = Math.max(0, ship.holdT - dt / BASE.holdDecay);
@@ -155,30 +157,36 @@ window.Voidship = (function () {
     let demand = 0;
 
     /* Two drive modes:
-         STEER  — throttle open, no beacon lock: pointer offset is a
-                  thrust stick. Speed can climb with hold-boost.
+         STEER  — throttle open, no beacon lock: the pointer's screen
+                  offset from the ship is a live thrust stick. Speed
+                  can climb with hold-boost. This used to be driven by
+                  a world-space "carrot" that was re-planted a fixed
+                  distance ahead every single frame — which let speed
+                  build up far past what that fixed distance could
+                  ever brake within, so releasing (or arriving) meant
+                  a sudden one-frame velocity slam. Reading the stick
+                  straight from screen pixels removes that mismatch:
+                  there's no runaway "distance" to reconcile later.
          SEEK   — beacon lock, or throttle closed: brake onto the
                   waypoint so we never overshoot. */
-    const steering = ship.thrusting && canBurn(ship) && hasTarget(ship) && !ship.courseMark;
+    const steering = ship.thrusting && canBurn(ship) && !!env.aim;
 
     if (steering) {
-      const dx = ship.targetX - camX;
-      const dy = ship.targetY - ship.y;
-      // soft stick: short offsets stay gentle; edge holds still reach full cruise
-      const rawX = clamp(dx / (env.viewUnits * 0.42), -1, 1);
-      const rawY = clamp(dy / (H * BASE.yBand + 1), -1, 1);
-      const stickX = rawX * Math.abs(rawX);
-      const stickY = rawY * Math.abs(rawY);
-      const vWant = stickX * cruise;
-      const vyWant = stickY * BASE.yMax;
+      const stickX = clamp((env.aim.px - W * 0.5) / (W * 0.42), -1, 1);
+      const stickY = clamp((env.aim.py - ship.y) / (H * BASE.yBand + 1), -1, 1);
+      // soft curve: short offsets stay gentle; edge holds still reach full cruise
+      const curveX = stickX * Math.abs(stickX);
+      const curveY = stickY * Math.abs(stickY);
+      const vWant = curveX * cruise;
+      const vyWant = curveY * BASE.yMax;
 
       const dv = vWant - ship.vel;
       ship.vel += clamp(dv, -accel * dt, accel * dt);
       const dvy = vyWant - ship.vy;
       ship.vy += clamp(dvy, -yAccel * dt, yAccel * dt);
 
-      burning = Math.abs(stickX) > 0.04 || Math.abs(stickY) > 0.08;
-      demand = Math.min(1, Math.hypot(stickX, stickY * 0.5));
+      burning = Math.abs(curveX) > 0.04 || Math.abs(curveY) > 0.08;
+      demand = Math.min(1, Math.hypot(curveX, curveY * 0.5));
       ship.arrived = false;
     } else if (hasTarget(ship)) {
       const dx = ship.targetX - camX;
@@ -192,14 +200,19 @@ window.Voidship = (function () {
 
       const seeking = ship.thrusting || !ship.arrived;
       if (seeking) {
-        // if we're going too fast to stop in the remaining distance, cut now
+        // if we're going too fast to stop in the remaining distance,
+        // bleed the excess with a hard brake — ramped over a few
+        // frames (via brakeMult) rather than an instant snap, which
+        // used to show up as a visible one-frame velocity jolt.
         if (adx > 0.5 && Math.sign(ship.vel) === Math.sign(dx) &&
             ship.vel * ship.vel > 2 * accel * adx) {
-          ship.vel = Math.sign(dx) * Math.sqrt(2 * accel * adx);
+          const safeV = Math.sign(dx) * Math.sqrt(2 * accel * adx);
+          ship.vel += clamp(safeV - ship.vel, -accel * BASE.brakeMult * dt, accel * BASE.brakeMult * dt);
         }
         if (ady > 0.5 && Math.sign(ship.vy) === Math.sign(dy) &&
             ship.vy * ship.vy > 2 * yAccel * ady) {
-          ship.vy = Math.sign(dy) * Math.sqrt(2 * yAccel * ady);
+          const safeVy = Math.sign(dy) * Math.sqrt(2 * yAccel * ady);
+          ship.vy += clamp(safeVy - ship.vy, -yAccel * BASE.brakeMult * dt, yAccel * BASE.brakeMult * dt);
         }
 
         const dv = vWant - ship.vel;
@@ -269,15 +282,24 @@ window.Voidship = (function () {
 
     ship.thrustAmt = approach(ship.thrustAmt, burning ? (0.45 + 0.55 * demand) : 0, burning ? 10 : 5, dt);
 
-    // heading from velocity; fall back to course bearing when nearly still
+    // heading from velocity; fall back to course bearing when nearly
+    // still. If neither is strong enough to mean anything — e.g. the
+    // instant after arriving, when both vel and the remaining offset
+    // are zeroed together — just keep the nose where it was. (This
+    // used to fall through to atan2(0, 0 || 1) = 0, which snapped the
+    // ship to face due "east" on every arrival, no matter which way
+    // it had actually been travelling.)
     let aimX = ship.vel;
     let aimY = ship.vy;
     if (Math.hypot(aimX, aimY) < 80 && hasTarget(ship)) {
       aimX = (ship.targetX - camX);
       aimY = (ship.targetY - ship.y) * 40;
     }
-    const wantAng = Math.atan2(aimY, aimX || 1);
-    ship.angle = turn(ship.angle, wantAng, dt * 5.5);
+    let wantAng = ship.angle;
+    if (Math.hypot(aimX, aimY) > 1) {
+      wantAng = Math.atan2(aimY, aimX);
+      ship.angle = turn(ship.angle, wantAng, dt * 5.5);
+    }
 
     const turnRate = wrap(wantAng - ship.angle);
     ship.bank = approach(ship.bank, clamp(turnRate * 0.55, -0.45, 0.45), 6, dt);

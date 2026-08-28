@@ -235,6 +235,10 @@
     if (ship) {
       Voidship.setThrusting(ship, false);
       Voidship.clearCourse(ship);
+      // a real stop, not just the mirrored HUD value — otherwise residual
+      // ship.vel survives the claim and the hull keeps drifting for a beat
+      ship.vel = 0;
+      ship.vy = 0;
     }
     vel = 0;
   }
@@ -346,23 +350,41 @@
     if (e && e.pointerId != null && e.pointerId !== thrustId) return;
     thrustId = null;
     host.classList.remove("burning");
-    if (ship) Voidship.setThrusting(ship, false);
+    if (ship) {
+      Voidship.setThrusting(ship, false);
+      // free-hold at real speed is a heading, not a destination — the
+      // "target" while steering is just wherever the click happened to
+      // land, so seeking it on release could mean sailing past it and
+      // swinging back. Above coastAbove, drop it and just coast onward
+      // in whatever direction we were already going. A beacon lock or
+      // a slow/quick tap still seeks its point normally.
+      if (!ship.courseMark && Math.abs(ship.vel) > Voidship.BASE.coastAbove) {
+        Voidship.clearCourse(ship);
+      }
+    }
     // a tap on nothing with almost no burn dismisses a note
     if (ship && ship.arrived) clearMark();
   }
 
-  /* while the throttle is open, the pointer's screen seat is the aim —
-     holding the right edge keeps the destination ahead of the camera,
-     so a long press can cross the span without the waypoint going stale. */
+  /* while locked on a beacon, keep re-asserting its true seat (cheap —
+     the mark doesn't move) so a stale click position never wins. Free
+     steering (no beacon) doesn't need this: the ship reads the live
+     pointer offset directly every frame (see aimFromPointer below),
+     so there's no world-space target to keep re-planting ahead of the
+     camera — that was the source of the old "carrot" runaway. */
   function retargetFromPointer() {
-    if (!ship || thrustId == null || !ship.thrusting) return;
-    if (ship.courseMark) {
-      const seat = courseForMark(ship.courseMark);
-      Voidship.setCourse(ship, seat.worldX, seat.screenY, ship.courseMark);
-      return;
-    }
-    const c = clientToCourse(lastPtr.x, lastPtr.y);
-    Voidship.setCourse(ship, c.worldX, c.screenY, null);
+    if (!ship || thrustId == null || !ship.thrusting || !ship.courseMark) return;
+    const seat = courseForMark(ship.courseMark);
+    Voidship.setCourse(ship, seat.worldX, seat.screenY, ship.courseMark);
+  }
+
+  /* live screen-space thrust stick for free-hold steering: the pointer's
+     position relative to the hero, read fresh every frame. No world
+     coordinates involved, so there's nothing to go stale or overshoot. */
+  function aimFromPointer() {
+    if (!ship || thrustId == null || !ship.thrusting || ship.courseMark) return null;
+    const r = host.getBoundingClientRect();
+    return { px: lastPtr.x - r.left, py: lastPtr.y - r.top };
   }
 
   host.addEventListener("pointerdown", e => {
@@ -642,9 +664,10 @@
 
     if (ship) {
       retargetFromPointer();
+      const aim = aimFromPointer();
       const prev = camX;
       const out = Voidship.step(ship, dt, {
-        camX, W, H, frozen, viewUnits: CAM.viewUnits,
+        camX, W, H, frozen, viewUnits: CAM.viewUnits, aim,
       });
       camX = out.camX;
       vel = out.vel;
