@@ -883,27 +883,57 @@ window.World = (function () {
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const onScreen = (x, pad) => x > -pad && x < W + pad;
 
+  /* ---- Game Dev sector: same bridge, everything else swapped
+     for a drifting nebula haze + whatever bodies bridge.js is
+     currently flying past. No lore geography involved. ---- */
+  function drawSectorGlow() {
+    const s = scale();
+    const hues = ["132,96,176", "92,150,178", "182,132,90"];
+    for (let i = 0; i < 3; i++) {
+      const par = 0.045 + i * 0.05;
+      const off = camX * par * s;
+      const span = 5400;
+      const cx = ((i * 2100 - off) % span + span) % span - span * 0.18;
+      const cy = H * (0.2 + i * 0.26);
+      const r = Math.min(W, H) * (0.52 + i * 0.1);
+      if (!onScreen(cx, r)) continue;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, `rgba(${hues[i]},0.055)`);
+      g.addColorStop(1, `rgba(${hues[i]},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+  }
+
   function draw(context, v) {
     ctx = context;
     W = v.W; H = v.H; camX = v.camX; t = v.t; vel = v.vel;
     chaosNow = v.chaos; futureNow = v.future;
     if (v.maxFling) V.maxFling = v.maxFling;
+    const mode = v.mode || "void";
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
-    ctx.fillStyle = "#0d1114"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = mode === "gamedev" ? "#070910" : "#0d1114";
+    ctx.fillRect(0, 0, W, H);
 
     drawVoid();
-    drawChaos();
-    drawPresences();
-    drawTendrils();
-    drawFuture();
-    drawWatcher();
-    drawRex();
-    drawBand(city.far, 0.30, "#161d21", 0.5);
-    drawBand(city.mid, 0.46, "#182025", 0.78);
-    drawCityNear();
-    drawRoot();
-    drawFragments();
+
+    if (mode === "gamedev") {
+      drawSectorGlow();
+    } else {
+      drawChaos();
+      drawPresences();
+      drawTendrils();
+      drawFuture();
+      drawWatcher();
+      drawRex();
+      drawBand(city.far, 0.30, "#161d21", 0.5);
+      drawBand(city.mid, 0.46, "#182025", 0.78);
+      drawCityNear();
+      drawRoot();
+      drawFragments();
+    }
+
     drawBridge();
   }
 

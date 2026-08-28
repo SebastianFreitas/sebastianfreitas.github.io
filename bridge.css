@@ -425,3 +425,10 @@ footer .rights {
 .bridge-hero.held { cursor: default; }
 .bridge-hero.held .bnote { transition: opacity .4s ease; }
 
+/* held while the setting switches — the fold overlay is drawn on the
+   canvas itself; the HUD just steps out of its way */
+.bridge-hero.warping { cursor: default; }
+.bridge-hero.warping .bnote { opacity: 0 !important; visibility: hidden !important; }
+.bridge-hero.warping #bridge-modes .modes-panel { opacity: 0.35; pointer-events: none; }
+.bridge-hero.warping #bridge-hint { opacity: 0 !important; }
+

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=8">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=30">
+<link rel="stylesheet" href="bridge.css?v=31">
 <script src="xp.js?v=12"></script>
 <script>
 /* One rule for skip: seen. Must run after xp.js, before body paints. */
@@ -195,6 +195,45 @@ try {
        finished counting them.</p>
     <p class="stat"><span>Founded <b>By war</b></span><span>Warlocks <b>Five</b></span><span>Counted <b id="bnote-cat">—</b></span></p>
   </aside>
+
+  <!-- ---- game dev sector: placeholder planets, one per shipped project ---- -->
+  <aside class="bnote" id="bnote-planet-zero">
+    <p class="tag">Signal · sector zero</p>
+    <h3>Sector Zero</h3>
+    <p class="body">A horror game where the debug console is the main mechanic. Full in-game
+       Linux-style terminal with command history — edit any object's properties at runtime,
+       set weight negative and it leaves the floor.</p>
+    <p class="stat"><span>Engine <b>Unreal 5</b></span><span>Status <b>Prototype</b></span></p>
+    <a href="projects/sector-zero.html">Open project →</a>
+  </aside>
+
+  <aside class="bnote" id="bnote-planet-voidscape">
+    <p class="tag">Signal · voidscape</p>
+    <h3>VoidScape</h3>
+    <p class="body">First-person roguelike. The second loop scales on player skill instead of
+       stats, so a lucky build can't delete a boss in one shot. Craftable weapons persist
+       between runs.</p>
+    <p class="stat"><span>Engine <b>Unity</b></span><span>Status <b>Playable, 2 bosses</b></span></p>
+    <a href="projects/voidscape.html">Open project →</a>
+  </aside>
+
+  <aside class="bnote" id="bnote-planet-heavylight">
+    <p class="tag">Signal · heavylight</p>
+    <h3>HeavyLight</h3>
+    <p class="body">2D puzzle platformer built around one rule: light carries momentum. It
+       pushes crates, and it pushes you. Shipped for WebGL.</p>
+    <p class="stat"><span>Engine <b>Unity — WebGL</b></span><span>Status <b>Shipped</b></span></p>
+    <a href="projects/heavylight.html">Open project →</a>
+  </aside>
+
+  <aside class="bnote" id="bnote-planet-conclusus">
+    <p class="tag">Signal · conclusus</p>
+    <h3>Conclusus</h3>
+    <p class="body">30 levels and four new mechanics on top of the HeavyLight base, built in
+       less time than the original — proof the base was actually reusable.</p>
+    <p class="stat"><span>Levels <b>30</b></span><span>Status <b>Shipped</b></span></p>
+    <a href="projects/conclusus.html">Open project →</a>
+  </aside>
 </section>
 
 <div id="bridge-cursor"></div>
@@ -292,10 +331,11 @@ try {
 
 <script src="surge.js?v=3"></script>
 <script src="lamp.js?v=1"></script>
+<script src="planet.js?v=1"></script>
 <script src="instruments.js?v=16"></script>
-<script src="world.js?v=7"></script>
+<script src="world.js?v=8"></script>
 <script src="voidship.js?v=14"></script>
-<script src="bridge.js?v=51"></script>
+<script src="bridge.js?v=52"></script>
 <script src="intro.js?v=4"></script>
 </body>
 </html>

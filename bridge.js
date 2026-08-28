@@ -40,6 +40,9 @@
     viewUnits: 2100,
     brakeZone: 9000,
   };
+  // the void map's own bounds, saved so switching sectors and back
+  // doesn't need to recompute them
+  const VOID_MIN = CAM.min, VOID_MAX = CAM.max;
 
   const MARKS = [
     { id: "bnote-future",  cam: LAND.future,   off: -0.20, oy: 0.26, par: 0.30, xp: 1,
@@ -66,6 +69,42 @@
   const HIT = (window.Beacon && Beacon.HIT) || 26;
   if (!window.Beacon) {
     console.error("lamp.js did not load — canvas marks and claim flights are dead");
+  }
+
+  /* ---- the other setting: Game Dev sector -----------------
+     Same ship, same bridge deck, a different span. Four bodies,
+     left to right, one per shipped project. No lore geography —
+     just placeholders you can fly a line through. ---- */
+  const GD_SLOT = SLOT;
+  const gdAt = i => i * GD_SLOT;
+  const GD_LAND = {
+    entry:      gdAt(2),
+    zero:       gdAt(10),
+    voidscape:  gdAt(21),
+    heavylight: gdAt(32),
+    conclusus:  gdAt(43),
+    exit:       gdAt(48),
+  };
+  const GD_BOUNDS = { min: gdAt(0.6), max: gdAt(49) };
+
+  const PLANETS = [
+    { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7,
+      theme: "zero",       size: 1.00, name: "Sector Zero", sub: "Horror — the console is the weapon" },
+    { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7,
+      theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled loop" },
+    { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7,
+      theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle — light carries momentum" },
+    { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7,
+      theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "30 levels on the HeavyLight base" },
+  ];
+  PLANETS.forEach((m, i) => {
+    m.x = m.cam + (m.off * CAM.viewUnits) / m.par;
+    m.phase = i * 1.7 + 4;
+    m.vis = 0;
+    m.pop = 0;
+  });
+  if (!window.Planet) {
+    console.error("planet.js did not load — game dev sector has nothing to draw");
   }
 
   /* ---- canvas ---- */
@@ -139,6 +178,18 @@
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
   let freezeGuard = null;
+
+  /* ---- setting: which map is currently under the bridge ---- */
+  let sceneMode = "void";                 // "void" | "gamedev"
+  let savedVoidCamX = LAND.bridge;
+  let savedGDCamX = GD_LAND.entry;
+  const visitedPlanets = new Set();       // session-only "read" state for planets
+  const activeMarks = () => sceneMode === "gamedev" ? PLANETS : MARKS;
+
+  /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
+  const XSTAGE = { CLOSE: 0, HOLD: 1, OPEN: 2 };
+  const CLOSE_DUR = 0.85, HOLD_DUR = 0.30, OPEN_DUR = 0.80;
+  let xswitch = null; // { stage, t, cx, cy }
   ship = window.Voidship ? Voidship.create() : null;
   if (!window.Voidship) {
     console.error("voidship.js did not load — travel is dead");
@@ -187,7 +238,7 @@
 
   /* ---- notes ---- */
   const noteEls = {};
-  MARKS.forEach(m => noteEls[m.id] = document.getElementById(m.id));
+  MARKS.concat(PLANETS).forEach(m => noteEls[m.id] = document.getElementById(m.id));
   const noteCat = document.getElementById("bnote-cat");
   let noteTimer = null;
 
@@ -220,16 +271,27 @@
     el2.classList.toggle("from-left", !right);
   }
 
-  /* claiming fires when the voidship reaches the beacon */
+  /* claiming fires when the voidship reaches the beacon (or a planet,
+     in the game dev sector — same contact, no XP attached to those) */
   function selectMark(m) {
     begin();
     hintDone("beacon");
-    if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
-    if (window.XP) {
-      const p = markScreen(m), r = host.getBoundingClientRect();
-      XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
+    if (sceneMode === "gamedev") {
+      if (!visitedPlanets.has(m.id)) {
+        m.pop = 1;
+        visitedPlanets.add(m.id);
+        const dot = track && track.querySelector(`[data-mark="${m.id}"]`);
+        if (dot) dot.classList.add("read");
+      }
+      pushLog(`docking: ${m.name.toLowerCase()}`, "good");
+    } else {
+      if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
+      if (window.XP) {
+        const p = markScreen(m), r = host.getBoundingClientRect();
+        XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
+      }
+      pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     }
-    pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     activeMark = m;
     showNote(m);
     if (ship) {
@@ -284,7 +346,7 @@
     const r = host.getBoundingClientRect();
     const px = clientX - r.left, py = clientY - r.top;
     let best = null, bestD = HIT;
-    for (const m of MARKS) {
+    for (const m of activeMarks()) {
       const p = markScreen(m);
       const d = Math.hypot(px - p.x, py - p.y);
       if (d < bestD) { best = m; bestD = d; }
@@ -388,7 +450,7 @@
   }
 
   host.addEventListener("pointerdown", e => {
-    if (frozen || document.body.classList.contains("site-frozen")) return;
+    if (frozen || xswitch || document.body.classList.contains("site-frozen")) return;
     if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bcn")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
@@ -442,15 +504,22 @@
 
   /* ---- minimap: readout only — no jump, no scrub ---- */
   const track = document.getElementById("btrack");
-  if (track) {
+  const trackLabels = document.querySelectorAll("#bridge-map .labels span");
+
+  function rebuildTrack() {
+    if (!track) return;
     track.classList.add("readonly");
-    for (const m of MARKS) {
+    track.querySelectorAll(".mk").forEach(el => el.remove());
+    for (const m of activeMarks()) {
       const d = document.createElement("div");
       d.className = "mk poi";
       d.style.left = ((m.cam - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
       d.title = m.name;
       d.dataset.mark = m.id;
-      if (window.XP && XP.has("beacon-" + m.id)) d.classList.add("read");
+      const done = sceneMode === "gamedev"
+        ? visitedPlanets.has(m.id)
+        : !!(window.XP && XP.has("beacon-" + m.id));
+      if (done) d.classList.add("read");
       track.appendChild(d);
     }
     for (let i = 0; i < 30; i++) {
@@ -458,6 +527,9 @@
       d.className = "mk"; d.style.left = (i / 29 * 100) + "%";
       track.appendChild(d);
     }
+  }
+  rebuildTrack();
+  if (track) {
     // ghost follows the pointer for orientation, but never moves the camera
     track.addEventListener("pointermove", e => {
       const ghost = document.getElementById("bghost");
@@ -467,37 +539,58 @@
     });
   }
   document.addEventListener("xp:award", e => {
-    if (!track || !/^beacon-/.test(e.detail.id)) return;
+    if (!track || sceneMode !== "void" || !/^beacon-/.test(e.detail.id)) return;
     const id = e.detail.id.replace(/^beacon-/, "");
     const d = track.querySelector(`[data-mark="${id}"]`);
     if (d) d.classList.add("read");
   });
 
+  function syncLabels() {
+    if (trackLabels.length < 2) return;
+    if (sceneMode === "gamedev") {
+      trackLabels[0].textContent = "West · Sector Zero";
+      trackLabels[1].textContent = "East · Conclusus";
+    } else {
+      trackLabels[0].textContent = "West · the future";
+      trackLabels[1].textContent = "East · the past";
+    }
+  }
+
   /* ---- markers ---- */
   let markDebug = 0;
-  window.beaconReport = () => MARKS.map(m => {
+  window.beaconReport = () => activeMarks().map(m => {
     const p = markScreen(m);
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
-  }).join("\n") + `\ncamX=${camX.toFixed(0)} frozen=${frozen} W=${W} H=${H}`;
+  }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
 
   function drawMarks(dt) {
     let shown = 0;
-    for (const m of MARKS) {
+    const gd = sceneMode === "gamedev";
+    for (const m of activeMarks()) {
       const p = markScreen(m);
       m.vis = approach(m.vis, onScreen(p.x, 60) ? 1 : 0, 3.2, dt);
       if (m.pop > 0) m.pop = Math.max(0, m.pop - dt * 1.6);
       if (m.vis < 0.02 && m.pop <= 0) continue;
       shown++;
-      Beacon.draw(ctx, p.x, p.y, {
-        t, phase: m.phase, alpha: m.vis,
-        active: activeMark === m, hover: hoverMark === m,
-        claimed: window.XP && XP.has("beacon-" + m.id),
-        xp: m.xp, pop: m.pop, label: m.name,
-      });
+      if (gd && window.Planet) {
+        Planet.draw(ctx, p.x, p.y, {
+          t, phase: m.phase, alpha: m.vis,
+          active: activeMark === m, hover: hoverMark === m,
+          visited: visitedPlanets.has(m.id),
+          theme: m.theme, size: m.size, pop: m.pop, label: m.name,
+        });
+      } else if (!gd) {
+        Beacon.draw(ctx, p.x, p.y, {
+          t, phase: m.phase, alpha: m.vis,
+          active: activeMark === m, hover: hoverMark === m,
+          claimed: window.XP && XP.has("beacon-" + m.id),
+          xp: m.xp, pop: m.pop, label: m.name,
+        });
+      }
     }
     // if none ever appear, say so once — beaconReport() has the detail
     if (!shown && ++markDebug === 240)
-      console.warn("no beacons drawn in 4s — run beaconReport() for why");
+      console.warn("no marks drawn in 4s — run beaconReport() for why");
   }
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
@@ -535,24 +628,143 @@
     bindScale(document.getElementById("binst-out"), -0.15);
   }
 
-  /* ---- setting panel — pressable for now, no map switching wired yet ---- */
-  (function initModesPanel() {
-    const panel = document.getElementById("bridge-modes");
-    if (!panel) return;
+  /* ---- setting panel: swap the map under the bridge -------
+     Clicking the other setting doesn't just flip a class — the
+     ship gets swallowed by a black hole (an iris closing on its
+     own position), the map underneath changes while the screen
+     is dark, and the iris opens back around the ship somewhere
+     else entirely. ---- */
+  const modesPanel = document.getElementById("bridge-modes");
+  const modeBtns = modesPanel ? Array.from(modesPanel.querySelectorAll(".mode-btn")) : [];
 
-    const setActive = (group, target) => {
-      group.forEach(btn => btn.classList.toggle("active", btn === target));
-    };
+  function syncModeButtons() {
+    modeBtns.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === sceneMode));
+  }
 
-    const modeBtns = Array.from(panel.querySelectorAll(".mode-btn"));
-    modeBtns.forEach(btn => {
-      btn.addEventListener("pointerdown", e => e.stopPropagation());
-      btn.addEventListener("click", () => {
-        if (btn.classList.contains("active")) return;
-        setActive(modeBtns, btn);
-      });
-    });
-  })();
+  function applySceneMode(target) {
+    if (sceneMode === "void") savedVoidCamX = camX; else savedGDCamX = camX;
+    sceneMode = target;
+    if (target === "gamedev") {
+      CAM.min = GD_BOUNDS.min; CAM.max = GD_BOUNDS.max;
+      camX = savedGDCamX;
+    } else {
+      CAM.min = VOID_MIN; CAM.max = VOID_MAX;
+      camX = savedVoidCamX;
+    }
+    vel = 0;
+    if (ship) { ship.vel = 0; ship.vy = 0; Voidship.clearCourse(ship); }
+    clearMark();
+    lastRegion = "";
+    rebuildTrack();
+    syncLabels();
+    syncModeButtons();
+    pushLog(target === "gamedev"
+      ? "sector: game dev — four objects on approach"
+      : "sector: the void — span resumes", "good");
+  }
+
+  function beginModeSwitch(target) {
+    if (xswitch || !target || target === sceneMode) return;
+    begin();
+    hintDone("beacon");
+    clearMark();
+    endBurn();
+    stopSteering();
+    if (ship) { Voidship.setThrusting(ship, false); Voidship.clearCourse(ship); ship.vel = 0; ship.vy = 0; }
+    vel = 0;
+    const p = ship ? Voidship.screenPos(ship, W) : { x: W * 0.5, y: H * 0.42 };
+    xswitch = { stage: XSTAGE.CLOSE, t: 0, to: target, cx: p.x, cy: p.y };
+    host.classList.add("warping");
+    pushLog("drive: emergency fold engaged", "loc");
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.addEventListener("click", () => beginModeSwitch(btn.dataset.mode));
+  });
+
+  /* advances the switch sequence; returns true while it owns the frame
+     (normal ship physics/input should stand down until it's done) */
+  function stepSwitch(dt) {
+    if (!xswitch) return false;
+    xswitch.t += dt;
+    if (ship) {
+      ship.vel = 0; ship.vy = 0;
+      ship.bob += dt;
+      // keep the hole centred on wherever the ship actually sits on screen
+      const p = Voidship.screenPos(ship, W);
+      xswitch.cx = p.x; xswitch.cy = p.y;
+    }
+    if (xswitch.stage === XSTAGE.CLOSE && xswitch.t >= CLOSE_DUR) {
+      applySceneMode(xswitch.to);
+      xswitch.stage = XSTAGE.HOLD; xswitch.t = 0;
+    } else if (xswitch.stage === XSTAGE.HOLD && xswitch.t >= HOLD_DUR) {
+      xswitch.stage = XSTAGE.OPEN; xswitch.t = 0;
+    } else if (xswitch.stage === XSTAGE.OPEN && xswitch.t >= OPEN_DUR) {
+      host.classList.remove("warping");
+      xswitch = null;
+    }
+    return true;
+  }
+
+  /* an iris around (cx,cy): everywhere outside radius r goes black.
+     Closing (dir "in") reads as the dark swallowing the scene down
+     to the ship; opening (dir "out") reads as the ship arriving and
+     the new scene expanding out from it. */
+  function drawIris(cx, cy, r, opts) {
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#04050a";
+    ctx.fillRect(0, 0, W, H);
+    if (r > 0.5) {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+    }
+    const a = opts.glow || 0;
+    if (r > 1 && a > 0.02) {
+      ctx.strokeStyle = `rgba(245,208,107,${0.6 * a})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.stroke();
+      ctx.strokeStyle = `rgba(176,104,90,${0.4 * a})`;
+      ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, 6.283); ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(222,232,228,${0.32 * a})`;
+      const inward = opts.dir === "in";
+      for (let i = 0; i < 12; i++) {
+        const ang = (i / 12) * 6.283 + t * (opts.spin || 0);
+        const r0 = inward ? r + 46 + (i % 3) * 18 : Math.max(4, r - 40 - (i % 3) * 16);
+        const r1 = inward ? r + 12 : Math.max(2, r - 8);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+        ctx.lineTo(cx + Math.cos(ang + 0.35) * r1, cy + Math.sin(ang + 0.35) * r1);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawSwitchFX() {
+    if (!xswitch) return;
+    const { stage, t: xt, cx, cy } = xswitch;
+    const rMax = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 40;
+    if (stage === XSTAGE.CLOSE) {
+      const u = smooth(Math.min(1, xt / CLOSE_DUR));
+      drawIris(cx, cy, rMax * (1 - u), { glow: u, dir: "in", spin: 0.6 });
+    } else if (stage === XSTAGE.HOLD) {
+      drawIris(cx, cy, 0, { glow: 0 });
+      const u = xt / HOLD_DUR;
+      const flash = u < 0.5 ? smooth(u / 0.5) : smooth(1 - (u - 0.5) / 0.5);
+      if (flash > 0.02) {
+        ctx.fillStyle = `rgba(255,250,235,${flash * 0.85})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+    } else {
+      const u = smooth(Math.min(1, xt / OPEN_DUR));
+      drawIris(cx, cy, rMax * u, { glow: 1 - u, dir: "out", spin: -0.6 });
+    }
+  }
 
   const LOG_MAX = 5;
   let logHead = null, logQueue = [], nextIdle = 3.5;
@@ -590,7 +802,7 @@
     () => `span ${((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1)}% crossed`,
     () => `structure holding · no report`,
     () => `listening · nothing answered`,
-    () => `sweep complete · ${MARKS.filter(m => Math.abs(m.cam - camX) < 22000).length} in range`,
+    () => `sweep complete · ${activeMarks().filter(m => Math.abs(m.cam - camX) < 22000).length} in range`,
   ];
   let readingAt = 0;
 
@@ -604,7 +816,7 @@
   let lastRegion = "", nearest = null;
   function checkRegion() {
     let near = null, nd = Infinity;
-    for (const m of MARKS) {
+    for (const m of activeMarks()) {
       const d = Math.abs(camX - m.cam);
       if (d < SLOT * 1.6 && d < nd) { near = m; nd = d; }
     }
@@ -612,14 +824,14 @@
     const name = near ? near.name : "open span";
     if (name === lastRegion) return;
     lastRegion = name;
-    if (near) pushLog(`entering ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
+    if (near) pushLog(`${sceneMode === "gamedev" ? "approaching" : "entering"} ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
     else pushLog("open span · nothing charted here", "loc");
   }
 
-  /* the census only reports in, it doesn't sit on the panel */
+  /* the census only reports in, it doesn't sit on the panel — void only */
   let filedMark = 0, filedAt = 0;
   function reportFiled(dt) {
-    const inCity = Math.abs(camX - LAND.mainland) < SLOT * 1.4;
+    const inCity = sceneMode === "void" && Math.abs(camX - LAND.mainland) < SLOT * 1.4;
     if (!inCity) { filedAt = 0; return; }
     filedAt += dt;
     if (filedAt > 6) {
@@ -634,7 +846,7 @@
     const you = document.getElementById("byou");
     if (you) you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
 
-    if (Math.abs(camX - LAND.mainland) < SLOT * 1.4)
+    if (sceneMode === "void" && Math.abs(camX - LAND.mainland) < SLOT * 1.4)
       catalogued += (160 + Math.abs(vel) * 0.02) * dt;
 
     checkRegion();
@@ -666,9 +878,11 @@
         region: lastRegion,
         voice: nearest ? (VOICE_OF[nearest.id] || "void")
                        : (futureNow > 0.45 ? "future" : "void"),
-        marks: MARKS.map(m => ({
+        marks: activeMarks().map(m => ({
           id: m.id, cam: m.cam, oy: m.oy, name: m.name,
-          claimed: !!(window.XP && XP.has("beacon-" + m.id)),
+          claimed: sceneMode === "gamedev"
+            ? visitedPlanets.has(m.id)
+            : !!(window.XP && XP.has("beacon-" + m.id)),
         })),
         ship: st,
       });
@@ -749,16 +963,18 @@
     t += raw;
     const dt = raw;
 
-    step(dt);
+    const warping = stepSwitch(dt);
+    if (!warping) step(dt);
 
     // render behind the gate while assets warm up
-    chaosNow  = approach(chaosNow,  World.chaosAt(camX),  1.4, dt);
-    futureNow = approach(futureNow, World.futureAt(camX), 1.4, dt);
+    chaosNow  = approach(chaosNow,  sceneMode === "void" ? World.chaosAt(camX)  : 0, 1.4, dt);
+    futureNow = approach(futureNow, sceneMode === "void" ? World.futureAt(camX) : 0, 1.4, dt);
 
     World.draw(ctx, {
       W, H, camX, t, vel,
       maxFling: CAM.maxFling,
       chaos: chaosNow, future: futureNow,
+      mode: sceneMode,
     });
     // a claim holds travel still while the level lands — but beacon
     // fade-in must keep using real time. With dt=0 here, the first
@@ -771,6 +987,7 @@
       }
       if (bridgeReady && activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
         placeNote(noteEls[activeMark.id], activeMark);
+      drawSwitchFX();
     } catch (err) {
       if (!frame._warned) { frame._warned = 1; console.warn("beacon layer:", err); }
     }
