@@ -207,6 +207,50 @@
   pointer-events: auto;
 }
 .bridge-scroll:hover { color: var(--lamp); }
+/* ---- mode / tier panel: centered in the open span between the two
+   instrument banks. Cosmetic switches only — no map logic wired yet. ---- */
+#bridge-modes {
+  left: 50%; top: 5.6rem; transform: translateX(-50%);
+  right: auto; bottom: auto;
+}
+.modes-panel {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 1.2rem;
+  padding: 0.65rem 1.1rem;
+  background: rgba(9,13,15,0.86);
+  border: 1px solid rgba(198,204,198,0.18);
+  border-top: 2px solid var(--lamp);
+}
+.modes-row { display: flex; align-items: center; gap: 0.6rem; }
+.modes-row + .modes-row {
+  padding-left: 1.2rem;
+  border-left: 1px solid rgba(198,204,198,0.14);
+}
+.modes-row.is-hidden { display: none; }
+.modes-label {
+  font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--sage-dim);
+}
+.modes-toggle { display: flex; gap: 0.35rem; }
+.modes-btn {
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.09em;
+  text-transform: uppercase; text-align: center; cursor: pointer;
+  padding: 0.42rem 0.75rem;
+  color: var(--sage-dim);
+  background: rgba(20,26,29,0.55);
+  border: 1px solid rgba(198,204,198,0.24);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.modes-btn:hover { color: var(--sage); border-color: rgba(198,204,198,0.45); }
+.modes-btn.active {
+  color: #0d1114; background: var(--lamp); border-color: var(--lamp);
+}
+.tier-btn { min-width: 1.7rem; padding: 0.42rem 0.6rem; }
+@media (max-width: 900px) {
+  #bridge-modes { top: 4.8rem; }
+  .modes-panel { flex-wrap: wrap; justify-content: center; gap: 0.6rem 1rem; padding: 0.55rem 0.85rem; }
+  .modes-row + .modes-row { padding-left: 0; border-left: none; }
+}
 #bridge-sys {
   right: 2rem; left: auto; bottom: 2rem;
   width: auto; max-width: 46vw;
