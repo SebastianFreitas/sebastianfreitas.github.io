@@ -535,11 +535,10 @@
     bindScale(document.getElementById("binst-out"), -0.15);
   }
 
-  /* ---- mode / tier panel — pressable for now, no map switching wired yet ---- */
+  /* ---- setting panel — pressable for now, no map switching wired yet ---- */
   (function initModesPanel() {
     const panel = document.getElementById("bridge-modes");
     if (!panel) return;
-    const tiersRow = document.getElementById("modes-tiers");
 
     const setActive = (group, target) => {
       group.forEach(btn => btn.classList.toggle("active", btn === target));
@@ -551,14 +550,7 @@
       btn.addEventListener("click", () => {
         if (btn.classList.contains("active")) return;
         setActive(modeBtns, btn);
-        if (tiersRow) tiersRow.classList.toggle("is-hidden", btn.dataset.mode === "gamedev");
       });
-    });
-
-    const tierBtns = Array.from(panel.querySelectorAll(".tier-btn"));
-    tierBtns.forEach(btn => {
-      btn.addEventListener("pointerdown", e => e.stopPropagation());
-      btn.addEventListener("click", () => setActive(tierBtns, btn));
     });
   })();
 

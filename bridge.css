@@ -14,6 +14,7 @@
   isolation: isolate;
   background: #0d1114;
   cursor: none;
+  --hud-floor: 1.25rem;        /* shared baseline for instruments, log, span */
 }
 #bridge-canvas {
   position: absolute; inset: 0;
@@ -81,10 +82,10 @@
 .bridge-hud .v { color: var(--sage); }
 /* ---- the readout ---- */
 #bridge-term {
-  left: 2rem; bottom: 2rem; width: auto;
+  left: 2rem; bottom: var(--hud-floor); width: auto;
   overflow: visible;
 }
-.tinst-wrap { position: relative; display: inline-block; overflow: visible; }
+.tinst-wrap { position: relative; display: flex; flex-direction: column; overflow: visible; }
 .tinst-ctl {
   position: absolute; right: 0; top: -0.75rem; z-index: 2;
   display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
@@ -108,14 +109,30 @@
 .tinst-ctl { pointer-events: auto; }
 /* log: gutter between the left bank and the span strip */
 #bridge-log {
-  left: calc(2rem + var(--inst-w, 352px) + 1.35rem);
-  right: calc(50% + min(17rem, 19vw) + 1.6rem);
-  bottom: 2rem;
+  left: calc(2rem + var(--inst-w, 352px) + 1.05rem);
+  right: calc(50% + min(17rem, 19vw) + 1.15rem);
+  bottom: var(--hud-floor);
   min-width: 12rem;
 }
 #bridge-log .tlog {
   display: flex; flex-direction: column; justify-content: flex-end;
   gap: 0.28rem; margin: 0;
+  position: relative;
+  padding: 0.45rem 0.55rem 0.5rem;
+  background: linear-gradient(to top, rgba(9,13,15,0.72) 0%, rgba(9,13,15,0.18) 70%, transparent 100%);
+}
+#bridge-log .tlog::before {
+  content: "";
+  position: absolute;
+  left: -1.05rem; right: -1.2rem; bottom: 0;
+  height: 1px;
+  background: rgba(198,204,198,0.32);
+}
+#bridge-log .tlog::after {
+  content: "";
+  position: absolute; left: -1.05rem; bottom: -1px;
+  width: 3.4rem; height: 2px;
+  background: var(--lamp);
 }
 #bridge-log .tl {
   font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
@@ -128,7 +145,7 @@
 #bridge-log .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
 #bridge-log .tl.good { color: var(--lamp) !important; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-#bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(34rem, 38vw); }
+#bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
 #bridge-map .track {
   position: relative; height: 18px; margin-bottom: 0.3rem;
@@ -156,7 +173,8 @@
 #bridge-map .track:hover .ghost { opacity: 1; }
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 #bridge-hint {
-  left: 50%; transform: translateX(-50%); bottom: 4.6rem;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--hud-floor) + 3rem);
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
@@ -207,8 +225,8 @@
   pointer-events: auto;
 }
 .bridge-scroll:hover { color: var(--lamp); }
-/* ---- mode / tier panel: centered in the open span between the two
-   instrument banks. Cosmetic switches only — no map logic wired yet. ---- */
+/* ---- setting panel: centered in the open span between the two
+   instrument banks. Cosmetic switch only — no map logic wired yet. ---- */
 #bridge-modes {
   left: 50%; top: 5.6rem; transform: translateX(-50%);
   right: auto; bottom: auto;
@@ -222,11 +240,6 @@
   border-top: 2px solid var(--lamp);
 }
 .modes-row { display: flex; align-items: center; gap: 0.6rem; }
-.modes-row + .modes-row {
-  padding-left: 1.2rem;
-  border-left: 1px solid rgba(198,204,198,0.14);
-}
-.modes-row.is-hidden { display: none; }
 .modes-label {
   font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--sage-dim);
@@ -245,14 +258,12 @@
 .modes-btn.active {
   color: #0d1114; background: var(--lamp); border-color: var(--lamp);
 }
-.tier-btn { min-width: 1.7rem; padding: 0.42rem 0.6rem; }
 @media (max-width: 900px) {
   #bridge-modes { top: 4.8rem; }
-  .modes-panel { flex-wrap: wrap; justify-content: center; gap: 0.6rem 1rem; padding: 0.55rem 0.85rem; }
-  .modes-row + .modes-row { padding-left: 0; border-left: none; }
+  .modes-panel { padding: 0.55rem 0.85rem; }
 }
 #bridge-sys {
-  right: 2rem; left: auto; bottom: 2rem;
+  right: 2rem; left: auto; bottom: var(--hud-floor);
   width: auto; max-width: 46vw;
 }
 #bridge-sys .tinst {
