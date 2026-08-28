@@ -107,10 +107,14 @@
 }
 .tinst-wrap { pointer-events: none; }
 .tinst-ctl { pointer-events: auto; }
-/* log: gutter between the left bank and the span strip */
+/* log: gutter between the left bank and the span strip.
+   Sized to fit its own text (up to that gutter), not stretched to
+   fill it — otherwise the panel and its underline balloon out far
+   past the readout, which is what made it look broken. */
 #bridge-log {
   left: calc(2rem + var(--inst-w, 352px) + 1.05rem);
-  right: calc(50% + min(17rem, 19vw) + 1.15rem);
+  max-width: calc(100% - (2rem + var(--inst-w, 352px) + 1.05rem) - (50% + min(17rem, 19vw) + 1.15rem));
+  width: fit-content;
   bottom: var(--hud-floor);
   min-width: 12rem;
 }
@@ -124,14 +128,14 @@
 #bridge-log .tlog::before {
   content: "";
   position: absolute;
-  left: -1.05rem; right: -1.2rem; bottom: 0;
+  left: 0; right: 0; bottom: 0;
   height: 1px;
   background: rgba(198,204,198,0.32);
 }
 #bridge-log .tlog::after {
   content: "";
-  position: absolute; left: -1.05rem; bottom: -1px;
-  width: 3.4rem; height: 2px;
+  position: absolute; left: 0; bottom: -1px;
+  width: 2.2rem; height: 2px;
   background: var(--lamp);
 }
 #bridge-log .tl {
@@ -375,96 +379,6 @@ footer .rights {
 
 
 
-/* the panel that greets a new entry, shown after the bar fills */
-.bridge-loading .entry {
-  display: none; text-align: center; max-width: 30rem; padding: 0 1.5rem;
-}
-@media (max-width: 900px) {
-  .bridge-hero { cursor: auto; }
-.bnote { width: calc(100vw - 2.5rem); }
-#bridge-cursor { display: none; }
-#bridge-map { width: calc(100vw - 2.5rem); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bridge-hero { cursor: auto; }
-#bridge-cursor { display: none; }
-}
-/* =========================================================
-   Loading, markers, minimap ticks, rights line
-   ========================================================= */
-
-.bridge-loading {
-  position: absolute; inset: 0; z-index: 50;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 1rem;
-  background: #0d1114;
-  transition: opacity 0.7s ease, visibility 0.7s;
-}
-.bridge-loading.done {
-  opacity: 0; visibility: hidden; pointer-events: none;
-  /* Firefox can keep a faded full-screen layer over the canvas
-     after the opacity transition; drop it from layout entirely. */
-  display: none;
-}
-/* ---- boot terminal ---- */
-.bridge-loading .boot {
-  width: min(34rem, 78vw);
-  display: flex; flex-direction: column; align-items: flex-start; gap: 1.6rem;
-}
-.boot-log { width: 100%; min-height: 8.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.boot-log .bl {
-  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.09em;
-  color: var(--sage-dim); line-height: 1.5; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
-  animation: blIn 0.3s ease both;
-}
-.boot-log .bl::before { content: "> "; color: #3d4644; }
-.boot-log .bl:last-child { color: var(--sage); }
-@keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
-.boot-gate {
-  align-self: center;
-  opacity: 0; transform: translateY(10px); pointer-events: none;
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2,.8,.3,1);
-}
-.boot-gate.on { opacity: 1; transform: none; pointer-events: auto; }
-/* the ticks that mark something worth stopping at */
-#bridge-map .mk.poi {
-  margin-top: -9px; height: 18px; width: 2px;
-  background: rgba(245,208,107,0.75);
-  box-shadow: 0 0 8px rgba(245,208,107,0.5);
-  pointer-events: auto; cursor: pointer;
-}
-#bridge-map .mk.poi::after {
-  content: ""; position: absolute; left: -2px; top: -6px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--lamp); box-shadow: 0 0 8px rgba(245,208,107,0.7);
-}
-#bridge-map .mk.poi:hover { background: #fff; }
-#bridge-map .mk.poi:hover::after { background: #fff; }
-/* read: still there, no longer asking for attention */
-#bridge-map .mk.poi.read {
-  background: rgba(125,135,131,0.5); box-shadow: none; height: 12px; margin-top: -6px;
-}
-#bridge-map .mk.poi.read::after {
-  background: rgba(125,135,131,0.6); box-shadow: none; width: 4px; height: 4px; left: -1px; top: -5px;
-}
-#bridge-map .mk.poi.read:hover { background: var(--sage); }
-/* cursor over something inspectable */
-#bridge-cursor.over {
-  width: 40px; height: 40px; margin: -20px 0 0 -20px;
-  border-color: rgba(245,208,107,0.9);
-}
-#bridge-cursor.over::after { inset: 17px; }
-
-footer .rights {
-  margin-top: 1.4rem; font-size: 0.68rem; line-height: 1.7;
-  color: #5f6a68; max-width: 52ch;
-}
-/* region readout crossfades instead of snapping */
-
-
-
-
 /* =========================================================
    Provisional entry: chip, new-user card, floating awards
    ========================================================= */
@@ -500,7 +414,7 @@ footer .rights {
   #bridge-sys .tinst-wrap { display: none; }
   #bridge-log {
     left: calc(2rem + var(--inst-w, 352px) + 1rem);
-    right: 2rem;
+    max-width: calc(100% - (2rem + var(--inst-w, 352px) + 1rem) - 2rem);
   }
 }
 /* the hint names one thing at a time, then stops appearing */
