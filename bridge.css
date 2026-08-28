@@ -85,6 +85,7 @@
   /* never taller than the space between the top bar and the map strip */
   max-height: calc(100% - 11rem);
   display: flex; flex-direction: column; justify-content: flex-end;
+  overflow: visible;
 }
 #bridge-term .tlog {
   display: flex; flex-direction: column; justify-content: flex-end;
@@ -102,12 +103,13 @@
 #bridge-term .tl.good { color: var(--lamp) !important; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 /* cockpit controls */
-.tinst-wrap { position: relative; display: inline-block; padding-top: 0.55rem; border-top: 1px solid #1e262a; }
+.tinst-wrap { position: relative; display: inline-block; padding-top: 0.55rem; border-top: 1px solid #1e262a; overflow: visible; }
 .tinst-ctl {
-  position: absolute; right: 0; top: -0.75rem;
-  display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.25s;
+  position: absolute; right: 0; top: -0.75rem; z-index: 2;
+  display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
 }
-.tinst-wrap:hover .tinst-ctl { opacity: 1; }
+.tinst-wrap:hover .tinst-ctl,
+.tinst-wrap:focus-within .tinst-ctl { opacity: 1; }
 .tinst-ctl button {
   font-family: var(--mono); font-size: 0.7rem; line-height: 1;
   width: 18px; height: 18px; padding: 0; cursor: pointer;
@@ -117,12 +119,12 @@
 .tinst-ctl button:hover { color: var(--lamp); border-color: rgba(245,208,107,0.5); }
 /* the instrument panel sits under the log */
 #bridge-term .tinst {
-  display: block; width: auto; height: auto; max-width: 100%;
+  display: block; width: auto; height: auto;
   background: rgba(9,13,15,0.35);
   cursor: pointer;
   pointer-events: auto;          /* .bridge-hud is none — opt back in */
 }
-.tinst-wrap { max-width: 100%; pointer-events: none; }
+.tinst-wrap { pointer-events: none; }
 .tinst-ctl { pointer-events: auto; }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: 1.6rem; width: min(40rem, 52vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }

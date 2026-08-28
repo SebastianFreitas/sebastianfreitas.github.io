@@ -483,16 +483,27 @@
   if (window.Instruments) {
     Instruments.mount(document.getElementById("binst"));
     const IK = "arcanis.inst.scale";
-    let iscale = parseFloat(localStorage.getItem(IK) || "1") || 1;
+    const termEl = document.getElementById("bridge-term");
+    let iscale = parseFloat(localStorage.getItem(IK));
+    if (!Number.isFinite(iscale)) {
+      const maxW = termEl ? termEl.clientWidth : Instruments.TOTAL_W;
+      iscale = Math.min(1, maxW / Instruments.TOTAL_W);
+    }
     Instruments.setScale(iscale);
     const step = d => {
       iscale = Instruments.setScale(iscale + d);
       try { localStorage.setItem(IK, String(iscale)); } catch (e) {}
     };
-    const bIn = document.getElementById("binst-in");
-    const bOut = document.getElementById("binst-out");
-    if (bIn)  bIn.addEventListener("pointerdown", e => { e.stopPropagation(); step(0.15); });
-    if (bOut) bOut.addEventListener("pointerdown", e => { e.stopPropagation(); step(-0.15); });
+    const bindScale = (el, delta) => {
+      if (!el) return;
+      el.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        step(delta);
+      });
+    };
+    bindScale(document.getElementById("binst-in"), 0.15);
+    bindScale(document.getElementById("binst-out"), -0.15);
   }
 
   const LOG_MAX = 5;

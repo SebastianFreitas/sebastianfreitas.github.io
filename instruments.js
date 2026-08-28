@@ -81,7 +81,7 @@ window.Instruments = (function () {
   }
 
   function setScale(v) {
-    uiScale = Math.max(0.7, Math.min(1.7, v));
+    uiScale = Math.max(0.7, Math.min(2.0, v));
     resize();
     return uiScale;
   }
@@ -91,9 +91,7 @@ window.Instruments = (function () {
   function resize() {
     if (!cv || !ctx) return;
     dpr = Math.min(devicePixelRatio || 1, 2);
-    const wrap = cv.parentElement;
-    const maxW = wrap ? wrap.clientWidth : TOTAL_W * uiScale;
-    const fit = maxW > 0 ? Math.min(uiScale, maxW / TOTAL_W) : uiScale;
+    const fit = uiScale;
     const dispW = Math.round(TOTAL_W * fit);
     const dispH = Math.round(TOTAL_H * fit);
     cv.style.width = dispW + "px";
@@ -104,6 +102,24 @@ window.Instruments = (function () {
     ctx.imageSmoothingEnabled = true;
   }
 
+  /* cell → focused panel: scale drawing so labels/gauges grow with the tile */
+  function ps(p) { return Math.min(p.w / CELL_W, p.h / CELL_H); }
+  function cellPanel(p) {
+    const s = ps(p);
+    if (s === 1) return p;
+    return { key: p.key, label: p.label, w: p.w / s, h: p.h / s, focused: p.focused };
+  }
+
+  function drawPanel(p, r, dt) {
+    const s = ps(p);
+    ctx.save();
+    if (s !== 1) ctx.scale(s, s);
+    const q = cellPanel(p);
+    chrome(q);
+    paint(q, r, dt);
+    ctx.restore();
+  }
+
   function draw(dt, r) {
     if (!ctx) return;
     t += dt;
@@ -112,11 +128,7 @@ window.Instruments = (function () {
     if (focusKey) {
       const p = PANELS.find(q => q.key === focusKey);
       if (p) {
-        const big = { key: p.key, label: p.label, w: TOTAL_W, h: TOTAL_H, focused: true };
-        ctx.save();
-        chrome(big);
-        paint(big, r, dt);
-        ctx.restore();
+        drawPanel({ key: p.key, label: p.label, w: TOTAL_W, h: TOTAL_H, focused: true }, r, dt);
         return;
       }
     }
@@ -124,8 +136,7 @@ window.Instruments = (function () {
     for (const p of PANELS) {
       ctx.save();
       ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
-      chrome(p);
-      paint(p, r, dt);
+      drawPanel(p, r, dt);
       ctx.restore();
     }
   }
@@ -150,7 +161,7 @@ window.Instruments = (function () {
     ctx.moveTo(p.w, 8); ctx.lineTo(p.w, 0); ctx.lineTo(p.w - 8, 0);
     ctx.stroke();
 
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.font = mono(9);
     ctx.fillStyle = "rgba(125,135,131,1)";
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillText(p.label, 0, p.h - 3);
@@ -179,6 +190,9 @@ window.Instruments = (function () {
     if (a >= 10000) return (n / 1000).toFixed(1) + "k";
     return Math.round(n).toLocaleString("en-US");
   }
+  function mono(px, weight = "500") {
+    return `${weight} ${px}px "IBM Plex Mono", monospace`;
+  }
 
   /* =========================================================
      RADAR — contacts only. Nearest beacon named. Heading pip.
@@ -195,7 +209,7 @@ window.Instruments = (function () {
       ctx.beginPath(); ctx.arc(cx, cy, R * i / 3, 0, 6.283); ctx.stroke();
     }
     ctx.fillStyle = `rgba(${DIM},0.7)`;
-    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.font = mono(7);
     ctx.textAlign = "left";
     ctx.fillText("7k", cx + 3, cy - R * 0.33 + 3);
     ctx.fillText("14k", cx + 3, cy - R * 0.66 + 3);
@@ -207,7 +221,7 @@ window.Instruments = (function () {
     ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
     ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
     ctx.stroke();
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.font = mono(8);
     ctx.fillStyle = `rgba(${DIM},0.85)`;
     ctx.textAlign = "center";
     ctx.fillText("W", cx - R + 7, cy + 3);
@@ -278,7 +292,7 @@ window.Instruments = (function () {
 
     const inRange = (r.marks || []).filter(m => Math.abs(m.cam - r.camX) < RANGE);
     const unclaimed = inRange.filter(m => !m.claimed).length;
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.font = mono(9);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(inRange.length + " CONTACT", 5, 12);
@@ -293,7 +307,7 @@ window.Instruments = (function () {
       const side = nearest.cam >= r.camX ? "E" : "W";
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${LAMP},0.85)`;
-      ctx.font = '500 7px "IBM Plex Mono", monospace';
+      ctx.font = mono(8);
       ctx.fillText(short, 5, inner - 4);
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${COLD},0.9)`;
@@ -347,7 +361,7 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${COLD},0.8)`;
     ctx.fillRect(mx, my + 8, mw * futureNeedle, mh);
 
-    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.font = mono(7);
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},0.9)`;
     ctx.fillText("CHAOS", mx, my - 2);
@@ -358,7 +372,7 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${COLD},0.9)`;
     ctx.fillText(futureNeedle.toFixed(2), p.w - 5, my + 6);
 
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.font = mono(9);
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(v.name.toUpperCase(), 5, 12);
@@ -382,39 +396,42 @@ window.Instruments = (function () {
 
     const inner = p.h - 15;
     const pad = 6;
+    const iconReserve = 14;          /* chrome expand glyph — keep text out of here */
+    const headerY = 11;
+    const cruiseBlock = 24;          /* label + bar + mode line */
+
     const tankW = Math.max(14, Math.round(p.w * 0.11));
     const tankX = pad;
-    const tankY = 12;
-    const tankH = inner - 28;
+    const tankTop = headerY + 5;
+    const tankH = inner - tankTop - cruiseBlock;
+
+    const zoneL = tankX + tankW + 8;
+    const zoneR = p.w - pad - iconReserve;
+    const zoneW = Math.max(40, zoneR - zoneL);
+    const zoneCx = zoneL + zoneW * 0.5;
+    const zoneTop = tankTop;
+    const zoneBot = inner - cruiseBlock;
+    const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.44;
+    const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.36);
 
     // fuel tank — left rail
     ctx.strokeStyle = `rgba(${LAMP},0.3)`;
-    ctx.strokeRect(tankX + 0.5, tankY + 0.5, tankW - 1, tankH - 1);
+    ctx.strokeRect(tankX + 0.5, tankTop + 0.5, tankW - 1, tankH - 1);
     for (let i = 1; i < 4; i++) {
-      const y = tankY + tankH * i / 4;
+      const y = tankTop + tankH * i / 4;
       ctx.strokeStyle = `rgba(${DIM},0.3)`;
       ctx.beginPath(); ctx.moveTo(tankX + 2, y); ctx.lineTo(tankX + tankW - 2, y); ctx.stroke();
     }
     const fillH = tankH * (infinite ? (0.85 + 0.15 * Math.sin(t * 2)) : fuelNeedle);
     const low = !infinite && fuelNeedle < 0.22;
     const col = low ? BAD : LAMP;
-    const fg = ctx.createLinearGradient(0, tankY + tankH - fillH, 0, tankY + tankH);
+    const fg = ctx.createLinearGradient(0, tankTop + tankH - fillH, 0, tankTop + tankH);
     fg.addColorStop(0, `rgba(${col},0.95)`);
     fg.addColorStop(1, `rgba(${col},0.3)`);
     ctx.fillStyle = fg;
-    ctx.fillRect(tankX + 2, tankY + tankH - fillH, tankW - 4, fillH);
+    ctx.fillRect(tankX + 2, tankTop + tankH - fillH, tankW - 4, fillH);
 
-    // main zone — thrust arc centered in the space right of the tank
-    const zoneL = tankX + tankW + 8;
-    const zoneR = p.w - pad;
-    const zoneW = Math.max(40, zoneR - zoneL);
-    const zoneCx = zoneL + zoneW * 0.5;
-    const cruiseBand = 20;
-    const zoneTop = 12;
-    const zoneBot = inner - cruiseBand;
-    const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.46;
-    const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.4, 34);
-
+    // thrust arc
     ctx.strokeStyle = `rgba(${DIM},0.3)`;
     ctx.lineWidth = 5;
     ctx.beginPath(); ctx.arc(zoneCx, zoneCy, R, 0.75 * Math.PI, 2.25 * Math.PI); ctx.stroke();
@@ -426,17 +443,18 @@ window.Instruments = (function () {
     ctx.lineCap = "butt";
     ctx.lineWidth = 1;
 
-    ctx.font = '600 11px "IBM Plex Mono", monospace';
+    ctx.font = mono(12, "600");
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${LAMP},0.95)`;
     ctx.fillText(Math.round(thrustNeedle * 100) + "%", zoneCx, zoneCy + 2);
-    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.font = mono(7);
     ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("THRUST", zoneCx, zoneCy + 12);
+    ctx.fillText("THRUST", zoneCx, zoneCy + 11);
 
-    // burn + power — flanking the arc, not pinned to the corner
-    const statY = zoneCy + R + 10;
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    // burn + power — below arc, above cruise block
+    const statY = zoneCy + R + 7;
+    const statValY = statY + 10;
+    ctx.font = mono(8);
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${DIM},0.95)`;
     ctx.fillText("BURN", zoneCx - zoneW * 0.22, statY);
@@ -446,50 +464,51 @@ window.Instruments = (function () {
       ? (s.fuel / burnRate)
       : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
     ctx.fillStyle = `rgba(${LAMP},0.9)`;
-    if (infinite) ctx.fillText("∞", zoneCx - zoneW * 0.22, statY + 11);
-    else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", zoneCx - zoneW * 0.22, statY + 11);
-    else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", zoneCx - zoneW * 0.22, statY + 11);
+    if (infinite) ctx.fillText("∞", zoneCx - zoneW * 0.22, statValY);
+    else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", zoneCx - zoneW * 0.22, statValY);
+    else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", zoneCx - zoneW * 0.22, statValY);
     const pow = s && s.power ? s.power.accel : 1;
     ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText("×" + pow.toFixed(1), zoneCx + zoneW * 0.22, statY + 11);
+    ctx.fillText("×" + pow.toFixed(1), zoneCx + zoneW * 0.22, statValY);
 
-    // cruise — full width of main zone
-    const bx = zoneL, by = inner - 18, bw = zoneW;
+    // cruise — bottom block, clear of burn/pwr
+    const bx = zoneL;
+    const by = inner - 10;
+    const bw = zoneW;
+    ctx.font = mono(7);
+    ctx.textAlign = "left";
+    ctx.fillStyle = `rgba(${DIM},1)`;
+    ctx.fillText("CRUISE BUILD", bx, by - 5);
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(${COLD},0.9)`;
+    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 5);
     ctx.fillStyle = `rgba(${DIM},0.22)`;
-    ctx.fillRect(bx, by, bw, 6);
+    ctx.fillRect(bx, by, bw, 5);
     const cg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
     cg.addColorStop(0, `rgba(${COLD},0.5)`);
     cg.addColorStop(1, `rgba(${LAMP},0.9)`);
     ctx.fillStyle = cg;
-    ctx.fillRect(bx, by, bw * cruiseNeedle, 6);
-    ctx.font = '500 6px "IBM Plex Mono", monospace';
-    ctx.textAlign = "left";
-    ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("CRUISE BUILD", bx, by - 3);
-    ctx.textAlign = "right";
-    ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 3);
+    ctx.fillRect(bx, by, bw * cruiseNeedle, 5);
 
-    // header row
+    // header — fuel label + percent inline on the left (not under expand icon)
     ctx.textAlign = "left";
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.font = mono(9);
     if (infinite) {
       ctx.fillStyle = `rgba(${LAMP},0.9)`;
-      ctx.fillText("OPEN", zoneL, 12);
+      ctx.fillText("OPEN", zoneL, headerY);
     } else {
       ctx.fillStyle = low ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
-      ctx.fillText(low ? "LOW" : "FUEL", zoneL, 12);
-      ctx.textAlign = "right";
+      ctx.fillText(low ? "LOW" : "FUEL", zoneL, headerY);
       ctx.fillStyle = `rgba(${col},0.95)`;
-      ctx.fillText(Math.round(fuelNeedle * 100) + "%", zoneR, 12);
+      ctx.fillText(Math.round(fuelNeedle * 100) + "%", zoneL + 30, headerY);
     }
 
     const mode = s && s.burning ? "HARD BURN"
       : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
     ctx.textAlign = "right";
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.font = mono(8);
     ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
-    ctx.fillText(mode, zoneR, inner - 4);
+    ctx.fillText(mode, zoneR, by + 12);
   }
 
   /* =========================================================
@@ -507,16 +526,16 @@ window.Instruments = (function () {
     }
 
     // big digital speed
-    ctx.font = '600 16px "IBM Plex Mono", monospace';
+    ctx.font = mono(18, "600");
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${LAMP},0.95)`;
     ctx.fillText(Math.round(Math.abs(r.vel)).toLocaleString("en-US"), 5, 22);
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.font = mono(8);
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("U/S", 5, 32);
 
     ctx.textAlign = "right";
-    ctx.font = '500 8px "IBM Plex Mono", monospace';
+    ctx.font = mono(9);
     ctx.fillStyle = `rgba(${COLD},0.9)`;
     ctx.fillText("BRG " + fmtK(r.camX), p.w - 5, 14);
     ctx.fillStyle = `rgba(${DIM},1)`;
@@ -567,7 +586,7 @@ window.Instruments = (function () {
     ctx.fillRect(5, barY, p.w - 10, 3);
     ctx.fillStyle = `rgba(${LAMP},0.85)`;
     ctx.fillRect(5 + (p.w - 10) * you - 1, barY - 2, 2, 7);
-    ctx.font = '500 6px "IBM Plex Mono", monospace';
+    ctx.font = mono(7);
     ctx.fillStyle = `rgba(${DIM},0.8)`;
     ctx.textAlign = "left";
     ctx.fillText("W", 5, barY - 4);
@@ -576,7 +595,7 @@ window.Instruments = (function () {
 
     // status line
     ctx.textAlign = "left";
-    ctx.font = '500 7px "IBM Plex Mono", monospace';
+    ctx.font = mono(8);
     if (s && s.courseName) {
       ctx.fillStyle = `rgba(${COLD},0.95)`;
       const nm = s.courseName.toUpperCase();
