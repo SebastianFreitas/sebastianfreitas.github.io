@@ -146,6 +146,7 @@
     if (bridgeReady) return;
     bridgeReady = true;
     begin();
+    applyPendingMode();
   }
 
   function startLoop() {
@@ -157,8 +158,10 @@
 
   document.addEventListener("site:preload", () => startLoop());
 
+  let pendingMode = null;
   document.addEventListener("site:enter", e => {
     startLoop();
+    pendingMode = e.detail && e.detail.mode || null;
     if (e.detail.bridge !== false) readyBridge();
     else {
       const wake = () => {
@@ -661,6 +664,16 @@
     pushLog(target === "gamedev"
       ? "sector: game dev — four objects on approach"
       : "sector: the void — span resumes", "good");
+  }
+
+  function applyPendingMode() {
+    if (!pendingMode || pendingMode === sceneMode) {
+      pendingMode = null;
+      return;
+    }
+    const mode = pendingMode;
+    pendingMode = null;
+    applySceneMode(mode);
   }
 
   function beginModeSwitch(target) {

@@ -172,21 +172,21 @@ window.Voidship = (function () {
     const steering = ship.thrusting && canBurn(ship) && !!env.aim;
 
     if (steering) {
-      const stickX = clamp((env.aim.px - W * 0.5) / (W * 0.42), -1, 1);
-      const stickY = clamp((env.aim.py - ship.y) / (H * BASE.yBand + 1), -1, 1);
-      // soft curve: short offsets stay gentle; edge holds still reach full cruise
-      const curveX = stickX * Math.abs(stickX);
-      const curveY = stickY * Math.abs(stickY);
-      const vWant = curveX * cruise;
-      const vyWant = curveY * BASE.yMax;
+      const dx = env.aim.px - W * 0.5;
+      const dy = env.aim.py - ship.y;
+      const len = Math.hypot(dx, dy);
+      let dirX = 0, dirY = 0;
+      if (len > 6) { dirX = dx / len; dirY = dy / len; }
+      const vWant = dirX * cruise;
+      const vyWant = dirY * BASE.yMax;
 
       const dv = vWant - ship.vel;
       ship.vel += clamp(dv, -accel * dt, accel * dt);
       const dvy = vyWant - ship.vy;
       ship.vy += clamp(dvy, -yAccel * dt, yAccel * dt);
 
-      burning = Math.abs(curveX) > 0.04 || Math.abs(curveY) > 0.08;
-      demand = Math.min(1, Math.hypot(curveX, curveY * 0.5));
+      burning = len > 6;
+      demand = burning ? 1 : 0;
       ship.arrived = false;
     } else if (hasTarget(ship)) {
       const dx = ship.targetX - camX;

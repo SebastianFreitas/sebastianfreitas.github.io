@@ -65,7 +65,11 @@
   function pick(opts) {
     finish();
     document.dispatchEvent(new CustomEvent("site:enter", {
-      detail: { bridge: opts.bridge !== false, auto: !!opts.auto },
+      detail: {
+        bridge: opts.bridge !== false,
+        auto: !!opts.auto,
+        mode: opts.mode || null,
+      },
     }));
     if (opts.path) {
       unwatch(opts.path.id);
@@ -87,7 +91,8 @@
   }
   if (btnProjects) {
     btnProjects.addEventListener("click", () => pick({
-      bridge: false, scroll: "#work", el: btnProjects, path: PATH.projects,
+      bridge: true, scroll: "#bridge-hero", el: btnProjects, path: PATH.projects,
+      mode: "gamedev",
     }));
   }
 
