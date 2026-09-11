@@ -683,11 +683,10 @@ window.Voidship = (function () {
     ctx.lineTo(S * 0.62, 0);
     ctx.stroke();
     const tipPulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t * 6));
+    ctx.fillStyle = rgba(LAMP, 0.28 * tipPulse);
+    ctx.beginPath(); ctx.arc(S * 0.62, 0, 8, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = rgba(LAMP, 0.95 * tipPulse);
-    ctx.shadowColor = rgba(LAMP, 1);
-    ctx.shadowBlur = 12;
     ctx.beginPath(); ctx.arc(S * 0.62, 0, 2.2, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
 
     // chin intake scoop
     ctx.fillStyle = rgba([8, 10, 12], 0.95);

@@ -391,6 +391,42 @@ body.site-frozen > *:not(.site-gate) {
   margin: 1.5rem 0 0.5rem;
 }
 
+.embed-shell {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  background-color: var(--petrol-up);
+  background-size: cover;
+  background-position: center;
+}
+.embed-shell iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.embed-play {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(13, 17, 20, 0.58);
+  color: var(--lamp);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.embed-play:hover,
+.embed-play:focus-visible {
+  background: rgba(13, 17, 20, 0.36);
+  color: #fff;
+}
+
 .back {
   display: inline-block;
   font-family: var(--mono);

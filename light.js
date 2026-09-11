@@ -24,6 +24,7 @@
   let crates = [];
   let light = { x: -9999, y: -9999, on: false };
   let last = 0;
+  let loopOn = false, onScreen = true;
 
   // ---- setup -------------------------------------------------
   function resize() {
@@ -156,12 +157,25 @@
     }
   }
 
+  function startLoop() {
+    if (reduced || loopOn) return;
+    if (!onScreen || document.hidden) return;
+    loopOn = true;
+    last = performance.now();
+    requestAnimationFrame(frame);
+  }
+
   function frame(now) {
+    if (!loopOn) return;
+    if (!onScreen || document.hidden) {
+      loopOn = false;
+      return;
+    }
     const dt = Math.min((now - last) / 1000, 1 / 30);
     last = now;
+    requestAnimationFrame(frame);
     step(dt);
     draw();
-    requestAnimationFrame(frame);
   }
 
   // ---- input -------------------------------------------------
@@ -178,12 +192,22 @@
   window.addEventListener("pointerdown", (e) => setLight(e.clientX, e.clientY));
   window.addEventListener("pointerleave", () => { light.on = false; });
   window.addEventListener("resize", resize);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) startLoop();
+  });
+
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(es => {
+      onScreen = es[0].isIntersecting;
+      if (onScreen) startLoop();
+    }, { threshold: 0.02 }).observe(canvas);
+  }
 
   // ---- go ----------------------------------------------------
   resize();
   if (reduced) {
     draw();                       // static scene, no motion
   } else {
-    requestAnimationFrame((t) => { last = t; frame(t); });
+    startLoop();
   }
 })();

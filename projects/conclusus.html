@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=2">
+<link rel="stylesheet" href="../style.css?v=4">
 <link rel="stylesheet" href="../beacon.css?v=6">
 </head>
 <body>
@@ -37,10 +37,12 @@
   <p>Thirty levels and four new mechanics built on top of <a href="heavylight.html">HeavyLight</a>,
      finished in less time than the original took. Proving that was the point of building it.</p>
 
-  <iframe class="embed"
-          src="https://itch.io/embed-upload/14396412?color=141a1d"
-          allowfullscreen
-          title="Play Conclusus in your browser"></iframe>
+  <div class="embed embed-shell"
+       data-src="https://itch.io/embed-upload/14396412?color=141a1d"
+       data-title="Play Conclusus in your browser"
+       style="background-image:url('../media/conclusus/conclususFrontPage.webp')">
+    <button type="button" class="embed-play">Play Conclusus</button>
+  </div>
   <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
 
   <h2>Why it exists</h2>
@@ -90,6 +92,7 @@
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
 </footer>
 
+<script src="../embed.js?v=1"></script>
 <script src="../xp.js?v=9"></script>
 <script src="../surge.js?v=2"></script>
 <script src="../lamp.js?v=1"></script>

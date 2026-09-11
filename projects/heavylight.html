@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=3">
+<link rel="stylesheet" href="../style.css?v=4">
 <link rel="stylesheet" href="../beacon.css?v=6">
 <style>
   /* the light demo, sized to sit inside the case layout */
@@ -62,10 +62,12 @@
      no engine. Force falls off with the square of the distance and every crate has its own mass.</p>
 
 
-  <iframe class="embed"
-          src="https://itch.io/embed-upload/6434502?color=002f4b"
-          allowfullscreen
-          title="Play HeavyLight in your browser"></iframe>
+  <div class="embed embed-shell"
+       data-src="https://itch.io/embed-upload/6434502?color=002f4b"
+       data-title="Play HeavyLight in your browser"
+       style="background-image:url('../media/heavylight/heavylightFrontPage.webp')">
+    <button type="button" class="embed-play">Play HeavyLight</button>
+  </div>
   <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
 
   <h2>The rule</h2>
@@ -86,7 +88,8 @@
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
 </footer>
 
-<script src="../light.js"></script>
+<script src="../light.js?v=2"></script>
+<script src="../embed.js?v=1"></script>
 <script src="../xp.js?v=9"></script>
 <script src="../surge.js?v=2"></script>
 <script src="../lamp.js?v=1"></script>

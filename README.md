@@ -31,7 +31,6 @@ No framework, no bundler, no npm.
 
 - **HTML / CSS / vanilla JS** — site shell and interactions
 - **Canvas 2D** — bridge hero (`bridge.js`, `world.js`, instruments)
-- **Three.js** (CDN) — used on select project pages
 - **Python 3** — optional local server with cache disabled (`serve.py`)
 
 Target engines for the games themselves (documented on each case study): Unity (C#), Unreal 5 (C++ / Blueprint).

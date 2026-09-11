@@ -140,7 +140,7 @@
   try { scrollTo(0, 0); } catch (e) {}
 
   /* ---- defer interaction until the gate picks a path ---- */
-  let loopOn = false, bridgeReady = false;
+  let loopOn = false, bridgeReady = false, visible = true;
 
   function readyBridge() {
     if (bridgeReady) return;
@@ -151,6 +151,7 @@
 
   function startLoop() {
     if (loopOn) return;
+    if (!visible || document.hidden) return;
     loopOn = true;
     last = performance.now();
     requestAnimationFrame(frame);
@@ -176,7 +177,7 @@
 
   /* ---- state ---- */
   let camX = LAND.bridge, vel = 0, travelled = 0, t = 0;
-  let catalogued = 4182993201, started = false, visible = true;
+  let catalogued = 4182993201, started = false;
   let activeMark = null, hoverMark = null;
   let chaosNow = 0, futureNow = 0;
   let frozen = false;
@@ -496,12 +497,14 @@
   addEventListener("blur", () => { endBurn(); stopSteering(); });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { endBurn(); stopSteering(); }
+    else startLoop();
   });
 
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(es => {
       visible = es[0].isIntersecting;
       if (!visible) { endBurn(); stopSteering(); }
+      else startLoop();
     }, { threshold: 0.02 }).observe(host);
   }
 
@@ -965,11 +968,13 @@
   let last = performance.now();
   function frame(now) {
     if (!loopOn) return;
+    if (!visible || document.hidden) {
+      loopOn = false;
+      return;
+    }
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
-
-    if (!visible) return;
 
     // a claim holds travel still while the level lands
     // but the world keeps animating (t advances)
