@@ -484,16 +484,16 @@ html.genesis-on .topbar {
 .genesis-skip:hover { color: var(--lamp); }
 
 .genesis-copy {
-  max-width: min(44rem, 90vw);
+  max-width: min(38rem, 86vw);
   text-align: center;
   pointer-events: none;
   opacity: 0;
   margin: 0;
-  transform: translateY(12px);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.2,.8,.3,1);
+  transform: translateY(10px);
+  transition: opacity 1.15s ease, transform 1.15s cubic-bezier(.2,.8,.3,1);
 }
 .genesis-copy.on { opacity: 1; transform: none; }
-.genesis-copy.out { opacity: 0; transform: translateY(-10px); }
+.genesis-copy.out { opacity: 0; transform: translateY(-8px); }
 
 .genesis-tag {
   font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.18em;
@@ -502,18 +502,9 @@ html.genesis-on .topbar {
 }
 .genesis-line {
   font-family: var(--display); font-weight: 700;
-  font-size: clamp(1.15rem, 2.8vw, 1.85rem);
-  line-height: 1.35; color: #e8ece8; margin: 0;
+  font-size: clamp(1.28rem, 3.1vw, 2.05rem);
+  line-height: 1.4; color: #e8ece8; margin: 0;
   text-shadow: 0 2px 28px rgba(0,0,0,0.95);
-}
-.genesis-line span {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(0.45em);
-  animation: genesisWord 0.7s cubic-bezier(.2,.8,.3,1) forwards;
-}
-@keyframes genesisWord {
-  to { opacity: 1; transform: none; }
 }
 
 .genesis-ticks {
