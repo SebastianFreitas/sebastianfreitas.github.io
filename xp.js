@@ -280,6 +280,13 @@ window.XP = (function () {
     get busy() { return ceremonyBusy; },
 
     seen() { fresh = false; state.seen = true; save(); },
+    /* claim without a level — flags like genesis, not beacons */
+    flag(id) {
+      if (state.claimed[id]) return false;
+      state.claimed[id] = true;
+      save();
+      return true;
+    },
     get total() { return TOTAL; },
     mount: buildChip,
 

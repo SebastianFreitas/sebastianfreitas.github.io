@@ -696,7 +696,54 @@
 
   modeBtns.forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
-    btn.addEventListener("click", () => beginModeSwitch(btn.dataset.mode));
+    btn.addEventListener("click", () => {
+      if (window.Genesis && Genesis.pending && !Genesis.active && btn.dataset.mode === "void") {
+        Genesis.play({ thenMode: "void", thenCamX: LAND.bridge });
+        return;
+      }
+      beginModeSwitch(btn.dataset.mode);
+    });
+  });
+  const genesisBtn = document.getElementById("mode-genesis");
+  if (genesisBtn) {
+    genesisBtn.addEventListener("pointerdown", e => e.stopPropagation());
+    genesisBtn.addEventListener("click", () => {
+      if (!window.Genesis || Genesis.active) return;
+      Genesis.play({
+        thenMode: sceneMode,
+        thenCamX: sceneMode === "void" ? LAND.bridge : camX,
+      });
+    });
+  }
+
+  document.addEventListener("site:genesis-start", () => {
+    begin();
+    host.classList.add("genesis");
+    endBurn();
+    stopSteering();
+    if (ship) {
+      Voidship.setThrusting(ship, false);
+      Voidship.clearCourse(ship);
+      ship.vel = 0; ship.vy = 0;
+      ship.alpha = 0;
+    }
+    vel = 0;
+    clearMark();
+  });
+
+  document.addEventListener("site:genesis-done", e => {
+    host.classList.remove("genesis");
+    const mode = (e.detail && e.detail.mode) || "void";
+    const destCam = e.detail && e.detail.camX;
+    if (mode !== sceneMode) applySceneMode(mode);
+    if (destCam != null) camX = destCam;
+    else if (mode === "void") camX = LAND.bridge;
+    vel = 0;
+    if (ship) {
+      ship.vel = 0; ship.vy = 0;
+      Voidship.clearCourse(ship);
+      ship.alpha = 0;
+    }
   });
 
   /* advances the switch sequence; returns true while it owns the frame
@@ -980,6 +1027,15 @@
     // but the world keeps animating (t advances)
     t += raw;
     const dt = raw;
+
+    if (window.Genesis && Genesis.active) {
+      const going = Genesis.step(dt);
+      if (going) {
+        Genesis.draw(ctx, { W, H, t });
+        return;
+      }
+    }
+    if (ship && ship.alpha < 1) ship.alpha = approach(ship.alpha, 1, 2.4, dt);
 
     const warping = stepSwitch(dt);
     if (!warping) step(dt);
