@@ -58,7 +58,7 @@ window.Genesis = (function () {
       line: "Cadmus made a fifth — not a person, a weapon. Eldrin walked into the nest and became the Hound." },
     { id: "fall", dur: 8.6, tag: "mordrial fell",
       line: "They met Obrokxus. The fight outlasted counting. Mordrial fell. The rest called it victory." },
-    { id: "return", dur: 5.8, tag: "the mainland",
+    { id: "return", dur: 7.6, tag: "the mainland",
       line: "They turned home, to life and the void. Only Ormius still believed Obrokxus had survived." },
     { id: "eternity", dur: 8.8, tag: "still fighting",
       line: "No one has gone far enough to see. They fight there still." },
@@ -167,8 +167,10 @@ window.Genesis = (function () {
                  + ridge(wu * 18.5, b.seed + 21) * b.amp * 0.4;
     return Math.max(0, (b.base + drift + ramp + relief) * entry);
   }
-  function eastJag(wu, corrupt) {
-    if (corrupt < 0.02 || wu <= MAIN_U - 0.06) return 0;
+  /* what the war tore into the east of the land. Driven by scar,
+     which never goes back down, so nothing built on it ever moves. */
+  function eastJag(wu, scar) {
+    if (scar < 0.02 || wu <= MAIN_U - 0.06) return 0;
     const east = clamp((wu - MAIN_U) / MAIN_HALF, 0, 1);
     const cell = 0.038;
     const i = Math.floor(wu / cell);
@@ -178,8 +180,17 @@ window.Genesis = (function () {
     const tent = Math.max(0, 1 - Math.abs(f - 0.48) / 0.46);
     const jag = Math.pow(tent, 1.35) * peak * 0.28;
     const n = ridge(wu * 22, 8801) * 0.07 + ridge(wu * 48, 8819) * 0.035;
-    return (jag + Math.max(0, n - 0.015)) * Math.pow(east, 0.72) * corrupt;
+    return (jag + Math.max(0, n - 0.015)) * Math.pow(east, 0.72) * scar;
   }
+  /* three bands, like Rex: the ones behind sit higher and paler,
+     which is what stops the join from reading as a cut-out */
+  const MAIN_BANDS = [
+    { base: 0.205, amp: 0.062, seed: 6101, cell: 4.4, shear: 1.9, out: 0.10,
+      fill: ["#232c35", "#141b21"], edge: "rgba(178,204,214,0.14)" },
+    { base: 0.172, amp: 0.052, seed: 6203, cell: 6.1, shear: 2.4, out: 0.05,
+      fill: ["#1c242b", "#11171c"], edge: "rgba(178,204,214,0.18)" },
+  ];
+
   function mainDome(wu) {
     const u = (wu - (MAIN_U - MAIN_HALF)) / (MAIN_HALF * 2);
     if (u <= 0 || u >= 1) return 0;
@@ -187,25 +198,23 @@ window.Genesis = (function () {
     const lump = 0.78 + 0.22 * ridge(wu * 8.4, 2701) + 0.10 * (ridge(wu * 19, 2719) - 0.5);
     return Math.max(0, cap * lump);
   }
-  function mainHeight(wu, corrupt) {
+  function mainHeight(wu, scar) {
     const dome = mainDome(wu);
     if (dome <= 0) return 0;
     const n = (ridge(wu * 5.6, 4409) - 0.38) * 0.07
             + (ridge(wu * 13.2, 4417) - 0.5) * 0.036
             + (ridge(wu * 29, 4431) - 0.5) * 0.018;
-    return Math.max(0, (0.09 + n) * dome + eastJag(wu, corrupt || 0));
+    return Math.max(0, (0.138 + n) * dome + eastJag(wu, scar || 0));
   }
-  function mainDepth(wu) {
+  function mainBandHeight(wu, b) {
     const dome = mainDome(wu);
     if (dome <= 0) return 0;
-    const u = (wu - (MAIN_U - MAIN_HALF)) / (MAIN_HALF * 2);
-    const rim = Math.pow(Math.abs(u - 0.5) * 2, 1.35);
-    const n = (ridge(wu * 9.4, 3301) - 0.42) * 0.028
-            + (ridge(wu * 21, 3311) - 0.5) * 0.014;
-    return Math.max(0.003, (0.012 + n * 0.6 + rim * 0.018) * dome);
+    const n = (ridge(wu * b.cell, b.seed) - 0.40) * b.amp
+            + (ridge(wu * b.cell * 2.7, b.seed + 13) - 0.5) * b.amp * 0.45;
+    return Math.max(0, (b.base + n) * dome);
   }
-  function mainSurfY(wu, rise, corrupt) {
-    return mix(H + 28, H * DECK - mainHeight(wu, corrupt) * H, rise);
+  function mainSurfY(wu, rise, scar) {
+    return mix(H + 28, H * DECK - mainHeight(wu, scar) * H, rise);
   }
 
   let active = false, beat = 0, local = 0, thenMode = "void", thenCamX = null;
@@ -263,12 +272,18 @@ window.Genesis = (function () {
     troop("malgrur",  -0.72, -0.08, 52);
     function seedBand(list, n, minH, maxH, minW, maxW, lit) {
       for (let i = 0; i < n; i++) {
-        const east = 0.16 + r() * 0.78;
+        /* -1 is the west rim, +1 the east one. The west is settled
+           first and the east last, because the east is the front */
+        const u = -0.88 + r() * 1.76;
+        const east = (u + 0.88) / 1.76;
         const tw = {
-          u: east,
+          u,
           w: minW + r() * (maxW - minW),
           h: minH + r() * (maxH - minH),
-          born: mix(0.58, 0.02, east) + r() * 0.16,
+          /* west of the front it is a city all through the war;
+             east of it nothing stands until the war ends */
+          born: (east < 0.5 ? mix(0.02, 0.46, east / 0.5)
+                            : mix(0.60, 0.94, (east - 0.5) / 0.5)) + r() * 0.04,
           ph: r() * 6.28,
           windows: [],
         };
@@ -286,9 +301,9 @@ window.Genesis = (function () {
         list.push(tw);
       }
     }
-    seedBand(cityFar,  72, 0.28, 0.62, 12, 34, false);
-    seedBand(cityMid,  48, 0.20, 0.48, 16, 40, false);
-    seedBand(cityNear, 30, 0.16, 0.40, 20, 48, true);
+    seedBand(cityFar, 128, 0.26, 0.58, 12, 34, false);
+    seedBand(cityMid,  86, 0.19, 0.46, 16, 40, false);
+    seedBand(cityNear, 54, 0.15, 0.38, 20, 48, true);
     for (let i = 0; i < 42; i++) {
       const west = r();
       const teeth = [];
@@ -501,23 +516,23 @@ window.Genesis = (function () {
     const uRet   = since("return");
     const uEt    = since("eternity");
     if (uEt > 0.02)
-      camTarget = mix(MAIN_U, ET_END_U, linear("eternity"));
+      camTarget = mix(CITY_U - 0.06, ET_END_U, linear("eternity"));
     else if (uRet > 0.02)
-      camTarget = mix(MAIN_U, MAIN_U + 0.18, uRet);
+      camTarget = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));
     else if (uFall > 0.02)
-      camTarget = MAIN_U;
+      camTarget = mix(MAIN_U + 0.14, MAIN_U - 0.04, smooth(uFall));
     else if (uFifth > 0.02)
-      camTarget = mix(MAIN_U + 0.06, MAIN_U - 0.10, uFifth);
+      camTarget = mix(MAIN_U + 0.16, NEST_U + 0.04, smooth(uFifth));
     else if (uFour > 0.02)
-      camTarget = mix(MAIN_U, MAIN_U + 0.08, uFour);
+      camTarget = mix(MAIN_U + 0.02, MAIN_U + 0.20, smooth(uFour));
     else if (uLock > 0.02)
-      camTarget = MAIN_U;
+      camTarget = mix(MAIN_U - 0.10, MAIN_U + 0.04, smooth(uLock));
     else if (uStall > 0.02)
-      camTarget = MAIN_U;
+      camTarget = mix(MAIN_U + 0.08, MAIN_U - 0.08, smooth(uStall));
     else if (uWar > 0.02)
-      camTarget = MAIN_U;
+      camTarget = mix(MAIN_U - 0.18, MAIN_U + 0.10, smooth(uWar));
     else if (uFlee > 0.02)
-      camTarget = mix(ROOT_U - 0.30, MAIN_U, linear("flee"));
+      camTarget = mix(ROOT_U - 0.30, MAIN_U - 0.18, linear("flee"));
     else if (uWalk < 0.001) camTarget = 0;
     else if (uLand > 0.08)
       camTarget = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
@@ -1422,8 +1437,11 @@ window.Genesis = (function () {
     return H * 0.36 + Math.sin(t * 1.35 + ph) * H * (amp || 0.018);
   }
 
-  function standY(lane) {
-    return H * DECK - H * 0.10 - 10 - (lane || 0) * H * 0.08;
+  /* a figure's feet: on the surface at that point, not on a fixed line */
+  function standY(lane, wu, rise, scar) {
+    return mainSurfY(wu == null ? MAIN_U : wu, rise == null ? 1 : rise,
+                     scar == null ? 1 : scar)
+         - 12 - (lane || 0) * H * 0.075;
   }
 
   function sagaAt() {
@@ -1442,6 +1460,38 @@ window.Genesis = (function () {
     const span = Math.min(W, H);
     const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
     const fallIn = clamp(fall / 0.22, 0, 1);
+
+    /* ---- the land, before anything stands on it ----------------
+       scar is what the war did to the shape of the ground: it only
+       ever grows, and it stays. corrupt is the red laid over it,
+       and that lifts once the fighting moves west. */
+    let mainRise = 0;
+    if (fleeLin > 0.58) mainRise = clamp((fleeLin - 0.58) / 0.42, 0, 1);
+    if (war > 0) mainRise = 1;
+
+    let scar = 0;
+    if (war > 0) scar = mix(0, 0.30, clamp(war, 0, 1));
+    if (stall > 0) scar = mix(0.30, 0.44, stall);
+    if (lock > 0) scar = mix(0.44, 0.64, lock);
+    if (four > 0) scar = mix(0.64, 0.86, four);
+    if (fifth > 0) scar = mix(0.86, 0.95, fifth);
+    if (fall > 0) scar = mix(0.95, 1, fall);
+    if (ret > 0 || et > 0) scar = 1;
+
+    let corrupt = scar;
+    if (ret > 0) corrupt = mix(1, 0.07, smooth(clamp(ret / 0.72, 0, 1)));
+    if (et > 0) corrupt = 0.07;
+
+    /* the city fills west to east and finishes when the war does */
+    let civAmt = 0;
+    if (lock > 0.12) civAmt = mix(0, 0.32, clamp((lock - 0.12) / 0.88, 0, 1));
+    if (four > 0) civAmt = mix(0.32, 0.44, four);
+    if (fifth > 0) civAmt = mix(0.44, 0.50, fifth);
+    if (fall > 0) civAmt = mix(0.50, 0.55, fall);
+    if (ret > 0) civAmt = mix(0.55, 1, smooth(clamp(ret / 0.82, 0, 1)));
+    if (et > 0) civAmt = 1;
+
+    const gy = (lane, wu) => standY(lane, wu, mainRise, scar);
 
     let ou = mix(REX_U - 0.18, LEFT_U, fleeLin), oy = yWob(0.2, 0.026), oAmt = 0;
     if (et > 0) {
@@ -1496,38 +1546,46 @@ window.Genesis = (function () {
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
     const dieM = smooth(clamp((fall - 0.76) / 0.20, 0, 1));
     let mdU = mix(MAIN_U + 0.02, MAIN_U + 0.14, four);
-    let mdY = standY(0.10);
+    let mdY = gy(0.10, mdU);
     let mdAmt = born * (1 - dieM);
     if (fifth > 0) {
       mdU = mix(MAIN_U + 0.14, MAIN_U + 0.04, fifth);
-      mdY = standY(0.08);
+      mdY = gy(0.08, mdU);
     }
     if (fall > 0.02) {
       const yk = keyAt(YELLOW_KEYS, fall);
       mdU = mix(MAIN_U + 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
-      mdY = mix(standY(0.08), mix(standY(0.06) + yk.y * span * 0.10, H * DECK + 22, dieM), fallIn);
+      mdY = mix(gy(0.08, mdU),
+                mix(gy(0.06, mdU) + yk.y * span * 0.10,
+                    mainSurfY(mdU, mainRise, scar) + 26, dieM), fallIn);
     }
     if (ret > 0) mdAmt = 0;
 
     const slot = (start) => clamp((four - start) / 0.22, 0, 1);
     let cU = mix(MAIN_U + 0.24, NEST_U + 0.16, fifth);
-    let cY = standY(mix(0.14, 0.06, fifth));
     let cAmt = slot(0.12);
     let aelU = mix(MAIN_U + 0.32, MAIN_U + 0.22, fallIn);
-    let aelY = standY(mix(0.02, 0.00, fallIn));
+    let aelY = gy(mix(0.02, 0.00, fallIn), aelU);
     let aelAmt = slot(0.36);
     let vU = mix(MAIN_U + 0.17, MAIN_U + 0.10, fallIn);
-    let vY = standY(mix(0.20, 0.22, fallIn));
+    let vY = gy(mix(0.20, 0.22, fallIn), vU);
     let vAmt = slot(0.58);
+    let cLane = mix(0.14, 0.06, fifth);
     if (fall > 0.02) {
       cU = mix(NEST_U + 0.16, MAIN_U - 0.08, fallIn);
-      cY = standY(mix(0.06, 0.12, fallIn));
+      cLane = mix(0.06, 0.12, fallIn);
     }
+    let cY = gy(cLane, cU);
     if (ret > 0) {
-      const fadeHome = mix(1, 0.08, ret);
-      cU = mix(MAIN_U - 0.08, CITY_U + 0.08, ret);
-      aelU = mix(MAIN_U + 0.22, CITY_U + 0.14, ret);
-      vU = mix(MAIN_U + 0.10, CITY_U + 0.02, ret);
+      /* they walk west into the city they are about to disappear into */
+      const home = smooth(clamp(ret / 0.85, 0, 1));
+      const fadeHome = mix(1, 0.10, clamp((ret - 0.45) / 0.55, 0, 1));
+      cU = mix(MAIN_U - 0.08, CITY_U + 0.13, home);
+      aelU = mix(MAIN_U + 0.22, CITY_U + 0.34, home);
+      vU = mix(MAIN_U + 0.10, CITY_U - 0.08, home);
+      cY = gy(0.10, cU);
+      aelY = gy(0.02, aelU);
+      vY = gy(0.20, vU);
       cAmt *= fadeHome;
       aelAmt *= fadeHome;
       vAmt *= fadeHome;
@@ -1539,11 +1597,12 @@ window.Genesis = (function () {
       : (fall > 0.02 && fall < 0.35 ? mix(0.2, 0, fall / 0.35) : 0);
     const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
     let hU = mix(nestU, MAIN_U - 0.18, fallIn);
-    let hY = standY(mix(-0.04, -0.06, fallIn));
+    let hY = gy(mix(-0.04, -0.06, fallIn), hU);
     let hAmt = houndBorn;
     if (ret > 0) {
-      hU = mix(MAIN_U - 0.18, CITY_U - 0.04, ret);
-      hAmt = mix(1, 0.1, ret);
+      hU = mix(MAIN_U - 0.18, CITY_U - 0.28, smooth(clamp(ret / 0.85, 0, 1)));
+      hY = gy(-0.06, hU);
+      hAmt = mix(1, 0.12, clamp((ret - 0.45) / 0.55, 0, 1));
     }
 
     let army = 0;
@@ -1553,45 +1612,24 @@ window.Genesis = (function () {
     if (four > 0) army = mix(0.55, 0.82, four);
     if (fifth > 0) army = mix(0.82, 0.92, fifth);
     if (fall > 0) army = mix(0.92, 1, fall);
-    if (ret > 0) army = mix(1, 0.28, ret);
-
-    let civAmt = 0;
-    if (lock > 0.12) civAmt = mix(0, 0.48, clamp((lock - 0.12) / 0.88, 0, 1));
-    if (four > 0) civAmt = mix(0.50, 0.86, four);
-    if (fifth > 0) civAmt = mix(0.86, 0.95, fifth);
-    if (fall > 0) civAmt = 0.96;
-    if (ret > 0) civAmt = 1;
-
-    let corrupt = 0;
-    if (war > 0) corrupt = mix(0, 0.30, clamp(war, 0, 1));
-    if (stall > 0) corrupt = mix(0.30, 0.44, stall);
-    if (lock > 0) corrupt = mix(0.44, 0.64, lock);
-    if (four > 0) corrupt = mix(0.64, 0.86, four);
-    if (fifth > 0) corrupt = mix(0.86, 0.95, fifth);
-    if (fall > 0) corrupt = mix(0.95, 1, fall);
-    if (ret > 0) corrupt = 1;
-
-    let mainRise = 0;
-    if (fleeLin > 0.58) mainRise = clamp((fleeLin - 0.58) / 0.42, 0, 1);
-    if (war > 0) mainRise = 1;
+    if (ret > 0) army = mix(1, 0, clamp(ret / 0.55, 0, 1));
+    if (et > 0) army = 0;
 
     if (et > 0) {
+      /* the duel leaves. The land does not: it keeps its city and
+         slides out of frame behind the camera. */
       mdAmt = 0;
       cAmt = 0;
       aelAmt = 0;
       vAmt = 0;
       hAmt = 0;
       aAmt = 0;
-      army = 0;
-      civAmt = mix(1, 0, clamp(etLin * 2.2, 0, 1));
-      corrupt = mix(1, 0, clamp(etLin * 1.6, 0, 1));
-      mainRise = mix(1, 0, clamp(etLin * 1.6, 0, 1));
     }
 
     return {
       ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
       mdU, mdY, mdAmt, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
-      nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, mainRise,
+      nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
     };
   }
@@ -1599,63 +1637,132 @@ window.Genesis = (function () {
   function drawMainland(ctx, S) {
     const rise = S && S.mainRise;
     if (!rise || rise < 0.02) return;
+    const scar = S.scar || 0;
     const corrupt = S.corrupt || 0;
     const xL = sx(MAIN_U - MAIN_HALF);
     const xR = sx(MAIN_U + MAIN_HALF);
     if (xR < -60 || xL > W + 60) return;
     const deckY = H * DECK;
-    const split = sx(MAIN_U);
+    const bottom = H + 80;
     const step = 5;
-    const left = Math.max(-48, xL - 8);
-    const right = Math.min(W + 48, xR + 8);
-    const top = [], bot = [];
+    const left = Math.max(-60, xL - 300);
+    const right = Math.min(W + 60, xR + 300);
+
+    /* past the rim the land shears off downward instead of stopping
+       dead, which is what made it read as a slab hanging in the dark */
+    const rimY = (wu, shear, out, seed) => {
+      const d = Math.max(0, Math.abs(wu - MAIN_U) - MAIN_HALF - (out || 0));
+      const broken = 1 + (ridge(wu * 26, seed || 7703) - 0.5) * 0.55
+                       + (ridge(wu * 62, (seed || 7703) + 11) - 0.5) * 0.22;
+      return deckY + d * W * (shear || 2.2) * broken;
+    };
+
+    /* the two ranges behind, first */
+    for (const b of MAIN_BANDS) {
+      const pts = [];
+      for (let px = left; px <= right; px += step) {
+        const wu = cam + (px - W * 0.5) / W;
+        const dome = mainDome(wu);
+        const y = dome > 0.002
+          ? deckY - mainBandHeight(wu, b) * H
+          : rimY(wu, b.shear, b.out, b.seed);
+        if (y > H + 120) continue;
+        pts.push([px, mix(H + 24, y, rise)]);
+      }
+      if (pts.length < 3) continue;
+      const p = new Path2D();
+      p.moveTo(pts[0][0], bottom);
+      for (const q of pts) p.lineTo(q[0], q[1]);
+      p.lineTo(pts[pts.length - 1][0], bottom);
+      p.closePath();
+      const g = ctx.createLinearGradient(0, deckY - H * 0.28, 0, bottom);
+      g.addColorStop(0, b.fill[0]);
+      g.addColorStop(1, b.fill[1]);
+      ctx.globalAlpha = rise;
+      ctx.fillStyle = g;
+      ctx.fill(p);
+      ctx.strokeStyle = b.edge;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      let drawing = false;
+      for (const q of pts) {
+        if (q[1] > H + 8) { drawing = false; continue; }
+        drawing ? ctx.lineTo(q[0], q[1]) : (ctx.moveTo(q[0], q[1]), drawing = true);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    /* the near range, the one everything stands on */
+    const top = [];
     for (let px = left; px <= right; px += step) {
       const wu = cam + (px - W * 0.5) / W;
       const dome = mainDome(wu);
-      if (dome <= 0.002) continue;
-      const yTop = mix(H + 24, deckY - mainHeight(wu, corrupt) * H, rise);
-      const yBot = mix(H + 24, deckY + mainDepth(wu) * H, rise);
-      top.push([px, yTop]);
-      bot.push([px, yBot]);
+      const y = dome > 0.002 ? H * DECK - mainHeight(wu, scar) * H : rimY(wu, 2.9, 0, 7703);
+      if (y > H + 120) continue;
+      top.push([px, mix(H + 28, y, rise)]);
     }
     if (top.length < 3) return;
 
     const path = new Path2D();
-    path.moveTo(top[0][0], top[0][1]);
-    for (let i = 1; i < top.length; i++) path.lineTo(top[i][0], top[i][1]);
-    for (let i = bot.length - 1; i >= 0; i--) path.lineTo(bot[i][0], bot[i][1]);
+    path.moveTo(top[0][0], bottom);
+    for (const p of top) path.lineTo(p[0], p[1]);
+    path.lineTo(top[top.length - 1][0], bottom);
     path.closePath();
 
-    const g = ctx.createLinearGradient(top[0][0], 0, top[top.length - 1][0], 0);
-    const wr = Math.round(mix(42, 92, corrupt));
-    const wg = Math.round(mix(50, 10, corrupt));
-    const wb = Math.round(mix(56, 12, corrupt));
-    g.addColorStop(0, "#1c2428");
-    g.addColorStop(0.46, "#343c42");
-    g.addColorStop(0.58, `rgb(${Math.round(mix(52, 64, corrupt))},${Math.round(mix(44, 12, corrupt))},${Math.round(mix(48, 14, corrupt))})`);
-    g.addColorStop(1, `rgb(${wr},${wg},${wb})`);
+    const g = ctx.createLinearGradient(0, deckY - H * 0.20, 0, bottom);
+    g.addColorStop(0, "#1a222a");
+    g.addColorStop(0.45, "#141b21");
+    g.addColorStop(1, "#0c1216");
     ctx.globalAlpha = rise;
     ctx.fillStyle = g;
     ctx.fill(path);
 
-    const edge = ctx.createLinearGradient(xL, 0, xR, 0);
-    edge.addColorStop(0, "rgba(186,208,214,0.32)");
-    edge.addColorStop(0.5, "rgba(186,208,214,0.28)");
-    edge.addColorStop(1, `rgba(${Math.round(mix(186, 160, corrupt))},${Math.round(mix(208, 28, corrupt))},${Math.round(mix(214, 32, corrupt))},${0.24 + 0.18 * corrupt})`);
-    ctx.strokeStyle = edge;
-    ctx.lineWidth = 1.25;
-    ctx.stroke(path);
-    ctx.globalAlpha = 1;
-
-    if (corrupt > 0.04) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(split - 40, -40, W - split + 120, H + 80);
-      ctx.clip();
-      ctx.fillStyle = `rgba(90,12,16,${0.16 * corrupt * rise})`;
+    /* the war's red, laid over the east and lifting when it ends */
+    if (corrupt > 0.02) {
+      const tint = ctx.createLinearGradient(sx(MAIN_U - 0.22), 0, xR, 0);
+      tint.addColorStop(0, "rgba(96,10,14,0)");
+      tint.addColorStop(0.55, `rgba(96,10,14,${0.26 * corrupt})`);
+      tint.addColorStop(1, `rgba(110,12,16,${0.46 * corrupt})`);
+      ctx.fillStyle = tint;
       ctx.fill(path);
-      ctx.restore();
     }
+
+    /* a few strata following the surface, fading out with depth,
+       so the body reads as rock rather than a filled shape */
+    ctx.save();
+    ctx.clip(path);
+    for (let k = 1; k <= 5; k++) {
+      const drop = k * H * 0.052;
+      const a = (0.10 - k * 0.014) * rise;
+      if (a <= 0.004) break;
+      ctx.strokeStyle = `rgba(176,200,208,${a})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      let on = false;
+      for (const p of top) {
+        const y = p[1] + drop + (ridge(p[0] * 0.012 + k, 9109 + k * 31) - 0.5) * 16;
+        if (y > H + 8) { on = false; continue; }
+        on ? ctx.lineTo(p[0], y) : (ctx.moveTo(p[0], y), on = true);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const edge = ctx.createLinearGradient(xL, 0, xR, 0);
+    edge.addColorStop(0, "rgba(186,208,214,0.26)");
+    edge.addColorStop(0.5, "rgba(186,208,214,0.24)");
+    edge.addColorStop(1, `rgba(${Math.round(mix(186, 170, corrupt))},${Math.round(mix(208, 44, corrupt))},${Math.round(mix(214, 48, corrupt))},${0.26 + 0.20 * corrupt})`);
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    let drawing = false;
+    for (const p of top) {
+      if (p[1] > H + 8) { drawing = false; continue; }
+      drawing ? ctx.lineTo(p[0], p[1]) : (ctx.moveTo(p[0], p[1]), drawing = true);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
     if (corrupt > 0.06) {
       for (const sp of spikes) {
@@ -1665,7 +1772,7 @@ window.Genesis = (function () {
         if (x < -40 || x > W + 40) continue;
         const grow = clamp((corrupt - sp.born) / 0.22, 0, 1);
         if (grow < 0.04) continue;
-        const y = mainSurfY(wu, rise, corrupt) + 3;
+        const y = mainSurfY(wu, rise, scar) + 3;
         const th = sp.h * H * grow * mix(0.55, 1.15, corrupt);
         const tw = sp.w * mix(0.7, 1, grow);
         const lean = sp.lean * grow;
@@ -1709,7 +1816,7 @@ window.Genesis = (function () {
     const amt = S && S.civAmt;
     if (!amt || amt < 0.03) return;
     const rise = S.mainRise || 1;
-    const corrupt = S.corrupt || 0;
+    const scar = S.scar || 0;
     const bands = [
       { list: cityFar,  fill: "#161d21", alpha: 0.55 },
       { list: cityMid,  fill: "#182025", alpha: 0.78 },
@@ -1720,12 +1827,12 @@ window.Genesis = (function () {
       ctx.fillStyle = band.fill;
       for (const tw of band.list) {
         if (tw.born > amt) continue;
-        const wu = MAIN_U - tw.u * MAIN_HALF;
+        const wu = MAIN_U + tw.u * MAIN_HALF;
         const x = sx(wu);
         if (x < -50 || x > W + 50) continue;
         const grow = clamp((amt - tw.born) / 0.20, 0, 1);
         if (grow < 0.04) continue;
-        const floor = mainSurfY(wu, rise, corrupt) + 2;
+        const floor = mainSurfY(wu, rise, scar) + 2;
         const h = tw.h * H * grow * mix(0.38, 1.08, amt);
         const w = Math.max(2, tw.w * mix(0.75, 1, grow));
         ctx.fillRect(x - w * 0.5, floor - h, w, h);
@@ -1735,12 +1842,12 @@ window.Genesis = (function () {
     ctx.fillStyle = "#1b2327";
     for (const tw of cityNear) {
       if (tw.born > amt) continue;
-      const wu = MAIN_U - tw.u * MAIN_HALF;
+      const wu = MAIN_U + tw.u * MAIN_HALF;
       const x = sx(wu);
       if (x < -50 || x > W + 50) continue;
       const grow = clamp((amt - tw.born) / 0.20, 0, 1);
       if (grow < 0.18) continue;
-      const floor = mainSurfY(wu, rise, corrupt) + 2;
+      const floor = mainSurfY(wu, rise, scar) + 2;
       const h = tw.h * H * grow * mix(0.38, 1.08, amt);
       const w = Math.max(2, tw.w * mix(0.75, 1, grow));
       const k = mix(0.7, 1, grow);
@@ -1782,7 +1889,7 @@ window.Genesis = (function () {
       const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
       const x = sx(u);
       if (x < -24 || x > W + 24) continue;
-      const y = mainSurfY(u, S.mainRise, S.corrupt) - 10 - (c.lane || 0) * H * 0.08
+      const y = mainSurfY(u, S.mainRise, S.scar) - 10 - (c.lane || 0) * H * 0.075
               + Math.sin(t * 1.7 + c.ph) * 2.2 * motion;
       const a = (0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
       if (a < 0.05) continue;
@@ -1796,7 +1903,7 @@ window.Genesis = (function () {
 
   function drawNestPit(ctx, S) {
     if (!S || S.nestAmt < 0.04) return;
-    const x = sx(S.nestU), y = mainSurfY(S.nestU, S.mainRise, S.corrupt) + 6;
+    const x = sx(S.nestU), y = mainSurfY(S.nestU, S.mainRise, S.scar) + 6;
     const R = Math.min(W, H) * 0.055 * S.nestAmt;
     const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.4);
     g.addColorStop(0, `rgba(8,0,1,${0.96 * S.nestAmt})`);
@@ -1821,6 +1928,25 @@ window.Genesis = (function () {
       );
       ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  /* who is who. The lines name them once; the labels keep naming
+     them, quietly, for as long as they are on the deck. */
+  function drawName(ctx, x, y, amt, text, drop) {
+    if (amt < 0.12 || !text) return;
+    if (x < -80 || x > W + 80) return;
+    const a = clamp((amt - 0.12) / 0.35, 0, 1) * 0.72;
+    const dy = y + (drop == null ? 26 : drop);
+    ctx.save();
+    ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const w = ctx.measureText(text).width;
+    ctx.fillStyle = `rgba(8,11,13,${0.62 * a})`;
+    ctx.fillRect(x - w * 0.5 - 5, dy - 3, w + 10, 15);
+    ctx.fillStyle = `rgba(220,230,232,${a})`;
+    ctx.fillText(text, x, dy);
     ctx.restore();
   }
 
@@ -1854,12 +1980,12 @@ window.Genesis = (function () {
 
     if (S.fifth > 0.12 && S.fifth < 0.72 && S.cAmt > 0.1) {
       const beam = Math.sin(clamp((S.fifth - 0.12) / 0.5, 0, 1) * 3.14);
-      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), mainSurfY(S.nestU, S.mainRise, S.corrupt) + 4, "196,140,48", beam * S.cAmt * 0.85);
+      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), mainSurfY(S.nestU, S.mainRise, S.scar) + 4, "196,140,48", beam * S.cAmt * 0.85);
     }
 
     if (S.war > 0.08 && S.et < 0.02) {
       const clashX = sx(MAIN_U);
-      const clashY = standY(0);
+      const clashY = standY(0, MAIN_U, S.mainRise, S.scar);
       if (Math.sin(t * 6.5) > 0.72 && clashCool <= 0) {
         clashCool = 0.18;
         rings.push({ x: clashX + (Math.random() - 0.5) * 28, y: clashY + (Math.random() - 0.5) * 16, r: 6, a: 0.7 });
@@ -1876,6 +2002,16 @@ window.Genesis = (function () {
     drawOrb(ctx, ox, oy, S.oAmt, "obrokxus");
     drawOrb(ctx, mx, my, S.mAmt, "ormius");
     drawOrb(ctx, ax, ay, S.aAmt, "ava");
+
+    const nameUp = S.et > 0 ? 0 : 1;
+    drawName(ctx, sx(S.mdU), S.mdY, S.mdAmt * (1 - S.dieM) * nameUp, "MORDRIAL", 30);
+    drawName(ctx, sx(S.cU), S.cY, S.cAmt * nameUp, "CADMUS", 26);
+    drawName(ctx, sx(S.aelU), S.aelY, S.aelAmt * nameUp, "AELIUS", 40);
+    drawName(ctx, sx(S.vU), S.vY, S.vAmt * nameUp, "VELINDRA", 26);
+    drawName(ctx, sx(S.hU), S.hY, S.hAmt * nameUp, "THE HOUND", 34);
+    drawName(ctx, ox, oy, S.oAmt, "OBROKXUS", 34);
+    drawName(ctx, mx, my, S.mAmt, "ORMIUS", 30);
+    drawName(ctx, ax, ay, S.aAmt, "AVA", 40);
 
     if (S.fall > 0.16 && S.fall < 0.86 && S.oAmt > 0.2 && S.mdAmt > 0.15) {
       const dx = sx(S.mdU) - ox, dy = S.mdY - oy;
