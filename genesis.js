@@ -70,7 +70,6 @@ window.Genesis = (function () {
   const BAY_U  = 0.125;
   const SPAN_START_U = -0.72;
   const REX_U  = ROOT_U - 0.52;
-  const REX_HALF = 0.58;
   const MAIN_U = ROOT_U - 5.35;
   const MAIN_HALF = 0.92;
   const LEFT_U = MAIN_U - 0.40;
@@ -120,11 +119,11 @@ window.Genesis = (function () {
 
   const REX_BANDS = [
     { fill: ["#39485a", "#26313d"], edge: "rgba(178,204,214,0.30)",
-      amp: 0.055, base: 0.30, seed: 1201, cell: 220 },
+      amp: 0.028, base: 0.30, seed: 1201, cell: 980 },
     { fill: ["#2b3742", "#1c242d"], edge: "rgba(172,198,208,0.38)",
-      amp: 0.075, base: 0.18, seed: 3307, cell: 170 },
+      amp: 0.036, base: 0.18, seed: 3307, cell: 760 },
     { fill: ["#233039", "#2a2320"], edge: "rgba(186,208,214,0.55)",
-      amp: 0.095, base: 0.06, seed: 5501, cell: 130 },
+      amp: 0.044, base: 0.06, seed: 5501, cell: 580 },
   ];
 
   const mulberry = a => () => {
@@ -281,12 +280,8 @@ window.Genesis = (function () {
     local = 0;
     if (BEATS[beat] && BEATS[beat].id === "flee") {
       trailY.length = 0;
-      trailR.length = 0;
-      trailM.length = 0;
-      trailA.length = 0;
     }
     if (BEATS[beat] && BEATS[beat].id === "eternity") {
-      trailY.length = 0;
       trailR.length = 0;
       trailM.length = 0;
       trailA.length = 0;
@@ -369,8 +364,8 @@ window.Genesis = (function () {
       if (i > 0) {
         go(i);
         if (i >= idxOf("war")) { cam = MAIN_U; camTarget = MAIN_U; }
-        else if (i >= idxOf("flee")) { cam = REX_U - 0.08; camTarget = cam; }
-        else if (i >= idxOf("land")) { cam = REX_U - 0.08; camTarget = cam; }
+        else if (i >= idxOf("flee")) { cam = ROOT_U - 0.30; camTarget = cam; }
+        else if (i >= idxOf("land")) { cam = ROOT_U - 0.30; camTarget = cam; }
       }
     }
     paintCopy();
@@ -432,10 +427,10 @@ window.Genesis = (function () {
     else if (uWar > 0.02)
       camTarget = MAIN_U;
     else if (uFlee > 0.02)
-      camTarget = mix(REX_U - 0.08, MAIN_U, linear("flee"));
+      camTarget = mix(ROOT_U - 0.30, MAIN_U, linear("flee"));
     else if (uWalk < 0.001) camTarget = 0;
     else if (uLand > 0.08)
-      camTarget = mix(ROOT_U - 0.48, REX_U - 0.08, clamp((uLand - 0.08) / 0.7, 0, 1));
+      camTarget = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
     else if (uFight > 0.02)
       camTarget = mix(ROOT_U - 0.22, ROOT_U - 0.50, clamp(uFight * 1.15, 0, 1));
     else if (uBirth > 0.02)
@@ -960,8 +955,8 @@ window.Genesis = (function () {
     yx = mix(yx, arenaX - span * 0.02, die);
 
     const recede = smooth(clamp((uLand - 0.02) / 0.45, 0, 1));
-    rx = mix(rx, arenaX - span * 0.22, recede);
-    ry = mix(ry, arenaY - span * 0.18, recede);
+    rx = mix(rx, sx(REX_U - 0.18), recede);
+    ry = mix(ry, H * 0.36, recede);
 
     return {
       yx, yy, rx, ry,
@@ -995,10 +990,11 @@ window.Genesis = (function () {
     ctx.restore();
   }
 
-  function drawOrb(ctx, x, y, amt, kind) {
+  function drawOrb(ctx, x, y, amt, kind, scale) {
     if (amt < 0.02) return;
+    const s = scale == null ? 1 : scale;
     const big = kind === "obrokxus" || kind === "hound";
-    const R = Math.min(W, H) * (kind === "hound" ? 0.11 : big ? 0.085 : 0.048) * (0.7 + amt * 0.5);
+    const R = Math.min(W, H) * (kind === "hound" ? 0.055 : big ? 0.072 : 0.048) * s * (0.7 + amt * 0.5);
     ctx.save();
     if (kind === "rex") {
       ctx.globalCompositeOperation = "lighter";
@@ -1085,7 +1081,7 @@ window.Genesis = (function () {
       ctx.fillStyle = `rgba(210,255,248,${0.9 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.2, 0, 6.283); ctx.fill();
     } else if (kind === "hound") {
-      const smokeR = R * 5.2;
+      const smokeR = R * 2.8;
       const smoke = ctx.createRadialGradient(x, y, 0, x, y, smokeR);
       smoke.addColorStop(0, `rgba(50,4,8,${0.95 * amt})`);
       smoke.addColorStop(0.22, `rgba(110,10,16,${0.5 * amt})`);
@@ -1110,7 +1106,7 @@ window.Genesis = (function () {
       ctx.fillStyle = `rgba(210,36,40,${0.55 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.18, 0, 6.283); ctx.fill();
     } else {
-      const smokeR = R * 5.6;
+      const smokeR = R * 2.45;
       const smoke = ctx.createRadialGradient(x, y, 0, x, y, smokeR);
       smoke.addColorStop(0, `rgba(70,6,10,${0.92 * amt})`);
       smoke.addColorStop(0.18, `rgba(120,12,18,${0.55 * amt})`);
@@ -1156,15 +1152,16 @@ window.Genesis = (function () {
   function drawRexLand(ctx, rise, originX, originY) {
     if (rise < 0.02) return;
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
-    const centerU = REX_U;
-    const halfU = mix(0.22, REX_HALF, rise);
-    const xC = mix(originX, sx(centerU), lock);
+    const westU = ROOT_U - 0.92;
+    const eastU = ROOT_U - 0.02;
+    const xC = mix(originX, sx(mix(westU, eastU, 0.72)), lock);
     const yC = mix(originY, H * DECK + 8, rise);
-    const x0 = sx(centerU - halfU) - 20;
-    const x1 = sx(centerU + halfU) + 20;
+    const x0 = sx(westU) - 20;
+    const x1 = sx(eastU) + 12;
     if (x1 < -60 || x0 > W + 60) return;
     const bottom = H + 40;
-    const step = 7;
+    const step = 8;
+    const spanU = Math.max(0.001, eastU - westU);
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
       const pts = [];
@@ -1172,11 +1169,13 @@ window.Genesis = (function () {
       const right = Math.min(W + 40, x1);
       for (let px = left; px <= right; px += step) {
         const wu = cam + (px - W * 0.5) / W;
-        const dx = (wu - centerU) / halfU;
-        const mound = Math.exp(-dx * dx * 2.15);
+        const u = (wu - westU) / spanU;
+        if (u < -0.02 || u > 1.04) continue;
+        const entry = smooth(clamp(u / 0.14, 0, 1));
+        const against = Math.pow(clamp(u, 0, 1), 1.28);
         const n = ridge(px / b.cell, b.seed);
-        const h = (b.base + n * b.amp * 2.8 + 0.10 * bi) * (0.22 + mound * 0.92);
-        const y = mix(yC, H * 1.05 - h * H, rise);
+        const h = (0.02 + 0.045 * bi + n * b.amp + against * 0.32) * entry;
+        const y = mix(yC, H * DECK - h * H, rise);
         pts.push([px, y]);
       }
       if (pts.length < 2) continue;
@@ -1248,8 +1247,9 @@ window.Genesis = (function () {
     const etLin = linear("eternity");
     const span = Math.min(W, H);
     const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
+    const fallIn = clamp(fall / 0.22, 0, 1);
 
-    let ou = mix(REX_U - 0.18, MAIN_U - 0.22, fleeLin), oy = yWob(0.2, 0.028), oAmt = 0;
+    let ou = mix(REX_U - 0.18, LEFT_U, fleeLin), oy = yWob(0.2, 0.026), oAmt = 0;
     if (et > 0) {
       const fk = keyAt(RED_KEYS, etLin);
       ou = mix(MAIN_U - 0.85, ET_END_U - 0.10, etLin) + fk.x * 0.10;
@@ -1257,14 +1257,13 @@ window.Genesis = (function () {
       oAmt = mix(0.55, 0.82, et);
     } else if (ret > 0) {
       oAmt = 0;
-    } else if (fall > 0.12) {
+    } else if (fall > 0.02) {
       const fk = keyAt(RED_KEYS, fall);
-      ou = MAIN_U - 0.14 + fk.x * 0.13;
-      oy = H * 0.36 + fk.y * span * 0.18;
+      ou = mix(LEFT_U, MAIN_U - 0.14, fallIn) + fk.x * 0.13 * fallIn;
+      oy = mix(yWob(0.2, 0.022), H * 0.36 + fk.y * span * 0.18, fallIn);
       oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
     } else if (flee > 0) {
       oAmt = 1;
-      if (war > 0) { ou = LEFT_U; oy = yWob(0.2, 0.022); }
     }
 
     let mu = mix(REX_U - 0.02, RIGHT_U - 0.14, clamp((fleeLin - 0.04) / 0.96, 0, 1));
@@ -1280,7 +1279,6 @@ window.Genesis = (function () {
       my = yWob(1.4, 0.02);
     } else if (fleeLin > 0.04) {
       mAmt = 1 * (1 - godsOut);
-      if (war > 0) { mu = RIGHT_U - 0.14; my = yWob(1.1, 0.018) - H * 0.03; }
       if (lock > 0) {
         mu = mix(RIGHT_U - 0.14, MAIN_U + 0.16, lock);
         my = mix(yWob(1.1, 0.018) - H * 0.03, yWob(0.8, 0.012), lock);
@@ -1295,7 +1293,6 @@ window.Genesis = (function () {
       aAmt = 0;
     } else if (fleeLin > 0.08) {
       aAmt = 1 * (1 - godsOut);
-      if (war > 0) { au = RIGHT_U - 0.02; ay = yWob(2.6, 0.016) + H * 0.035; }
       if (lock > 0) {
         au = mix(RIGHT_U - 0.02, MAIN_U + 0.20, lock);
         ay = mix(yWob(2.6, 0.016) + H * 0.035, yWob(0.9, 0.012), lock);
@@ -1304,37 +1301,37 @@ window.Genesis = (function () {
 
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
     const dieM = smooth(clamp((fall - 0.76) / 0.20, 0, 1));
-    let mdU = mix(RIGHT_U - 0.04, MAIN_U + 0.14, four);
+    let mdU = mix(MAIN_U + 0.02, MAIN_U + 0.14, four);
     let mdY = standY(0.10);
     let mdAmt = born * (1 - dieM);
-    if (fifth > 0 && fall < 0.02) {
+    if (fifth > 0) {
       mdU = mix(MAIN_U + 0.14, MAIN_U + 0.04, fifth);
       mdY = standY(0.08);
     }
     if (fall > 0.02) {
       const yk = keyAt(YELLOW_KEYS, fall);
-      mdU = MAIN_U + 0.06 + yk.x * 0.11;
-      mdY = mix(standY(0.06) + yk.y * span * 0.10, H * DECK + 22, dieM);
+      mdU = mix(MAIN_U + 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
+      mdY = mix(standY(0.08), mix(standY(0.06) + yk.y * span * 0.10, H * DECK + 22, dieM), fallIn);
     }
     if (ret > 0) mdAmt = 0;
 
     const slot = (start) => clamp((four - start) / 0.22, 0, 1);
-    const homeY = (lane) => standY(lane);
-    let cU = MAIN_U + 0.24, cY = homeY(0.14), cAmt = slot(0.12);
-    let aelU = MAIN_U + 0.32, aelY = homeY(0.02), aelAmt = slot(0.36);
-    let vU = MAIN_U + 0.17, vY = homeY(0.20), vAmt = slot(0.58);
-    if (fifth > 0 && fall < 0.02) {
-      cU = mix(MAIN_U + 0.24, NEST_U + 0.16, fifth);
-      cY = homeY(0.06);
-    }
-    if (fall > 0.02 && ret < 0.02) {
-      cU = MAIN_U + 0.16; cY = homeY(0.18);
-      aelU = MAIN_U + 0.22; aelY = homeY(0.00);
-      vU = MAIN_U + 0.10; vY = homeY(0.22);
+    let cU = mix(MAIN_U + 0.24, NEST_U + 0.16, fifth);
+    let cY = standY(mix(0.14, 0.06, fifth));
+    let cAmt = slot(0.12);
+    let aelU = mix(MAIN_U + 0.32, MAIN_U + 0.22, fallIn);
+    let aelY = standY(mix(0.02, 0.00, fallIn));
+    let aelAmt = slot(0.36);
+    let vU = mix(MAIN_U + 0.17, MAIN_U + 0.10, fallIn);
+    let vY = standY(mix(0.20, 0.22, fallIn));
+    let vAmt = slot(0.58);
+    if (fall > 0.02) {
+      cU = mix(NEST_U + 0.16, MAIN_U - 0.08, fallIn);
+      cY = standY(mix(0.06, 0.12, fallIn));
     }
     if (ret > 0) {
       const fadeHome = mix(1, 0.08, ret);
-      cU = mix(MAIN_U + 0.16, CITY_U + 0.08, ret);
+      cU = mix(MAIN_U - 0.08, CITY_U + 0.08, ret);
       aelU = mix(MAIN_U + 0.22, CITY_U + 0.14, ret);
       vU = mix(MAIN_U + 0.10, CITY_U + 0.02, ret);
       cAmt *= fadeHome;
@@ -1347,12 +1344,9 @@ window.Genesis = (function () {
       ? mix(0.25, 1, clamp(fifth * 2.4, 0, 1)) * (1 - clamp((fifth - 0.58) / 0.38, 0, 1))
       : (fall > 0.02 && fall < 0.35 ? mix(0.2, 0, fall / 0.35) : 0);
     const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
-    let hU = nestU, hY = standY(-0.04), hAmt = houndBorn;
-    if (fall > 0.02 && ret < 0.02) {
-      hU = MAIN_U - 0.18;
-      hY = standY(-0.06);
-      hAmt = 1;
-    }
+    let hU = mix(nestU, MAIN_U - 0.18, fallIn);
+    let hY = standY(mix(-0.04, -0.06, fallIn));
+    let hAmt = houndBorn;
     if (ret > 0) {
       hU = mix(MAIN_U - 0.18, CITY_U - 0.04, ret);
       hAmt = mix(1, 0.1, ret);
@@ -1407,17 +1401,16 @@ window.Genesis = (function () {
     const deckY = H * DECK;
     const split = sx(MAIN_U);
 
-    function bank(fromU, toU, fills, seed, amp, base, edge) {
+    function bank(fromX, toX, fills, edge, seed) {
       const pts = [];
-      const xa = sx(fromU), xb = sx(toU);
-      const left = Math.max(-40, Math.min(xa, xb));
-      const right = Math.min(W + 40, Math.max(xa, xb));
-      for (let px = left; px <= right; px += 6) {
+      const left = Math.max(-40, Math.min(fromX, toX));
+      const right = Math.min(W + 40, Math.max(fromX, toX));
+      for (let px = left; px <= right; px += 10) {
         const wu = cam + (px - W * 0.5) / W;
-        const n = ridge(wu * 160 + seed, seed);
-        const fade = 1 - Math.pow(clamp(Math.abs(wu - MAIN_U) / MAIN_HALF, 0, 1), 1.55);
-        const h = (base + n * amp) * rise * Math.max(0, fade);
-        pts.push([px, mix(H + 24, deckY - h * H, rise)]);
+        const dist = Math.abs(wu - MAIN_U) / MAIN_HALF;
+        const fade = dist > 0.82 ? smooth(1 - (dist - 0.82) / 0.18) : 1;
+        const swell = (vnoise(wu * 5.2, seed) - 0.5) * 0.014;
+        pts.push([px, mix(H + 24, deckY - swell * H * Math.max(0, fade), rise)]);
       }
       if (pts.length < 2) return;
       const path = new Path2D();
@@ -1425,14 +1418,14 @@ window.Genesis = (function () {
       for (const p of pts) path.lineTo(p[0], p[1]);
       path.lineTo(pts[pts.length - 1][0], bottom);
       path.closePath();
-      const g = ctx.createLinearGradient(0, deckY - H * 0.22, 0, bottom);
+      const g = ctx.createLinearGradient(0, deckY - H * 0.10, 0, bottom);
       g.addColorStop(0, fills[0]);
       g.addColorStop(1, fills[1]);
       ctx.globalAlpha = rise;
       ctx.fillStyle = g;
       ctx.fill(path);
       ctx.strokeStyle = edge;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
       for (let i = 0; i < pts.length; i++)
         i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[i][0], pts[i][1]);
@@ -1440,101 +1433,69 @@ window.Genesis = (function () {
       ctx.globalAlpha = 1;
     }
 
-    bank(MAIN_U - MAIN_HALF, MAIN_U + 0.12, ["#2c1618", "#160e10"], 8801, 0.10, 0.15, "rgba(140,40,44,0.38)");
-    bank(MAIN_U - 0.12, MAIN_U + MAIN_HALF, ["#3a464c", "#232c32"], 4409, 0.075, 0.13, "rgba(186,208,214,0.40)");
+    bank(xL, split + 1, ["#2a1416", "#140c0e"], "rgba(140,40,44,0.28)", 8801);
+    bank(split - 1, xR, ["#2e383e", "#1c2428"], "rgba(186,208,214,0.28)", 4409);
 
-    const scorch = ctx.createLinearGradient(split - 90, 0, split + 90, 0);
+    const scorch = ctx.createLinearGradient(split - 18, 0, split + 18, 0);
     scorch.addColorStop(0, "rgba(40,6,8,0)");
-    scorch.addColorStop(0.5, `rgba(90,12,16,${0.28 * rise})`);
+    scorch.addColorStop(0.5, `rgba(90,12,16,${0.34 * rise})`);
     scorch.addColorStop(1, "rgba(40,6,8,0)");
     ctx.fillStyle = scorch;
-    ctx.fillRect(split - 90, deckY - 18, 180, 36);
+    ctx.fillRect(split - 18, deckY - 8, 36, 20);
   }
 
   function drawCity(ctx, amt) {
     if (amt < 0.03) return;
     const deckY = H * DECK;
-    for (const tw of towers) {
-      const u = MAIN_U + tw.u;
-      const x = sx(u);
-      if (x < -28 || x > W + 28) continue;
-      const n = ridge(u * 90, 3301);
-      const ground = deckY - (0.12 + n * 0.06) * H * amt;
-      const h = tw.h * H * amt;
-      const w = tw.w * (0.72 + amt * 0.28);
-      ctx.globalAlpha = amt * 0.94;
-      ctx.fillStyle = "#1a242a";
-      ctx.fillRect(x - w / 2, ground - h, w, h);
-      ctx.fillStyle = "#2a363c";
-      ctx.fillRect(x - w / 2, ground - h, w, 2.2);
-      const cols = Math.max(1, Math.floor(w / 6));
-      const rows = Math.max(2, Math.floor(h / 8));
-      for (let cx = 0; cx < cols; cx++) {
-        for (let cy = 0; cy < rows; cy++) {
-          if (hash1(cx * 17 + cy * 91 + Math.floor(tw.lit * 99)) >= 0.36) continue;
-          const on = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 2.1 + tw.ph + cy));
-          ctx.fillStyle = hash1(cx + cy * 3) < 0.72
-            ? `rgba(245,208,107,${0.55 * on * amt})`
-            : `rgba(186,214,198,${0.42 * on * amt})`;
-          ctx.fillRect(x - w / 2 + 2 + cx * 6, ground - h + 4 + cy * 8, 2.1, 2.8);
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function drawTroop(ctx, c, x, y, a) {
-    const s = 4.2 + c.s * 5.2;
     ctx.save();
-    ctx.globalAlpha = a;
-    const wob = Math.sin(t * (1.5 + c.gait) + c.ph);
-    if (c.kind === "vorgath") {
-      ctx.fillStyle = "#32070b";
-      ctx.beginPath();
-      ctx.moveTo(x, y - s * 1.2 + wob);
-      ctx.lineTo(x + s * 0.52, y + s * 0.12);
-      ctx.lineTo(x + s * 0.18, y + s * 0.95);
-      ctx.lineTo(x - s * 0.32, y + s * 0.95);
-      ctx.lineTo(x - s * 0.68, y + s * 0.08);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "rgba(160,24,28,0.9)";
-      ctx.beginPath(); ctx.arc(x - s * 0.04, y - s * 0.38, s * 0.15, 0, 6.283); ctx.fill();
-    } else if (c.kind === "seraphin") {
-      ctx.fillStyle = "rgba(214,230,222,0.92)";
-      ctx.beginPath();
-      ctx.ellipse(x - s * 0.82, y - s * 0.12, s * 0.68, s * 0.20, -0.48 + wob * 0.12, 0, 6.283);
-      ctx.ellipse(x + s * 0.82, y - s * 0.12, s * 0.68, s * 0.20, 0.48 - wob * 0.12, 0, 6.283);
-      ctx.fill();
-      ctx.fillStyle = "rgba(236,252,244,0.95)";
-      ctx.beginPath();
-      ctx.ellipse(x, y, s * 0.20, s * 0.68, wob * 0.05, 0, 6.283);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = "#7a2818";
-      ctx.beginPath();
-      ctx.ellipse(x, y + s * 0.08, s * 0.46, s * 0.60, wob * 0.05, 0, 6.283);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,196,110,0.78)";
-      ctx.beginPath(); ctx.arc(x, y - s * 0.18, s * 0.15, 0, 6.283); ctx.fill();
+    ctx.globalCompositeOperation = "lighter";
+    for (const tw of towers) {
+      const u = CITY_U - 0.16 + tw.u * 0.36;
+      const x = sx(u);
+      if (x < -20 || x > W + 20) continue;
+      const y = deckY - 8 - tw.h * H * 0.10 * amt;
+      const on = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.6 + tw.ph));
+      const rgb = tw.lit < 0.72 ? "245,208,107" : "186,214,198";
+      drawSpark(ctx, x, y, rgb, 1.2 + tw.w * 0.05, amt * on * 0.85);
     }
     ctx.restore();
+  }
+
+  function drawSpark(ctx, x, y, rgb, rad, a) {
+    if (a < 0.04) return;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 3.2);
+    g.addColorStop(0, `rgba(${rgb},${0.95 * a})`);
+    g.addColorStop(0.4, `rgba(${rgb},${0.32 * a})`);
+    g.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, rad * 3.2, 0, 6.283); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,248,${0.55 * a})`;
+    ctx.beginPath(); ctx.arc(x, y, Math.max(0.6, rad * 0.32), 0, 6.283); ctx.fill();
   }
 
   function drawArmies(ctx, S) {
     if (!S || S.army < 0.04) return;
     const push = clamp(S.army, 0, 1);
+    let motion = 1;
+    if (S.stall > 0) motion = mix(1, 0.12, clamp(S.stall, 0, 1));
+    if (S.lock > 0) motion = 0.12;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
     for (const c of troops) {
       if (c.born > S.army) continue;
-      const toward = c.kind === "vorgath" ? push * c.reach : -push * c.reach;
-      const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018;
+      const toward = (c.kind === "vorgath" ? push * c.reach : -push * c.reach) * motion;
+      const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
       const x = sx(u);
       if (x < -24 || x > W + 24) continue;
-      const y = standY(c.lane) + Math.sin(t * 1.7 + c.ph) * 2.2;
-      const a = (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
+      const y = standY(c.lane) + Math.sin(t * 1.7 + c.ph) * 2.2 * motion;
+      const a = (0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
       if (a < 0.05) continue;
-      drawTroop(ctx, c, x, y, a);
+      const rgb = c.kind === "vorgath" ? "160,24,28"
+                : c.kind === "seraphin" ? "214,230,222"
+                : "255,176,90";
+      drawSpark(ctx, x, y, rgb, 1.5 + c.s * 1.05, a);
     }
+    ctx.restore();
   }
 
   function drawNestPit(ctx, S) {
@@ -1564,95 +1525,6 @@ window.Genesis = (function () {
       );
       ctx.stroke();
     }
-    ctx.restore();
-  }
-
-  function drawWarlock(ctx, kind, x, y, amt) {
-    if (amt < 0.04) return;
-    const s = Math.min(W, H) * 0.028 * (0.78 + amt * 0.32);
-    const wob = Math.sin(t * 1.55) * 1.1;
-    ctx.save();
-    ctx.globalAlpha = amt;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    const body = {
-      mordrial: ["#2a2018", "rgba(255,232,190,0.85)"],
-      cadmus:   ["#3a2a14", "rgba(255,214,130,0.9)"],
-      aelius:   ["#24322a", "rgba(236,255,246,0.9)"],
-      velindra: ["#1c2c2c", "rgba(186,255,240,0.85)"],
-    }[kind] || ["#222", "rgba(255,255,255,0.8)"];
-    ctx.strokeStyle = body[0];
-    ctx.fillStyle = body[0];
-    ctx.lineWidth = Math.max(1.2, s * 0.16);
-    ctx.beginPath();
-    ctx.moveTo(x - s * 0.22, y + s * 0.95);
-    ctx.lineTo(x, y + s * 0.15);
-    ctx.lineTo(x + s * 0.22, y + s * 0.95);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(x, y - s * 0.35 + wob * 0.15, s * 0.32, s * 0.72, 0, 0, 6.283);
-    ctx.fill();
-    if (kind === "mordrial") {
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(x, y - s * 0.35 + wob * 0.15, s * 0.32, s * 0.72, 0, 0, 6.283);
-      ctx.clip();
-      ctx.fillStyle = "rgba(212,168,90,0.88)";
-      ctx.fillRect(x - s, y - s * 1.4, s, s * 2.4);
-      ctx.fillStyle = "rgba(186,214,198,0.88)";
-      ctx.fillRect(x, y - s * 1.4, s, s * 2.4);
-      ctx.restore();
-    }
-    ctx.fillStyle = body[1];
-    ctx.beginPath(); ctx.arc(x, y - s * 1.12 + wob, s * 0.26, 0, 6.283); ctx.fill();
-    ctx.fillStyle = body[1];
-    ctx.globalAlpha = amt * 0.85;
-    ctx.beginPath(); ctx.arc(x, y - s * 0.42, s * 0.10, 0, 6.283); ctx.fill();
-    if (kind === "velindra") {
-      ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 4; i++) {
-        const ang = t * 2.4 + i * 1.57;
-        ctx.fillStyle = i % 2 ? `rgba(200,150,255,${0.45 * amt})` : `rgba(70,200,180,${0.45 * amt})`;
-        ctx.beginPath();
-        ctx.arc(x + Math.cos(ang) * s * 0.7, y - s * 0.4 + Math.sin(ang) * s * 0.45, 1.4, 0, 6.283);
-        ctx.fill();
-      }
-    }
-    if (kind === "cadmus") {
-      ctx.globalCompositeOperation = "lighter";
-      ctx.fillStyle = `rgba(140,18,24,${0.7 * amt})`;
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(t * 2.1) * s * 0.7, y - s * 0.55 + Math.sin(t * 2.1) * s * 0.4, 2.1, 0, 6.283);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawHoundFig(ctx, x, y, amt) {
-    if (amt < 0.04) return;
-    const s = Math.min(W, H) * 0.036 * (0.7 + amt * 0.4);
-    ctx.save();
-    ctx.globalAlpha = amt;
-    ctx.fillStyle = "#120203";
-    ctx.beginPath();
-    ctx.ellipse(x, y, s * 1.12, s * 0.42, -0.1, 0, 6.283);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(x + s * 0.82, y - s * 0.18, s * 0.40, s * 0.28, 0.18, 0, 6.283);
-    ctx.fill();
-    ctx.strokeStyle = "#2a0608";
-    ctx.lineWidth = Math.max(1.4, s * 0.12);
-    ctx.lineCap = "round";
-    for (let i = 0; i < 4; i++) {
-      const lx = x - s * 0.62 + i * s * 0.38;
-      const gait = Math.sin(t * 5.2 + i * 1.4) * s * 0.12;
-      ctx.beginPath();
-      ctx.moveTo(lx, y + s * 0.1);
-      ctx.lineTo(lx + gait, y + s * 0.62);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "rgba(180,24,32,0.9)";
-    ctx.beginPath(); ctx.arc(x + s * 0.98, y - s * 0.26, s * 0.07, 0, 6.283); ctx.fill();
     ctx.restore();
   }
 
@@ -1699,11 +1571,11 @@ window.Genesis = (function () {
       }
     }
 
-    drawWarlock(ctx, "mordrial", sx(S.mdU), S.mdY, S.mdAmt);
-    drawWarlock(ctx, "cadmus", sx(S.cU), S.cY, S.cAmt);
-    drawWarlock(ctx, "aelius", sx(S.aelU), S.aelY, S.aelAmt);
-    drawWarlock(ctx, "velindra", sx(S.vU), S.vY, S.vAmt);
-    drawHoundFig(ctx, sx(S.hU), S.hY, S.hAmt);
+    drawOrb(ctx, sx(S.mdU), S.mdY, S.mdAmt, "mordrial", 0.58);
+    drawOrb(ctx, sx(S.cU), S.cY, S.cAmt, "cadmus", 0.52);
+    drawOrb(ctx, sx(S.aelU), S.aelY, S.aelAmt, "aelius", 0.52);
+    drawOrb(ctx, sx(S.vU), S.vY, S.vAmt, "velindra", 0.52);
+    drawOrb(ctx, sx(S.hU), S.hY, S.hAmt, "hound", 0.62);
 
     drawOrb(ctx, ox, oy, S.oAmt, "obrokxus");
     drawOrb(ctx, mx, my, S.mAmt, "ormius");
@@ -1790,7 +1662,7 @@ window.Genesis = (function () {
 
     const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
     const approaching = clamp((cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
-    const fleshVis = approaching * (1 - uLand * 0.92);
+    const fleshVis = approaching * (1 - uLand * 0.28);
     const flesh = drawFlesh(ctx, fleshVis, pain, uWomb);
     drawStains(ctx, flesh, uSwarm * (1 - uWomb) * fleshVis);
     const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
@@ -1803,7 +1675,7 @@ window.Genesis = (function () {
     drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
-    if (uBirth > 0.04 && uFlee < 0.02) {
+    if (uBirth > 0.04 && beat < idxOf("flee")) {
       pushTrail(trailY, L.yx, L.yy);
       pushTrail(trailR, L.rx, L.ry);
       drawTrail(ctx, trailY, "245,208,107", L.yAmt);
