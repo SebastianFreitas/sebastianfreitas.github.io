@@ -8,17 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=40">
+<link rel="stylesheet" href="bridge.css?v=41">
 <script src="xp.js?v=13"></script>
-<script>
-/* One rule for skip: seen. Must run after xp.js, before body paints. */
-try {
-  if (window.XP && XP.known)
-    document.documentElement.classList.add("gate-done");
-} catch (e) {}
-</script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
    them; http://127.0.0.1:8000 often did, and they served ghost JS. */
@@ -48,7 +41,7 @@ try {
   </nav>
 </header>
 
-<!-- ================= GATE: first visit ================= -->
+<!-- ================= GATE: choose a path ================= -->
 <div class="site-gate" id="site-gate">
   <div class="gate-stage">
     <div class="gate-shell" id="gate-shell">
@@ -61,8 +54,8 @@ try {
          I build places people want to stay in, then the rules that make those places
          worth exploring.</p>
       <div class="gate-actions">
-        <button type="button" id="gate-world" class="gate-btn">World building</button>
-        <button type="button" id="gate-projects" class="gate-btn">Game Projects</button>
+        <button type="button" id="gate-projects" class="gate-btn gate-btn-primary">Game Dev</button>
+        <button type="button" id="gate-world" class="gate-btn">Setting</button>
       </div>
     </div>
   </div>
@@ -347,7 +340,7 @@ try {
 <script src="world.js?v=8"></script>
 <script src="voidship.js?v=16"></script>
 <script src="bridge.js?v=56"></script>
-<script src="genesis.js?v=7"></script>
-<script src="intro.js?v=5"></script>
+<script src="genesis.js?v=9"></script>
+<script src="intro.js?v=6"></script>
 </body>
 </html>

@@ -1,7 +1,10 @@
 /* ===========================================================
-   SITE GATE — first visit.
+   SITE GATE — every visit.
 
-   Terminal boot (left-aligned), then bio + two paths.
+   First visit: terminal boot, then bio + two paths.
+   Returning: skip the boot, show the two paths immediately.
+   Game Dev is the highlighted path. Setting plays Genesis
+   only the first time (handled in genesis.js).
    path-world / path-projects: +1 each, once — on click or
    when that section is first visited.
    =========================================================== */
@@ -17,8 +20,8 @@
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const PATH = {
-    world:    { id: "path-world",    label: "World building" },
-    projects: { id: "path-projects", label: "Game Projects" },
+    world:    { id: "path-world",    label: "Setting" },
+    projects: { id: "path-projects", label: "Game Dev" },
   };
   const watchers = {};
 
@@ -87,6 +90,7 @@
   if (btnWorld) {
     btnWorld.addEventListener("click", () => pick({
       bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,
+      mode: "void",
     }));
   }
   if (btnProjects) {
@@ -94,11 +98,6 @@
       bridge: true, scroll: "#bridge-hero", el: btnProjects, path: PATH.projects,
       mode: "gamedev",
     }));
-  }
-
-  if (window.XP && XP.known) {
-    pick({ bridge: true, auto: true });
-    return;
   }
 
   document.body.classList.add("site-frozen");
@@ -143,7 +142,11 @@
     if (n >= full.length) { idx++; lineEl = null; hold = 0.13; }
   }
 
-  if (reduced) {
+  const known = !!(window.XP && XP.known);
+  if (known) {
+    if (shellEl) shellEl.classList.add("out");
+    revealPanel();
+  } else if (reduced) {
     lines.forEach(full => {
       const d = document.createElement("div");
       d.className = "bl";
