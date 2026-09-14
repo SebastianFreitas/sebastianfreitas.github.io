@@ -72,10 +72,10 @@ window.Genesis = (function () {
   const REX_U  = ROOT_U - 0.52;
   const MAIN_U = ROOT_U - 5.35;
   const MAIN_HALF = 0.92;
-  const LEFT_U = MAIN_U - 0.40;
-  const RIGHT_U = MAIN_U + 0.38;
-  const CITY_U = MAIN_U + 0.46;
-  const NEST_U = MAIN_U - 0.50;
+  const LEFT_U = MAIN_U + 0.40;
+  const RIGHT_U = MAIN_U - 0.38;
+  const CITY_U = MAIN_U - 0.46;
+  const NEST_U = MAIN_U + 0.50;
   const ET_END_U = MAIN_U - 3.85;
   const KINDS  = ["spindle", "cluster", "crawler", "shard", "ring", "blob", "spindle", "crawler"];
   const GREYS  = [
@@ -119,12 +119,14 @@ window.Genesis = (function () {
 
   const REX_BANDS = [
     { fill: ["#39485a", "#26313d"], edge: "rgba(178,204,214,0.30)",
-      amp: 0.028, base: 0.30, seed: 1201, cell: 980 },
+      amp: 0.062, base: 0.30, seed: 1201, drift: 0.16, rampAt: 0.52, climb: 0.34 },
     { fill: ["#2b3742", "#1c242d"], edge: "rgba(172,198,208,0.38)",
-      amp: 0.036, base: 0.18, seed: 3307, cell: 760 },
+      amp: 0.078, base: 0.18, seed: 3307, drift: 0.13, rampAt: 0.58, climb: 0.28 },
     { fill: ["#233039", "#2a2320"], edge: "rgba(186,208,214,0.55)",
-      amp: 0.044, base: 0.06, seed: 5501, cell: 580 },
+      amp: 0.095, base: 0.07, seed: 5501, drift: 0.10, rampAt: 0.64, climb: 0.22 },
   ];
+  const REX_WEST = ROOT_U - 0.98;
+  const REX_EAST = ROOT_U - 0.02;
 
   const mulberry = a => () => {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -152,13 +154,67 @@ window.Genesis = (function () {
     return vnoise(x, seed) * 0.55 + vnoise(x * 2.3, seed + 17) * 0.3
          + vnoise(x * 5.1, seed + 91) * 0.15;
   }
+  function rexLandHeight(wu, b) {
+    const spanU = REX_EAST - REX_WEST;
+    const u = (wu - REX_WEST) / spanU;
+    if (u <= 0) return 0;
+    const entry = smooth(clamp(u / 0.11, 0, 1));
+    const drift = Math.min(u, 1.15) * b.drift;
+    const r = Math.max(0, (Math.min(u, 1.08) - b.rampAt) / (1 - b.rampAt + 0.0001));
+    const ramp = Math.pow(r, 2.15) * b.climb;
+    const relief = ridge(wu * 2.8, b.seed + 7) * b.amp * 1.65
+                 + ridge(wu * 7.6, b.seed) * b.amp
+                 + ridge(wu * 18.5, b.seed + 21) * b.amp * 0.4;
+    return Math.max(0, (b.base + drift + ramp + relief) * entry);
+  }
+  function eastJag(wu, corrupt) {
+    if (corrupt < 0.02 || wu <= MAIN_U - 0.06) return 0;
+    const east = clamp((wu - MAIN_U) / MAIN_HALF, 0, 1);
+    const cell = 0.038;
+    const i = Math.floor(wu / cell);
+    const f = wu / cell - i;
+    const pk = hash1(i * 917 + 19);
+    const peak = pk > 0.22 ? (pk - 0.12) : 0;
+    const tent = Math.max(0, 1 - Math.abs(f - 0.48) / 0.46);
+    const jag = Math.pow(tent, 1.35) * peak * 0.28;
+    const n = ridge(wu * 22, 8801) * 0.07 + ridge(wu * 48, 8819) * 0.035;
+    return (jag + Math.max(0, n - 0.015)) * Math.pow(east, 0.72) * corrupt;
+  }
+  function mainDome(wu) {
+    const u = (wu - (MAIN_U - MAIN_HALF)) / (MAIN_HALF * 2);
+    if (u <= 0 || u >= 1) return 0;
+    const cap = Math.pow(Math.max(0, Math.sin(u * Math.PI)), 0.46);
+    const lump = 0.78 + 0.22 * ridge(wu * 8.4, 2701) + 0.10 * (ridge(wu * 19, 2719) - 0.5);
+    return Math.max(0, cap * lump);
+  }
+  function mainHeight(wu, corrupt) {
+    const dome = mainDome(wu);
+    if (dome <= 0) return 0;
+    const n = (ridge(wu * 5.6, 4409) - 0.38) * 0.07
+            + (ridge(wu * 13.2, 4417) - 0.5) * 0.036
+            + (ridge(wu * 29, 4431) - 0.5) * 0.018;
+    return Math.max(0, (0.09 + n) * dome + eastJag(wu, corrupt || 0));
+  }
+  function mainDepth(wu) {
+    const dome = mainDome(wu);
+    if (dome <= 0) return 0;
+    const u = (wu - (MAIN_U - MAIN_HALF)) / (MAIN_HALF * 2);
+    const rim = Math.pow(Math.abs(u - 0.5) * 2, 1.35);
+    const n = (ridge(wu * 9.4, 3301) - 0.42) * 0.028
+            + (ridge(wu * 21, 3311) - 0.5) * 0.014;
+    return Math.max(0.003, (0.012 + n * 0.6 + rim * 0.018) * dome);
+  }
+  function mainSurfY(wu, rise, corrupt) {
+    return mix(H + 28, H * DECK - mainHeight(wu, corrupt) * H, rise);
+  }
 
   let active = false, beat = 0, local = 0, thenMode = "void", thenCamX = null;
   let W = 0, H = 0, t = 0, shake = 0, flash = 0, clashCool = 0;
   let cam = 0, camTarget = 0;
   const trailY = [], trailR = [], trailM = [], trailA = [], trailH = [], rings = [];
 
-  const motes = [], oldones = [], souls = [], troops = [], towers = [];
+  const motes = [], oldones = [], souls = [], troops = [];
+  const cityFar = [], cityMid = [], cityNear = [], spikes = [];
   (function seed() {
     const r = mulberry(4242);
     for (let i = 0; i < 280; i++)
@@ -202,16 +258,50 @@ window.Genesis = (function () {
         });
       }
     }
-    troop("vorgath",  -0.78, -0.10, 74);
-    troop("seraphin",  0.10,  0.72, 52);
-    troop("malgrur",   0.08,  0.64, 52);
-    for (let i = 0; i < 34; i++) {
-      towers.push({
-        u: 0.18 + r() * 0.52,
-        w: 7 + r() * 16,
-        h: 0.07 + r() * 0.20,
+    troop("vorgath",   0.10,  0.78, 74);
+    troop("seraphin", -0.78, -0.10, 52);
+    troop("malgrur",  -0.72, -0.08, 52);
+    function seedBand(list, n, minH, maxH, minW, maxW, lit) {
+      for (let i = 0; i < n; i++) {
+        const east = 0.16 + r() * 0.78;
+        const tw = {
+          u: east,
+          w: minW + r() * (maxW - minW),
+          h: minH + r() * (maxH - minH),
+          born: mix(0.58, 0.02, east) + r() * 0.16,
+          ph: r() * 6.28,
+          windows: [],
+        };
+        if (lit) {
+          const cols = Math.max(1, Math.floor(tw.w / 11));
+          const rows = Math.max(2, Math.floor(tw.h * 42));
+          for (let cx = 0; cx < cols; cx++)
+            for (let cy = 0; cy < rows; cy++)
+              if (r() < 0.30)
+                tw.windows.push({
+                  dx: 4 + cx * 11, dy: 7 + cy * 14,
+                  a: 0.28 + r() * 0.58, fl: r() * 6.28, warm: r() < 0.78,
+                });
+        }
+        list.push(tw);
+      }
+    }
+    seedBand(cityFar,  72, 0.28, 0.62, 12, 34, false);
+    seedBand(cityMid,  48, 0.20, 0.48, 16, 40, false);
+    seedBand(cityNear, 30, 0.16, 0.40, 20, 48, true);
+    for (let i = 0; i < 42; i++) {
+      const west = r();
+      const teeth = [];
+      for (let k = 0; k < 5 + Math.floor(r() * 4); k++) teeth.push(r());
+      spikes.push({
+        u: 0.08 + west * 0.82,
+        w: 14 + r() * 38,
+        h: 0.12 + r() * 0.32,
+        born: mix(0.52, 0.02, west) + r() * 0.18,
+        lean: (r() - 0.5) * 34,
+        teeth,
         ph: r() * 6.28,
-        lit: r(),
+        shade: r(),
       });
     }
   })();
@@ -1149,34 +1239,134 @@ window.Genesis = (function () {
     ctx.restore();
   }
 
+  function drawRexKeeps(ctx, rise, originY) {
+    const a = clamp((rise - 0.40) / 0.30, 0, 1);
+    if (a < 0.04) return;
+    const b = REX_BANDS[0];
+    const s = Math.max(0.48, Math.min(1.05, W / 1400)) * mix(0.62, 1, a);
+    const surfY = wu => mix(originY, H * 1.16 - rexLandHeight(wu, b) * H, rise);
+    const onTop = y => y > H * 0.04 && y < H * 0.82;
+    ctx.save();
+    ctx.globalAlpha = a;
+
+    function crenel(x, y, w, step, riseH) {
+      const n = Math.max(2, Math.floor(w / step));
+      const sw = w / n;
+      for (let i = 0; i < n; i++) if (i % 2 === 0)
+        ctx.fillRect(x + i * sw, y - riseH, sw * 0.92, riseH);
+    }
+
+    const bru = mix(REX_WEST, REX_EAST, 0.40);
+    const bx0 = sx(bru);
+    const bbase = surfY(bru);
+    if (onTop(bbase) && bx0 > -220 && bx0 < W + 220) {
+      const stone = "#a8b0aa", mortar = "#6e7872", shade = "#8e9791", warm = "#f5d06b";
+      function brickBlock(cx, w, h) {
+        const x = cx - w / 2, y = bbase - h;
+        ctx.fillStyle = stone; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = shade; ctx.fillRect(x + w * 0.72, y, w * 0.28, h);
+        ctx.strokeStyle = mortar;
+        ctx.lineWidth = Math.max(1, s * 0.7);
+        const rows = Math.max(3, Math.floor(h / (10 * s)));
+        for (let ri = 1; ri < rows; ri++) {
+          const yy = y + (h * ri) / rows;
+          ctx.beginPath(); ctx.moveTo(x + 1, yy); ctx.lineTo(x + w - 1, yy); ctx.stroke();
+        }
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(232,236,232,0.55)";
+        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+        crenel(x, y, w, Math.max(8, 14 * s), Math.max(4, 8 * s));
+        ctx.fillStyle = stone;
+      }
+      const keepW = 150 * s, keepH = 118 * s;
+      brickBlock(bx0, keepW, keepH);
+      brickBlock(bx0 - 92 * s, 52 * s, 152 * s);
+      brickBlock(bx0 + 92 * s, 52 * s, 152 * s);
+      const gw = 34 * s, gh = 48 * s;
+      ctx.fillStyle = "#3a4340";
+      ctx.fillRect(bx0 - gw / 2, bbase - gh, gw, gh);
+      ctx.strokeStyle = "rgba(245,208,107,0.35)";
+      ctx.strokeRect(bx0 - gw / 2 + 0.5, bbase - gh + 0.5, gw - 1, gh - 1);
+      ctx.fillStyle = warm; ctx.globalAlpha = a * 0.55;
+      ctx.fillRect(bx0 - keepW * 0.22, bbase - keepH * 0.72, Math.max(2, 5 * s), Math.max(3, 8 * s));
+      ctx.fillRect(bx0 + keepW * 0.12, bbase - keepH * 0.62, Math.max(2, 5 * s), Math.max(3, 8 * s));
+      ctx.globalAlpha = a;
+    }
+
+    const dru = mix(REX_WEST, REX_EAST, 0.62);
+    const dx0 = sx(dru);
+    const dbase = surfY(dru);
+    if (onTop(dbase) && dx0 > -240 && dx0 < W + 240) {
+      const body = "#1e1822", rim = "rgba(214,220,218,0.7)", slit = "#c45a52";
+      const bw = 120 * s, bh = 140 * s;
+      ctx.fillStyle = body;
+      ctx.fillRect(dx0 - bw / 2, dbase - bh, bw, bh);
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = Math.max(1.2, s * 1.1);
+      ctx.strokeRect(dx0 - bw / 2 + 0.5, dbase - bh + 0.5, bw - 1, bh - 1);
+      const towers = [
+        { dx: -78, w: 28, h: 175, spire: 38 },
+        { dx: -28, w: 22, h: 155, spire: 30 },
+        { dx:  28, w: 22, h: 165, spire: 34 },
+        { dx:  78, w: 30, h: 190, spire: 46 },
+        { dx:   0, w: 36, h: 210, spire: 58 },
+      ];
+      for (const tw of towers) {
+        const twx = dx0 + tw.dx * s;
+        const twW = tw.w * s, twH = tw.h * s, sp = tw.spire * s;
+        const x = twx - twW / 2, y = dbase - twH;
+        ctx.fillStyle = body;
+        ctx.fillRect(x, y, twW, twH);
+        ctx.beginPath();
+        ctx.moveTo(x - 2 * s, y);
+        ctx.lineTo(twx, y - sp);
+        ctx.lineTo(x + twW + 2 * s, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = rim;
+        ctx.beginPath();
+        ctx.moveTo(x - 2 * s, y);
+        ctx.lineTo(twx, y - sp);
+        ctx.lineTo(x + twW + 2 * s, y);
+        ctx.stroke();
+        ctx.strokeRect(x + 0.5, y + 0.5, twW - 1, twH - 1);
+        const pulse = 0.45 + 0.55 * Math.sin(t * 1.2 + tw.dx * 0.02);
+        ctx.fillStyle = slit;
+        ctx.globalAlpha = a * (0.35 + 0.45 * pulse);
+        ctx.fillRect(twx - twW * 0.18, y + twH * 0.22, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.12));
+        ctx.fillRect(twx - twW * 0.18, y + twH * 0.48, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.1));
+        ctx.globalAlpha = a;
+      }
+      ctx.fillStyle = slit; ctx.globalAlpha = a * 0.5;
+      ctx.fillRect(dx0 - bw * 0.28, dbase - bh * 0.7, Math.max(2, 4 * s), Math.max(5, 10 * s));
+      ctx.fillRect(dx0 + bw * 0.12, dbase - bh * 0.55, Math.max(2, 4 * s), Math.max(5, 10 * s));
+      ctx.globalAlpha = a;
+      ctx.lineWidth = 1;
+    }
+    ctx.restore();
+  }
+
   function drawRexLand(ctx, rise, originX, originY) {
     if (rise < 0.02) return;
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
-    const westU = ROOT_U - 0.92;
-    const eastU = ROOT_U - 0.02;
-    const xC = mix(originX, sx(mix(westU, eastU, 0.72)), lock);
-    const yC = mix(originY, H * DECK + 8, rise);
-    const x0 = sx(westU) - 20;
-    const x1 = sx(eastU) + 12;
-    if (x1 < -60 || x0 > W + 60) return;
-    const bottom = H + 40;
-    const step = 8;
-    const spanU = Math.max(0.001, eastU - westU);
+    const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
+    const yC = mix(originY, H * 1.16, rise);
+    const x0 = sx(REX_WEST) - 36;
+    const x1 = sx(REX_EAST) + 80;
+    if (x1 < -80 || x0 > W + 80) return;
+    const bottom = H + 80;
+    const baseY = H * 1.16;
+    const step = 6;
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
+      const widen = (2 - bi) * 0.05;
       const pts = [];
-      const left = Math.max(-40, x0);
-      const right = Math.min(W + 40, x1);
+      const left = Math.max(-56, sx(REX_WEST - widen) - 10);
+      const right = Math.min(W + 80, sx(REX_EAST + 0.22 + widen * 0.15) + 10);
       for (let px = left; px <= right; px += step) {
         const wu = cam + (px - W * 0.5) / W;
-        const u = (wu - westU) / spanU;
-        if (u < -0.02 || u > 1.04) continue;
-        const entry = smooth(clamp(u / 0.14, 0, 1));
-        const against = Math.pow(clamp(u, 0, 1), 1.28);
-        const n = ridge(px / b.cell, b.seed);
-        const h = (0.02 + 0.045 * bi + n * b.amp + against * 0.32) * entry;
-        const y = mix(yC, H * DECK - h * H, rise);
-        pts.push([px, y]);
+        const h = rexLandHeight(wu, b);
+        pts.push([px, mix(yC, baseY - h * H, rise)]);
       }
       if (pts.length < 2) continue;
       const path = new Path2D();
@@ -1191,13 +1381,17 @@ window.Genesis = (function () {
       ctx.fillStyle = g;
       ctx.fill(path);
       ctx.strokeStyle = b.edge;
-      ctx.lineWidth = bi === 2 ? 1.5 : 1.15;
+      ctx.lineWidth = bi === 2 ? 1.5 : 1.2;
       ctx.beginPath();
-      for (let i = 0; i < pts.length; i++)
-        i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[i][0], pts[i][1]);
+      let drawing = false;
+      for (const p of pts) {
+        if (p[1] > H + 8) { drawing = false; continue; }
+        drawing ? ctx.lineTo(p[0], p[1]) : (ctx.moveTo(p[0], p[1]), drawing = true);
+      }
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+    drawRexKeeps(ctx, rise, originY);
     if (rise > 0.12 && rise < 0.92) {
       const glint = (1 - Math.abs(rise - 0.42) / 0.42) * (1 - rise * 0.35);
       if (glint > 0.02) {
@@ -1229,7 +1423,7 @@ window.Genesis = (function () {
   }
 
   function standY(lane) {
-    return H * DECK - 16 - (lane || 0) * H * 0.12;
+    return H * DECK - H * 0.10 - 10 - (lane || 0) * H * 0.08;
   }
 
   function sagaAt() {
@@ -1362,11 +1556,20 @@ window.Genesis = (function () {
     if (ret > 0) army = mix(1, 0.28, ret);
 
     let civAmt = 0;
-    if (lock > 0.55) civAmt = mix(0, 0.48, clamp((lock - 0.55) / 0.45, 0, 1));
-    if (four > 0) civAmt = mix(0.52, 0.86, four);
+    if (lock > 0.12) civAmt = mix(0, 0.48, clamp((lock - 0.12) / 0.88, 0, 1));
+    if (four > 0) civAmt = mix(0.50, 0.86, four);
     if (fifth > 0) civAmt = mix(0.86, 0.95, fifth);
     if (fall > 0) civAmt = 0.96;
     if (ret > 0) civAmt = 1;
+
+    let corrupt = 0;
+    if (war > 0) corrupt = mix(0, 0.30, clamp(war, 0, 1));
+    if (stall > 0) corrupt = mix(0.30, 0.44, stall);
+    if (lock > 0) corrupt = mix(0.44, 0.64, lock);
+    if (four > 0) corrupt = mix(0.64, 0.86, four);
+    if (fifth > 0) corrupt = mix(0.86, 0.95, fifth);
+    if (fall > 0) corrupt = mix(0.95, 1, fall);
+    if (ret > 0) corrupt = 1;
 
     let mainRise = 0;
     if (fleeLin > 0.58) mainRise = clamp((fleeLin - 0.58) / 0.42, 0, 1);
@@ -1381,84 +1584,176 @@ window.Genesis = (function () {
       aAmt = 0;
       army = 0;
       civAmt = mix(1, 0, clamp(etLin * 2.2, 0, 1));
+      corrupt = mix(1, 0, clamp(etLin * 1.6, 0, 1));
       mainRise = mix(1, 0, clamp(etLin * 1.6, 0, 1));
     }
 
     return {
       ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
       mdU, mdY, mdAmt, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
-      nestU, nestAmt, hU, hY, hAmt, army, civAmt, mainRise,
+      nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
     };
   }
 
-  function drawMainland(ctx, rise) {
-    if (rise < 0.02) return;
+  function drawMainland(ctx, S) {
+    const rise = S && S.mainRise;
+    if (!rise || rise < 0.02) return;
+    const corrupt = S.corrupt || 0;
     const xL = sx(MAIN_U - MAIN_HALF);
     const xR = sx(MAIN_U + MAIN_HALF);
-    if (xR < -50 || xL > W + 50) return;
-    const bottom = H + 40;
+    if (xR < -60 || xL > W + 60) return;
     const deckY = H * DECK;
     const split = sx(MAIN_U);
+    const step = 5;
+    const left = Math.max(-48, xL - 8);
+    const right = Math.min(W + 48, xR + 8);
+    const top = [], bot = [];
+    for (let px = left; px <= right; px += step) {
+      const wu = cam + (px - W * 0.5) / W;
+      const dome = mainDome(wu);
+      if (dome <= 0.002) continue;
+      const yTop = mix(H + 24, deckY - mainHeight(wu, corrupt) * H, rise);
+      const yBot = mix(H + 24, deckY + mainDepth(wu) * H, rise);
+      top.push([px, yTop]);
+      bot.push([px, yBot]);
+    }
+    if (top.length < 3) return;
 
-    function bank(fromX, toX, fills, edge, seed) {
-      const pts = [];
-      const left = Math.max(-40, Math.min(fromX, toX));
-      const right = Math.min(W + 40, Math.max(fromX, toX));
-      for (let px = left; px <= right; px += 10) {
-        const wu = cam + (px - W * 0.5) / W;
-        const dist = Math.abs(wu - MAIN_U) / MAIN_HALF;
-        const fade = dist > 0.82 ? smooth(1 - (dist - 0.82) / 0.18) : 1;
-        const swell = (vnoise(wu * 5.2, seed) - 0.5) * 0.014;
-        pts.push([px, mix(H + 24, deckY - swell * H * Math.max(0, fade), rise)]);
-      }
-      if (pts.length < 2) return;
-      const path = new Path2D();
-      path.moveTo(pts[0][0], bottom);
-      for (const p of pts) path.lineTo(p[0], p[1]);
-      path.lineTo(pts[pts.length - 1][0], bottom);
-      path.closePath();
-      const g = ctx.createLinearGradient(0, deckY - H * 0.10, 0, bottom);
-      g.addColorStop(0, fills[0]);
-      g.addColorStop(1, fills[1]);
-      ctx.globalAlpha = rise;
-      ctx.fillStyle = g;
-      ctx.fill(path);
-      ctx.strokeStyle = edge;
-      ctx.lineWidth = 1.1;
+    const path = new Path2D();
+    path.moveTo(top[0][0], top[0][1]);
+    for (let i = 1; i < top.length; i++) path.lineTo(top[i][0], top[i][1]);
+    for (let i = bot.length - 1; i >= 0; i--) path.lineTo(bot[i][0], bot[i][1]);
+    path.closePath();
+
+    const g = ctx.createLinearGradient(top[0][0], 0, top[top.length - 1][0], 0);
+    const wr = Math.round(mix(42, 92, corrupt));
+    const wg = Math.round(mix(50, 10, corrupt));
+    const wb = Math.round(mix(56, 12, corrupt));
+    g.addColorStop(0, "#1c2428");
+    g.addColorStop(0.46, "#343c42");
+    g.addColorStop(0.58, `rgb(${Math.round(mix(52, 64, corrupt))},${Math.round(mix(44, 12, corrupt))},${Math.round(mix(48, 14, corrupt))})`);
+    g.addColorStop(1, `rgb(${wr},${wg},${wb})`);
+    ctx.globalAlpha = rise;
+    ctx.fillStyle = g;
+    ctx.fill(path);
+
+    const edge = ctx.createLinearGradient(xL, 0, xR, 0);
+    edge.addColorStop(0, "rgba(186,208,214,0.32)");
+    edge.addColorStop(0.5, "rgba(186,208,214,0.28)");
+    edge.addColorStop(1, `rgba(${Math.round(mix(186, 160, corrupt))},${Math.round(mix(208, 28, corrupt))},${Math.round(mix(214, 32, corrupt))},${0.24 + 0.18 * corrupt})`);
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1.25;
+    ctx.stroke(path);
+    ctx.globalAlpha = 1;
+
+    if (corrupt > 0.04) {
+      ctx.save();
       ctx.beginPath();
-      for (let i = 0; i < pts.length; i++)
-        i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[i][0], pts[i][1]);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.rect(split - 40, -40, W - split + 120, H + 80);
+      ctx.clip();
+      ctx.fillStyle = `rgba(90,12,16,${0.16 * corrupt * rise})`;
+      ctx.fill(path);
+      ctx.restore();
     }
 
-    bank(xL, split + 1, ["#2a1416", "#140c0e"], "rgba(140,40,44,0.28)", 8801);
-    bank(split - 1, xR, ["#2e383e", "#1c2428"], "rgba(186,208,214,0.28)", 4409);
-
-    const scorch = ctx.createLinearGradient(split - 18, 0, split + 18, 0);
-    scorch.addColorStop(0, "rgba(40,6,8,0)");
-    scorch.addColorStop(0.5, `rgba(90,12,16,${0.34 * rise})`);
-    scorch.addColorStop(1, "rgba(40,6,8,0)");
-    ctx.fillStyle = scorch;
-    ctx.fillRect(split - 18, deckY - 8, 36, 20);
+    if (corrupt > 0.06) {
+      for (const sp of spikes) {
+        if (sp.born > corrupt) continue;
+        const wu = MAIN_U + sp.u;
+        const x = sx(wu);
+        if (x < -40 || x > W + 40) continue;
+        const grow = clamp((corrupt - sp.born) / 0.22, 0, 1);
+        if (grow < 0.04) continue;
+        const y = mainSurfY(wu, rise, corrupt) + 3;
+        const th = sp.h * H * grow * mix(0.55, 1.15, corrupt);
+        const tw = sp.w * mix(0.7, 1, grow);
+        const lean = sp.lean * grow;
+        const pulse = 0.85 + 0.15 * Math.sin(t * 1.3 + sp.ph);
+        ctx.beginPath();
+        ctx.moveTo(x - tw * 0.58, y + 4);
+        const n = sp.teeth.length;
+        for (let i = 0; i < n; i++) {
+          const u = (i + 0.55) / (n + 1);
+          const jag = (sp.teeth[i] - 0.5) * tw * 0.42;
+          ctx.lineTo(
+            x - tw * 0.42 * (1 - u) + lean * u + jag,
+            y - th * Math.pow(u, 0.62) * (0.35 + 0.65 * u) * pulse
+          );
+        }
+        ctx.lineTo(x + lean, y - th * pulse);
+        for (let i = n - 1; i >= 0; i--) {
+          const u = (i + 0.55) / (n + 1);
+          const jag = (sp.teeth[i] - 0.5) * tw * 0.34;
+          ctx.lineTo(
+            x + tw * 0.40 * (1 - u) + lean * u + jag,
+            y - th * Math.pow(u, 0.66) * (0.32 + 0.68 * u) * pulse
+          );
+        }
+        ctx.lineTo(x + tw * 0.52, y + 4);
+        ctx.closePath();
+        const sg = ctx.createLinearGradient(x, y - th, x, y);
+        sg.addColorStop(0, `rgba(${sp.shade < 0.4 ? 70 : 110},8,10,${0.92 * rise})`);
+        sg.addColorStop(0.55, `rgba(42,6,8,${0.96 * rise})`);
+        sg.addColorStop(1, `rgba(18,4,6,${0.9 * rise})`);
+        ctx.fillStyle = sg;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(160,24,28,${0.35 * grow * rise})`;
+        ctx.lineWidth = 1.05;
+        ctx.stroke();
+      }
+    }
   }
 
-  function drawCity(ctx, amt) {
-    if (amt < 0.03) return;
-    const deckY = H * DECK;
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    for (const tw of towers) {
-      const u = CITY_U - 0.16 + tw.u * 0.36;
-      const x = sx(u);
-      if (x < -20 || x > W + 20) continue;
-      const y = deckY - 8 - tw.h * H * 0.10 * amt;
-      const on = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.6 + tw.ph));
-      const rgb = tw.lit < 0.72 ? "245,208,107" : "186,214,198";
-      drawSpark(ctx, x, y, rgb, 1.2 + tw.w * 0.05, amt * on * 0.85);
+  function drawCity(ctx, S) {
+    const amt = S && S.civAmt;
+    if (!amt || amt < 0.03) return;
+    const rise = S.mainRise || 1;
+    const corrupt = S.corrupt || 0;
+    const bands = [
+      { list: cityFar,  fill: "#161d21", alpha: 0.55 },
+      { list: cityMid,  fill: "#182025", alpha: 0.78 },
+      { list: cityNear, fill: "#1b2327", alpha: 1 },
+    ];
+    for (const band of bands) {
+      ctx.globalAlpha = amt * rise * band.alpha;
+      ctx.fillStyle = band.fill;
+      for (const tw of band.list) {
+        if (tw.born > amt) continue;
+        const wu = MAIN_U - tw.u * MAIN_HALF;
+        const x = sx(wu);
+        if (x < -50 || x > W + 50) continue;
+        const grow = clamp((amt - tw.born) / 0.20, 0, 1);
+        if (grow < 0.04) continue;
+        const floor = mainSurfY(wu, rise, corrupt) + 2;
+        const h = tw.h * H * grow * mix(0.38, 1.08, amt);
+        const w = Math.max(2, tw.w * mix(0.75, 1, grow));
+        ctx.fillRect(x - w * 0.5, floor - h, w, h);
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.restore();
+    ctx.fillStyle = "#1b2327";
+    for (const tw of cityNear) {
+      if (tw.born > amt) continue;
+      const wu = MAIN_U - tw.u * MAIN_HALF;
+      const x = sx(wu);
+      if (x < -50 || x > W + 50) continue;
+      const grow = clamp((amt - tw.born) / 0.20, 0, 1);
+      if (grow < 0.18) continue;
+      const floor = mainSurfY(wu, rise, corrupt) + 2;
+      const h = tw.h * H * grow * mix(0.38, 1.08, amt);
+      const w = Math.max(2, tw.w * mix(0.75, 1, grow));
+      const k = mix(0.7, 1, grow);
+      for (const win of tw.windows) {
+        const px = x - w * 0.5 + win.dx * k;
+        const py = floor - h + win.dy * k;
+        if (py > floor - 6 || py < floor - h + 4) continue;
+        ctx.globalAlpha = win.a * (0.75 + 0.25 * Math.sin(t * 2.1 + win.fl)) * amt * grow * 0.9;
+        ctx.fillStyle = win.warm ? "#f5d06b" : "#8fb0b8";
+        ctx.fillRect(px, py, 2.1, 2.8);
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawSpark(ctx, x, y, rgb, rad, a) {
@@ -1487,7 +1782,8 @@ window.Genesis = (function () {
       const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
       const x = sx(u);
       if (x < -24 || x > W + 24) continue;
-      const y = standY(c.lane) + Math.sin(t * 1.7 + c.ph) * 2.2 * motion;
+      const y = mainSurfY(u, S.mainRise, S.corrupt) - 10 - (c.lane || 0) * H * 0.08
+              + Math.sin(t * 1.7 + c.ph) * 2.2 * motion;
       const a = (0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
       if (a < 0.05) continue;
       const rgb = c.kind === "vorgath" ? "160,24,28"
@@ -1500,7 +1796,7 @@ window.Genesis = (function () {
 
   function drawNestPit(ctx, S) {
     if (!S || S.nestAmt < 0.04) return;
-    const x = sx(S.nestU), y = H * DECK + 8;
+    const x = sx(S.nestU), y = mainSurfY(S.nestU, S.mainRise, S.corrupt) + 6;
     const R = Math.min(W, H) * 0.055 * S.nestAmt;
     const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.4);
     g.addColorStop(0, `rgba(8,0,1,${0.96 * S.nestAmt})`);
@@ -1532,8 +1828,8 @@ window.Genesis = (function () {
     const S = sagaAt();
     if (!S) return;
 
-    drawMainland(ctx, S.mainRise);
-    drawCity(ctx, S.civAmt);
+    drawMainland(ctx, S);
+    drawCity(ctx, S);
     drawNestPit(ctx, S);
     drawArmies(ctx, S);
 
@@ -1558,7 +1854,7 @@ window.Genesis = (function () {
 
     if (S.fifth > 0.12 && S.fifth < 0.72 && S.cAmt > 0.1) {
       const beam = Math.sin(clamp((S.fifth - 0.12) / 0.5, 0, 1) * 3.14);
-      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), H * DECK + 4, "196,140,48", beam * S.cAmt * 0.85);
+      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), mainSurfY(S.nestU, S.mainRise, S.corrupt) + 4, "196,140,48", beam * S.cAmt * 0.85);
     }
 
     if (S.war > 0.08 && S.et < 0.02) {
