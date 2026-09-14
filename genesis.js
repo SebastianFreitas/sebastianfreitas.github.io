@@ -44,9 +44,9 @@ window.Genesis = (function () {
       line: "They met in the void. Rex broke." },
     { id: "land",  dur: 7.0, tag: "rex the surface",
       line: "His body cooled into ground. They called that ground Rex the Surface." },
-    { id: "flee", dur: 7.2, tag: "obrokxus flees",
+    { id: "flee", dur: 11.6, tag: "obrokxus flees",
       line: "Obrokxus ran west. Two lights followed: Ormius, law in gold-red — and Ava, pale as a healing wound." },
-    { id: "war", dur: 8.0, tag: "their children",
+    { id: "war", dur: 9.2, tag: "their children",
       line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim — an everlasting war." },
     { id: "stalemate", dur: 5.4, tag: "nothing won",
       line: "Even then the war led to nothing." },
@@ -60,7 +60,7 @@ window.Genesis = (function () {
       line: "They met Obrokxus. The fight outlasted counting. Mordrial fell. The rest called it victory." },
     { id: "return", dur: 5.8, tag: "the mainland",
       line: "They turned home, to life and the void. Only Ormius still believed Obrokxus had survived." },
-    { id: "eternity", dur: 7.4, tag: "still fighting",
+    { id: "eternity", dur: 8.8, tag: "still fighting",
       line: "No one has gone far enough to see. They fight there still." },
     { id: "now",   dur: 2.6, tag: "", line: "" },
   ];
@@ -69,6 +69,15 @@ window.Genesis = (function () {
   const DECK   = 0.64;
   const BAY_U  = 0.125;
   const SPAN_START_U = -0.72;
+  const REX_U  = ROOT_U - 0.52;
+  const REX_HALF = 0.58;
+  const MAIN_U = ROOT_U - 5.35;
+  const MAIN_HALF = 0.92;
+  const LEFT_U = MAIN_U - 0.40;
+  const RIGHT_U = MAIN_U + 0.38;
+  const CITY_U = MAIN_U + 0.46;
+  const NEST_U = MAIN_U - 0.50;
+  const ET_END_U = MAIN_U - 3.85;
   const KINDS  = ["spindle", "cluster", "crawler", "shard", "ring", "blob", "spindle", "crawler"];
   const GREYS  = [
     [16, 18, 20],
@@ -150,7 +159,7 @@ window.Genesis = (function () {
   let cam = 0, camTarget = 0;
   const trailY = [], trailR = [], trailM = [], trailA = [], trailH = [], rings = [];
 
-  const motes = [], oldones = [], souls = [], children = [], civs = [];
+  const motes = [], oldones = [], souls = [], troops = [], towers = [];
   (function seed() {
     const r = mulberry(4242);
     for (let i = 0; i < 280; i++)
@@ -180,20 +189,32 @@ window.Genesis = (function () {
     }
     for (let i = 0; i < 90; i++)
       souls.push({ u: r(), v: r(), ph: r() * 6.28, rr: 0.5 + r() * 1.2, a: 0.2 + r() * 0.5 });
-    const kinds = ["vorath", "malgrur", "seravim"];
-    for (let i = 0; i < 96; i++) {
-      children.push({
-        kind: kinds[i % 3],
+    function troop(kind, home0, home1, n) {
+      for (let i = 0; i < n; i++) {
+        troops.push({
+          kind,
+          ph: r() * 6.28,
+          lane: (r() - 0.5) * 0.14,
+          gait: 0.5 + r() * 1.0,
+          s: 0.62 + r() * 0.55,
+          born: Math.pow(r(), 0.72),
+          home: home0 + r() * (home1 - home0),
+          reach: 0.06 + r() * 0.16,
+        });
+      }
+    }
+    troop("vorgath",  -0.78, -0.10, 74);
+    troop("seraphin",  0.10,  0.72, 52);
+    troop("malgrur",   0.08,  0.64, 52);
+    for (let i = 0; i < 34; i++) {
+      towers.push({
+        u: 0.18 + r() * 0.52,
+        w: 7 + r() * 16,
+        h: 0.07 + r() * 0.20,
         ph: r() * 6.28,
-        lane: (r() - 0.5) * 0.28,
-        gait: 0.55 + r() * 0.9,
-        rr: 0.7 + r() * 2.4,
-        spin: (r() - 0.5) * 1.8,
-        u0: (r() - 0.5) * 0.9,
+        lit: r(),
       });
     }
-    for (let i = 0; i < 42; i++)
-      civs.push({ u: r() * 0.55, y: r(), ph: r() * 6.28, a: 0.25 + r() * 0.55, rr: 0.6 + r() * 1.4 });
   })();
 
   function pending() {
@@ -261,10 +282,10 @@ window.Genesis = (function () {
     if (BEATS[beat] && BEATS[beat].id === "flee") {
       trailY.length = 0;
       trailR.length = 0;
+      trailM.length = 0;
+      trailA.length = 0;
     }
     if (BEATS[beat] && BEATS[beat].id === "eternity") {
-      cam = ROOT_U - 2.32;
-      camTarget = ROOT_U - 2.32;
       trailY.length = 0;
       trailR.length = 0;
       trailM.length = 0;
@@ -342,6 +363,16 @@ window.Genesis = (function () {
     document.documentElement.classList.add("genesis-on");
     if (host) host.classList.add("genesis");
     try { scrollTo(0, 0); } catch (e) {}
+    const jump = /[?&]gbeat=([a-z]+)/.exec(location.search);
+    if (jump) {
+      const i = idxOf(jump[1]);
+      if (i > 0) {
+        go(i);
+        if (i >= idxOf("war")) { cam = MAIN_U; camTarget = MAIN_U; }
+        else if (i >= idxOf("flee")) { cam = REX_U - 0.08; camTarget = cam; }
+        else if (i >= idxOf("land")) { cam = REX_U - 0.08; camTarget = cam; }
+      }
+    }
     paintCopy();
     paintTicks();
     document.dispatchEvent(new CustomEvent("site:genesis-start"));
@@ -385,26 +416,26 @@ window.Genesis = (function () {
     const uRet   = since("return");
     const uEt    = since("eternity");
     if (uEt > 0.02)
-      camTarget = mix(ROOT_U - 2.15, ROOT_U - 7.1, uEt);
+      camTarget = mix(MAIN_U, ET_END_U, linear("eternity"));
     else if (uRet > 0.02)
-      camTarget = mix(ROOT_U - 2.05, ROOT_U - 0.92, uRet);
+      camTarget = mix(MAIN_U, MAIN_U + 0.18, uRet);
     else if (uFall > 0.02)
-      camTarget = mix(ROOT_U - 2.15, ROOT_U - 1.95, clamp(uFall * 1.1, 0, 1));
+      camTarget = MAIN_U;
     else if (uFifth > 0.02)
-      camTarget = mix(ROOT_U - 1.15, ROOT_U - 1.85, uFifth);
+      camTarget = mix(MAIN_U + 0.06, MAIN_U - 0.10, uFifth);
     else if (uFour > 0.02)
-      camTarget = mix(ROOT_U - 2.55, ROOT_U - 1.12, uFour);
+      camTarget = mix(MAIN_U, MAIN_U + 0.08, uFour);
     else if (uLock > 0.02)
-      camTarget = ROOT_U - 2.55;
+      camTarget = MAIN_U;
     else if (uStall > 0.02)
-      camTarget = ROOT_U - 2.55;
+      camTarget = MAIN_U;
     else if (uWar > 0.02)
-      camTarget = mix(ROOT_U - 3.15, ROOT_U - 2.55, uWar);
+      camTarget = MAIN_U;
     else if (uFlee > 0.02)
-      camTarget = mix(ROOT_U - 0.62, ROOT_U - 3.2, uFlee);
+      camTarget = mix(REX_U - 0.08, MAIN_U, linear("flee"));
     else if (uWalk < 0.001) camTarget = 0;
     else if (uLand > 0.08)
-      camTarget = mix(ROOT_U - 0.48, ROOT_U - 0.62, clamp((uLand - 0.08) / 0.7, 0, 1));
+      camTarget = mix(ROOT_U - 0.48, REX_U - 0.08, clamp((uLand - 0.08) / 0.7, 0, 1));
     else if (uFight > 0.02)
       camTarget = mix(ROOT_U - 0.22, ROOT_U - 0.50, clamp(uFight * 1.15, 0, 1));
     else if (uBirth > 0.02)
@@ -419,8 +450,8 @@ window.Genesis = (function () {
       camTarget = mix(0, ROOT_U - 0.32, clamp(uWalk, 0, 1));
     let camRate = 1.55;
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
-    if (uFlee > 0.02 && uWar < 0.02) camRate = 2.7;
-    if (uEt > 0.02) camRate = 2.5;
+    if (uFlee > 0.02 && uWar < 0.02) camRate = 1.05;
+    if (uEt > 0.02) camRate = 1.12;
     cam = approach(cam, camTarget, camRate, dt);
     paintTicks();
 
@@ -530,8 +561,9 @@ window.Genesis = (function () {
   function drawBridgeLine(ctx, grow) {
     if (grow < 0.02) return;
     const deckY = H * DECK;
-    const startU = SPAN_START_U;
-    const endU = mix(-0.48, ROOT_U + 0.22, grow);
+    const inf = beat >= idxOf("flee");
+    const startU = inf ? cam - 2.65 : SPAN_START_U;
+    const endU = inf ? cam + 2.45 : mix(-0.48, ROOT_U + 0.22, grow);
     const x0 = sx(startU);
     const x1 = sx(endU);
     if (x1 < -40 || x0 > W + 40) return;
@@ -1123,18 +1155,31 @@ window.Genesis = (function () {
 
   function drawRexLand(ctx, rise, originX, originY) {
     if (rise < 0.02) return;
+    const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
+    const centerU = REX_U;
+    const halfU = mix(0.22, REX_HALF, rise);
+    const xC = mix(originX, sx(centerU), lock);
+    const yC = mix(originY, H * DECK + 8, rise);
+    const x0 = sx(centerU - halfU) - 20;
+    const x1 = sx(centerU + halfU) + 20;
+    if (x1 < -60 || x0 > W + 60) return;
     const bottom = H + 40;
+    const step = 7;
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
       const pts = [];
-      for (let px = -30; px <= W + 30; px += 8) {
-        const dx = (px - originX) / (W * mix(0.18, 0.72, rise));
-        const mound = Math.exp(-dx * dx * 2.4);
+      const left = Math.max(-40, x0);
+      const right = Math.min(W + 40, x1);
+      for (let px = left; px <= right; px += step) {
+        const wu = cam + (px - W * 0.5) / W;
+        const dx = (wu - centerU) / halfU;
+        const mound = Math.exp(-dx * dx * 2.15);
         const n = ridge(px / b.cell, b.seed);
-        const h = (b.base + n * b.amp * 2.8 + 0.12 * bi) * (0.25 + mound * 0.9);
-        const y = mix(originY, H * 1.05 - h * H, rise);
+        const h = (b.base + n * b.amp * 2.8 + 0.10 * bi) * (0.22 + mound * 0.92);
+        const y = mix(yC, H * 1.05 - h * H, rise);
         pts.push([px, y]);
       }
+      if (pts.length < 2) continue;
       const path = new Path2D();
       path.moveTo(pts[0][0], bottom);
       for (const p of pts) path.lineTo(p[0], p[1]);
@@ -1157,12 +1202,12 @@ window.Genesis = (function () {
     if (rise > 0.12 && rise < 0.92) {
       const glint = (1 - Math.abs(rise - 0.42) / 0.42) * (1 - rise * 0.35);
       if (glint > 0.02) {
-        const g = ctx.createRadialGradient(originX, originY, 0, originX, originY, 80 + rise * 120);
+        const g = ctx.createRadialGradient(xC, yC, 0, xC, yC, 80 + rise * 120);
         g.addColorStop(0, `rgba(245,208,107,${0.38 * glint})`);
         g.addColorStop(0.4, `rgba(245,208,107,${0.08 * glint})`);
         g.addColorStop(1, "rgba(245,208,107,0)");
         ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(originX, originY, 80 + rise * 120, 0, 6.283); ctx.fill();
+        ctx.beginPath(); ctx.arc(xC, yC, 80 + rise * 120, 0, 6.283); ctx.fill();
       }
     }
   }
@@ -1181,12 +1226,17 @@ window.Genesis = (function () {
   }
 
   function yWob(ph, amp) {
-    return H * 0.40 + Math.sin(t * 1.35 + ph) * H * (amp || 0.02);
+    return H * 0.36 + Math.sin(t * 1.35 + ph) * H * (amp || 0.018);
+  }
+
+  function standY(lane) {
+    return H * DECK - 16 - (lane || 0) * H * 0.12;
   }
 
   function sagaAt() {
     if (beat < idxOf("flee")) return null;
     const flee = since("flee");
+    const fleeLin = linear("flee");
     const war = since("war");
     const stall = since("stalemate");
     const lock = since("firstlock");
@@ -1195,158 +1245,138 @@ window.Genesis = (function () {
     const fall = linear("fall");
     const ret = since("return");
     const et = since("eternity");
+    const etLin = linear("eternity");
     const span = Math.min(W, H);
+    const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
 
-    let ou = ROOT_U - 0.78, oy = yWob(0.2), oAmt = 0;
+    let ou = mix(REX_U - 0.18, MAIN_U - 0.22, fleeLin), oy = yWob(0.2, 0.028), oAmt = 0;
     if (et > 0) {
-      ou = mix(ROOT_U - 2.45, ROOT_U - 7.4, et);
-      oAmt = 0.72 * (1 - et * 0.42);
-      oy = yWob(0.4, 0.022);
+      const fk = keyAt(RED_KEYS, etLin);
+      ou = mix(MAIN_U - 0.85, ET_END_U - 0.10, etLin) + fk.x * 0.10;
+      oy = H * 0.37 + fk.y * span * 0.16;
+      oAmt = mix(0.55, 0.82, et);
     } else if (ret > 0) {
       oAmt = 0;
-    } else if (fall > 0.14) {
-      const k = clamp((fall - 0.14) / 0.28, 0, 1);
+    } else if (fall > 0.12) {
       const fk = keyAt(RED_KEYS, fall);
-      ou = mix(ROOT_U - 2.35, ROOT_U - 1.95, k) + fk.x * 0.16;
-      oy = H * 0.40 + fk.y * span * 0.22;
-      oAmt = clamp((fall - 0.14) / 0.1, 0, 1);
+      ou = MAIN_U - 0.14 + fk.x * 0.13;
+      oy = H * 0.36 + fk.y * span * 0.18;
+      oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
     } else if (flee > 0) {
-      ou = mix(ROOT_U - 0.78, ROOT_U - 3.5, flee);
-      oAmt = mix(1, 0.16, clamp(war * 1.6, 0, 1));
-      oy = yWob(0.2, 0.03);
+      oAmt = 1;
+      if (war > 0) { ou = LEFT_U; oy = yWob(0.2, 0.022); }
     }
 
-    let mu = ROOT_U - 0.42, my = yWob(1.1) - H * 0.04, mAmt = 0;
+    let mu = mix(REX_U - 0.02, RIGHT_U - 0.14, clamp((fleeLin - 0.04) / 0.96, 0, 1));
+    let my = yWob(1.1, 0.02) - H * 0.03, mAmt = 0;
     if (et > 0) {
-      mu = mix(ROOT_U - 2.18, ROOT_U - 7.12, et);
-      mAmt = 0.9 * (1 - et * 0.32);
-      my = yWob(2.2, 0.018) - H * 0.03;
+      const yk = keyAt(YELLOW_KEYS, etLin);
+      mu = mix(MAIN_U - 0.52, ET_END_U + 0.10, etLin) + yk.x * 0.10;
+      my = H * 0.35 + yk.y * span * 0.16;
+      mAmt = mix(0.5, 0.9, et);
     } else if (ret > 0) {
-      mAmt = mix(0.35, 0.12, ret);
-      mu = mix(ROOT_U - 1.7, ROOT_U - 1.05, ret);
-    } else if (fall > 0.02) {
-      mAmt = mix(0.45, 0.12, clamp(fall, 0, 1));
-      mu = ROOT_U - 1.7;
-      my = H * 0.28;
-    } else if (fifth > 0) {
-      mu = mix(ROOT_U - 2.2, ROOT_U - 1.55, fifth);
-      my = H * 0.28;
-      mAmt = 0.85;
-    } else if (four > 0) {
-      mu = ROOT_U - 2.2;
-      mAmt = mix(0.55, 0.22, four);
-      my = H * 0.30;
-    } else if (lock > 0) {
-      mu = mix(ROOT_U - 2.48, ROOT_U - 2.58, lock);
-      my = mix(yWob(1.1) - H * 0.04, H * 0.40, lock);
-      mAmt = mix(0.32, 0.95, clamp(lock * 2.2, 0, 1));
-    } else if (flee > 0.04) {
-      mu = mix(ROOT_U - 0.42, ROOT_U - 3.15, clamp((flee - 0.04) / 0.96, 0, 1));
-      if (war > 0) mu = mix(ROOT_U - 3.15, ROOT_U - 2.48, war);
-      if (stall > 0) mu = ROOT_U - 2.48;
-      mAmt = mix(1, 0.32, clamp(war, 0, 1));
-      if (stall > 0) mAmt = 0.3;
-      my = yWob(1.1, 0.022) - H * 0.04;
+      mAmt = mix(0, 0.48, clamp((ret - 0.35) / 0.65, 0, 1));
+      mu = mix(MAIN_U + 0.08, MAIN_U - 0.58, ret);
+      my = yWob(1.4, 0.02);
+    } else if (fleeLin > 0.04) {
+      mAmt = 1 * (1 - godsOut);
+      if (war > 0) { mu = RIGHT_U - 0.14; my = yWob(1.1, 0.018) - H * 0.03; }
+      if (lock > 0) {
+        mu = mix(RIGHT_U - 0.14, MAIN_U + 0.16, lock);
+        my = mix(yWob(1.1, 0.018) - H * 0.03, yWob(0.8, 0.012), lock);
+      }
     }
 
-    let au = ROOT_U - 0.32, ay = yWob(2.6) + H * 0.045, aAmt = 0;
+    let au = mix(REX_U + 0.08, RIGHT_U - 0.02, clamp((fleeLin - 0.08) / 0.92, 0, 1));
+    let ay = yWob(2.6, 0.018) + H * 0.04, aAmt = 0;
     if (et > 0) {
       aAmt = 0;
     } else if (ret > 0) {
-      aAmt = mix(0.35, 0, ret);
-      au = mix(ROOT_U - 1.62, ROOT_U - 0.9, ret);
-      ay = H * 0.50;
-    } else if (fall > 0.02) {
-      aAmt = mix(0.4, 0.1, fall);
-      au = ROOT_U - 1.62;
-      ay = H * 0.52;
-    } else if (fifth > 0) {
-      au = mix(ROOT_U - 2.05, ROOT_U - 1.48, fifth);
-      ay = H * 0.52;
-      aAmt = 0.85;
-    } else if (four > 0) {
-      au = ROOT_U - 2.05;
-      aAmt = mix(0.5, 0.2, four);
-      ay = H * 0.50;
-    } else if (lock > 0) {
-      au = mix(ROOT_U - 2.38, ROOT_U - 2.52, lock);
-      ay = mix(yWob(2.6) + H * 0.045, H * 0.40, lock);
-      aAmt = mix(0.32, 0.95, clamp(lock * 2.2, 0, 1));
-    } else if (flee > 0.08) {
-      au = mix(ROOT_U - 0.32, ROOT_U - 3.05, clamp((flee - 0.08) / 0.92, 0, 1));
-      if (war > 0) au = mix(ROOT_U - 3.05, ROOT_U - 2.38, war);
-      if (stall > 0) au = ROOT_U - 2.38;
-      aAmt = mix(1, 0.32, clamp(war, 0, 1));
-      if (stall > 0) aAmt = 0.3;
-      ay = yWob(2.6, 0.02) + H * 0.045;
+      aAmt = 0;
+    } else if (fleeLin > 0.08) {
+      aAmt = 1 * (1 - godsOut);
+      if (war > 0) { au = RIGHT_U - 0.02; ay = yWob(2.6, 0.016) + H * 0.035; }
+      if (lock > 0) {
+        au = mix(RIGHT_U - 0.02, MAIN_U + 0.20, lock);
+        ay = mix(yWob(2.6, 0.016) + H * 0.035, yWob(0.9, 0.012), lock);
+      }
     }
 
-    const born = clamp((lock - 0.48) / 0.38, 0, 1);
-    const dieM = smooth(clamp((fall - 0.78) / 0.18, 0, 1));
-    let mdU = mix(ROOT_U - 2.55, ROOT_U - 1.42, four);
-    let mdY = H * 0.40;
+    const born = clamp((lock - 0.42) / 0.40, 0, 1);
+    const dieM = smooth(clamp((fall - 0.76) / 0.20, 0, 1));
+    let mdU = mix(RIGHT_U - 0.04, MAIN_U + 0.14, four);
+    let mdY = standY(0.10);
     let mdAmt = born * (1 - dieM);
     if (fifth > 0 && fall < 0.02) {
-      mdU = mix(ROOT_U - 1.42, ROOT_U - 1.92, fifth);
-      mdY = yWob(0.7);
+      mdU = mix(MAIN_U + 0.14, MAIN_U + 0.04, fifth);
+      mdY = standY(0.08);
     }
     if (fall > 0.02) {
-      const fk = keyAt(YELLOW_KEYS, fall);
-      mdU = ROOT_U - 1.88 + fk.x * 0.14;
-      mdY = mix(H * 0.40 + fk.y * span * 0.2, H * DECK + 8, dieM);
+      const yk = keyAt(YELLOW_KEYS, fall);
+      mdU = MAIN_U + 0.06 + yk.x * 0.11;
+      mdY = mix(standY(0.06) + yk.y * span * 0.10, H * DECK + 22, dieM);
     }
     if (ret > 0) mdAmt = 0;
 
-    const slot = (start) => clamp((four - start) / 0.2, 0, 1);
-    let cU = mix(ROOT_U - 1.28, ROOT_U - 1.78, fifth);
-    let cY = H * 0.36, cAmt = slot(0.18) * (ret > 0 ? mix(1, 0.7, ret) : 1);
-    let aelU = mix(ROOT_U - 1.12, ROOT_U - 1.64, fifth);
-    let aelY = H * 0.46, aelAmt = slot(0.40) * (ret > 0 ? mix(1, 0.7, ret) : 1);
-    let vU = mix(ROOT_U - 0.96, ROOT_U - 1.50, fifth);
-    let vY = H * 0.33, vAmt = slot(0.60) * (ret > 0 ? mix(1, 0.7, ret) : 1);
+    const slot = (start) => clamp((four - start) / 0.22, 0, 1);
+    const homeY = (lane) => standY(lane);
+    let cU = MAIN_U + 0.24, cY = homeY(0.14), cAmt = slot(0.12);
+    let aelU = MAIN_U + 0.32, aelY = homeY(0.02), aelAmt = slot(0.36);
+    let vU = MAIN_U + 0.17, vY = homeY(0.20), vAmt = slot(0.58);
+    if (fifth > 0 && fall < 0.02) {
+      cU = mix(MAIN_U + 0.24, NEST_U + 0.16, fifth);
+      cY = homeY(0.06);
+    }
     if (fall > 0.02 && ret < 0.02) {
-      cU = ROOT_U - 1.72; cY = H * 0.32;
-      aelU = ROOT_U - 1.58; aelY = H * 0.48;
-      vU = ROOT_U - 1.46; vY = H * 0.30;
+      cU = MAIN_U + 0.16; cY = homeY(0.18);
+      aelU = MAIN_U + 0.22; aelY = homeY(0.00);
+      vU = MAIN_U + 0.10; vY = homeY(0.22);
     }
     if (ret > 0) {
-      cU = mix(ROOT_U - 1.72, ROOT_U - 0.95, ret);
-      aelU = mix(ROOT_U - 1.58, ROOT_U - 0.78, ret);
-      vU = mix(ROOT_U - 1.46, ROOT_U - 0.62, ret);
-      mdU = mix(ROOT_U - 1.88, ROOT_U - 1.1, ret);
-      const fadeHome = mix(1, 0.12, ret);
+      const fadeHome = mix(1, 0.08, ret);
+      cU = mix(MAIN_U + 0.16, CITY_U + 0.08, ret);
+      aelU = mix(MAIN_U + 0.22, CITY_U + 0.14, ret);
+      vU = mix(MAIN_U + 0.10, CITY_U + 0.02, ret);
       cAmt *= fadeHome;
       aelAmt *= fadeHome;
       vAmt *= fadeHome;
     }
 
-    const nestU = ROOT_U - 1.78;
+    const nestU = NEST_U;
     const nestAmt = fifth > 0 && fall < 0.02
-      ? mix(0.2, 1, clamp(fifth * 2.2, 0, 1)) * (1 - clamp((fifth - 0.55) / 0.4, 0, 1))
-      : (fall > 0.02 && fall < 0.4 ? mix(0.18, 0, fall / 0.4) : 0);
-    const houndBorn = clamp((fifth - 0.52) / 0.32, 0, 1);
-    let hU = nestU, hY = H * 0.42, hAmt = houndBorn;
+      ? mix(0.25, 1, clamp(fifth * 2.4, 0, 1)) * (1 - clamp((fifth - 0.58) / 0.38, 0, 1))
+      : (fall > 0.02 && fall < 0.35 ? mix(0.2, 0, fall / 0.35) : 0);
+    const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
+    let hU = nestU, hY = standY(-0.04), hAmt = houndBorn;
     if (fall > 0.02 && ret < 0.02) {
-      hU = ROOT_U - 2.05;
-      hY = H * 0.44;
+      hU = MAIN_U - 0.18;
+      hY = standY(-0.06);
       hAmt = 1;
     }
     if (ret > 0) {
-      hU = mix(ROOT_U - 2.05, ROOT_U - 0.88, ret);
-      hAmt = mix(1, 0.75, ret);
+      hU = mix(MAIN_U - 0.18, CITY_U - 0.04, ret);
+      hAmt = mix(1, 0.1, ret);
     }
-    if (et > 0) hAmt = 0;
 
-    let childAmt = 0;
-    if (war > 0 && lock < 1) childAmt = mix(0, 1, clamp(war * 1.35, 0, 1));
-    if (stall > 0) childAmt = 1;
-    if (lock > 0) childAmt = mix(1, 0.32, lock);
-    if (four > 0) childAmt = mix(0.32, 0.2, four);
-    if (fifth > 0) childAmt = mix(0.7, 0.1, fifth);
-    if (fall > 0 && fall < 0.58) childAmt = mix(0.4, 0.08, fall);
-    if (ret > 0) childAmt = 0;
+    let army = 0;
+    if (war > 0) army = mix(0, 0.32, clamp(war, 0, 1));
+    if (stall > 0) army = mix(0.32, 0.42, stall);
+    if (lock > 0) army = mix(0.42, 0.55, lock);
+    if (four > 0) army = mix(0.55, 0.82, four);
+    if (fifth > 0) army = mix(0.82, 0.92, fifth);
+    if (fall > 0) army = mix(0.92, 1, fall);
+    if (ret > 0) army = mix(1, 0.28, ret);
 
-    const civAmt = et > 0 ? 0 : clamp((four - 0.08) / 0.4, 0, 1);
+    let civAmt = 0;
+    if (lock > 0.55) civAmt = mix(0, 0.48, clamp((lock - 0.55) / 0.45, 0, 1));
+    if (four > 0) civAmt = mix(0.52, 0.86, four);
+    if (fifth > 0) civAmt = mix(0.86, 0.95, fifth);
+    if (fall > 0) civAmt = 0.96;
+    if (ret > 0) civAmt = 1;
+
+    let mainRise = 0;
+    if (fleeLin > 0.58) mainRise = clamp((fleeLin - 0.58) / 0.42, 0, 1);
+    if (war > 0) mainRise = 1;
 
     if (et > 0) {
       mdAmt = 0;
@@ -1355,109 +1385,285 @@ window.Genesis = (function () {
       vAmt = 0;
       hAmt = 0;
       aAmt = 0;
-      childAmt = 0;
+      army = 0;
+      civAmt = mix(1, 0, clamp(etLin * 2.2, 0, 1));
+      mainRise = mix(1, 0, clamp(etLin * 1.6, 0, 1));
     }
 
     return {
       ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
       mdU, mdY, mdAmt, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
-      nestU, nestAmt, hU, hY, hAmt, childAmt, civAmt,
-      flee, war, stall, lock, four, fifth, fall, ret, et, born, dieM,
+      nestU, nestAmt, hU, hY, hAmt, army, civAmt, mainRise,
+      flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
     };
   }
 
-  function drawChildren(ctx, S) {
-    if (!S || S.childAmt < 0.03) return;
-    const center = S.fifth > 0.02 ? S.nestU : (S.fall > 0.02 ? ROOT_U - 1.9 : ROOT_U - 2.6);
-    const absorb = S.fifth > 0.02 ? clamp(S.fifth, 0, 1) : 0;
-    for (const c of children) {
-      const side = c.kind === "vorath" ? -0.22 : c.kind === "malgrur" ? 0.12 : 0.28;
-      const orbit = c.u0 * mix(0.85, 0.18, absorb);
-      const u = center + side + orbit + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.12 * (1 - absorb);
-      const x = sx(u);
-      if (x < -30 || x > W + 30) continue;
-      const y = H * (0.38 + c.lane) + Math.sin(t * 1.6 + c.ph) * 10;
-      const a = c.kind === "vorath" && S.fifth > 0.3
-        ? S.childAmt * mix(1, 0.15, absorb)
-        : S.childAmt * (0.55 + 0.45 * Math.sin(t * 2 + c.ph));
-      if (a < 0.04) continue;
-      ctx.save();
-      ctx.globalAlpha = a;
-      if (c.kind === "seravim") {
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = "rgba(220,236,228,0.85)";
-        ctx.beginPath();
-        ctx.ellipse(x - c.rr * 2.2, y, c.rr * 2.4, c.rr * 0.7, -0.4 + Math.sin(t + c.ph) * 0.2, 0, 6.283);
-        ctx.ellipse(x + c.rr * 2.2, y, c.rr * 2.4, c.rr * 0.7, 0.4 + Math.sin(t + c.ph) * 0.2, 0, 6.283);
-        ctx.fill();
-        ctx.fillStyle = "rgba(240,255,246,0.95)";
-        ctx.beginPath(); ctx.arc(x, y, c.rr * 0.7, 0, 6.283); ctx.fill();
-      } else if (c.kind === "malgrur") {
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = "rgba(210,70,48,0.8)";
-        ctx.beginPath(); ctx.arc(x, y, c.rr * 1.15, 0, 6.283); ctx.fill();
-        ctx.fillStyle = "rgba(255,220,160,0.7)";
-        ctx.beginPath(); ctx.arc(x, y, c.rr * 0.4, 0, 6.283); ctx.fill();
-      } else {
-        ctx.fillStyle = "rgba(90,8,12,0.9)";
-        ctx.beginPath(); ctx.arc(x, y, c.rr * 1.3, 0, 6.283); ctx.fill();
-        ctx.fillStyle = "rgba(160,20,24,0.7)";
-        ctx.beginPath(); ctx.arc(x, y, c.rr * 0.45, 0, 6.283); ctx.fill();
+  function drawMainland(ctx, rise) {
+    if (rise < 0.02) return;
+    const xL = sx(MAIN_U - MAIN_HALF);
+    const xR = sx(MAIN_U + MAIN_HALF);
+    if (xR < -50 || xL > W + 50) return;
+    const bottom = H + 40;
+    const deckY = H * DECK;
+    const split = sx(MAIN_U);
+
+    function bank(fromU, toU, fills, seed, amp, base, edge) {
+      const pts = [];
+      const xa = sx(fromU), xb = sx(toU);
+      const left = Math.max(-40, Math.min(xa, xb));
+      const right = Math.min(W + 40, Math.max(xa, xb));
+      for (let px = left; px <= right; px += 6) {
+        const wu = cam + (px - W * 0.5) / W;
+        const n = ridge(wu * 160 + seed, seed);
+        const fade = 1 - Math.pow(clamp(Math.abs(wu - MAIN_U) / MAIN_HALF, 0, 1), 1.55);
+        const h = (base + n * amp) * rise * Math.max(0, fade);
+        pts.push([px, mix(H + 24, deckY - h * H, rise)]);
       }
-      ctx.restore();
+      if (pts.length < 2) return;
+      const path = new Path2D();
+      path.moveTo(pts[0][0], bottom);
+      for (const p of pts) path.lineTo(p[0], p[1]);
+      path.lineTo(pts[pts.length - 1][0], bottom);
+      path.closePath();
+      const g = ctx.createLinearGradient(0, deckY - H * 0.22, 0, bottom);
+      g.addColorStop(0, fills[0]);
+      g.addColorStop(1, fills[1]);
+      ctx.globalAlpha = rise;
+      ctx.fillStyle = g;
+      ctx.fill(path);
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++)
+        i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    bank(MAIN_U - MAIN_HALF, MAIN_U + 0.12, ["#2c1618", "#160e10"], 8801, 0.10, 0.15, "rgba(140,40,44,0.38)");
+    bank(MAIN_U - 0.12, MAIN_U + MAIN_HALF, ["#3a464c", "#232c32"], 4409, 0.075, 0.13, "rgba(186,208,214,0.40)");
+
+    const scorch = ctx.createLinearGradient(split - 90, 0, split + 90, 0);
+    scorch.addColorStop(0, "rgba(40,6,8,0)");
+    scorch.addColorStop(0.5, `rgba(90,12,16,${0.28 * rise})`);
+    scorch.addColorStop(1, "rgba(40,6,8,0)");
+    ctx.fillStyle = scorch;
+    ctx.fillRect(split - 90, deckY - 18, 180, 36);
+  }
+
+  function drawCity(ctx, amt) {
+    if (amt < 0.03) return;
+    const deckY = H * DECK;
+    for (const tw of towers) {
+      const u = MAIN_U + tw.u;
+      const x = sx(u);
+      if (x < -28 || x > W + 28) continue;
+      const n = ridge(u * 90, 3301);
+      const ground = deckY - (0.12 + n * 0.06) * H * amt;
+      const h = tw.h * H * amt;
+      const w = tw.w * (0.72 + amt * 0.28);
+      ctx.globalAlpha = amt * 0.94;
+      ctx.fillStyle = "#1a242a";
+      ctx.fillRect(x - w / 2, ground - h, w, h);
+      ctx.fillStyle = "#2a363c";
+      ctx.fillRect(x - w / 2, ground - h, w, 2.2);
+      const cols = Math.max(1, Math.floor(w / 6));
+      const rows = Math.max(2, Math.floor(h / 8));
+      for (let cx = 0; cx < cols; cx++) {
+        for (let cy = 0; cy < rows; cy++) {
+          if (hash1(cx * 17 + cy * 91 + Math.floor(tw.lit * 99)) >= 0.36) continue;
+          const on = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 2.1 + tw.ph + cy));
+          ctx.fillStyle = hash1(cx + cy * 3) < 0.72
+            ? `rgba(245,208,107,${0.55 * on * amt})`
+            : `rgba(186,214,198,${0.42 * on * amt})`;
+          ctx.fillRect(x - w / 2 + 2 + cx * 6, ground - h + 4 + cy * 8, 2.1, 2.8);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawTroop(ctx, c, x, y, a) {
+    const s = 4.2 + c.s * 5.2;
+    ctx.save();
+    ctx.globalAlpha = a;
+    const wob = Math.sin(t * (1.5 + c.gait) + c.ph);
+    if (c.kind === "vorgath") {
+      ctx.fillStyle = "#32070b";
+      ctx.beginPath();
+      ctx.moveTo(x, y - s * 1.2 + wob);
+      ctx.lineTo(x + s * 0.52, y + s * 0.12);
+      ctx.lineTo(x + s * 0.18, y + s * 0.95);
+      ctx.lineTo(x - s * 0.32, y + s * 0.95);
+      ctx.lineTo(x - s * 0.68, y + s * 0.08);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(160,24,28,0.9)";
+      ctx.beginPath(); ctx.arc(x - s * 0.04, y - s * 0.38, s * 0.15, 0, 6.283); ctx.fill();
+    } else if (c.kind === "seraphin") {
+      ctx.fillStyle = "rgba(214,230,222,0.92)";
+      ctx.beginPath();
+      ctx.ellipse(x - s * 0.82, y - s * 0.12, s * 0.68, s * 0.20, -0.48 + wob * 0.12, 0, 6.283);
+      ctx.ellipse(x + s * 0.82, y - s * 0.12, s * 0.68, s * 0.20, 0.48 - wob * 0.12, 0, 6.283);
+      ctx.fill();
+      ctx.fillStyle = "rgba(236,252,244,0.95)";
+      ctx.beginPath();
+      ctx.ellipse(x, y, s * 0.20, s * 0.68, wob * 0.05, 0, 6.283);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#7a2818";
+      ctx.beginPath();
+      ctx.ellipse(x, y + s * 0.08, s * 0.46, s * 0.60, wob * 0.05, 0, 6.283);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,196,110,0.78)";
+      ctx.beginPath(); ctx.arc(x, y - s * 0.18, s * 0.15, 0, 6.283); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawArmies(ctx, S) {
+    if (!S || S.army < 0.04) return;
+    const push = clamp(S.army, 0, 1);
+    for (const c of troops) {
+      if (c.born > S.army) continue;
+      const toward = c.kind === "vorgath" ? push * c.reach : -push * c.reach;
+      const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018;
+      const x = sx(u);
+      if (x < -24 || x > W + 24) continue;
+      const y = standY(c.lane) + Math.sin(t * 1.7 + c.ph) * 2.2;
+      const a = (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
+      if (a < 0.05) continue;
+      drawTroop(ctx, c, x, y, a);
     }
   }
 
-  function drawNest(ctx, S) {
+  function drawNestPit(ctx, S) {
     if (!S || S.nestAmt < 0.04) return;
-    const x = sx(S.nestU), y = H * 0.42;
-    const R = Math.min(W, H) * 0.16 * S.nestAmt;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.2);
-    g.addColorStop(0, `rgba(70,6,10,${0.7 * S.nestAmt})`);
-    g.addColorStop(0.45, `rgba(40,4,8,${0.35 * S.nestAmt})`);
+    const x = sx(S.nestU), y = H * DECK + 8;
+    const R = Math.min(W, H) * 0.055 * S.nestAmt;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.4);
+    g.addColorStop(0, `rgba(8,0,1,${0.96 * S.nestAmt})`);
+    g.addColorStop(0.35, `rgba(50,6,8,${0.45 * S.nestAmt})`);
     g.addColorStop(1, "rgba(8,0,2,0)");
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, R * 2.2, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y, R * 2.1, R * 0.42, 0, 0, 6.283); ctx.fill();
     ctx.save();
-    ctx.strokeStyle = `rgba(140,16,22,${0.55 * S.nestAmt})`;
-    ctx.lineWidth = 1.3;
-    for (let i = 0; i < 9; i++) {
-      const ang = t * 0.55 + i * 0.7;
-      const rad = R * (0.35 + 0.55 * Math.sin(t * 1.8 + i));
+    ctx.strokeStyle = `rgba(140,16,22,${0.5 * S.nestAmt})`;
+    ctx.lineWidth = 1.15;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 7; i++) {
+      const ang = Math.PI + (i - 3) * 0.22 + Math.sin(t * 1.4 + i) * 0.08;
+      const len = R * (1.1 + 0.45 * Math.sin(t * 1.8 + i));
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.quadraticCurveTo(
-        x + Math.cos(ang + 0.4) * rad,
-        y + Math.sin(ang + 0.4) * rad * 0.7,
-        x + Math.cos(ang) * rad * 1.35,
-        y + Math.sin(ang) * rad
+        x + Math.cos(ang) * len * 0.45,
+        y + Math.sin(ang) * len * 0.25,
+        x + Math.cos(ang) * len,
+        y + Math.sin(ang) * len * 0.35
       );
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  function drawCivs(ctx, amt) {
-    if (amt < 0.03) return;
-    const base = ROOT_U - 0.35;
-    for (const c of civs) {
-      const x = sx(base + c.u);
-      if (x < -20 || x > W + 20) continue;
-      const y = H * DECK - 6 - c.y * H * 0.12 + Math.sin(t * 1.2 + c.ph) * 1.5;
-      ctx.globalAlpha = c.a * amt * (0.5 + 0.5 * Math.sin(t * 2.4 + c.ph));
-      ctx.fillStyle = "#f5d06b";
-      ctx.beginPath(); ctx.arc(x, y, c.rr * 0.9, 0, 6.283); ctx.fill();
+  function drawWarlock(ctx, kind, x, y, amt) {
+    if (amt < 0.04) return;
+    const s = Math.min(W, H) * 0.028 * (0.78 + amt * 0.32);
+    const wob = Math.sin(t * 1.55) * 1.1;
+    ctx.save();
+    ctx.globalAlpha = amt;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const body = {
+      mordrial: ["#2a2018", "rgba(255,232,190,0.85)"],
+      cadmus:   ["#3a2a14", "rgba(255,214,130,0.9)"],
+      aelius:   ["#24322a", "rgba(236,255,246,0.9)"],
+      velindra: ["#1c2c2c", "rgba(186,255,240,0.85)"],
+    }[kind] || ["#222", "rgba(255,255,255,0.8)"];
+    ctx.strokeStyle = body[0];
+    ctx.fillStyle = body[0];
+    ctx.lineWidth = Math.max(1.2, s * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(x - s * 0.22, y + s * 0.95);
+    ctx.lineTo(x, y + s * 0.15);
+    ctx.lineTo(x + s * 0.22, y + s * 0.95);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x, y - s * 0.35 + wob * 0.15, s * 0.32, s * 0.72, 0, 0, 6.283);
+    ctx.fill();
+    if (kind === "mordrial") {
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(x, y - s * 0.35 + wob * 0.15, s * 0.32, s * 0.72, 0, 0, 6.283);
+      ctx.clip();
+      ctx.fillStyle = "rgba(212,168,90,0.88)";
+      ctx.fillRect(x - s, y - s * 1.4, s, s * 2.4);
+      ctx.fillStyle = "rgba(186,214,198,0.88)";
+      ctx.fillRect(x, y - s * 1.4, s, s * 2.4);
+      ctx.restore();
     }
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = body[1];
+    ctx.beginPath(); ctx.arc(x, y - s * 1.12 + wob, s * 0.26, 0, 6.283); ctx.fill();
+    ctx.fillStyle = body[1];
+    ctx.globalAlpha = amt * 0.85;
+    ctx.beginPath(); ctx.arc(x, y - s * 0.42, s * 0.10, 0, 6.283); ctx.fill();
+    if (kind === "velindra") {
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 4; i++) {
+        const ang = t * 2.4 + i * 1.57;
+        ctx.fillStyle = i % 2 ? `rgba(200,150,255,${0.45 * amt})` : `rgba(70,200,180,${0.45 * amt})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * s * 0.7, y - s * 0.4 + Math.sin(ang) * s * 0.45, 1.4, 0, 6.283);
+        ctx.fill();
+      }
+    }
+    if (kind === "cadmus") {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = `rgba(140,18,24,${0.7 * amt})`;
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(t * 2.1) * s * 0.7, y - s * 0.55 + Math.sin(t * 2.1) * s * 0.4, 2.1, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawHoundFig(ctx, x, y, amt) {
+    if (amt < 0.04) return;
+    const s = Math.min(W, H) * 0.036 * (0.7 + amt * 0.4);
+    ctx.save();
+    ctx.globalAlpha = amt;
+    ctx.fillStyle = "#120203";
+    ctx.beginPath();
+    ctx.ellipse(x, y, s * 1.12, s * 0.42, -0.1, 0, 6.283);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + s * 0.82, y - s * 0.18, s * 0.40, s * 0.28, 0.18, 0, 6.283);
+    ctx.fill();
+    ctx.strokeStyle = "#2a0608";
+    ctx.lineWidth = Math.max(1.4, s * 0.12);
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const lx = x - s * 0.62 + i * s * 0.38;
+      const gait = Math.sin(t * 5.2 + i * 1.4) * s * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(lx, y + s * 0.1);
+      ctx.lineTo(lx + gait, y + s * 0.62);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(180,24,32,0.9)";
+    ctx.beginPath(); ctx.arc(x + s * 0.98, y - s * 0.26, s * 0.07, 0, 6.283); ctx.fill();
+    ctx.restore();
   }
 
   function drawSaga(ctx) {
     const S = sagaAt();
     if (!S) return;
 
-    drawCivs(ctx, S.civAmt);
-    drawChildren(ctx, S);
-    drawNest(ctx, S);
+    drawMainland(ctx, S.mainRise);
+    drawCity(ctx, S.civAmt);
+    drawNestPit(ctx, S);
+    drawArmies(ctx, S);
 
     const ox = sx(S.ou), oy = S.oy;
     const mx = sx(S.mu), my = S.my;
@@ -1467,83 +1673,65 @@ window.Genesis = (function () {
     if (S.mAmt > 0.02) { pushTrail(trailM, mx, my); drawTrail(ctx, trailM, "210,70,48", S.mAmt); }
     if (S.aAmt > 0.02) { pushTrail(trailA, ax, ay); drawTrail(ctx, trailA, "168,214,178", S.aAmt); }
 
-    if (S.fifth > 0.12 && S.fifth < 0.78) {
-      const nx = sx(S.nestU), ny = H * 0.42;
-      const beam = Math.sin(clamp((S.fifth - 0.12) / 0.55, 0, 1) * 3.14);
-      drawTintBeam(ctx, mx, my, nx, ny, "210,70,48", beam * S.mAmt);
-      drawTintBeam(ctx, ax, ay, nx, ny, "168,214,178", beam * S.aAmt);
-      drawTintBeam(ctx, sx(S.mdU), S.mdY, nx, ny, "212,168,90", beam * S.mdAmt);
-      drawTintBeam(ctx, sx(S.cU), S.cY, nx, ny, "196,140,48", beam * S.cAmt);
-      drawTintBeam(ctx, sx(S.aelU), S.aelY, nx, ny, "186,224,198", beam * S.aelAmt);
-      drawTintBeam(ctx, sx(S.vU), S.vY, nx, ny, "70,180,170", beam * S.vAmt);
-    }
-
-    if (S.lock > 0.42 && S.lock < 0.78) {
-      const p = 1 - Math.abs(S.lock - 0.58) / 0.16;
+    if (S.lock > 0.40 && S.lock < 0.82 && S.mAmt > 0.08 && S.aAmt > 0.08) {
+      const p = 1 - Math.abs(S.lock - 0.58) / 0.18;
       if (p > 0) {
-        flash = Math.max(flash, p);
-        shake = Math.max(shake, 0.4 * p);
+        flash = Math.max(flash, p * 0.7);
+        shake = Math.max(shake, 0.32 * p);
         drawTintBeam(ctx, mx, my, ax, ay, "220,210,180", p);
+        drawTintBeam(ctx, mx, my, sx(S.mdU), S.mdY, "212,168,90", p * S.mdAmt);
+        drawTintBeam(ctx, ax, ay, sx(S.mdU), S.mdY, "186,224,198", p * S.mdAmt);
       }
     }
+
+    if (S.fifth > 0.12 && S.fifth < 0.72 && S.cAmt > 0.1) {
+      const beam = Math.sin(clamp((S.fifth - 0.12) / 0.5, 0, 1) * 3.14);
+      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), H * DECK + 4, "196,140,48", beam * S.cAmt * 0.85);
+    }
+
+    if (S.war > 0.08 && S.et < 0.02) {
+      const clashX = sx(MAIN_U);
+      const clashY = standY(0);
+      if (Math.sin(t * 6.5) > 0.72 && clashCool <= 0) {
+        clashCool = 0.18;
+        rings.push({ x: clashX + (Math.random() - 0.5) * 28, y: clashY + (Math.random() - 0.5) * 16, r: 6, a: 0.7 });
+        shake = Math.max(shake, 0.14);
+      }
+    }
+
+    drawWarlock(ctx, "mordrial", sx(S.mdU), S.mdY, S.mdAmt);
+    drawWarlock(ctx, "cadmus", sx(S.cU), S.cY, S.cAmt);
+    drawWarlock(ctx, "aelius", sx(S.aelU), S.aelY, S.aelAmt);
+    drawWarlock(ctx, "velindra", sx(S.vU), S.vY, S.vAmt);
+    drawHoundFig(ctx, sx(S.hU), S.hY, S.hAmt);
 
     drawOrb(ctx, ox, oy, S.oAmt, "obrokxus");
     drawOrb(ctx, mx, my, S.mAmt, "ormius");
     drawOrb(ctx, ax, ay, S.aAmt, "ava");
-    drawOrb(ctx, sx(S.mdU), S.mdY, S.mdAmt, "mordrial");
-    drawOrb(ctx, sx(S.cU), S.cY, S.cAmt, "cadmus");
-    if (S.cAmt > 0.08) {
-      const ang = t * 2.2;
-      const dx = Math.cos(ang) * 16, dy = Math.sin(ang) * 11;
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.fillStyle = `rgba(140,18,24,${0.75 * S.cAmt})`;
-      ctx.beginPath(); ctx.arc(sx(S.cU) + dx, S.cY + dy, 3.2, 0, 6.283); ctx.fill();
-      ctx.restore();
-    }
-    drawOrb(ctx, sx(S.aelU), S.aelY, S.aelAmt, "aelius");
-    drawOrb(ctx, sx(S.vU), S.vY, S.vAmt, "velindra");
-    if (S.vAmt > 0.08) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 5; i++) {
-        const ang = t * 3 + i * 1.26;
-        ctx.fillStyle = i % 2 ? `rgba(220,160,255,${0.45 * S.vAmt})` : `rgba(70,200,180,${0.45 * S.vAmt})`;
-        ctx.beginPath();
-        ctx.arc(sx(S.vU) + Math.cos(ang) * 14, S.vY + Math.sin(ang) * 10, 1.6, 0, 6.283);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-    if (S.hAmt > 0.02) {
-      pushTrail(trailH, sx(S.hU), S.hY);
-      drawTrail(ctx, trailH, "120,12,18", S.hAmt, true);
-      drawOrb(ctx, sx(S.hU), S.hY, S.hAmt, "hound");
-    }
 
-    if (S.fall > 0.18 && S.fall < 0.86 && S.oAmt > 0.2 && S.mdAmt > 0.15) {
+    if (S.fall > 0.16 && S.fall < 0.86 && S.oAmt > 0.2 && S.mdAmt > 0.15) {
       const dx = sx(S.mdU) - ox, dy = S.mdY - oy;
-      if (Math.hypot(dx, dy) < 42 && clashCool <= 0) {
+      if (Math.hypot(dx, dy) < 48 && clashCool <= 0) {
         flash = 1;
         shake = Math.max(shake, 1);
         clashCool = 0.22;
         rings.push({ x: (sx(S.mdU) + ox) * 0.5, y: (S.mdY + oy) * 0.5, r: 10, a: 1 });
       }
     }
-    if (S.et > 0.15 && S.oAmt > 0.2 && S.mAmt > 0.2) {
+    if (S.et > 0.12 && S.oAmt > 0.2 && S.mAmt > 0.2) {
       const dx = mx - ox, dy = my - oy;
-      if (Math.hypot(dx, dy) < 36 && clashCool <= 0) {
+      if (Math.hypot(dx, dy) < 40 && clashCool <= 0) {
         flash = 0.7;
         shake = Math.max(shake, 0.45);
         clashCool = 0.3;
         rings.push({ x: (mx + ox) * 0.5, y: (my + oy) * 0.5, r: 8, a: 0.85 });
       }
     }
-    if (S.flee > 0.1 && S.flee < 0.95) shake = Math.max(shake, 0.12);
-    if (S.war > 0.05 && S.war < 0.95) shake = Math.max(shake, 0.16);
-    if (S.fifth > 0.2 && S.fifth < 0.8) shake = Math.max(shake, 0.28);
-    if (S.fall > 0.15) shake = Math.max(shake, 0.22 + S.fall * 0.25);
-    if (S.dieM > 0.05 && S.dieM < 0.7) shake = Math.max(shake, 0.6);
+    if (S.fleeLin > 0.08 && S.fleeLin < 0.96) shake = Math.max(shake, 0.10);
+    if (S.war > 0.05 && S.war < 0.95) shake = Math.max(shake, 0.14);
+    if (S.fifth > 0.2 && S.fifth < 0.8) shake = Math.max(shake, 0.22);
+    if (S.fall > 0.15) shake = Math.max(shake, 0.20 + S.fall * 0.22);
+    if (S.dieM > 0.05 && S.dieM < 0.7) shake = Math.max(shake, 0.55);
     drawRings(ctx);
   }
 
