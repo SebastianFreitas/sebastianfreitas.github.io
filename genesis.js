@@ -2083,7 +2083,8 @@ window.Genesis = (function () {
     ctx.restore();
   }
 
-  function drawSaga(ctx, S) {
+  function drawSaga(ctx) {
+    const S = sagaAt();
     if (!S) return;
 
     drawMainland(ctx, S);
@@ -2222,15 +2223,7 @@ window.Genesis = (function () {
     const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
     const pointVis = (beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
     drawPoint(ctx, pointVis, crack);
-    /* the bridge-leg pattern tracks `cam` forever once the chase
-       starts, with no notion of where the physical span actually
-       is. Left alone it keeps drawing straight through the mainland
-       scenes, tens of u-units from the real bridge, which is what
-       made the mainland's rim look like it had bridge legs fitted
-       to its corners. Fade it out as the mainland itself rises, since
-       sagaAt() already tracks that exact progress as S.mainRise. */
-    const S = sagaAt();
-    drawBridgeLine(ctx, uDrawn * (1 - smooth(S ? S.mainRise : 0)));
+    drawBridgeLine(ctx, uDrawn);
 
     const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
     const approaching = clamp((cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
@@ -2275,7 +2268,7 @@ window.Genesis = (function () {
 
     const landRise = clamp(uLand / 0.65, 0, 1);
     drawRexLand(ctx, landRise, L.originX, L.originY);
-    drawSaga(ctx, S);
+    drawSaga(ctx);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
