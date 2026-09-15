@@ -9,6 +9,9 @@
    Then the chase, the children's war, the warlocks, the Hound,
    Mordrial's fall, and the duel that has not ended. Skip /
    Escape jumps to the fade into the live bridge.
+
+   Direction: u grows east, east is screen right, and the record
+   runs west. Whoever is running away holds the smaller u of a pair.
    =========================================================== */
 
 window.Genesis = (function () {
@@ -72,11 +75,22 @@ window.Genesis = (function () {
   const REX_U  = ROOT_U - 0.52;
   const MAIN_U = ROOT_U - 5.35;
   const MAIN_HALF = 0.92;
-  const LEFT_U = MAIN_U + 0.40;
-  const RIGHT_U = MAIN_U - 0.38;
+  /* One axis, one convention, so this never has to be guessed at
+     again: u grows EAST, and east is the right of the screen. The
+     record runs the other way — west, to the left. So whoever is
+     running away always holds the SMALLER u of a pair, and whoever
+     is chasing always holds the larger one. The two names below
+     were the wrong way round, which is where the sides kept
+     swapping. */
+  const EAST_U = MAIN_U + 0.40;   /* east rim: where Obrokxus stops */
+  const WEST_U = MAIN_U - 0.38;   /* west side: the gods' own ground */
   const CITY_U = MAIN_U - 0.46;
   const NEST_U = MAIN_U + 0.50;
   const ET_END_U = MAIN_U - 3.85;
+  const ET_START_U = MAIN_U - 0.58;
+  const FLEE_START_U = REX_U - 0.18;
+  const FLEE_CAM_RATE = 2.20;
+  const ET_CAM_RATE   = 2.60;
   const KINDS  = ["spindle", "cluster", "crawler", "shard", "ring", "blob", "spindle", "crawler"];
   const GREYS  = [
     [16, 18, 20],
@@ -350,6 +364,61 @@ window.Genesis = (function () {
 
   function sx(u) { return (u - cam) * W + W * 0.5; }
 
+  function beatDur(id) {
+    const b = BEATS[idxOf(id)];
+    return (b && b.dur) || 1;
+  }
+
+  /* ---- the two chases ---------------------------------------
+     Both are written as ONE path, with the followers placed at an
+     offset from the runner — never as three separate paths that
+     happen to be timed to agree. That is the whole fix: an offset
+     cannot overtake the thing it is measured from, so no retiming
+     can put a chaser in front again.
+
+     ease/easeV are a position curve and its exact derivative. The
+     camera uses the derivative to lead its own smoothing by exactly
+     the distance that smoothing lags, which is what keeps the pair
+     in the middle of the frame instead of sliding to an edge. */
+  const ease  = (p, k) => mix(p, smooth(p), k == null ? 1 : k);
+  const easeV = (p, k) => mix(1, 6 * p * (1 - p), k == null ? 1 : k);
+
+  /* Obrokxus west (in front), Ormius then Ava behind him, closing. */
+  function chaseAt(p) {
+    const e = ease(p, 0.72);
+    const k = smooth(p);
+    const ou = mix(FLEE_START_U, EAST_U, e);
+    return {
+      ou,
+      mu: ou + mix(0.46, 0.17, k),
+      au: ou + mix(0.62, 0.30, k),
+      cam: ou + mix(0.28, 0.16, k),
+    };
+  }
+  function chaseCamLead(p) {
+    return (EAST_U - FLEE_START_U) * easeV(p, 0.72)
+         / beatDur("flee") / FLEE_CAM_RATE;
+  }
+
+  /* The duel that has not ended. Sines, not a key table: nothing to
+     snap between. `half` never reaches zero, so the two of them
+     never trade places — Obrokxus is cu - half (west, still running)
+     and Ormius is cu + half (east, still behind him). */
+  function duelDrift(p) { return mix(ET_START_U, ET_END_U, ease(p, 0.55)); }
+  function duelCamLead(p, rate) {
+    return (ET_END_U - ET_START_U) * easeV(p, 0.55)
+         / beatDur("eternity") / rate;
+  }
+  function duelAt(p) {
+    const span = Math.min(W, H);
+    const ph = p * 5.6;
+    const cu = duelDrift(p) + Math.sin(ph * 0.83) * 0.030;
+    const cy = H * 0.36 + Math.sin(ph * 0.61) * span * 0.050;
+    const half = 0.132 + Math.sin(ph * 1.27) * 0.112;
+    const swing = Math.sin(ph * 1.9) * span * 0.070;
+    return { ou: cu - half, oy: cy - swing, mu: cu + half, my: cy + swing };
+  }
+
   function paintCopy() {
     const b = BEATS[beat];
     if (!b || !copyEl) return;
@@ -515,8 +584,15 @@ window.Genesis = (function () {
     const uFall  = since("fall");
     const uRet   = since("return");
     const uEt    = since("eternity");
-    if (uEt > 0.02)
-      camTarget = mix(CITY_U - 0.06, ET_END_U, linear("eternity"));
+    let camRateOverride = null;
+    if (uEt > 0) {
+      /* ride the duel itself instead of a canned sweep, and lead it
+         by exactly the smoothing lag, so the pair stays centred all
+         the way out rather than trailing a third of a screen */
+      const etP = linear("eternity");
+      camRateOverride = mix(1.20, ET_CAM_RATE, smooth(clamp(etP / 0.22, 0, 1)));
+      camTarget = duelDrift(etP) + duelCamLead(etP, camRateOverride);
+    }
     else if (uRet > 0.02)
       camTarget = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));
     else if (uFall > 0.02)
@@ -530,9 +606,15 @@ window.Genesis = (function () {
     else if (uStall > 0.02)
       camTarget = mix(MAIN_U + 0.08, MAIN_U - 0.08, smooth(uStall));
     else if (uWar > 0.02)
-      camTarget = mix(MAIN_U - 0.18, MAIN_U + 0.10, smooth(uWar));
-    else if (uFlee > 0.02)
-      camTarget = mix(ROOT_U - 0.30, MAIN_U - 0.18, linear("flee"));
+      /* starts exactly where the chase left the camera, so the pull
+         back onto the battlefield is a move and not a cut */
+      camTarget = mix(EAST_U + 0.16, MAIN_U + 0.10, smooth(uWar));
+    else if (uFlee > 0) {
+      /* framed on the three of them, not on a fixed sweep — the fixed
+         sweep is what pushed the two chasers off the left edge */
+      const fP = linear("flee");
+      camTarget = chaseAt(fP).cam + chaseCamLead(fP);
+    }
     else if (uWalk < 0.001) camTarget = 0;
     else if (uLand > 0.08)
       camTarget = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
@@ -550,8 +632,8 @@ window.Genesis = (function () {
       camTarget = mix(0, ROOT_U - 0.32, clamp(uWalk, 0, 1));
     let camRate = 1.55;
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
-    if (uFlee > 0.02 && uWar < 0.02) camRate = 1.05;
-    if (uEt > 0.02) camRate = 1.12;
+    if (uFlee > 0 && uWar < 0.02) camRate = FLEE_CAM_RATE;
+    if (camRateOverride != null) camRate = camRateOverride;
     cam = approach(cam, camTarget, camRate, dt);
     paintTicks();
 
@@ -1493,52 +1575,74 @@ window.Genesis = (function () {
 
     const gy = (lane, wu) => standY(lane, wu, mainRise, scar);
 
-    let ou = mix(REX_U - 0.18, LEFT_U, fleeLin), oy = yWob(0.2, 0.026), oAmt = 0;
+    /* ---- the chase, and the flank that ends it -----------------
+       Obrokxus is in front the whole way west and the two lights are
+       behind him, because their positions ARE his position plus a
+       gap. When the land comes up under them they do not walk past
+       him on the ground: they cut up and over him and come down on
+       the far side — the side their own city and their own armies
+       (seraphin, malgrur) are on, with his (vorgath) left on his. */
+    const C = chaseAt(fleeLin);
+    let ou = C.ou, oy = yWob(0.2, 0.026), oAmt = 0;
     if (et > 0) {
-      const fk = keyAt(RED_KEYS, etLin);
-      ou = mix(MAIN_U - 0.85, ET_END_U - 0.10, etLin) + fk.x * 0.10;
-      oy = H * 0.37 + fk.y * span * 0.16;
-      oAmt = mix(0.55, 0.82, et);
+      const D = duelAt(etLin);
+      ou = D.ou;
+      oy = D.oy;
+      oAmt = mix(0, 0.84, smooth(clamp(etLin / 0.18, 0, 1)));
     } else if (ret > 0) {
       oAmt = 0;
-    } else if (fall > 0.02) {
+    } else if (fall > 0) {
       const fk = keyAt(RED_KEYS, fall);
-      ou = mix(LEFT_U, MAIN_U - 0.14, fallIn) + fk.x * 0.13 * fallIn;
+      ou = mix(EAST_U, MAIN_U - 0.14, fallIn) + fk.x * 0.13 * fallIn;
       oy = mix(yWob(0.2, 0.022), H * 0.36 + fk.y * span * 0.18, fallIn);
       oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
     } else if (flee > 0) {
       oAmt = 1;
     }
 
-    let mu = mix(REX_U - 0.02, RIGHT_U - 0.14, clamp((fleeLin - 0.04) / 0.96, 0, 1));
+    let mu = C.mu;
     let my = yWob(1.1, 0.02) - H * 0.03, mAmt = 0;
     if (et > 0) {
-      const yk = keyAt(YELLOW_KEYS, etLin);
-      mu = mix(MAIN_U - 0.52, ET_END_U + 0.10, etLin) + yk.x * 0.10;
-      my = H * 0.35 + yk.y * span * 0.16;
-      mAmt = mix(0.5, 0.9, et);
+      /* cross-faded out of the pose the return beat left him in, so
+         the duel opens from where he already was instead of cutting */
+      const D = duelAt(etLin);
+      const hand = smooth(clamp(etLin / 0.10, 0, 1));
+      mu = mix(MAIN_U - 0.58, D.mu, hand);
+      my = mix(yWob(1.4, 0.02), D.my, hand);
+      mAmt = mix(0.48, 0.92, smooth(clamp(etLin / 0.30, 0, 1)));
     } else if (ret > 0) {
       mAmt = mix(0, 0.48, clamp((ret - 0.35) / 0.65, 0, 1));
       mu = mix(MAIN_U + 0.08, MAIN_U - 0.58, ret);
       my = yWob(1.4, 0.02);
-    } else if (fleeLin > 0.04) {
-      mAmt = 1 * (1 - godsOut);
+    } else if (fleeLin > 0.02) {
+      mAmt = clamp((fleeLin - 0.02) / 0.10, 0, 1) * (1 - godsOut);
+      if (war > 0) {
+        /* the flank: over the top, landing west of him */
+        const k = smooth(clamp((war - 0.05) / 0.70, 0, 1));
+        mu = mix(EAST_U + 0.17, WEST_U - 0.14, k);
+        my -= Math.sin(k * Math.PI) * H * 0.17;
+      }
       if (lock > 0) {
-        mu = mix(RIGHT_U - 0.14, MAIN_U + 0.16, lock);
+        mu = mix(WEST_U - 0.14, MAIN_U + 0.16, lock);
         my = mix(yWob(1.1, 0.018) - H * 0.03, yWob(0.8, 0.012), lock);
       }
     }
 
-    let au = mix(REX_U + 0.08, RIGHT_U - 0.02, clamp((fleeLin - 0.08) / 0.92, 0, 1));
+    let au = C.au;
     let ay = yWob(2.6, 0.018) + H * 0.04, aAmt = 0;
     if (et > 0) {
       aAmt = 0;
     } else if (ret > 0) {
       aAmt = 0;
-    } else if (fleeLin > 0.08) {
-      aAmt = 1 * (1 - godsOut);
+    } else if (fleeLin > 0.06) {
+      aAmt = clamp((fleeLin - 0.06) / 0.10, 0, 1) * (1 - godsOut);
+      if (war > 0) {
+        const k = smooth(clamp((war - 0.12) / 0.70, 0, 1));
+        au = mix(EAST_U + 0.30, WEST_U - 0.02, k);
+        ay -= Math.sin(k * Math.PI) * H * 0.23;
+      }
       if (lock > 0) {
-        au = mix(RIGHT_U - 0.02, MAIN_U + 0.20, lock);
+        au = mix(WEST_U - 0.02, MAIN_U + 0.20, lock);
         ay = mix(yWob(2.6, 0.016) + H * 0.035, yWob(0.9, 0.012), lock);
       }
     }
@@ -1552,7 +1656,7 @@ window.Genesis = (function () {
       mdU = mix(MAIN_U + 0.14, MAIN_U + 0.04, fifth);
       mdY = gy(0.08, mdU);
     }
-    if (fall > 0.02) {
+    if (fall > 0) {
       const yk = keyAt(YELLOW_KEYS, fall);
       mdU = mix(MAIN_U + 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
       mdY = mix(gy(0.08, mdU),
@@ -1571,7 +1675,7 @@ window.Genesis = (function () {
     let vY = gy(mix(0.20, 0.22, fallIn), vU);
     let vAmt = slot(0.58);
     let cLane = mix(0.14, 0.06, fifth);
-    if (fall > 0.02) {
+    if (fall > 0) {
       cU = mix(NEST_U + 0.16, MAIN_U - 0.08, fallIn);
       cLane = mix(0.06, 0.12, fallIn);
     }
@@ -1592,9 +1696,9 @@ window.Genesis = (function () {
     }
 
     const nestU = NEST_U;
-    const nestAmt = fifth > 0 && fall < 0.02
+    const nestAmt = fifth > 0
       ? mix(0.25, 1, clamp(fifth * 2.4, 0, 1)) * (1 - clamp((fifth - 0.58) / 0.38, 0, 1))
-      : (fall > 0.02 && fall < 0.35 ? mix(0.2, 0, fall / 0.35) : 0);
+      : 0;
     const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
     let hU = mix(nestU, MAIN_U - 0.18, fallIn);
     let hY = gy(mix(-0.04, -0.06, fallIn), hU);
@@ -1617,12 +1721,15 @@ window.Genesis = (function () {
 
     if (et > 0) {
       /* the duel leaves. The land does not: it keeps its city and
-         slides out of frame behind the camera. */
-      mdAmt = 0;
-      cAmt = 0;
-      aelAmt = 0;
-      vAmt = 0;
-      hAmt = 0;
+         slides out of frame behind the camera. Everyone still on it
+         fades over the first second instead of blinking off on the
+         beat change. */
+      const gone = 1 - smooth(clamp(etLin / 0.12, 0, 1));
+      mdAmt *= gone;
+      cAmt *= gone;
+      aelAmt *= gone;
+      vAmt *= gone;
+      hAmt *= gone;
       aAmt = 0;
     }
 
@@ -1639,14 +1746,24 @@ window.Genesis = (function () {
     if (!rise || rise < 0.02) return;
     const scar = S.scar || 0;
     const corrupt = S.corrupt || 0;
-    const xL = sx(MAIN_U - MAIN_HALF);
-    const xR = sx(MAIN_U + MAIN_HALF);
-    if (xR < -60 || xL > W + 60) return;
     const deckY = H * DECK;
     const bottom = H + 80;
     const step = 5;
-    const left = Math.max(-60, xL - 300);
-    const right = Math.min(W + 60, xR + 300);
+    /* The land does not stop at the rim: past it the surface shears
+       down and away, and that tail is still well inside the frame
+       long after the rim itself has left it. Culling on the rim
+       alone is what dropped the corners out in a single frame once
+       the camera moved off. This is the furthest the shallowest
+       tail can still reach back into view. */
+    const tail = 0.16 * W + (H + 160 - deckY) / 1.1;
+    const xL = sx(MAIN_U - MAIN_HALF);
+    const xR = sx(MAIN_U + MAIN_HALF);
+    if (xR < -tail || xL > W + tail) return;
+    /* and sample the whole frame rather than a box around the land:
+       on a wide window the old box ended the fill in a vertical wall
+       partway across the screen */
+    const left = -60;
+    const right = W + 60;
 
     /* past the rim the land shears off downward instead of stopping
        dead, which is what made it read as a slab hanging in the dark */
@@ -1769,7 +1886,9 @@ window.Genesis = (function () {
         if (sp.born > corrupt) continue;
         const wu = MAIN_U + sp.u;
         const x = sx(wu);
-        if (x < -40 || x > W + 40) continue;
+        /* margin is the widest the shape can be, not the anchor
+           point, or tall things pop out while still half in frame */
+        if (x < -90 || x > W + 90) continue;
         const grow = clamp((corrupt - sp.born) / 0.22, 0, 1);
         if (grow < 0.04) continue;
         const y = mainSurfY(wu, rise, scar) + 3;
@@ -1829,7 +1948,7 @@ window.Genesis = (function () {
         if (tw.born > amt) continue;
         const wu = MAIN_U + tw.u * MAIN_HALF;
         const x = sx(wu);
-        if (x < -50 || x > W + 50) continue;
+        if (x < -80 || x > W + 80) continue;
         const grow = clamp((amt - tw.born) / 0.20, 0, 1);
         if (grow < 0.04) continue;
         const floor = mainSurfY(wu, rise, scar) + 2;
@@ -1844,7 +1963,7 @@ window.Genesis = (function () {
       if (tw.born > amt) continue;
       const wu = MAIN_U + tw.u * MAIN_HALF;
       const x = sx(wu);
-      if (x < -50 || x > W + 50) continue;
+      if (x < -80 || x > W + 80) continue;
       const grow = clamp((amt - tw.born) / 0.20, 0, 1);
       if (grow < 0.18) continue;
       const floor = mainSurfY(wu, rise, scar) + 2;
@@ -1888,7 +2007,7 @@ window.Genesis = (function () {
       const toward = (c.kind === "vorgath" ? push * c.reach : -push * c.reach) * motion;
       const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
       const x = sx(u);
-      if (x < -24 || x > W + 24) continue;
+      if (x < -40 || x > W + 40) continue;
       const y = mainSurfY(u, S.mainRise, S.scar) - 10 - (c.lane || 0) * H * 0.075
               + Math.sin(t * 1.7 + c.ph) * 2.2 * motion;
       const a = (0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + c.ph))) * clamp((S.army - c.born) / 0.08, 0, 1);
