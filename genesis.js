@@ -596,11 +596,6 @@ window.Genesis = (function () {
     let target = 0;
     const uWalk  = since("walk");
     const uRoot  = since("root");
-    const uSwarm = since("swarm");
-    const uWomb  = since("womb");
-    const uBirth = since("birth");
-    const uFight = since("fight");
-    const uLand  = since("land");
     const uFlee  = since("flee");
     const uWar   = since("war");
     const uStall = since("stalemate");
@@ -642,20 +637,12 @@ window.Genesis = (function () {
       target = chaseAt(fP).cam + chaseCamLead(fP);
     }
     else if (uWalk < 0.001) target = 0;
-    else if (uLand > 0.08)
-      target = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
-    else if (uFight > 0.02)
-      target = mix(ROOT_U - 0.22, ROOT_U - 0.50, clamp(uFight * 1.15, 0, 1));
-    else if (uBirth > 0.02)
-      target = mix(ROOT_U - 0.16, ROOT_U - 0.22, uBirth);
-    else if (uWomb > 0.02)
-      target = mix(ROOT_U - 0.18, ROOT_U - 0.16, uWomb);
-    else if (uSwarm > 0.02)
-      target = mix(ROOT_U - 0.26, ROOT_U - 0.16, uSwarm);
     else if (uRoot > 0.02)
-      target = mix(ROOT_U - 0.32, ROOT_U - 0.26, uRoot);
+      /* root through rex the surface hold still with half the womb
+         past the right edge; panning further east shows its ragged side */
+      target = ROOT_U - 0.50;
     else
-      target = mix(0, ROOT_U - 0.32, clamp(uWalk, 0, 1));
+      target = mix(0, ROOT_U - 0.50, clamp(uWalk, 0, 1));
     let camRate = 1.55;
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
     if (uFlee > 0 && uWar < 0.02) camRate = FLEE_CAM_RATE;
@@ -1381,113 +1368,6 @@ window.Genesis = (function () {
     ctx.restore();
   }
 
-  function drawRexKeeps(ctx, rise, originY) {
-    const a = clamp((rise - 0.40) / 0.30, 0, 1);
-    if (a < 0.04) return;
-    const b = REX_BANDS[0];
-    const s = Math.max(0.48, Math.min(1.05, W / 1400)) * mix(0.62, 1, a);
-    const surfY = wu => mix(originY, H * 1.16 - rexLandHeight(wu, b) * H, rise);
-    const onTop = y => y > H * 0.04 && y < H * 0.82;
-    ctx.save();
-    ctx.globalAlpha = a;
-
-    function crenel(x, y, w, step, riseH) {
-      const n = Math.max(2, Math.floor(w / step));
-      const sw = w / n;
-      for (let i = 0; i < n; i++) if (i % 2 === 0)
-        ctx.fillRect(x + i * sw, y - riseH, sw * 0.92, riseH);
-    }
-
-    const bru = mix(REX_WEST, REX_EAST, 0.40);
-    const bx0 = sx(bru);
-    const bbase = surfY(bru);
-    if (onTop(bbase) && bx0 > -220 && bx0 < W + 220) {
-      const stone = "#a8b0aa", mortar = "#6e7872", shade = "#8e9791", warm = "#f5d06b";
-      function brickBlock(cx, w, h) {
-        const x = cx - w / 2, y = bbase - h;
-        ctx.fillStyle = stone; ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = shade; ctx.fillRect(x + w * 0.72, y, w * 0.28, h);
-        ctx.strokeStyle = mortar;
-        ctx.lineWidth = Math.max(1, s * 0.7);
-        const rows = Math.max(3, Math.floor(h / (10 * s)));
-        for (let ri = 1; ri < rows; ri++) {
-          const yy = y + (h * ri) / rows;
-          ctx.beginPath(); ctx.moveTo(x + 1, yy); ctx.lineTo(x + w - 1, yy); ctx.stroke();
-        }
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "rgba(232,236,232,0.55)";
-        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-        crenel(x, y, w, Math.max(8, 14 * s), Math.max(4, 8 * s));
-        ctx.fillStyle = stone;
-      }
-      const keepW = 150 * s, keepH = 118 * s;
-      brickBlock(bx0, keepW, keepH);
-      brickBlock(bx0 - 92 * s, 52 * s, 152 * s);
-      brickBlock(bx0 + 92 * s, 52 * s, 152 * s);
-      const gw = 34 * s, gh = 48 * s;
-      ctx.fillStyle = "#3a4340";
-      ctx.fillRect(bx0 - gw / 2, bbase - gh, gw, gh);
-      ctx.strokeStyle = "rgba(245,208,107,0.35)";
-      ctx.strokeRect(bx0 - gw / 2 + 0.5, bbase - gh + 0.5, gw - 1, gh - 1);
-      ctx.fillStyle = warm; ctx.globalAlpha = a * 0.55;
-      ctx.fillRect(bx0 - keepW * 0.22, bbase - keepH * 0.72, Math.max(2, 5 * s), Math.max(3, 8 * s));
-      ctx.fillRect(bx0 + keepW * 0.12, bbase - keepH * 0.62, Math.max(2, 5 * s), Math.max(3, 8 * s));
-      ctx.globalAlpha = a;
-    }
-
-    const dru = mix(REX_WEST, REX_EAST, 0.62);
-    const dx0 = sx(dru);
-    const dbase = surfY(dru);
-    if (onTop(dbase) && dx0 > -240 && dx0 < W + 240) {
-      const body = "#1e1822", rim = "rgba(214,220,218,0.7)", slit = "#c45a52";
-      const bw = 120 * s, bh = 140 * s;
-      ctx.fillStyle = body;
-      ctx.fillRect(dx0 - bw / 2, dbase - bh, bw, bh);
-      ctx.strokeStyle = rim;
-      ctx.lineWidth = Math.max(1.2, s * 1.1);
-      ctx.strokeRect(dx0 - bw / 2 + 0.5, dbase - bh + 0.5, bw - 1, bh - 1);
-      const towers = [
-        { dx: -78, w: 28, h: 175, spire: 38 },
-        { dx: -28, w: 22, h: 155, spire: 30 },
-        { dx:  28, w: 22, h: 165, spire: 34 },
-        { dx:  78, w: 30, h: 190, spire: 46 },
-        { dx:   0, w: 36, h: 210, spire: 58 },
-      ];
-      for (const tw of towers) {
-        const twx = dx0 + tw.dx * s;
-        const twW = tw.w * s, twH = tw.h * s, sp = tw.spire * s;
-        const x = twx - twW / 2, y = dbase - twH;
-        ctx.fillStyle = body;
-        ctx.fillRect(x, y, twW, twH);
-        ctx.beginPath();
-        ctx.moveTo(x - 2 * s, y);
-        ctx.lineTo(twx, y - sp);
-        ctx.lineTo(x + twW + 2 * s, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = rim;
-        ctx.beginPath();
-        ctx.moveTo(x - 2 * s, y);
-        ctx.lineTo(twx, y - sp);
-        ctx.lineTo(x + twW + 2 * s, y);
-        ctx.stroke();
-        ctx.strokeRect(x + 0.5, y + 0.5, twW - 1, twH - 1);
-        const pulse = 0.45 + 0.55 * Math.sin(t * 1.2 + tw.dx * 0.02);
-        ctx.fillStyle = slit;
-        ctx.globalAlpha = a * (0.35 + 0.45 * pulse);
-        ctx.fillRect(twx - twW * 0.18, y + twH * 0.22, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.12));
-        ctx.fillRect(twx - twW * 0.18, y + twH * 0.48, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.1));
-        ctx.globalAlpha = a;
-      }
-      ctx.fillStyle = slit; ctx.globalAlpha = a * 0.5;
-      ctx.fillRect(dx0 - bw * 0.28, dbase - bh * 0.7, Math.max(2, 4 * s), Math.max(5, 10 * s));
-      ctx.fillRect(dx0 + bw * 0.12, dbase - bh * 0.55, Math.max(2, 4 * s), Math.max(5, 10 * s));
-      ctx.globalAlpha = a;
-      ctx.lineWidth = 1;
-    }
-    ctx.restore();
-  }
-
   function drawRexLand(ctx, rise, originX, originY) {
     if (rise < 0.02) return;
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
@@ -1533,7 +1413,6 @@ window.Genesis = (function () {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    drawRexKeeps(ctx, rise, originY);
     if (rise > 0.12 && rise < 0.92) {
       const glint = (1 - Math.abs(rise - 0.42) / 0.42) * (1 - rise * 0.35);
       if (glint > 0.02) {
