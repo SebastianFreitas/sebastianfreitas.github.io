@@ -1542,6 +1542,11 @@ window.Genesis = (function () {
     const span = Math.min(W, H);
     const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
     const fallIn = clamp(fall / 0.22, 0, 1);
+    /* the fight against Obrokxus happens on vorgath's own ground —
+       deep in the red zone, not walked back to the middle. Nest and
+       duel share that ground; the duel spot sits a little short of
+       the nest so the pit doesn't read as the battlefield itself. */
+    const DUEL_U = MAIN_U + 0.30;
 
     /* ---- the land, before anything stands on it ----------------
        scar is what the war did to the shape of the ground: it only
@@ -1593,7 +1598,7 @@ window.Genesis = (function () {
       oAmt = 0;
     } else if (fall > 0) {
       const fk = keyAt(RED_KEYS, fall);
-      ou = mix(EAST_U, MAIN_U - 0.14, fallIn) + fk.x * 0.13 * fallIn;
+      ou = mix(EAST_U, DUEL_U, fallIn) + fk.x * 0.13 * fallIn;
       oy = mix(yWob(0.2, 0.022), H * 0.36 + fk.y * span * 0.18, fallIn);
       oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
     } else if (flee > 0) {
@@ -1653,12 +1658,16 @@ window.Genesis = (function () {
     let mdY = gy(0.10, mdU);
     let mdAmt = born * (1 - dieM);
     if (fifth > 0) {
-      mdU = mix(MAIN_U - 0.14, MAIN_U - 0.04, fifth);
-      mdY = gy(0.08, mdU);
+      /* all four cross to the nest together for the Hound's birth,
+         not just Cadmus; blend the endpoint heights rather than
+         sampling the live terrain across that whole crossing, or
+         they bob over every ripple of ground on the way. */
+      mdU = mix(MAIN_U - 0.14, NEST_U - 0.10, fifth);
+      mdY = mix(gy(0.08, MAIN_U - 0.14), gy(0.08, NEST_U - 0.10), fifth);
     }
     if (fall > 0) {
       const yk = keyAt(YELLOW_KEYS, fall);
-      mdU = mix(MAIN_U - 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
+      mdU = mix(NEST_U - 0.10, DUEL_U + yk.x * 0.11, fallIn);
       mdY = mix(gy(0.08, mdU),
                 mix(gy(0.06, mdU) + yk.y * span * 0.10,
                     mainSurfY(mdU, mainRise, scar) + 26, dieM), fallIn);
@@ -1668,34 +1677,30 @@ window.Genesis = (function () {
     const slot = (start) => clamp((four - start) / 0.22, 0, 1);
     let cU = mix(MAIN_U - 0.24, NEST_U + 0.16, fifth);
     let cAmt = slot(0.12);
-    let aelU = mix(MAIN_U - 0.32, MAIN_U - 0.22, fallIn);
-    let aelY = gy(mix(0.02, 0.00, fallIn), aelU);
+    let aelU = mix(MAIN_U - 0.32, NEST_U - 0.20, fifth);
     let aelAmt = slot(0.36);
-    let vU = mix(MAIN_U - 0.17, MAIN_U - 0.10, fallIn);
-    let vY = gy(mix(0.20, 0.22, fallIn), vU);
+    let vU = mix(MAIN_U - 0.17, NEST_U - 0.34, fifth);
     let vAmt = slot(0.58);
-    let cLane = mix(0.14, 0.06, fifth);
-    /* Cadmus covers a lot of ground (spawn to the nest, and back);
-       sampling the live, noisy terrain at every step of that made
-       him bob up and down like he was tripping over it. Blend the
-       height at the two ends of each leg instead, so he walks a
-       smooth line between them. */
+    /* same terrain-bob fix as Mordrial above, for all three */
     let cY = mix(gy(0.14, MAIN_U - 0.24), gy(0.06, NEST_U + 0.16), fifth);
-    if (fall > 0) {
-      cU = mix(NEST_U + 0.16, MAIN_U - 0.08, fallIn);
-      cLane = mix(0.06, 0.12, fallIn);
-      cY = mix(gy(0.06, NEST_U + 0.16), gy(0.12, MAIN_U - 0.08), fallIn);
-    }
+    let aelY = mix(gy(0.02, MAIN_U - 0.32), gy(0.00, NEST_U - 0.20), fifth);
+    let vY = mix(gy(0.20, MAIN_U - 0.17), gy(0.22, NEST_U - 0.34), fifth);
+    /* through the fight itself they hold their ground at the nest
+       (cU/aelU/vU keep the "fifth" end value, since `fifth` is
+       already at 1 by the time `fall` starts) instead of drifting
+       back toward the middle. */
     if (ret > 0) {
-      /* they walk west into the city they are about to disappear into */
+      /* victory won, they walk west into the city they are about
+         to disappear into */
       const home = smooth(clamp(ret / 0.85, 0, 1));
       const fadeHome = mix(1, 0.10, clamp((ret - 0.45) / 0.55, 0, 1));
-      cU = mix(MAIN_U - 0.08, CITY_U + 0.13, home);
-      aelU = mix(MAIN_U - 0.22, CITY_U + 0.34, home);
-      vU = mix(MAIN_U - 0.10, CITY_U - 0.08, home);
-      cY = mix(gy(0.12, MAIN_U - 0.08), gy(0.10, CITY_U + 0.13), home);
-      aelY = gy(0.02, aelU);
-      vY = gy(0.20, vU);
+      const cU0 = NEST_U + 0.16, aelU0 = NEST_U - 0.20, vU0 = NEST_U - 0.34;
+      cU = mix(cU0, CITY_U + 0.13, home);
+      aelU = mix(aelU0, CITY_U + 0.34, home);
+      vU = mix(vU0, CITY_U - 0.08, home);
+      cY = mix(gy(0.06, cU0), gy(0.10, CITY_U + 0.13), home);
+      aelY = mix(gy(0.00, aelU0), gy(0.02, CITY_U + 0.34), home);
+      vY = mix(gy(0.22, vU0), gy(0.20, CITY_U - 0.08), home);
       cAmt *= fadeHome;
       aelAmt *= fadeHome;
       vAmt *= fadeHome;
@@ -1706,15 +1711,15 @@ window.Genesis = (function () {
       ? mix(0.25, 1, clamp(fifth * 2.4, 0, 1)) * (1 - clamp((fifth - 0.58) / 0.38, 0, 1))
       : 0;
     const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
-    let hU = mix(nestU, MAIN_U - 0.18, fallIn);
-    /* same fix as Cadmus above: blend the endpoint heights instead
-       of following every ripple of ground in between. */
-    let hY = mix(gy(-0.04, nestU), gy(-0.06, MAIN_U - 0.18), fallIn);
+    /* the Hound stays at the fight too, instead of already walking
+       west while Mordrial and Obrokxus are still at it */
+    let hU = mix(nestU, DUEL_U - 0.05, fallIn);
+    let hY = mix(gy(-0.04, nestU), gy(-0.06, DUEL_U - 0.05), fallIn);
     let hAmt = houndBorn;
     if (ret > 0) {
       const homeH = smooth(clamp(ret / 0.85, 0, 1));
-      hU = mix(MAIN_U - 0.18, CITY_U - 0.28, homeH);
-      hY = mix(gy(-0.06, MAIN_U - 0.18), gy(-0.06, CITY_U - 0.28), homeH);
+      hU = mix(DUEL_U - 0.05, CITY_U - 0.28, homeH);
+      hY = mix(gy(-0.06, DUEL_U - 0.05), gy(-0.06, CITY_U - 0.28), homeH);
       hAmt = mix(1, 0.12, clamp((ret - 0.45) / 0.55, 0, 1));
     }
 
