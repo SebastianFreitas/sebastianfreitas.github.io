@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=9">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=41">
+<link rel="stylesheet" href="bridge.css?v=42">
 <script src="xp.js?v=13"></script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
@@ -115,7 +115,11 @@
       <p class="genesis-tag" id="genesis-tag"></p>
       <p class="genesis-line" id="genesis-line"></p>
     </div>
-    <div class="genesis-ticks" id="genesis-ticks" aria-hidden="true"></div>
+    <div class="genesis-ticks" id="genesis-ticks">
+      <button type="button" class="genesis-step" id="genesis-prev" aria-label="Previous scene">&lsaquo;</button>
+      <div class="genesis-track" id="genesis-track" aria-label="Cutscene timeline"><span class="genesis-prog"><i></i></span></div>
+      <button type="button" class="genesis-step" id="genesis-next" aria-label="Next scene">&rsaquo;</button>
+    </div>
   </div>
 
   <div class="bridge-hud" id="bridge-sys">
@@ -360,7 +364,7 @@
 <script src="world.js?v=8"></script>
 <script src="voidship.js?v=16"></script>
 <script src="bridge.js?v=56"></script>
-<script src="genesis.js?v=17"></script>
+<script src="genesis.js?v=18"></script>
 <script src="intro.js?v=6"></script>
 </body>
 </html>

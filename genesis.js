@@ -23,6 +23,9 @@ window.Genesis = (function () {
   const lineEl  = document.getElementById("genesis-line");
   const copyEl  = overlay && overlay.querySelector(".genesis-copy");
   const ticksEl = document.getElementById("genesis-ticks");
+  const trackEl = document.getElementById("genesis-track");
+  const prevEl  = document.getElementById("genesis-prev");
+  const nextEl  = document.getElementById("genesis-next");
   const skipEl  = document.getElementById("genesis-skip");
   const host    = document.getElementById("bridge-hero");
 
@@ -436,11 +439,11 @@ window.Genesis = (function () {
   }
 
   function paintTicks() {
-    if (!ticksEl) return;
-    let bar = ticksEl.querySelector(".genesis-prog");
+    if (!trackEl) return;
+    let bar = trackEl.querySelector(".genesis-prog");
     if (!bar) {
-      ticksEl.innerHTML = '<span class="genesis-prog"><i></i></span>';
-      bar = ticksEl.querySelector(".genesis-prog");
+      trackEl.innerHTML = '<span class="genesis-prog"><i></i></span>';
+      bar = trackEl.querySelector(".genesis-prog");
     }
     const fill = bar && bar.querySelector("i");
     const n = Math.max(1, BEATS.length - 1);
@@ -554,20 +557,43 @@ window.Genesis = (function () {
     go(last);
   }
 
-  function step(dt) {
-    if (!active) return false;
-    t += dt;
-    local += dt;
-    shake = Math.max(0, shake - dt * 3.6);
-    flash = Math.max(0, flash - dt * 3.2);
-    clashCool = Math.max(0, clashCool - dt);
-    for (let i = rings.length - 1; i >= 0; i--) {
-      rings[i].r += dt * 220;
-      rings[i].a -= dt * 1.35;
-      if (rings[i].a <= 0) rings.splice(i, 1);
-    }
-    try { if (scrollY !== 0) scrollTo(0, 0); } catch (e) {}
+  function seek(i, frac) {
+    if (!active) return;
+    i = clamp(i, 0, BEATS.length - 1);
+    frac = clamp(frac, 0, 1);
+    if (i === BEATS.length - 1) frac = 0;
+    if (i !== beat) go(i);
+    const dur = BEATS[i].dur;
+    local = frac >= 1 ? dur - 0.001 : frac * dur;
+    resetFX();
+    shake = 0;
+    const aim = camAim();
+    camTarget = aim.target;
+    cam = aim.target;
+    paintTicks();
+  }
 
+  function stepBeat(dir) {
+    if (!active) return;
+    if (dir > 0) {
+      if (beat >= BEATS.length - 1) { finish(); return; }
+      seek(beat + 1, 0);
+    } else {
+      seek(local > 1.5 ? beat : beat - 1, 0);
+    }
+  }
+
+  function seekFromPointer(e) {
+    if (!trackEl) return;
+    const r = trackEl.getBoundingClientRect();
+    const u = clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1);
+    const pos = u * (BEATS.length - 1);
+    const i = Math.floor(pos);
+    seek(i, pos - i);
+  }
+
+  function camAim() {
+    let target = 0;
     const uWalk  = since("walk");
     const uRoot  = since("root");
     const uSwarm = since("swarm");
@@ -591,50 +617,69 @@ window.Genesis = (function () {
          the way out rather than trailing a third of a screen */
       const etP = linear("eternity");
       camRateOverride = mix(1.20, ET_CAM_RATE, smooth(clamp(etP / 0.22, 0, 1)));
-      camTarget = duelDrift(etP) + duelCamLead(etP, camRateOverride);
+      target = duelDrift(etP) + duelCamLead(etP, camRateOverride);
     }
     else if (uRet > 0.02)
-      camTarget = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));
+      target = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));
     else if (uFall > 0.02)
-      camTarget = mix(MAIN_U + 0.14, MAIN_U - 0.04, smooth(uFall));
+      target = mix(MAIN_U + 0.14, MAIN_U - 0.04, smooth(uFall));
     else if (uFifth > 0.02)
-      camTarget = mix(MAIN_U + 0.16, NEST_U + 0.04, smooth(uFifth));
+      target = mix(MAIN_U + 0.16, NEST_U + 0.04, smooth(uFifth));
     else if (uFour > 0.02)
-      camTarget = mix(MAIN_U + 0.02, MAIN_U + 0.20, smooth(uFour));
+      target = mix(MAIN_U + 0.02, MAIN_U + 0.20, smooth(uFour));
     else if (uLock > 0.02)
-      camTarget = mix(MAIN_U - 0.10, MAIN_U + 0.04, smooth(uLock));
+      target = mix(MAIN_U - 0.10, MAIN_U + 0.04, smooth(uLock));
     else if (uStall > 0.02)
-      camTarget = mix(MAIN_U + 0.08, MAIN_U - 0.08, smooth(uStall));
+      target = mix(MAIN_U + 0.08, MAIN_U - 0.08, smooth(uStall));
     else if (uWar > 0.02)
       /* starts exactly where the chase left the camera, so the pull
          back onto the battlefield is a move and not a cut */
-      camTarget = mix(EAST_U + 0.16, MAIN_U + 0.10, smooth(uWar));
+      target = mix(EAST_U + 0.16, MAIN_U + 0.10, smooth(uWar));
     else if (uFlee > 0) {
       /* framed on the three of them, not on a fixed sweep — the fixed
          sweep is what pushed the two chasers off the left edge */
       const fP = linear("flee");
-      camTarget = chaseAt(fP).cam + chaseCamLead(fP);
+      target = chaseAt(fP).cam + chaseCamLead(fP);
     }
-    else if (uWalk < 0.001) camTarget = 0;
+    else if (uWalk < 0.001) target = 0;
     else if (uLand > 0.08)
-      camTarget = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
+      target = mix(ROOT_U - 0.48, ROOT_U - 0.30, clamp((uLand - 0.08) / 0.7, 0, 1));
     else if (uFight > 0.02)
-      camTarget = mix(ROOT_U - 0.22, ROOT_U - 0.50, clamp(uFight * 1.15, 0, 1));
+      target = mix(ROOT_U - 0.22, ROOT_U - 0.50, clamp(uFight * 1.15, 0, 1));
     else if (uBirth > 0.02)
-      camTarget = mix(ROOT_U - 0.16, ROOT_U - 0.22, uBirth);
+      target = mix(ROOT_U - 0.16, ROOT_U - 0.22, uBirth);
     else if (uWomb > 0.02)
-      camTarget = mix(ROOT_U - 0.18, ROOT_U - 0.16, uWomb);
+      target = mix(ROOT_U - 0.18, ROOT_U - 0.16, uWomb);
     else if (uSwarm > 0.02)
-      camTarget = mix(ROOT_U - 0.26, ROOT_U - 0.16, uSwarm);
+      target = mix(ROOT_U - 0.26, ROOT_U - 0.16, uSwarm);
     else if (uRoot > 0.02)
-      camTarget = mix(ROOT_U - 0.32, ROOT_U - 0.26, uRoot);
+      target = mix(ROOT_U - 0.32, ROOT_U - 0.26, uRoot);
     else
-      camTarget = mix(0, ROOT_U - 0.32, clamp(uWalk, 0, 1));
+      target = mix(0, ROOT_U - 0.32, clamp(uWalk, 0, 1));
     let camRate = 1.55;
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
     if (uFlee > 0 && uWar < 0.02) camRate = FLEE_CAM_RATE;
     if (camRateOverride != null) camRate = camRateOverride;
-    cam = approach(cam, camTarget, camRate, dt);
+    return { target, rate: camRate };
+  }
+
+  function step(dt) {
+    if (!active) return false;
+    t += dt;
+    local += dt;
+    shake = Math.max(0, shake - dt * 3.6);
+    flash = Math.max(0, flash - dt * 3.2);
+    clashCool = Math.max(0, clashCool - dt);
+    for (let i = rings.length - 1; i >= 0; i--) {
+      rings[i].r += dt * 220;
+      rings[i].a -= dt * 1.35;
+      if (rings[i].a <= 0) rings.splice(i, 1);
+    }
+    try { if (scrollY !== 0) scrollTo(0, 0); } catch (e) {}
+
+    const aim = camAim();
+    camTarget = aim.target;
+    cam = approach(cam, camTarget, aim.rate, dt);
     paintTicks();
 
     const b = BEATS[beat];
@@ -2321,9 +2366,25 @@ window.Genesis = (function () {
       skip();
     });
   }
+  if (trackEl) {
+    trackEl.addEventListener("pointerdown", e => {
+      if (!active) return;
+      e.preventDefault();
+      try { trackEl.setPointerCapture(e.pointerId); } catch (err) {}
+      seekFromPointer(e);
+    });
+    trackEl.addEventListener("pointermove", e => {
+      if (!active || !trackEl.hasPointerCapture(e.pointerId)) return;
+      seekFromPointer(e);
+    });
+  }
+  if (prevEl) prevEl.addEventListener("click", e => { e.stopPropagation(); stepBeat(-1); });
+  if (nextEl) nextEl.addEventListener("click", e => { e.stopPropagation(); stepBeat(1); });
   addEventListener("keydown", e => {
     if (!active) return;
     if (e.key === "Escape") { e.preventDefault(); skip(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); stepBeat(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); stepBeat(1); }
   }, true);
 
   document.addEventListener("site:enter", e => {
@@ -2340,6 +2401,6 @@ window.Genesis = (function () {
   return {
     get active() { return active; },
     get pending() { return pending(); },
-    play, skip, step, draw,
+    play, skip, seek, step, draw,
   };
 })();
