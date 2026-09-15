@@ -1649,16 +1649,16 @@ window.Genesis = (function () {
 
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
     const dieM = smooth(clamp((fall - 0.76) / 0.20, 0, 1));
-    let mdU = mix(MAIN_U + 0.02, MAIN_U + 0.14, four);
+    let mdU = mix(MAIN_U - 0.02, MAIN_U - 0.14, four);
     let mdY = gy(0.10, mdU);
     let mdAmt = born * (1 - dieM);
     if (fifth > 0) {
-      mdU = mix(MAIN_U + 0.14, MAIN_U + 0.04, fifth);
+      mdU = mix(MAIN_U - 0.14, MAIN_U - 0.04, fifth);
       mdY = gy(0.08, mdU);
     }
     if (fall > 0) {
       const yk = keyAt(YELLOW_KEYS, fall);
-      mdU = mix(MAIN_U + 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
+      mdU = mix(MAIN_U - 0.04, MAIN_U + 0.06 + yk.x * 0.11, fallIn);
       mdY = mix(gy(0.08, mdU),
                 mix(gy(0.06, mdU) + yk.y * span * 0.10,
                     mainSurfY(mdU, mainRise, scar) + 26, dieM), fallIn);
@@ -1666,28 +1666,34 @@ window.Genesis = (function () {
     if (ret > 0) mdAmt = 0;
 
     const slot = (start) => clamp((four - start) / 0.22, 0, 1);
-    let cU = mix(MAIN_U + 0.24, NEST_U + 0.16, fifth);
+    let cU = mix(MAIN_U - 0.24, NEST_U + 0.16, fifth);
     let cAmt = slot(0.12);
-    let aelU = mix(MAIN_U + 0.32, MAIN_U + 0.22, fallIn);
+    let aelU = mix(MAIN_U - 0.32, MAIN_U - 0.22, fallIn);
     let aelY = gy(mix(0.02, 0.00, fallIn), aelU);
     let aelAmt = slot(0.36);
-    let vU = mix(MAIN_U + 0.17, MAIN_U + 0.10, fallIn);
+    let vU = mix(MAIN_U - 0.17, MAIN_U - 0.10, fallIn);
     let vY = gy(mix(0.20, 0.22, fallIn), vU);
     let vAmt = slot(0.58);
     let cLane = mix(0.14, 0.06, fifth);
+    /* Cadmus covers a lot of ground (spawn to the nest, and back);
+       sampling the live, noisy terrain at every step of that made
+       him bob up and down like he was tripping over it. Blend the
+       height at the two ends of each leg instead, so he walks a
+       smooth line between them. */
+    let cY = mix(gy(0.14, MAIN_U - 0.24), gy(0.06, NEST_U + 0.16), fifth);
     if (fall > 0) {
       cU = mix(NEST_U + 0.16, MAIN_U - 0.08, fallIn);
       cLane = mix(0.06, 0.12, fallIn);
+      cY = mix(gy(0.06, NEST_U + 0.16), gy(0.12, MAIN_U - 0.08), fallIn);
     }
-    let cY = gy(cLane, cU);
     if (ret > 0) {
       /* they walk west into the city they are about to disappear into */
       const home = smooth(clamp(ret / 0.85, 0, 1));
       const fadeHome = mix(1, 0.10, clamp((ret - 0.45) / 0.55, 0, 1));
       cU = mix(MAIN_U - 0.08, CITY_U + 0.13, home);
-      aelU = mix(MAIN_U + 0.22, CITY_U + 0.34, home);
-      vU = mix(MAIN_U + 0.10, CITY_U - 0.08, home);
-      cY = gy(0.10, cU);
+      aelU = mix(MAIN_U - 0.22, CITY_U + 0.34, home);
+      vU = mix(MAIN_U - 0.10, CITY_U - 0.08, home);
+      cY = mix(gy(0.12, MAIN_U - 0.08), gy(0.10, CITY_U + 0.13), home);
       aelY = gy(0.02, aelU);
       vY = gy(0.20, vU);
       cAmt *= fadeHome;
@@ -1701,11 +1707,14 @@ window.Genesis = (function () {
       : 0;
     const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
     let hU = mix(nestU, MAIN_U - 0.18, fallIn);
-    let hY = gy(mix(-0.04, -0.06, fallIn), hU);
+    /* same fix as Cadmus above: blend the endpoint heights instead
+       of following every ripple of ground in between. */
+    let hY = mix(gy(-0.04, nestU), gy(-0.06, MAIN_U - 0.18), fallIn);
     let hAmt = houndBorn;
     if (ret > 0) {
-      hU = mix(MAIN_U - 0.18, CITY_U - 0.28, smooth(clamp(ret / 0.85, 0, 1)));
-      hY = gy(-0.06, hU);
+      const homeH = smooth(clamp(ret / 0.85, 0, 1));
+      hU = mix(MAIN_U - 0.18, CITY_U - 0.28, homeH);
+      hY = mix(gy(-0.06, MAIN_U - 0.18), gy(-0.06, CITY_U - 0.28), homeH);
       hAmt = mix(1, 0.12, clamp((ret - 0.45) / 0.55, 0, 1));
     }
 
