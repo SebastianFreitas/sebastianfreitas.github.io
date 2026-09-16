@@ -882,11 +882,13 @@ window.Genesis = (function () {
     lg.addColorStop(0.72, `rgba(86,102,112,${0.08 * grow})`);
     lg.addColorStop(1, "rgba(70,84,92,0)");
     ctx.fillStyle = lg;
+    ctx.beginPath();
     for (let b = first; b <= last; b++) {
       const x = sx(b * BAY_U);
       if (x < x0 - 8 || x > x1 + 8) continue;
-      ctx.fillRect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
+      ctx.rect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
     }
+    ctx.fill();
     ctx.strokeStyle = `rgba(132,150,159,${0.26 * grow})`;
     ctx.lineWidth = Math.max(0.8, legW * 0.55);
     for (let b = first; b <= last; b++) {
@@ -1498,7 +1500,7 @@ window.Genesis = (function () {
 
   function rexSurfY(u) { return H * 1.16 - rexLandHeight(u, REX_BANDS[0]) * H; }
 
-  function drawRexLand(ctx, rise, originX, originY) {
+  function drawRexLand(ctx, rise, originX, originY, floorY) {
     if (rise < 0.02) return;
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
     const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
@@ -1506,7 +1508,7 @@ window.Genesis = (function () {
     const x0 = sx(REX_WEST) - 36;
     const x1 = sx(REX_EAST) + 80;
     if (x1 < -80 || x0 > W + 80) return;
-    const bottom = H * 2.5;
+    const bottom = floorY != null ? Math.min(H * 2.5, floorY) : H * 2.5;
     const baseY = H * 1.16;
     const step = 6;
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
@@ -2131,9 +2133,12 @@ window.Genesis = (function () {
     }
 
     /* a few strata following the surface, fading out with depth,
-       so the body reads as rock rather than a filled shape */
+       so the body reads as rock rather than a filled shape.
+       Each stratum point sits at least H*0.052 - 8 px under the surface
+       point with the same x, so above ~280 px of height the lines can
+       never reach the edge and the clip only costs time. */
     ctx.save();
-    ctx.clip(path);
+    if (H < 280) ctx.clip(path);
     for (let k = 1; k <= 5; k++) {
       const drop = k * H * 0.052;
       const a = (0.10 - k * 0.014) * rise;
@@ -2753,7 +2758,10 @@ window.Genesis = (function () {
     if (uSwarm > 0.1 && uWomb < 0.2) shake = Math.max(shake, 0.18);
 
     const landRise = smooth(clamp(uLand / 0.9, 0, 1));
-    drawRexLand(ctx, landRise, L.originX, L.originY);
+    /* inside Rex the depths paint opaque rock over everything below
+       1.69 screen heights, so the land fill can stop just under that */
+    const depthsOn = (beat === iDeep || beat === iSlip) && dive >= 0.001;
+    drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? H * 1.72 : null);
     drawBuried(ctx);
     drawDepths(ctx, dive, diveY);
     drawRexHole(ctx);
