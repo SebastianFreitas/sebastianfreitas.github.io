@@ -48,10 +48,16 @@ window.Genesis = (function () {
       line: "Two lights tore out of it: Obrokxus, already wrong — and Rex, orange as a new star." },
     { id: "fight", dur: 8.2, tag: "obrokxus · rex",
       line: "They met in the void. Rex broke." },
-    { id: "land",  dur: 5.4, tag: "rex the surface",
-      line: "His body cooled into ground. They called that ground Rex the Surface." },
+    { id: "land",  dur: 6.0, tag: "rex the surface",
+      line: "With the last of himself, Rex closed around Obrokxus and fell. His body cooled into ground, and held him there." },
+    { id: "gods", dur: 7.0, tag: "the others",
+      line: "It bought time. The womb tore again: Ormius, Ava, Kaeron, Kaelum, Orochronus." },
+    { id: "deep", dur: 11.0, tag: "inside rex",
+      line: "They went down after him, into Rex's deepest places. Chaos came up to meet them, answering to no one. The war lasted almost ten thousand years." },
+    { id: "slip", dur: 7.0, tag: "his brothers",
+      line: "In time Obrokxus set his brothers on the gods, and while they were held, he climbed." },
     { id: "flee", dur: 11.6, tag: "obrokxus flees",
-      line: "Obrokxus ran west. Two lights followed: Ormius, law in gold-red — and Ava, pale as a healing wound." },
+      line: "He tore out through Rex and left a hole behind. Two lights followed: Ormius, law in gold-red — and Ava, pale as a healing wound." },
     { id: "war", dur: 9.2, tag: "their children",
       line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim — an everlasting war." },
     { id: "stalemate", dur: 5.4, tag: "nothing won",
@@ -92,9 +98,20 @@ window.Genesis = (function () {
   const ET_END_U = MAIN_U - 3.85;
   const ET_START_U = MAIN_U - 0.58;
   const FLEE_START_U = REX_U - 0.18;
+  const BURY_U = FLEE_START_U;      /* where Rex and Obrokxus go into the ground, and where he comes out */
+  const DEEP_U = ROOT_U - 0.47;     /* the deepest pocket inside Rex */
+  const DEEP_Y = 1.62;              /* its centre, in screen heights below the top of the frame */
+  const DIVE_DEPTH = 1.12;          /* how far the camera sinks, in screen heights */
   const FLEE_CAM_RATE = 2.20;
   const ET_CAM_RATE   = 2.60;
   const KINDS  = ["spindle", "cluster", "crawler", "shard", "ring", "blob", "spindle", "crawler"];
+  const SIEGE_GODS = [
+    { kind: "ormius",     name: "ORMIUS",     rgb: "210,70,48",   ang: 3.40, ph: 0.0 },
+    { kind: "ava",        name: "AVA",        rgb: "120,214,96",  ang: 2.20, ph: 1.3 },
+    { kind: "kaeron",     name: "KAERON",     rgb: "70,130,255",  ang: 0.35, ph: 2.6 },
+    { kind: "kaelum",     name: "KAELUM",     rgb: "236,92,150",  ang: 4.60, ph: 3.9 },
+    { kind: "orochronus", name: "OROCHRONUS", rgb: "196,206,226", ang: 5.70, ph: 5.2 },
+  ];
   const GREYS  = [
     [16, 18, 20],
     [44, 48, 52],
@@ -238,11 +255,12 @@ window.Genesis = (function () {
   let W = 0, H = 0, t = 0, shake = 0, flash = 0, clashCool = 0;
   let cam = 0, camTarget = 0;
   const trailY = [], trailR = [], trailM = [], trailA = [], trailH = [], rings = [];
+  const trailG = [[], [], [], [], []];
   const nameSeen = {};
   const NAME_DELAY = 1.5;
   const NAME_FADE = 0.8;
 
-  const motes = [], oldones = [], souls = [], troops = [];
+  const motes = [], oldones = [], souls = [], troops = [], brothers = [];
   const cityFar = [], cityMid = [], cityNear = [], spikes = [];
   (function seed() {
     const r = mulberry(4242);
@@ -339,6 +357,9 @@ window.Genesis = (function () {
         shade: r(),
       });
     }
+    for (let i = 0; i < 110; i++)
+      brothers.push({ ang: r() * 6.283, rad: r(), sp: (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.9),
+                      ph: r() * 6.28, size: 5 + r() * 12, born: Math.pow(r(), 0.8), hue: r() });
   })();
 
   function pending() {
@@ -497,12 +518,16 @@ window.Genesis = (function () {
     local = 0;
     if (BEATS[beat] && BEATS[beat].id === "flee") {
       trailY.length = 0;
+      trailR.length = 0;
     }
     if (BEATS[beat] && BEATS[beat].id === "eternity") {
       trailR.length = 0;
       trailM.length = 0;
       trailA.length = 0;
       trailH.length = 0;
+    }
+    if (BEATS[beat] && BEATS[beat].id === "gods") {
+      for (const tg of trailG) tg.length = 0;
     }
     paintCopy();
     paintTicks();
@@ -530,6 +555,7 @@ window.Genesis = (function () {
     trailM.length = 0;
     trailA.length = 0;
     trailH.length = 0;
+    for (const tg of trailG) tg.length = 0;
     rings.length = 0;
     flash = 0;
     clashCool = 0;
@@ -1215,22 +1241,26 @@ window.Genesis = (function () {
     yx = Math.min(yx, west);
     rx = Math.min(rx, west);
 
-    const die = smooth(clamp((uFight - 0.82) / 0.18 + uLand * 1.2, 0, 1));
-    const groundY = H * DECK + 10;
-    yy = mix(yy, groundY, die);
-    yx = mix(yx, arenaX - span * 0.02, die);
-
-    const recede = smooth(clamp((uLand - 0.02) / 0.98, 0, 1));
-    rx = mix(rx, sx(REX_U - 0.18), recede);
-    ry = mix(ry, H * 0.36, recede);
+    /* Rex's last act: he closes his whole body around Obrokxus, and
+       the two of them go down together into what becomes the ground */
+    const wrap = smooth(clamp((uFight - 0.80) / 0.10, 0, 1));
+    const landLin = linear("land");
+    const dropP = clamp((uFight - 0.88) / 0.12, 0, 1) * 0.35 + clamp(landLin / 0.45, 0, 1) * 0.65;
+    const bx = sx(BURY_U);
+    const by = rexSurfY(BURY_U) + H * 0.10;
+    rx = mix(rx, bx, smooth(dropP));
+    ry = mix(ry, by, dropP * dropP);
+    yx = mix(yx, rx, wrap);
+    yy = mix(yy, ry, wrap);
+    const bury = smooth(clamp((landLin - 0.30) / 0.30, 0, 1));
 
     return {
       yx, yy, rx, ry,
-      yAmt: emerge * (1 - die),
-      rAmt: emerge * (1 - recede * 0.12),
-      originX: yx,
-      originY: yy,
-      die, recede,
+      yAmt: emerge * (1 - wrap * 0.35) * (1 - bury),
+      rAmt: emerge * (1 - bury * 0.6),
+      originX: rx,
+      originY: ry,
+      die: dropP, wrap, bury, recede: 0,
     };
   }
 
@@ -1297,6 +1327,56 @@ window.Genesis = (function () {
       ctx.beginPath(); ctx.arc(x, y, R * 3.8, 0, 6.283); ctx.fill();
       ctx.fillStyle = `rgba(234,255,226,${0.95 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.26, 0, 6.283); ctx.fill();
+    } else if (kind === "kaelum") {
+      const a = amt;
+      ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.8);
+      halo.addColorStop(0, `rgba(255,220,236,${0.9 * a})`);
+      halo.addColorStop(0.2, `rgba(236,92,150,${0.72 * a})`);
+      halo.addColorStop(0.55, `rgba(130,30,80,${0.24 * a})`);
+      halo.addColorStop(1, "rgba(236,92,150,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(x, y, R * 3.8, 0, 6.283); ctx.fill();
+      ctx.fillStyle = `rgba(255,236,244,${0.95 * a})`;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.26, 0, 6.283); ctx.fill();
+    } else if (kind === "orochronus") {
+      const a = amt;
+      ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.6);
+      halo.addColorStop(0, `rgba(240,244,250,${0.9 * a})`);
+      halo.addColorStop(0.22, `rgba(160,172,196,${0.6 * a})`);
+      halo.addColorStop(0.55, `rgba(70,80,110,${0.2 * a})`);
+      halo.addColorStop(1, "rgba(160,172,196,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(x, y, R * 3.6, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = `rgba(226,232,244,${0.55 * a})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(x, y, R * 1.15, 0, 6.283); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(t * 2.4) * R, y + Math.sin(t * 2.4) * R);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(248,250,255,${0.95 * a})`;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.24, 0, 6.283); ctx.fill();
+    } else if (kind === "kaeron") {
+      const a = amt;
+      ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.8);
+      halo.addColorStop(0, `rgba(214,232,255,${0.9 * a})`);
+      halo.addColorStop(0.2, `rgba(70,130,255,${0.72 * a})`);
+      halo.addColorStop(0.55, `rgba(24,50,150,${0.24 * a})`);
+      halo.addColorStop(1, "rgba(70,130,255,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(x, y, R * 3.8, 0, 6.283); ctx.fill();
+      ctx.fillStyle = `rgba(214,232,255,${0.8 * a})`;
+      for (let k = 0; k < 3; k++) {
+        const ang = t * 1.6 + k * 2.094;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * R * 1.3, y + Math.sin(ang) * R * 1.3, 1.6, 0, 6.283);
+        ctx.fill();
+      }
+      ctx.fillStyle = `rgba(232,242,255,${0.95 * a})`;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.24, 0, 6.283); ctx.fill();
     } else if (kind === "mordrial") {
       const smoke = ctx.createRadialGradient(x, y, 0, x, y, R * 4.6);
       smoke.addColorStop(0, `rgba(60,8,12,${0.9 * amt})`);
@@ -1416,6 +1496,8 @@ window.Genesis = (function () {
     ctx.restore();
   }
 
+  function rexSurfY(u) { return H * 1.16 - rexLandHeight(u, REX_BANDS[0]) * H; }
+
   function drawRexLand(ctx, rise, originX, originY) {
     if (rise < 0.02) return;
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
@@ -1424,7 +1506,7 @@ window.Genesis = (function () {
     const x0 = sx(REX_WEST) - 36;
     const x1 = sx(REX_EAST) + 80;
     if (x1 < -80 || x0 > W + 80) return;
-    const bottom = H + 80;
+    const bottom = H * 2.5;
     const baseY = H * 1.16;
     const step = 6;
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
@@ -1444,7 +1526,7 @@ window.Genesis = (function () {
       for (const p of pts) path.lineTo(p[0], p[1]);
       path.lineTo(pts[pts.length - 1][0], bottom);
       path.closePath();
-      const g = ctx.createLinearGradient(0, H * 0.08, 0, bottom);
+      const g = ctx.createLinearGradient(0, H * 0.08, 0, H + 80);
       g.addColorStop(0, b.fill[0]);
       g.addColorStop(1, b.fill[1]);
       ctx.globalAlpha = rise;
@@ -1470,6 +1552,166 @@ window.Genesis = (function () {
         g.addColorStop(1, "rgba(245,138,52,0)");
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(xC, yC, 80 + rise * 120, 0, 6.283); ctx.fill();
+      }
+    }
+  }
+
+  function drawRexHole(ctx) {
+    const iF = idxOf("flee");
+    if (beat < iF) return;
+    const fleeLin = beat === iF ? linear("flee") : 1;
+    const hx = sx(FLEE_START_U);
+    if (hx < -160 || hx > W + 160) return;
+    const hy = rexSurfY(FLEE_START_U);
+    const open = smooth(clamp(fleeLin / 0.05, 0, 1));
+    const R = Math.min(W, H) * 0.06 * Math.max(open, 0.001);
+    const erupt = beat === iF ? 1 - smooth(clamp(fleeLin / 0.14, 0, 1)) : 0;
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+
+    ctx.beginPath();
+    ctx.moveTo(hx - R * 1.2, hy);
+    ctx.lineTo(hx + R * 1.2, hy);
+    ctx.lineTo(hx + R * 0.5, H * 1.45);
+    ctx.lineTo(hx - R * 0.5, H * 1.45);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(4,1,1,${0.9 * open})`;
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, R * 1.6);
+    g.addColorStop(0, `rgba(4,1,1,${0.97 * open})`);
+    g.addColorStop(0.6, `rgba(20,5,4,${0.85 * open})`);
+    g.addColorStop(1, "rgba(20,5,4,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(hx, hy + R * 0.15, R * 1.6, R * 0.55, 0, 0, 6.283); ctx.fill();
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = `rgba(245,138,52,${(0.35 + 0.25 * erupt) * open})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(hx, hy + R * 0.15, R * 1.6, R * 0.55, 0, 0, 6.283); ctx.stroke();
+    ctx.globalCompositeOperation = "source-over";
+
+    if (erupt > 0.02) {
+      drawTintBeam(ctx, hx, hy, hx, hy - H * 0.55, "200,40,40", erupt);
+      const q = clamp(fleeLin / 0.14, 0, 1);
+      for (let k = 0; k < 14; k++) {
+        const vx = (k / 13 - 0.5) * 2;
+        const px = hx + vx * R * 4 * q;
+        const py = hy - (1.2 + (k % 3) * 0.4) * R * 3 * q + R * 6 * q * q;
+        const sz = 3 + (k % 4);
+        ctx.fillStyle = `rgba(60,24,12,${erupt})`;
+        ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+      }
+    }
+
+    if (beat === iF && fleeLin < 0.05 && clashCool <= 0) {
+      flash = Math.max(flash, 0.9);
+      shake = Math.max(shake, 1.0);
+      clashCool = 0.3;
+      rings.push({ x: hx, y: hy, r: 10, a: 1 });
+    }
+
+    ctx.restore();
+  }
+
+  /* Rex's body closing around something, fingers of ground and ember
+     curling in from all sides */
+  function drawRexGrip(ctx, x, y, amt, R) {
+    if (amt < 0.02) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, R * 1.6);
+    glow.addColorStop(0, `rgba(255,200,140,${0.35 * amt})`);
+    glow.addColorStop(0.4, `rgba(245,138,52,${0.30 * amt})`);
+    glow.addColorStop(1, "rgba(180,70,30,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y, R * 1.6, 0, 6.283); ctx.fill();
+
+    for (let k = 0; k < 5; k++) {
+      const a0 = k * 1.2566 + t * 0.35;
+      ctx.strokeStyle = `rgba(255,176,96,${0.75 * amt})`;
+      ctx.lineWidth = 3 + R * 0.06;
+      ctx.beginPath();
+      ctx.arc(x, y, R * (0.85 + 0.1 * Math.sin(t * 2 + k)), a0, a0 + 0.95);
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(255,226,190,${0.45 * amt})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(x, y, R * 0.62, a0 + 0.6, a0 + 1.4);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  /* Obrokxus, held under the surface where Rex closed around him */
+  function drawBuried(ctx) {
+    const iL = idxOf("land"), iG = idxOf("gods");
+    if (beat !== iL && beat !== iG) return;
+    const amt = beat === iL
+      ? smooth(clamp((linear("land") - 0.35) / 0.30, 0, 1))
+      : 1 - smooth(clamp((linear("gods") - 0.70) / 0.30, 0, 1));
+    if (amt < 0.02) return;
+    const x = sx(BURY_U), y = rexSurfY(BURY_U) + H * 0.10;
+    const R = Math.min(W, H) * 0.16 * (1 + 0.12 * Math.sin(t * 3.2));
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, `rgba(200,36,40,${0.30 * amt})`);
+    g.addColorStop(0.5, `rgba(245,138,52,${0.10 * amt})`);
+    g.addColorStop(1, "rgba(245,138,52,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  /* the womb tears again, and the five gods come out over the buried
+     ground, then dive down into it to join the war */
+  function drawGodsBirth(ctx, flesh) {
+    if (beat !== idxOf("gods")) return;
+    const p = linear("gods"), span = Math.min(W, H);
+    const exitX = flesh ? flesh.cx - flesh.rx * 0.92 : sx(ROOT_U) - span * 0.28;
+    const exitY = flesh ? flesh.cy + flesh.ry * 0.04 : H * 0.5;
+
+    const rip = smooth(clamp(p / 0.08, 0, 1)) * (1 - smooth(clamp((p - 0.50) / 0.15, 0, 1)));
+    drawRip(ctx, flesh, rip);
+    if (rip > 0.1) shake = Math.max(shake, 0.32 * rip);
+
+    const bx = sx(BURY_U), by = rexSurfY(BURY_U);
+
+    for (let i = 0; i < SIEGE_GODS.length; i++) {
+      const g = SIEGE_GODS[i];
+      const out = smooth(clamp((p - 0.06 - i * 0.08) / 0.20, 0, 1));
+      if (out <= 0) continue;
+      const hoverX = exitX - span * (0.30 + i * 0.07);
+      const hoverY = H * (0.22 + ((i * 37) % 5) * 0.045) + Math.sin(t * 1.3 + g.ph) * span * 0.02;
+      let x = mix(exitX, hoverX, out), y = mix(exitY, hoverY, out);
+
+      const dive = clamp((p - 0.60 - i * 0.05) / 0.25, 0, 1);
+      const landX = bx + (i - 2) * span * 0.02;
+      x = mix(x, landX, smooth(dive));
+      y = mix(y, by + H * 0.08, dive * dive);
+
+      const amt = clamp(out * 1.4, 0, 1) * (1 - smooth(clamp((dive - 0.85) / 0.15, 0, 1)));
+      pushTrail(trailG[i], x, y);
+      drawTrail(ctx, trailG[i], g.rgb, amt);
+      drawOrb(ctx, x, y, amt, g.kind, 0.62);
+      drawName(ctx, x, y, amt, g.name, 24);
+
+      const fl = Math.sin(Math.PI * clamp((dive - 0.75) / 0.25, 0, 1));
+      if (fl > 0.02) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const flare = ctx.createRadialGradient(landX, by, 0, landX, by, span * 0.08);
+        flare.addColorStop(0, `rgba(${g.rgb},${0.5 * fl})`);
+        flare.addColorStop(1, `rgba(${g.rgb},0)`);
+        ctx.fillStyle = flare;
+        ctx.beginPath(); ctx.arc(landX, by, span * 0.08, 0, 6.283); ctx.fill();
+        ctx.restore();
+        shake = Math.max(shake, 0.25 * fl);
       }
     }
   }
@@ -1586,6 +1828,11 @@ window.Genesis = (function () {
         oy = mix(oy, F.oyAbs, F.w);
       }
     }
+    if (et <= 0 && ret <= 0 && fall <= 0 && war <= 0) {
+      const outO = smooth(clamp(fleeLin / 0.07, 0, 1));
+      ou = mix(BURY_U, ou, outO);
+      oy = mix(rexSurfY(BURY_U) + H * 0.03, oy, outO);
+    }
 
     let mu = C.mu;
     let my = yWob(1.1, 0.02) - H * 0.03, mAmt = 0;
@@ -1618,6 +1865,11 @@ window.Genesis = (function () {
         my = mix(yWob(1.1, 0.018) - H * 0.03, yWob(0.8, 0.012), lock);
       }
     }
+    if (et <= 0 && ret <= 0 && war <= 0) {
+      const outM = smooth(clamp((fleeLin - 0.02) / 0.12, 0, 1));
+      mu = mix(BURY_U, mu, outM);
+      my = mix(rexSurfY(BURY_U) + H * 0.03, my, outM);
+    }
 
     let au = C.au;
     let ay = yWob(2.6, 0.018) + H * 0.04, aAmt = 0;
@@ -1640,6 +1892,11 @@ window.Genesis = (function () {
         au = mix(WEST_U - 0.02, MAIN_U + 0.20, lock);
         ay = mix(yWob(2.6, 0.016) + H * 0.035, yWob(0.9, 0.012), lock);
       }
+    }
+    if (et <= 0 && ret <= 0 && war <= 0) {
+      const outA = smooth(clamp((fleeLin - 0.06) / 0.12, 0, 1));
+      au = mix(BURY_U, au, outA);
+      ay = mix(rexSurfY(BURY_U) + H * 0.03, ay, outA);
     }
 
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
@@ -2224,6 +2481,171 @@ window.Genesis = (function () {
     drawRings(ctx);
   }
 
+  /* the deepest pocket inside Rex, and the war fought there. Drawn in
+     world space — the caller has already translated by -diveY, so
+     what is here lines up with the buried scene above it. */
+  function drawDepths(ctx, dive, diveY) {
+    const iD = idxOf("deep"), iP = idxOf("slip");
+    if ((beat !== iD && beat !== iP) || dive < 0.001) return;
+    const inSlip = beat === iP;
+    const deepLin = inSlip ? 1 : linear("deep");
+    const slipLin = inSlip ? linear("slip") : 0;
+    const span = Math.min(W, H), dx = sx(DEEP_U), dy = H * DEEP_Y;
+    ctx.save();
+
+    /* strata */
+    ctx.globalCompositeOperation = "source-over";
+    const strata = ctx.createLinearGradient(0, H * 0.98, 0, H * 2.4);
+    strata.addColorStop(0, "rgba(38,49,61,0)");
+    strata.addColorStop(0.12, "rgba(30,30,32,0.92)");
+    strata.addColorStop(0.5, "rgba(40,20,16,1)");
+    strata.addColorStop(1, "rgba(66,24,12,1)");
+    ctx.fillStyle = strata;
+    ctx.fillRect(-40, H * 0.98, W + 80, H * 1.6);
+
+    /* layer lines */
+    for (let k = 0; k <= 8; k++) {
+      const yk = H * (1.12 + k * 0.13);
+      ctx.beginPath();
+      let first = true;
+      for (let px = -20; px <= W + 20; px += 24) {
+        const y = yk + Math.sin(px * 0.011 + k * 1.7) * H * 0.012
+          + (ridge(px * 0.004 + k * 3.1, 7000 + k) - 0.5) * H * 0.03;
+        if (first) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+        first = false;
+      }
+      ctx.strokeStyle = "rgba(190,160,130,0.08)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    /* molten veins */
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineWidth = 1.6;
+    for (let k = 0; k < 12; k++) {
+      const va = k * 0.5236 + 0.3;
+      const x0 = dx + Math.cos(va) * W * 0.30, y0 = dy + Math.sin(va) * H * 0.26;
+      const x1 = dx + Math.cos(va) * W * 0.75, y1 = dy + Math.sin(va) * H * 0.62;
+      const mx = (x0 + x1) * 0.5 + Math.sin(t * 0.5 + k) * span * 0.04;
+      const my = (y0 + y1) * 0.5 + Math.sin(t * 0.5 + k) * span * 0.04;
+      ctx.strokeStyle = `rgba(245,138,52,${0.16 + 0.08 * Math.sin(t * 1.1 + k)})`;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(mx, my, x1, y1);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    /* the pocket */
+    fleshPath(ctx, dx, dy, W * 0.36, H * 0.30, 0.7, 3);
+    const pocket = ctx.createRadialGradient(dx, dy, 0, dx, dy, Math.max(W, H) * 0.4);
+    pocket.addColorStop(0, "rgba(170,70,26,0.85)");
+    pocket.addColorStop(0.55, "rgba(96,34,16,0.85)");
+    pocket.addColorStop(1, "rgba(40,14,8,0.9)");
+    ctx.fillStyle = pocket;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,160,80,0.45)";
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    /* Obrokxus */
+    let ox = dx + Math.sin(t * 0.9) * span * 0.03, oy = dy + Math.cos(t * 1.1) * span * 0.02;
+    const rise = inSlip ? smooth(clamp((slipLin - 0.40) / 0.50, 0, 1)) : 0;
+    ox = mix(ox, sx(BURY_U), rise); oy = mix(oy, rexSurfY(BURY_U) + H * 0.03, rise);
+
+    /* phases */
+    const grip = inSlip ? mix(0.35, 0, smooth(clamp(slipLin / 0.40, 0, 1))) : mix(1, 0.35, deepLin);
+    const bind = inSlip ? smooth(clamp(slipLin / 0.40, 0, 1)) : 0;
+    const grow = clamp((deepLin - 0.22) / 0.60, 0, 1);
+    const ex = sx(BURY_U), ey = rexSurfY(BURY_U) + H * 0.08;
+
+    /* gods */
+    const gods = [];
+    for (let i = 0; i < SIEGE_GODS.length; i++) {
+      const g = SIEGE_GODS[i];
+      const desc = smooth(clamp((deepLin - i * 0.04) / 0.30, 0, 1));
+      const ga = g.ang + t * 0.22 + Math.sin(t * 0.4 + g.ph) * 0.3;
+      const R = mix(span * (0.30 + 0.04 * Math.sin(t * 0.5 + g.ph)), span * 0.44, bind);
+      const ringX = dx + Math.cos(ga) * R * 1.3, ringY = dy + Math.sin(ga) * R * 0.85;
+      const strike = Math.pow(Math.max(0, Math.sin(t * 1.7 + g.ph)), 6) * (1 - bind) * desc;
+      const gx = mix(ex, mix(ringX, ox, strike * 0.88), desc), gy = mix(ey, mix(ringY, oy, strike * 0.88), desc);
+      gods.push({ g, gx, gy, amt: clamp(desc * 3, 0, 1), strike });
+    }
+
+    /* brothers */
+    for (let i = 0; i < brothers.length; i++) {
+      const b = brothers[i];
+      if (b.born > grow) continue;
+      const appear = clamp((grow - b.born) / 0.08, 0, 1);
+      const edgeX = dx + Math.cos(b.ang) * W * 0.36, edgeY = dy + Math.sin(b.ang) * H * 0.30;
+      const ba = b.ang + t * b.sp * 0.35, fr = span * (0.10 + b.rad * 0.27);
+      const orbX = ox + Math.cos(ba) * fr * 1.3 + Math.sin(t * 3.1 + b.ph) * 4;
+      const orbY = oy + Math.sin(ba) * fr * 0.85 + Math.cos(t * 2.7 + b.ph) * 4;
+      const freeX = mix(edgeX, orbX, smooth(appear)), freeY = mix(edgeY, orbY, smooth(appear));
+      const tg = gods[i % gods.length];
+      const boundX = tg.gx + Math.cos(b.ph + t * 2.2 * b.sp) * span * 0.05, boundY = tg.gy + Math.sin(b.ph + t * 2.2 * b.sp) * span * 0.05;
+      const bx = mix(freeX, boundX, bind), by = mix(freeY, boundY, bind);
+      const al = clamp(appear * 2, 0, 1) * (0.6 + 0.4 * Math.sin(t * 5 + b.ph));
+      if (al < 0.03) continue;
+      const rgb = b.hue < 0.4 ? "150,20,60" : b.hue < 0.75 ? "120,40,140" : "90,12,18";
+      ctx.globalCompositeOperation = "lighter";
+      const glowR = b.size * 2.4;
+      const glow = ctx.createRadialGradient(bx, by, 0, bx, by, glowR);
+      glow.addColorStop(0, `rgba(${rgb},${0.45 * al})`);
+      glow.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(bx, by, glowR, 0, 6.283); ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const ang = k * 1.2566 + t * b.sp;
+        const r = b.size * (0.6 + 0.4 * Math.sin(t * 4 + b.ph + k * 1.7));
+        const px = bx + Math.cos(ang) * r, py = by + Math.sin(ang) * r;
+        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = `rgba(6,2,4,${0.9 * al})`;
+      ctx.fill();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = `rgba(${rgb},${0.85 * al})`;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    /* gods draw */
+    for (const e of gods) {
+      drawTintBeam(ctx, e.gx, e.gy, ox, oy, e.g.rgb, e.strike * e.amt);
+      if (e.strike > 0.8 && e.amt > 0.3 && clashCool <= 0 && Math.hypot(e.gx - ox, e.gy - oy) < span * 0.12) {
+        flash = Math.max(flash, 0.5);
+        shake = Math.max(shake, 0.5);
+        clashCool = 0.14;
+        rings.push({ x: (e.gx + ox) * 0.5, y: (e.gy + oy) * 0.5, r: 10, a: 1 });
+      }
+      drawOrb(ctx, e.gx, e.gy, e.amt, e.g.kind, 0.62);
+    }
+
+    /* Obrokxus and names */
+    drawOrb(ctx, ox, oy, 1, "obrokxus");
+    drawRexGrip(ctx, ox, oy, grip, span * 0.13);
+    for (const e of gods) drawName(ctx, e.gx, e.gy, e.amt, e.g.name, 24);
+    drawName(ctx, ox, oy, 1, "OBROKXUS", 34);
+    drawRings(ctx);
+
+    /* year counter */
+    const years = inSlip ? 9000 + slipLin * 940 : deepLin * 9000;
+    const n = Math.floor(years / 10) * 10;
+    ctx.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = `rgba(245,190,140,${0.7 * dive})`;
+    ctx.fillText("YEAR " + n.toLocaleString("en-US"), W * 0.5, H * 0.08 + diveY);
+
+    shake = Math.max(shake, 0.16 * dive);
+    if (rise > 0.02 && rise < 0.98) shake = Math.max(shake, 0.35);
+    ctx.restore();
+  }
+
   function drawLiveWorld(ctx, amt) {
     if (amt < 0.01 || !window.World) return;
     const camX = thenCamX != null ? thenCamX : World.LAND.bridge;
@@ -2269,6 +2691,14 @@ window.Genesis = (function () {
     drawMotes(ctx, clamp(uBreak * 0.55 + uWalk * 0.45 + uLand * 0.15 + uFlee * 0.2, 0, 1), streak);
     drawChaos(ctx, clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1));
 
+    const iDeep = idxOf("deep"), iSlip = idxOf("slip");
+    let dive = 0;
+    if (beat === iDeep) dive = smooth(clamp(linear("deep") / 0.30, 0, 1));
+    else if (beat === iSlip) dive = 1 - smooth(clamp((linear("slip") - 0.45) / 0.55, 0, 1));
+    const diveY = dive * DIVE_DEPTH * H;
+    ctx.save();
+    ctx.translate(0, -diveY);
+
     const uBreakLin = linear("break");
     const leave = smooth(clamp(uBreakLin * 3.2, 0, 1));
     const burst = smooth(clamp((uBreakLin - 0.22) / 0.45, 0, 1));
@@ -2292,7 +2722,7 @@ window.Genesis = (function () {
     drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
-    if (uBirth > 0.04 && beat < idxOf("flee")) {
+    if (uBirth > 0.04 && beat < idxOf("gods")) {
       pushTrail(trailY, L.yx, L.yy);
       pushTrail(trailR, L.rx, L.ry);
       drawTrail(ctx, trailY, "245,138,52", L.yAmt);
@@ -2300,7 +2730,7 @@ window.Genesis = (function () {
 
       const dx = L.yx - L.rx, dy = L.yy - L.ry;
       const dist = Math.hypot(dx, dy);
-      if (uFight > 0.05 && uLand < 0.15 && dist < 38 && clashCool <= 0) {
+      if (uFight > 0.05 && uLand < 0.15 && dist < 38 && clashCool <= 0 && L.wrap < 0.3) {
         flash = 1;
         shake = Math.max(shake, 0.95);
         clashCool = 0.26;
@@ -2309,11 +2739,13 @@ window.Genesis = (function () {
       const beamU = (uFight > 0.66 && uFight < 0.78) ? 1 - Math.abs(uFight - 0.72) / 0.12 : 0;
       drawBeam(ctx, L.yx, L.yy, L.rx, L.ry, beamU * Math.max(L.yAmt, L.rAmt));
       drawOrb(ctx, L.rx, L.ry, L.rAmt, "obrokxus");
+      drawRexGrip(ctx, L.rx, L.ry, L.wrap * (1 - L.bury), Math.min(W, H) * mix(0.26, 0.11, L.wrap));
       drawOrb(ctx, L.yx, L.yy, L.yAmt, "rex");
       drawName(ctx, L.rx, L.ry, L.rAmt, "OBROKXUS", 34);
       drawName(ctx, L.yx, L.yy, L.yAmt, "REX", 30);
       drawRings(ctx);
     }
+    drawGodsBirth(ctx, flesh);
 
     if (uFight > 0.08 && uLand < 0.2) shake = Math.max(shake, 0.22 + uFight * 0.2);
     if (uFight > 0.82 && uLand < 0.2) shake = Math.max(shake, 0.55 + (1 - L.yAmt) * 0.45);
@@ -2322,7 +2754,11 @@ window.Genesis = (function () {
 
     const landRise = smooth(clamp(uLand / 0.9, 0, 1));
     drawRexLand(ctx, landRise, L.originX, L.originY);
+    drawBuried(ctx);
+    drawDepths(ctx, dive, diveY);
+    drawRexHole(ctx);
     drawSaga(ctx);
+    ctx.restore();
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
