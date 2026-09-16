@@ -48,7 +48,7 @@ window.Genesis = (function () {
       line: "Two lights tore out of it: Obrokxus, already wrong — and Rex, orange as a new star." },
     { id: "fight", dur: 8.2, tag: "obrokxus · rex",
       line: "They met in the void. Rex broke." },
-    { id: "land",  dur: 7.0, tag: "rex the surface",
+    { id: "land",  dur: 5.4, tag: "rex the surface",
       line: "His body cooled into ground. They called that ground Rex the Surface." },
     { id: "flee", dur: 11.6, tag: "obrokxus flees",
       line: "Obrokxus ran west. Two lights followed: Ormius, law in gold-red — and Ava, pale as a healing wound." },
@@ -684,8 +684,10 @@ window.Genesis = (function () {
     else if (uWalk < 0.001) target = 0;
     else if (uRoot > 0.02)
       /* root through rex the surface hold still with half the womb
-         past the right edge; panning further east shows its ragged side */
-      target = ROOT_U - 0.50;
+         past the right edge; panning further east shows its ragged side.
+         during the surface beat it eases onto where the chase camera
+         starts, so the flee beat opens on a move and not a jerk */
+      target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0), since("land"));
     else
       target = mix(0, ROOT_U - 0.50, clamp(uWalk, 0, 1));
     let camRate = 1.55;
@@ -1218,7 +1220,7 @@ window.Genesis = (function () {
     yy = mix(yy, groundY, die);
     yx = mix(yx, arenaX - span * 0.02, die);
 
-    const recede = smooth(clamp((uLand - 0.02) / 0.45, 0, 1));
+    const recede = smooth(clamp((uLand - 0.02) / 0.98, 0, 1));
     rx = mix(rx, sx(REX_U - 0.18), recede);
     ry = mix(ry, H * 0.36, recede);
 
@@ -2318,7 +2320,7 @@ window.Genesis = (function () {
     if (uBirth > 0.35 && uBirth < 0.95) shake = Math.max(shake, 0.32);
     if (uSwarm > 0.1 && uWomb < 0.2) shake = Math.max(shake, 0.18);
 
-    const landRise = clamp(uLand / 0.65, 0, 1);
+    const landRise = smooth(clamp(uLand / 0.9, 0, 1));
     drawRexLand(ctx, landRise, L.originX, L.originY);
     drawSaga(ctx);
 
