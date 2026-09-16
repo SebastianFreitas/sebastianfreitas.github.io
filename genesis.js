@@ -45,7 +45,7 @@ window.Genesis = (function () {
     { id: "womb",  dur: 6.6, tag: "Crede, ergo magica est.",
       line: "They sealed the wound and named the seal a womb." },
     { id: "birth", dur: 5.8, tag: "first born",
-      line: "Two lights tore out of it: Obrokxus, already wrong — and Rex, yellow as a new star." },
+      line: "Two lights tore out of it: Obrokxus, already wrong — and Rex, orange as a new star." },
     { id: "fight", dur: 8.2, tag: "obrokxus · rex",
       line: "They met in the void. Rex broke." },
     { id: "land",  dur: 7.0, tag: "rex the surface",
@@ -238,6 +238,9 @@ window.Genesis = (function () {
   let W = 0, H = 0, t = 0, shake = 0, flash = 0, clashCool = 0;
   let cam = 0, camTarget = 0;
   const trailY = [], trailR = [], trailM = [], trailA = [], trailH = [], rings = [];
+  const nameSeen = {};
+  const NAME_DELAY = 1.5;
+  const NAME_FADE = 0.8;
 
   const motes = [], oldones = [], souls = [], troops = [];
   const cityFar = [], cityMid = [], cityNear = [], spikes = [];
@@ -403,6 +406,28 @@ window.Genesis = (function () {
          / beatDur("flee") / FLEE_CAM_RATE;
   }
 
+  /* the chase is a fight on the move: the two lights keep catching
+     him and striking, and he keeps breaking away west. Sines only, so
+     nothing snaps; `w` is 0 at both ends of the beat, so it opens from
+     the plain chase and hands the war the plain chase back. */
+  function chaseFightAt(p) {
+    const span = Math.min(W, H);
+    const w = smooth(clamp((p - 0.04) / 0.16, 0, 1))
+            * (1 - smooth(clamp((p - 0.84) / 0.16, 0, 1)));
+    const ph = p * 16;
+    const strikeM = Math.pow(Math.max(0, Math.sin(ph * 1.5)), 6);
+    const strikeA = Math.pow(Math.max(0, Math.sin(ph * 1.5 + 2.2)), 6);
+    return {
+      w, strikeM, strikeA,
+      ouOff: Math.sin(ph * 0.8) * 0.030,
+      oyAbs: H * 0.34 + Math.sin(ph * 0.55 + 0.4) * span * 0.06,
+      mGap: mix(0.12 + Math.sin(ph * 0.6) * 0.03, 0.006, strikeM),
+      myOff: Math.sin(ph * 0.9 + 0.5) * span * 0.08 * (1 - strikeM * 0.85),
+      aGap: mix(0.20 + Math.sin(ph * 0.7 + 1.0) * 0.04, 0.010, strikeA),
+      ayOff: Math.sin(ph * 1.1 + 2.0) * span * 0.10 * (1 - strikeA * 0.85),
+    };
+  }
+
   /* The duel that has not ended. Sines, not a key table: nothing to
      snap between. `half` never reaches zero, so the two of them
      never trade places — Obrokxus is cu - half (west, still running)
@@ -414,12 +439,27 @@ window.Genesis = (function () {
   }
   function duelAt(p) {
     const span = Math.min(W, H);
-    const ph = p * 5.6;
-    const cu = duelDrift(p) + Math.sin(ph * 0.83) * 0.030;
-    const cy = H * 0.36 + Math.sin(ph * 0.61) * span * 0.050;
-    const half = 0.132 + Math.sin(ph * 1.27) * 0.112;
-    const swing = Math.sin(ph * 1.9) * span * 0.070;
-    return { ou: cu - half, oy: cy - swing, mu: cu + half, my: cy + swing };
+    const ph = p * 12.0;
+    const cu = duelDrift(p) + Math.sin(ph * 0.41) * 0.030;
+    const cy = H * 0.36 + Math.sin(ph * 0.29) * span * 0.060;
+    const strike = Math.pow(Math.max(0, Math.sin(ph * 1.6)), 5);
+    const half = mix(0.13 + Math.sin(ph * 0.53) * 0.05, 0.008, strike);
+    const swing = Math.sin(ph * 0.8 + 0.6) * span * 0.09 * (1 - strike * 0.85);
+    return { ou: cu - half, oy: cy - swing, mu: cu + half, my: cy + swing, strike };
+  }
+
+  /* one of the five warlocks circling Obrokxus in the air, diving in
+     to strike on its own rhythm. i picks the slot and the rhythm;
+     calm (0..1) scales the dives down, for Mordrial as he dies. */
+  function ringFightAt(i, p, cu, cy, calm) {
+    const span = Math.min(W, H);
+    const dir = i % 2 ? -1 : 1;
+    const ang = p * 7.0 * dir + i * 1.2566;
+    const strike = Math.pow(Math.max(0, Math.sin(p * 22 + i * 1.9)), 4)
+                 * (calm == null ? 1 : calm);
+    const rU = mix(0.15, 0.012, strike);
+    const rY = mix(span * 0.19, span * 0.014, strike);
+    return { u: cu + Math.cos(ang) * rU, y: cy + Math.sin(ang) * rY * 0.8, strike };
   }
 
   function paintCopy() {
@@ -493,6 +533,7 @@ window.Genesis = (function () {
     rings.length = 0;
     flash = 0;
     clashCool = 0;
+    for (const k in nameSeen) delete nameSeen[k];
   }
 
   function finish() {
@@ -616,8 +657,12 @@ window.Genesis = (function () {
     }
     else if (uRet > 0.02)
       target = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));
-    else if (uFall > 0.02)
-      target = mix(MAIN_U + 0.14, MAIN_U - 0.04, smooth(uFall));
+    else if (uFall > 0.02) {
+      /* hold on the air fight over the duel ground, then ease back to
+         where the return beat starts */
+      const onFight = mix(NEST_U + 0.04, MAIN_U + 0.28, smooth(clamp(uFall / 0.25, 0, 1)));
+      target = mix(onFight, MAIN_U - 0.04, smooth(clamp((uFall - 0.80) / 0.20, 0, 1)));
+    }
     else if (uFifth > 0.02)
       target = mix(MAIN_U + 0.16, NEST_U + 0.04, smooth(uFifth));
     else if (uFour > 0.02)
@@ -1218,13 +1263,13 @@ window.Genesis = (function () {
     if (kind === "rex") {
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.4);
-      halo.addColorStop(0, `rgba(255,244,210,${0.95 * amt})`);
-      halo.addColorStop(0.18, `rgba(245,208,107,${0.8 * amt})`);
-      halo.addColorStop(0.5, `rgba(176,104,90,${0.22 * amt})`);
-      halo.addColorStop(1, "rgba(245,208,107,0)");
+      halo.addColorStop(0, `rgba(255,226,190,${0.95 * amt})`);
+      halo.addColorStop(0.18, `rgba(245,138,52,${0.8 * amt})`);
+      halo.addColorStop(0.5, `rgba(180,70,30,${0.22 * amt})`);
+      halo.addColorStop(1, "rgba(245,138,52,0)");
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(x, y, R * 3.4, 0, 6.283); ctx.fill();
-      ctx.fillStyle = `rgba(255,248,230,${0.95 * amt})`;
+      ctx.fillStyle = `rgba(255,236,214,${0.95 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.28, 0, 6.283); ctx.fill();
     } else if (kind === "ormius") {
       ctx.globalCompositeOperation = "lighter";
@@ -1242,19 +1287,19 @@ window.Genesis = (function () {
     } else if (kind === "ava") {
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.8);
-      halo.addColorStop(0, `rgba(230,255,236,${0.9 * amt})`);
-      halo.addColorStop(0.2, `rgba(168,214,178,${0.7 * amt})`);
-      halo.addColorStop(0.55, `rgba(90,140,110,${0.2 * amt})`);
-      halo.addColorStop(1, "rgba(168,214,178,0)");
+      halo.addColorStop(0, `rgba(224,255,210,${0.9 * amt})`);
+      halo.addColorStop(0.2, `rgba(120,214,96,${0.72 * amt})`);
+      halo.addColorStop(0.55, `rgba(40,120,50,${0.22 * amt})`);
+      halo.addColorStop(1, "rgba(120,214,96,0)");
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(x, y, R * 3.8, 0, 6.283); ctx.fill();
-      ctx.fillStyle = `rgba(236,255,242,${0.95 * amt})`;
+      ctx.fillStyle = `rgba(234,255,226,${0.95 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.26, 0, 6.283); ctx.fill();
     } else if (kind === "mordrial") {
       const smoke = ctx.createRadialGradient(x, y, 0, x, y, R * 4.6);
-      smoke.addColorStop(0, `rgba(40,18,28,${0.9 * amt})`);
-      smoke.addColorStop(0.28, `rgba(120,70,40,${0.4 * amt})`);
-      smoke.addColorStop(0.55, `rgba(170,200,180,${0.18 * amt})`);
+      smoke.addColorStop(0, `rgba(60,8,12,${0.9 * amt})`);
+      smoke.addColorStop(0.28, `rgba(190,30,36,${0.4 * amt})`);
+      smoke.addColorStop(0.55, `rgba(235,230,225,${0.18 * amt})`);
       smoke.addColorStop(1, "rgba(20,8,10,0)");
       ctx.fillStyle = smoke;
       ctx.beginPath(); ctx.arc(x, y, R * 4.6, 0, 6.283); ctx.fill();
@@ -1262,42 +1307,43 @@ window.Genesis = (function () {
       ctx.beginPath(); ctx.arc(x, y, R * 0.7, 0, 6.283); ctx.fill();
       ctx.save();
       ctx.beginPath(); ctx.arc(x, y, R * 0.7, 0, 6.283); ctx.clip();
-      ctx.fillStyle = `rgba(212,168,90,${0.7 * amt})`;
+      ctx.fillStyle = `rgba(200,32,40,${0.78 * amt})`;
       ctx.fillRect(x - R, y - R, R, R * 2);
-      ctx.fillStyle = `rgba(186,214,198,${0.7 * amt})`;
+      ctx.fillStyle = `rgba(240,238,232,${0.78 * amt})`;
       ctx.fillRect(x, y - R, R, R * 2);
       ctx.restore();
-      ctx.fillStyle = `rgba(255,236,200,${0.75 * amt})`;
+      ctx.fillStyle = `rgba(255,250,245,${0.8 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.16, 0, 6.283); ctx.fill();
     } else if (kind === "cadmus") {
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.6);
-      halo.addColorStop(0, `rgba(255,220,150,${0.88 * amt})`);
-      halo.addColorStop(0.3, `rgba(196,140,48,${0.55 * amt})`);
-      halo.addColorStop(1, "rgba(196,140,48,0)");
+      halo.addColorStop(0, `rgba(240,150,120,${0.88 * amt})`);
+      halo.addColorStop(0.3, `rgba(170,40,32,${0.6 * amt})`);
+      halo.addColorStop(0.62, `rgba(110,66,36,${0.32 * amt})`);
+      halo.addColorStop(1, "rgba(110,66,36,0)");
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(x, y, R * 3.6, 0, 6.283); ctx.fill();
-      ctx.fillStyle = `rgba(255,232,170,${0.95 * amt})`;
+      ctx.fillStyle = `rgba(255,200,170,${0.95 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.24, 0, 6.283); ctx.fill();
     } else if (kind === "aelius") {
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.9);
-      halo.addColorStop(0, `rgba(240,255,246,${0.9 * amt})`);
-      halo.addColorStop(0.22, `rgba(186,224,198,${0.6 * amt})`);
-      halo.addColorStop(1, "rgba(186,224,198,0)");
+      halo.addColorStop(0, `rgba(210,255,225,${0.9 * amt})`);
+      halo.addColorStop(0.22, `rgba(30,160,100,${0.65 * amt})`);
+      halo.addColorStop(1, "rgba(30,160,100,0)");
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(x, y, R * 3.9, 0, 6.283); ctx.fill();
-      ctx.fillStyle = `rgba(250,255,252,${0.95 * amt})`;
+      ctx.fillStyle = `rgba(230,255,240,${0.95 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.22, 0, 6.283); ctx.fill();
     } else if (kind === "velindra") {
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(x, y, 0, x, y, R * 3.7);
-      halo.addColorStop(0, `rgba(220,170,255,${0.55 * amt})`);
-      halo.addColorStop(0.25, `rgba(70,180,170,${0.5 * amt})`);
-      halo.addColorStop(1, "rgba(70,180,170,0)");
+      halo.addColorStop(0, `rgba(230,190,255,${0.7 * amt})`);
+      halo.addColorStop(0.25, `rgba(140,70,210,${0.58 * amt})`);
+      halo.addColorStop(1, "rgba(140,70,210,0)");
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(x, y, R * 3.7, 0, 6.283); ctx.fill();
-      ctx.fillStyle = `rgba(210,255,248,${0.9 * amt})`;
+      ctx.fillStyle = `rgba(240,220,255,${0.9 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.2, 0, 6.283); ctx.fill();
     } else if (kind === "hound") {
       const smokeR = R * 2.8;
@@ -1312,7 +1358,7 @@ window.Genesis = (function () {
       ctx.beginPath();
       ctx.ellipse(x, y, R * 0.85, R * 0.62, Math.sin(t * 1.3) * 0.12, 0, 6.283);
       ctx.fill();
-      ctx.strokeStyle = `rgba(180,24,32,${0.7 * amt})`;
+      ctx.strokeStyle = `rgba(220,30,36,${0.85 * amt})`;
       ctx.lineWidth = 1.4;
       ctx.lineCap = "round";
       for (let i = 0; i < 7; i++) {
@@ -1322,7 +1368,7 @@ window.Genesis = (function () {
         ctx.lineTo(x + Math.cos(ang) * R * 0.95, y + Math.sin(ang) * R * 0.72);
         ctx.stroke();
       }
-      ctx.fillStyle = `rgba(210,36,40,${0.55 * amt})`;
+      ctx.fillStyle = `rgba(235,40,44,${0.75 * amt})`;
       ctx.beginPath(); ctx.arc(x, y, R * 0.18, 0, 6.283); ctx.fill();
     } else {
       const smokeR = R * 2.45;
@@ -1417,9 +1463,9 @@ window.Genesis = (function () {
       const glint = (1 - Math.abs(rise - 0.42) / 0.42) * (1 - rise * 0.35);
       if (glint > 0.02) {
         const g = ctx.createRadialGradient(xC, yC, 0, xC, yC, 80 + rise * 120);
-        g.addColorStop(0, `rgba(245,208,107,${0.38 * glint})`);
-        g.addColorStop(0.4, `rgba(245,208,107,${0.08 * glint})`);
-        g.addColorStop(1, "rgba(245,208,107,0)");
+        g.addColorStop(0, `rgba(245,138,52,${0.38 * glint})`);
+        g.addColorStop(0.4, `rgba(245,138,52,${0.08 * glint})`);
+        g.addColorStop(1, "rgba(245,138,52,0)");
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(xC, yC, 80 + rise * 120, 0, 6.283); ctx.fill();
       }
@@ -1466,6 +1512,10 @@ window.Genesis = (function () {
     const span = Math.min(W, H);
     const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
     const fallIn = clamp(fall / 0.22, 0, 1);
+    const up = smooth(clamp(fall / 0.22, 0, 1));
+    const down = smooth(clamp((fall - 0.80) / 0.18, 0, 1));
+    const air = up * (1 - down);
+    const fallStrikes = [0, 0, 0, 0, 0];
     /* the fight against Obrokxus happens on vorgath's own ground —
        deep in the red zone, not walked back to the middle. Nest and
        duel share that ground; the duel spot sits a little short of
@@ -1503,6 +1553,7 @@ window.Genesis = (function () {
     if (et > 0) civAmt = 1;
 
     const gy = (lane, wu) => standY(lane, wu, mainRise, scar);
+    const skyY = (u, y) => Math.min(y, mainSurfY(u, mainRise, scar) - 14);
 
     /* ---- the chase, and the flank that ends it -----------------
        Obrokxus is in front the whole way west and the two lights are
@@ -1512,7 +1563,9 @@ window.Genesis = (function () {
        the far side — the side their own city and their own armies
        (seraphin, malgrur) are on, with his (vorgath) left on his. */
     const C = chaseAt(fleeLin);
-    let ou = C.ou, oy = yWob(0.2, 0.026), oAmt = 0;
+    const settle = smooth(clamp(fleeLin / 0.10, 0, 1));
+    const F = chaseFightAt(fleeLin);
+    let ou = C.ou, oy = mix(H * 0.36, yWob(0.2, 0.026), settle), oAmt = 0;
     if (et > 0) {
       const D = duelAt(etLin);
       ou = D.ou;
@@ -1521,12 +1574,15 @@ window.Genesis = (function () {
     } else if (ret > 0) {
       oAmt = 0;
     } else if (fall > 0) {
-      const fk = keyAt(RED_KEYS, fall);
-      ou = mix(EAST_U, DUEL_U, fallIn) + fk.x * 0.13 * fallIn;
-      oy = mix(yWob(0.2, 0.022), H * 0.36 + fk.y * span * 0.18, fallIn);
+      ou = mix(EAST_U, DUEL_U, fallIn) + Math.sin(fall * 14) * 0.04 * up;
+      oy = mix(yWob(0.2, 0.026), H * 0.30 + Math.sin(fall * 11 + 1) * span * 0.05, up);
       oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
-    } else if (flee > 0) {
-      oAmt = 1;
+    } else {
+      oAmt = mix(0.88, 1, settle);
+      if (war <= 0) {
+        ou = C.ou + F.ouOff * F.w;
+        oy = mix(oy, F.oyAbs, F.w);
+      }
     }
 
     let mu = C.mu;
@@ -1545,6 +1601,10 @@ window.Genesis = (function () {
       my = yWob(1.4, 0.02);
     } else if (fleeLin > 0.02) {
       mAmt = clamp((fleeLin - 0.02) / 0.10, 0, 1) * (1 - godsOut);
+      if (war <= 0) {
+        mu = mix(C.mu, ou + F.mGap, F.w);
+        my = mix(my, oy + F.myOff, F.w);
+      }
       if (war > 0) {
         /* the flank: over the top, landing west of him */
         const k = smooth(clamp((war - 0.05) / 0.70, 0, 1));
@@ -1565,6 +1625,10 @@ window.Genesis = (function () {
       aAmt = 0;
     } else if (fleeLin > 0.06) {
       aAmt = clamp((fleeLin - 0.06) / 0.10, 0, 1) * (1 - godsOut);
+      if (war <= 0) {
+        au = mix(C.au, ou + F.aGap, F.w);
+        ay = mix(ay, oy + F.ayOff, F.w);
+      }
       if (war > 0) {
         const k = smooth(clamp((war - 0.12) / 0.70, 0, 1));
         au = mix(EAST_U + 0.30, WEST_U - 0.02, k);
@@ -1590,11 +1654,12 @@ window.Genesis = (function () {
       mdY = mix(gy(0.08, MAIN_U - 0.14), gy(0.08, NEST_U - 0.10), fifth);
     }
     if (fall > 0) {
-      const yk = keyAt(YELLOW_KEYS, fall);
-      mdU = mix(NEST_U - 0.10, DUEL_U + yk.x * 0.11, fallIn);
-      mdY = mix(gy(0.08, mdU),
-                mix(gy(0.06, mdU) + yk.y * span * 0.10,
-                    mainSurfY(mdU, mainRise, scar) + 26, dieM), fallIn);
+      const R0 = ringFightAt(0, fall, ou, oy, 1 - dieM);
+      fallStrikes[0] = R0.strike * up * (1 - dieM);
+      const gU = NEST_U - 0.10;
+      mdU = mix(gU, R0.u, up);
+      const skyMd = skyY(mdU, mix(gy(0.08, gU), R0.y, up));
+      mdY = mix(skyMd, mainSurfY(mdU, mainRise, scar) + 26, dieM);
     }
     if (ret > 0) mdAmt = 0;
 
@@ -1613,6 +1678,21 @@ window.Genesis = (function () {
        (cU/aelU/vU keep the "fifth" end value, since `fifth` is
        already at 1 by the time `fall` starts) instead of drifting
        back toward the middle. */
+    if (fall > 0 && ret <= 0) {
+      const Rc = ringFightAt(1, fall, ou, oy, 1);
+      const Ra = ringFightAt(2, fall, ou, oy, 1);
+      const Rv = ringFightAt(3, fall, ou, oy, 1);
+      fallStrikes[1] = Rc.strike * air;
+      fallStrikes[2] = Ra.strike * air;
+      fallStrikes[3] = Rv.strike * air;
+      const cY0 = cY, aelY0 = aelY, vY0 = vY;
+      cY = mix(cY0, skyY(Rc.u, Rc.y), air);
+      cU = mix(cU, Rc.u, air);
+      aelY = mix(aelY0, skyY(Ra.u, Ra.y), air);
+      aelU = mix(aelU, Ra.u, air);
+      vY = mix(vY0, skyY(Rv.u, Rv.y), air);
+      vU = mix(vU, Rv.u, air);
+    }
     if (ret > 0) {
       /* victory won, they walk west into the city they are about
          to disappear into */
@@ -1640,6 +1720,12 @@ window.Genesis = (function () {
     let hU = mix(nestU, DUEL_U - 0.05, fallIn);
     let hY = mix(gy(-0.04, nestU), gy(-0.06, DUEL_U - 0.05), fallIn);
     let hAmt = houndBorn;
+    if (fall > 0 && ret <= 0) {
+      const Rh = ringFightAt(4, fall, ou, oy, 1);
+      fallStrikes[4] = Rh.strike * air;
+      hY = mix(hY, skyY(Rh.u, Rh.y), air);
+      hU = mix(hU, Rh.u, air);
+    }
     if (ret > 0) {
       const homeH = smooth(clamp(ret / 0.85, 0, 1));
       hU = mix(DUEL_U - 0.05, CITY_U - 0.28, homeH);
@@ -1676,6 +1762,8 @@ window.Genesis = (function () {
       mdU, mdY, mdAmt, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
       nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
+      fightW: war > 0 ? 0 : F.w, strikeM: F.strikeM, strikeA: F.strikeA,
+      fallStrikes, etStrike: et > 0 ? duelAt(etLin).strike : 0,
     };
   }
 
@@ -1942,8 +2030,13 @@ window.Genesis = (function () {
     ctx.globalCompositeOperation = "lighter";
     for (const c of troops) {
       if (c.born > S.army) continue;
-      const toward = (c.kind === "vorgath" ? push * c.reach : -push * c.reach) * motion;
-      const u = MAIN_U + c.home + toward + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
+      /* both sides charge the front line at MAIN_U and surge back and
+         forth across it, so the front ranks are actually in each other */
+      const front = clamp(1 - Math.abs(c.home) / 0.78, 0, 1);
+      const surge = push * (0.6 + 0.4 * Math.sin(t * 0.9 + c.ph)) * mix(0.35, 1, front);
+      const side = c.kind === "vorgath" ? 1 : -1;
+      const u = MAIN_U + mix(c.home, side * -0.035 * front, clamp(surge * 0.9, 0, 1) * motion)
+              + Math.sin(t * (0.7 + c.gait) + c.ph) * 0.018 * motion;
       const x = sx(u);
       if (x < -40 || x > W + 40) continue;
       const y = mainSurfY(u, S.mainRise, S.scar) - 10 - (c.lane || 0) * H * 0.075
@@ -1992,8 +2085,12 @@ window.Genesis = (function () {
      them, quietly, for as long as they are on the deck. */
   function drawName(ctx, x, y, amt, text, drop) {
     if (amt < 0.12 || !text) return;
+    if (amt >= 0.5 && nameSeen[text] == null) nameSeen[text] = t;
+    if (nameSeen[text] == null) return;
     if (x < -80 || x > W + 80) return;
-    const a = clamp((amt - 0.12) / 0.35, 0, 1) * 0.72;
+    const late = clamp((t - nameSeen[text] - NAME_DELAY) / NAME_FADE, 0, 1);
+    if (late <= 0) return;
+    const a = clamp((amt - 0.12) / 0.35, 0, 1) * 0.72 * late;
     const dy = y + (drop == null ? 26 : drop);
     ctx.save();
     ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
@@ -2022,7 +2119,12 @@ window.Genesis = (function () {
 
     if (S.oAmt > 0.02) { pushTrail(trailR, ox, oy); drawTrail(ctx, trailR, "90,12,18", S.oAmt, true); }
     if (S.mAmt > 0.02) { pushTrail(trailM, mx, my); drawTrail(ctx, trailM, "210,70,48", S.mAmt); }
-    if (S.aAmt > 0.02) { pushTrail(trailA, ax, ay); drawTrail(ctx, trailA, "168,214,178", S.aAmt); }
+    if (S.aAmt > 0.02) { pushTrail(trailA, ax, ay); drawTrail(ctx, trailA, "120,214,96", S.aAmt); }
+
+    if (S.fightW > 0.05) {
+      drawBeam(ctx, mx, my, ox, oy, S.strikeM * S.fightW * S.mAmt);
+      drawTintBeam(ctx, ax, ay, ox, oy, "120,214,96", S.strikeA * S.fightW * S.aAmt);
+    }
 
     if (S.lock > 0.40 && S.lock < 0.82 && S.mAmt > 0.08 && S.aAmt > 0.08) {
       const p = 1 - Math.abs(S.lock - 0.58) / 0.18;
@@ -2030,23 +2132,23 @@ window.Genesis = (function () {
         flash = Math.max(flash, p * 0.7);
         shake = Math.max(shake, 0.32 * p);
         drawTintBeam(ctx, mx, my, ax, ay, "220,210,180", p);
-        drawTintBeam(ctx, mx, my, sx(S.mdU), S.mdY, "212,168,90", p * S.mdAmt);
-        drawTintBeam(ctx, ax, ay, sx(S.mdU), S.mdY, "186,224,198", p * S.mdAmt);
+        drawTintBeam(ctx, mx, my, sx(S.mdU), S.mdY, "200,32,40", p * S.mdAmt);
+        drawTintBeam(ctx, ax, ay, sx(S.mdU), S.mdY, "120,214,96", p * S.mdAmt);
       }
     }
 
     if (S.fifth > 0.12 && S.fifth < 0.72 && S.cAmt > 0.1) {
       const beam = Math.sin(clamp((S.fifth - 0.12) / 0.5, 0, 1) * 3.14);
-      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), mainSurfY(S.nestU, S.mainRise, S.scar) + 4, "196,140,48", beam * S.cAmt * 0.85);
+      drawTintBeam(ctx, sx(S.cU), S.cY, sx(S.nestU), mainSurfY(S.nestU, S.mainRise, S.scar) + 4, "170,60,40", beam * S.cAmt * 0.85);
     }
 
     if (S.war > 0.08 && S.et < 0.02) {
-      const clashX = sx(MAIN_U);
       const clashY = standY(0, MAIN_U, S.mainRise, S.scar);
-      if (Math.sin(t * 6.5) > 0.72 && clashCool <= 0) {
-        clashCool = 0.18;
-        rings.push({ x: clashX + (Math.random() - 0.5) * 28, y: clashY + (Math.random() - 0.5) * 16, r: 6, a: 0.7 });
-        shake = Math.max(shake, 0.14);
+      if (Math.sin(t * 9.0) > 0.35 && clashCool <= 0 && S.army > 0.1) {
+        clashCool = 0.12;
+        const cu = MAIN_U + (Math.random() - 0.5) * 0.10;
+        rings.push({ x: sx(cu), y: clashY - Math.random() * 18, r: 5, a: 0.75 });
+        shake = Math.max(shake, 0.16);
       }
     }
 
@@ -2070,21 +2172,45 @@ window.Genesis = (function () {
     drawName(ctx, mx, my, S.mAmt, "ORMIUS", 30);
     drawName(ctx, ax, ay, S.aAmt, "AVA", 40);
 
-    if (S.fall > 0.16 && S.fall < 0.86 && S.oAmt > 0.2 && S.mdAmt > 0.15) {
-      const dx = sx(S.mdU) - ox, dy = S.mdY - oy;
-      if (Math.hypot(dx, dy) < 48 && clashCool <= 0) {
-        flash = 1;
-        shake = Math.max(shake, 1);
-        clashCool = 0.22;
-        rings.push({ x: (sx(S.mdU) + ox) * 0.5, y: (S.mdY + oy) * 0.5, r: 10, a: 1 });
+    if (S.fightW > 0.3 && S.oAmt > 0.2) {
+      const hits = [[mx, my, S.mAmt], [ax, ay, S.aAmt]];
+      for (const hit of hits) {
+        if (hit[2] < 0.2 || clashCool > 0) continue;
+        if (Math.hypot(hit[0] - ox, hit[1] - oy) < 42) {
+          flash = Math.max(flash, 0.8);
+          shake = Math.max(shake, 0.6);
+          clashCool = 0.24;
+          rings.push({ x: (hit[0] + ox) * 0.5, y: (hit[1] + oy) * 0.5, r: 10, a: 1 });
+        }
+      }
+    }
+    if (S.fall > 0.10 && S.fall < 0.86 && S.oAmt > 0.2) {
+      const five = [
+        [sx(S.mdU), S.mdY, S.mdAmt, "200,32,40"],
+        [sx(S.cU), S.cY, S.cAmt, "170,60,40"],
+        [sx(S.aelU), S.aelY, S.aelAmt, "30,160,100"],
+        [sx(S.vU), S.vY, S.vAmt, "140,70,210"],
+        [sx(S.hU), S.hY, S.hAmt, "220,30,36"],
+      ];
+      for (let i = 0; i < five.length; i++) {
+        const f = five[i];
+        if (f[2] < 0.15) continue;
+        drawTintBeam(ctx, f[0], f[1], ox, oy, f[3], S.fallStrikes[i] * f[2] * S.oAmt);
+        if (clashCool <= 0 && Math.hypot(f[0] - ox, f[1] - oy) < 44) {
+          flash = Math.max(flash, 0.9);
+          shake = Math.max(shake, 0.9);
+          clashCool = 0.16;
+          rings.push({ x: (f[0] + ox) * 0.5, y: (f[1] + oy) * 0.5, r: 10, a: 1 });
+        }
       }
     }
     if (S.et > 0.12 && S.oAmt > 0.2 && S.mAmt > 0.2) {
+      drawBeam(ctx, mx, my, ox, oy, S.etStrike * Math.min(S.oAmt, S.mAmt));
       const dx = mx - ox, dy = my - oy;
       if (Math.hypot(dx, dy) < 40 && clashCool <= 0) {
         flash = 0.7;
         shake = Math.max(shake, 0.45);
-        clashCool = 0.3;
+        clashCool = 0.2;
         rings.push({ x: (mx + ox) * 0.5, y: (my + oy) * 0.5, r: 8, a: 0.85 });
       }
     }
@@ -2167,7 +2293,7 @@ window.Genesis = (function () {
     if (uBirth > 0.04 && beat < idxOf("flee")) {
       pushTrail(trailY, L.yx, L.yy);
       pushTrail(trailR, L.rx, L.ry);
-      drawTrail(ctx, trailY, "245,208,107", L.yAmt);
+      drawTrail(ctx, trailY, "245,138,52", L.yAmt);
       drawTrail(ctx, trailR, "90,12,18", L.rAmt, true);
 
       const dx = L.yx - L.rx, dy = L.yy - L.ry;
@@ -2182,6 +2308,8 @@ window.Genesis = (function () {
       drawBeam(ctx, L.yx, L.yy, L.rx, L.ry, beamU * Math.max(L.yAmt, L.rAmt));
       drawOrb(ctx, L.rx, L.ry, L.rAmt, "obrokxus");
       drawOrb(ctx, L.yx, L.yy, L.yAmt, "rex");
+      drawName(ctx, L.rx, L.ry, L.rAmt, "OBROKXUS", 34);
+      drawName(ctx, L.yx, L.yy, L.yAmt, "REX", 30);
       drawRings(ctx);
     }
 
