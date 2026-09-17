@@ -67,6 +67,8 @@ window.Voidship = (function () {
       thrustAmt: 0,         // 0..1 visual/engine load
       trail: [],
       sparks: [],
+      trailAcc: 1 / 60,   // seconds toward the next trail point
+      sparkAcc: 0,        // sparks owed, fractional
       bob: 0,
       alpha: 1,             // seated under the boot veil — no pop-in later
 
@@ -122,6 +124,13 @@ window.Voidship = (function () {
   }
 
   /* ---- integration ------------------------------------------------ */
+
+  /* trail points and sparks are laid down per second, not per frame,
+     so a high-refresh screen doesn't draw a shorter trail or more sparks */
+  const TRAIL_STEP = 1 / 60;    // one trail point per 1/60 s
+  const SPARK_RATE = 120;       // sparks per second while thrusting
+  const TICK_SLACK = 0.002;     // a step this close to due still counts (timestamp jitter)
+  const SPARK_SLACK = 0.25;     // likewise for the spark count
 
   function step(ship, dt, env) {
     const { W, H, frozen } = env;
@@ -307,8 +316,15 @@ window.Voidship = (function () {
 
     // motion trail
     if (Math.abs(ship.vel) > 400 || ship.thrustAmt > 0.1) {
-      ship.trail.push({ x: W * 0.5, y: ship.y, a: ship.angle, life: 1 });
-      if (ship.trail.length > 18) ship.trail.shift();
+      ship.trailAcc += dt;
+      if (ship.trailAcc >= TRAIL_STEP - TICK_SLACK) {
+        // at most one point per frame; a long stall doesn't queue a burst
+        ship.trailAcc = Math.min(ship.trailAcc - TRAIL_STEP, TRAIL_STEP);
+        ship.trail.push({ x: W * 0.5, y: ship.y, a: ship.angle, life: 1 });
+        if (ship.trail.length > 18) ship.trail.shift();
+      }
+    } else {
+      ship.trailAcc = TRAIL_STEP;   // the first moving frame lays a point at once
     }
     for (let i = ship.trail.length - 1; i >= 0; i--) {
       ship.trail[i].life -= dt * 2.4;
@@ -317,7 +333,10 @@ window.Voidship = (function () {
 
     // exhaust sparks
     if (ship.thrustAmt > 0.2) {
-      for (let i = 0; i < 2; i++) {
+      ship.sparkAcc += dt * SPARK_RATE;
+      const count = Math.floor(ship.sparkAcc + SPARK_SLACK);
+      ship.sparkAcc -= count;
+      for (let i = 0; i < count; i++) {
         const back = -BASE.size * 0.48;
         ship.sparks.push({
           x: back - Math.random() * 10 * ship.thrustAmt,
@@ -327,6 +346,8 @@ window.Voidship = (function () {
           life: 0.25 + Math.random() * 0.35,
         });
       }
+    } else {
+      ship.sparkAcc = 0;
     }
     for (let i = ship.sparks.length - 1; i >= 0; i--) {
       const s = ship.sparks[i];

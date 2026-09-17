@@ -256,6 +256,14 @@ window.Genesis = (function () {
   let cam = 0, camTarget = 0;
   const trailY = [], trailR = [], trailM = [], trailA = [], trailH = [], rings = [];
   const trailG = [[], [], [], [], []];
+  /* trails and shake jitter step 60 times a second, not once per frame,
+     so a high-refresh screen doesn't shorten the trails or buzz the shake.
+     A step this close to due still counts, or timestamp jitter would skip one at 60 Hz. */
+  const TICK_STEP = 1 / 60;
+  const TICK_SLACK = 0.002;
+  let tickAcc = 0;
+  let tick60 = false;              // set by step(): this frame is a 60 Hz step
+  let shakeRX = 0, shakeRY = 0;    // shake direction, re-rolled each step
   const nameSeen = {};
   const NAME_DELAY = 1.5;
   const NAME_FADE = 0.8;
@@ -559,6 +567,10 @@ window.Genesis = (function () {
     rings.length = 0;
     flash = 0;
     clashCool = 0;
+    tickAcc = 0;
+    tick60 = false;
+    shakeRX = 0;
+    shakeRY = 0;
     for (const k in nameSeen) delete nameSeen[k];
   }
 
@@ -734,6 +746,13 @@ window.Genesis = (function () {
     if (!active) return false;
     t += dt;
     local += dt;
+    tickAcc += dt;
+    tick60 = tickAcc >= TICK_STEP - TICK_SLACK;
+    if (tick60) {
+      tickAcc = Math.min(tickAcc - TICK_STEP, TICK_STEP);
+      shakeRX = Math.random() - 0.5;
+      shakeRY = Math.random() - 0.5;
+    }
     shake = Math.max(0, shake - dt * 3.6);
     flash = Math.max(0, flash - dt * 3.2);
     clashCool = Math.max(0, clashCool - dt);
@@ -1274,6 +1293,7 @@ window.Genesis = (function () {
   }
 
   function pushTrail(list, x, y) {
+    if (!tick60) return;
     list.push({ x, y });
     if (list.length > 16) list.shift();
   }
@@ -2679,8 +2699,8 @@ window.Genesis = (function () {
     W = env.W; H = env.H;
     if (env.t != null) t = env.t;
 
-    const sxh = (Math.random() - 0.5) * shake * 12;
-    const syh = (Math.random() - 0.5) * shake * 9;
+    const sxh = shakeRX * shake * 12;
+    const syh = shakeRY * shake * 9;
     ctx.save();
     ctx.translate(sxh, syh);
 

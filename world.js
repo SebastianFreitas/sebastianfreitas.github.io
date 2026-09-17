@@ -253,7 +253,7 @@ window.World = (function () {
   function drawVoid() {
     const s = scale(), span = W * 2.4, off = camX * 0.06 * s;
     for (const b of blobs) {
-      b.y += b.vy * 0.02;
+      b.y += b.vy * 1.2 * dtNow;   // 0.02 per frame at 60 fps, now per second
       if (b.y > 1.3) b.y = -0.25; if (b.y < -0.3) b.y = 1.25;
       const x = ((b.u * span - off) % span + span) % span - span * 0.2;
       const rad = b.rad * Math.max(W, H);

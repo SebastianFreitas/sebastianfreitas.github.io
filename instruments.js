@@ -73,6 +73,12 @@ window.Instruments = (function () {
   const co2Strip = [];
   let co2Acc = 0;
   const magTrace = [];
+  let magAcc = 1 / 60;
+  /* the strips and the scope trace sample on time, not on frames, so a
+     high-refresh screen doesn't shorten them. A sample this close to due
+     still counts, or timestamp jitter would skip one at 60 Hz. */
+  const MAG_STEP = 1 / 60;
+  const SAMPLE_SLACK = 0.002;
   let lastImpact = null;
   let impactCool = 2.4;
   let prevAng = 0, omega = 0;
@@ -847,8 +853,9 @@ window.Instruments = (function () {
     sys.rh  = approach(sys.rh,  rhT,  2.6, dt);
 
     co2Acc += dt;
-    if (co2Acc > 0.06) {
-      co2Acc = 0;
+    if (co2Acc >= 0.06 - SAMPLE_SLACK) {
+      // keep the leftover so the spacing averages 0.06 s; a stall adds one sample, not a burst
+      co2Acc = Math.min(co2Acc - 0.06, 0.06);
       co2Strip.push(sys.co2);
       if (co2Strip.length > 72) co2Strip.shift();
     }
@@ -860,8 +867,8 @@ window.Instruments = (function () {
       + (Math.sin(t * 2.4) * 0.5 + 0.5) * 0.002;
     sys.dose = approach(sys.dose, doseT, 5, dt);
     radAcc += dt;
-    if (radAcc > 0.05) {
-      radAcc = 0;
+    if (radAcc >= 0.05 - SAMPLE_SLACK) {
+      radAcc = Math.min(radAcc - 0.05, 0.05);
       radStrip.push(sys.dose);
       if (radStrip.length > 80) radStrip.shift();
     }
@@ -871,8 +878,12 @@ window.Instruments = (function () {
     sys.bx = Math.sin(t * 1.35 + future * t * 0.4) * wobble;
     sys.by = Math.cos(t * 1.08 + chaos * 2.1) * (0.3 + future * 1.1);
     sys.mag = approach(sys.mag, Math.max(0.4, magBase + sys.bx * 0.15), 4, dt);
-    magTrace.push([sys.bx, sys.by]);
-    if (magTrace.length > 40) magTrace.shift();
+    magAcc += dt;
+    if (magAcc >= MAG_STEP - SAMPLE_SLACK) {
+      magAcc = Math.min(magAcc - MAG_STEP, MAG_STEP);
+      magTrace.push([sys.bx, sys.by]);
+      if (magTrace.length > 40) magTrace.shift();
+    }
 
     const hullT = -40 - future * 86 + thrust * 95 + Math.sin(t * 0.48) * 1.6
       + (lastImpact && lastImpact.age < 2 ? 8 : 0);
