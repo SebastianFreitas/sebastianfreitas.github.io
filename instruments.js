@@ -120,12 +120,14 @@ window.Instruments = (function () {
     canvas.height = Math.max(1, Math.round(TOTAL_H * dpr * fit));
     context.setTransform(dpr * fit, 0, 0, dpr * fit, 0, 0);
     context.imageSmoothingEnabled = true;
+    curFont = null;
   }
 
   function mount(canvas) {
     cv = canvas;
     if (!cv) return;
     ctx = cv.getContext("2d");
+    curFont = null;
     fitCanvas(cv, ctx);
     bindFocus(cv, PANELS, () => focusKey, k => { focusKey = k; repaint(); });
     addEventListener("resize", resize);
@@ -183,10 +185,12 @@ window.Instruments = (function () {
     chrome(q);
     paintFn(q, r, dt);
     ctx.restore();
+    curFont = null;
   }
 
   function drawBank(panels, focus, paintFn, dt, r) {
     ctx.clearRect(0, 0, TOTAL_W, TOTAL_H);
+    curFont = null;
     if (focus) {
       const p = panels.find(q => q.key === focus);
       if (p) {
@@ -199,6 +203,7 @@ window.Instruments = (function () {
       ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
       drawPanel(p, r, dt, paintFn);
       ctx.restore();
+      curFont = null;
     }
   }
 
@@ -229,8 +234,10 @@ window.Instruments = (function () {
     if (!sysCtx) return;
     const saved = ctx;
     ctx = sysCtx;
+    curFont = null;
     drawBank(SYS_PANELS, sysFocus, paintSys, dt, r);
     ctx = saved;
+    curFont = null;
   }
 
   function paint(p, r, dt) {
@@ -310,8 +317,21 @@ window.Instruments = (function () {
     if (a >= 10000) return (n / 1000).toFixed(1) + "k";
     return Math.round(n).toLocaleString("en-US");
   }
+  const fontCache = new Map();
   function mono(px, weight = "500") {
-    return `${weight} ${px}px "IBM Plex Mono", monospace`;
+    const k = weight + " " + px;
+    let f = fontCache.get(k);
+    if (!f) { f = `${weight} ${px}px "IBM Plex Mono", monospace`; fontCache.set(k, f); }
+    return f;
+  }
+
+  /* ctx.font makes the browser bring page style up to date on every set,
+     even an unchanged one, so skip sets that change nothing. restore(),
+     a context swap and a canvas refit all change the real font behind
+     our back, so each of those forgets curFont. */
+  let curFont = null;
+  function setFont(f) {
+    if (f !== curFont) { ctx.font = f; curFont = f; }
   }
 
   /* =========================================================
@@ -329,7 +349,7 @@ window.Instruments = (function () {
       ctx.beginPath(); ctx.arc(cx, cy, R * i / 3, 0, 6.283); ctx.stroke();
     }
     ctx.fillStyle = `rgba(${DIM},0.7)`;
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.textAlign = "left";
     ctx.fillText("7k", cx + 3, cy - R * 0.33 + 3);
     ctx.fillText("14k", cx + 3, cy - R * 0.66 + 3);
@@ -341,7 +361,7 @@ window.Instruments = (function () {
     ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
     ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
     ctx.stroke();
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.fillStyle = `rgba(${DIM},0.85)`;
     ctx.textAlign = "center";
     ctx.fillText("W", cx - R + 7, cy + 3);
@@ -412,7 +432,7 @@ window.Instruments = (function () {
 
     const inRange = (r.marks || []).filter(m => Math.abs(m.cam - r.camX) < RANGE);
     const unclaimed = inRange.filter(m => !m.claimed).length;
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(inRange.length + " CONTACT", 5, 12);
@@ -427,7 +447,7 @@ window.Instruments = (function () {
       const side = nearest.cam >= r.camX ? "E" : "W";
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${LAMP},0.85)`;
-      ctx.font = mono(8);
+      setFont(mono(8));
       ctx.fillText(short, 5, inner - 4);
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${COLD},0.9)`;
@@ -481,7 +501,7 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${COLD},0.8)`;
     ctx.fillRect(mx, my + 8, mw * futureNeedle, mh);
 
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},0.9)`;
     ctx.fillText("CHAOS", mx, my - 2);
@@ -492,7 +512,7 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${COLD},0.9)`;
     ctx.fillText(futureNeedle.toFixed(2), p.w - 5, my + 6);
 
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText(v.name.toUpperCase(), 5, 12);
@@ -563,18 +583,18 @@ window.Instruments = (function () {
     ctx.lineCap = "butt";
     ctx.lineWidth = 1;
 
-    ctx.font = mono(12, "600");
+    setFont(mono(12, "600"));
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${LAMP},0.95)`;
     ctx.fillText(Math.round(thrustNeedle * 100) + "%", zoneCx, zoneCy + 2);
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("THRUST", zoneCx, zoneCy + 11);
 
     // burn + power — below arc, above cruise block
     const statY = zoneCy + R + 7;
     const statValY = statY + 10;
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${DIM},0.95)`;
     ctx.fillText("BURN", zoneCx - zoneW * 0.22, statY);
@@ -595,7 +615,7 @@ window.Instruments = (function () {
     const bx = zoneL;
     const by = inner - 10;
     const bw = zoneW;
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("CRUISE BUILD", bx, by - 5);
@@ -612,7 +632,7 @@ window.Instruments = (function () {
 
     // header — fuel label + percent inline on the left (not under expand icon)
     ctx.textAlign = "left";
-    ctx.font = mono(9);
+    setFont(mono(9));
     if (infinite) {
       ctx.fillStyle = `rgba(${LAMP},0.9)`;
       ctx.fillText("OPEN", zoneL, headerY);
@@ -626,7 +646,7 @@ window.Instruments = (function () {
     const mode = s && s.burning ? "HARD BURN"
       : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
     ctx.textAlign = "right";
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
     ctx.fillText(mode, zoneR, by + 12);
   }
@@ -646,16 +666,16 @@ window.Instruments = (function () {
     }
 
     // big digital speed
-    ctx.font = mono(18, "600");
+    setFont(mono(18, "600"));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${LAMP},0.95)`;
     ctx.fillText(Math.round(Math.abs(r.vel)).toLocaleString("en-US"), 5, 22);
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("U/S", 5, 32);
 
     ctx.textAlign = "right";
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.fillStyle = `rgba(${COLD},0.9)`;
     ctx.fillText("BRG " + fmtK(r.camX), p.w - 5, 14);
     ctx.fillStyle = `rgba(${DIM},1)`;
@@ -706,7 +726,7 @@ window.Instruments = (function () {
     ctx.fillRect(5, barY, p.w - 10, 3);
     ctx.fillStyle = `rgba(${LAMP},0.85)`;
     ctx.fillRect(5 + (p.w - 10) * you - 1, barY - 2, 2, 7);
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.fillStyle = `rgba(${DIM},0.8)`;
     ctx.textAlign = "left";
     ctx.fillText("W", 5, barY - 4);
@@ -715,7 +735,7 @@ window.Instruments = (function () {
 
     // status line
     ctx.textAlign = "left";
-    ctx.font = mono(8);
+    setFont(mono(8));
     if (s && s.courseName) {
       ctx.fillStyle = `rgba(${COLD},0.95)`;
       const nm = s.courseName.toUpperCase();
@@ -811,7 +831,7 @@ window.Instruments = (function () {
   function eclss(p, r) {
     const inner = p.h - 5;
     const warn = sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 96;
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = warn ? `rgba(${BAD},1)` : `rgba(${GOOD},0.9)`;
     ctx.fillText(warn ? "WARN" : "NOM", 5, 12);
@@ -828,15 +848,15 @@ window.Instruments = (function () {
     const y0 = 28;
     rows.forEach(([lab, val, unit, hot], i) => {
       const y = y0 + i * 17;
-      ctx.font = mono(8);
+      setFont(mono(8));
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${DIM},0.95)`;
       ctx.fillText(lab, 5, y);
-      ctx.font = mono(12, "600");
+      setFont(mono(12, "600"));
       ctx.textAlign = "right";
       ctx.fillStyle = hot ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.95)`;
       ctx.fillText(val, p.w - 30, y);
-      ctx.font = mono(7);
+      setFont(mono(7));
       ctx.fillStyle = `rgba(${DIM},0.85)`;
       ctx.fillText(unit, p.w - 5, y);
     });
@@ -845,7 +865,7 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${DIM},0.18)`;
     ctx.fillRect(5, chartTop, p.w - 10, chartH);
     spark(co2Strip, 5, chartTop + chartH, p.w - 10, chartH, sys.co2 > 1200 ? BAD : COLD, 0.75);
-    ctx.font = mono(7);
+    setFont(mono(7));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},0.75)`;
     ctx.fillText("CO2", 5, chartTop - 2);
@@ -856,16 +876,16 @@ window.Instruments = (function () {
   function rad(p, r) {
     const inner = p.h - 5;
     const event = sys.dose > 0.09;
-    ctx.font = mono(18, "600");
+    setFont(mono(18, "600"));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = event ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.95)`;
     ctx.fillText(sys.dose < 0.1 ? sys.dose.toFixed(3) : sys.dose.toFixed(2), 5, 22);
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("mSv/h", 5, 32);
 
     ctx.textAlign = "right";
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.fillStyle = event ? `rgba(${BAD},0.95)` : `rgba(${DIM},1)`;
     ctx.fillText(event ? "EVENT" : "QUIET", p.w - 5, 14);
     ctx.fillStyle = `rgba(${COLD},0.85)`;
@@ -877,7 +897,7 @@ window.Instruments = (function () {
     spark(radStrip, 5, chartBot, p.w - 10, chartH, event ? BAD : LAMP, 0.85);
 
     const magHot = sys.mag < 18 || (r.future || 0) > 0.7;
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.textAlign = "left";
     ctx.fillStyle = magHot ? `rgba(${BAD},0.9)` : `rgba(${DIM},1)`;
     ctx.fillText("B " + sys.mag.toFixed(1) + " µT", 5, inner - 4);
@@ -913,7 +933,7 @@ window.Instruments = (function () {
     const inner = p.h - 5;
     const live = lastImpact && lastImpact.age < 1.6;
     const recent = lastImpact && lastImpact.age < 6;
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = live ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
     ctx.fillText(live ? "IMPACT" : "CLEAR", 5, 12);
@@ -946,25 +966,25 @@ window.Instruments = (function () {
     ctx.fillStyle = `rgba(${LAMP},0.8)`;
     ctx.fillRect(cx + 7, cy - 1.5, 5, 3);
 
-    ctx.font = mono(11, "600");
+    setFont(mono(11, "600"));
     ctx.textAlign = "left";
     if (lastImpact) {
       ctx.fillStyle = live ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.9)`;
       ctx.fillText(lastImpact.g.toFixed(2) + "g", 68, 40);
-      ctx.font = mono(8);
+      setFont(mono(8));
       ctx.fillStyle = `rgba(${DIM},0.95)`;
       ctx.fillText("SEC " + lastImpact.sector, 68, 52);
       ctx.fillStyle = `rgba(${COLD},0.85)`;
       ctx.fillText("T+" + lastImpact.age.toFixed(1) + "s", 68, 64);
     } else {
       ctx.fillStyle = `rgba(${DIM},0.7)`;
-      ctx.font = mono(8);
+      setFont(mono(8));
       ctx.fillText("NO STRIKE", 68, 46);
       ctx.fillText("LISTEN", 68, 58);
     }
 
     const hy = inner - 4;
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},0.95)`;
     ctx.fillText("HULL", 5, hy - 12);
@@ -1003,7 +1023,7 @@ window.Instruments = (function () {
       { name: "GNC",  n: 0.06 + Math.min(0.18, Math.abs(omega) * 0.04) },
     ];
 
-    ctx.font = mono(9);
+    setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = `rgba(${DIM},1)`;
     ctx.fillText("LOAD", 5, 12);
@@ -1014,7 +1034,7 @@ window.Instruments = (function () {
     const row0 = 20, rowH = 13, barX = 36, barW = p.w - 72;
     loads.forEach((l, i) => {
       const y = row0 + i * rowH;
-      ctx.font = mono(7);
+      setFont(mono(7));
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${DIM},0.95)`;
       ctx.fillText(l.name, 5, y + 6);
@@ -1036,7 +1056,7 @@ window.Instruments = (function () {
     ];
     imu.forEach(([lab, val, col], i) => {
       const x = 5 + i * colW;
-      ctx.font = mono(8);
+      setFont(mono(8));
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${DIM},0.85)`;
       ctx.fillText(lab, x, imuY);
@@ -1048,7 +1068,7 @@ window.Instruments = (function () {
     const flow = thrust * 16.8;
     const tvc = roll * 0.85;
     const py = inner - 4;
-    ctx.font = mono(8);
+    setFont(mono(8));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},0.95)`;
     ctx.fillText("Pc", 5, py - 12);
