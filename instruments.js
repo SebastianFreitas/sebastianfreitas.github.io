@@ -131,6 +131,12 @@ window.Instruments = (function () {
     fitCanvas(cv, ctx);
     bindFocus(cv, PANELS, () => focusKey, k => { focusKey = k; repaint(); });
     addEventListener("resize", resize);
+    // the static layer has label text baked in: redraw it once web fonts arrive
+    if (document.fonts) {
+      const refont = () => { statics.clear(); repaint(); };
+      document.fonts.addEventListener("loadingdone", refont);
+      if (document.fonts.ready) document.fonts.ready.then(refont);
+    }
   }
 
   function mountSys(canvas) {
@@ -182,15 +188,70 @@ window.Instruments = (function () {
     ctx.save();
     if (s !== 1) ctx.scale(s, s);
     const q = cellPanel(p);
-    chrome(q);
+    // the chrome is in the static layer; leave the context as chrome() left it
+    ctx.fillStyle = "rgba(9,13,15,0.86)";
+    ctx.strokeStyle = `rgba(${LAMP},0.5)`; ctx.lineWidth = 1;
     paintFn(q, r, dt);
     ctx.restore();
     curFont = null;
   }
 
-  function drawBank(panels, focus, paintFn, dt, r) {
+  function drawStaticPanel(p, staticFn) {
+    const s = ps(p);
+    ctx.save();
+    if (s !== 1) ctx.scale(s, s);
+    const q = cellPanel(p);
+    chrome(q);
+    if (staticFn) staticFn(q);
+    ctx.restore();
+    curFont = null;
+  }
+
+  /* chrome and fixed dials, drawn once per bank / focus / size into an
+     offscreen canvas at the bank's own pixel size, then copied 1:1 */
+  const statics = new Map();
+  function blitStatic(panels, focus, staticFn) {
+    const c = ctx.canvas;
+    const fp = focus ? panels.find(q => q.key === focus) : null;
+    const tf = ctx.getTransform();
+    const key = (fp ? fp.key : "") + "|" + c.width + "x" + c.height + "|" + tf.a + "," + tf.d;
+    let layer = statics.get(c);
+    if (!layer || layer.key !== key) {
+      const off = layer ? layer.canvas : document.createElement("canvas");
+      off.width = c.width; off.height = c.height;
+      const octx = off.getContext("2d");
+      octx.setTransform(tf);
+      octx.imageSmoothingEnabled = true;
+      const saved = ctx;
+      ctx = octx;
+      curFont = null;
+      if (fp) {
+        drawStaticPanel({ key: fp.key, label: fp.label, w: TOTAL_W, h: TOTAL_H, focused: true }, staticFn);
+      } else {
+        for (const p of panels) {
+          ctx.save();
+          ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
+          drawStaticPanel(p, staticFn);
+          ctx.restore();
+          curFont = null;
+        }
+      }
+      ctx = saved;
+      curFont = null;
+      layer = { key, canvas: off };
+      statics.set(c, layer);
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(layer.canvas, 0, 0);
+    ctx.restore();
+    curFont = null;
+  }
+
+  function drawBank(panels, focus, paintFn, dt, r, staticFn) {
     ctx.clearRect(0, 0, TOTAL_W, TOTAL_H);
     curFont = null;
+    blitStatic(panels, focus, staticFn);
     if (focus) {
       const p = panels.find(q => q.key === focus);
       if (p) {
@@ -219,7 +280,7 @@ window.Instruments = (function () {
   }
 
   function paintBanks(dt, r) {
-    if (ctx) drawBank(PANELS, focusKey, paint, dt, r);
+    if (ctx) drawBank(PANELS, focusKey, paint, dt, r, paintStatic);
     // readings keep ticking in draw(); only the painting stops while CSS hides the bank
     if (sysShown) paintSysBank(dt, r);
   }
@@ -235,7 +296,7 @@ window.Instruments = (function () {
     const saved = ctx;
     ctx = sysCtx;
     curFont = null;
-    drawBank(SYS_PANELS, sysFocus, paintSys, dt, r);
+    drawBank(SYS_PANELS, sysFocus, paintSys, dt, r, null);
     ctx = saved;
     curFont = null;
   }
@@ -245,6 +306,10 @@ window.Instruments = (function () {
     if (p.key === "signal") signal(p, r, dt);
     if (p.key === "phase")  drive(p, r, dt);
     if (p.key === "rec")    nav(p, r, dt);
+  }
+
+  function paintStatic(p) {
+    if (p.key === "radar") radarStatic(p);
   }
 
   function paintSys(p, r, dt) {
@@ -339,7 +404,8 @@ window.Instruments = (function () {
      ========================================================= */
   const RANGE = 22000;
 
-  function radar(p, r, dt) {
+  /* radar parts that never change: drawn once into the static layer */
+  function radarStatic(p) {
     const inner = p.h - 5;
     const cx = p.w / 2, cy = inner * 0.52, R = Math.min(cx - 8, cy - 14);
 
@@ -366,6 +432,11 @@ window.Instruments = (function () {
     ctx.textAlign = "center";
     ctx.fillText("W", cx - R + 7, cy + 3);
     ctx.fillText("E", cx + R - 7, cy + 3);
+  }
+
+  function radar(p, r, dt) {
+    const inner = p.h - 5;
+    const cx = p.w / 2, cy = inner * 0.52, R = Math.min(cx - 8, cy - 14);
 
     sweep += dt * 1.35;
     const ang = sweep % 6.283;
