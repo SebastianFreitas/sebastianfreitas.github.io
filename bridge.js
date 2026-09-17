@@ -972,6 +972,12 @@
     }
     runLog(dt);
 
+    host.classList.toggle("moving", Math.abs(vel) > 200);
+  }
+
+  /* canvas-only half of the HUD: runs after the frame's DOM writes, so the
+     font sets inside don't force a second style recalculation */
+  function drawInstruments(dt) {
     if (window.Instruments) {
       const st = ship ? Voidship.stats(ship) : null;
       Instruments.draw(dt, {
@@ -993,8 +999,6 @@
         ship: st,
       });
     }
-
-    host.classList.toggle("moving", Math.abs(vel) > 200);
   }
 
   /* ---- movement: the voidship owns travel ---- */
@@ -1105,6 +1109,11 @@
     chaosNow  = approach(chaosNow,  sceneMode === "void" ? World.chaosAt(camX)  : 0, 1.4, dt);
     futureNow = approach(futureNow, sceneMode === "void" ? World.futureAt(camX) : 0, 1.4, dt);
 
+    // DOM first (HUD text, minimap marker, note position), canvas after
+    if (bridgeReady) updateHUD(dt);
+    if (bridgeReady && activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
+      placeNote(noteEls[activeMark.id], activeMark);
+
     World.draw(ctx, {
       W, H, camX, t, vel,
       maxFling: CAM.maxFling,
@@ -1120,14 +1129,12 @@
       if (ship) {
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
       }
-      if (bridgeReady && activeMark && noteEls[activeMark.id] && noteEls[activeMark.id].classList.contains("show"))
-        placeNote(noteEls[activeMark.id], activeMark);
       drawSwitchFX();
     } catch (err) {
       if (!frame._warned) { frame._warned = 1; console.warn("beacon layer:", err); }
     }
 
-    if (bridgeReady) updateHUD(dt);
+    if (bridgeReady) drawInstruments(dt);
   }
 
   /* one still picture under the gate. Fades that the running loop would
