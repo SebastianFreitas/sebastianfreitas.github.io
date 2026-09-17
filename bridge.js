@@ -1013,29 +1013,27 @@
 
   /* ---- loop ---- */
   let last = performance.now();
-  /* the intro cutscene is capped at 60 fps: past that a high-refresh
+  /* the whole scene is capped at 60 fps: past that a high-refresh
      screen only paints the same picture more often, and the fans hear it */
-  const GENESIS_FRAME_MS = 1000 / 60;
+  const FRAME_MS = 1000 / 60;
   /* vsync timestamps wobble; a frame this close to its slot still paints */
-  const GENESIS_EARLY_MS = 4;
-  let genesisDue = 0;
+  const FRAME_EARLY_MS = 4;
+  let frameDue = 0;
   function frame(now) {
     if (!loopOn) return;
     if (!visible || document.hidden) {
       loopOn = false;
       return;
     }
-    if (window.Genesis && Genesis.active) {
-      if (now < genesisDue - GENESIS_EARLY_MS) {
-        requestAnimationFrame(frame);
-        return;
-      }
-      /* step the slot by exactly one frame so the average holds at 60;
-         only when more than a frame behind (first frame, a hitch) restart it from now */
-      genesisDue = now - genesisDue > GENESIS_FRAME_MS
-        ? now + GENESIS_FRAME_MS
-        : genesisDue + GENESIS_FRAME_MS;
+    if (now < frameDue - FRAME_EARLY_MS) {
+      requestAnimationFrame(frame);
+      return;
     }
+    /* step the slot by exactly one frame so the average holds at 60;
+       only when more than a frame behind (first frame, a hitch) restart it from now */
+    frameDue = now - frameDue > FRAME_MS
+      ? now + FRAME_MS
+      : frameDue + FRAME_MS;
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
