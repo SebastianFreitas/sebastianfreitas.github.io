@@ -47,6 +47,7 @@ window.Instruments = (function () {
   let cv, ctx, dpr = 1, t = 0;
   let focusKey = null;
   let sysCv = null, sysCtx = null, sysFocus = null;
+  let sysShown = true, lastR = null;   // SYS bank displayed? / last readings, for a repaint on show
   let uiScale = 1;
 
   const BANDS = 28;
@@ -131,6 +132,19 @@ window.Instruments = (function () {
     sysCtx = sysCv.getContext("2d");
     fitCanvas(sysCv, sysCtx);
     bindFocus(sysCv, SYS_PANELS, () => sysFocus, k => { sysFocus = k; });
+    // hidden below 1100px by bridge.css (display: none): a zero-size box
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(es => {
+        const box = es[es.length - 1].contentRect;
+        const shown = box.width > 0 && box.height > 0;
+        if (shown === sysShown) return;
+        sysShown = shown;
+        if (shown && lastR) {
+          fitCanvas(sysCv, sysCtx);
+          paintSysBank(0, lastR);
+        }
+      }).observe(sysCv);
+    }
   }
 
   function setScale(v) {
@@ -185,9 +199,17 @@ window.Instruments = (function () {
   function draw(dt, r) {
     t += dt;
     tickSys(dt, r);
-    const saved = ctx;
+    lastR = r;
     if (ctx) drawBank(PANELS, focusKey, paint, dt, r);
-    if (sysCtx) { ctx = sysCtx; drawBank(SYS_PANELS, sysFocus, paintSys, dt, r); }
+    // readings keep ticking above; only the painting stops while CSS hides the bank
+    if (sysShown) paintSysBank(dt, r);
+  }
+
+  function paintSysBank(dt, r) {
+    if (!sysCtx) return;
+    const saved = ctx;
+    ctx = sysCtx;
+    drawBank(SYS_PANELS, sysFocus, paintSys, dt, r);
     ctx = saved;
   }
 
