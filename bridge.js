@@ -260,6 +260,19 @@
   const noteCat = document.getElementById("bnote-cat");
   let noteTimer = null;
 
+  /* the hero's page box, read once per layout change instead of per frame
+     or per pointer event */
+  let hostRect = null;
+  function hostBox() {
+    return hostRect || (hostRect = host.getBoundingClientRect());
+  }
+  const dropHostRect = () => { hostRect = null; };
+  addEventListener("resize", dropHostRect);
+  addEventListener("scroll", dropHostRect, { passive: true, capture: true });
+  addEventListener("load", dropHostRect);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(dropHostRect);
+  if ("ResizeObserver" in window) new ResizeObserver(dropHostRect).observe(host);
+
   function showNote(mark) {
     clearTimeout(noteTimer);
     for (const k in noteEls) if (noteEls[k]) noteEls[k].classList.remove("show");
@@ -267,25 +280,37 @@
     const el2 = noteEls[mark.id];
     if (!el2) return;
     noteTimer = setTimeout(() => {
+      measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(catalogued);
     }, 280);
   }
+  /* offsetWidth/Height force layout; the panel only changes size on a
+     resize or when it opens, so it's measured then */
+  function measureNote(el2) {
+    el2._pw = el2.offsetWidth || 380;
+    el2._ph = el2.offsetHeight || 260;
+  }
+  addEventListener("resize", () => {
+    for (const k in noteEls) if (noteEls[k]) measureNote(noteEls[k]);
+  });
   /* put the panel next to the beacon it belongs to, on whichever side
      has room, clamped so it never leaves the hero */
   function placeNote(el2, mark) {
     if (!el2 || !mark) return;
+    if (el2._pw == null) measureNote(el2);
     const p = markScreen(mark);
-    const pw = el2.offsetWidth || 380, ph = el2.offsetHeight || 260;
+    const pw = el2._pw, ph = el2._ph;
     const pad = 22, edge = 20;
     const right = p.x + pad + pw < W - edge;
     let left = right ? p.x + pad : p.x - pad - pw;
     left = Math.min(W - pw - edge, Math.max(edge, left));
     let top = p.y - ph * 0.45;
     top = Math.min(H - ph - edge, Math.max(edge + 40, top));
-    el2.style.left = left + "px";
-    el2.style.top  = top + "px";
+    left = Math.round(left); top = Math.round(top);
+    if (el2._left !== left) { el2.style.left = left + "px"; el2._left = left; }
+    if (el2._top  !== top)  { el2.style.top  = top + "px";  el2._top  = top; }
     el2.classList.toggle("from-left", !right);
   }
 
@@ -305,7 +330,7 @@
     } else {
       if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
       if (window.XP) {
-        const p = markScreen(m), r = host.getBoundingClientRect();
+        const p = markScreen(m), r = hostBox();
         XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
       }
       pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
@@ -361,7 +386,7 @@
   const worldPerPx = () => 1 / (scale() * DRAG_PAR);
 
   function markAt(clientX, clientY) {
-    const r = host.getBoundingClientRect();
+    const r = hostBox();
     const px = clientX - r.left, py = clientY - r.top;
     let best = null, bestD = HIT;
     for (const m of activeMarks()) {
@@ -373,7 +398,7 @@
   }
 
   function clientToCourse(clientX, clientY) {
-    const r = host.getBoundingClientRect();
+    const r = hostBox();
     const px = clientX - r.left;
     const py = clientY - r.top;
     const worldX = camX + (px - W * 0.5) * worldPerPx();
@@ -463,7 +488,7 @@
      coordinates involved, so there's nothing to go stale or overshoot. */
   function aimFromPointer() {
     if (!ship || thrustId == null || !ship.thrusting || ship.courseMark) return null;
-    const r = host.getBoundingClientRect();
+    const r = hostBox();
     return { px: lastPtr.x - r.left, py: lastPtr.y - r.top };
   }
 
@@ -475,7 +500,7 @@
   });
 
   addEventListener("pointermove", e => {
-    const r = host.getBoundingClientRect();
+    const r = hostBox();
     const inside = e.clientY >= r.top && e.clientY <= r.bottom;
 
     if (cursor) {
@@ -919,9 +944,13 @@
     }
   }
 
+  let youEl, youPct = null;
   function updateHUD(dt) {
-    const you = document.getElementById("byou");
-    if (you) you.style.left = ((camX - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
+    if (youEl === undefined) youEl = document.getElementById("byou");
+    if (youEl) {
+      const pct = (camX - CAM.min) / (CAM.max - CAM.min) * 100;
+      if (pct !== youPct) { youEl.style.left = pct + "%"; youPct = pct; }
+    }
 
     if (sceneMode === "void" && Math.abs(camX - LAND.mainland) < SLOT * 1.4)
       catalogued += (160 + Math.abs(vel) * 0.02) * dt;
