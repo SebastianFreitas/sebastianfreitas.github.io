@@ -192,8 +192,7 @@
 .bnote {
   position: absolute; z-index: 14; left: 0; top: 0;
   width: min(25rem, 34vw); padding: 1.4rem 1.6rem;
-  background: rgba(13,17,20,0.80);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  background: rgba(13,17,20,0.92);
   border: 1px solid rgba(198,204,198,0.13);
   border-left: 2px solid var(--lamp);
   opacity: 0; visibility: hidden; pointer-events: none;
