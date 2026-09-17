@@ -14,17 +14,25 @@
 <script src="xp.js?v=13"></script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
-   them; http://127.0.0.1:8000 often did, and they served ghost JS. */
+   them; http://127.0.0.1:8000 often did, and they served ghost JS.
+   Runs once per browser: the flag is set after the cleanup finishes. */
 (function () {
   if (!("serviceWorker" in navigator)) return;
-  navigator.serviceWorker.getRegistrations().then(function (regs) {
-    regs.forEach(function (r) { r.unregister(); });
-  });
+  var FLAG = "arcanis.swcleanup.v1";
+  try { if (localStorage.getItem(FLAG)) return; } catch (e) {}
+  var jobs = [
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (r) { return r.unregister(); }));
+    })
+  ];
   if (window.caches) {
-    caches.keys().then(function (keys) {
-      keys.forEach(function (k) { caches.delete(k); });
-    });
+    jobs.push(caches.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+    }));
   }
+  Promise.all(jobs).then(function () {
+    try { localStorage.setItem(FLAG, "1"); } catch (e) {}
+  });
 })();
 </script>
 </head>
