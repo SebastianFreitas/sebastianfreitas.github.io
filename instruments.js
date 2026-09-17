@@ -48,6 +48,11 @@ window.Instruments = (function () {
   let focusKey = null;
   let sysCv = null, sysCtx = null, sysFocus = null;
   let sysShown = true, lastR = null;   // SYS bank displayed? / last readings, for a repaint on show
+
+  /* the banks are small and slow-moving: paint them about 20 times a second
+     (every 3rd frame at 60 fps), handing each paint the time since the last */
+  const PAINT_STEP = 0.045;
+  let paintAcc = PAINT_STEP;   // first draw paints at once
   let uiScale = 1;
 
   const BANDS = 28;
@@ -122,7 +127,7 @@ window.Instruments = (function () {
     if (!cv) return;
     ctx = cv.getContext("2d");
     fitCanvas(cv, ctx);
-    bindFocus(cv, PANELS, () => focusKey, k => { focusKey = k; });
+    bindFocus(cv, PANELS, () => focusKey, k => { focusKey = k; repaint(); });
     addEventListener("resize", resize);
   }
 
@@ -131,7 +136,7 @@ window.Instruments = (function () {
     if (!sysCv) return;
     sysCtx = sysCv.getContext("2d");
     fitCanvas(sysCv, sysCtx);
-    bindFocus(sysCv, SYS_PANELS, () => sysFocus, k => { sysFocus = k; });
+    bindFocus(sysCv, SYS_PANELS, () => sysFocus, k => { sysFocus = k; repaint(); });
     // hidden below 1100px by bridge.css (display: none): a zero-size box
     if ("ResizeObserver" in window) {
       new ResizeObserver(es => {
@@ -153,12 +158,13 @@ window.Instruments = (function () {
     return uiScale;
   }
   const getScale = () => uiScale;
-  const focus = k => { focusKey = k; };
-  const focusSys = k => { sysFocus = k; };
+  const focus = k => { focusKey = k; repaint(); };
+  const focusSys = k => { sysFocus = k; repaint(); };
 
   function resize() {
     fitCanvas(cv, ctx);
     fitCanvas(sysCv, sysCtx);
+    repaint();
   }
 
   /* cell → focused panel: scale drawing so labels/gauges grow with the tile */
@@ -200,9 +206,23 @@ window.Instruments = (function () {
     t += dt;
     tickSys(dt, r);
     lastR = r;
+    paintAcc += dt;
+    if (paintAcc < PAINT_STEP) return;
+    const pdt = paintAcc;
+    paintAcc = 0;
+    paintBanks(pdt, r);
+  }
+
+  function paintBanks(dt, r) {
     if (ctx) drawBank(PANELS, focusKey, paint, dt, r);
-    // readings keep ticking above; only the painting stops while CSS hides the bank
+    // readings keep ticking in draw(); only the painting stops while CSS hides the bank
     if (sysShown) paintSysBank(dt, r);
+  }
+
+  /* show a focus or size change now instead of on the next paint; dt 0
+     moves nothing, and the time owed stays in paintAcc for the next paint */
+  function repaint() {
+    if (lastR) paintBanks(0, lastR);
   }
 
   function paintSysBank(dt, r) {
