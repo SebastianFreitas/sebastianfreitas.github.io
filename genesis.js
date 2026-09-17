@@ -565,6 +565,8 @@ window.Genesis = (function () {
   function finish() {
     if (!active) return;
     active = false;
+    removeEventListener("wheel", holdPage, { passive: false });
+    removeEventListener("touchmove", holdPage, { passive: false });
     remember();
     if (overlay) {
       overlay.hidden = true;
@@ -587,6 +589,8 @@ window.Genesis = (function () {
     if (thenCamX == null && window.World && thenMode === "void")
       thenCamX = World.LAND.bridge;
     active = true;
+    addEventListener("wheel", holdPage, { passive: false });
+    addEventListener("touchmove", holdPage, { passive: false });
     beat = 0;
     local = 0;
     shake = 0;
@@ -2796,12 +2800,11 @@ window.Genesis = (function () {
   }
 
   /* ---- input --------------------------------------------- */
+  // attached in play(), removed in finish(): the page scrolls freely otherwise
   function holdPage(e) {
     if (!active) return;
     e.preventDefault();
   }
-  addEventListener("wheel", holdPage, { passive: false });
-  addEventListener("touchmove", holdPage, { passive: false });
 
   if (overlay) {
     overlay.addEventListener("click", e => {
