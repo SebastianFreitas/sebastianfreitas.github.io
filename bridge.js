@@ -156,6 +156,8 @@
     if (!visible || document.hidden) return;
     loopOn = true;
     last = performance.now();
+    prevStamp = -1;                   // the gap while stopped isn't a refresh
+    refreshCount = 2 * refreshN;      // first callback paints
     requestAnimationFrame(frame);
   }
 
@@ -634,7 +636,7 @@
       }
     }
     // if none ever appear, say so once — beaconReport() has the detail
-    if (!shown && ++markDebug === 240)
+    if (!shown && markDebug < 4 && (markDebug += dt) >= 4)
       console.warn("no marks drawn in 4s — run beaconReport() for why");
   }
 
@@ -1060,21 +1062,32 @@
 
   /* ---- loop ---- */
   let last = performance.now();
-  /* the whole scene is capped at 60 fps: past that a high-refresh
-     screen only paints the same picture more often, and the fans hear it */
-  const FRAME_MS = 1000 / 60;
-  /* vsync timestamps wobble; a frame this close to its slot still paints */
-  const FRAME_EARLY_MS = 4;
-  let frameDue = 0;
-  /* at rest and untouched for a while, the scene only drifts: paint it at
-     30 fps. Any input snaps straight back to 60. */
+  /* pace the scene by display refreshes, not by a ms slot: paint every Nth
+     refresh, N = floor(Hz / 60), so every painted frame is the same length.
+     60 Hz → 60 fps, 75 → 75, 120 → 60, 144 → 72, 165 → 82.5, 240 → 60.
+     The refresh interval is measured from rAF timestamps and kept up to date,
+     so moving the window to another monitor re-picks N. */
+  const REFRESH_WINDOW = 15;        // intervals kept for the measurement
+  const REFRESH_FIRST = 5;          // intervals needed for the first measurement
+  const REFRESH_MIN_MS = 2;         // intervals outside 2..50 ms aren't refreshes
+  const REFRESH_MAX_MS = 50;
+  const REFRESH_BAND = 0.4;         // intervals within ±40% of the median are averaged
+  const refreshSamples = [];        // recent rAF intervals, ms, oldest first
+  let refreshMs = 1000 / 60;        // measured refresh interval
+  let refreshN = 1;                 // paint every refreshN refreshes
+  let refreshMeasured = false;
+  let pendingN = 0;                 // a new N waits for a second measurement to agree
+  let sinceMeasure = 0;             // intervals recorded since the last measurement
+  let prevStamp = -1;               // previous rAF timestamp; -1 = none yet
+  let refreshCount = 0;             // refreshes since the last paint
+  /* at rest and untouched for a while, the scene only drifts: paint it every
+     2N refreshes (half rate). Any input snaps straight back. */
   const IDLE_AFTER_MS = 5000;
-  const IDLE_FRAME_MS = 1000 / 30;
   let lastInput = performance.now();
   let idleNow = false;
   function noteInput() {
     lastInput = performance.now();
-    if (idleNow) { idleNow = false; frameDue = 0; }   // paint on the very next callback
+    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; }   // paint on the very next callback
   }
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
     addEventListener(type, noteInput, { passive: true, capture: true }));
@@ -1086,33 +1099,81 @@
       && ship.vel === 0 && ship.vy === 0 && ship.holdT === 0
       && ship.thrustAmt < 0.01 && !ship.trail.length && !ship.sparks.length;
   }
+  function measureRefresh() {
+    const sorted = refreshSamples.slice().sort((a, b) => a - b);
+    const m = sorted[sorted.length >> 1];
+    let sum = 0, count = 0;
+    for (const x of refreshSamples) {
+      if (Math.abs(x - m) <= m * REFRESH_BAND) { sum += x; count++; }
+    }
+    refreshMs = sum / count;
+    const n = Math.max(1, Math.floor(1000 / refreshMs / 60 + 0.03));   // 3% margin: 59.94 and 119.88 Hz panels keep their N
+    if (!refreshMeasured) {
+      refreshN = n;
+      refreshMeasured = true;
+      pendingN = 0;
+    } else if (n === refreshN) {
+      pendingN = 0;
+    } else if (n === pendingN) {
+      refreshN = n;
+      pendingN = 0;
+    } else {
+      pendingN = n;
+    }
+  }
   function frame(now) {
     if (!loopOn) return;
     if (!visible || document.hidden) {
       loopOn = false;
       return;
     }
+    let refreshes = 1;
+    if (prevStamp >= 0) {
+      const delta = now - prevStamp;
+      if (delta >= REFRESH_MIN_MS && delta <= REFRESH_MAX_MS) {
+        refreshSamples.push(delta);
+        if (refreshSamples.length > REFRESH_WINDOW) refreshSamples.shift();
+        sinceMeasure++;
+        if (refreshMeasured ? sinceMeasure >= REFRESH_WINDOW
+                            : refreshSamples.length >= REFRESH_FIRST) {
+          measureRefresh();
+          sinceMeasure = 0;
+        }
+      }
+      // a janky frame that spanned several refreshes counts as all of them
+      refreshes = Math.max(1, Math.round(delta / refreshMs));
+    }
+    prevStamp = now;
+    refreshCount += refreshes;
+
     if (!idleNow) {
       if (now - lastInput > IDLE_AFTER_MS && atRest()) idleNow = true;
     } else if (!atRest()) {
       idleNow = false;
-      frameDue = 0;
+      refreshCount = 2 * refreshN;
     }
-    if (now < frameDue - FRAME_EARLY_MS) {
+    if (refreshCount < (idleNow ? 2 * refreshN : refreshN)) {
       requestAnimationFrame(frame);
       return;
     }
-    const slot = idleNow ? IDLE_FRAME_MS : FRAME_MS;
-    /* step the slot by exactly one frame so the average holds;
-       only when more than a frame behind (first frame, a hitch) restart it from now */
-    frameDue = now - frameDue > slot
-      ? now + slot
-      : frameDue + slot;
+    refreshCount = 0;   // drop the remainder: a late frame never earns a double paint
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
     render(raw);
   }
+  function pacingReport() {
+    const hz = 1000 / refreshMs;
+    return {
+      refreshHz: +hz.toFixed(2),
+      refreshMs: +refreshMs.toFixed(3),
+      n: refreshN,
+      measured: refreshMeasured,
+      idle: idleNow,
+      fps: +(hz / (idleNow ? 2 * refreshN : refreshN)).toFixed(2),
+    };
+  }
+  window.pacingReport = pacingReport;
 
   function render(raw) {
     // a claim holds travel still while the level lands
