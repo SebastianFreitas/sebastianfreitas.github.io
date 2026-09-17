@@ -141,6 +141,7 @@
 
   /* ---- defer interaction until the gate picks a path ---- */
   let loopOn = false, bridgeReady = false, visible = true;
+  let entered = false, preloaded = false;   // gate lifted / first still frame drawn
 
   function readyBridge() {
     if (bridgeReady) return;
@@ -151,16 +152,29 @@
 
   function startLoop() {
     if (loopOn) return;
+    if (!entered) return;
     if (!visible || document.hidden) return;
     loopOn = true;
     last = performance.now();
     requestAnimationFrame(frame);
   }
 
-  document.addEventListener("site:preload", () => startLoop());
+  /* the gate sits over one still frame; the loop only starts on site:enter */
+  document.addEventListener("site:preload", () => {
+    preloaded = true;
+    paintOnce();
+  });
+  function repaintUnderGate() {
+    if (preloaded && !entered) paintOnce();
+  }
+  // a resize clears the canvas; late images and fonts change the picture
+  addEventListener("resize", repaintUnderGate);
+  addEventListener("load", repaintUnderGate);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(repaintUnderGate);
 
   let pendingMode = null;
   document.addEventListener("site:enter", e => {
+    entered = true;
     startLoop();
     pendingMode = e.detail && e.detail.mode || null;
     if (e.detail.bridge !== false) readyBridge();
@@ -1037,7 +1051,10 @@
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
+    render(raw);
+  }
 
+  function render(raw) {
     // a claim holds travel still while the level lands
     // but the world keeps animating (t advances)
     t += raw;
@@ -1082,6 +1099,17 @@
     }
 
     if (bridgeReady) updateHUD(dt);
+  }
 
+  /* one still picture under the gate. Fades that the running loop would
+     have finished behind the gate are settled first, so nothing fades in
+     when the gate lifts. */
+  function paintOnce() {
+    if (loopOn) return;
+    chaosNow  = sceneMode === "void" ? World.chaosAt(camX)  : 0;
+    futureNow = sceneMode === "void" ? World.futureAt(camX) : 0;
+    if (ship) ship.alpha = 1;
+    for (const m of activeMarks()) m.vis = onScreen(markScreen(m).x, 60) ? 1 : 0;
+    render(0);
   }
 })();
