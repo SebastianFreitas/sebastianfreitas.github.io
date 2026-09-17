@@ -73,14 +73,14 @@
   let measured = false;
   function measure(v) {
     if (measured || tier === "sd") return;
-    measured = true;
     const url = v.currentSrc || v.src;
     const entry = performance
       .getEntriesByType("resource")
       .filter((e) => e.name === url)
       .pop();
     if (!entry || !entry.transferSize || entry.duration <= 0) return;
- 
+    measured = true;
+
     const mbps = (entry.transferSize * 8) / (entry.duration / 1000) / 1e6;
     if (mbps < SLOW_MBPS) {
       tier = "sd";
