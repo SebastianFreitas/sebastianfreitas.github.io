@@ -1066,21 +1066,48 @@
   /* vsync timestamps wobble; a frame this close to its slot still paints */
   const FRAME_EARLY_MS = 4;
   let frameDue = 0;
+  /* at rest and untouched for a while, the scene only drifts: paint it at
+     30 fps. Any input snaps straight back to 60. */
+  const IDLE_AFTER_MS = 5000;
+  const IDLE_FRAME_MS = 1000 / 30;
+  let lastInput = performance.now();
+  let idleNow = false;
+  function noteInput() {
+    lastInput = performance.now();
+    if (idleNow) { idleNow = false; frameDue = 0; }   // paint on the very next callback
+  }
+  ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
+    addEventListener(type, noteInput, { passive: true, capture: true }));
+  function atRest() {
+    if (frozen || xswitch || thrustId != null || vel !== 0) return false;
+    if (window.Genesis && Genesis.active) return false;
+    if (!ship) return true;
+    return !ship.thrusting && ship.targetX == null
+      && ship.vel === 0 && ship.vy === 0 && ship.holdT === 0
+      && ship.thrustAmt < 0.01 && !ship.trail.length && !ship.sparks.length;
+  }
   function frame(now) {
     if (!loopOn) return;
     if (!visible || document.hidden) {
       loopOn = false;
       return;
     }
+    if (!idleNow) {
+      if (now - lastInput > IDLE_AFTER_MS && atRest()) idleNow = true;
+    } else if (!atRest()) {
+      idleNow = false;
+      frameDue = 0;
+    }
     if (now < frameDue - FRAME_EARLY_MS) {
       requestAnimationFrame(frame);
       return;
     }
-    /* step the slot by exactly one frame so the average holds at 60;
+    const slot = idleNow ? IDLE_FRAME_MS : FRAME_MS;
+    /* step the slot by exactly one frame so the average holds;
        only when more than a frame behind (first frame, a hitch) restart it from now */
-    frameDue = now - frameDue > FRAME_MS
-      ? now + FRAME_MS
-      : frameDue + FRAME_MS;
+    frameDue = now - frameDue > slot
+      ? now + slot
+      : frameDue + slot;
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
