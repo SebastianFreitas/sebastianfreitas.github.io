@@ -569,6 +569,9 @@ window.Genesis = (function () {
     removeEventListener("touchmove", holdPage, { passive: false });
     remember();
     if (overlay) {
+      // a focused Skip/Next button would keep focus inside a subtree we're
+      // about to aria-hide; let it go first (it drops to the page, as before)
+      if (overlay.contains(document.activeElement)) document.activeElement.blur();
       overlay.hidden = true;
       overlay.setAttribute("aria-hidden", "true");
     }
