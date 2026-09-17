@@ -8,7 +8,7 @@
    One entry point:
 
      World.draw(ctx, {
-       W, H, camX, t, vel, maxFling, chaos, future
+       W, H, camX, t, vel, maxFling, chaos, future, dt
      })
 
    plus World.LAND / SLOT / BOUNDS / DECK for anyone who needs to
@@ -333,12 +333,12 @@ window.World = (function () {
   function drawPresences() {
     for (const p of presences) {
       const x = wx(p.x, p.par);
-      if (!onScreen(x, p.w * 1.4)) { p.seen = approach(p.seen, 0, 2, 1 / 60); continue; }
+      if (!onScreen(x, p.w * 1.4)) { p.seen = approach(p.seen, 0, 2, dtNow); continue; }
 
       // surfaces slowly when you're near, and only during part of its cycle
       const near = 1 - Math.min(1, Math.abs(camX - p.x) / (SLOT * 2.2));
       const tide = Math.pow(0.5 + 0.5 * Math.sin(t * p.cycle * 6.283 + p.ph), 2.6);
-      p.seen = approach(p.seen, smooth(near) * tide * chaosNow, 1.1, 1 / 60);
+      p.seen = approach(p.seen, smooth(near) * tide * chaosNow, 1.1, dtNow);
       if (p.seen < 0.015) continue;
 
       const y = p.y * H;
@@ -877,6 +877,7 @@ window.World = (function () {
   /* ---- the view, set once per frame ---- */
   let ctx, W = 0, H = 0, camX = 0, t = 0, vel = 0;
   let chaosNow = 0, futureNow = 0;
+  let dtNow = 1 / 60;   // seconds since the last draw; callers without it get 60 fps
   const V = { maxFling: 46000 };
 
   const scale = () => W / VIEW_UNITS;
@@ -909,6 +910,7 @@ window.World = (function () {
     ctx = context;
     W = v.W; H = v.H; camX = v.camX; t = v.t; vel = v.vel;
     chaosNow = v.chaos; futureNow = v.future;
+    dtNow = v.dt != null ? v.dt : 1 / 60;
     if (v.maxFling) V.maxFling = v.maxFling;
     const mode = v.mode || "void";
 

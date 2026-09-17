@@ -1109,7 +1109,7 @@
       W, H, camX, t, vel,
       maxFling: CAM.maxFling,
       chaos: chaosNow, future: futureNow,
-      mode: sceneMode,
+      mode: sceneMode, dt,
     });
     // a claim holds travel still while the level lands — but beacon
     // fade-in must keep using real time. With dt=0 here, the first
