@@ -80,6 +80,13 @@ body.site-frozen > *:not(.site-gate) {
   user-select: none;
 }
 
+/* the top bar stays usable above the gate: Work / Experience leave it */
+body.site-frozen > .topbar {
+  pointer-events: auto;
+  user-select: auto;
+  z-index: 101;
+}
+
 .site-gate {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
@@ -546,5 +553,19 @@ footer p { margin: 0 0 0.4rem; }
 
 /* topbar over the hero */
 .topbar { position: absolute; top: 0; left: 0; right: 0; }
+
+/* case pages have no hero: the bar sits in the flow, above the title */
+.page-case .topbar { position: relative; }
+
+/* bottom of a case page: back to the list, or on to the next one */
+.case-nav {
+  display: flex; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap;
+  margin-top: 3rem;
+}
+.case-nav a {
+  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; text-decoration: none; color: var(--sage-dim);
+}
+.case-nav a:hover { color: var(--lamp); }
 body { padding-top: 0; }
 .work, .experience { position: relative; z-index: 1; background: var(--petrol); }

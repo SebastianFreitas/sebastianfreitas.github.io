@@ -446,10 +446,10 @@ html.genesis-on .topbar {
   transition: opacity 0.4s ease;
 }
 
-.bridge-hero.genesis { cursor: default; }
-.bridge-hero.genesis .bridge-hud,
-.bridge-hero.genesis .bridge-scroll,
-.bridge-hero.genesis .bnote {
+.bridge-hero.is-cinematic { cursor: default; }
+.bridge-hero.is-cinematic .bridge-hud,
+.bridge-hero.is-cinematic .bridge-scroll,
+.bridge-hero.is-cinematic .bnote {
   opacity: 0 !important; visibility: hidden !important; pointer-events: none;
 }
 
