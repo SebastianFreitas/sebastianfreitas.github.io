@@ -44,7 +44,7 @@ Target engines for the games themselves (documented on each case study): Unity (
 python serve.py
 ```
 
-Open the URL it prints (default `http://127.0.0.1:8765/?reset=1`).
+Open the URL it prints (default `http://127.0.0.1:8765/`). Add `?reset=1` once to clear your progress; it removes itself from the URL.
 
 `serve.py` disables browser caching so script edits show up immediately. Plain `python -m http.server` also works if you do not care about cache.
 
@@ -60,9 +60,11 @@ Opening `index.html` as a file works for a quick look; use the server if itch em
 ├── bridge.js           Hero: camera, input, landmarks, HUD wiring
 ├── world.js            Geography and drawing of the bridge world
 ├── instruments.js      HUD instrument panel
+├── entry.js            decides in <head> whether the first-visit gate shows
 ├── xp.js / surge.js / lamp.js / beacon.css
 ├── light.js            Standalone light-momentum demo (HeavyLight page)
 ├── serve.py            Local no-cache static server
+├── nav-flows.test.py   browser test for navigation and state
 ├── projects/           Per-game case study pages
 └── media/              Images and video for projects
 ```

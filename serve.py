@@ -53,7 +53,8 @@ def main() -> None:
         print("")
         print("  *** Portfolio no-cache server ***")
         print(f"  Folder:  {ROOT}")
-        print(f"  Open:    http://127.0.0.1:{PORT}/?reset=1")
+        print(f"  Open:    http://127.0.0.1:{PORT}/")
+        print("  Reset:   add ?reset=1 once to clear progress (it leaves the URL)")
         print("  Cache:   DISABLED — every script must show up as [disk] below")
         print("")
         try:

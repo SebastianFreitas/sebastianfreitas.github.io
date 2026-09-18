@@ -45,4 +45,4 @@ When you finish (or stop), reply with:
 ### Commands
 
 - **Build:** none. No framework, no bundler, no npm.
-- **Test:** `py -3 boot-gate.test.py`
+- **Test:** `py -3 nav-flows.test.py`

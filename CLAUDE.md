@@ -42,11 +42,12 @@ Every delegation to the implementer must contain:
 5. **Do not touch:** files, symbols or behaviour that must stay unchanged.
 6. **Verification:** the exact command to run, or "none" if the change isn't
    covered by a test. Never `python serve.py` — it is a blocking server and
-   will hang the implementer. The main session verifies anything browser-
-   based by hand.
+   will hang the implementer. Browser behaviour: `py -3 nav-flows.test.py
+   <flows>`. It runs its own server and exits. Only the back/forward cache
+   still needs a manual check.
 
 ## Commands
 
 - **Build:** none. No framework, no bundler, no npm.
-- **Run:** `python serve.py`, then open `http://127.0.0.1:8765/?reset=1`
-- **Test:** `py -3 boot-gate.test.py`
+- **Run:** `python serve.py`, then open `http://127.0.0.1:8765/`
+- **Test:** `py -3 nav-flows.test.py` (Playwright; pass flow names to run a subset, `--list` to see them)
