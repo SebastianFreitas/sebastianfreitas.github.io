@@ -16,6 +16,17 @@
 
 window.Genesis = (function () {
   const FORCE = /(?:[?&])genesis(?:=1)?(?:&|$)/.test(location.search);
+  const JUMP  = /[?&]gbeat=([a-z]+)/.exec(location.search);
+  /* dev switches run once: take them out of the URL so reload and
+     Back don't run them again */
+  (function dropParams(names) {
+    try {
+      const url = new URL(location.href);
+      let changed = false;
+      names.forEach(n => { if (url.searchParams.has(n)) { url.searchParams.delete(n); changed = true; } });
+      if (changed) history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    } catch (e) {}
+  })(["genesis", "gbeat"]);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const overlay = document.getElementById("genesis");
@@ -590,7 +601,7 @@ window.Genesis = (function () {
     if (tagEl) tagEl.textContent = "";
     if (lineEl) lineEl.textContent = "";
     document.documentElement.classList.remove("genesis-on");
-    if (host) host.classList.remove("genesis");
+    if (host) host.classList.remove("is-cinematic");
     document.dispatchEvent(new CustomEvent("site:genesis-done", {
       detail: { mode: thenMode, camX: thenCamX },
     }));
@@ -604,6 +615,7 @@ window.Genesis = (function () {
     if (thenCamX == null && window.World && thenMode === "void")
       thenCamX = World.LAND.bridge;
     active = true;
+    remember();     // counted from the start: leaving mid-way doesn't replay it
     addEventListener("wheel", holdPage, { passive: false });
     addEventListener("touchmove", holdPage, { passive: false });
     beat = 0;
@@ -619,9 +631,9 @@ window.Genesis = (function () {
       overlay.setAttribute("aria-hidden", "false");
     }
     document.documentElement.classList.add("genesis-on");
-    if (host) host.classList.add("genesis");
-    try { scrollTo(0, 0); } catch (e) {}
-    const jump = /[?&]gbeat=([a-z]+)/.exec(location.search);
+    if (host) host.classList.add("is-cinematic");
+    try { scrollTo({ top: 0, behavior: "instant" }); } catch (e) {}
+    const jump = JUMP;
     if (jump) {
       const i = idxOf(jump[1]);
       if (i > 0) {
@@ -761,7 +773,6 @@ window.Genesis = (function () {
       rings[i].a -= dt * 1.35;
       if (rings[i].a <= 0) rings.splice(i, 1);
     }
-    try { if (scrollY !== 0) scrollTo(0, 0); } catch (e) {}
 
     const aim = camAim();
     camTarget = aim.target;
@@ -2867,13 +2878,14 @@ window.Genesis = (function () {
   }, true);
 
   document.addEventListener("site:enter", e => {
-    const mode = e.detail && e.detail.mode;
+    const d = e.detail || {};
     if (active) return;
     if (FORCE) {
       setTimeout(() => { if (!active) play({ thenMode: "void" }); }, 80);
       return;
     }
-    if (pending() && mode === "void")
+    // autoplay only when Setting is picked at the gate
+    if (d.entry === "gate" && d.mode === "void" && pending())
       play({ thenMode: "void" });
   });
 
