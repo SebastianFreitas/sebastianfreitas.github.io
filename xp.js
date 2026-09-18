@@ -29,10 +29,13 @@ window.XP = (function () {
 
   let state, fresh = false;
   try {
-    // http:// and file:// store profiles separately — ?reset=1 clears
-    // the one for this origin so claim animations can be re-tested
-    if (/(?:[?&])reset(?:=1)?(?:&|$)/.test(location.search))
+    if (/(?:[?&])reset(?:=1)?(?:&|$)/.test(location.search)) {
       localStorage.removeItem(KEY);
+      // once: out of the URL, so reload and Back don't wipe it again
+      const url = new URL(location.href);
+      url.searchParams.delete("reset");
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    }
     const raw = localStorage.getItem(KEY);
     if (raw) state = JSON.parse(raw);
   } catch (e) { /* storage unavailable — run for this session only */ }
@@ -55,6 +58,22 @@ window.XP = (function () {
 
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  /* take whatever another page or tab saved since this page loaded.
+     Every write starts from here, so an older copy in memory (a second
+     tab, or a page restored from the back/forward cache) can never
+     overwrite newer progress. */
+  function sync() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || typeof s.level !== "number") return;
+      if (!s.claimed) s.claimed = {};
+      state = s;
+      fresh = false;
+    } catch (e) {}
   }
 
   /* ---- rank: the badge changes shape as the level climbs ---- */
@@ -267,6 +286,7 @@ window.XP = (function () {
 
     /* awards once and only once per id */
     award(id, n, label, x, y) {
+      sync();
       if (state.claimed[id]) return false;
       const before = state.level;
       state.claimed[id] = true;
@@ -279,9 +299,10 @@ window.XP = (function () {
 
     get busy() { return ceremonyBusy; },
 
-    seen() { fresh = false; state.seen = true; save(); },
+    seen() { sync(); fresh = false; state.seen = true; save(); },
     /* claim without a level — flags like genesis, not beacons */
     flag(id) {
+      sync();
       if (state.claimed[id]) return false;
       state.claimed[id] = true;
       save();
@@ -296,6 +317,11 @@ window.XP = (function () {
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", buildChip);
   else buildChip();
+
+  // another tab claimed something, or this page came back from the cache
+  const resync = () => { sync(); if (!ceremonyBusy) paint(); };
+  addEventListener("storage", e => { if (e.key === KEY) resync(); });
+  addEventListener("pageshow", e => { if (e.persisted) resync(); });
 
   return api;
 })();
