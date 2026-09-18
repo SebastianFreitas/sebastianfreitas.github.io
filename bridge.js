@@ -136,9 +136,6 @@
   const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
   const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
 
-  // nothing should begin part-way down the page
-  try { scrollTo(0, 0); } catch (e) {}
-
   /* ---- defer interaction until the gate picks a path ---- */
   let loopOn = false, bridgeReady = false, visible = true;
   let entered = false, preloaded = false;   // gate lifted / first still frame drawn
@@ -147,7 +144,9 @@
     if (bridgeReady) return;
     bridgeReady = true;
     begin();
+    applyPendingView();
     applyPendingMode();
+    saveView();
   }
 
   function startLoop() {
@@ -174,11 +173,13 @@
   addEventListener("load", repaintUnderGate);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(repaintUnderGate);
 
-  let pendingMode = null;
+  let pendingMode = null, pendingView = null, pendingQuiet = false;
   document.addEventListener("site:enter", e => {
     entered = true;
     startLoop();
     pendingMode = e.detail && e.detail.mode || null;
+    pendingView = e.detail && e.detail.view || null;
+    pendingQuiet = !!(e.detail && e.detail.entry && e.detail.entry !== "gate");
     if (e.detail.bridge !== false) readyBridge();
     else {
       const wake = () => {
@@ -688,7 +689,7 @@
     modeBtns.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === sceneMode));
   }
 
-  function applySceneMode(target) {
+  function applySceneMode(target, opts) {
     if (sceneMode === "void") savedVoidCamX = camX; else savedGDCamX = camX;
     sceneMode = target;
     if (target === "gamedev") {
@@ -705,9 +706,11 @@
     rebuildTrack();
     syncLabels();
     syncModeButtons();
-    pushLog(target === "gamedev"
-      ? "sector: game dev — four objects on approach"
-      : "sector: the void — span resumes", "good");
+    if (!(opts && opts.quiet))
+      pushLog(target === "gamedev"
+        ? "sector: game dev — four objects on approach"
+        : "sector: the void — span resumes", "good");
+    saveView();
   }
 
   function applyPendingMode() {
@@ -717,8 +720,33 @@
     }
     const mode = pendingMode;
     pendingMode = null;
-    applySceneMode(mode);
+    applySceneMode(mode, { quiet: pendingQuiet });
   }
+
+  /* camera positions saved by this tab (Back / reload / same-tab return).
+     Runs before applyPendingMode, while the void map is still loaded. */
+  function applyPendingView() {
+    const v = pendingView;
+    pendingView = null;
+    if (!v) return;
+    const clampTo = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+    if (Number.isFinite(v.voidCamX)) camX = clampTo(v.voidCamX, VOID_MIN, VOID_MAX);
+    if (Number.isFinite(v.gdCamX)) savedGDCamX = clampTo(v.gdCamX, GD_BOUNDS.min, GD_BOUNDS.max);
+  }
+
+  /* keys must match entry.js */
+  const VIEW_KEY = "arcanis.view.v1", SECTOR_KEY = "arcanis.sector.v1";
+  function saveView() {
+    if (!entered) return;
+    const view = {
+      mode: xswitch ? xswitch.to : sceneMode,
+      voidCamX: sceneMode === "void" ? camX : savedVoidCamX,
+      gdCamX: sceneMode === "gamedev" ? camX : savedGDCamX,
+    };
+    try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch (e) {}
+    try { localStorage.setItem(SECTOR_KEY, view.mode); } catch (e) {}
+  }
+  addEventListener("pagehide", saveView);
 
   function beginModeSwitch(target) {
     if (xswitch || !target || target === sceneMode) return;
@@ -738,6 +766,12 @@
   modeBtns.forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.addEventListener("click", () => {
+      if (btn.dataset.mode !== sceneMode && !xswitch && window.XP) {
+        const r = btn.getBoundingClientRect();
+        const world = btn.dataset.mode === "void";
+        XP.award(world ? "path-world" : "path-projects", 1, world ? "Setting" : "Game Dev",
+                 r.left + r.width / 2, r.top + r.height / 2);
+      }
       if (window.Genesis && Genesis.pending && !Genesis.active && btn.dataset.mode === "void") {
         Genesis.play({ thenMode: "void", thenCamX: LAND.bridge });
         return;
@@ -759,7 +793,7 @@
 
   document.addEventListener("site:genesis-start", () => {
     begin();
-    host.classList.add("genesis");
+    host.classList.add("is-cinematic");
     endBurn();
     stopSteering();
     if (ship) {
@@ -773,7 +807,7 @@
   });
 
   document.addEventListener("site:genesis-done", e => {
-    host.classList.remove("genesis");
+    host.classList.remove("is-cinematic");
     const mode = (e.detail && e.detail.mode) || "void";
     const destCam = e.detail && e.detail.camX;
     if (mode !== sceneMode) applySceneMode(mode);
