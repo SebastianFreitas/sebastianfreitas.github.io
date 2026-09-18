@@ -8,16 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=9">
+<link rel="stylesheet" href="../style.css?v=10">
 <link rel="stylesheet" href="../beacon.css?v=8">
 </head>
-<body>
+<body class="page-case">
 
 <header class="topbar">
   <a class="wordmark" href="../index.html">SF</a>
   <div class="xp-slot" id="xp-slot"></div>
   <nav>
     <a href="../index.html#work">Work</a>
+    <a href="../index.html#experience">Experience</a>
     <a href="https://github.com/sebastianfreitas">GitHub</a>
     <a href="mailto:sebsfrets@gmail.com">Email</a>
   </nav>
@@ -130,16 +131,19 @@
      and reality reads from it, a new mechanic is a new field in a text file. More gadgets, rarer
      storm events, a character writing to your inbox — each one slots into what already exists.</p>
 
-  <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
+  <nav class="case-nav" aria-label="More work">
+    <a class="back" href="../index.html#work">← All work</a>
+    <a class="next" rel="next" href="voidscape.html">Next: VoidScape →</a>
+  </nav>
 </main>
 
 <footer>
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
-  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
+  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
 </footer>
 
 <script src="../lazy-video.js?v=2"></script>
-<script src="../xp.js?v=13"></script>
+<script src="../xp.js?v=14"></script>
 <script src="../surge.js?v=3"></script>
 <script src="../lamp.js?v=1"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-sector-zero",5,"Sector Zero");});</script>

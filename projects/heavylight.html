@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=9">
+<link rel="stylesheet" href="../style.css?v=10">
 <link rel="stylesheet" href="../beacon.css?v=8">
 <style>
   /* the light demo, sized to sit inside the case layout */
@@ -23,13 +23,14 @@
   .demo .demo-hint.gone { opacity: 0; }
 </style>
 </head>
-<body>
+<body class="page-case">
 
 <header class="topbar">
   <a class="wordmark" href="../index.html">SF</a>
   <div class="xp-slot" id="xp-slot"></div>
   <nav>
     <a href="../index.html#work">Work</a>
+    <a href="../index.html#experience">Experience</a>
     <a href="https://github.com/sebastianfreitas">GitHub</a>
     <a href="mailto:sebsfrets@gmail.com">Email</a>
   </nav>
@@ -80,17 +81,20 @@
      reused it for 30 levels and four new mechanics and took less time to build than the original —
      which was the actual test of whether the base was any good.</p>
 
-  <p style="margin-top:3rem"><a class="back" href="../index.html#work">← All work</a></p>
+  <nav class="case-nav" aria-label="More work">
+    <a class="back" href="../index.html#work">← All work</a>
+    <a class="next" rel="next" href="conclusus.html">Next: Conclusus →</a>
+  </nav>
 </main>
 
 <footer>
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
-  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a></p>
+  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
 </footer>
 
 <script src="../light.js?v=2"></script>
 <script src="../embed.js?v=1"></script>
-<script src="../xp.js?v=13"></script>
+<script src="../xp.js?v=14"></script>
 <script src="../surge.js?v=3"></script>
 <script src="../lamp.js?v=1"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-heavylight",1,"HeavyLight");});</script>
