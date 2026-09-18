@@ -1,12 +1,14 @@
 /* ===========================================================
-   SITE GATE — every visit.
+   SITE GATE — first visit only.
 
-   First visit: terminal boot, then bio + two paths.
-   Returning: skip the boot, show the two paths immediately.
-   Game Dev is the highlighted path. Setting plays Genesis
-   only the first time (handled in genesis.js).
-   path-world / path-projects: +1 each, once — on click or
-   when that section is first visited.
+   entry.js decides in <head> whether the gate shows at all:
+   only a first visit to the bare homepage gets the boot log and
+   the two paths. Back, reload, #work / #experience links and
+   returning visitors go straight in, in their last sector.
+   Escape or a top bar link leaves the gate (Game Dev).
+   path-projects: +1 on picking Game Dev or reaching #work.
+   path-world: +1 on picking Setting (bridge.js also awards it
+   when The Void button is used).
    =========================================================== */
 
 (function () {
@@ -17,6 +19,7 @@
   const logEl   = document.getElementById("gate-log");
   const panelEl = document.getElementById("gate-panel");
   const touch   = matchMedia("(pointer: coarse)").matches;
+  const entry   = window.SiteEntry || { kind: "first", sector: "gamedev", view: null };
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const PATH = {
@@ -26,6 +29,7 @@
   const watchers = {};
 
   function finish() {
+    removeEventListener("keydown", onGateKey, true);
     document.body.classList.remove("site-frozen");
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
@@ -61,7 +65,6 @@
   }
 
   function watchPaths() {
-    watchSection("#bridge-hero", PATH.world.id, PATH.world.label);
     watchSection("#work", PATH.projects.id, PATH.projects.label);
   }
 
@@ -72,6 +75,8 @@
         bridge: opts.bridge !== false,
         auto: !!opts.auto,
         mode: opts.mode || null,
+        entry: "gate",
+        view: entry.view,
       },
     }));
     if (opts.path) {
@@ -99,6 +104,40 @@
       mode: "gamedev",
     }));
   }
+
+  /* the wordmark on the homepage goes to the top, never reloads */
+  const mark = document.querySelector(".topbar .wordmark");
+  if (mark) mark.addEventListener("click", e => {
+    e.preventDefault();
+    if (!gate.classList.contains("done")) return;
+    scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    if (location.hash) history.replaceState(history.state, "", location.pathname + location.search);
+  });
+
+  function onGateKey(e) {
+    if (e.key !== "Escape" || gate.classList.contains("done")) return;
+    e.preventDefault();
+    pick({ bridge: true, mode: "gamedev" });
+  }
+
+  /* skip the gate: no freeze, no boot, no award, same sector as last time */
+  if (entry.kind !== "first") {
+    gate.classList.add("done");
+    document.documentElement.classList.add("gate-done");
+    document.dispatchEvent(new CustomEvent("site:enter", {
+      detail: { bridge: true, auto: true, mode: entry.sector, entry: entry.kind, view: entry.view },
+    }));
+    watchPaths();
+    return;
+  }
+
+  addEventListener("keydown", onGateKey, true);
+  /* in-page top bar links still work while the gate is up */
+  document.querySelectorAll(".topbar nav a[href^='#']").forEach(a => {
+    a.addEventListener("click", () => {
+      if (!gate.classList.contains("done")) pick({ bridge: true, mode: "gamedev" });
+    });
+  });
 
   document.body.classList.add("site-frozen");
   document.dispatchEvent(new CustomEvent("site:preload"));
@@ -164,5 +203,4 @@
     requestAnimationFrame(frame);
   }
 
-  try { scrollTo(0, 0); } catch (e) {}
 })();
