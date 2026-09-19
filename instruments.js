@@ -82,6 +82,7 @@ window.Instruments = (function () {
   const SAMPLE_SLACK = 0.002;
   let lastImpact = null;
   const repairing = new Set();   // hull sectors the bridge log says are under patch
+  let repairAge = 0;
   let impactCool = 2.4;
   let prevAng = 0, omega = 0;
   let sys = {
@@ -90,17 +91,31 @@ window.Instruments = (function () {
     hullT: -48, cabT: 21.2, hx: 0.12,
   };
 
-  /* Alarm — a tile lights only for its own numbers, and only when they are
-     genuinely off-nominal. RADAR, SIGNAL, NAV and PWR have nothing that
-     qualifies, so they never light. The only event path is a hull breach:
-     the bridge log opens one, the skin tile shows it, nothing else moves. */
+  /* Alarm — master caution. A reading must hold to be believed, only one
+     tile may be lit at a time, and the panel stays quiet for a while after
+     one clears. RADAR, SIGNAL, NAV and PWR have nothing that qualifies, so
+     they never light. */
   const A_NONE = 0, A_WARN = 1, A_ERR = 2;
-  const alarmVal = new Map();   // key -> level from this paint's readings
-  const alarmAge = new Map();   // key -> seconds held at the current level
+  const alarmRaw = new Map();   // key -> level the readings ask for right now
+  const alarmVal = new Map();   // key -> level that has held long enough to count
+  const alarmHold = new Map();  // key -> seconds the raw level has disagreed with it
+  const alarmAge = new Map();   // key -> seconds the lit tile has held its level
   const alarmEvt = new Map();   // key -> { lv, t }  decaying pulse
   const EVT_LV   = { crit: A_ERR };        // warn / err lines are chatter, not alarms
-  const EVT_DUR  = { crit: 6.0 };
+  const EVT_DUR  = { crit: 5.0 };
   const EVT_KEYS = { crit: ["hull"] };
+  /* a dip has to last this long before it is a fault and not weather */
+  const DWELL_WARN = 2.2, DWELL_ERR = 0.9, RELEASE = 2.6;
+  /* fuel drains monotonically and refills fast — there is no edge chatter to
+     wait out, and a full burn crosses the floor in well under two seconds.
+     It gets a glance instead of a dwell; RELEASE still keeps the lamp steady
+     once it is lit. */
+  const DWELL_FAST = { phase: 0.35 };
+  /* who gets the lamp when two tiles both have something to say */
+  const A_PRIO = ["hull", "phase", "eclss", "rad"];
+  const QUIET = 22;             // seconds of hush after a lamp goes out
+  let alarmLit = null;          // the one key allowed to show itself
+  let alarmQuiet = 0;           // seconds of hush still owed
 
   const VOICES = {
     mainland: { c: 0.42, w: 0.55, a: 0.80, rough: 0.55, name: "dense · many sources" },
@@ -301,40 +316,90 @@ window.Instruments = (function () {
     paintBanks(pdt, r);
   }
 
-  /* value alarms. Thresholds are set where the reading stops being weather
-     and starts being a problem: none of these trip on an ordinary burn. */
+  /* value alarms. Thresholds sit where the reading stops being weather and
+     starts being a problem: none of these trip on an ordinary burn, and a
+     brief dip past one never reaches the lamp — see qualify(). */
   function tickAlarms(dt, r) {
     const s = r && r.ship;
 
-    // fuel — the one gauge with a real floor
+    // fuel — the one gauge with a real floor. Regen is fast, so only a hold
+    // on the burn keeps it down here long enough to count.
     const fuelN = s ? s.fuelN : 1;
-    setAlarm("phase", (s && s.infinite) ? A_NONE
-      : fuelN < 0.07 ? A_ERR : fuelN < 0.18 ? A_WARN : A_NONE, dt);
+    alarmRaw.set("phase", (s && s.infinite) ? A_NONE
+      : fuelN < 0.09 ? A_ERR : fuelN < 0.22 ? A_WARN : A_NONE);
 
-    // cabin — off-nominal air, not the slow drift chaos puts on it
-    setAlarm("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
-      : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 96) ? A_WARN : A_NONE, dt);
+    // cabin — only the deepest unformed space pulls the pressure down this far
+    alarmRaw.set("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
+      : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6) ? A_WARN : A_NONE);
 
-    // dose — only a flare, which is rare by construction
-    setAlarm("rad", sys.dose > 0.35 ? A_ERR : sys.dose > 0.09 ? A_WARN : A_NONE, dt);
+    // dose — only the peak of a flare, which is rare by construction
+    alarmRaw.set("rad", sys.dose > 0.50 ? A_ERR : sys.dose > 0.16 ? A_WARN : A_NONE);
 
-    // skin — a breach the bridge log opened and has not sealed yet. A
-    // micro-impact is normal out here and does not count.
-    setAlarm("hull", repairing.size > 0 ? A_WARN : A_NONE, dt);
+    // skin — an open breach, but only while it is fresh. The bridge log
+    // narrates the rest of the repair; the tile does not need to nag.
+    alarmRaw.set("hull", (repairing.size > 0 && repairAge < 12) ? A_WARN : A_NONE);
 
     // these have no abnormal state worth a lamp
-    setAlarm("radar",  A_NONE, dt);
-    setAlarm("signal", A_NONE, dt);
-    setAlarm("rec",    A_NONE, dt);
-    setAlarm("bus",    A_NONE, dt);
+    alarmRaw.set("radar",  A_NONE);
+    alarmRaw.set("signal", A_NONE);
+    alarmRaw.set("rec",    A_NONE);
+    alarmRaw.set("bus",    A_NONE);
+
+    qualify(dt);
+    arbitrate(dt);
   }
 
-  /* age is how long this tile has held its current level — the overlay uses
-     it to flicker once on the way in and then settle */
-  function setAlarm(key, lv, dt) {
-    const was = alarmVal.get(key);
-    alarmVal.set(key, lv);
-    alarmAge.set(key, was === lv ? (alarmAge.get(key) || 0) + dt : 0);
+  function evtLevel(key) {
+    const e = alarmEvt.get(key);
+    return e ? e.lv : A_NONE;
+  }
+
+  /* a raw level has to hold for a dwell before it becomes real, and has to
+     stay gone for a release before it stops being real. An event pulse from
+     the bridge log skips the dwell — it is already a confirmed fact. */
+  function qualify(dt) {
+    for (const key of alarmRaw.keys()) {
+      const evt = evtLevel(key);
+      const raw = Math.max(alarmRaw.get(key) || A_NONE, evt);
+      const com = alarmVal.get(key) || A_NONE;
+      if (raw === com) { alarmHold.set(key, 0); continue; }
+      if (raw > com && evt >= raw) { alarmVal.set(key, raw); alarmHold.set(key, 0); continue; }
+      const fast = DWELL_FAST[key];
+      const rise = fast != null ? fast : (raw >= A_ERR ? DWELL_ERR : DWELL_WARN);
+      const need = raw > com ? rise : RELEASE;
+      const held = (alarmHold.get(key) || 0) + dt;
+      if (held >= need) { alarmVal.set(key, raw); alarmHold.set(key, 0); }
+      else alarmHold.set(key, held);
+    }
+  }
+
+  /* one lamp at a time. Severity first, then the fixed order above, and a
+     tile already lit keeps the lamp against an equal claim. A fresh warning
+     waits out the hush; a real error does not. */
+  function arbitrate(dt) {
+    if (alarmQuiet > 0) alarmQuiet = Math.max(0, alarmQuiet - dt);
+
+    let best = null, bestLv = A_NONE;
+    for (const key of A_PRIO) {
+      const lv = alarmVal.get(key) || A_NONE;
+      if (lv > bestLv) { bestLv = lv; best = key; }
+    }
+    if (bestLv > A_NONE && best !== alarmLit && (alarmVal.get(alarmLit) || A_NONE) === bestLv) {
+      best = alarmLit;
+    }
+    if (best && best !== alarmLit && bestLv < A_ERR && alarmQuiet > 0) { best = null; bestLv = A_NONE; }
+
+    if (best !== alarmLit) {
+      if (!best) alarmQuiet = QUIET;
+      alarmLit = best;
+      alarmAge.set(best || "", 0);
+    }
+    if (alarmLit) {
+      const lv = alarmVal.get(alarmLit) || A_NONE;
+      const prev = alarmAge.get("_lv");
+      alarmAge.set("_lv", lv);
+      alarmAge.set(alarmLit, prev === lv ? (alarmAge.get(alarmLit) || 0) + dt : 0);
+    }
   }
 
   function decayAlarms(dt) {
@@ -345,9 +410,7 @@ window.Instruments = (function () {
   }
 
   function alarmLevel(key) {
-    const v = alarmVal.get(key) || A_NONE;
-    const e = alarmEvt.get(key);
-    return Math.max(v, e ? e.lv : A_NONE);
+    return key === alarmLit ? (alarmVal.get(key) || A_NONE) : A_NONE;
   }
 
   /* the bridge log calls this on every line it prints. Only a critical one
@@ -358,22 +421,22 @@ window.Instruments = (function () {
     const dur = EVT_DUR[kind];
     for (const k of (keys || EVT_KEYS[kind])) {
       const cur = alarmEvt.get(k);
-      if (!cur || lv > cur.lv) { alarmEvt.set(k, { lv, t: dur }); alarmAge.set(k, 0); }
+      if (!cur || lv > cur.lv) alarmEvt.set(k, { lv, t: dur });
       else if (cur.t < dur) cur.t = dur;
     }
   }
 
-  /* a short flicker as it trips, so you catch it, then a slow breathe it can
+  /* a brief flicker as it trips, so you catch it, then a slow breathe it can
      hold for minutes without becoming a light show */
   function alarmFlick(lv, age) {
     if (lv <= A_NONE) return 0;
-    if (age < 0.7) {
-      const f = (age * 6) % 1;
-      return f < 0.34 ? 0.25 : 1;
+    if (age < 0.45) {
+      const f = (age * 4) % 1;
+      return f < 0.3 ? 0.55 : 1;
     }
-    const rate = lv >= A_ERR ? 1.4 : 0.8;
-    const depth = lv >= A_ERR ? 0.3 : 0.2;
-    return (1 - depth) + depth * Math.sin((age - 0.7) * rate * 6.283);
+    const rate = lv >= A_ERR ? 0.9 : 0.5;
+    const depth = lv >= A_ERR ? 0.22 : 0.12;
+    return (1 - depth) + depth * Math.sin((age - 0.45) * rate * 6.283);
   }
 
   /* drawn over the tile's own readout, on top of the static chrome */
@@ -697,9 +760,11 @@ window.Instruments = (function () {
 
     // dual meters
     const mx = 5, mw = p.w - 10, my = inner - 18, mh = 5;
+    /* chaos is a reading, not a fault — it only takes a colour once it is high */
+    const chaosCol = chaosNeedle > 0.92 ? BAD : chaosNeedle > 0.78 ? WARN : LAMP;
     ctx.fillStyle = `rgba(${DIM},0.25)`;
     ctx.fillRect(mx, my, mw, mh);
-    ctx.fillStyle = `rgba(${BAD},0.75)`;
+    ctx.fillStyle = `rgba(${chaosCol},0.75)`;
     ctx.fillRect(mx, my, mw * chaosNeedle, mh);
     ctx.fillStyle = `rgba(${DIM},0.25)`;
     ctx.fillRect(mx, my + 8, mw, mh);
@@ -712,7 +777,7 @@ window.Instruments = (function () {
     ctx.fillText("CHAOS", mx, my - 2);
     ctx.fillText("UNFORMED", mx, my + 6);
     ctx.textAlign = "right";
-    ctx.fillStyle = `rgba(${BAD},0.85)`;
+    ctx.fillStyle = `rgba(${chaosCol},0.85)`;
     ctx.fillText(chaosNeedle.toFixed(2), p.w - 5, my - 2);
     ctx.fillStyle = `rgba(${COLD},0.9)`;
     ctx.fillText(futureNeedle.toFixed(2), p.w - 5, my + 6);
@@ -769,7 +834,7 @@ window.Instruments = (function () {
     }
     const fillH = tankH * (infinite ? (0.85 + 0.15 * Math.sin(t * 2)) : fuelNeedle);
     const low = !infinite && fuelNeedle < 0.22;
-    const col = low ? BAD : LAMP;
+    const col = low ? (fuelNeedle < 0.09 ? BAD : WARN) : LAMP;
     const fg = ctx.createLinearGradient(0, tankTop + tankH - fillH, 0, tankTop + tankH);
     fg.addColorStop(0, `rgba(${col},0.95)`);
     fg.addColorStop(1, `rgba(${col},0.3)`);
@@ -842,7 +907,7 @@ window.Instruments = (function () {
       ctx.fillStyle = `rgba(${LAMP},0.9)`;
       ctx.fillText("OPEN", zoneL, headerY);
     } else {
-      ctx.fillStyle = low ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
+      ctx.fillStyle = low ? `rgba(${col},1)` : `rgba(${DIM},1)`;
       ctx.fillText(low ? "LOW" : "FUEL", zoneL, headerY);
       ctx.fillStyle = `rgba(${col},0.95)`;
       ctx.fillText(Math.round(fuelNeedle * 100) + "%", zoneL + 30, headerY);
@@ -965,6 +1030,7 @@ window.Instruments = (function () {
      SYS bank — cabin, dose, skin, bus. Numbers first.
      ========================================================= */
   function tickSys(dt, r) {
+    repairAge = repairing.size ? repairAge + dt : 0;
     const chaos = r.chaos || 0;
     const future = r.future || 0;
     const s = r.ship;
@@ -988,8 +1054,10 @@ window.Instruments = (function () {
       if (co2Strip.length > 72) co2Strip.shift();
     }
 
-    const flare = chaos > 0.7
-      ? Math.pow(Math.max(0, Math.sin(t * 0.28)), 12) * chaos
+    /* a flare is a spike, not a season: a narrow peak, and only where the
+       field is genuinely torn */
+    const flare = chaos > 0.82
+      ? Math.pow(Math.max(0, Math.sin(t * 0.19)), 26) * chaos
       : 0;
     const doseT = 0.013 + chaos * 0.022 + flare * 1.65
       + (Math.sin(t * 2.4) * 0.5 + 0.5) * 0.002;
@@ -1023,14 +1091,14 @@ window.Instruments = (function () {
 
     if (lastImpact) lastImpact.age += dt;
     impactCool -= dt;
-    const pHit = dt * (0.012 + speedN * 0.22) * (0.04 + chaos * 0.55);
+    const pHit = dt * (0.008 + speedN * 0.09) * (0.03 + chaos * 0.4);
     if (impactCool <= 0 && Math.random() < pHit) {
       lastImpact = {
         g: 0.06 + Math.random() * (0.12 + chaos * 0.85 + speedN * 0.25),
         sector: 1 + (Math.floor(Math.random() * 8)),
         age: 0,
       };
-      impactCool = 1.4 + Math.random() * 4.5;
+      impactCool = 4 + Math.random() * 7;
     }
 
     const ang = s && s.angle != null ? s.angle : 0;
@@ -1040,10 +1108,10 @@ window.Instruments = (function () {
 
   function eclss(p, r) {
     const inner = p.h - 5;
-    const warn = sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 96;
+    const warn = sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6;
     setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = warn ? `rgba(${BAD},1)` : `rgba(${GOOD},0.9)`;
+    ctx.fillStyle = warn ? `rgba(${WARN},1)` : `rgba(${GOOD},0.9)`;
     ctx.fillText(warn ? "WARN" : "NOM", 5, 12);
     ctx.textAlign = "right";
     ctx.fillStyle = `rgba(${DIM},1)`;
@@ -1052,7 +1120,7 @@ window.Instruments = (function () {
     const rows = [
       ["O2",  sys.o2.toFixed(2),  "%",   sys.o2 < 19.6],
       ["CO2", Math.round(sys.co2).toString(), "ppm", sys.co2 > 1200],
-      ["P",   sys.kpa.toFixed(1), "kPa", sys.kpa < 96],
+      ["P",   sys.kpa.toFixed(1), "kPa", sys.kpa < 95.6],
       ["RH",  sys.rh.toFixed(1),  "%",   false],
     ];
     const y0 = 28;
@@ -1085,10 +1153,11 @@ window.Instruments = (function () {
 
   function rad(p, r) {
     const inner = p.h - 5;
-    const event = sys.dose > 0.09;
+    const event = sys.dose > 0.16;
+    const evCol = sys.dose > 0.50 ? BAD : WARN;
     setFont(mono(18, "600"));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = event ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.95)`;
+    ctx.fillStyle = event ? `rgba(${evCol},0.95)` : `rgba(${LAMP},0.95)`;
     ctx.fillText(sys.dose < 0.1 ? sys.dose.toFixed(3) : sys.dose.toFixed(2), 5, 22);
     setFont(mono(8));
     ctx.fillStyle = `rgba(${DIM},1)`;
@@ -1096,7 +1165,7 @@ window.Instruments = (function () {
 
     ctx.textAlign = "right";
     setFont(mono(9));
-    ctx.fillStyle = event ? `rgba(${BAD},0.95)` : `rgba(${DIM},1)`;
+    ctx.fillStyle = event ? `rgba(${evCol},0.95)` : `rgba(${DIM},1)`;
     ctx.fillText(event ? "EVENT" : "QUIET", p.w - 5, 14);
     ctx.fillStyle = `rgba(${COLD},0.85)`;
     ctx.fillText((sys.dose * 24).toFixed(2) + " /d", p.w - 5, 26);
@@ -1104,15 +1173,15 @@ window.Instruments = (function () {
     const chartTop = 38, chartBot = inner - 38, chartH = chartBot - chartTop;
     ctx.strokeStyle = `rgba(${LAMP},0.08)`;
     ctx.beginPath(); ctx.moveTo(4, chartTop + chartH * 0.5); ctx.lineTo(p.w - 4, chartTop + chartH * 0.5); ctx.stroke();
-    spark(radStrip, 5, chartBot, p.w - 10, chartH, event ? BAD : LAMP, 0.85);
+    spark(radStrip, 5, chartBot, p.w - 10, chartH, event ? evCol : LAMP, 0.85);
 
-    const magHot = sys.mag < 18 || (r.future || 0) > 0.7;
+    const magHot = sys.mag < 14 || (r.future || 0) > 0.88;
     setFont(mono(8));
     ctx.textAlign = "left";
-    ctx.fillStyle = magHot ? `rgba(${BAD},0.9)` : `rgba(${DIM},1)`;
+    ctx.fillStyle = magHot ? `rgba(${WARN},0.9)` : `rgba(${DIM},1)`;
     ctx.fillText("B " + sys.mag.toFixed(1) + " µT", 5, inner - 4);
     ctx.textAlign = "right";
-    ctx.fillStyle = magHot ? `rgba(${BAD},0.85)` : `rgba(${COLD},0.85)`;
+    ctx.fillStyle = magHot ? `rgba(${WARN},0.85)` : `rgba(${COLD},0.85)`;
     ctx.fillText(magHot ? "SHEAR" : "MAG", p.w - 32, inner - 4);
 
     const mx = p.w - 18, my = inner - 16, mR = 11;
@@ -1135,7 +1204,7 @@ window.Instruments = (function () {
     }
     const dx = mx + clamp(sys.bx, -1.2, 1.2) / 1.2 * (mR - 2);
     const dy = my + clamp(sys.by, -1.2, 1.2) / 1.2 * (mR - 2);
-    ctx.fillStyle = magHot ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.95)`;
+    ctx.fillStyle = magHot ? `rgba(${WARN},0.95)` : `rgba(${LAMP},0.95)`;
     ctx.fillRect(dx - 1.4, dy - 1.4, 2.8, 2.8);
   }
 
@@ -1148,17 +1217,20 @@ window.Instruments = (function () {
 
   function setRepair(sector, on) {
     const sec = Math.max(1, Math.min(8, Math.round(sector) || 1));
+    const wasEmpty = repairing.size === 0;
     if (on) repairing.add(sec); else repairing.delete(sec);
+    if (on && wasEmpty) repairAge = 0;
   }
 
   function hull(p, r) {
     const inner = p.h - 5;
-    const live = lastImpact && lastImpact.age < 1.6;
+    const live = lastImpact && lastImpact.age < 1.2;
+    const bigHit = live && lastImpact.g > 1.1;
     const recent = lastImpact && lastImpact.age < 6;
     setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     const patching = repairing.size > 0;
-    ctx.fillStyle = live ? `rgba(${BAD},1)` : patching ? `rgba(${WARN},1)` : `rgba(${DIM},1)`;
+    ctx.fillStyle = live ? `rgba(${bigHit ? BAD : WARN},1)` : patching ? `rgba(${WARN},0.8)` : `rgba(${DIM},1)`;
     ctx.fillText(live ? "IMPACT" : patching ? "REPAIR" : "CLEAR", 5, 12);
     ctx.textAlign = "right";
     ctx.fillStyle = `rgba(${DIM},0.9)`;
