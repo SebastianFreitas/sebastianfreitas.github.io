@@ -862,17 +862,17 @@
     }
     const a = opts.glow || 0;
     if (r > 1 && a > 0.02) {
-      ctx.strokeStyle = `rgba(245,208,107,${0.6 * a})`;
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = `rgba(245,208,107,${0.32 * a})`;
+      ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.stroke();
-      ctx.strokeStyle = `rgba(176,104,90,${0.4 * a})`;
-      ctx.lineWidth = 10;
+      ctx.strokeStyle = `rgba(176,104,90,${0.18 * a})`;
+      ctx.lineWidth = 6;
       ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, 6.283); ctx.stroke();
       ctx.lineWidth = 1;
-      ctx.strokeStyle = `rgba(222,232,228,${0.32 * a})`;
+      ctx.strokeStyle = `rgba(222,232,228,${0.16 * a})`;
       const inward = opts.dir === "in";
-      for (let i = 0; i < 12; i++) {
-        const ang = (i / 12) * 6.283 + t * (opts.spin || 0);
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * 6.283 + t * (opts.spin || 0);
         const r0 = inward ? r + 46 + (i % 3) * 18 : Math.max(4, r - 40 - (i % 3) * 16);
         const r1 = inward ? r + 12 : Math.max(2, r - 8);
         ctx.beginPath();
@@ -896,7 +896,7 @@
       const u = xt / HOLD_DUR;
       const flash = u < 0.5 ? smooth(u / 0.5) : smooth(1 - (u - 0.5) / 0.5);
       if (flash > 0.02) {
-        ctx.fillStyle = `rgba(255,250,235,${flash * 0.85})`;
+        ctx.fillStyle = `rgba(255,250,235,${flash * 0.3})`;
         ctx.fillRect(0, 0, W, H);
       }
     } else {

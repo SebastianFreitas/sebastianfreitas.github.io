@@ -45,25 +45,25 @@ window.Beacon = (function () {
     const active = !!o.active, hover = !!o.hover;
     const k = (o.k || 1) * (hover ? 1.35 : 1) * (active ? 1.2 : 1);
 
-    // steady once you're reading it, a slow flare otherwise
+    // steady once you're reading it, a slow breathe otherwise
     const blink = active ? 1
-      : 0.42 + 0.58 * Math.pow(0.5 + 0.5 * Math.sin(t * 1.15 + phase), 2.2);
+      : 0.74 + 0.26 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.9 + phase), 1.6);
 
     // a wide soft halo, so it separates from the scene behind it
     const glow = ctx.createRadialGradient(x, y, 0, x, y, 38 * k);
-    glow.addColorStop(0, `rgba(${LAMP},${0.46 * blink * A})`);
-    glow.addColorStop(0.45, `rgba(${LAMP},${0.16 * blink * A})`);
+    glow.addColorStop(0, `rgba(${LAMP},${0.26 * blink * A})`);
+    glow.addColorStop(0.45, `rgba(${LAMP},${0.08 * blink * A})`);
     glow.addColorStop(1, `rgba(${LAMP},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(x - 42 * k, y - 42 * k, 84 * k, 84 * k);
 
     // a ring that never goes out, so it reads as a thing you can click
-    ctx.strokeStyle = `rgba(${LAMP},${(0.22 + 0.28 * blink) * A})`;
+    ctx.strokeStyle = `rgba(${LAMP},${(0.26 + 0.14 * blink) * A})`;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(x, y, 11 * k, 0, 6.283); ctx.stroke();
 
-    const arm = (7 + 12 * blink) * k;
-    ctx.strokeStyle = `rgba(${CORE},${0.8 * blink * A})`;
+    const arm = (9 + 4 * blink) * k;
+    ctx.strokeStyle = `rgba(${CORE},${0.55 * blink * A})`;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y);
@@ -80,12 +80,6 @@ window.Beacon = (function () {
       ctx.beginPath(); ctx.arc(x, y, 17 * k, 0, 6.283); ctx.stroke();
       ctx.lineWidth = 1;
     }
-    if (!active) {
-      const ring = (t * 0.5 + phase * 0.2) % 1;
-      ctx.strokeStyle = `rgba(${LAMP},${(1 - ring) * 0.28 * A})`;
-      ctx.beginPath(); ctx.arc(x, y, 10 + ring * 30, 0, 6.283); ctx.stroke();
-    }
-
     // and its name, so it's obvious there's something to open
     if (o.label && (hover || !o.claimed)) {
       ctx.font = `500 ${Math.round(9.5 * k)}px "IBM Plex Mono", monospace`;
@@ -99,39 +93,22 @@ window.Beacon = (function () {
     if (o.pop > 0.001) {
       const p = 1 - o.pop;                       // 0 at the instant of the click
       const ring = 10 + p * 90 * k;
-      ctx.lineWidth = 3 * o.pop;
-      ctx.strokeStyle = `rgba(${LAMP},${o.pop * 0.85})`;
+      ctx.lineWidth = 2 * o.pop;
+      ctx.strokeStyle = `rgba(${LAMP},${o.pop * 0.45})`;
       ctx.beginPath(); ctx.arc(x, y, ring, 0, 6.283); ctx.stroke();
 
       ctx.lineWidth = 1.5 * o.pop;
-      ctx.strokeStyle = `rgba(${CORE},${o.pop * 0.5})`;
+      ctx.strokeStyle = `rgba(${CORE},${o.pop * 0.28})`;
       ctx.beginPath(); ctx.arc(x, y, ring * 0.55, 0, 6.283); ctx.stroke();
 
-      // shards thrown out of it
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * 6.283 + 0.4;
-        const d0 = 8 + p * 54 * k, d1 = d0 + 10 * o.pop;
-        ctx.strokeStyle = `rgba(${CORE},${o.pop * 0.7})`;
-        ctx.beginPath();
-        ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0);
-        ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1);
-        ctx.stroke();
-      }
-
-      const fg = ctx.createRadialGradient(x, y, 0, x, y, 34 * k * (0.5 + p));
-      fg.addColorStop(0, `rgba(255,248,225,${o.pop * 0.55})`);
-      fg.addColorStop(1, "rgba(255,248,225,0)");
-      ctx.fillStyle = fg;
-      ctx.fillRect(x - 40 * k, y - 40 * k, 80 * k, 80 * k);
       ctx.lineWidth = 1;
     }
 
     // what it's worth, until it's been taken
     if (!o.claimed && o.xp) {
-      const bb = 0.5 + 0.5 * Math.sin(t * 2.1 + phase);
       ctx.font = `600 ${Math.round(13 * k)}px "IBM Plex Mono", monospace`;
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillStyle = `rgba(${LAMP},${(0.45 + 0.45 * bb) * A})`;
+      ctx.fillStyle = `rgba(${LAMP},${0.6 * A})`;
       ctx.fillText("+" + o.xp, x + 20 * k, y - 15 * k);
       ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
     }

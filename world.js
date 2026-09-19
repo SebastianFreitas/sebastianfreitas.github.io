@@ -432,12 +432,12 @@ window.World = (function () {
     if (!onScreen(x, R * 3.2)) return;
     const y = H * 0.21;
     const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 3.1);
-    g.addColorStop(0, "rgba(245,208,107,0.16)");
-    g.addColorStop(0.35, "rgba(200,150,90,0.07)");
+    g.addColorStop(0, "rgba(245,208,107,0.09)");
+    g.addColorStop(0.35, "rgba(200,150,90,0.035)");
     g.addColorStop(1, "rgba(245,208,107,0)");
     ctx.fillStyle = g; ctx.fillRect(x - R * 3.2, y - R * 3.2, R * 6.4, R * 6.4);
     const d = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, R * 0.1, x, y, R);
-    d.addColorStop(0, "#f7dc95"); d.addColorStop(0.72, "#c79a52"); d.addColorStop(1, "#6b4f28");
+    d.addColorStop(0, "#e2c887"); d.addColorStop(0.72, "#b28c4c"); d.addColorStop(1, "#6b4f28");
     ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
     ctx.save(); ctx.translate(x, y); ctx.rotate(t * 0.06);
     ctx.globalAlpha = 0.9; ctx.fillStyle = "#161013";

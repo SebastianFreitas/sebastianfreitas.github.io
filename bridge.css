@@ -41,17 +41,17 @@
 .bridge-copy .eyebrow {
   font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1rem;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.95);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.9);
 }
 .bridge-copy h1 {
   font-family: var(--display); font-weight: 800;
   font-size: clamp(2.4rem, 6vw, 4.6rem); line-height: 0.95;
   letter-spacing: -0.03em; margin: 0 0 1.1rem; color: #fff;
-  text-shadow: 0 2px 44px rgba(0,0,0,0.95);
+  text-shadow: 0 2px 26px rgba(0,0,0,0.9);
 }
 .bridge-copy .lede {
   margin: 0 0 2rem; color: var(--sage); max-width: 40ch;
-  text-shadow: 0 2px 24px rgba(0,0,0,0.95);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.9);
 }
 .bridge-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; }
 .bridge-actions .cta,
@@ -148,9 +148,9 @@
 #bridge-log .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
 #bridge-log .tl.good { color: var(--lamp) !important; }
 /* tiers: a reading that bent, and one that cannot be true */
-#bridge-log .tl.warn { color: #e5a63c !important; }
-#bridge-log .tl.err  { color: #e2594c !important; }
-#bridge-log .tl.crit { color: #ff5140 !important; font-weight: 700; }
+#bridge-log .tl.warn { color: #c2954e !important; }
+#bridge-log .tl.err  { color: #bd7163 !important; }
+#bridge-log .tl.crit { color: #cb6354 !important; font-weight: 600; }
 #bridge-log .tl.rep  { color: #7fa8b4 !important; }
 #bridge-log .tl.good::before { content: "+ "; color: inherit; }
 #bridge-log .tl.warn::before { content: "! "; color: inherit; }
@@ -158,27 +158,27 @@
 #bridge-log .tl.crit::before { content: "!!! "; color: inherit; }
 #bridge-log .tl.rep::before  { content: "~ "; color: inherit; }
 #bridge-log .tl.warn {
-  background: rgba(229,166,60,0.07);
-  box-shadow: inset 2px 0 0 rgba(229,166,60,0.55);
+  background: rgba(229,166,60,0.05);
+  box-shadow: inset 2px 0 0 rgba(229,166,60,0.4);
   padding-left: 0.35rem; margin-left: -0.35rem;
 }
 #bridge-log .tl.err {
-  background: rgba(226,89,76,0.12);
-  box-shadow: inset 2px 0 0 rgba(226,89,76,0.75);
+  background: rgba(226,89,76,0.07);
+  box-shadow: inset 2px 0 0 rgba(226,89,76,0.5);
   padding-left: 0.35rem; margin-left: -0.35rem;
-  animation: tlIn 0.45s ease both, errFlick 0.9s steps(1) 1;
+  animation: tlIn 0.45s ease both;
 }
 /* a strike: the hull actually lost something */
 #bridge-log .tl.crit {
-  background: rgba(255,81,64,0.2);
-  box-shadow: inset 3px 0 0 rgba(255,81,64,0.95);
+  background: rgba(255,81,64,0.09);
+  box-shadow: inset 2px 0 0 rgba(255,81,64,0.6);
   padding-left: 0.35rem; margin-left: -0.35rem;
-  animation: tlIn 0.45s ease both, critFlick 1.5s steps(1) 2;
+  animation: tlIn 0.45s ease both;
 }
 /* damage control, working */
 #bridge-log .tl.rep {
   background: rgba(127,168,180,0.07);
-  box-shadow: inset 2px 0 0 rgba(127,168,180,0.45);
+  box-shadow: inset 2px 0 0 rgba(127,168,180,0.35);
   padding-left: 0.35rem; margin-left: -0.35rem;
 }
 /* numbers carry the weight — they're the part worth reading */
@@ -189,10 +189,7 @@
 #bridge-log .tl.warn .n,
 #bridge-log .tl.err .n,
 #bridge-log .tl.crit .n { color: inherit; }
-#bridge-log .tl .caret { color: var(--lamp); animation: caretBlink 0.72s steps(1) infinite; }
-@keyframes caretBlink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0.12; } }
-@keyframes errFlick { 0%, 100% { opacity: 1; } 12% { opacity: 0.25; } 24% { opacity: 1; } 36% { opacity: 0.4; } }
-@keyframes critFlick { 0%, 100% { opacity: 1; } 8% { opacity: 0.15; } 16% { opacity: 1; } 26% { opacity: 0.3; } 34% { opacity: 1; } 44% { opacity: 0.5; } }
+#bridge-log .tl .caret { color: var(--lamp); opacity: 0.6; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
@@ -212,7 +209,6 @@
 #bridge-map .you {
   position: absolute; top: 50%; margin-top: -7px;
   width: 2px; height: 14px; background: var(--lamp);
-  box-shadow: 0 0 10px var(--lamp);
 }
 #bridge-map .ghost {
   position: absolute; top: 50%; margin-top: -7px;
@@ -394,14 +390,13 @@
 /* the ticks that mark something worth stopping at */
 #bridge-map .mk.poi {
   margin-top: -9px; height: 18px; width: 2px;
-  background: rgba(245,208,107,0.75);
-  box-shadow: 0 0 8px rgba(245,208,107,0.5);
+  background: rgba(245,208,107,0.55);
   pointer-events: auto; cursor: pointer;
 }
 #bridge-map .mk.poi::after {
   content: ""; position: absolute; left: -2px; top: -6px;
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--lamp); box-shadow: 0 0 8px rgba(245,208,107,0.7);
+  background: rgba(245,208,107,0.75);
 }
 #bridge-map .mk.poi:hover { background: #fff; }
 #bridge-map .mk.poi:hover::after { background: #fff; }
@@ -416,7 +411,7 @@
 /* cursor over something inspectable */
 #bridge-cursor.over {
   width: 40px; height: 40px; margin: -20px 0 0 -20px;
-  border-color: rgba(245,208,107,0.9);
+  border-color: rgba(245,208,107,0.55);
 }
 #bridge-cursor.over::after { inset: 17px; }
 
@@ -446,7 +441,7 @@ footer .rights {
 /* burning the voidship */
 .bridge-hero { cursor: crosshair; }
 .bridge-hero.burning { cursor: crosshair; }
-#bridge-cursor.over { border-color: rgba(245,208,107,0.9); }
+#bridge-cursor.over { border-color: rgba(245,208,107,0.55); }
 /* span strip is a readout — not a jump drive */
 #bridge-map .track.readonly,
 #bridge-map .track.readonly .mk.poi {
@@ -569,7 +564,6 @@ html.genesis-on .topbar {
   display: block; width: 0; height: 100%;
   background: var(--lamp);
   border-radius: 2px;
-  box-shadow: 0 0 8px rgba(245,208,107,0.55);
 }
 .genesis-prog::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -583,7 +577,7 @@ html.genesis-on .topbar {
   background: rgba(9,13,15,0.92);
   border: 1px solid rgba(245,208,107,0.45);
   cursor: pointer;
-  text-shadow: 0 1px 12px rgba(0,0,0,0.95);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.9);
 }
 .genesis-step:hover { border-color: var(--lamp); }
 

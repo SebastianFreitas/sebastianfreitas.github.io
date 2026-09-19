@@ -426,17 +426,13 @@ window.Instruments = (function () {
     }
   }
 
-  /* a brief flicker as it trips, so you catch it, then a slow breathe it can
-     hold for minutes without becoming a light show */
+  /* no flicker — it comes up and holds, with a slow breathe so it reads as
+     live without becoming a light show */
   function alarmFlick(lv, age) {
     if (lv <= A_NONE) return 0;
-    if (age < 0.45) {
-      const f = (age * 4) % 1;
-      return f < 0.3 ? 0.55 : 1;
-    }
-    const rate = lv >= A_ERR ? 0.9 : 0.5;
-    const depth = lv >= A_ERR ? 0.22 : 0.12;
-    return (1 - depth) + depth * Math.sin((age - 0.45) * rate * 6.283);
+    const rate = lv >= A_ERR ? 0.5 : 0.35;
+    const depth = lv >= A_ERR ? 0.1 : 0.06;
+    return (1 - depth) + depth * Math.sin(age * rate * 6.283);
   }
 
   /* drawn over the tile's own readout, on top of the static chrome */
@@ -446,14 +442,14 @@ window.Instruments = (function () {
     const a = alarmFlick(lv, alarmAge.get(key) || 0);
     const col = lv === A_WARN ? WARN : BAD;
     ctx.save();
-    ctx.fillStyle = `rgba(${col},${(lv === A_WARN ? 0.02 : 0.045) * a})`;
+    ctx.fillStyle = `rgba(${col},${(lv === A_WARN ? 0.015 : 0.03) * a})`;
     ctx.fillRect(0, 0, p.w, p.h - 4);
-    ctx.lineWidth = lv >= A_ERR ? 1.4 : 1;
-    ctx.strokeStyle = `rgba(${col},${(lv === A_WARN ? 0.42 : 0.7) * a})`;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(${col},${(lv === A_WARN ? 0.3 : 0.48) * a})`;
     ctx.strokeRect(0.8, 0.8, p.w - 1.6, p.h - 5.6);
     // relight the chrome's corner ticks in the alarm colour
-    ctx.strokeStyle = `rgba(${col},${0.6 * a})`;
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = `rgba(${col},${0.4 * a})`;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0.8, 9); ctx.lineTo(0.8, 0.8); ctx.lineTo(9, 0.8);
     ctx.moveTo(p.w - 0.8, 9); ctx.lineTo(p.w - 0.8, 0.8); ctx.lineTo(p.w - 9, 0.8);
@@ -1243,8 +1239,8 @@ window.Instruments = (function () {
       const hot = lastImpact && lastImpact.sector === i + 1 && lastImpact.age < 4;
       const fix = !hot && repairing.has(i + 1);
       const fade = hot ? Math.max(0.25, 1 - lastImpact.age / 4) : 0;
-      /* a patched sector pulses amber until the bridge log clears it */
-      const pulse = 0.4 + 0.3 * (0.5 + 0.5 * Math.sin(t * 3.4 + i));
+      /* a patched sector holds amber until the bridge log clears it */
+      const pulse = 0.55;
       ctx.strokeStyle = hot ? `rgba(${BAD},${0.45 + 0.55 * fade})`
         : fix ? `rgba(${WARN},${pulse})`
         : `rgba(${LAMP},0.22)`;
