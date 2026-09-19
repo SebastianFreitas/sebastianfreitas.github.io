@@ -157,6 +157,7 @@
     last = performance.now();
     prevStamp = -1;                   // the gap while stopped isn't a refresh
     refreshCount = 2 * refreshN;      // first callback paints
+    paintDue = 0;                     // and isn't a missed paint either
     requestAnimationFrame(frame);
   }
 
@@ -1578,6 +1579,14 @@
   let sinceMeasure = 0;             // intervals recorded since the last measurement
   let prevStamp = -1;               // previous rAF timestamp; -1 = none yet
   let refreshCount = 0;             // refreshes since the last paint
+  /* and never paint more than 60 times a second, whatever the panel runs at:
+     past that a faster screen only repaints the same picture and the fans
+     hear it. N keeps painted frames on refresh boundaries; this keeps their
+     rate at 60 — on a panel whose refresh divides to 60 or less both gates
+     agree and nothing changes. */
+  const PAINT_MS = 1000 / 60;
+  const PAINT_EARLY_MS = 2;   // vsync wobble: a boundary this close still paints
+  let paintDue = 0;           // next paint's due stamp; 0 = paint on the next boundary
   /* at rest and untouched for a while, the scene only drifts: paint it every
      2N refreshes (half rate). Any input snaps straight back. */
   const IDLE_AFTER_MS = 5000;
@@ -1585,7 +1594,7 @@
   let idleNow = false;
   function noteInput() {
     lastInput = performance.now();
-    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; }   // paint on the very next callback
+    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; paintDue = 0; }   // paint on the very next callback
   }
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
     addEventListener(type, noteInput, { passive: true, capture: true }));
@@ -1649,12 +1658,20 @@
     } else if (!atRest()) {
       idleNow = false;
       refreshCount = 2 * refreshN;
+      paintDue = 0;
     }
+    const slot = idleNow ? 2 * PAINT_MS : PAINT_MS;
     if (refreshCount < (idleNow ? 2 * refreshN : refreshN)) {
       requestAnimationFrame(frame);
       return;
     }
+    if (paintDue && now < paintDue - PAINT_EARLY_MS) {
+      // on a refresh boundary but under the 60 fps ceiling: wait for the next one
+      requestAnimationFrame(frame);
+      return;
+    }
     refreshCount = 0;   // drop the remainder: a late frame never earns a double paint
+    paintDue = !paintDue || now - paintDue > slot ? now + slot : paintDue + slot;
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
     requestAnimationFrame(frame);
@@ -1668,7 +1685,9 @@
       n: refreshN,
       measured: refreshMeasured,
       idle: idleNow,
-      fps: +(hz / (idleNow ? 2 * refreshN : refreshN)).toFixed(2),
+      fps: +Math.min(hz / (idleNow ? 2 * refreshN : refreshN),
+                     1000 / (idleNow ? 2 * PAINT_MS : PAINT_MS)).toFixed(2),
+      cap: idleNow ? 30 : 60,
     };
   }
   window.pacingReport = pacingReport;

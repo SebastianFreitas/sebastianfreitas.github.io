@@ -25,6 +25,11 @@
   let light = { x: -9999, y: -9999, on: false };
   let last = 0;
   let loopOn = false, onScreen = true;
+  /* never paint more than 60 times a second: this canvas has no pacing of
+     its own and would otherwise run at the full display refresh */
+  const PAINT_MS = 1000 / 60;
+  const PAINT_EARLY_MS = 2;   // vsync wobble: a frame this close still paints
+  let paintDue = 0;
 
   // ---- setup -------------------------------------------------
   function resize() {
@@ -162,6 +167,7 @@
     if (!onScreen || document.hidden) return;
     loopOn = true;
     last = performance.now();
+    paintDue = 0;
     requestAnimationFrame(frame);
   }
 
@@ -171,9 +177,11 @@
       loopOn = false;
       return;
     }
+    requestAnimationFrame(frame);
+    if (paintDue && now < paintDue - PAINT_EARLY_MS) return;
+    paintDue = !paintDue || now - paintDue > PAINT_MS ? now + PAINT_MS : paintDue + PAINT_MS;
     const dt = Math.min((now - last) / 1000, 1 / 30);
     last = now;
-    requestAnimationFrame(frame);
     step(dt);
     draw();
   }
