@@ -90,6 +90,18 @@ window.Instruments = (function () {
     hullT: -48, cabT: 21.2, hx: 0.12,
   };
 
+  /* Alarm — a tile lights only for its own numbers, and only when they are
+     genuinely off-nominal. RADAR, SIGNAL, NAV and PWR have nothing that
+     qualifies, so they never light. The only event path is a hull breach:
+     the bridge log opens one, the skin tile shows it, nothing else moves. */
+  const A_NONE = 0, A_WARN = 1, A_ERR = 2;
+  const alarmVal = new Map();   // key -> level from this paint's readings
+  const alarmAge = new Map();   // key -> seconds held at the current level
+  const alarmEvt = new Map();   // key -> { lv, t }  decaying pulse
+  const EVT_LV   = { crit: A_ERR };        // warn / err lines are chatter, not alarms
+  const EVT_DUR  = { crit: 6.0 };
+  const EVT_KEYS = { crit: ["hull"] };
+
   const VOICES = {
     mainland: { c: 0.42, w: 0.55, a: 0.80, rough: 0.55, name: "dense · many sources" },
     rex:      { c: 0.10, w: 0.22, a: 0.70, rough: 0.10, name: "sub · one source" },
@@ -200,6 +212,7 @@ window.Instruments = (function () {
     ctx.fillStyle = "rgba(9,13,15,0.86)";
     ctx.strokeStyle = `rgba(${LAMP},0.5)`; ctx.lineWidth = 1;
     paintFn(q, r, dt);
+    alarmOverlay(q, p.key);
     ctx.restore();
     curFont = null;
   }
@@ -278,6 +291,7 @@ window.Instruments = (function () {
 
   function draw(dt, r) {
     t += dt;
+    decayAlarms(dt);
     tickSys(dt, r);
     lastR = r;
     paintAcc += dt;
@@ -287,7 +301,106 @@ window.Instruments = (function () {
     paintBanks(pdt, r);
   }
 
+  /* value alarms. Thresholds are set where the reading stops being weather
+     and starts being a problem: none of these trip on an ordinary burn. */
+  function tickAlarms(dt, r) {
+    const s = r && r.ship;
+
+    // fuel — the one gauge with a real floor
+    const fuelN = s ? s.fuelN : 1;
+    setAlarm("phase", (s && s.infinite) ? A_NONE
+      : fuelN < 0.07 ? A_ERR : fuelN < 0.18 ? A_WARN : A_NONE, dt);
+
+    // cabin — off-nominal air, not the slow drift chaos puts on it
+    setAlarm("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
+      : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 96) ? A_WARN : A_NONE, dt);
+
+    // dose — only a flare, which is rare by construction
+    setAlarm("rad", sys.dose > 0.35 ? A_ERR : sys.dose > 0.09 ? A_WARN : A_NONE, dt);
+
+    // skin — a breach the bridge log opened and has not sealed yet. A
+    // micro-impact is normal out here and does not count.
+    setAlarm("hull", repairing.size > 0 ? A_WARN : A_NONE, dt);
+
+    // these have no abnormal state worth a lamp
+    setAlarm("radar",  A_NONE, dt);
+    setAlarm("signal", A_NONE, dt);
+    setAlarm("rec",    A_NONE, dt);
+    setAlarm("bus",    A_NONE, dt);
+  }
+
+  /* age is how long this tile has held its current level — the overlay uses
+     it to flicker once on the way in and then settle */
+  function setAlarm(key, lv, dt) {
+    const was = alarmVal.get(key);
+    alarmVal.set(key, lv);
+    alarmAge.set(key, was === lv ? (alarmAge.get(key) || 0) + dt : 0);
+  }
+
+  function decayAlarms(dt) {
+    for (const [k, e] of alarmEvt) {
+      e.t -= dt;
+      if (e.t <= 0) alarmEvt.delete(k);
+    }
+  }
+
+  function alarmLevel(key) {
+    const v = alarmVal.get(key) || A_NONE;
+    const e = alarmEvt.get(key);
+    return Math.max(v, e ? e.lv : A_NONE);
+  }
+
+  /* the bridge log calls this on every line it prints. Only a critical one
+     means anything here, and only to the skin tile. */
+  function alert(kind, keys) {
+    const lv = EVT_LV[kind];
+    if (!lv) return;
+    const dur = EVT_DUR[kind];
+    for (const k of (keys || EVT_KEYS[kind])) {
+      const cur = alarmEvt.get(k);
+      if (!cur || lv > cur.lv) { alarmEvt.set(k, { lv, t: dur }); alarmAge.set(k, 0); }
+      else if (cur.t < dur) cur.t = dur;
+    }
+  }
+
+  /* a short flicker as it trips, so you catch it, then a slow breathe it can
+     hold for minutes without becoming a light show */
+  function alarmFlick(lv, age) {
+    if (lv <= A_NONE) return 0;
+    if (age < 0.7) {
+      const f = (age * 6) % 1;
+      return f < 0.34 ? 0.25 : 1;
+    }
+    const rate = lv >= A_ERR ? 1.4 : 0.8;
+    const depth = lv >= A_ERR ? 0.3 : 0.2;
+    return (1 - depth) + depth * Math.sin((age - 0.7) * rate * 6.283);
+  }
+
+  /* drawn over the tile's own readout, on top of the static chrome */
+  function alarmOverlay(p, key) {
+    const lv = alarmLevel(key);
+    if (!lv) return;
+    const a = alarmFlick(lv, alarmAge.get(key) || 0);
+    const col = lv === A_WARN ? WARN : BAD;
+    ctx.save();
+    ctx.fillStyle = `rgba(${col},${(lv === A_WARN ? 0.02 : 0.045) * a})`;
+    ctx.fillRect(0, 0, p.w, p.h - 4);
+    ctx.lineWidth = lv >= A_ERR ? 1.4 : 1;
+    ctx.strokeStyle = `rgba(${col},${(lv === A_WARN ? 0.42 : 0.7) * a})`;
+    ctx.strokeRect(0.8, 0.8, p.w - 1.6, p.h - 5.6);
+    // relight the chrome's corner ticks in the alarm colour
+    ctx.strokeStyle = `rgba(${col},${0.6 * a})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0.8, 9); ctx.lineTo(0.8, 0.8); ctx.lineTo(9, 0.8);
+    ctx.moveTo(p.w - 0.8, 9); ctx.lineTo(p.w - 0.8, 0.8); ctx.lineTo(p.w - 9, 0.8);
+    ctx.stroke();
+    ctx.restore();
+    ctx.lineWidth = 1;
+  }
+
   function paintBanks(dt, r) {
+    tickAlarms(dt, r);
     if (ctx) drawBank(PANELS, focusKey, paint, dt, r, paintStatic);
     // readings keep ticking in draw(); only the painting stops while CSS hides the bank
     if (sysShown) paintSysBank(dt, r);
@@ -389,6 +502,17 @@ window.Instruments = (function () {
     if (a >= 100000) return (n / 1000).toFixed(0) + "k";
     if (a >= 10000) return (n / 1000).toFixed(1) + "k";
     return Math.round(n).toLocaleString("en-US");
+  }
+
+  /* canvas never clips, so a label that shares a line with another has to
+     earn its width. fit() trims to what is actually free; call it with the
+     font already set, since measureText reads the current one. */
+  function fit(text, maxW) {
+    if (maxW <= 0) return "";
+    if (ctx.measureText(text).width <= maxW) return text;
+    let s = text;
+    while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+    return s + "…";
   }
   const fontCache = new Map();
   function mono(px, weight = "500") {
@@ -519,18 +643,20 @@ window.Instruments = (function () {
     ctx.fillStyle = unclaimed ? `rgba(${LAMP},0.9)` : `rgba(${DIM},1)`;
     ctx.fillText(unclaimed ? unclaimed + " OPEN" : "FILED", p.w - 5, 12);
 
-    // nearest callout
+    // nearest callout — the range readout is fixed width, the name takes the rest
     if (nearest && nearestD < RANGE) {
       const label = (nearest.name || nearest.id || "mark").toUpperCase();
-      const short = label.length > 14 ? label.slice(0, 13) + "…" : label;
       const side = nearest.cam >= r.camX ? "E" : "W";
-      ctx.textAlign = "left";
-      ctx.fillStyle = `rgba(${LAMP},0.85)`;
+      const range = side + " " + fmtK(nearestD);
+      const baseY = inner - 5;
       setFont(mono(8));
-      ctx.fillText(short, 5, inner - 4);
+      const rw = ctx.measureText(range).width;
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${COLD},0.9)`;
-      ctx.fillText(side + " " + fmtK(nearestD), p.w - 5, inner - 4);
+      ctx.fillText(range, p.w - 5, baseY);
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${LAMP},0.85)`;
+      ctx.fillText(fit(label, p.w - 10 - rw - 6), 5, baseY);
     }
   }
 
@@ -617,7 +743,7 @@ window.Instruments = (function () {
     const pad = 6;
     const iconReserve = 14;          /* chrome expand glyph — keep text out of here */
     const headerY = 11;
-    const cruiseBlock = 24;          /* label + bar + mode line */
+    const cruiseBlock = 32;          /* label + bar + mode line */
 
     const tankW = Math.max(14, Math.round(p.w * 0.11));
     const tankX = pad;
@@ -671,8 +797,8 @@ window.Instruments = (function () {
     ctx.fillText("THRUST", zoneCx, zoneCy + 11);
 
     // burn + power — below arc, above cruise block
-    const statY = zoneCy + R + 7;
-    const statValY = statY + 10;
+    const statY = zoneCy + R + 6;
+    const statValY = statY + 9;
     setFont(mono(8));
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(${DIM},0.95)`;
@@ -692,22 +818,22 @@ window.Instruments = (function () {
 
     // cruise — bottom block, clear of burn/pwr
     const bx = zoneL;
-    const by = inner - 10;
+    const by = inner - 17;
     const bw = zoneW;
     setFont(mono(7));
     ctx.textAlign = "left";
     ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText("CRUISE BUILD", bx, by - 5);
+    ctx.fillText("CRUISE BUILD", bx, by - 6);
     ctx.textAlign = "right";
     ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 5);
+    ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 6);
     ctx.fillStyle = `rgba(${DIM},0.22)`;
-    ctx.fillRect(bx, by, bw, 5);
+    ctx.fillRect(bx, by, bw, 4);
     const cg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
     cg.addColorStop(0, `rgba(${COLD},0.5)`);
     cg.addColorStop(1, `rgba(${LAMP},0.9)`);
     ctx.fillStyle = cg;
-    ctx.fillRect(bx, by, bw * cruiseNeedle, 5);
+    ctx.fillRect(bx, by, bw * cruiseNeedle, 4);
 
     // header — fuel label + percent inline on the left (not under expand icon)
     ctx.textAlign = "left";
@@ -727,7 +853,7 @@ window.Instruments = (function () {
     ctx.textAlign = "right";
     setFont(mono(8));
     ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
-    ctx.fillText(mode, zoneR, by + 12);
+    ctx.fillText(fit(mode, zoneR - bx), zoneR, by + 13);
   }
 
   /* =========================================================
@@ -761,7 +887,7 @@ window.Instruments = (function () {
     ctx.fillText(r.spanPct.toFixed(1) + "% SPAN", p.w - 5, 26);
 
     // strip chart
-    const chartTop = 38, chartBot = inner - 20;
+    const chartTop = 38, chartBot = inner - 28;
     const chartH = chartBot - chartTop;
     ctx.strokeStyle = `rgba(${LAMP},0.08)`;
     for (let i = 1; i < 3; i++) {
@@ -800,7 +926,7 @@ window.Instruments = (function () {
     const u = Math.min(1, Math.max(0, 1 - (r.spanPct || 0) / 100));
     // spanPct is "% crossed" from east-ish; bar shows you on the line
     const you = Math.min(1, Math.max(0, (r.spanPct || 0) / 100));
-    const barY = inner - 10;
+    const barY = chartBot + 10;
     ctx.fillStyle = `rgba(${DIM},0.25)`;
     ctx.fillRect(5, barY, p.w - 10, 3);
     ctx.fillStyle = `rgba(${LAMP},0.85)`;
@@ -812,25 +938,25 @@ window.Instruments = (function () {
     ctx.textAlign = "right";
     ctx.fillText("E", p.w - 5, barY - 4);
 
-    // status line
-    ctx.textAlign = "left";
+    // bottom line — RUN keeps its width, the status text gets what is left
+    const baseY = inner - 4;
     setFont(mono(8));
-    if (s && s.courseName) {
-      ctx.fillStyle = `rgba(${COLD},0.95)`;
-      const nm = s.courseName.toUpperCase();
-      ctx.fillText("LOCK " + (nm.length > 12 ? nm.slice(0, 11) + "…" : nm), 5, chartBot + 10);
-    } else if (s && s.burning) {
-      ctx.fillStyle = `rgba(${LAMP},0.85)`;
-      ctx.fillText("BURNING", 5, chartBot + 10);
-    } else if (r.region) {
-      ctx.fillStyle = `rgba(${DIM},0.95)`;
-      const reg = String(r.region).toUpperCase();
-      ctx.fillText(reg.length > 18 ? reg.slice(0, 17) + "…" : reg, 5, chartBot + 10);
+    const run = r.travelled != null ? fmtK(r.travelled) + " RUN" : "";
+    const rw = run ? ctx.measureText(run).width + 6 : 0;
+    if (run) {
+      ctx.textAlign = "right";
+      ctx.fillStyle = `rgba(${GOOD},0.85)`;
+      ctx.fillText(run, p.w - 5, baseY);
     }
-
-    ctx.textAlign = "right";
-    ctx.fillStyle = `rgba(${GOOD},0.85)`;
-    if (r.travelled != null) ctx.fillText(fmtK(r.travelled) + " RUN", p.w - 5, chartBot + 10);
+    let stat = null, statCol = DIM;
+    if (s && s.courseName) { stat = "LOCK " + s.courseName.toUpperCase(); statCol = COLD; }
+    else if (s && s.burning) { stat = "BURNING"; statCol = LAMP; }
+    else if (r.region) { stat = String(r.region).toUpperCase(); }
+    if (stat) {
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${statCol},0.95)`;
+      ctx.fillText(fit(stat, p.w - 10 - rw), 5, baseY);
+    }
 
     void u; void lerp;
   }
@@ -1188,5 +1314,5 @@ window.Instruments = (function () {
     ctx.fillText((tvc >= 0 ? "+" : "") + tvc.toFixed(1) + "°", p.w - 5, py);
   }
 
-  return { mount, mountSys, draw, setScale, getScale, focus, focusSys, impact, setRepair, TOTAL_W, TOTAL_H };
+  return { mount, mountSys, draw, setScale, getScale, focus, focusSys, impact, setRepair, alert, TOTAL_W, TOTAL_H };
 })();

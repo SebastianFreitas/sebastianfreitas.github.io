@@ -914,6 +914,8 @@
   }
 
   function commitLog(entry) {
+    /* the tiles flash with the line, not when it was queued */
+    if (window.Instruments && Instruments.alert) Instruments.alert(entry.kind);
     const line = document.createElement("div");
     line.className = "tl " + entry.kind;
     el.log.appendChild(line);
