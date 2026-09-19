@@ -103,7 +103,7 @@
 }
 .tinst-wrap { pointer-events: none; }
 .tinst-ctl { pointer-events: auto; }
-/* log: centred above the bottom span strip (same width, same axis) */
+/* log: sits on the span strip, writing left to right like a terminal */
 #bridge-log {
   left: 50%;
   right: auto;
@@ -115,12 +115,12 @@
 }
 #bridge-log .tlog {
   display: flex; flex-direction: column; justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.28rem; margin: 0;
   position: relative;
   padding: 0.45rem 0.75rem 0.5rem;
   background: linear-gradient(to top, rgba(9,13,15,0.72) 0%, rgba(9,13,15,0.18) 70%, transparent 100%);
-  text-align: center;
+  text-align: left;
 }
 #bridge-log .tlog::before {
   content: "";
@@ -131,9 +131,9 @@
 }
 #bridge-log .tlog::after {
   content: "";
-  position: absolute; left: 50%; bottom: -1px;
+  position: absolute; left: 0; bottom: -1px;
   width: 2.2rem; height: 2px;
-  transform: translateX(-50%);
+  transform: none;
   background: var(--lamp);
 }
 #bridge-log .tl {
@@ -147,6 +147,32 @@
 #bridge-log .tl:last-child { color: var(--sage); }
 #bridge-log .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
 #bridge-log .tl.good { color: var(--lamp) !important; }
+/* tiers: a reading that bent, and one that cannot be true */
+#bridge-log .tl.warn { color: #e5a63c !important; }
+#bridge-log .tl.err  { color: #e2594c !important; }
+#bridge-log .tl.good::before { content: "+ "; color: inherit; }
+#bridge-log .tl.warn::before { content: "! "; color: inherit; }
+#bridge-log .tl.err::before  { content: "!! "; color: inherit; }
+#bridge-log .tl.warn {
+  background: rgba(229,166,60,0.07);
+  box-shadow: inset 2px 0 0 rgba(229,166,60,0.55);
+  padding-left: 0.35rem; margin-left: -0.35rem;
+}
+#bridge-log .tl.err {
+  background: rgba(226,89,76,0.12);
+  box-shadow: inset 2px 0 0 rgba(226,89,76,0.75);
+  padding-left: 0.35rem; margin-left: -0.35rem;
+  animation: tlIn 0.45s ease both, errFlick 0.9s steps(1) 1;
+}
+/* numbers carry the weight — they're the part worth reading */
+#bridge-log .tl .n { font-weight: 700; color: var(--sage); }
+#bridge-log .tl.loc .n,
+#bridge-log .tl.good .n,
+#bridge-log .tl.warn .n,
+#bridge-log .tl.err .n { color: inherit; }
+#bridge-log .tl .caret { color: var(--lamp); animation: caretBlink 0.72s steps(1) infinite; }
+@keyframes caretBlink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0.12; } }
+@keyframes errFlick { 0%, 100% { opacity: 1; } 12% { opacity: 0.25; } 24% { opacity: 1; } 36% { opacity: 0.4; } }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }

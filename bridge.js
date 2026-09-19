@@ -916,32 +916,154 @@
   function commitLog(entry) {
     const line = document.createElement("div");
     line.className = "tl " + entry.kind;
-    line.textContent = "";
     el.log.appendChild(line);
     while (el.log.children.length > LOG_MAX) el.log.removeChild(el.log.firstChild);
-    logHead = { line, full: entry.text, shown: 0 };
+
+    /* split into plain / numeric runs so the digits can carry weight */
+    const parts = [];
+    const re = /\d[\d,]*(?:\.\d+)?%?|∞|nan/g;
+    let last = 0, m;
+    while ((m = re.exec(entry.text)) !== null) {
+      if (m.index > last) parts.push({ text: entry.text.slice(last, m.index), num: false });
+      parts.push({ text: m[0], num: true });
+      last = m.index + m[0].length;
+    }
+    if (last < entry.text.length) parts.push({ text: entry.text.slice(last), num: false });
+
+    const spans = parts.map(p => {
+      const s = document.createElement("span");
+      if (p.num) s.className = "n";
+      line.appendChild(s);
+      return s;
+    });
+    const caret = document.createElement("span");
+    caret.className = "caret";
+    caret.textContent = "_";
+    line.appendChild(caret);
+
+    logHead = { line, parts, spans, caret, len: entry.text.length, shown: 0 };
   }
 
   function runLog(dt) {
     if (!el.log) return;
     if (logHead) {
-      logHead.shown = Math.min(logHead.full.length, logHead.shown + dt * 58);
+      logHead.shown = Math.min(logHead.len, logHead.shown + dt * 58);
       const n = Math.floor(logHead.shown);
-      logHead.line.textContent = logHead.full.slice(0, n) + (n < logHead.full.length ? "_" : "");
-      if (n >= logHead.full.length) logHead = null;
+      let used = 0;
+      for (let i = 0; i < logHead.parts.length; i++) {
+        const p = logHead.parts[i];
+        const take = Math.max(0, Math.min(p.text.length, n - used));
+        const next = p.text.slice(0, take);
+        if (logHead.spans[i].textContent !== next) logHead.spans[i].textContent = next;
+        used += p.text.length;
+      }
+      if (n >= logHead.len) { logHead.caret.remove(); logHead = null; }
       return;
     }
     if (logQueue.length) commitLog(logQueue.shift());
   }
 
-  const READINGS = [
+  /* ── the readout ───────────────────────────────────────────
+     On a surface the laws of physics are agreeable and the
+     instruments agree with each other. Out on the span they
+     don't: the void reports things that cannot be true. The
+     hull is built to a stronger law, so a bad reading is
+     logged and overruled rather than acted on. */
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const rint = (a, b) => Math.floor(rnd(a, b + 1));
+  const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
+  const spanPctNow = () => (CAM.max - camX) / (CAM.max - CAM.min) * 100;
+
+  const READ_COMMON = [
     () => `bearing ${fmt(camX)} · drift ${Math.abs(vel).toFixed(0)}`,
-    () => `chaos ${chaosNow.toFixed(2)} · unformed ${futureNow.toFixed(2)}`,
-    () => `span ${((CAM.max - camX) / (CAM.max - CAM.min) * 100).toFixed(1)}% crossed`,
-    () => `structure holding · no report`,
-    () => `listening · nothing answered`,
+    () => `span ${spanPctNow().toFixed(1)}% crossed`,
     () => `sweep complete · ${activeMarks().filter(m => Math.abs(m.cam - camX) < 22000).length} in range`,
   ];
+  /* a surface under us: everything measures once and stays measured */
+  const READ_CALM = [
+    () => `local law agreeable · gravity ${rnd(0.94, 1.06).toFixed(2)}g`,
+    () => `horizon measured · it stayed measured`,
+    () => `hull at rest · nothing arguing with it`,
+    () => `lane traffic · ${rint(3, 14)} hulls, all accounted`,
+    () => `chart agrees with the window`,
+  ];
+  const READ_VOID = [
+    () => `chaos ${chaosNow.toFixed(2)} · unformed ${futureNow.toFixed(2)}`,
+    () => `structure holding · no report`,
+    () => `listening · nothing answered`,
+    () => `hull law holding at ${rint(96, 100)}%`,
+    () => `dark sounded to ${fmt(rint(40, 90) * 1000)} · no floor`,
+  ];
+  const WARN_VOID = [
+    () => `gravity ${rnd(2.4, 9.8).toFixed(1)}g in a ${rint(3, 40)}m pocket`,
+    () => `range finder disagrees with itself · Δ ${fmt(rint(200, 9000))}`,
+    () => `echo returned ${rnd(0.2, 2.6).toFixed(1)}s early`,
+    () => `mass ahead 0 · the silhouette says otherwise`,
+    () => `star count ${rint(2, 40)} · was ${rint(41, 900)} last sweep`,
+    () => `thermal -${rint(40, 260)}°c on open vacuum`,
+    () => `bearing drifted ${rnd(1.2, 14).toFixed(1)}° · course unchanged`,
+    () => `chart edge ragged here · redrawing`,
+  ];
+  const ERR_VOID = [
+    () => `distance to horizon: undefined`,
+    () => `gravity ∞ at ${fmt(camX + rint(400, 9000))} · sensor refused`,
+    () => `sweep returned ${rint(2, 9)} copies of this ship`,
+    () => `the object ahead has no far side`,
+    () => `clock lost ${rnd(1.4, 22).toFixed(1)}s · the log kept writing`,
+    () => `something answered · in no language`,
+    () => `mass nan · bearing nan · it is still there`,
+    () => `plating scored ${rint(2, 40)}m · nothing touched it`,
+  ];
+  const ERR_ROOT = [
+    () => `tissue signature ${fmt(rint(200, 4000))}m across`,
+    () => `it has a pulse · ${rint(11, 48)} bpm`,
+    () => `the dark here is warm · ${rint(28, 39)}°c`,
+    () => `scan refused · the scan was noticed`,
+  ];
+  const AFTER_ERR = [
+    () => `reading discarded · the hull disagrees with the void`,
+    () => `local law overruled · we keep our own`,
+    () => `logged · no action possible`,
+    () => `steady · it did not follow`,
+  ];
+
+  function fuelPool() {
+    if (!ship) return [];
+    return [() => ship.infinite
+      ? "drive: unlimited · tanks open"
+      : `fuel ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)} · hold builds cruise`];
+  }
+
+  /* where we are, as far as physics is concerned */
+  function zoneAt(x) {
+    if (sceneMode !== "void") return "calm";
+    if (Math.abs(x - LAND.mainland) < SLOT * 1.6) return "calm";
+    if (x > LAND.root - SLOT * 1.4) return "root";
+    for (const c of [LAND.rex, LAND.edgefall, LAND.unnamed])
+      if (Math.abs(x - c) < SLOT * 1.5) return "calm";
+    return "void";
+  }
+
+  function idleLine() {
+    const zone = zoneAt(camX);
+    if (zone === "calm") {
+      pushLog(pickOne(READ_COMMON.concat(READ_CALM, fuelPool()))());
+      return;
+    }
+    /* the worse the dark, the likelier a reading comes back wrong */
+    const heat = zone === "root" ? 1 : Math.min(1, Math.max(0, chaosNow));
+    const r = Math.random();
+    if (r < 0.055 * heat) {
+      pushLog(pickOne(zone === "root" ? ERR_ROOT.concat(ERR_VOID) : ERR_VOID)(), "err");
+      if (Math.random() < 0.7) pushLog(pickOne(AFTER_ERR)());
+      return;
+    }
+    if (r < 0.255 * heat) {
+      pushLog(pickOne(WARN_VOID)(), "warn");
+      return;
+    }
+    pushLog(pickOne(READ_COMMON.concat(READ_VOID, fuelPool()))());
+  }
   let readingAt = 0;
 
   /* which landmark's voice the signal instrument should show */
@@ -998,13 +1120,7 @@
     if (readingAt > nextIdle && !logHead && !logQueue.length) {
       readingAt = 0;
       nextIdle = 3.2 + Math.random() * 3.4;
-      const fuelLine = ship
-        ? () => ship.infinite
-            ? "drive: unlimited · tanks open"
-            : `fuel ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)} · hold builds cruise`
-        : null;
-      const pool = fuelLine ? READINGS.concat([fuelLine]) : READINGS;
-      pushLog(pool[Math.floor(Math.random() * pool.length)]());
+      idleLine();
     }
     runLog(dt);
 
