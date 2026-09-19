@@ -138,6 +138,7 @@
 
   /* ---- defer interaction until the gate picks a path ---- */
   let loopOn = false, bridgeReady = false, visible = true;
+  let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
   let entered = false, preloaded = false;   // gate lifted / first still frame drawn
 
   function readyBridge() {
@@ -150,7 +151,7 @@
   }
 
   function startLoop() {
-    if (loopOn) return;
+    if (loopOn) { unpark(); return; }
     if (!entered) return;
     if (!visible || document.hidden) return;
     loopOn = true;
@@ -158,7 +159,28 @@
     prevStamp = -1;                   // the gap while stopped isn't a refresh
     refreshCount = 2 * refreshN;      // first callback paints
     paintDue = 0;                     // and isn't a missed paint either
+    armed = false;
+    arm();
+  }
+
+  /* One pending callback at a time, whoever asks. Without this a wake that
+     races the idle timer would leave two chains running side by side. */
+  function arm() {
+    if (armed) return;
+    armed = true;
     requestAnimationFrame(frame);
+  }
+  /* Idle: let go of the frame callback entirely and come back on a timer.
+     Holding an rAF chain open costs the same whether it paints or not. */
+  function parkIdle() {
+    if (idleTimer) return;
+    idleTimer = setTimeout(() => { idleTimer = 0; arm(); }, IDLE_PARK_MS);
+  }
+  function unpark() {
+    if (!idleTimer) return;
+    clearTimeout(idleTimer);
+    idleTimer = 0;
+    arm();
   }
 
   /* the gate sits over one still frame; the loop only starts on site:enter */
@@ -1587,14 +1609,16 @@
   const PAINT_MS = 1000 / 60;
   const PAINT_EARLY_MS = 2;   // vsync wobble: a boundary this close still paints
   let paintDue = 0;           // next paint's due stamp; 0 = paint on the next boundary
-  /* at rest and untouched for a while, the scene only drifts: paint it every
-     2N refreshes (half rate). Any input snaps straight back. */
+  /* at rest and untouched for a while, the scene only drifts: let the frame
+     callback go and come back on a timer instead. Holding the callback open
+     costs as much as painting. Any input snaps straight back. */
   const IDLE_AFTER_MS = 5000;
+  const IDLE_PARK_MS = 100;         // idle wake interval, ms — 10 fps
   let lastInput = performance.now();
   let idleNow = false;
   function noteInput() {
     lastInput = performance.now();
-    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; paintDue = 0; }   // paint on the very next callback
+    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; paintDue = 0; unpark(); }   // paint on the very next callback
   }
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
     addEventListener(type, noteInput, { passive: true, capture: true }));
@@ -1629,6 +1653,7 @@
     }
   }
   function frame(now) {
+    armed = false;
     if (!loopOn) return;
     if (!visible || document.hidden) {
       loopOn = false;
@@ -1662,19 +1687,19 @@
     }
     const slot = idleNow ? 2 * PAINT_MS : PAINT_MS;
     if (refreshCount < (idleNow ? 2 * refreshN : refreshN)) {
-      requestAnimationFrame(frame);
+      arm();
       return;
     }
     if (paintDue && now < paintDue - PAINT_EARLY_MS) {
       // on a refresh boundary but under the 60 fps ceiling: wait for the next one
-      requestAnimationFrame(frame);
+      arm();
       return;
     }
     refreshCount = 0;   // drop the remainder: a late frame never earns a double paint
     paintDue = !paintDue || now - paintDue > slot ? now + slot : paintDue + slot;
     const raw = Math.min((now - last) / 1000, 1 / 20);
     last = now;
-    requestAnimationFrame(frame);
+    if (idleNow) parkIdle(); else arm();
     render(raw);
   }
   function pacingReport() {
@@ -1685,9 +1710,9 @@
       n: refreshN,
       measured: refreshMeasured,
       idle: idleNow,
-      fps: +Math.min(hz / (idleNow ? 2 * refreshN : refreshN),
-                     1000 / (idleNow ? 2 * PAINT_MS : PAINT_MS)).toFixed(2),
-      cap: idleNow ? 30 : 60,
+      fps: idleNow ? +(1000 / IDLE_PARK_MS).toFixed(2)
+                   : +Math.min(hz / refreshN, 1000 / PAINT_MS).toFixed(2),
+      cap: idleNow ? 1000 / IDLE_PARK_MS : 60,
     };
   }
   window.pacingReport = pacingReport;
