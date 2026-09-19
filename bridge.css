@@ -341,7 +341,6 @@
 #bridge-cursor.docked { border-color: rgba(245,208,107,0.9); }
 @media (max-width: 900px) {
   .bridge-hero { cursor: auto; }
-.bnote { width: calc(100vw - 2.5rem); }
 #bridge-cursor { display: none; }
 #bridge-map { width: calc(100vw - 2.5rem); }
 }
@@ -435,8 +434,17 @@ footer .rights {
 }
 /* the first beacon: the same object they'll be clicking out on the span */
 
+/* Under 900px there is no room beside a beacon for a panel this wide, so
+   the note stops chasing the beacon and becomes a sheet above the span.
+   placeNote() clears its inline left/top to match — see bridge.js. */
 @media (max-width: 900px) {
-  .bnote { width: calc(100vw - 2.5rem) !important; }
+  .bnote {
+    left: 1.25rem !important;
+    right: 1.25rem !important;
+    top: auto !important;
+    bottom: calc(var(--hud-floor) + var(--span-h) + 0.6rem) !important;
+    width: auto !important;
+  }
 }
 /* burning the voidship */
 .bridge-hero { cursor: crosshair; }
@@ -585,5 +593,59 @@ html.genesis-on .topbar {
   .genesis { padding-top: 3.6rem; }
   .genesis-skip { top: 0.75rem; right: 0.85rem; }
   .genesis-ticks { bottom: calc(var(--hud-floor) + 0.4rem); }
+}
+
+/* =========================================================
+   Portrait on a phone.
+   The scene's scale comes from width (see viewUnitsNow in
+   bridge.js); on the short side of a phone there is nothing
+   worth drawing. Ask for a rotate, park the loop behind this,
+   and always leave a way out.
+   ========================================================= */
+.bridge-rotate {
+  position: absolute; inset: 0; z-index: 45;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 2rem 1.5rem;
+  background: #0d1114;
+  text-align: center;
+}
+.rotate-inner { max-width: 22rem; }
+.rotate-glyph {
+  width: 46px; height: 74px; margin: 0 auto 1.6rem;
+  border: 1px solid rgba(245,208,107,0.5); border-radius: 7px;
+  animation: rotate-tip 2.6s ease-in-out infinite;
+}
+.rotate-say {
+  font-size: 1.02rem; line-height: 1.5; color: var(--sage);
+  margin: 0 0 0.5rem;
+}
+.rotate-sub {
+  font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lamp); margin: 0 0 1.8rem;
+}
+.rotate-skip {
+  font-family: var(--mono); font-size: 0.74rem;
+  color: var(--sage); text-decoration: none;
+  border-bottom: 1px solid rgba(198,204,198,0.3);
+  padding-bottom: 2px;
+}
+@keyframes rotate-tip {
+  0%, 38% { transform: rotate(0deg); }
+  62%, 100% { transform: rotate(-90deg); }
+}
+/* only once the gate is done — otherwise the boot log reads straight
+   through the notice and both look broken */
+@media (orientation: portrait) and (pointer: coarse) {
+  html.gate-done .bridge-rotate { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-glyph { animation: none; transform: rotate(-90deg); }
+}
+
+/* Landscape on a phone is ~390px tall: the 560px floor on the hero would
+   overflow the viewport and make the whole section scroll past itself. */
+@media (max-height: 560px) {
+  .bridge-hero { min-height: 0; }
 }
 

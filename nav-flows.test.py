@@ -42,6 +42,7 @@ except ImportError:
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DESKTOP = {"width": 1440, "height": 900}
 PHONE = {"width": 390, "height": 844}
+PHONE_LANDSCAPE = {"width": 844, "height": 390}
 CASES = ["sector-zero", "voidscape", "heavylight", "conclusus"]
 NEXT = {"sector-zero": "voidscape", "voidscape": "heavylight",
         "heavylight": "conclusus", "conclusus": "sector-zero"}
@@ -95,6 +96,26 @@ INIT = """
     obs.disconnect();
   }).observe(document, { childList: true, subtree: true });
 })();
+"""
+
+# Counts paints on the bridge canvas only. bridge.js grabs its 2d context
+# once at parse time, so wrapping getContext here catches it; instrument
+# canvases keep their own untouched context.
+PAINT_PROBE = """
+window.__paints = 0;
+const getCtx = HTMLCanvasElement.prototype.getContext;
+HTMLCanvasElement.prototype.getContext = function (kind, ...rest) {
+  const ctx = getCtx.call(this, kind, ...rest);
+  if (this.id === 'bridge-canvas' && ctx && !ctx.__counted) {
+    ctx.__counted = true;
+    for (const name of ['save', 'beginPath', 'fillRect', 'drawImage']) {
+      const orig = ctx[name];
+      if (typeof orig !== 'function') continue;
+      ctx[name] = function (...a) { window.__paints++; return orig.apply(this, a); };
+    }
+  }
+  return ctx;
+};
 """
 
 STATE = """
@@ -386,6 +407,78 @@ def flow_header(browser, base):
         ctx.close()
 
 
+def flow_phone(browser, base):
+    """Phone portrait asks for a rotate; landscape gets a hero that fits."""
+    ctx = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
+    ctx.set_default_timeout(8000)
+    ctx.add_init_script(INIT)
+    ctx.add_init_script(PAINT_PROBE)
+    page = ctx.new_page()
+    enter_via_gate(page, base)
+    r = page.evaluate("""() => {
+      const el = document.getElementById('bridge-rotate');
+      if (!el) return null;
+      const skip = el.querySelector('.rotate-skip');
+      return {
+        shown: getComputedStyle(el).display !== 'none',
+        hidden: el.getAttribute('aria-hidden'),
+        skip: skip ? skip.getAttribute('href') : null,
+      };
+    }""")
+    check("portrait: rotate notice shows", bool(r and r["shown"]), r)
+    check("portrait: notice is not hidden from a screen reader", bool(r and r["hidden"] == "false"), r)
+    check("portrait: notice offers a way to the work", bool(r and r["skip"] == "#work"), r)
+    parked = page.evaluate("""async () => {
+      const a = window.__paints;
+      await new Promise(r => setTimeout(r, 1200));
+      return { before: a, after: window.__paints };
+    }""")
+    check("portrait: the render loop is parked behind the notice",
+          parked["after"] == parked["before"], parked)
+    page.click("#bridge-rotate .rotate-skip")
+    page.wait_for_timeout(600)
+    at_work = page.evaluate("""() => {
+      const w = document.getElementById('work').getBoundingClientRect().top;
+      return Math.abs(w) < 120;
+    }""")
+    check("portrait: skip link lands on Work", at_work)
+    ctx.close()
+
+    ctx = browser.new_context(viewport=PHONE_LANDSCAPE, has_touch=True, is_mobile=True)
+    ctx.set_default_timeout(8000)
+    ctx.add_init_script(INIT)
+    ctx.add_init_script(PAINT_PROBE)
+    page = ctx.new_page()
+    enter_via_gate(page, base)
+    r = page.evaluate("""() => {
+      const el = document.getElementById('bridge-rotate');
+      const hero = document.getElementById('bridge-hero').getBoundingClientRect();
+      return {
+        shown: el ? getComputedStyle(el).display !== 'none' : null,
+        hero: Math.round(hero.height),
+        vh: window.innerHeight,
+      };
+    }""")
+    check("landscape: no rotate notice", r["shown"] is False, r)
+    check("landscape: hero fits the viewport", r["hero"] <= r["vh"] + 1, r)
+    running = page.evaluate("""async () => {
+      const a = window.__paints;
+      await new Promise(r => setTimeout(r, 1200));
+      return { before: a, after: window.__paints };
+    }""")
+    check("landscape: the render loop runs",
+          running["after"] > running["before"], running)
+    ctx.close()
+
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    shown = page.evaluate(
+        "() => { const el = document.getElementById('bridge-rotate');"
+        " return el ? getComputedStyle(el).display !== 'none' : null; }")
+    check("desktop: no rotate notice", shown is False, shown)
+    ctx.close()
+
+
 def flow_shell(browser, base):
     """Case pages share the homepage's nav, and each links to the next project."""
     ctx, page = new_page(browser)
@@ -443,7 +536,7 @@ FLOWS = {
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
-    "shell": flow_shell, "links": flow_links,
+    "shell": flow_shell, "phone": flow_phone, "links": flow_links,
 }
 
 

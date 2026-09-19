@@ -138,6 +138,12 @@
 
   /* ---- defer interaction until the gate picks a path ---- */
   let loopOn = false, bridgeReady = false, visible = true;
+  /* Portrait on a touch device: the hero is covered by #bridge-rotate, so
+     nothing behind it is worth a frame. Same gate as `visible`. */
+  const portraitQ = matchMedia("(orientation: portrait) and (pointer: coarse)");
+  let portrait = portraitQ.matches;
+  const rotateEl = document.getElementById("bridge-rotate");
+  if (rotateEl) rotateEl.setAttribute("aria-hidden", String(!portrait));
   let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
   let entered = false, preloaded = false;   // gate lifted / first still frame drawn
 
@@ -153,7 +159,7 @@
   function startLoop() {
     if (loopOn) { unpark(); return; }
     if (!entered) return;
-    if (!visible || document.hidden) return;
+    if (!visible || portrait || document.hidden) return;
     loopOn = true;
     last = performance.now();
     prevStamp = -1;                   // the gap while stopped isn't a refresh
@@ -258,7 +264,19 @@
 
   const cursor = document.getElementById("bridge-cursor");
 
-  const scale = () => W / CAM.viewUnits;
+  /* Under 900px the note is a sheet pinned by CSS, not a panel placed by us. */
+  const sheetQ = matchMedia("(max-width: 900px)");
+  let sheet = sheetQ.matches;
+  const onSheet = e => { sheet = e.matches; };
+  if (sheetQ.addEventListener) sheetQ.addEventListener("change", onSheet);
+  else sheetQ.addListener(onSheet);
+
+  /* CAM.viewUnits is the world's layout unit and never moves — the beacon
+     offsets in MARKS are measured in it. What we PAINT eases down on narrow
+     screens: at 2100 a landscape phone would be shown the scene at a third
+     of desktop density. Unchanged above ~1438px, floored at 1250. */
+  const viewUnitsNow = () => Math.max(1250, Math.min(CAM.viewUnits, W * 1.46));
+  const scale = () => W / viewUnitsNow();
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const fmt = n => Math.round(n).toLocaleString("en-US");
   const onScreen = (x, pad) => x > -pad && x < W + pad;
@@ -325,6 +343,16 @@
      has room, clamped so it never leaves the hero */
   function placeNote(el2, mark) {
     if (!el2 || !mark) return;
+    if (sheet) {
+      /* CSS owns the position now; clear ours or the stale inline left/top
+         would keep winning over the sheet rule. */
+      if (el2._left != null) {
+        el2.style.left = ""; el2.style.top = "";
+        el2._left = null; el2._top = null;
+      }
+      el2.classList.remove("from-left");
+      return;
+    }
     if (el2._pw == null) measureNote(el2);
     const p = markScreen(mark);
     const pw = el2._pw, ph = el2._ph;
@@ -572,6 +600,18 @@
       else startLoop();
     }, { threshold: 0.02 }).observe(host);
   }
+
+  /* Rotating out of portrait: the hero has a new size and a loop to restart.
+     Rotating in: drop any burn or steer in progress so nothing is still held
+     down behind the notice. */
+  const onPortrait = e => {
+    portrait = e.matches;
+    if (rotateEl) rotateEl.setAttribute("aria-hidden", String(!portrait));
+    if (portrait) { endBurn(); stopSteering(); }
+    else { resize(); startLoop(); }
+  };
+  if (portraitQ.addEventListener) portraitQ.addEventListener("change", onPortrait);
+  else portraitQ.addListener(onPortrait);
 
   /* ---- minimap: readout only — no jump, no scrub ---- */
   const track = document.getElementById("btrack");
@@ -1540,7 +1580,7 @@
       const aim = aimFromPointer();
       const prev = camX;
       const out = Voidship.step(ship, dt, {
-        camX, W, H, frozen, viewUnits: CAM.viewUnits, aim,
+        camX, W, H, frozen, viewUnits: viewUnitsNow(), aim,
       });
       camX = out.camX;
       vel = out.vel;
@@ -1655,7 +1695,7 @@
   function frame(now) {
     armed = false;
     if (!loopOn) return;
-    if (!visible || document.hidden) {
+    if (!visible || portrait || document.hidden) {
       loopOn = false;
       return;
     }
@@ -1757,7 +1797,7 @@
     try {
       drawMarks(raw);
       if (ship) {
-        Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: CAM.viewUnits });
+        Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: viewUnitsNow() });
       }
       drawSwitchFX();
     } catch (err) {
@@ -1771,6 +1811,7 @@
      have finished behind the gate are settled first, so nothing fades in
      when the gate lifts. */
   function paintOnce() {
+    if (portrait) return;
     if (loopOn) return;
     chaosNow  = sceneMode === "void" ? World.chaosAt(camX)  : 0;
     futureNow = sceneMode === "void" ? World.futureAt(camX) : 0;

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=10">
 <link rel="stylesheet" href="beacon.css?v=8">
-<link rel="stylesheet" href="bridge.css?v=45">
+<link rel="stylesheet" href="bridge.css?v=46">
 <script src="xp.js?v=14"></script>
 <script src="entry.js?v=1"></script>
 <script>
@@ -79,6 +79,18 @@
   <canvas id="bridge-canvas" aria-label="Interactive: travel the bridge between Rex and the Mainland"></canvas>
 
   <div class="vignette"></div>
+
+  <!-- portrait on a phone: the bridge is a width-driven scene and there is
+       no reading it on the short side. Ask for the long side, but never trap
+       anyone here — the skip link drops them straight into the work. -->
+  <div class="bridge-rotate" id="bridge-rotate" aria-hidden="true">
+    <div class="rotate-inner">
+      <div class="rotate-glyph" aria-hidden="true"></div>
+      <p class="rotate-say">The bridge needs the long side of your screen.</p>
+      <p class="rotate-sub">Turn your phone sideways.</p>
+      <a class="rotate-skip" href="#work">or skip to the work</a>
+    </div>
+  </div>
 
   <!-- HUD, revealed once you start moving -->
   <div class="bridge-hud" id="bridge-term">
@@ -371,7 +383,7 @@
 <script src="instruments.js?v=21"></script>
 <script src="world.js?v=10"></script>
 <script src="voidship.js?v=17"></script>
-<script src="bridge.js?v=64"></script>
+<script src="bridge.js?v=65"></script>
 <script src="genesis.js?v=24"></script>
 <script src="intro.js?v=7"></script>
 </body>
