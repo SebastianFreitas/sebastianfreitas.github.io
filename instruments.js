@@ -24,6 +24,7 @@ window.Instruments = (function () {
   const COLD = "143,176,184";
   const DIM  = "125,135,131";
   const BAD  = "196,74,68";
+  const WARN = "229,166,60";
   const GOOD = "120,170,140";
 
   const CELL_W = 168, CELL_H = 122, GAP = 16;
@@ -80,6 +81,7 @@ window.Instruments = (function () {
   const MAG_STEP = 1 / 60;
   const SAMPLE_SLACK = 0.002;
   let lastImpact = null;
+  const repairing = new Set();   // hull sectors the bridge log says are under patch
   let impactCool = 2.4;
   let prevAng = 0, omega = 0;
   let sys = {
@@ -1011,14 +1013,27 @@ window.Instruments = (function () {
     ctx.fillRect(dx - 1.4, dy - 1.4, 2.8, 2.8);
   }
 
+  /* the bridge log drives real strikes and patches; the panel just shows them */
+  function impact(sector, g) {
+    const sec = Math.max(1, Math.min(8, Math.round(sector) || 1));
+    lastImpact = { g: Math.max(0.02, g || 0.2), sector: sec, age: 0 };
+    impactCool = 4;
+  }
+
+  function setRepair(sector, on) {
+    const sec = Math.max(1, Math.min(8, Math.round(sector) || 1));
+    if (on) repairing.add(sec); else repairing.delete(sec);
+  }
+
   function hull(p, r) {
     const inner = p.h - 5;
     const live = lastImpact && lastImpact.age < 1.6;
     const recent = lastImpact && lastImpact.age < 6;
     setFont(mono(9));
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = live ? `rgba(${BAD},1)` : `rgba(${DIM},1)`;
-    ctx.fillText(live ? "IMPACT" : "CLEAR", 5, 12);
+    const patching = repairing.size > 0;
+    ctx.fillStyle = live ? `rgba(${BAD},1)` : patching ? `rgba(${WARN},1)` : `rgba(${DIM},1)`;
+    ctx.fillText(live ? "IMPACT" : patching ? "REPAIR" : "CLEAR", 5, 12);
     ctx.textAlign = "right";
     ctx.fillStyle = `rgba(${DIM},0.9)`;
     ctx.fillText(recent ? ("SEC " + lastImpact.sector) : "SKIN", p.w - 5, 12);
@@ -1028,16 +1043,21 @@ window.Instruments = (function () {
       const a0 = -Math.PI / 2 + i * Math.PI / 4;
       const a1 = a0 + Math.PI / 4;
       const hot = lastImpact && lastImpact.sector === i + 1 && lastImpact.age < 4;
+      const fix = !hot && repairing.has(i + 1);
       const fade = hot ? Math.max(0.25, 1 - lastImpact.age / 4) : 0;
-      ctx.strokeStyle = hot ? `rgba(${BAD},${0.45 + 0.55 * fade})` : `rgba(${LAMP},0.22)`;
-      ctx.lineWidth = hot ? 2 : 1;
+      /* a patched sector pulses amber until the bridge log clears it */
+      const pulse = 0.4 + 0.3 * (0.5 + 0.5 * Math.sin(t * 3.4 + i));
+      ctx.strokeStyle = hot ? `rgba(${BAD},${0.45 + 0.55 * fade})`
+        : fix ? `rgba(${WARN},${pulse})`
+        : `rgba(${LAMP},0.22)`;
+      ctx.lineWidth = hot || fix ? 2 : 1;
       ctx.beginPath();
       ctx.arc(cx, cy, R, a0 + 0.06, a1 - 0.06);
       ctx.stroke();
       ctx.lineWidth = 1;
       const mid = (a0 + a1) / 2;
       const tick = R + 3;
-      ctx.strokeStyle = hot ? `rgba(${BAD},${0.8 * fade})` : `rgba(${DIM},0.4)`;
+      ctx.strokeStyle = hot ? `rgba(${BAD},${0.8 * fade})` : fix ? `rgba(${WARN},0.7)` : `rgba(${DIM},0.4)`;
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(mid) * (R - 2), cy + Math.sin(mid) * (R - 2));
       ctx.lineTo(cx + Math.cos(mid) * tick, cy + Math.sin(mid) * tick);
@@ -1168,5 +1188,5 @@ window.Instruments = (function () {
     ctx.fillText((tvc >= 0 ? "+" : "") + tvc.toFixed(1) + "°", p.w - 5, py);
   }
 
-  return { mount, mountSys, draw, setScale, getScale, focus, focusSys, TOTAL_W, TOTAL_H };
+  return { mount, mountSys, draw, setScale, getScale, focus, focusSys, impact, setRepair, TOTAL_W, TOTAL_H };
 })();

@@ -150,9 +150,13 @@
 /* tiers: a reading that bent, and one that cannot be true */
 #bridge-log .tl.warn { color: #e5a63c !important; }
 #bridge-log .tl.err  { color: #e2594c !important; }
+#bridge-log .tl.crit { color: #ff5140 !important; font-weight: 700; }
+#bridge-log .tl.rep  { color: #7fa8b4 !important; }
 #bridge-log .tl.good::before { content: "+ "; color: inherit; }
 #bridge-log .tl.warn::before { content: "! "; color: inherit; }
 #bridge-log .tl.err::before  { content: "!! "; color: inherit; }
+#bridge-log .tl.crit::before { content: "!!! "; color: inherit; }
+#bridge-log .tl.rep::before  { content: "~ "; color: inherit; }
 #bridge-log .tl.warn {
   background: rgba(229,166,60,0.07);
   box-shadow: inset 2px 0 0 rgba(229,166,60,0.55);
@@ -164,15 +168,31 @@
   padding-left: 0.35rem; margin-left: -0.35rem;
   animation: tlIn 0.45s ease both, errFlick 0.9s steps(1) 1;
 }
+/* a strike: the hull actually lost something */
+#bridge-log .tl.crit {
+  background: rgba(255,81,64,0.2);
+  box-shadow: inset 3px 0 0 rgba(255,81,64,0.95);
+  padding-left: 0.35rem; margin-left: -0.35rem;
+  animation: tlIn 0.45s ease both, critFlick 1.5s steps(1) 2;
+}
+/* damage control, working */
+#bridge-log .tl.rep {
+  background: rgba(127,168,180,0.07);
+  box-shadow: inset 2px 0 0 rgba(127,168,180,0.45);
+  padding-left: 0.35rem; margin-left: -0.35rem;
+}
 /* numbers carry the weight — they're the part worth reading */
 #bridge-log .tl .n { font-weight: 700; color: var(--sage); }
 #bridge-log .tl.loc .n,
 #bridge-log .tl.good .n,
+#bridge-log .tl.rep .n,
 #bridge-log .tl.warn .n,
-#bridge-log .tl.err .n { color: inherit; }
+#bridge-log .tl.err .n,
+#bridge-log .tl.crit .n { color: inherit; }
 #bridge-log .tl .caret { color: var(--lamp); animation: caretBlink 0.72s steps(1) infinite; }
 @keyframes caretBlink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0.12; } }
 @keyframes errFlick { 0%, 100% { opacity: 1; } 12% { opacity: 0.25; } 24% { opacity: 1; } 36% { opacity: 0.4; } }
+@keyframes critFlick { 0%, 100% { opacity: 1; } 8% { opacity: 0.15; } 16% { opacity: 1; } 26% { opacity: 0.3; } 34% { opacity: 1; } 44% { opacity: 0.5; } }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
