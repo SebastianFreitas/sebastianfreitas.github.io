@@ -303,9 +303,14 @@
      Captured from BASE rather than written out, so a size changed there
      still decides what a phone gets. */
   const SHIP_SIZE = (window.Voidship && window.Voidship.BASE.size) || 72;
+  /* The W*1.46 squeeze exists so a phone's narrow viewport still shows a
+     useful slice of world either side of the ship. A desktop never needed
+     it: applying it there magnified everything painted in the canvas while
+     the instrument banks stayed 352x260, which read as the banks shrinking.
+     Desktop goes back to the flat layout unit. */
   const viewUnitsNow = () => {
-    const z = phone ? PHONE_ZOOM : 1;
-    return Math.max(1250, Math.min(CAM.viewUnits * z, W * 1.46 * z));
+    if (!phone) return CAM.viewUnits;
+    return Math.max(1250, Math.min(CAM.viewUnits * PHONE_ZOOM, W * 1.46 * PHONE_ZOOM));
   };
   const scale = () => W / viewUnitsNow();
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
@@ -752,9 +757,15 @@
       (innerHeight * 0.50) / Instruments.TOTAL_H,
       (innerWidth  * 0.19) / Instruments.TOTAL_W));
 
+    /* setScale's own clamp went down to 0.45 so a compact phone bank could
+       fit. The +/- buttons are desktop-only and used to bottom out at 0.7,
+       so anything stored below that is the new clamp leaking, not a choice
+       anyone made. The desktop keeps its old floor. */
+    const DESK_MIN = 0.7;
+
     let stored = parseFloat(localStorage.getItem(IK));
     const deskScale = () => {
-      if (Number.isFinite(stored)) return stored;
+      if (Number.isFinite(stored)) return Math.max(DESK_MIN, stored);
       const maxW = termEl ? termEl.clientWidth : Instruments.TOTAL_W;
       return Math.min(1, maxW / Instruments.TOTAL_W);
     };
@@ -778,7 +789,8 @@
     window.__bridgeRefit = applyScale;
 
     const step = d => {
-      stored = Instruments.setScale(Instruments.getScale() + d);
+      const lo = phone ? 0.45 : DESK_MIN;
+      stored = Instruments.setScale(Math.max(lo, Instruments.getScale() + d));
       syncInstBox();
       try { localStorage.setItem(IK, String(stored)); } catch (e) {}
     };
