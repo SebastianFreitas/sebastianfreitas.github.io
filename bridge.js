@@ -750,12 +750,13 @@
     const hero = document.getElementById("bridge-hero");
 
     /* the compact bank is one narrow column: give it a share of the height and
-       a sliver of the width, and let setScale's 0.45 clamp say when to stop.
-       Half the panels means each survivor can afford to be read, so the
-       height share is the generous one. */
-    const fitScale = () => Math.max(0.45, Math.min(1,
-      (innerHeight * 0.50) / Instruments.TOTAL_H,
-      (innerWidth  * 0.19) / Instruments.TOTAL_W));
+       a sliver of the width, and stop at 1. Half the panels means each
+       survivor can afford to be read, so the shares are generous and the
+       floor is above setScale's own clamp — a bank too small to read is
+       worth less than a bank that crowds the log. */
+    const fitScale = () => Math.max(0.55, Math.min(1,
+      (innerHeight * 0.62) / Instruments.TOTAL_H,
+      (innerWidth  * 0.26) / Instruments.TOTAL_W));
 
     /* setScale's own clamp went down to 0.45 so a compact phone bank could
        fit. The +/- buttons are desktop-only and used to bottom out at 0.7,

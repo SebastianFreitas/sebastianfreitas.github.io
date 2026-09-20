@@ -27,7 +27,7 @@ window.Instruments = (function () {
   const WARN = "229,166,60";
   const GOOD = "120,170,140";
 
-  const CELL_W = 168, CELL_H = 122, GAP = 16;
+  const CELL_W = 168, CELL_H = 122, GAP = 16, GAP_C = 8;
   const PANELS = [
     { key: "radar",  col: 0, row: 0, label: "RADAR"  },
     { key: "signal", col: 1, row: 0, label: "SIGNAL" },
@@ -62,8 +62,12 @@ window.Instruments = (function () {
      NAV set alone tells us the grid size */
   const cols = ps => ps.reduce((n, p) => Math.max(n, p.col + 1), 1);
   const rows = ps => ps.reduce((n, p) => Math.max(n, p.row + 1), 1);
-  const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * GAP;
-  const gridH = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * GAP;
+  /* the phone stacks two panels in one column with no room to spare:
+     halve the gutter there so the bank is shorter without either panel
+     losing a pixel. `compact` is live by the time anything measures. */
+  const gap = () => (compact ? GAP_C : GAP);
+  const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * gap();
+  const gridH = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * gap();
 
   let cv, ctx, dpr = 1, t = 0;
   let focusKey = null;
@@ -155,7 +159,7 @@ window.Instruments = (function () {
       const px = (e.clientX - box.left) / box.width  * gridW();
       const py = (e.clientY - box.top)  / box.height * gridH();
       for (const p of panelsFn()) {
-        const x0 = p.col * (CELL_W + GAP), y0 = p.row * (CELL_H + GAP);
+        const x0 = p.col * (CELL_W + gap()), y0 = p.row * (CELL_H + gap());
         if (px >= x0 && px <= x0 + CELL_W && py >= y0 && py <= y0 + CELL_H) {
           setter(p.key); return;
         }
@@ -165,7 +169,10 @@ window.Instruments = (function () {
 
   function fitCanvas(canvas, context) {
     if (!canvas || !context) return;
-    dpr = Math.min(devicePixelRatio || 1, 2);
+    /* the phone draws the bank at well under 1:1, so its 7px labels land on a
+       handful of device pixels: let a 3x phone screen actually spend them.
+       The desktop bank is large and animating, and keeps its cap of 2. */
+    dpr = Math.min(devicePixelRatio || 1, compact ? 3 : 2);
     const fit = uiScale;
     const dispW = Math.round(gridW() * fit);
     const dispH = Math.round(gridH() * fit);
@@ -298,7 +305,7 @@ window.Instruments = (function () {
       } else {
         for (const p of panels) {
           ctx.save();
-          ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
+          ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
           drawStaticPanel(p, staticFn);
           ctx.restore();
           curFont = null;
@@ -329,7 +336,7 @@ window.Instruments = (function () {
     }
     for (const p of panels) {
       ctx.save();
-      ctx.translate(p.col * (CELL_W + GAP), p.row * (CELL_H + GAP));
+      ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
       drawPanel(p, r, dt, paintFn);
       ctx.restore();
       curFont = null;

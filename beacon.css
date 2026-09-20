@@ -182,8 +182,16 @@ button.bcn,
 @keyframes bcnCore { 0%,100% { opacity: 0.45; } 55% { opacity: 1; } }
 @keyframes bcnRing { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(1.5); opacity: 0; } }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
   .xp-chip .xp-ref, .xp-chip .xp-track { display: none; }
+}
+/* a landscape phone spends its height on the bridge: the chip is what makes
+   the bar tall, so shrink the badge and the level number too, not just the
+   ref and the track above */
+@media (max-height: 520px) and (pointer: coarse) {
+  .xp-chip { font-size: 0.5rem; gap: 0.45rem; }
+  .xp-chip .xp-lv b { font-size: 0.68rem; margin-left: 0.24rem; }
+  .xp-badge { width: 11px; height: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bcn-arm, .bcn-core, .bcn-ring, .bcn-xp { animation: none; }

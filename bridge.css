@@ -715,6 +715,11 @@ html.genesis-on .topbar {
   #bridge-map .labels { font-size: 0.52rem; }
   #bridge-hint { display: none; }
 
+  /* the two banks and the span leave no margin the cue can have without
+     landing on top of something. The top bar's own Work link and the
+     portrait notice's skip link both already reach it. */
+  .bridge-scroll { display: none; }
+
   .bnote {
     bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem) !important;
     max-height: 8rem; overflow: auto;
