@@ -184,7 +184,7 @@ window.Instruments = (function () {
     ctx = cv.getContext("2d");
     curFont = null;
     fitCanvas(cv, ctx);
-    bindFocus(cv, navPanels, () => focusKey, k => { if (compact) return; focusKey = k; repaint(); });
+    bindFocus(cv, navPanels, () => focusKey, k => { focusKey = k; repaint(); });
     addEventListener("resize", resize);
     // the static layer has label text baked in: redraw it once web fonts arrive
     if (document.fonts) {
@@ -199,7 +199,7 @@ window.Instruments = (function () {
     if (!sysCv) return;
     sysCtx = sysCv.getContext("2d");
     fitCanvas(sysCv, sysCtx);
-    bindFocus(sysCv, sysPanels, () => sysFocus, k => { if (compact) return; sysFocus = k; repaint(); });
+    bindFocus(sysCv, sysPanels, () => sysFocus, k => { sysFocus = k; repaint(); });
     // hidden below 1100px by bridge.css (display: none): a zero-size box
     if ("ResizeObserver" in window) {
       new ResizeObserver(es => {

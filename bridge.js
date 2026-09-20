@@ -745,10 +745,12 @@
     const hero = document.getElementById("bridge-hero");
 
     /* the compact bank is one narrow column: give it a share of the height and
-       a sliver of the width, and let setScale's 0.45 clamp say when to stop */
+       a sliver of the width, and let setScale's 0.45 clamp say when to stop.
+       Half the panels means each survivor can afford to be read, so the
+       height share is the generous one. */
     const fitScale = () => Math.max(0.45, Math.min(1,
-      (innerHeight * 0.42) / Instruments.TOTAL_H,
-      (innerWidth  * 0.16) / Instruments.TOTAL_W));
+      (innerHeight * 0.50) / Instruments.TOTAL_H,
+      (innerWidth  * 0.19) / Instruments.TOTAL_W));
 
     let stored = parseFloat(localStorage.getItem(IK));
     const deskScale = () => {
@@ -912,9 +914,22 @@
      load — so this only ever toggles a class. */
   const gearBtn = document.getElementById("modes-gear");
   if (gearBtn && modesPanel) {
+    /* the gear is unlabelled furniture until someone uses it once — the tip
+       beside it says so, and stops saying so for good after the first open */
+    const TIPK = "arcanis.gear.seen";
+    let tipSeen = false;
+    try { tipSeen = localStorage.getItem(TIPK) === "1"; } catch (_) {}
+    if (tipSeen) modesPanel.classList.add("tip-done");
+    const retireTip = () => {
+      if (tipSeen) return;
+      tipSeen = true;
+      modesPanel.classList.add("tip-done");
+      try { localStorage.setItem(TIPK, "1"); } catch (_) {}
+    };
     const setOpen = on => {
       modesPanel.classList.toggle("open", on);
       gearBtn.setAttribute("aria-expanded", on ? "true" : "false");
+      if (on) retireTip();
     };
     gearBtn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); });
     gearBtn.addEventListener("click", e => {
