@@ -569,3 +569,10 @@ footer p { margin: 0 0 0.4rem; }
 .case-nav a:hover { color: var(--lamp); }
 body { padding-top: 0; }
 .work, .experience { position: relative; z-index: 1; background: var(--petrol); }
+
+/* a landscape phone has ~390px of height to spend — the topbar takes less of it */
+@media (max-height: 520px) and (pointer: coarse) {
+  .topbar { padding: 0.5rem 0.9rem; font-size: 0.66rem; gap: 1.6rem; }
+  .wordmark { font-size: 1rem; }
+  .topbar nav { gap: 0.7rem; }
+}

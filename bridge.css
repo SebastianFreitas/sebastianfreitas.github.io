@@ -307,6 +307,22 @@
   border-color: rgba(245,208,107,0.32);
 }
 .modes-btn-story:hover { color: var(--lamp); border-color: var(--lamp); }
+/* on a phone the setting bar folds into this; desktop never sees it */
+.modes-gear {
+  display: none;
+  pointer-events: auto; cursor: pointer;
+  align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  color: var(--sage-dim);
+  background: rgba(9,13,15,0.62);
+  border: 1px solid rgba(245,208,107,0.38);
+  opacity: 0.8;
+  transition: opacity 0.2s, color 0.2s, border-color 0.2s;
+}
+.modes-gear svg { display: block; width: 17px; height: 17px; }
+#bridge-modes.open .modes-gear {
+  opacity: 1; color: var(--lamp); border-color: rgba(245,208,107,0.5);
+}
 @media (max-width: 900px) {
   #bridge-modes { top: 4.8rem; }
   .modes-panel { padding: 0.55rem 0.85rem; }
@@ -339,7 +355,7 @@
 #bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
 #bridge-cursor.on { opacity: 1; }
 #bridge-cursor.docked { border-color: rgba(245,208,107,0.9); }
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-height: 520px) and (pointer: coarse) {
   .bridge-hero { cursor: auto; }
 #bridge-cursor { display: none; }
 #bridge-map { width: calc(100vw - 2.5rem); }
@@ -437,7 +453,7 @@ footer .rights {
 /* Under 900px there is no room beside a beacon for a panel this wide, so
    the note stops chasing the beacon and becomes a sheet above the span.
    placeNote() clears its inline left/top to match — see bridge.js. */
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-height: 520px) and (pointer: coarse) {
   .bnote {
     left: 1.25rem !important;
     right: 1.25rem !important;
@@ -458,7 +474,7 @@ footer .rights {
 }
 #bridge-map .track.readonly { pointer-events: auto; } /* still show ghost on hover */
 #bridge-map .track.readonly .mk.poi { pointer-events: none; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
   #bridge-term { left: 1.25rem; }
   #bridge-log, #bridge-map { width: calc(100vw - 2.5rem); }
   .bridge-scroll { right: 0.6rem; }
@@ -647,5 +663,67 @@ html.genesis-on .topbar {
    overflow the viewport and make the whole section scroll past itself. */
 @media (max-height: 560px) {
   .bridge-hero { min-height: 0; }
+}
+
+/* A landscape phone is wide but short: the whole cockpit shrinks around
+   the two banks, and the log gives up the middle for the full width
+   above them. */
+@media (max-height: 520px) and (pointer: coarse) {
+  .bridge-hero { --hud-floor: 0.6rem; --span-h: 1.9rem; }
+
+  /* the bank auto-fits to the viewport here, so the ± buttons have no job */
+  #bridge-term .tinst-ctl { display: none; }
+  #bridge-term { left: 0.75rem; }
+  #bridge-sys  { right: 0.75rem; max-width: none; }
+
+  /* a landscape phone is under 1100px wide, so the rule above would drop the
+     right bank — but there is room for it here, and losing half the cockpit
+     is the one thing this layout cannot afford. instruments.js watches for
+     it coming back (the ResizeObserver in mountSys) and repaints. */
+  #bridge-sys .tinst-wrap { display: flex; }
+
+  /* --inst-h is published by bridge.js from the bank's real painted height,
+     so the log floats exactly clear of the banks at whatever scale they got */
+  #bridge-log {
+    width: calc(100vw - 1.5rem);
+    max-width: none;
+    bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem);
+  }
+  /* three lines and no more — bridge.js caps LOG_MAX to match, and the
+     max-height is the belt to that braces: an overlong line that wraps
+     still cannot push the panel up into the header */
+  #bridge-log .tlog {
+    max-height: 3.6rem; overflow: hidden;
+    padding: 0.25rem 0.5rem 0.3rem; gap: 0.14rem;
+  }
+  #bridge-log .tl { font-size: 0.62rem; line-height: 1.35; }
+
+  /* the ruler shares the bottom row with the banks, so it takes only the
+     open span between them — --inst-w is the bank's real painted width */
+  #bridge-map { width: calc(100vw - 2 * var(--inst-w, 0px) - 3rem); }
+  #bridge-map .labels { font-size: 0.52rem; }
+  #bridge-hint { display: none; }
+
+  .bnote {
+    bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem) !important;
+    max-height: 8rem; overflow: auto;
+  }
+
+  /* the setting bar folds into a gear and drops down from it */
+  #bridge-modes {
+    left: auto; right: 0.75rem; top: 2.4rem; bottom: auto;
+    transform: none;
+  }
+  #bridge-modes .modes-gear { display: flex; }
+  #bridge-modes .modes-panel {
+    display: none;
+    position: absolute; right: 0; top: 2.4rem;
+    flex-direction: column; align-items: stretch;
+    gap: 0.4rem; padding: 0.5rem 0.6rem;
+  }
+  #bridge-modes.open .modes-panel { display: flex; }
+  #bridge-modes .modes-row { flex-direction: column; align-items: stretch; gap: 0.35rem; }
+  #bridge-modes .modes-toggle { flex-direction: column; gap: 0.3rem; }
+  #bridge-modes .modes-btn { padding: 0.4rem 0.7rem; white-space: nowrap; }
 }
 

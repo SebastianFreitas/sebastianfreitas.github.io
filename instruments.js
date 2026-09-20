@@ -42,8 +42,28 @@ window.Instruments = (function () {
   ];
   PANELS.forEach(p => { p.w = CELL_W; p.h = CELL_H; });
   SYS_PANELS.forEach(p => { p.w = CELL_W; p.h = CELL_H; });
-  const TOTAL_W = CELL_W * 2 + GAP;
-  const TOTAL_H = CELL_H * 2 + GAP;
+
+  /* A phone has room for two tiles a side, stacked in one column. These are
+     derived from the banks above by key, so a tile edited up there is the
+     same tile down here — there is no second set of instruments to keep. */
+  const COMPACT_KEYS     = ["radar", "phase"];
+  const COMPACT_SYS_KEYS = ["eclss", "hull"];
+  const oneColumn = (src, keys) => keys.map((k, i) => {
+    const p = src.find(q => q.key === k);
+    return { key: p.key, label: p.label, col: 0, row: i, w: CELL_W, h: CELL_H };
+  });
+  const COMPACT     = oneColumn(PANELS, COMPACT_KEYS);
+  const COMPACT_SYS = oneColumn(SYS_PANELS, COMPACT_SYS_KEYS);
+  let compact = false;
+  const navPanels = () => compact ? COMPACT : PANELS;
+  const sysPanels = () => compact ? COMPACT_SYS : SYS_PANELS;
+
+  /* both banks always have the same shape (2x2 desktop, 1x2 compact), so the
+     NAV set alone tells us the grid size */
+  const cols = ps => ps.reduce((n, p) => Math.max(n, p.col + 1), 1);
+  const rows = ps => ps.reduce((n, p) => Math.max(n, p.row + 1), 1);
+  const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * GAP;
+  const gridH = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * GAP;
 
   let cv, ctx, dpr = 1, t = 0;
   let focusKey = null;
@@ -127,14 +147,14 @@ window.Instruments = (function () {
     void:     { c: 0.50, w: 1.00, a: 0.05, rough: 0.40, name: "silent · floor only" },
   };
 
-  function bindFocus(canvas, panels, getter, setter) {
+  function bindFocus(canvas, panelsFn, getter, setter) {
     canvas.addEventListener("pointerdown", e => {
       e.stopPropagation();
       const box = canvas.getBoundingClientRect();
       if (getter()) { setter(null); return; }
-      const px = (e.clientX - box.left) / box.width  * TOTAL_W;
-      const py = (e.clientY - box.top)  / box.height * TOTAL_H;
-      for (const p of panels) {
+      const px = (e.clientX - box.left) / box.width  * gridW();
+      const py = (e.clientY - box.top)  / box.height * gridH();
+      for (const p of panelsFn()) {
         const x0 = p.col * (CELL_W + GAP), y0 = p.row * (CELL_H + GAP);
         if (px >= x0 && px <= x0 + CELL_W && py >= y0 && py <= y0 + CELL_H) {
           setter(p.key); return;
@@ -147,12 +167,12 @@ window.Instruments = (function () {
     if (!canvas || !context) return;
     dpr = Math.min(devicePixelRatio || 1, 2);
     const fit = uiScale;
-    const dispW = Math.round(TOTAL_W * fit);
-    const dispH = Math.round(TOTAL_H * fit);
+    const dispW = Math.round(gridW() * fit);
+    const dispH = Math.round(gridH() * fit);
     canvas.style.width = dispW + "px";
     canvas.style.height = dispH + "px";
-    canvas.width = Math.max(1, Math.round(TOTAL_W * dpr * fit));
-    canvas.height = Math.max(1, Math.round(TOTAL_H * dpr * fit));
+    canvas.width = Math.max(1, Math.round(gridW() * dpr * fit));
+    canvas.height = Math.max(1, Math.round(gridH() * dpr * fit));
     context.setTransform(dpr * fit, 0, 0, dpr * fit, 0, 0);
     context.imageSmoothingEnabled = true;
     curFont = null;
@@ -164,7 +184,7 @@ window.Instruments = (function () {
     ctx = cv.getContext("2d");
     curFont = null;
     fitCanvas(cv, ctx);
-    bindFocus(cv, PANELS, () => focusKey, k => { focusKey = k; repaint(); });
+    bindFocus(cv, navPanels, () => focusKey, k => { if (compact) return; focusKey = k; repaint(); });
     addEventListener("resize", resize);
     // the static layer has label text baked in: redraw it once web fonts arrive
     if (document.fonts) {
@@ -179,7 +199,7 @@ window.Instruments = (function () {
     if (!sysCv) return;
     sysCtx = sysCv.getContext("2d");
     fitCanvas(sysCv, sysCtx);
-    bindFocus(sysCv, SYS_PANELS, () => sysFocus, k => { sysFocus = k; repaint(); });
+    bindFocus(sysCv, sysPanels, () => sysFocus, k => { if (compact) return; sysFocus = k; repaint(); });
     // hidden below 1100px by bridge.css (display: none): a zero-size box
     if ("ResizeObserver" in window) {
       new ResizeObserver(es => {
@@ -196,11 +216,23 @@ window.Instruments = (function () {
   }
 
   function setScale(v) {
-    uiScale = Math.max(0.7, Math.min(2.0, v));
+    uiScale = Math.max(0.45, Math.min(2.0, v));
     resize();
     return uiScale;
   }
   const getScale = () => uiScale;
+
+  /* the statics layer caches per canvas: a different grid is a different
+     picture, so drop it outright rather than trusting the size in its key */
+  function setCompact(v) {
+    v = !!v;
+    if (v === compact) return compact;
+    compact = v;
+    if (compact) { focusKey = null; sysFocus = null; }
+    statics.clear();
+    resize();
+    return compact;
+  }
   const focus = k => { focusKey = k; repaint(); };
   const focusSys = k => { sysFocus = k; repaint(); };
 
@@ -262,7 +294,7 @@ window.Instruments = (function () {
       ctx = octx;
       curFont = null;
       if (fp) {
-        drawStaticPanel({ key: fp.key, label: fp.label, w: TOTAL_W, h: TOTAL_H, focused: true }, staticFn);
+        drawStaticPanel({ key: fp.key, label: fp.label, w: gridW(), h: gridH(), focused: true }, staticFn);
       } else {
         for (const p of panels) {
           ctx.save();
@@ -285,13 +317,13 @@ window.Instruments = (function () {
   }
 
   function drawBank(panels, focus, paintFn, dt, r, staticFn) {
-    ctx.clearRect(0, 0, TOTAL_W, TOTAL_H);
+    ctx.clearRect(0, 0, gridW(), gridH());
     curFont = null;
     blitStatic(panels, focus, staticFn);
     if (focus) {
       const p = panels.find(q => q.key === focus);
       if (p) {
-        drawPanel({ key: p.key, label: p.label, w: TOTAL_W, h: TOTAL_H, focused: true }, r, dt, paintFn);
+        drawPanel({ key: p.key, label: p.label, w: gridW(), h: gridH(), focused: true }, r, dt, paintFn);
         return;
       }
     }
@@ -460,7 +492,7 @@ window.Instruments = (function () {
 
   function paintBanks(dt, r) {
     tickAlarms(dt, r);
-    if (ctx) drawBank(PANELS, focusKey, paint, dt, r, paintStatic);
+    if (ctx) drawBank(navPanels(), focusKey, paint, dt, r, paintStatic);
     // readings keep ticking in draw(); only the painting stops while CSS hides the bank
     if (sysShown) paintSysBank(dt, r);
   }
@@ -476,7 +508,7 @@ window.Instruments = (function () {
     const saved = ctx;
     ctx = sysCtx;
     curFont = null;
-    drawBank(SYS_PANELS, sysFocus, paintSys, dt, r, null);
+    drawBank(sysPanels(), sysFocus, paintSys, dt, r, null);
     ctx = saved;
     curFont = null;
   }
@@ -1382,5 +1414,10 @@ window.Instruments = (function () {
     ctx.fillText((tvc >= 0 ? "+" : "") + tvc.toFixed(1) + "°", p.w - 5, py);
   }
 
-  return { mount, mountSys, draw, setScale, getScale, focus, focusSys, impact, setRepair, alert, TOTAL_W, TOTAL_H };
+  return {
+    mount, mountSys, draw, setScale, getScale, setCompact,
+    focus, focusSys, impact, setRepair, alert,
+    get TOTAL_W() { return gridW(); },
+    get TOTAL_H() { return gridH(); },
+  };
 })();

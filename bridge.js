@@ -66,7 +66,10 @@
     m.vis = 0;            // eased in as they enter the frame
     m.pop = 0;            // the burst when one is claimed
   });
-  const HIT = (window.Beacon && Beacon.HIT) || 26;
+  /* the lamp's own radius is tuned for a mouse; a fingertip on a zoomed-out
+     phone needs a wider net or you sail straight past what you were aiming at */
+  const HIT_BASE = (window.Beacon && Beacon.HIT) || 26;
+  let HIT = HIT_BASE;
   if (!window.Beacon) {
     console.error("lamp.js did not load — canvas marks and claim flights are dead");
   }
@@ -142,6 +145,22 @@
      nothing behind it is worth a frame. Same gate as `visible`. */
   const portraitQ = matchMedia("(orientation: portrait) and (pointer: coarse)");
   let portrait = portraitQ.matches;
+  /* A landscape phone is WIDE — 780 to 930px — so every max-width breakpoint
+     sails straight past it. Height and a coarse pointer are what actually
+     name a phone here, and the stylesheet uses the same two. */
+  const phoneQ = matchMedia("(max-height: 520px) and (pointer: coarse)");
+  let phone = phoneQ.matches;
+
+  function syncPhone() {
+    phone = phoneQ.matches;
+    LOG_MAX = phone ? 3 : 6;
+    HIT = HIT_BASE * (phone ? 1.7 : 1);
+    if (window.Voidship) window.Voidship.BASE.size = phone ? Math.round(SHIP_SIZE / PHONE_ZOOM) : SHIP_SIZE;
+    if (window.Instruments) Instruments.setCompact(phone);
+  }
+  function onPhoneChange() { syncPhone(); if (window.__bridgeRefit) window.__bridgeRefit(); }
+  if (phoneQ.addEventListener) phoneQ.addEventListener("change", onPhoneChange);
+  else phoneQ.addListener(onPhoneChange);
   const rotateEl = document.getElementById("bridge-rotate");
   if (rotateEl) rotateEl.setAttribute("aria-hidden", String(!portrait));
   let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
@@ -264,8 +283,9 @@
 
   const cursor = document.getElementById("bridge-cursor");
 
-  /* Under 900px the note is a sheet pinned by CSS, not a panel placed by us. */
-  const sheetQ = matchMedia("(max-width: 900px)");
+  /* Under 900px — and on a landscape phone, which is wide but short — the
+     note is a sheet pinned by CSS, not a panel placed by us. */
+  const sheetQ = matchMedia("(max-width: 900px), (max-height: 520px) and (pointer: coarse)");
   let sheet = sheetQ.matches;
   const onSheet = e => { sheet = e.matches; };
   if (sheetQ.addEventListener) sheetQ.addEventListener("change", onSheet);
@@ -274,8 +294,19 @@
   /* CAM.viewUnits is the world's layout unit and never moves — the beacon
      offsets in MARKS are measured in it. What we PAINT eases down on narrow
      screens: at 2100 a landscape phone would be shown the scene at a third
-     of desktop density. Unchanged above ~1438px, floored at 1250. */
-  const viewUnitsNow = () => Math.max(1250, Math.min(CAM.viewUnits, W * 1.46));
+     of desktop density. Unchanged above ~1438px, floored at 1250. A phone
+     pulls the camera back again on top of that, because the ship filling
+     a 390px-tall screen leaves nowhere to see what is coming. */
+  const PHONE_ZOOM = 1.5;
+  /* the ship is drawn at a fixed pixel length, so pulling the camera back
+     by PHONE_ZOOM made it bigger relative to everything else, not smaller.
+     Captured from BASE rather than written out, so a size changed there
+     still decides what a phone gets. */
+  const SHIP_SIZE = (window.Voidship && window.Voidship.BASE.size) || 72;
+  const viewUnitsNow = () => {
+    const z = phone ? PHONE_ZOOM : 1;
+    return Math.max(1250, Math.min(CAM.viewUnits * z, W * 1.46 * z));
+  };
   const scale = () => W / viewUnitsNow();
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const fmt = n => Math.round(n).toLocaleString("en-US");
@@ -711,21 +742,43 @@
     Instruments.mountSys(document.getElementById("binst-sys"));
     const IK = "arcanis.inst.scale";
     const termEl = document.getElementById("bridge-term");
-    let iscale = parseFloat(localStorage.getItem(IK));
-    if (!Number.isFinite(iscale)) {
+    const hero = document.getElementById("bridge-hero");
+
+    /* the compact bank is one narrow column: give it a share of the height and
+       a sliver of the width, and let setScale's 0.45 clamp say when to stop */
+    const fitScale = () => Math.max(0.45, Math.min(1,
+      (innerHeight * 0.42) / Instruments.TOTAL_H,
+      (innerWidth  * 0.16) / Instruments.TOTAL_W));
+
+    let stored = parseFloat(localStorage.getItem(IK));
+    const deskScale = () => {
+      if (Number.isFinite(stored)) return stored;
       const maxW = termEl ? termEl.clientWidth : Instruments.TOTAL_W;
-      iscale = Math.min(1, maxW / Instruments.TOTAL_W);
-    }
-    Instruments.setScale(iscale);
-    const syncInstW = () => {
-      const hero = document.getElementById("bridge-hero");
-      if (hero) hero.style.setProperty("--inst-w", (Instruments.TOTAL_W * Instruments.getScale()) + "px");
+      return Math.min(1, maxW / Instruments.TOTAL_W);
     };
-    syncInstW();
+
+    /* the phone stylesheet floats the log clear of the banks off --inst-h,
+       so both dimensions go out whenever the scale moves */
+    const syncInstBox = () => {
+      if (!hero) return;
+      const s = Instruments.getScale();
+      hero.style.setProperty("--inst-w", (Instruments.TOTAL_W * s) + "px");
+      hero.style.setProperty("--inst-h", (Instruments.TOTAL_H * s) + "px");
+    };
+
+    const applyScale = () => {
+      Instruments.setCompact(phone);
+      Instruments.setScale(phone ? fitScale() : deskScale());
+      syncInstBox();
+    };
+    applyScale();
+    addEventListener("resize", applyScale);   // a rotate re-fits the banks
+    window.__bridgeRefit = applyScale;
+
     const step = d => {
-      iscale = Instruments.setScale(iscale + d);
-      syncInstW();
-      try { localStorage.setItem(IK, String(iscale)); } catch (e) {}
+      stored = Instruments.setScale(Instruments.getScale() + d);
+      syncInstBox();
+      try { localStorage.setItem(IK, String(stored)); } catch (e) {}
     };
     const bindScale = (el, delta) => {
       if (!el) return;
@@ -854,6 +907,29 @@
     });
   }
 
+  /* On a phone the setting bar is folded away behind a gear (see bridge.css).
+     The buttons stay in the DOM at all times — modeBtns was queried once at
+     load — so this only ever toggles a class. */
+  const gearBtn = document.getElementById("modes-gear");
+  if (gearBtn && modesPanel) {
+    const setOpen = on => {
+      modesPanel.classList.toggle("open", on);
+      gearBtn.setAttribute("aria-expanded", on ? "true" : "false");
+    };
+    gearBtn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); });
+    gearBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      setOpen(!modesPanel.classList.contains("open"));
+    });
+    // picking anything inside closes it, and so does a tap anywhere else
+    modesPanel.querySelectorAll(".modes-btn").forEach(b =>
+      b.addEventListener("click", () => setOpen(false)));
+    document.addEventListener("pointerdown", e => {
+      if (!modesPanel.contains(e.target)) setOpen(false);
+    });
+    addEventListener("keydown", e => { if (e.key === "Escape") setOpen(false); });
+  }
+
   document.addEventListener("site:genesis-start", () => {
     begin();
     host.classList.add("is-cinematic");
@@ -967,13 +1043,13 @@
     }
   }
 
-  const LOG_MAX = 6;
+  let LOG_MAX = 6;
   let logHead = null, logQueue = [], nextIdle = 3.5;
 
   function pushLog(text, kind) {
     if (!el.log) return;
     logQueue.push({ text, kind: kind || "" });
-    if (logQueue.length > 8) logQueue.splice(0, logQueue.length - 8);
+    if (logQueue.length > LOG_MAX + 2) logQueue.splice(0, logQueue.length - (LOG_MAX + 2));
   }
 
   function commitLog(entry) {
@@ -1593,7 +1669,7 @@
       if (ship.courseMark && performance.now() >= courseArmAt) {
         const m = ship.courseMark;
         const p = markScreen(m);
-        if (Voidship.touchingMark(ship, camX, m, { W, x: p.x, y: p.y, hit: HIT + 10 })) {
+        if (Voidship.touchingMark(ship, camX, m, { W, x: p.x, y: p.y, hit: HIT + 10, pad: phone ? 420 : 220 })) {
           selectMark(m);
           courseArmAt = 0;
         }
@@ -1819,4 +1895,8 @@
     for (const m of activeMarks()) m.vis = onScreen(markScreen(m).x, 60) ? 1 : 0;
     render(0);
   }
+
+  /* LOG_MAX and HIT are declared far below the instrument block, so settle the
+     phone-dependent numbers here, once every declaration in the file has run. */
+  syncPhone();
 })();
