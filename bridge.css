@@ -738,15 +738,21 @@ html.genesis-on .topbar {
   }
   #bridge-modes.open .modes-tip,
   #bridge-modes.tip-done .modes-tip { display: none; }
+  /* the bar is the desktop bar, unfolded sideways out of the gear — going
+     down would run it into the instruments and off the clipped hero */
   #bridge-modes .modes-panel {
     display: none;
-    position: absolute; right: 0; top: 2.4rem;
-    flex-direction: column; align-items: stretch;
-    gap: 0.4rem; padding: 0.5rem 0.6rem;
+    position: absolute; right: 2.5rem; top: 0;
+    align-items: center; min-height: 32px;
+    gap: 0.6rem; padding: 0.3rem 0.55rem;
+    max-width: calc(100vw - 4rem);
   }
   #bridge-modes.open .modes-panel { display: flex; }
-  #bridge-modes .modes-row { flex-direction: column; align-items: stretch; gap: 0.35rem; }
-  #bridge-modes .modes-toggle { flex-direction: column; gap: 0.3rem; }
-  #bridge-modes .modes-btn { padding: 0.4rem 0.7rem; white-space: nowrap; }
+  #bridge-modes .modes-row { flex-wrap: nowrap; gap: 0.45rem; }
+  #bridge-modes .modes-toggle { flex-wrap: nowrap; gap: 0.3rem; }
+  #bridge-modes .modes-label { font-size: 0.5rem; letter-spacing: 0.12em; }
+  #bridge-modes .modes-btn {
+    padding: 0.32rem 0.55rem; font-size: 0.55rem; white-space: nowrap;
+  }
 }
 
