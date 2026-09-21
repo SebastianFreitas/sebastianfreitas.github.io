@@ -1142,11 +1142,11 @@ window.World = (function () {
       drawWatcher();
       faded("bnote-watcher-redstar", drawRedStar);
       faded("bnote-bridge-nephilim", drawNephilim); faded("bnote-bridge-admin", drawAdminTear); faded("bnote-bridge-vikings", drawVikings);
-      drawLandPlace("bnote-land-shattered", "shattered", SHATTERED); drawLandPlace("bnote-land-libertech", "libertech", LIBERTECH); drawLandPlace("bnote-land-dawn", "dawn", FIRST_DAWN); drawLandPlace("bnote-land-accord", "accord", DIVINE_ACCORD); drawLandPlace("bnote-land-gore", "gore", GORE_LEGION);
       drawRex();
       drawBand(city.far, 0.30, "#161d21", 0.5);
       drawBand(city.mid, 0.46, "#182025", 0.78);
       drawCityNear();
+      drawLandPlace("bnote-land-shattered", "shattered", SHATTERED); drawLandPlace("bnote-land-libertech", "libertech", LIBERTECH); drawLandPlace("bnote-land-dawn", "dawn", FIRST_DAWN); drawLandPlace("bnote-land-accord", "accord", DIVINE_ACCORD); drawLandPlace("bnote-land-gore", "gore", GORE_LEGION);
       drawRoot();
       drawFragments();
     }
