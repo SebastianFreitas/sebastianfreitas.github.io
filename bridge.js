@@ -323,6 +323,10 @@
      its own spot — FLY_STEPS positions over FLY_DUR, not a smooth tween,
      so it reads as a signal jumping and costs nothing extra per frame */
   const FLY_DUR = 0.66, FLY_STEPS = 6, FLY_GAP = 0.16;
+  /* a node revealed off-screen doesn't fly (its flight would happen out
+     of view); an edge chevron points at it until it has been seen once */
+  const CUE_PULSE = 6;   // seconds a direction cue pulses before settling to a steady dim mark
+  const ART_FADE = 1.6;   // seconds a newly earned node's world art takes to fade in
   function flyK(m) {
     const raw = Math.min(1, Math.max(0, m.fly.t / FLY_DUR));
     const k = Math.floor(raw * FLY_STEPS) / FLY_STEPS;
@@ -732,14 +736,64 @@
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
-    id: m.id, root: m.root, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly,
+    id: m.id, root: m.root, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
   }));
   window.depthsReveal = () => revealDepths(true);   // debug: replay a live reveal (fly-out) without flying the ship
+  window.depthAlpha = id => { const m = depthNodes.get(id); if (!m || m.fly || m.unseen) return 0; const k = m.shown; return k * k * (3 - 2 * k); };   // world.js multiplies a node's art by this — 0 until it lands and is seen, then eases to 1
+
+  function drawCue(m, p, stack) {
+    const right = p.x >= W;
+    const side = right ? "r" : "l";
+    const i = stack[side]++;
+    const x = right ? W - 22 : 22;
+    const y = Math.min(H - 40, Math.max(40, p.y)) + i * 26;
+    const a = (m.cue < CUE_PULSE ? 0.55 + 0.35 * Math.sin(m.cue * 5) : 0.35) * Math.min(1, m.cue * 4);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgb(198,204,198)";
+    ctx.beginPath();
+    if (right) {
+      ctx.moveTo(x + 7, y);
+      ctx.lineTo(x - 4, y - 7);
+      ctx.lineTo(x - 4, y + 7);
+    } else {
+      ctx.moveTo(x - 7, y);
+      ctx.lineTo(x + 4, y - 7);
+      ctx.lineTo(x + 4, y + 7);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = "11px ui-monospace, monospace";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = right ? "right" : "left";
+    ctx.fillText(m.name.toLowerCase(), right ? x - 10 : x + 10, y);
+    ctx.restore();
+  }
+
+  /* the dashed line from the origin beacon toward an off-screen cue —
+     drawn whether or not the origin beacon is itself on screen; the
+     canvas simply clips the part that would fall outside it */
+  function drawCueLine(m, p) {
+    const a = markScreen(m.cueFrom);
+    const k = (m.cue < CUE_PULSE ? 0.35 : 0.2) * Math.min(1, m.cue * 4);
+    ctx.save();
+    ctx.globalAlpha = k;
+    ctx.strokeStyle = "rgb(198,204,198)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.lineDashOffset = -m.cue * 14;   // dashes crawl outward toward the target
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   function drawMarks(dt) {
     let shown = 0;
     const gd = sceneMode === "gamedev";
+    const cueStack = { l: 0, r: 0 };
     for (const m of activeMarks()) {
       if (m.fly) {
         m.fly.t += dt;
@@ -747,6 +801,11 @@
         else if (m.fly.t < 0) continue;                       // still waiting its turn inside the root
       }
       const p = markScreen(m);
+      if (m.unseen) {
+        if (p.x > 0 && p.x < W) { m.unseen = false; m.pop = 1; }   // first sight: the landing burst plays where it can be seen
+        else { m.cue += dt; drawCueLine(m, p); drawCue(m, p, cueStack); }
+      }
+      if (!m.fly && !m.unseen && m.shown < 1) m.shown = Math.min(1, m.shown + dt / ART_FADE);
       m.vis = approach(m.vis, onScreen(p.x, 60) ? 1 : 0, 3.2, dt);
       if (m.pop > 0) m.pop = Math.max(0, m.pop - dt * 1.6);
       if (m.vis < 0.02 && m.pop <= 0) continue;
@@ -1135,6 +1194,7 @@
      it when earned live.
      State is the XP ledger, so it survives a reload for free. ---- */
   const spawned = new Set();
+  const depthNodes = new Map();   // id -> spawned node, for depthAlpha()
   const DEPTH_OFF_MAX = 0.44, DEPTH_OY_MIN = 0.16, DEPTH_OY_MAX = 0.66;
 
   function spawnDepth(def, animate, delay) {
@@ -1152,7 +1212,7 @@
       cam = root.cam;
     }
     const node = {
-      id: def.id, root: def.root, cam: cam, off, oy, par: root.par,
+      id: def.id, root: def.root, cam: cam, off, oy, par: def.par || root.par,
       theme: def.theme, size: def.size, xp: def.xp,
       name: def.name, sub: def.sub,
     };
@@ -1160,8 +1220,13 @@
     node.phase = list.length * 1.7 + 4;
     node.vis = 0;
     node.pop = 0;
-    if (animate) node.fly = { from: root, t: -(delay || 0) };
+    node.shown = animate ? 0 : 1;   // world-art alpha: a restore shows it at once, a live reveal fades it in
+    if (animate) {
+      if (onScreen(wx(node.x, node.par), 60)) node.fly = { from: root, t: -(delay || 0) };
+      else { node.cue = 0; node.unseen = true; node.cueFrom = root; }   // points the way instead (see drawCue)
+    }
     list.push(node);
+    depthNodes.set(def.id, node);
 
     /* the panel is built here rather than sitting in index.html,
        so the markup can't be read ahead of being earned */

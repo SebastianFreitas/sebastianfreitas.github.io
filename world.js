@@ -429,11 +429,23 @@ window.World = (function () {
   // The red star beside the Watcher. x / oy is where its beacon was measured in flight (NAV X / Y); the star sits `side` radii to the left so the beacon marks it rather than covering it.
   const RED_STAR = { x: 334257, oy: 0.24, side: -3.4 };
 
-  // The Bridge's void peoples. x / oy is where each beacon was pinned in flight (NAV X / Y); `side` is how many radii left of the beacon the visual's centre sits so the beacon marks it rather than covering it.
+  // The Void's peoples. x / oy is where each beacon was pinned in flight (NAV X / Y); `side` is how many radii left of the beacon the visual's centre sits so the beacon marks it rather than covering it.
   const NEPHILIM = { x: 45357, oy: 0.40, side: -2.9 };
   const ADMIN_TEAR = { x: 128000, oy: 0.34, side: -1.0 };
   const VIKINGS = { x: 292000, oy: 0.30 };
-  const bridgeOpened = () => !!(window.XP && XP.has("beacon-bnote-bridge"));
+  // a node's art exists only once its beacon has landed and been seen, then fades in — same rule for every beacon
+  const depthAlpha = id => (window.depthAlpha ? window.depthAlpha(id) : 0);
+  let fade = 1;                                   // alpha of the node art being drawn; setA folds it into every alpha the art sets
+  const setA = v => { ctx.globalAlpha = v * fade; };
+  function faded(id, draw) {
+    const a = depthAlpha(id);
+    if (a <= 0) return;
+    fade = a;
+    ctx.save(); ctx.globalAlpha = a;
+    draw();
+    ctx.restore();
+    fade = 1;
+  }
 
   const MAIN_PAR = 0.66;
   const SHATTERED = { x: 58400, oy: 0.30 };
@@ -441,7 +453,6 @@ window.World = (function () {
   const FIRST_DAWN = { x: 65800, oy: 0.20 };
   const DIVINE_ACCORD = { x: 73400, oy: 0.22 };
   const GORE_LEGION = { x: 77900, oy: 0.30 };
-  const mainlandOpened = () => !!(window.XP && XP.has("beacon-bnote-land"));
 
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
@@ -456,7 +467,7 @@ window.World = (function () {
     const d = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, R * 0.1, x, y, R);
     d.addColorStop(0, "#e2c887"); d.addColorStop(0.72, "#b28c4c"); d.addColorStop(1, "#6b4f28");
     ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
-    drawSerus(x, y, R);
+    faded("bnote-watcher-serus", () => drawSerus(x, y, R));
   }
 
   function drawSerus(x, y, R) {
@@ -469,23 +480,23 @@ window.World = (function () {
       const r = R * (0.08 + f) + R * 0.03 * Math.sin(t * 0.4 + f * 9);
       pts.push([Math.cos(a) * r, Math.sin(a) * r, f]);
     }
-    ctx.strokeStyle = "#140d12"; ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = "#140d12"; setA(0.95);
     for (let i = 1; i <= N; i++) {
       const f = pts[i][2];
       ctx.lineWidth = R * (0.26 - 0.22 * f);
       ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(150,100,80,0.35)"; ctx.globalAlpha = 1; ctx.lineWidth = R * 0.012;
+    ctx.strokeStyle = "rgba(150,100,80,0.35)"; setA(1); ctx.lineWidth = R * 0.012;
     ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i <= N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
     ctx.stroke();
     const hx = pts[0][0], hy = pts[0][1];
     const dx = pts[1][0] - hx, dy = pts[1][1] - hy, dl = Math.hypot(dx, dy) || 1;
     const nx = -dy / dl, ny = dx / dl;
-    ctx.fillStyle = "#ff7a3a"; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 0.5);
+    ctx.fillStyle = "#ff7a3a"; setA(0.5 + 0.3 * Math.sin(t * 0.5));
     ctx.beginPath(); ctx.arc(hx + nx * R * 0.06, hy + ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
     ctx.beginPath(); ctx.arc(hx - nx * R * 0.06, hy - ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
-    ctx.restore(); ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt";
+    ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt";
   }
 
   function drawRedStar() {
@@ -501,7 +512,7 @@ window.World = (function () {
     g.addColorStop(1, "rgba(190,30,50,0)");
     ctx.fillStyle = g;
     ctx.fillRect(x - r * 5 * p, y - r * 5 * p, r * 10 * p, r * 10 * p);
-    ctx.globalAlpha = 0.3; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 1;
+    setA(0.3); ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 1;
     ctx.beginPath();
     for (let k = 0; k < 2; k++) {
       const a2 = k * 1.5708;
@@ -509,11 +520,11 @@ window.World = (function () {
       ctx.moveTo(x - cx, y - cy); ctx.lineTo(x + cx, y + cy);
     }
     ctx.stroke();
-    ctx.globalAlpha = 1; ctx.fillStyle = "#ff5a48";
+    setA(1); ctx.fillStyle = "#ff5a48";
     ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, 6.283); ctx.fill();
     ctx.fillStyle = "rgba(255,226,214,0.95)";
     ctx.beginPath(); ctx.arc(x, y, r * 0.28, 0, 6.283); ctx.fill();
-    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    setA(1); ctx.lineWidth = 1;
   }
 
   const TENTACLE_LEN = [1.0, 0.8, 1.15, 0.9, 1.2, 0.85, 1.05, 0.95, 1.1, 0.8, 1.0];
@@ -524,7 +535,6 @@ window.World = (function () {
     const cx = bx + R * NEPHILIM.side;
     const cy = H * NEPHILIM.oy;
     if (!onScreen(cx, R * 2.6)) return;
-    if (!bridgeOpened()) return;
 
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 2.4);
     g.addColorStop(0, "rgba(110,14,28,0.22)");
@@ -564,16 +574,16 @@ window.World = (function () {
     for (let j = 0; j < 6; j++) {
       const a = j / 6 * 6.283 + 0.5;
       const ex = cx + Math.cos(a) * R * 0.72, ey = cy + Math.sin(a) * R * 0.72;
-      ctx.globalAlpha = 0.4 + 0.4 * Math.max(0, Math.sin(t * 0.7 + j * 2.1));
+      setA(0.4 + 0.4 * Math.max(0, Math.sin(t * 0.7 + j * 2.1)));
       ctx.fillStyle = "rgba(255,230,210,0.7)";
       ctx.beginPath(); ctx.arc(ex, ey, R * 0.035, 0, 6.283); ctx.fill();
     }
 
-    ctx.globalAlpha = 1;
+    setA(1);
     ctx.strokeStyle = "rgba(255,236,200,0.16)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(cx, cy, R * 1.15, 0, 6.283); ctx.stroke();
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt";
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt";
   }
 
   const TEAR_JAG = [0.0, 0.35, -0.2, 0.5, -0.35, 0.25, -0.45, 0.4, -0.15, 0.3, -0.4, 0.2, 0.0];
@@ -585,7 +595,6 @@ window.World = (function () {
     const cx = bx + h * ADMIN_TEAR.side;
     const cy = H * ADMIN_TEAR.oy;
     if (!onScreen(cx, h * 2.2)) return;
-    if (!bridgeOpened()) return;
 
     const left = [], right = [];
     for (let i = 0; i < 13; i++) {
@@ -639,7 +648,7 @@ window.World = (function () {
     ctx.strokeStyle = "rgba(245,208,107,0.75)"; ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    setA(1); ctx.lineWidth = 1;
   }
 
   const VIKING_STARS = [[-10.2, -3.4], [-8.6, -2.6], [-7.9, -3.9], [-5.9, -1.2], [-4.8, -0.4], [-4.1, -1.6], [-3.3, 0.6], [-2.6, -0.9], [-1.9, 0.2], [-2.2, 1.4], [-3.9, 1.1], [-1.4, -1.8]];
@@ -651,7 +660,6 @@ window.World = (function () {
     const bx = wx(VIKINGS.x, 0.94);
     const by = H * VIKINGS.oy;
     if (!onScreen(bx - 5.7 * s, s * 7)) return;
-    if (!bridgeOpened()) return;
 
     const ng = ctx.createRadialGradient(bx - 3.6 * s, by - 0.2 * s, 0, bx - 3.6 * s, by - 0.2 * s, 6 * s);
     ng.addColorStop(0, "rgba(90,150,255,0.07)");
@@ -671,13 +679,13 @@ window.World = (function () {
     VIKING_STARS.forEach(function (p, i) {
       const x = bx + p[0] * s, y = by + p[1] * s;
       const k = 0.6 + 0.4 * Math.sin(t * 1.3 + i * 2.3 + VIKING_MAG[i] * 4.1);
-      ctx.globalAlpha = 0.25 * k; ctx.fillStyle = "#7fb8ff";
+      setA(0.25 * k); ctx.fillStyle = "#7fb8ff";
       ctx.beginPath(); ctx.arc(x, y, s * 0.32 * VIKING_MAG[i], 0, 6.283); ctx.fill();
-      ctx.globalAlpha = k; ctx.fillStyle = "#cfe6ff";
+      setA(k); ctx.fillStyle = "#cfe6ff";
       ctx.beginPath(); ctx.arc(x, y, s * (0.09 + 0.05 * k) * VIKING_MAG[i], 0, 6.283); ctx.fill();
     });
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    setA(1); ctx.lineWidth = 1;
   }
 
   const SHATTER_WEDGES = [[0.00, 0.95], [0.95, 1.70], [1.70, 2.60], [2.60, 3.30], [3.30, 4.35], [4.35, 5.10], [5.10, 6.283]];
@@ -690,7 +698,6 @@ window.World = (function () {
     const cx = wx(SHATTERED.x, MAIN_PAR) - 2.2 * R;
     const cy = H * SHATTERED.oy;
     if (!onScreen(cx, R * 3.5)) return;
-    if (!mainlandOpened()) return;
 
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 3 * R);
     g.addColorStop(0, "rgba(120,255,170,0.10)");
@@ -704,11 +711,11 @@ window.World = (function () {
     ctx.strokeStyle = "rgba(170,110,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
 
     SHATTER_EYES.forEach(function (e, j) {
-      ctx.globalAlpha = 0.2 + 0.6 * Math.max(0, Math.sin(t * 0.9 + j * 2.4));
+      setA(0.2 + 0.6 * Math.max(0, Math.sin(t * 0.9 + j * 2.4)));
       ctx.fillStyle = "rgba(190,255,200,0.8)";
       ctx.beginPath(); ctx.arc(cx + e[0] * R, cy + e[1] * R, R * 0.035, 0, 6.283); ctx.fill();
     });
-    ctx.globalAlpha = 1;
+    setA(1);
 
     ctx.beginPath();
     SHATTER_WEDGES.forEach(function (w, i) {
@@ -737,12 +744,12 @@ window.World = (function () {
     });
     ctx.strokeStyle = "rgba(170,110,255,0.35)"; ctx.lineWidth = 1; ctx.stroke();
 
-    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 1.7);
+    setA(0.5 + 0.3 * Math.sin(t * 1.7));
     ctx.beginPath();
     ctx.ellipse(cx - 1.9 * R, cy + 0.9 * R, 0.32 * R, 0.12 * R, -0.3, 0, 6.283);
     ctx.strokeStyle = "rgba(140,255,180,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   const LT_PLATES = [["#2d3a40", [[-4, 0.2], [-2.2, -0.6], [-0.4, -0.5], [-0.6, 0.7], [-3.2, 0.9]]], ["#3b3228", [[-0.6, -0.5], [1.8, -0.3], [2.6, 0.2], [1.6, 0.8], [-0.5, 0.7]]], ["#26303a", [[1.8, -0.3], [3.4, 0.05], [2.6, 0.2]]]];
@@ -754,7 +761,6 @@ window.World = (function () {
     const bx = wx(LIBERTECH.x, MAIN_PAR) - 6 * s;
     const by = H * LIBERTECH.oy + Math.sin(t * 0.6) * 0.25 * s;
     if (!onScreen(bx, s * 11)) return;
-    if (!mainlandOpened()) return;
 
     const starX = bx + 4 * s, starY = by - 5 * s;
     const sg = ctx.createRadialGradient(starX, starY, 0, starX, starY, 2 * s);
@@ -787,11 +793,11 @@ window.World = (function () {
     function lerp(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
     for (let k = 1; k <= 3; k++) {
       const a = lerp(P0, P3, k / 4), z = lerp(P1, P2, k / 4);
-      ctx.globalAlpha = Math.max(0, 0.2 + 0.25 * Math.sin(t * 2 + k));
+      setA(Math.max(0, 0.2 + 0.25 * Math.sin(t * 2 + k)));
       ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(z[0], z[1]);
       ctx.strokeStyle = "#fff1c8"; ctx.lineWidth = 1; ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+    setA(1);
 
     ctx.lineCap = "round"; ctx.lineWidth = 0.6 * s;
     ctx.strokeStyle = "rgba(120,240,220,0.18)";
@@ -837,9 +843,9 @@ window.World = (function () {
       for (let k = 1; k < 4; k++) ctx.lineTo(jcx + Math.cos(angs[k]) * r, jcy + Math.sin(angs[k]) * r);
       ctx.closePath();
     });
-    ctx.globalAlpha = 0.7; ctx.fillStyle = "#6b7a80"; ctx.fill();
+    setA(0.7); ctx.fillStyle = "#6b7a80"; ctx.fill();
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   const DAWN_COLOURS = [null, "#ff5a48", "#fff6d8", "#c77dff", "#9b2b2b"];
@@ -849,7 +855,6 @@ window.World = (function () {
     const cx = wx(FIRST_DAWN.x, MAIN_PAR) - 2.8 * R;
     const cy = H * FIRST_DAWN.oy + 0.9 * R;
     if (!onScreen(cx, R * 3)) return;
-    if (!mainlandOpened()) return;
 
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 2.6 * R);
     g.addColorStop(0, "rgba(255,190,110,0.16)");
@@ -874,10 +879,10 @@ window.World = (function () {
     ctx.strokeStyle = "rgba(245,208,107,0.5)"; ctx.lineWidth = 1; ctx.stroke();
 
     const hy = cy + 0.35 * R;
-    ctx.globalAlpha = 0.45 + 0.15 * Math.sin(t * 0.6);
+    setA(0.45 + 0.15 * Math.sin(t * 0.6));
     ctx.beginPath(); ctx.arc(cx, hy, 0.3 * R, Math.PI, 2 * Math.PI); ctx.closePath();
     ctx.fillStyle = "rgba(255,200,120,0.6)"; ctx.fill();
-    ctx.globalAlpha = 1;
+    setA(1);
     ctx.beginPath(); ctx.moveTo(cx - 0.5 * R, hy); ctx.lineTo(cx + 0.5 * R, hy);
     ctx.strokeStyle = "rgba(245,208,107,0.5)"; ctx.lineWidth = 1; ctx.stroke();
 
@@ -907,7 +912,7 @@ window.World = (function () {
       ctx.fillStyle = DAWN_COLOURS[k]; ctx.fill();
     }
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   const DA_MOTE_X = [-1.4, -0.9, -0.4, 0.1, 0.5, 0.9, 1.3, -1.1];
@@ -917,7 +922,6 @@ window.World = (function () {
     const cx = wx(DIVINE_ACCORD.x, MAIN_PAR) - 2.6 * R;
     const cy = H * DIVINE_ACCORD.oy;
     if (!onScreen(cx, R * 4)) return;
-    if (!mainlandOpened()) return;
 
     const rg = ctx.createLinearGradient(0, cy, 0, H);
     rg.addColorStop(0, "rgba(255,244,214,0.16)");
@@ -925,7 +929,7 @@ window.World = (function () {
     ctx.fillStyle = rg;
     for (let k = 0; k < 5; k++) {
       const bottomX = cx + (k - 2) * 1.4 * R;
-      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 0.5 + k * 1.9);
+      setA(0.6 + 0.4 * Math.sin(t * 0.5 + k * 1.9));
       ctx.beginPath();
       ctx.moveTo(cx - 0.08 * R, cy);
       ctx.lineTo(cx + 0.08 * R, cy);
@@ -934,7 +938,7 @@ window.World = (function () {
       ctx.closePath();
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
+    setA(1);
 
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 2.2 * R);
     g.addColorStop(0, "rgba(255,246,220,0.35)");
@@ -967,11 +971,11 @@ window.World = (function () {
       const ph = (t * 0.08 + i * 0.125) % 1;
       const y = cy + 3.2 * R - ph * 3.4 * R;
       const x = cx + DA_MOTE_X[i] * R + Math.sin(t * 0.9 + i) * 0.15 * R;
-      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.7;
+      setA(Math.sin(ph * Math.PI) * 0.7);
       ctx.beginPath(); ctx.arc(x, y, 0.04 * R, 0, 6.283); ctx.fillStyle = "#fff1c8"; ctx.fill();
     }
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   const GORE_SPIRES = [[-2.4, 0.46, 1.6, 0.45], [0, 0.22, 2.2, 0.6], [2.0, 0.38, 1.8, -0.5], [-1.0, 0.58, 1.2, -0.3]];
@@ -981,7 +985,6 @@ window.World = (function () {
     const s = Math.min(W, H) * 0.05;
     const bx = wx(GORE_LEGION.x, MAIN_PAR) - 3.2 * s;
     if (!onScreen(bx, s * 6)) return;
-    if (!mainlandOpened()) return;
 
     function spireX(i, dx, tw, f) {
       return bx + dx * s + Math.sin(f * 4.0 + i * 1.3) * tw * s;
@@ -1031,10 +1034,10 @@ window.World = (function () {
         const y = spireY(top, f);
         if (n === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
-      ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t * 2.1 + i * 1.7);
+      setA(0.35 + 0.25 * Math.sin(t * 2.1 + i * 1.7));
       ctx.strokeStyle = "rgba(255,60,40,1)"; ctx.lineWidth = 1.2; ctx.stroke();
     });
-    ctx.globalAlpha = 1;
+    setA(1);
 
     const spire0 = GORE_SPIRES[0];
     const gx = spireX(0, spire0[0], spire0[3], 0.72);
@@ -1064,11 +1067,11 @@ window.World = (function () {
       const ph = (t * 0.5 + i * 0.2) % 1;
       const x = kx + GORE_SPARK_DX[i] * s * ph;
       const y = ky + ph * ph * 2.5 * s;
-      ctx.globalAlpha = 1 - ph;
+      setA(1 - ph);
       ctx.beginPath(); ctx.arc(x, y, 0.05 * s, 0, 6.283); ctx.fillStyle = "#ffb070"; ctx.fill();
     }
 
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+    setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   function drawBand(list, par, colour, alpha) {
@@ -1547,9 +1550,9 @@ window.World = (function () {
       drawTendrils();
       drawFuture();
       drawWatcher();
-      drawRedStar();
-      drawNephilim(); drawAdminTear(); drawVikings();
-      drawShattered(); drawLiberTech(); drawFirstDawn(); drawDivineAccord(); drawGoreLegion();
+      faded("bnote-watcher-redstar", drawRedStar);
+      faded("bnote-bridge-nephilim", drawNephilim); faded("bnote-bridge-admin", drawAdminTear); faded("bnote-bridge-vikings", drawVikings);
+      faded("bnote-land-shattered", drawShattered); faded("bnote-land-libertech", drawLiberTech); faded("bnote-land-dawn", drawFirstDawn); faded("bnote-land-accord", drawDivineAccord); faded("bnote-land-gore", drawGoreLegion);
       drawRex();
       drawBand(city.far, 0.30, "#161d21", 0.5);
       drawBand(city.mid, 0.46, "#182025", 0.78);

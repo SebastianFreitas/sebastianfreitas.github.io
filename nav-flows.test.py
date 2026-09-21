@@ -534,7 +534,7 @@ def flow_depths(browser, base):
     ids = {n["id"] for n in report}
     check("depths: first waves spawn",
           ids == {"bnote-vs-board", "bnote-hl-play", "bnote-cc-play", "bnote-cc-why"}, ids)
-    check("depths: live reveal flies", all(n["flying"] for n in report), report)
+    check("depths: off-screen reveal points the way instead of flying", all(n["cue"] and not n["flying"] for n in report), report)
 
     page.wait_for_timeout(2000)
     report = page.evaluate("window.depthsReport()")
@@ -658,6 +658,15 @@ def flow_watcher(browser, base):
     page.keyboard.press("Escape")
     page.wait_for_timeout(1500)
 
+    unseen = page.evaluate("""() => ({
+      redstar: window.depthAlpha('bnote-watcher-redstar'),
+      serus: window.depthAlpha('bnote-watcher-serus'),
+    })""")
+    check("watcher: red star art is not drawn before the beacon is claimed",
+          unseen["redstar"] == 0, unseen["redstar"])
+    check("watcher: serus art is not drawn before the beacon is claimed",
+          unseen["serus"] == 0, unseen["serus"])
+
     report = page.evaluate("""() => {
       XP.award('beacon-bnote-watcher', 1, 'The Watcher');
       window.depthsReveal();
@@ -677,7 +686,7 @@ def flow_watcher(browser, base):
 
 
 def flow_bridge_depths(browser, base):
-    """Bridge beacon opens the Nephilim, the Administration and the Void Vikings, each pinned where it was placed."""
+    """The Void beacon opens the Nephilim, the Administration and the Void Vikings, each pinned where it was placed; the Bridge beacon unlocks nothing."""
     ctx, page = new_page(browser)
     page.goto(base + "/?reset=1")
     enter_via_gate(page, base, "#gate-world")
@@ -686,8 +695,21 @@ def flow_bridge_depths(browser, base):
     page.keyboard.press("Escape")
     page.wait_for_timeout(1500)
 
-    report = page.evaluate("""() => {
+    bridge_only = page.evaluate("""() => {
       XP.award('beacon-bnote-bridge', 1, 'The Bridge');
+      window.depthsReveal();
+      return {
+        ids: window.depthsReport().filter(n => n.id.startsWith('bnote-bridge-')).map(n => n.id),
+        alpha: window.depthAlpha('bnote-bridge-nephilim'),
+      };
+    }""")
+    check("bridge: claiming the Bridge alone spawns no void-people nodes",
+          bridge_only["ids"] == [], bridge_only["ids"])
+    check("bridge: nephilim art is not shown before the Void is claimed",
+          bridge_only["alpha"] == 0, bridge_only["alpha"])
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-void', 1, 'The Void');
       window.depthsReveal();
       return window.depthsReport().filter(n => n.id.startsWith('bnote-bridge-'));
     }""")
@@ -701,6 +723,30 @@ def flow_bridge_depths(browser, base):
         n = by_id["bnote-bridge-" + name]
         check(f"bridge: {name} sits where it was measured",
               abs(n["x"] - x) < 0.5 and abs(n["oy"] - oy) < 1e-9, (n["x"], n["oy"]))
+
+    off_screen = page.evaluate("""() => ({
+      nephilim: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-nephilim').cue,
+                  alpha: window.depthAlpha('bnote-bridge-nephilim') },
+      admin: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-admin').cue,
+               alpha: window.depthAlpha('bnote-bridge-admin') },
+      vikings: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-vikings').cue,
+                 alpha: window.depthAlpha('bnote-bridge-vikings') },
+    })""")
+    check("bridge: off-screen void peoples wait unseen with no art",
+          all(v["cue"] and v["alpha"] == 0 for v in off_screen.values()), off_screen)
+
+    page.reload()
+    page.wait_for_timeout(SETTLE)
+    restored = page.evaluate("""() => ({
+      nephilim: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-nephilim').cue,
+                  alpha: window.depthAlpha('bnote-bridge-nephilim') },
+      admin: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-admin').cue,
+               alpha: window.depthAlpha('bnote-bridge-admin') },
+      vikings: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-vikings').cue,
+                 alpha: window.depthAlpha('bnote-bridge-vikings') },
+    })""")
+    check("bridge: a reload restores their art fully",
+          all(v["alpha"] == 1 and not v["cue"] for v in restored.values()), restored)
     ctx.close()
 
 
