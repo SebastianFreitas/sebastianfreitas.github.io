@@ -629,6 +629,12 @@ def flow_rex(browser, base):
     check("rex: all 10 nodes spawn", len(report) == 10, len(report))
 
     by_id = {n["id"]: n for n in report}
+    check("rex: the layers leave from Rex",
+          all(by_id["bnote-rex-" + n]["from"] == "bnote-rex" for n in ("surface", "under", "hell")),
+          tuple(by_id["bnote-rex-" + n]["from"] for n in ("surface", "under", "hell")))
+    check("rex: the kingdoms leave from the Surface",
+          all(by_id["bnote-rex-" + n]["from"] == "bnote-rex-surface" for n in ("firstlight", "crimson")),
+          tuple(by_id["bnote-rex-" + n]["from"] for n in ("firstlight", "crimson")))
     PINNED = {
         "firstlight": (358041, 0.48), "crimson": (364671, 0.38),
         "under": (377837, 0.30), "bonespire": (375479, 0.46),

@@ -849,6 +849,7 @@ window.Depths = (function () {
           out.push({
             id: node.id,
             root: cluster.root,
+            from: a || cluster.root,
             after: node.after,
             dx: dx,
             dy: dy,

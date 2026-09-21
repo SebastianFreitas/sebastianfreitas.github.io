@@ -736,7 +736,7 @@
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
-    id: m.id, root: m.root, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
+    id: m.id, root: m.root, from: m.from, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
   }));
   window.depthsReveal = () => revealDepths(true);   // debug: replay a live reveal (fly-out) without flying the ship
@@ -1200,6 +1200,7 @@
   function spawnDepth(def, animate, delay) {
     const root = MARKS.concat(PLANETS).find(m => m.id === def.root);
     if (!root) return false;
+    const origin = MARKS.concat(PLANETS).find(m => m.id === def.from) || root;   // the beacon that unlocked it, so the line leaves from there
     const list = MARKS.includes(root) ? MARKS : PLANETS;
     let off, oy, cam;
     if (def.at) {
@@ -1212,7 +1213,7 @@
       cam = root.cam;
     }
     const node = {
-      id: def.id, root: def.root, cam: cam, off, oy, par: def.par || root.par,
+      id: def.id, root: def.root, from: origin.id, cam: cam, off, oy, par: def.par || root.par,
       theme: def.theme, size: def.size, xp: def.xp,
       name: def.name, sub: def.sub,
     };
@@ -1222,8 +1223,8 @@
     node.pop = 0;
     node.shown = animate ? 0 : 1;   // world-art alpha: a restore shows it at once, a live reveal fades it in
     if (animate) {
-      if (onScreen(wx(node.x, node.par), 60)) node.fly = { from: root, t: -(delay || 0) };
-      else { node.cue = 0; node.unseen = true; node.cueFrom = root; }   // points the way instead (see drawCue)
+      if (onScreen(wx(node.x, node.par), 60)) node.fly = { from: origin, t: -(delay || 0) };
+      else { node.cue = 0; node.unseen = true; node.cueFrom = origin; }   // points the way instead (see drawCue)
     }
     list.push(node);
     depthNodes.set(def.id, node);
