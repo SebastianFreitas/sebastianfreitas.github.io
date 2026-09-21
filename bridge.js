@@ -740,7 +740,7 @@
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
   }));
   window.depthsReveal = () => revealDepths(true);   // debug: replay a live reveal (fly-out) without flying the ship
-  window.depthAlpha = id => { const m = depthNodes.get(id); if (!m || m.fly || m.unseen) return 0; const k = m.shown; return k * k * (3 - 2 * k); };   // world.js multiplies a node's art by this — 0 until it lands and is seen, then eases to 1
+  window.depthAlpha = id => { const m = depthNodes.get(id); if (!m || m.fly) return 0; const k = m.shown; return k * k * (3 - 2 * k); };   // world.js multiplies a node's art by this — 0 while it flies, then eases to 1 (off-screen reveals are already 1)
 
   function drawCue(m, p, stack) {
     const right = p.x >= W;
@@ -802,7 +802,7 @@
       }
       const p = markScreen(m);
       if (m.unseen) {
-        if (p.x > 0 && p.x < W) { m.unseen = false; m.pop = 1; }   // first sight: the landing burst plays where it can be seen
+        if (p.x > 0 && p.x < W) m.unseen = false;   // first sight just drops the cue — the node was already there
         else { m.cue += dt; drawCueLine(m, p); drawCue(m, p, cueStack); }
       }
       if (!m.fly && !m.unseen && m.shown < 1) m.shown = Math.min(1, m.shown + dt / ART_FADE);
@@ -1224,7 +1224,7 @@
     node.shown = animate ? 0 : 1;   // world-art alpha: a restore shows it at once, a live reveal fades it in
     if (animate) {
       if (onScreen(wx(node.x, node.par), 60)) node.fly = { from: origin, t: -(delay || 0) };
-      else { node.cue = 0; node.unseen = true; node.cueFrom = origin; }   // points the way instead (see drawCue)
+      else { node.shown = 1; node.cue = 0; node.unseen = true; node.cueFrom = origin; }   // off screen: the art is simply there; a cue points the way (see drawCue)
     }
     list.push(node);
     depthNodes.set(def.id, node);

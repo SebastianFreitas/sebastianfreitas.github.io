@@ -185,7 +185,7 @@ window.World = (function () {
     { id: "bnote-rex-firstlight", art: "firstlight", x: 357516, band: 0 },
     { id: "bnote-rex-crimson",    art: "crimson",    x: 364204, band: 0 },
     { id: "bnote-rex-bonespire",  art: "bonespire",  x: 371462, band: 1 },
-    { id: "bnote-rex-titans",     art: "titans",     x: 378292, band: -1, oy: 0.37 },
+    { id: "bnote-rex-titans",     art: "titans",     x: 378900, band: -1, oy: 0.37 },
     { id: "bnote-rex-valkhar",    art: "valkhar",    x: 386879, band: -1, oy: 0.37 },
     { id: "bnote-rex-law",        art: "law",        x: 394368, band: -1, oy: 0.38 },
   ];

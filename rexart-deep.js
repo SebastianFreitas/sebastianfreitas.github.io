@@ -365,12 +365,67 @@
   }
 
   /* ================================================================
-     VALKHAR — a ruined god-built city of mixed architectures under
-     amber light, with monsters' eyes in the rubble.
+     VALKHAR — a ruined god-built city of golden stepped temples under
+     amber light.
      ================================================================ */
 
   const VK_POCKET = pocket(8101, 19, 12, 0.55);
   const VK_RIM = "rgba(255,206,150,0.5)";
+  const VK_STAIR = "#8f6226";
+  const VK_DARK = "#2a1610";
+  // [cx, tiers, base width, tier height, shrine width, shrine height, fill, roof comb]
+  const VK_TEMPLES = [
+    [-15.5, 3, 3.0, 0.9, 0.9, 0.8, "#b3852f", false],
+    [-10.5, 5, 6.0, 1.1, 1.5, 1.1, "#c99638", true],
+    [14.2, 3, 3.4, 0.9, 1.0, 0.8, "#b3852f", false],
+    [8.5, 6, 6.6, 1.15, 1.6, 1.2, "#c99638", true],
+    [-1.5, 7, 9.0, 1.35, 2.0, 1.4, "#e0ae4a", true]
+  ];
+
+  function mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, comb) {
+    const step = (w0 - sw * 1.3) / tiers;
+    for (let i = 0; i < tiers; i++) {
+      const w = w0 - i * step;
+      const yb = 4.5 - i * th;
+      poly(g, [[cx - w / 2, yb], [cx - w / 2 + 0.1, yb - th], [cx + w / 2 - 0.1, yb - th], [cx + w / 2, yb]]);
+      g.fillStyle = fill;
+      g.fill();
+      line(g, [[cx - w / 2 + 0.1, yb - th], [cx + w / 2 - 0.1, yb - th]], VK_RIM, px);
+    }
+
+    const yTop = 4.5 - tiers * th;
+    const sw2 = sw * 0.55;
+    g.fillStyle = VK_STAIR;
+    g.fillRect(cx - sw2 / 2, yTop, sw2, 4.5 - yTop);
+    for (let y = yTop + 0.3; y < 4.5; y += 0.3) {
+      line(g, [[cx - sw2 / 2, y], [cx + sw2 / 2, y]], "rgba(60,35,15,0.45)", px);
+    }
+
+    g.fillStyle = fill;
+    g.fillRect(cx - sw / 2, yTop - sh, sw, sh);
+    g.fillStyle = VK_DARK;
+    g.fillRect(cx - sw * 0.15, yTop - sh * 0.55, sw * 0.3, sh * 0.55);
+    g.strokeStyle = VK_RIM;
+    g.lineWidth = px;
+    g.strokeRect(cx - sw / 2, yTop - sh, sw, sh);
+
+    if (comb) {
+      const cw = sw * 0.7;
+      const ch = sh * 0.8;
+      g.fillStyle = fill;
+      g.fillRect(cx - cw / 2, yTop - sh - ch, cw, ch);
+      g.fillStyle = VK_DARK;
+      for (const ox of [-cw * 0.2, cw * 0.2]) {
+        g.fillRect(cx + ox - cw * 0.08, yTop - sh - ch * 0.7, cw * 0.16, ch * 0.35);
+      }
+      g.strokeStyle = VK_RIM;
+      g.strokeRect(cx - cw / 2, yTop - sh - ch, cw, ch);
+    } else {
+      poly(g, [[cx - sw / 2, yTop - sh], [cx - sw * 0.2, yTop - sh - 0.3], [cx + sw * 0.05, yTop - sh - 0.1], [cx + sw / 2, yTop - sh]]);
+      g.fillStyle = fill;
+      g.fill();
+    }
+  }
 
   function paintValkhar(g, px) {
     spill(g, 19, 12, "220,160,90", 0.12);
@@ -427,230 +482,25 @@
       const r = rng(9203);
       for (let i = 0; i <= 17; i++) {
         const x = -15 + i * 1.75 + r() * 0.6;
-        const w = 0.9 + r() * 1.3;
-        const h = 1.6 + r() * 4.2;
-        const type = Math.floor(r() * 4);
-        const top = 3.2 - h;
+        const w = 1.6 + r() * 1.6;
+        const h = 1.6 + r() * 3.2;
         g.fillStyle = "#8c6b50";
-        g.fillRect(x - w / 2, top, w, h + 3);
-
-        if (type === 1) {
-          g.beginPath();
-          g.ellipse(x, top, w / 2, w * 0.45, 0, Math.PI, 2 * Math.PI);
-          g.fill();
-        } else if (type === 2) {
-          poly(g, [[x - w / 2, top], [x, top - w * 1.4], [x + w / 2, top]]);
-          g.fill();
-        } else if (type === 3) {
-          poly(g, [[x - w / 2, top], [x - w / 4, top - 0.5], [x, top - 0.1], [x + w / 4, top - 0.7], [x + w / 2, top]]);
-          g.fill();
+        for (let k = 0; k <= 2; k++) {
+          const sw = w * (1 - 0.28 * k);
+          const sh = h / 3.4;
+          if (k === 0) {
+            g.fillRect(x - w / 2, 3.2 - sh, w, sh + 3);
+          } else {
+            g.fillRect(x - sw / 2, 3.2 - (k + 1) * sh, sw, sh);
+          }
         }
+        const sh = h / 3.4;
+        g.fillRect(x - w * 0.12, 3.2 - 3 * sh - sh * 0.4, w * 0.24, sh * 0.4);
       }
     }
 
-    // a. Onion palace
-    g.fillStyle = "#3e4034";
-    g.fillRect(-13.4, -3, 2.4, 7.5);
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.strokeRect(-13.4, -3, 2.4, 7.5);
-
-    g.beginPath();
-    g.moveTo(-13.4, -3);
-    g.bezierCurveTo(-14.4, -4.0, -13.3, -5.8, -12.2, -7.2);
-    g.bezierCurveTo(-11.1, -5.8, -10.0, -4.0, -11.0, -3);
-    g.closePath();
-    g.fillStyle = "#5f6b4d";
-    g.fill();
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.stroke();
-
-    g.beginPath();
-    g.moveTo(-13.4, -3);
-    g.bezierCurveTo(-14.4, -4.0, -13.3, -5.8, -12.2, -7.2);
-    g.strokeStyle = "rgba(220,230,180,0.35)";
-    g.lineWidth = px * 1.5;
-    g.stroke();
-
-    line(g, [[-12.2, -7.2], [-12.2, -8.0]], VK_RIM, px * 1.2);
-
-    g.fillStyle = "rgba(255,190,110,0.45)";
-    g.fillRect(-12.81, -1.8, 0.22, 1.4);
-    g.fillRect(-11.81, -1.8, 0.22, 1.4);
-
-    g.fillStyle = "#3e4034";
-    g.fillRect(-10.25, -6.0, 0.7, 10.5);
-    poly(g, [[-10.25, -6.0], [-10.0, -6.9], [-9.8, -6.3], [-9.6, -6.6], [-9.55, -6.0]]);
-    g.fill();
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.strokeRect(-10.25, -6.0, 0.7, 10.5);
-    poly(g, [[-10.25, -6.0], [-10.0, -6.9], [-9.8, -6.3], [-9.6, -6.6], [-9.55, -6.0]]);
-    g.stroke();
-
-    // b. Ziggurat
-    for (const [w, yTop, yBottom] of [[6.0, 2.6, 4.5], [4.6, 0.9, 2.6], [3.2, -0.6, 0.9], [2.0, -1.9, -0.6]]) {
-      g.fillStyle = "#553a2d";
-      g.fillRect(-5.6 - w / 2, yTop, w, yBottom - yTop);
-      line(g, [[-5.6 - w / 2, yTop], [-5.6 + w / 2, yTop]], VK_RIM, px);
-    }
-
-    g.fillStyle = "#553a2d";
-    g.fillRect(-6.15, -3.0, 1.1, 1.1);
-    g.fillRect(-6.35, -3.25, 1.5, 0.25);
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.strokeRect(-6.15, -3.0, 1.1, 1.1);
-    g.strokeRect(-6.35, -3.25, 1.5, 0.25);
-
-    g.fillStyle = "#6e4c3a";
-    g.fillRect(-5.95, -0.6, 0.7, 5.1);
-    for (let j = 1; j <= 17; j++) {
-      const y = -0.6 + j * 0.3;
-      line(g, [[-5.95, y], [-5.25, y]], "rgba(40,24,18,0.5)", px);
-    }
-
-    g.fillStyle = "rgba(255,170,90,0.5)";
-    g.fillRect(-5.85, -2.7, 0.5, 0.8);
-
-    // c. Needle spire
-    poly(g, [[-1.75, 4.5], [-1.2, -10.2], [-0.65, 4.5]]);
-    g.fillStyle = "#77788a";
-    g.fill();
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.stroke();
-
-    g.beginPath();
-    g.arc(-1.2, -8.3, 0.8, 3.6, 5.8);
-    g.strokeStyle = "rgba(200,210,235,0.7)";
-    g.lineWidth = 0.16;
-    g.stroke();
-
-    // d. Round temple
-    g.fillStyle = "rgba(255,200,130,0.12)";
-    g.fillRect(1.5, 0.4, 3.6, 3.5);
-
-    g.fillStyle = "#8a7c68";
-    g.fillRect(1.3, 3.9, 4.6, 0.6);
-
-    for (let i = 0; i <= 5; i++) {
-      if (i === 4) continue;
-      const cx = 1.62 + i * 0.82;
-      g.fillStyle = "#8a7c68";
-      if (i === 5) {
-        poly(g, [[cx - 0.15, 3.9], [cx - 0.15, 2.1], [cx - 0.05, 1.9], [cx + 0.03, 2.15], [cx + 0.15, 1.95], [cx + 0.15, 3.9]]);
-        g.fill();
-      } else {
-        g.fillRect(cx - 0.15, 0.4, 0.3, 3.5);
-      }
-    }
-
-    g.fillStyle = "#8a7c68";
-    g.fillRect(1.3, 0, 3.8, 0.4);
-
-    g.beginPath();
-    g.moveTo(1.5, 0);
-    g.ellipse(3.6, 0, 2.1, 1.7, 0, Math.PI, 1.78 * Math.PI);
-    g.lineTo(4.9, -0.7);
-    g.lineTo(5.25, -0.45);
-    g.lineTo(5.4, -0.62);
-    g.lineTo(5.45, 0);
-    g.closePath();
-    g.fillStyle = "#8a7c68";
-    g.fill();
-
-    g.fillStyle = "#8a7c68";
-    g.fillRect(3.35, -2.3, 0.5, 0.6);
-
-    g.save();
-    g.translate(6.5, 4.15);
-    g.rotate(0.35);
-    g.fillStyle = "#8a7c68";
-    g.fillRect(-0.7, -0.175, 1.4, 0.35);
-    g.restore();
-
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.beginPath();
-    g.moveTo(1.5, 0);
-    g.ellipse(3.6, 0, 2.1, 1.7, 0, Math.PI, 1.78 * Math.PI);
-    g.lineTo(4.9, -0.7);
-    g.lineTo(5.25, -0.45);
-    g.lineTo(5.4, -0.62);
-    g.lineTo(5.45, 0);
-    g.closePath();
-    g.stroke();
-    g.strokeRect(1.3, 0, 3.8, 0.4);
-    g.strokeRect(3.35, -2.3, 0.5, 0.6);
-
-    // e. Pagoda
-    for (let k = 0; k <= 2; k++) {
-      const bw = 2.6 - 0.5 * k;
-      const yb = 4.5 - 1.7 * k;
-      const yTop = yb - 1.2;
-      const xl = 8.8 - bw / 2;
-      const xr = 8.8 + bw / 2;
-
-      if (k === 2) {
-        g.save();
-        g.translate(xl, yb);
-        g.rotate(0.14);
-        g.translate(-xl, -yb);
-      }
-
-      g.fillStyle = "#4f2a2a";
-      g.fillRect(xl, yTop, bw, 1.2);
-
-      g.beginPath();
-      g.moveTo(xl - 0.9, yTop - 0.3);
-      g.quadraticCurveTo(xl - 0.1, yTop + 0.15, xl + 0.3, yTop - 0.55);
-      g.lineTo(xr - 0.3, yTop - 0.55);
-      g.quadraticCurveTo(xr + 0.1, yTop + 0.15, xr + 0.9, yTop - 0.3);
-      g.lineTo(xr + 0.5, yTop);
-      g.lineTo(xl - 0.5, yTop);
-      g.closePath();
-      g.fillStyle = "#6a3030";
-      g.fill();
-      g.strokeStyle = VK_RIM;
-      g.lineWidth = px;
-      g.stroke();
-
-      if (k === 2) {
-        line(g, [[8.8, yTop - 0.55], [8.8, yTop - 2.05]], VK_RIM, px * 1.2);
-        for (const y of [yTop - 0.9, yTop - 1.25, yTop - 1.6]) {
-          line(g, [[8.55, y], [9.05, y]], VK_RIM, px);
-        }
-        g.restore();
-      }
-    }
-
-    // f. Broken arch
-    g.fillStyle = "#4d4843";
-    g.fillRect(12.0, -2.6, 0.6, 7.1);
-
-    poly(g, [[13.8, 4.5], [13.8, -0.8], [13.95, -1.05], [14.1, -0.75], [14.25, -0.95], [14.4, -0.7], [14.4, 4.5]]);
-    g.fillStyle = "#4d4843";
-    g.fill();
-
-    g.beginPath();
-    g.arc(13.2, -2.6, 0.9, Math.PI, 1.55 * Math.PI);
-    g.strokeStyle = "#4d4843";
-    g.lineWidth = 0.6;
-    g.stroke();
-
-    g.beginPath();
-    g.arc(13.2, -2.6, 1.2, Math.PI, 1.55 * Math.PI);
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.stroke();
-
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.strokeRect(12.0, -2.6, 0.6, 7.1);
-    poly(g, [[13.8, 4.5], [13.8, -0.8], [13.95, -1.05], [14.1, -0.75], [14.25, -0.95], [14.4, -0.7], [14.4, 4.5]]);
-    g.stroke();
+    // Temples
+    for (const [cx, tiers, w0, th, sw, sh, fill, comb] of VK_TEMPLES) mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, comb);
 
     // Rubble
     {
@@ -696,25 +546,6 @@
   }
 
   function liveValkhar(g, px, t, a) {
-    // Monsters' eyes
-    const eyePairs = [[-13.8, 3.3], [-7.9, 4.8], [6.9, 4.9], [12.6, 3.5]];
-    for (let i = 0; i < eyePairs.length; i++) {
-      const [x, y] = eyePairs[i];
-      const vis = 0.5 + 0.5 * Math.sin(t * 0.37 + i * 1.9);
-      if (((t * 0.8 + i * 0.37) % 1) < 0.06) continue;
-      const al = a * 0.85 * Math.pow(vis, 1.5);
-
-      g.globalCompositeOperation = "lighter";
-      g.globalAlpha = al;
-      g.fillStyle = rad(g, x, y, 0, 0.7, [[0, "rgba(255,60,40,0.25)"], [1, "rgba(255,60,40,0)"]]);
-      g.fillRect(x - 0.7, y - 0.7, 1.4, 1.4);
-      g.globalCompositeOperation = "source-over";
-
-      g.globalAlpha = al;
-      circle(g, x - 0.17, y, 0.09, "#ff3b2e");
-      circle(g, x + 0.17, y, 0.09, "#ff3b2e");
-    }
-
     // Dust
     for (let i = 0; i <= 9; i++) {
       const x = -15 + ((t * 0.3 + i * 3.1) % 30);
@@ -723,16 +554,16 @@
       circle(g, x, y, 0.07, "#f2d7a6");
     }
 
-    // Needle spark
+    // Glint on the great temple
     g.globalCompositeOperation = "lighter";
     g.globalAlpha = a * (0.6 + 0.4 * Math.sin(t * 1.7));
-    g.fillStyle = rad(g, -1.2, -10.2, 0, 1.2, [[0, "rgba(220,230,255,0.35)"], [1, "rgba(220,230,255,0)"]]);
-    g.fillRect(-1.2 - 1.2, -10.2 - 1.2, 2.4, 2.4);
+    g.fillStyle = rad(g, -1.5, -7.5, 0, 1.4, [[0, "rgba(255,215,130,0.35)"], [1, "rgba(255,215,130,0)"]]);
+    g.fillRect(-1.5 - 1.4, -7.5 - 1.4, 2.8, 2.8);
     g.globalCompositeOperation = "source-over";
   }
 
   /* ================================================================
-     LAW — cold-brick walls with red corners and flaming braziers
+     LAW — black walls with red corners and flaming braziers
      around an obsidian archive tower, lit from below by hellfire.
      ================================================================ */
 
@@ -822,22 +653,22 @@
     }
 
     // Walls
-    g.fillStyle = lin(g, 0, 2, 0, 12, [[0, "#56636d"], [1, "#39434b"]]);
+    g.fillStyle = lin(g, 0, 2, 0, 12, [[0, "#121418"], [1, "#07080a"]]);
     g.fillRect(-9.2, 2.0, 18.4, 15.0);
-    courses(g, -9.2, 2.0, 9.2, 17, 0.5, 1.1, "rgba(20,26,32,0.5)", px);
-    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, "#56636d");
+    courses(g, -9.2, 2.0, 9.2, 17, 0.5, 1.1, "rgba(120,130,145,0.22)", px);
+    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, "#121418");
     g.fillStyle = lin(g, 0, 12, 0, 6, [[0, "rgba(255,110,50,0.35)"], [1, "rgba(255,110,50,0)"]]);
     g.fillRect(-9.2, 6, 18.4, 11.0);
     quoins(g, -9.2, 1, 2.0, px);
     quoins(g, 9.2, -1, 2.0, px);
 
     for (const [cx, top] of LW_TOWERS) {
-      g.fillStyle = lin(g, 0, top, 0, 12, [[0, "#5f6d78"], [1, "#3d4850"]]);
+      g.fillStyle = lin(g, 0, top, 0, 12, [[0, "#16191e"], [1, "#0a0b0e"]]);
       g.fillRect(cx - 1.1, top, 2.2, 17 - top);
-      courses(g, cx - 1.1, top, cx + 1.1, 17, 0.5, 1.1, "rgba(20,26,32,0.5)", px);
+      courses(g, cx - 1.1, top, cx + 1.1, 17, 0.5, 1.1, "rgba(120,130,145,0.22)", px);
       g.fillStyle = lin(g, 0, 12, 0, 6, [[0, "rgba(255,110,50,0.35)"], [1, "rgba(255,110,50,0)"]]);
       g.fillRect(cx - 1.1, 6, 2.2, 11.0);
-      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, "#5f6d78");
+      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, "#16191e");
       quoins(g, cx - 1.1, 1, top, px);
       quoins(g, cx + 1.1, -1, top, px);
       g.fillStyle = "rgba(255,150,80,0.6)";

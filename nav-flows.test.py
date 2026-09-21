@@ -764,8 +764,8 @@ def flow_bridge_depths(browser, base):
       vikings: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-vikings').cue,
                  alpha: window.depthAlpha('bnote-bridge-vikings') },
     })""")
-    check("bridge: off-screen void peoples wait unseen with no art",
-          all(v["cue"] and v["alpha"] == 0 for v in off_screen.values()), off_screen)
+    check("bridge: off-screen void peoples show a cue and their art at once",
+          all(v["cue"] and v["alpha"] == 1 for v in off_screen.values()), off_screen)
 
     page.reload()
     page.wait_for_timeout(SETTLE)

@@ -644,30 +644,11 @@
     line(g, [[0, 2], [0, -5.4]], CC.tracery, px);
 
     // 5. Foot fade
-    light(g, rad(g, 3.3, -24.5, 0, 20, [[0, "rgba(255,70,60,0.30)"], [0.5, "rgba(255,50,50,0.10)"], [1, "rgba(255,50,50,0)"]]), -16.5, -34.5, 16.5, 2);
     light(g, lin(g, 0, -14, 0, 2, [[0, "rgba(8,2,4,0)"], [1, "rgba(8,2,4,0.35)"]]), -16.5, -14, 16.5, 2);
     fadeFoot(g, -16.5, 16.5, -0.6, 1.6);
 
     // 6. Mist
     haze(g, 0, 0.4, 16, 2.2, "160,40,50", 0.12);
-  }
-
-  function underCrimson(g, px, t, a) {
-    const rr = 15 * (1 + 0.05 * Math.sin(t * 0.8));
-    g.globalAlpha = a;
-    g.fillStyle = rad(g, 3.3, -24.5, 0, rr, [[0, "rgba(255,80,70,0.42)"], [0.18, "rgba(220,40,50,0.16)"], [0.55, "rgba(150,20,40,0.05)"], [1, "rgba(150,20,40,0)"]]);
-    g.fillRect(3.3 - rr, -24.5 - rr, 2 * rr, 2 * rr);
-
-    g.globalAlpha = a;
-    g.beginPath();
-    g.arc(3.3, -24.5, 1.1, 0, 2 * Math.PI);
-    g.fillStyle = "#ff5a48";
-    g.fill();
-    g.globalAlpha = a;
-    g.beginPath();
-    g.arc(3.3, -24.5, 0.5, 0, 2 * Math.PI);
-    g.fillStyle = "rgba(255,226,214,0.95)";
-    g.fill();
   }
 
   function liveCrimson(g, px, t, a) {
@@ -676,240 +657,98 @@
     g.fillStyle = rad(g, 0, -11.6, 0, 3.8, [[0, "rgba(255,80,60,0.22)"], [1, "rgba(255,80,60,0)"]]);
     g.fillRect(-3.8, -11.6 - 3.8, 7.6, 7.6);
     g.globalCompositeOperation = "source-over";
-
-    const rx = [9, 12, 7], cy = [-26, -22, -29], w = [0.45, 0.35, 0.55], p = [0, 2.1, 4.2];
-    g.lineJoin = "round";
-    for (let i = 0; i < 3; i++) {
-      const th = p[i] + w[i] * t;
-      const x = rx[i] * Math.cos(th);
-      const y = cy[i] + 2.2 * Math.sin(th) + 1.2 * Math.sin(t * 0.7 + i);
-      const f = -0.35 * Math.sin(t * 12 + i * 2);
-      g.globalAlpha = a * 0.9;
-      line(g, [[x - 0.7, y + f], [x - 0.3, y + 0.15], [x, y], [x + 0.3, y + 0.15], [x + 0.7, y + f]], "#0a0306", 0.22);
-    }
-    g.lineJoin = "miter";
   }
 
-  RexArt.crimson = { box: [-16.5, -34.5, 16.5, 2], paint: paintCrimson, under: underCrimson, live: liveCrimson };
+  RexArt.crimson = { box: [-16.5, -34.5, 16.5, 2], paint: paintCrimson, live: liveCrimson };
 
   /* ===================== BONE SPIRE ===================== */
+  // a mega-tall swirl, stacked tier on tier — pure silhouette, no bones drawn at this scale
 
-  const BS = { lit: "#efe6cf", mid: "#ddd1b4", shade: "#a39377", deep: "#6f6350", disc: "#4d4336", line: "rgba(70,60,46,0.6)", rim: "rgba(255,250,235,0.6)", eye: "#2a2219", ribL: "#e6dcc1", ribR: "#b3a488", dragon: "#cfc4a8" };
-  const BS_N = 28, BS_H0 = 2.77, BS_TOP = 38;
-  const bsSeg = [];                 // [yBottom, yTop] of each vertebra, bottom first
-  (function () { let y = 0; for (let k = 0; k < BS_N; k++) { const h = BS_H0 * Math.pow(0.94, k); bsSeg.push([y, y - h]); y -= h; } })();
-  const bsW = y => 4.4 * Math.pow(Math.max(0, 1 - (-y) / BS_TOP), 1.1) + 0.22;   // column width at height y
-  const BS_WHORLS = [[5, 5.0, 3.6], [10, 4.0, 3.2], [15, 3.0, 2.6], [20, 2.1, 2.0], [24, 1.4, 1.4]];   // [vertebra, reach, rise]
+  const BS = { body: "#e7dcc2", band: "#b8a887", line: "rgba(58,48,36,0.8)" };
+  // [height, half-width at the bulge, x wobble], bottom tier first — stacked like Pizza Tower, but upright
+  const BS_TIERS = [[7.0, 4.2, 0], [6.4, 3.7, 0.3], [6.0, 3.3, -0.25], [5.6, 2.9, 0.2], [5.2, 2.5, -0.15], [4.8, 2.1, 0.12], [4.4, 1.75, -0.1], [4.0, 1.4, 0.08], [3.6, 1.1, -0.05], [3.0, 0.8, 0]];
+  const BS_TOP = 50;   // sum of tier heights: where the needle starts
 
-  function rib(g, s, x0, yc, reach, rise, th) {
+  function bsTier(g, dx, yb, h, hw, first) {
+    const bw = first ? hw * 1.1 : hw * 0.72;
+    const tw = hw * 0.68;
+    const yt = yb - h;
     g.beginPath();
-    g.moveTo(s * x0, yc + th);
-    g.quadraticCurveTo(s * (x0 + reach * 1.02), yc + 2.5 * th, s * (x0 + reach), yc - rise);
-    g.quadraticCurveTo(s * (x0 + reach * 0.82), yc, s * x0, yc - th);
+    g.moveTo(dx - bw, yb);
+    g.quadraticCurveTo(dx - hw * 1.32, yb - h / 2, dx - tw, yt);
+    g.lineTo(dx + tw, yt);
+    g.quadraticCurveTo(dx + hw * 1.32, yb - h / 2, dx + bw, yb);
     g.closePath();
   }
 
   function paintBoneSpire(g, px) {
-    // 1. Root ribs
-    const roots = [[-1.8, 4.6], [-3.4, 6.6], [-5.0, 8.8]];
-    for (const s of [-1, 1]) {
-      for (const [y0, xg] of roots) {
-        const w0 = bsW(y0) / 2 * 0.8;
-        g.beginPath();
-        g.moveTo(s * w0, y0 - 0.4);
-        g.quadraticCurveTo(s * xg * 0.75, y0 - 1.2, s * xg, 0.6);
-        g.lineTo(s * (xg - 0.45), 0.6);
-        g.quadraticCurveTo(s * xg * 0.6, y0 + 0.4, s * w0, y0 + 0.4);
-        g.closePath();
-        g.fillStyle = s < 0 ? BS.mid : BS.shade;
-        g.fill();
-        g.strokeStyle = BS.line;
-        g.lineWidth = px;
-        g.stroke();
-      }
-    }
+    // 1. Tiers, bottom-first so each upper tier sits over the joint below
+    let yb = 0;
+    for (let k = 0; k < BS_TIERS.length; k++) {
+      const [h, hw, dx] = BS_TIERS[k];
+      const first = k === 0;
 
-    // 2. Whorls
-    for (const [k, reach, rise] of BS_WHORLS) {
-      const yc = (bsSeg[k][0] + bsSeg[k][1]) / 2;
-      const h = bsSeg[k][0] - bsSeg[k][1];
-      const hw = bsW(yc) / 2 * 0.9;
-      for (const s of [-1, 1]) {
-        rib(g, s, hw, yc, reach, rise, 0.22);
-        g.fillStyle = s < 0 ? BS.ribL : BS.ribR;
-        g.fill();
-        g.strokeStyle = BS.line;
-        g.lineWidth = px;
-        g.stroke();
-
-        rib(g, s, hw, yc + 0.35 * h, reach * 0.62, rise * 1.35, 0.16);
-        g.fillStyle = s < 0 ? BS.ribL : BS.ribR;
-        g.fill();
-        g.strokeStyle = BS.line;
-        g.lineWidth = px;
-        g.stroke();
-      }
-    }
-
-    // 3. Discs
-    for (let k = 1; k < BS_N; k++) {
-      const y = bsSeg[k][0];
-      const h = bsSeg[k][0] - bsSeg[k][1];
-      const w = bsW(y);
-      rect(g, -0.42 * w, y - 0.11 * h, 0.42 * w, y + 0.11 * h, BS.disc);
-    }
-
-    // 4. Vertebrae
-    for (let k = 0; k < BS_N; k++) {
-      const yb = bsSeg[k][0], yt = bsSeg[k][1];
-      const h = yb - yt;
-      const w = bsW((yb + yt) / 2);
-      const L = 0.35 * w + 0.3;
-
-      for (const s of [-1, 1]) {
-        poly(g, [
-          [s * 0.45 * w, yb - 0.55 * h - 0.12 * h],
-          [s * (0.45 * w + L * 0.82), yb - 0.55 * h - L * 0.57],
-          [s * 0.45 * w, yb - 0.55 * h + 0.12 * h]
-        ]);
-        g.fillStyle = s < 0 ? BS.mid : BS.shade;
-        g.fill();
-      }
-
-      g.beginPath();
-      g.moveTo(-0.5 * w, yb - 0.1 * h);
-      g.quadraticCurveTo(-0.34 * w, yb - 0.5 * h, -0.5 * w, yt + 0.1 * h);
-      g.quadraticCurveTo(0, yt - 0.12 * h, 0.5 * w, yt + 0.1 * h);
-      g.quadraticCurveTo(0.34 * w, yb - 0.5 * h, 0.5 * w, yb - 0.1 * h);
-      g.quadraticCurveTo(0, yb + 0.12 * h, -0.5 * w, yb - 0.1 * h);
-      g.closePath();
-      g.fillStyle = lin(g, -0.5 * w, 0, 0.5 * w, 0, [[0, BS.lit], [0.45, BS.mid], [0.8, BS.shade], [1, BS.deep]]);
+      bsTier(g, dx, yb, h, hw, first);
+      g.fillStyle = BS.body;
       g.fill();
+
+      g.save();
+      bsTier(g, dx, yb, h, hw, first);
+      g.clip();
+      const x0 = dx - 1.4 * hw, x1 = dx + 1.4 * hw;
+      g.beginPath();
+      g.moveTo(x0, yb - 0.05 * h);
+      g.quadraticCurveTo(dx, yb - 0.20 * h, x1, yb - 0.66 * h);
+      g.lineTo(x1, yb - 0.95 * h);
+      g.quadraticCurveTo(dx, yb - 0.50 * h, x0, yb - 0.34 * h);
+      g.closePath();
+      g.fillStyle = BS.band;
+      g.fill();
+      g.beginPath();
+      g.moveTo(x0, yb - 0.05 * h);
+      g.quadraticCurveTo(dx, yb - 0.20 * h, x1, yb - 0.66 * h);
       g.strokeStyle = BS.line;
       g.lineWidth = px;
       g.stroke();
+      g.restore();
 
-      g.beginPath();
-      g.moveTo(-0.5 * w, yb - 0.1 * h);
-      g.quadraticCurveTo(-0.34 * w, yb - 0.5 * h, -0.5 * w, yt + 0.1 * h);
-      g.strokeStyle = BS.rim;
-      g.lineWidth = px;
+      bsTier(g, dx, yb, h, hw, first);
+      g.strokeStyle = BS.line;
+      g.lineWidth = px * 1.4;
       g.stroke();
+
+      yb -= h;
     }
 
-    // 5. Needle
-    poly(g, [[-0.12, -38], [0, -40.6], [0.12, -38]]);
-    g.fillStyle = BS.lit;
-    g.fill();
-    g.strokeStyle = BS.line;
-    g.lineWidth = px;
-    g.stroke();
-
-    // 6. Skull
+    // 2. Thorns
     for (const s of [-1, 1]) {
-      g.beginPath();
-      g.moveTo(s * 1.1, -9.6);
-      g.quadraticCurveTo(s * 3.3, -10.8, s * 2.7, -13.4);
-      g.quadraticCurveTo(s * 2.55, -11.1, s * 1.55, -10.2);
-      g.closePath();
-      g.fillStyle = s < 0 ? BS.mid : BS.shade;
+      poly(g, [[s * 0.55, -48.3], [s * 1.5, -50.6], [s * 0.45, -49.3]]);
+      g.fillStyle = BS.body;
       g.fill();
       g.strokeStyle = BS.line;
       g.lineWidth = px;
       g.stroke();
     }
 
-    g.beginPath();
-    g.moveTo(-1.6, -9.2);
-    g.ellipse(0, -9.2, 1.6, 1.15, 0, Math.PI, 2 * Math.PI);
-    g.lineTo(1.15, -7.8);
-    g.lineTo(0.48, -6.4);
-    g.lineTo(-0.48, -6.4);
-    g.lineTo(-1.15, -7.8);
-    g.closePath();
-    g.fillStyle = lin(g, -1.6, 0, 1.6, 0, [[0, BS.lit], [0.5, BS.mid], [1, BS.shade]]);
+    // 3. Needle
+    poly(g, [[-0.35, -BS_TOP], [0, -BS_TOP - 4], [0.35, -BS_TOP]]);
+    g.fillStyle = BS.body;
     g.fill();
     g.strokeStyle = BS.line;
     g.lineWidth = px * 1.2;
     g.stroke();
 
-    line(g, [[-1.2, -9.35], [-0.2, -9.05]], BS.deep, px * 1.5);
-    line(g, [[0.2, -9.05], [1.2, -9.35]], BS.deep, px * 1.5);
-
-    g.beginPath();
-    g.ellipse(-0.64, -8.8, 0.4, 0.2, 0.35, 0, 2 * Math.PI);
-    g.fillStyle = BS.eye;
-    g.fill();
-    g.beginPath();
-    g.ellipse(0.64, -8.8, 0.4, 0.2, -0.35, 0, 2 * Math.PI);
-    g.fillStyle = BS.eye;
-    g.fill();
-
-    g.beginPath();
-    g.arc(-0.2, -6.75, 0.1, 0, 2 * Math.PI);
-    g.fillStyle = BS.eye;
-    g.fill();
-    g.beginPath();
-    g.arc(0.2, -6.75, 0.1, 0, 2 * Math.PI);
-    g.fillStyle = BS.eye;
-    g.fill();
-
-    line(g, [[-0.9, -7.3], [0.9, -7.3]], BS.deep, px);
-
-    // 7. Foot fade
-    light(g, lin(g, 0, -40.6, 0, 0, [[0, "rgba(200,210,225,0.18)"], [0.5, "rgba(200,210,225,0)"], [1, "rgba(40,34,26,0.25)"]]), -10, -41, 10, 2);
-    fadeFoot(g, -10, 10, -0.8, 1.6);
+    // 4. Foot fade
+    fadeFoot(g, -6, 6, -0.8, 1.6);
   }
 
   function liveBoneSpire(g, px, t, a) {
     g.globalCompositeOperation = "lighter";
     g.globalAlpha = a * (0.75 + 0.25 * Math.sin(t * 1.3));
-    g.fillStyle = rad(g, 0, -40.6, 0, 3.5, [[0, "rgba(255,240,200,0.30)"], [1, "rgba(255,240,200,0)"]]);
-    g.fillRect(-3.5, -40.6 - 3.5, 7, 7);
+    g.fillStyle = rad(g, 0, -BS_TOP - 4, 0, 3.5, [[0, "rgba(255,240,200,0.30)"], [1, "rgba(255,240,200,0)"]]);
+    g.fillRect(-3.5, -BS_TOP - 4 - 3.5, 7, 7);
     g.globalCompositeOperation = "source-over";
-
-    const dragons = [
-      { cy: -33, rx: 6.5, ry: 1.3, speed: 0.42, phase: 0, size: 0.75 },
-      { cy: -26, rx: 8.5, ry: 1.8, speed: -0.31, phase: 2.4, size: 0.6 }
-    ];
-    for (let i = 0; i < 2; i++) {
-      const { cy, rx, ry, speed, phase, size } = dragons[i];
-      const th = phase + speed * t;
-      const x = rx * Math.cos(th);
-      const y = cy + ry * Math.sin(th);
-      const behind = Math.sin(th) < 0;
-      if (behind && Math.abs(x) < bsW(y) / 2 + 0.4) continue;
-      const d = (-Math.sin(th) * Math.sign(speed)) >= 0 ? 1 : -1;
-      g.globalAlpha = a * (behind ? 0.45 : 0.9);
-      g.save();
-      g.translate(x, y);
-      g.scale(d * size, size);
-      g.fillStyle = BS.dragon;
-      g.strokeStyle = BS.dragon;
-
-      const ph = 0.5 + 0.5 * Math.sin(t * 5.5 + i * 1.7);
-      const tipX = -0.6 + 0.2 * (1 - ph);
-      const tipY = -1.6 * ph + 0.7 * (1 - ph);
-
-      g.beginPath();
-      g.ellipse(0, 0, 0.9, 0.22, 0, 0, 2 * Math.PI);
-      g.fill();
-
-      poly(g, [[0.7, -0.08], [1.45, -0.35], [1.95, -0.28], [1.5, -0.16], [0.75, 0.1]]);
-      g.fill();
-
-      g.beginPath();
-      g.moveTo(-0.8, -0.05);
-      g.quadraticCurveTo(-1.7, 0.3, -2.4, -0.15);
-      g.lineWidth = 0.14;
-      g.stroke();
-
-      poly(g, [[0.4, -0.1], [tipX + 0.5, tipY * 0.85], [tipX, tipY], [-0.35, -0.05]]);
-      g.fill();
-
-      g.restore();
-    }
   }
 
-  RexArt.bonespire = { box: [-10, -41, 10, 2], paint: paintBoneSpire, live: liveBoneSpire };
+  RexArt.bonespire = { box: [-6, -58, 6, 2], paint: paintBoneSpire, live: liveBoneSpire };
 })();
