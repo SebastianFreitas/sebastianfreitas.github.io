@@ -429,6 +429,12 @@ window.World = (function () {
   // The red star beside the Watcher. x / oy is where its beacon was measured in flight (NAV X / Y); the star sits `side` radii to the left so the beacon marks it rather than covering it.
   const RED_STAR = { x: 334257, oy: 0.24, side: -3.4 };
 
+  // The Bridge's void peoples. x / oy is where each beacon was pinned in flight (NAV X / Y); `side` is how many radii left of the beacon the visual's centre sits so the beacon marks it rather than covering it.
+  const NEPHILIM = { x: 45357, oy: 0.40, side: -2.9 };
+  const ADMIN_TEAR = { x: 128000, oy: 0.34, side: -1.0 };
+  const VIKINGS = { x: 292000, oy: 0.30 };
+  const bridgeOpened = () => !!(window.XP && XP.has("beacon-bnote-bridge"));
+
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
     const R = Math.min(W, H) * 0.26;
@@ -499,6 +505,169 @@ window.World = (function () {
     ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, 6.283); ctx.fill();
     ctx.fillStyle = "rgba(255,226,214,0.95)";
     ctx.beginPath(); ctx.arc(x, y, r * 0.28, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
+
+  const TENTACLE_LEN = [1.0, 0.8, 1.15, 0.9, 1.2, 0.85, 1.05, 0.95, 1.1, 0.8, 1.0];
+
+  function drawNephilim() {
+    const R = Math.min(W, H) * 0.16;
+    const bx = wx(NEPHILIM.x, 0.94);
+    const cx = bx + R * NEPHILIM.side;
+    const cy = H * NEPHILIM.oy;
+    if (!onScreen(cx, R * 2.6)) return;
+    if (!bridgeOpened()) return;
+
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 2.4);
+    g.addColorStop(0, "rgba(110,14,28,0.22)");
+    g.addColorStop(0.5, "rgba(70,8,20,0.08)");
+    g.addColorStop(1, "rgba(70,8,20,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - R * 2.4, cy - R * 2.4, R * 4.8, R * 4.8);
+
+    ctx.lineCap = "round";
+    for (let i = 0; i < 11; i++) {
+      const a0 = i / 11 * 6.283 + 0.3;
+      const pts = [];
+      for (let k = 0; k < 14; k++) {
+        const f = k / 13;
+        const r = R * (0.8 + f * TENTACLE_LEN[i]);
+        const a = a0 + Math.sin(t * 0.6 + i * 1.7 + f * 4) * 0.35 * f;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r, f]);
+      }
+      ctx.strokeStyle = "#3a0f18";
+      for (let k = 1; k < 14; k++) {
+        const f = pts[k][2];
+        ctx.lineWidth = R * (0.16 - 0.15 * f);
+        ctx.beginPath(); ctx.moveTo(pts[k - 1][0], pts[k - 1][1]); ctx.lineTo(pts[k][0], pts[k][1]); ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(160,60,70,0.35)"; ctx.lineWidth = R * 0.012;
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < 14; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.stroke();
+    }
+
+    const d = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    d.addColorStop(0, "#020102"); d.addColorStop(0.55, "#050304"); d.addColorStop(0.85, "#4a1420"); d.addColorStop(1, "#2a0a12");
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
+
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.55, 0, 6.283); ctx.fillStyle = "#000"; ctx.fill();
+
+    for (let j = 0; j < 6; j++) {
+      const a = j / 6 * 6.283 + 0.5;
+      const ex = cx + Math.cos(a) * R * 0.72, ey = cy + Math.sin(a) * R * 0.72;
+      ctx.globalAlpha = 0.4 + 0.4 * Math.max(0, Math.sin(t * 0.7 + j * 2.1));
+      ctx.fillStyle = "rgba(255,230,210,0.7)";
+      ctx.beginPath(); ctx.arc(ex, ey, R * 0.035, 0, 6.283); ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(255,236,200,0.16)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.15, 0, 6.283); ctx.stroke();
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt";
+  }
+
+  const TEAR_JAG = [0.0, 0.35, -0.2, 0.5, -0.35, 0.25, -0.45, 0.4, -0.15, 0.3, -0.4, 0.2, 0.0];
+
+  function drawAdminTear() {
+    const h = Math.min(W, H) * 0.17;
+    const w = h * 0.28 * (1 + Math.sin(t * 0.7) * 0.05);
+    const bx = wx(ADMIN_TEAR.x, 0.94);
+    const cx = bx + h * ADMIN_TEAR.side;
+    const cy = H * ADMIN_TEAR.oy;
+    if (!onScreen(cx, h * 2.2)) return;
+    if (!bridgeOpened()) return;
+
+    const left = [], right = [];
+    for (let i = 0; i < 13; i++) {
+      const f = -1 + i / 6;
+      const prof = 1 - Math.pow(Math.abs(f), 1.5);
+      const drift = w * 0.25 * TEAR_JAG[(i + 4) % 13];
+      const lx = cx + drift - w * prof * (1 + 0.35 * TEAR_JAG[i]);
+      const rx = cx + drift + w * prof * (1 + 0.35 * TEAR_JAG[(i + 6) % 13]);
+      const y = cy + f * h;
+      left.push([lx, y, drift]); right.push([rx, y, drift]);
+    }
+
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, h * 2.2);
+    g.addColorStop(0, "rgba(200,190,255,0.12)");
+    g.addColorStop(0.4, "rgba(160,140,230,0.04)");
+    g.addColorStop(1, "rgba(160,140,230,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - h * 2.2, cy - h * 2.2, h * 4.4, h * 4.4);
+
+    ctx.beginPath();
+    ctx.moveTo(left[0][0], left[0][1]);
+    for (let i = 1; i < 13; i++) ctx.lineTo(left[i][0], left[i][1]);
+    for (let i = 12; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(236,226,255,0.9)"; ctx.fill();
+
+    ctx.beginPath();
+    let mid = left[0][2] + cx;
+    let px = mid + (left[0][0] - mid) * 0.45;
+    ctx.moveTo(px, left[0][1]);
+    for (let i = 1; i < 13; i++) {
+      mid = left[i][2] + cx;
+      px = mid + (left[i][0] - mid) * 0.45;
+      ctx.lineTo(px, left[i][1]);
+    }
+    for (let i = 12; i >= 0; i--) {
+      mid = right[i][2] + cx;
+      px = mid + (right[i][0] - mid) * 0.45;
+      ctx.lineTo(px, right[i][1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "#020104"; ctx.fill();
+
+    ctx.beginPath();
+    [-0.6, -0.36, -0.12, 0.12, 0.36, 0.6].forEach(function (f) {
+      const prof = 1 - Math.pow(Math.abs(f), 1.5);
+      const L = w * 1.6 * prof;
+      ctx.moveTo(cx - L, cy + f * h - h * 0.03);
+      ctx.lineTo(cx + L, cy + f * h + h * 0.03);
+    });
+    ctx.strokeStyle = "rgba(245,208,107,0.75)"; ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
+
+  const VIKING_STARS = [[-9.0, -1.6], [-8.3, 0.3], [-6.7, 0.9], [-5.8, 0.9], [-4.9, 0.9], [-3.3, 0.3], [-2.5, -1.7], [-5.8, -2.9], [-7.1, -1.9], [-4.5, -1.9]];
+  const VIKING_LINES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [3, 7], [7, 8], [8, 9], [9, 7]];
+
+  function drawVikings() {
+    const s = Math.min(W, H) * 0.045;
+    const bx = wx(VIKINGS.x, 0.94);
+    const by = H * VIKINGS.oy;
+    if (!onScreen(bx - 5.7 * s, s * 7)) return;
+    if (!bridgeOpened()) return;
+
+    const ng = ctx.createRadialGradient(bx - 5.7 * s, by - 0.6 * s, 0, bx - 5.7 * s, by - 0.6 * s, 6 * s);
+    ng.addColorStop(0, "rgba(90,150,255,0.07)");
+    ng.addColorStop(1, "rgba(90,150,255,0)");
+    ctx.fillStyle = ng;
+    ctx.fillRect(bx - 5.7 * s - 6 * s, by - 0.6 * s - 6 * s, 12 * s, 12 * s);
+
+    ctx.beginPath();
+    VIKING_LINES.forEach(function (l) {
+      const [ax, ay] = VIKING_STARS[l[0]], [zx, zy] = VIKING_STARS[l[1]];
+      ctx.moveTo(bx + ax * s, by + ay * s);
+      ctx.lineTo(bx + zx * s, by + zy * s);
+    });
+    ctx.strokeStyle = "rgba(127,184,255,0.35)"; ctx.lineWidth = 1;
+    ctx.stroke();
+
+    VIKING_STARS.forEach(function (p, i) {
+      const x = bx + p[0] * s, y = by + p[1] * s;
+      const k = 0.6 + 0.4 * Math.sin(t * 1.3 + i * 2.3);
+      ctx.globalAlpha = 0.25 * k; ctx.fillStyle = "#7fb8ff";
+      ctx.beginPath(); ctx.arc(x, y, s * 0.32, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = k; ctx.fillStyle = "#cfe6ff";
+      ctx.beginPath(); ctx.arc(x, y, s * (0.09 + 0.05 * k), 0, 6.283); ctx.fill();
+    });
+
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
@@ -979,6 +1148,7 @@ window.World = (function () {
       drawFuture();
       drawWatcher();
       drawRedStar();
+      drawNephilim(); drawAdminTear(); drawVikings();
       drawRex();
       drawBand(city.far, 0.30, "#161d21", 0.5);
       drawBand(city.mid, 0.46, "#182025", 0.78);

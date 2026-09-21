@@ -575,6 +575,56 @@ window.Depths = (function () {
       `
         }
       ]
+    },
+    // The Bridge beacon opens the void's peoples, each pinned out in the empty space.
+    {
+      root: "bnote-bridge",
+      theme: "void",
+      size: 0.6,
+      layout: {
+        shape: "branch",
+        start: [0.14, -0.18],
+        step: [0.16, 0.13],
+        fan: { dy: 0.14, gap: 0.12 }
+      },
+      nodes: [
+        {
+          id: "bnote-bridge-nephilim",
+          after: ["bnote-bridge"],
+          at: [45357, 0.40],
+          name: "The Nephilim",
+          sub: "Be not afraid",
+          html: `
+        <p class="tag">Bridge · nephilim</p>
+        <h3>The Nephilim</h3>
+        <p class="body">Born of a forbidden union between angels and the influence of Obox-ob. Heaven's beauty, turned. They do not plan; they happen, and only the 3rd Warlock holds them back from the MainLand. Placeholder — lore to come.</p>
+      `
+        },
+        {
+          id: "bnote-bridge-admin",
+          after: ["bnote-bridge"],
+          at: [128000, 0.34],
+          name: "The Administration",
+          sub: "The tear is the only proof",
+          html: `
+        <p class="tag">Bridge · administration</p>
+        <h3>The Administration</h3>
+        <p class="body">A council of eldritch beings, perhaps older than soulkind, that set out to order the chaos of the void and give time a meaning. Their enforcers are the Colors. When an Old One descends, the hole it leaves is theirs to mend. Placeholder — lore to come.</p>
+      `
+        },
+        {
+          id: "bnote-bridge-vikings",
+          after: ["bnote-bridge"],
+          at: [292000, 0.30],
+          name: "The Void Vikings",
+          sub: "Reavers & Sentinels",
+          html: `
+        <p class="tag">Bridge · void vikings</p>
+        <h3>The Void Vikings</h3>
+        <p class="body">Two halves of one people descended from the Old Ones. The Reavers sail the void to the edge of their minds; the Sentinels stay, guard and remember. Placeholder — lore to come.</p>
+      `
+        }
+      ]
     }
   ];
 

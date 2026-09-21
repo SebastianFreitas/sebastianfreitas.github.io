@@ -656,6 +656,34 @@ def flow_watcher(browser, base):
     ctx.close()
 
 
+def flow_bridge_depths(browser, base):
+    """Bridge beacon opens the Nephilim, the Administration and the Void Vikings, each pinned where it was placed."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base, "#gate-world")
+    page.keyboard.press("Escape")       # skip the cutscene if it is playing
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-bridge', 1, 'The Bridge');
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.id.startsWith('bnote-bridge-'));
+    }""")
+    ids = {n["id"] for n in report}
+    check("bridge: the nephilim, administration and void vikings spawn",
+          ids == {"bnote-bridge-nephilim", "bnote-bridge-admin", "bnote-bridge-vikings"}, ids)
+
+    by_id = {n["id"]: n for n in report}
+    PINNED = {"nephilim": (45357, 0.40), "admin": (128000, 0.34), "vikings": (292000, 0.30)}
+    for name, (x, oy) in PINNED.items():
+        n = by_id["bnote-bridge-" + name]
+        check(f"bridge: {name} sits where it was measured",
+              abs(n["x"] - x) < 0.5 and abs(n["oy"] - oy) < 1e-9, (n["x"], n["oy"]))
+    ctx.close()
+
+
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
@@ -701,7 +729,7 @@ FLOWS = {
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
-    "watcher": flow_watcher, "links": flow_links,
+    "watcher": flow_watcher, "bridge": flow_bridge_depths, "links": flow_links,
 }
 
 
