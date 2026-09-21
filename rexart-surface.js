@@ -49,47 +49,31 @@
     g.stroke();
   }
 
-  function courses(g, x0, y0, x1, y1, rowH, brickW, color, px) {
+  // fill lit, then clip to the shape and fill the hard shadow for x >= xSplit
+  function litShade(g, trace, xSplit, lit, shade) {
+    trace();
+    g.fillStyle = lit;
+    g.fill();
     g.save();
-    g.beginPath();
-    g.rect(x0, y0, x1 - x0, y1 - y0);
+    trace();
     g.clip();
-    g.beginPath();
-    let r = 0;
-    let y = y0 + (r + 1) * rowH;
-    while (y < y1) {
-      g.moveTo(x0, y);
-      g.lineTo(x1, y);
-      const jointBase = x0 + (r % 2) * brickW / 2;
-      let k = 0;
-      let x = jointBase;
-      while (x < x1) {
-        g.moveTo(x, y - rowH);
-        g.lineTo(x, y);
-        k++;
-        x = jointBase + k * brickW;
-      }
-      r++;
-      y = y0 + (r + 1) * rowH;
-    }
-    g.strokeStyle = color;
-    g.lineWidth = px;
-    g.stroke();
+    g.fillStyle = shade;
+    g.fillRect(xSplit, -1000, 2000, 2000);
     g.restore();
   }
 
-  function merlons(g, x0, x1, yTop, mw, mh, gap, fill) {
+  // each merlon is flat-filled lit, or shade if its centre is at/past xSplit
+  // (xSplit omitted or shade omitted => every merlon uses lit)
+  function merlons(g, x0, x1, yTop, mw, mh, gap, lit, shade, xSplit) {
     const n = Math.max(1, Math.floor((x1 - x0 + gap) / (mw + gap)));
     const span = n * mw + (n - 1) * gap;
     const start = x0 + (x1 - x0 - span) / 2;
-    g.fillStyle = fill;
     for (let i = 0; i < n; i++) {
-      g.fillRect(start + i * (mw + gap), yTop - mh, mw, mh);
+      const mx = start + i * (mw + gap);
+      const useShade = shade !== undefined && xSplit !== undefined && (mx + mw / 2) >= xSplit;
+      g.fillStyle = useShade ? shade : lit;
+      g.fillRect(mx, yTop - mh, mw, mh);
     }
-  }
-
-  function rimTL(g, x0, y0, x1, y1, color, px) {
-    line(g, [[x0, y1], [x0, y0], [x1, y0]], color, px);
   }
 
   function archWin(g, cx, yTop, w, h) {
@@ -120,27 +104,9 @@
     g.restore();
   }
 
-  function haze(g, cx, cy, rx, ry, rgb, a0) {
-    g.save();
-    g.translate(cx, cy);
-    g.scale(rx, ry);
-    g.fillStyle = rad(g, 0, 0, 0, 1, [[0, `rgba(${rgb},${a0})`], [1, `rgba(${rgb},0)`]]);
-    g.fillRect(-1, -1, 2, 2);
-    g.restore();
-  }
-
-  // paint-only: tints only what is already painted, never call from under/live
-  function light(g, grad, x0, y0, x1, y1) {
-    g.save();
-    g.globalCompositeOperation = "source-atop";
-    g.fillStyle = grad;
-    g.fillRect(x0, y0, x1 - x0, y1 - y0);
-    g.restore();
-  }
-
   /* ================= KINGDOM OF FIRST LIGHT ================= */
 
-  const FL = { lit: "#eeede6", mid: "#d9d8cf", shade: "#aeb3b4", deep: "#7f878b", backLit: "#d3d6d4", backShade: "#9aa3a8", mortar: "rgba(96,104,110,0.30)", mortarBack: "rgba(96,104,110,0.16)", rim: "rgba(255,255,248,0.85)", roofLit: "#6b7986", roofShade: "#4a5663", roofRim: "rgba(230,236,240,0.5)", win: "#ffd98a", gold: "#f5d06b" };
+  const FL = { lit: "#e6e4df", shade: "#a3a6ab", roof: "#8a93a0", roofShade: "#5b6370", hole: "#2a2e35", glow: "#f3c969", flag: "#e8c24a" };
 
   function paintFirstLight(g, px) {
     const gatePath = () => {
@@ -153,86 +119,71 @@
     };
 
     // 1. Lantern tower
-    rect(g, -1.1, -25.2, 1.1, 2, lin(g, -1.1, 0, 1.1, 0, [[0, FL.backLit], [0.55, FL.backLit], [1, FL.backShade]]));
-    courses(g, -1.1, -25.2, 1.1, 2, 0.6, 1.2, FL.mortarBack, px);
-    rimTL(g, -1.1, -25.2, 1.1, 2, FL.rim, px);
+    litShade(g, () => { g.beginPath(); g.rect(-1.1, -25.2, 2.2, 27.2); }, 0.33, FL.lit, FL.shade);
     archWin(g, 0, -24.75, 1.1, 1.95);
-    g.fillStyle = "#fff1c4";
+    g.fillStyle = FL.glow;
     g.fill();
-    rect(g, -1.45, -25.6, 1.45, -25.2, FL.lit);
-    line(g, [[-1.45, -25.2], [1.45, -25.2]], FL.deep, px);
+    litShade(g, () => { g.beginPath(); g.rect(-1.45, -25.6, 2.9, 0.4); }, 0.435, FL.lit, FL.shade);
     poly(g, [[-1.45, -25.6], [0, -30], [0, -25.6]]);
-    g.fillStyle = FL.roofLit;
+    g.fillStyle = FL.roof;
     g.fill();
     poly(g, [[0, -25.6], [0, -30], [1.45, -25.6]]);
     g.fillStyle = FL.roofShade;
     g.fill();
-    line(g, [[-1.45, -25.6], [0, -30]], FL.roofRim, px);
     g.beginPath();
     g.arc(0, -30.2, 0.22, 0, 2 * Math.PI);
-    g.fillStyle = FL.gold;
+    g.fillStyle = FL.glow;
     g.fill();
 
     // 2. Keep
-    rect(g, -4, -19.5, 2.2, 2, lin(g, 0, -19.5, 0, 2, [[0, FL.lit], [1, FL.mid]]));
+    rect(g, -4, -19.5, 2.2, 2, FL.lit);
     rect(g, 2.2, -19.5, 4, 2, FL.shade);
-    courses(g, -4, -19.5, 2.2, 2, 0.6, 1.3, FL.mortar, px);
-    courses(g, 2.2, -19.5, 4, 2, 0.6, 1.3, FL.mortar, px);
     merlons(g, -4, 2.2, -19.5, 0.7, 0.8, 0.55, FL.lit);
     merlons(g, 2.2, 4, -19.5, 0.7, 0.8, 0.55, FL.shade);
-    rimTL(g, -4, -19.5, 2.2, 2, FL.rim, px);
-    line(g, [[2.2, -19.5], [2.2, 2]], "rgba(120,128,132,0.5)", px);
 
-    g.globalAlpha = 0.9;
     for (const cx of [-2.9, -1.35, 0.2]) {
       archWin(g, cx, -16.8, 0.45, 1.2);
-      g.fillStyle = FL.win;
+      g.fillStyle = FL.glow;
       g.fill();
     }
     for (const cx of [-2.1, -0.6]) {
       archWin(g, cx, -15.0, 0.45, 1.0);
-      g.fillStyle = FL.win;
+      g.fillStyle = FL.glow;
       g.fill();
     }
-    g.globalAlpha = 1;
 
-    g.globalAlpha = 0.7;
     archWin(g, 3.1, -16.8, 0.3, 1.2);
-    g.fillStyle = "#e8b86a";
+    g.fillStyle = FL.glow;
     g.fill();
-    g.globalAlpha = 1;
 
-    rect(g, -4.7, -17.5, 4.7, -17.25, "rgba(80,88,94,0.45)");
+    rect(g, -4.7, -17.5, 4.7, -17.25, FL.shade);
 
-    rect(g, -4.7, -21.5, -3.1, -17.5, lin(g, -4.7, 0, -3.1, 0, [[0, FL.lit], [0.5, FL.mid], [1, FL.shade]]));
-    rect(g, 3.1, -21.5, 4.7, -17.5, lin(g, 3.1, 0, 4.7, 0, [[0, FL.lit], [0.5, FL.mid], [1, FL.shade]]));
+    litShade(g, () => { g.beginPath(); g.rect(-4.7, -21.5, 1.6, 4); }, -3.66, FL.lit, FL.shade);
+    litShade(g, () => { g.beginPath(); g.rect(3.1, -21.5, 1.6, 4); }, 4.14, FL.lit, FL.shade);
 
     poly(g, [[-4.95, -21.5], [-3.9, -23.8], [-3.9, -21.5]]);
-    g.fillStyle = FL.roofLit;
+    g.fillStyle = FL.roof;
     g.fill();
     poly(g, [[-3.9, -21.5], [-3.9, -23.8], [-2.85, -21.5]]);
     g.fillStyle = FL.roofShade;
     g.fill();
     poly(g, [[2.85, -21.5], [3.9, -23.8], [3.9, -21.5]]);
-    g.fillStyle = FL.roofLit;
+    g.fillStyle = FL.roof;
     g.fill();
     poly(g, [[3.9, -21.5], [3.9, -23.8], [4.95, -21.5]]);
     g.fillStyle = FL.roofShade;
     g.fill();
 
     // 3. Inner wall
-    rect(g, -9.5, -13, 9.5, 2, lin(g, 0, -13, 0, 2, [[0, FL.backLit], [1, FL.backShade]]));
-    courses(g, -9.5, -13, 9.5, 2, 0.55, 1.2, FL.mortarBack, px);
-    merlons(g, -9.5, 9.5, -13, 0.6, 0.7, 0.5, FL.backLit);
+    litShade(g, () => { g.beginPath(); g.rect(-9.5, -13, 19, 15); }, 2.85, FL.lit, FL.shade);
+    merlons(g, -9.5, 9.5, -13, 0.6, 0.7, 0.5, FL.lit, FL.shade, 2.85);
 
-    rect(g, -10.7, -15.6, -8.3, 2, lin(g, -10.7, 0, -8.3, 0, [[0, FL.backLit], [0.5, "#c3c8c8"], [1, FL.backShade]]));
-    rect(g, 8.3, -15.6, 10.7, 2, lin(g, 8.3, 0, 10.7, 0, [[0, FL.backLit], [0.5, "#c3c8c8"], [1, FL.backShade]]));
-    courses(g, -10.7, -15.6, -8.3, 2, 0.55, 1.2, FL.mortarBack, px);
-    courses(g, 8.3, -15.6, 10.7, 2, 0.55, 1.2, FL.mortarBack, px);
-    merlons(g, -10.7, -8.3, -15.6, 0.55, 0.7, 0.45, FL.backLit);
-    merlons(g, 8.3, 10.7, -15.6, 0.55, 0.7, 0.45, FL.backLit);
+    litShade(g, () => { g.beginPath(); g.rect(-10.7, -15.6, 2.4, 17.6); }, -9.14, FL.lit, FL.shade);
+    litShade(g, () => { g.beginPath(); g.rect(8.3, -15.6, 2.4, 17.6); }, 9.86, FL.lit, FL.shade);
+    merlons(g, -10.7, -8.3, -15.6, 0.55, 0.7, 0.45, FL.lit, FL.shade, -9.14);
+    merlons(g, 8.3, 10.7, -15.6, 0.55, 0.7, 0.45, FL.lit, FL.shade, 9.86);
 
-    rect(g, -10.7, -10.5, 10.7, -6, lin(g, 0, -10.5, 0, -6, [[0, "rgba(40,46,52,0)"], [1, "rgba(40,46,52,0.35)"]]));
+    rect(g, -10.7, -10.5, 10.7, -6, FL.shade);
 
     // 4. Houses
     const houses = [
@@ -244,69 +195,50 @@
       [11.4, 1.7, -8.9, -10.3]
     ];
     for (const [x, w, wallTop, apex] of houses) {
-      rect(g, x - w / 2, wallTop, x - w / 2 + 0.65 * w, -6, FL.mid);
+      rect(g, x - w / 2, wallTop, x - w / 2 + 0.65 * w, -6, FL.lit);
       rect(g, x - w / 2 + 0.65 * w, wallTop, x + w / 2, -6, FL.shade);
       poly(g, [[x - w / 2 - 0.15, wallTop], [x, apex], [x, wallTop]]);
-      g.fillStyle = FL.roofLit;
+      g.fillStyle = FL.roof;
       g.fill();
       poly(g, [[x, wallTop], [x, apex], [x + w / 2 + 0.15, wallTop]]);
       g.fillStyle = FL.roofShade;
       g.fill();
-      line(g, [[x - w / 2 - 0.15, wallTop], [x, apex]], FL.roofRim, px);
-      g.globalAlpha = 0.85;
-      rect(g, x - 0.175, wallTop + 0.35, x - 0.175 + 0.35, wallTop + 0.35 + 0.5, FL.win);
-      g.globalAlpha = 1;
+      rect(g, x - 0.175, wallTop + 0.35, x - 0.175 + 0.35, wallTop + 0.35 + 0.5, FL.glow);
     }
 
     // 5. Outer curtain wall
-    rect(g, -13, -8, 13, 2, lin(g, 0, -8, 0, 2, [[0, FL.lit], [1, FL.mid]]));
-    courses(g, -13, -8, 13, 2, 0.55, 1.3, FL.mortar, px);
-    rect(g, -13, -8, 13, -7.8, "rgba(90,98,104,0.35)");
-    merlons(g, -13, 13, -8, 0.6, 0.7, 0.5, FL.lit);
-    line(g, [[-13, -8], [13, -8]], FL.rim, px);
+    litShade(g, () => { g.beginPath(); g.rect(-13, -8, 26, 10); }, 3.9, FL.lit, FL.shade);
+    rect(g, -13, -8, 13, -7.8, FL.shade);
+    merlons(g, -13, 13, -8, 0.6, 0.7, 0.5, FL.lit, FL.shade, 3.9);
     for (const cx of [-9.8, -4.6, 4.6, 9.8]) {
       rect(g, cx - 0.075, -5.6, cx + 0.075, -4.8, "#4a545b");
     }
 
     // 6. Intermediate towers
     for (const c of [-7, 7]) {
-      rect(g, c - 1.2, -10.2, c + 0.48, 2, lin(g, 0, -10.2, 0, 2, [[0, FL.lit], [1, FL.mid]]));
+      rect(g, c - 1.2, -10.2, c + 0.48, 2, FL.lit);
       rect(g, c + 0.48, -10.2, c + 1.2, 2, FL.shade);
-      courses(g, c - 1.2, -10.2, c + 0.48, 2, 0.55, 1.2, FL.mortar, px);
-      courses(g, c + 0.48, -10.2, c + 1.2, 2, 0.55, 1.2, FL.mortar, px);
-      merlons(g, c - 1.2, c + 1.2, -10.2, 0.55, 0.7, 0.45, FL.lit);
-      rimTL(g, c - 1.2, -10.2, c + 1.2, 2, FL.rim, px);
-      g.globalAlpha = 0.8;
-      rect(g, c - 0.4, -8.4, c - 0.4 + 0.25, -8.4 + 0.8, FL.win);
-      g.globalAlpha = 1;
+      merlons(g, c - 1.2, c + 1.2, -10.2, 0.55, 0.7, 0.45, FL.lit, FL.shade, c + 0.48);
+      rect(g, c - 0.4, -8.4, c - 0.4 + 0.25, -8.4 + 0.8, FL.glow);
     }
 
     // 7. Corner towers
     for (const c of [-13, 13]) {
-      rect(g, c - 1.7, -10.8, c + 1.7, 2, lin(g, c - 1.7, 0, c + 1.7, 0, [[0, FL.lit], [0.45, FL.mid], [1, FL.deep]]));
-      courses(g, c - 1.7, -10.8, c + 1.7, 2, 0.55, 1.2, FL.mortar, px);
-      rect(g, c - 1.95, -12, c + 1.95, -10.8, lin(g, c - 1.95, 0, c + 1.95, 0, [[0, FL.lit], [0.45, FL.mid], [1, FL.deep]]));
-      rect(g, c - 1.95, -10.8, c + 1.95, -10.62, "rgba(80,88,94,0.45)");
-      merlons(g, c - 1.95, c + 1.95, -12, 0.55, 0.7, 0.45, FL.lit);
-      rimTL(g, c - 1.95, -12, c + 1.95, -10.8, FL.rim, px);
-      g.globalAlpha = 0.8;
-      rect(g, c - 0.15, -8.2, c - 0.15 + 0.3, -8.2 + 0.9, FL.win);
-      g.globalAlpha = 1;
+      litShade(g, () => { g.beginPath(); g.rect(c - 1.7, -10.8, 3.4, 12.8); }, c + 0.51, FL.lit, FL.shade);
+      litShade(g, () => { g.beginPath(); g.rect(c - 1.95, -12, 3.9, 1.2); }, c + 0.585, FL.lit, FL.shade);
+      rect(g, c - 1.95, -10.8, c + 1.95, -10.62, FL.shade);
+      merlons(g, c - 1.95, c + 1.95, -12, 0.55, 0.7, 0.45, FL.lit, FL.shade, c + 0.585);
+      rect(g, c - 0.15, -8.2, c - 0.15 + 0.3, -8.2 + 0.9, FL.glow);
     }
 
     // 8. Gate towers
     for (const c of [-2.1, 2.1]) {
-      rect(g, c - 1.1, -11.2, c + 1.1, 2, lin(g, c - 1.1, 0, c + 1.1, 0, [[0, FL.lit], [0.45, FL.mid], [1, FL.deep]]));
-      courses(g, c - 1.1, -11.2, c + 1.1, 2, 0.55, 1.2, FL.mortar, px);
-      merlons(g, c - 1.1, c + 1.1, -11.2, 0.5, 0.65, 0.4, FL.lit);
-      rimTL(g, c - 1.1, -11.2, c + 1.1, 2, FL.rim, px);
+      litShade(g, () => { g.beginPath(); g.rect(c - 1.1, -11.2, 2.2, 13.2); }, c + 0.33, FL.lit, FL.shade);
+      merlons(g, c - 1.1, c + 1.1, -11.2, 0.5, 0.65, 0.4, FL.lit, FL.shade, c + 0.33);
     }
 
     gatePath();
-    g.fillStyle = "#2e3438";
-    g.fill();
-    gatePath();
-    g.fillStyle = lin(g, 0, 2, 0, -3.8, [[0, "rgba(255,210,130,0.55)"], [1, "rgba(255,210,130,0)"]]);
+    g.fillStyle = FL.hole;
     g.fill();
     g.save();
     gatePath();
@@ -320,19 +252,13 @@
       g.moveTo(-1, y);
       g.lineTo(1, y);
     }
-    g.strokeStyle = "rgba(40,44,48,0.8)";
+    g.strokeStyle = FL.shade;
     g.lineWidth = px;
     g.stroke();
     g.restore();
 
     // 9. Foot fade
-    light(g, lin(g, -16, 0, 16, 0, [[0, "rgba(40,52,70,0)"], [0.45, "rgba(40,52,70,0.04)"], [1, "rgba(40,52,70,0.30)"]]), -16, -34, 16, 2);
-    light(g, lin(g, 0, -12, 0, 2, [[0, "rgba(30,38,48,0)"], [1, "rgba(30,38,48,0.28)"]]), -16, -12, 16, 2);
-    light(g, rad(g, 0, -23.6, 0, 12, [[0, "rgba(255,236,190,0.22)"], [1, "rgba(255,236,190,0)"]]), -16, -34, 16, 2);
     fadeFoot(g, -16, 16, -0.6, 1.6);
-
-    // 10. Ground mist
-    haze(g, 0, 0.4, 15.5, 2.2, "206,216,224", 0.13);
   }
 
   function underFirstLight(g, px, t, a) {
@@ -373,7 +299,7 @@
     const s3 = Math.sin(t * 3 - 2.7);
     g.globalAlpha = a * 0.9;
     poly(g, [[0, -32.4], [0.8, -32.3 + 0.15 * s1], [1.6, -32.2 + 0.2 * s2], [2.4, -31.95 + 0.25 * s3], [1.6, -31.7 + 0.2 * s2], [0.8, -31.5 + 0.15 * s1], [0, -31.4]]);
-    g.fillStyle = FL.gold;
+    g.fillStyle = FL.flag;
     g.fill();
   }
 
@@ -381,46 +307,38 @@
 
   /* ==================== CRIMSON COURT ==================== */
 
-  const CC = { top: "#2b121b", bot: "#14070c", face: "#351620", towerTop: "#3a1823", side: "#1a0a10", roof: "#1d0b12", corner: "#3d1a25", rimRed: "rgba(255,92,78,0.75)", rimRedSoft: "rgba(255,92,78,0.36)", rimCool: "rgba(190,186,210,0.18)", glassHot: "#ff7a52", glassDeep: "#b3182a", tracery: "#12060a", detail: "rgba(255,120,100,0.22)" };
+  const CC = { lit: "#6e1a24", shade: "#3e0d15", spire: "#5a1520", spireShade: "#300a10", hole: "#16060a", glass: "#d8342f", tracery: "#16060a" };
 
   function paintCrimson(g, px) {
-    const body = lin(g, 0, -34, 0, 2, [[0, CC.top], [1, CC.bot]]);
-    const glass = (yTop, yBot) => lin(g, 0, yTop, 0, yBot, [[0, CC.glassHot], [1, CC.glassDeep]]);
-    const rimR = pts => line(g, pts, CC.rimRed, px * 1.2);
-    const rimL = pts => line(g, pts, CC.rimCool, px);
-
     // 1. Fleche
-    rect(g, -0.6, -23, 0.6, 2, body);
+    litShade(g, () => { g.beginPath(); g.rect(-0.6, -23, 1.2, 25); }, 0.18, CC.lit, CC.shade);
     poly(g, [[-0.6, -23], [0, -33], [0.6, -23]]);
-    g.fillStyle = body;
+    g.fillStyle = CC.spire;
+    g.fill();
+    poly(g, [[0, -23], [0.6, -23], [0, -33]]);
+    g.fillStyle = CC.spireShade;
     g.fill();
     for (let k = 1; k <= 5; k++) {
       const y = -23 - k * 1.7;
       const hw = 0.6 * (1 - k * 1.7 / 10);
       poly(g, [[-hw, y], [-hw - 0.3, y - 0.15], [-hw, y - 0.35]]);
-      g.fillStyle = body;
+      g.fillStyle = CC.spire;
       g.fill();
       poly(g, [[hw, y], [hw + 0.3, y - 0.15], [hw, y - 0.35]]);
-      g.fillStyle = body;
+      g.fillStyle = CC.spireShade;
       g.fill();
     }
-    rimR([[0, -33], [0.6, -23], [0.6, -14.3]]);
-    rimL([[0, -33], [-0.6, -23], [-0.6, -14.3]]);
 
     // 2. Wings
     for (const s of [-1, 1]) {
       const x0 = Math.min(s * 8.2, s * 14.5), x1 = Math.max(s * 8.2, s * 14.5);
-      rect(g, x0, -8.5, x1, 2, body);
-      poly(g, [[s * 14.5, -8.5], [s * 13.2, -11.5], [s * 8.2, -11.5], [s * 8.2, -8.5]]);
-      g.fillStyle = CC.roof;
-      g.fill();
-      line(g, [[s * 13.2, -11.5], [s * 8.2, -11.5]], CC.rimRedSoft, px);
-      if (s === 1) rimR([[s * 14.5, -8.5], [s * 13.2, -11.5]]);
-      else rimL([[s * 14.5, -8.5], [s * 13.2, -11.5]]);
+      const wingSplit = (x0 + x1) / 2 + 0.3 * (x1 - x0) / 2;
+      litShade(g, () => { g.beginPath(); g.rect(x0, -8.5, x1 - x0, 10.5); }, wingSplit, CC.lit, CC.shade);
+      litShade(g, () => { poly(g, [[s * 14.5, -8.5], [s * 13.2, -11.5], [s * 8.2, -11.5], [s * 8.2, -8.5]]); }, wingSplit, CC.lit, CC.shade);
 
       for (const cx of [s * 9.5, s * 11.4, s * 13.2]) {
         lancet(g, cx, 0.9, -2.2, -6.2, -6.9);
-        g.fillStyle = glass(-6.9, -2.2);
+        g.fillStyle = CC.glass;
         g.fill();
         line(g, [[cx, -6.6], [cx, -2.2]], CC.tracery, px * 1.2);
         line(g, [[cx - 0.45, -4.4], [cx + 0.45, -4.4]], CC.tracery, px);
@@ -432,60 +350,50 @@
         { c: s * 14.9, hw: 0.5, top: -9.4, apex: -12.0, finial: -12.7 }
       ];
       for (const { c, hw, top, apex, finial } of piers) {
-        rect(g, c - hw, top, c + hw, 2, CC.face);
+        litShade(g, () => { g.beginPath(); g.rect(c - hw, top, 2 * hw, 2 - top); }, c + 0.3 * hw, CC.lit, CC.shade);
         poly(g, [[c - hw, top], [c, apex], [c + hw, top]]);
-        g.fillStyle = CC.face;
+        g.fillStyle = CC.spire;
         g.fill();
-        line(g, [[c, apex], [c, finial]], CC.rimRed, px);
-        rimR([[c + hw, 2], [c + hw, top], [c, apex]]);
-        rimL([[c - hw, 2], [c - hw, top], [c, apex]]);
+        poly(g, [[c, top], [c + hw, top], [c, apex]]);
+        g.fillStyle = CC.spireShade;
+        g.fill();
+        line(g, [[c, apex], [c, finial]], CC.spireShade, px);
       }
 
       g.beginPath();
       g.moveTo(s * 14.9, -9.2);
       g.quadraticCurveTo(s * 13.8, -15.4, s * 8.2, -15.8);
-      g.strokeStyle = CC.face;
+      g.strokeStyle = CC.shade;
       g.lineWidth = 0.55;
-      g.stroke();
-      g.beginPath();
-      g.moveTo(s * 14.9, -9.2);
-      g.quadraticCurveTo(s * 13.8, -15.4, s * 8.2, -15.8);
-      g.strokeStyle = s === 1 ? CC.rimRedSoft : CC.rimCool;
-      g.lineWidth = px * 1.2;
       g.stroke();
 
       g.beginPath();
       g.moveTo(s * 12.3, -9.6);
       g.quadraticCurveTo(s * 11.2, -13.6, s * 8.2, -13.2);
-      g.strokeStyle = CC.face;
+      g.strokeStyle = CC.shade;
       g.lineWidth = 0.4;
-      g.stroke();
-      g.beginPath();
-      g.moveTo(s * 12.3, -9.6);
-      g.quadraticCurveTo(s * 11.2, -13.6, s * 8.2, -13.2);
-      g.strokeStyle = s === 1 ? CC.rimRedSoft : CC.rimCool;
-      g.lineWidth = px * 1.2;
       g.stroke();
     }
 
     // 3. Towers
     for (const c of [-6.4, 6.4]) {
       const o = Math.sign(c);
-      rect(g, c - 1.8, -21, c + 1.8, 2, lin(g, 0, -21, 0, 2, [[0, CC.towerTop], [1, CC.bot]]));
-      if (o > 0) rect(g, c + 1.3, -21, c + 1.8, 2, CC.corner);
-      else rect(g, c - 1.8, -21, c - 1.3, 2, CC.corner);
+      const towerSplit = c + 0.3 * 1.8;
+      litShade(g, () => { g.beginPath(); g.rect(c - 1.8, -21, 3.6, 23); }, towerSplit, CC.lit, CC.shade);
+      if (o > 0) rect(g, c + 1.3, -21, c + 1.8, 2, CC.shade);
+      else rect(g, c - 1.8, -21, c - 1.3, 2, CC.shade);
 
-      line(g, [[c - 1.8, -8.5], [c + 1.8, -8.5]], CC.detail, px);
-      line(g, [[c - 1.8, -15.5], [c + 1.8, -15.5]], CC.detail, px);
+      line(g, [[c - 1.8, -8.5], [c + 1.8, -8.5]], CC.tracery, px);
+      line(g, [[c - 1.8, -15.5], [c + 1.8, -15.5]], CC.tracery, px);
 
       for (const cx of [c - 0.6, c + 0.6]) {
         lancet(g, cx, 0.6, -10.4, -14.0, -14.6);
-        g.fillStyle = glass(-14.6, -10.4);
+        g.fillStyle = CC.glass;
         g.fill();
       }
 
       lancet(g, c, 1.2, -17.2, -19.6, -20.3);
-      g.fillStyle = "#5a0e18";
+      g.fillStyle = CC.hole;
       g.fill();
       g.save();
       lancet(g, c, 1.2, -17.2, -19.6, -20.3);
@@ -501,93 +409,94 @@
       g.restore();
 
       poly(g, [[c + o * 1.8, -15.4], [c + o * 2.7, -15.1], [c + o * 2.5, -14.8], [c + o * 1.8, -14.9]]);
-      g.fillStyle = CC.face;
+      g.fillStyle = o > 0 ? CC.spireShade : CC.spire;
       g.fill();
-      if (o > 0) line(g, [[c + o * 1.8, -15.4], [c + o * 2.7, -15.1]], CC.rimRed, px * 1.2);
-      else line(g, [[c + o * 1.8, -15.4], [c + o * 2.7, -15.1]], CC.rimCool, px);
 
       {
         const px0 = c - 1.8, px1 = c - 1.3, mid = (px0 + px1) / 2;
         poly(g, [[px0, -21], [mid, -23.7], [px1, -21]]);
-        g.fillStyle = CC.face;
+        g.fillStyle = CC.spire;
         g.fill();
       }
       {
         const px0 = c + 1.3, px1 = c + 1.8, mid = (px0 + px1) / 2;
         poly(g, [[px0, -21], [mid, -23.7], [px1, -21]]);
-        g.fillStyle = CC.face;
+        g.fillStyle = CC.spireShade;
         g.fill();
-        line(g, [[mid, -23.7], [mid, -24.3]], CC.rimRed, px);
+        line(g, [[mid, -23.7], [mid, -24.3]], CC.spireShade, px);
       }
 
       poly(g, [[c - 1.4, -21], [c, -30.5], [c + 1.4, -21]]);
-      g.fillStyle = lin(g, c - 1.4, 0, c + 1.4, 0, [[0, CC.towerTop], [1, CC.side]]);
+      g.fillStyle = CC.spire;
       g.fill();
-      line(g, [[c, -30.5], [c, -32]], CC.rimRed, px * 1.2);
+      poly(g, [[c, -21], [c + 1.4, -21], [c, -30.5]]);
+      g.fillStyle = CC.spireShade;
+      g.fill();
+      line(g, [[c, -30.5], [c, -32]], CC.spireShade, px * 1.2);
 
       for (let k = 1; k <= 6; k++) {
         const y = -21 - k * 1.35;
         const hw = 1.4 * (1 - k * 1.35 / 9.5);
         poly(g, [[c - hw, y], [c - hw - 0.3, y - 0.15], [c - hw + 0.02, y - 0.4]]);
-        g.fillStyle = CC.face;
+        g.fillStyle = CC.spire;
         g.fill();
         poly(g, [[c + hw, y], [c + hw + 0.3, y - 0.15], [c + hw - 0.02, y - 0.4]]);
-        g.fillStyle = CC.face;
+        g.fillStyle = CC.spireShade;
         g.fill();
       }
 
-      g.globalAlpha = 0.8;
-      rect(g, c - 0.25, -24.9, c + 0.25, -24.1, CC.glassDeep);
-      g.globalAlpha = 1;
+      rect(g, c - 0.25, -24.9, c + 0.25, -24.1, CC.glass);
       poly(g, [[c - 0.35, -24.9], [c, -25.4], [c + 0.35, -24.9]]);
-      g.fillStyle = CC.face;
+      g.fillStyle = CC.spire;
       g.fill();
-
-      rimR([[c + 1.8, 2], [c + 1.8, -21]]);
-      rimR([[c + 1.4, -21], [c, -30.5]]);
-      rimL([[c - 1.8, 2], [c - 1.8, -21]]);
-      rimL([[c - 1.4, -21], [c, -30.5]]);
+      poly(g, [[c, -24.9], [c + 0.35, -24.9], [c, -25.4]]);
+      g.fillStyle = CC.spireShade;
+      g.fill();
     }
 
     // 4. Facade
-    rect(g, -4.6, -14.3, 4.6, 2, body);
-    poly(g, [[-4.6, -14.3], [0, -20], [4.6, -14.3]]);
-    g.fillStyle = body;
-    g.fill();
+    litShade(g, () => {
+      g.beginPath();
+      g.rect(-4.6, -14.3, 9.2, 16.3);
+      g.moveTo(-4.6, -14.3);
+      g.lineTo(0, -20);
+      g.lineTo(4.6, -14.3);
+      g.closePath();
+    }, 1.38, CC.lit, CC.shade);
 
     const gableApex = [0, -20];
-    for (const base of [[-4.6, -14.3], [4.6, -14.3]]) {
+    for (const [bi, base] of [[-4.6, -14.3], [4.6, -14.3]].entries()) {
       for (let k = 1; k <= 4; k++) {
         const qx = base[0] + (k / 5) * (gableApex[0] - base[0]);
         const qy = base[1] + (k / 5) * (gableApex[1] - base[1]);
         poly(g, [[qx - 0.12, qy], [qx, qy - 0.55], [qx + 0.12, qy]]);
-        g.fillStyle = body;
+        g.fillStyle = bi === 0 ? CC.spire : CC.spireShade;
         g.fill();
       }
     }
 
     poly(g, [[-0.2, -20], [0, -21.6], [0.2, -20]]);
-    g.fillStyle = CC.face;
+    g.fillStyle = CC.spire;
     g.fill();
-    rimR([[0.2, -20], [0, -21.6]]);
-    rimR([[4.6, -14.3], [0, -20]]);
-    rimL([[-4.6, -14.3], [0, -20]]);
+    poly(g, [[0, -20], [0.2, -20], [0, -21.6]]);
+    g.fillStyle = CC.spireShade;
+    g.fill();
 
     for (const y of [-7.8, -9.2, -14.3]) {
-      line(g, [[-4.6, y], [4.6, y]], CC.detail, px);
+      line(g, [[-4.6, y], [4.6, y]], CC.tracery, px);
     }
 
     for (let i = 0; i <= 8; i++) {
       const cx = -3.9 + i * 0.975;
       lancet(g, cx, 0.5, -8.0, -8.6, -9.0);
-      g.strokeStyle = CC.detail;
+      g.strokeStyle = CC.tracery;
       g.lineWidth = px;
       g.stroke();
     }
 
     g.beginPath();
     g.arc(0, -11.6, 2.0, 0, 2 * Math.PI);
-    g.fillStyle = rad(g, 0, -11.6, 0, 2.0, [[0, "#ffb38a"], [0.35, "#ff5a3c"], [1, "#8e0f22"]]);
+    g.fillStyle = CC.glass;
     g.fill();
 
     g.strokeStyle = CC.tracery;
@@ -621,34 +530,27 @@
 
     g.beginPath();
     g.arc(0, -11.6, 2.3, 0, 2 * Math.PI);
-    g.strokeStyle = CC.detail;
+    g.strokeStyle = CC.tracery;
     g.lineWidth = px;
     g.stroke();
 
     lancet(g, 0, 4.6, 2, -3.4, -7.4);
-    g.strokeStyle = CC.detail;
+    g.strokeStyle = CC.tracery;
     g.lineWidth = px;
     g.stroke();
     lancet(g, 0, 4.0, 2, -3.4, -6.8);
-    g.strokeStyle = CC.detail;
+    g.strokeStyle = CC.tracery;
     g.lineWidth = px;
     g.stroke();
 
     lancet(g, 0, 3.4, 2, -3.4, -6.2);
-    g.fillStyle = "#0c0407";
-    g.fill();
-    lancet(g, 0, 3.4, 2, -3.4, -6.2);
-    g.fillStyle = lin(g, 0, 2, 0, -4, [[0, "rgba(255,70,50,0.35)"], [1, "rgba(255,70,50,0)"]]);
+    g.fillStyle = CC.hole;
     g.fill();
 
     line(g, [[0, 2], [0, -5.4]], CC.tracery, px);
 
     // 5. Foot fade
-    light(g, lin(g, 0, -14, 0, 2, [[0, "rgba(8,2,4,0)"], [1, "rgba(8,2,4,0.35)"]]), -16.5, -14, 16.5, 2);
     fadeFoot(g, -16.5, 16.5, -0.6, 1.6);
-
-    // 6. Mist
-    haze(g, 0, 0.4, 16, 2.2, "160,40,50", 0.12);
   }
 
   function liveCrimson(g, px, t, a) {

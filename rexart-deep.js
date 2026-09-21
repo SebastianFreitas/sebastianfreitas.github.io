@@ -57,38 +57,35 @@
     g.fill();
   }
 
-  function courses(g, x0, y0, x1, y1, rowH, brickW, color, px) {
-    g.save();
-    g.beginPath();
-    g.rect(x0, y0, x1 - x0, y1 - y0);
-    g.clip();
-    g.beginPath();
-    for (let r = 0; ; r++) {
-      const y = y0 + (r + 1) * rowH;
-      if (!(y < y1)) break;
-      g.moveTo(x0, y);
-      g.lineTo(x1, y);
-      for (let k = 0; ; k++) {
-        const x = x0 + (r % 2) * brickW / 2 + k * brickW;
-        if (!(x < x1)) break;
-        g.moveTo(x, y - rowH);
-        g.lineTo(x, y);
-      }
-    }
-    g.strokeStyle = color;
-    g.lineWidth = px;
-    g.stroke();
-    g.restore();
-  }
-
-  function merlons(g, x0, x1, yTop, mw, mh, gap, fill) {
+  function merlons(g, x0, x1, yTop, mw, mh, gap, xSplit, lit, shade) {
     const n = Math.max(1, Math.floor((x1 - x0 + gap) / (mw + gap)));
     const span = n * mw + (n - 1) * gap;
     const start = x0 + (x1 - x0 - span) / 2;
-    g.fillStyle = fill;
     for (let i = 0; i < n; i++) {
-      g.fillRect(start + i * (mw + gap), yTop - mh, mw, mh);
+      const mx = start + i * (mw + gap);
+      const cx = mx + mw / 2;
+      if (cx >= xSplit) {
+        g.fillStyle = shade;
+        g.fillRect(mx, yTop - mh, mw, mh);
+      } else {
+        g.fillStyle = lit;
+        g.fillRect(mx, yTop - mh, mw, mh);
+        g.fillStyle = shade;
+        g.fillRect(mx, yTop - 0.35 * mh, mw, 0.35 * mh);
+      }
     }
+  }
+
+  function litShade(g, trace, xSplit, lit, shade) {
+    trace();
+    g.fillStyle = lit;
+    g.fill();
+    g.save();
+    trace();
+    g.clip();
+    g.fillStyle = shade;
+    g.fillRect(xSplit, -1000, 2000, 2000);
+    g.restore();
   }
 
   function pocket(seed, rx, ry, floor) {
@@ -370,60 +367,45 @@
      ================================================================ */
 
   const VK_POCKET = pocket(8101, 19, 12, 0.55);
-  const VK_RIM = "rgba(255,206,150,0.5)";
-  const VK_STAIR = "#8f6226";
-  const VK_DARK = "#2a1610";
-  // [cx, tiers, base width, tier height, shrine width, shrine height, fill, roof comb]
+  const VK = { lit: "#e7b54a", shade: "#a8742a", stair: "#f0cf7a", hole: "#3a220e", far: "#6b4a30", rubble: "#3b2616", rubbleShade: "#24170d" };
+  // [cx, tiers, base width, tier height, shrine width, shrine height, fill, fillShade, roof comb]
   const VK_TEMPLES = [
-    [-15.5, 3, 3.0, 0.9, 0.9, 0.8, "#b3852f", false],
-    [-10.5, 5, 6.0, 1.1, 1.5, 1.1, "#c99638", true],
-    [14.2, 3, 3.4, 0.9, 1.0, 0.8, "#b3852f", false],
-    [8.5, 6, 6.6, 1.15, 1.6, 1.2, "#c99638", true],
-    [-1.5, 7, 9.0, 1.35, 2.0, 1.4, "#e0ae4a", true]
+    [-15.5, 3, 3.0, 0.9, 0.9, 0.8, "#b3852f", "#7d5d21", false],
+    [-10.5, 5, 6.0, 1.1, 1.5, 1.1, "#c99638", "#8d6927", true],
+    [14.2, 3, 3.4, 0.9, 1.0, 0.8, "#b3852f", "#7d5d21", false],
+    [8.5, 6, 6.6, 1.15, 1.6, 1.2, "#c99638", "#8d6927", true],
+    [-1.5, 7, 9.0, 1.35, 2.0, 1.4, "#e0ae4a", "#9d7a34", true]
   ];
 
-  function mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, comb) {
+  function mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, shade, comb) {
     const step = (w0 - sw * 1.3) / tiers;
     for (let i = 0; i < tiers; i++) {
       const w = w0 - i * step;
       const yb = 4.5 - i * th;
-      poly(g, [[cx - w / 2, yb], [cx - w / 2 + 0.1, yb - th], [cx + w / 2 - 0.1, yb - th], [cx + w / 2, yb]]);
-      g.fillStyle = fill;
-      g.fill();
-      line(g, [[cx - w / 2 + 0.1, yb - th], [cx + w / 2 - 0.1, yb - th]], VK_RIM, px);
+      const yt = yb - th;
+      const pts = [[cx - w / 2, yb], [cx - w / 2 + 0.1, yt], [cx + w / 2 - 0.1, yt], [cx + w / 2, yb]];
+      litShade(g, () => poly(g, pts), cx + 0.3 * (w / 2), fill, shade);
     }
 
     const yTop = 4.5 - tiers * th;
     const sw2 = sw * 0.55;
-    g.fillStyle = VK_STAIR;
-    g.fillRect(cx - sw2 / 2, yTop, sw2, 4.5 - yTop);
-    for (let y = yTop + 0.3; y < 4.5; y += 0.3) {
-      line(g, [[cx - sw2 / 2, y], [cx + sw2 / 2, y]], "rgba(60,35,15,0.45)", px);
-    }
+    litShade(g, () => { g.beginPath(); g.rect(cx - sw2 / 2, yTop, sw2, 4.5 - yTop); }, cx + 0.3 * (sw2 / 2), VK.stair, VK.shade);
 
-    g.fillStyle = fill;
-    g.fillRect(cx - sw / 2, yTop - sh, sw, sh);
-    g.fillStyle = VK_DARK;
+    litShade(g, () => { g.beginPath(); g.rect(cx - sw / 2, yTop - sh, sw, sh); }, cx + 0.3 * (sw / 2), fill, shade);
+    g.fillStyle = VK.hole;
     g.fillRect(cx - sw * 0.15, yTop - sh * 0.55, sw * 0.3, sh * 0.55);
-    g.strokeStyle = VK_RIM;
-    g.lineWidth = px;
-    g.strokeRect(cx - sw / 2, yTop - sh, sw, sh);
 
     if (comb) {
       const cw = sw * 0.7;
       const ch = sh * 0.8;
-      g.fillStyle = fill;
-      g.fillRect(cx - cw / 2, yTop - sh - ch, cw, ch);
-      g.fillStyle = VK_DARK;
+      litShade(g, () => { g.beginPath(); g.rect(cx - cw / 2, yTop - sh - ch, cw, ch); }, cx + 0.3 * (cw / 2), fill, shade);
+      g.fillStyle = VK.hole;
       for (const ox of [-cw * 0.2, cw * 0.2]) {
         g.fillRect(cx + ox - cw * 0.08, yTop - sh - ch * 0.7, cw * 0.16, ch * 0.35);
       }
-      g.strokeStyle = VK_RIM;
-      g.strokeRect(cx - cw / 2, yTop - sh - ch, cw, ch);
     } else {
-      poly(g, [[cx - sw / 2, yTop - sh], [cx - sw * 0.2, yTop - sh - 0.3], [cx + sw * 0.05, yTop - sh - 0.1], [cx + sw / 2, yTop - sh]]);
-      g.fillStyle = fill;
-      g.fill();
+      const pts = [[cx - sw / 2, yTop - sh], [cx - sw * 0.2, yTop - sh - 0.3], [cx + sw * 0.05, yTop - sh - 0.1], [cx + sw / 2, yTop - sh]];
+      litShade(g, () => poly(g, pts), cx + 0.3 * (sw / 2), fill, shade);
     }
   }
 
@@ -484,7 +466,7 @@
         const x = -15 + i * 1.75 + r() * 0.6;
         const w = 1.6 + r() * 1.6;
         const h = 1.6 + r() * 3.2;
-        g.fillStyle = "#8c6b50";
+        g.fillStyle = VK.far;
         for (let k = 0; k <= 2; k++) {
           const sw = w * (1 - 0.28 * k);
           const sh = h / 3.4;
@@ -500,22 +482,19 @@
     }
 
     // Temples
-    for (const [cx, tiers, w0, th, sw, sh, fill, comb] of VK_TEMPLES) mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, comb);
+    for (const [cx, tiers, w0, th, sw, sh, fill, shade, comb] of VK_TEMPLES) mayaTemple(g, px, cx, tiers, w0, th, sw, sh, fill, shade, comb);
 
     // Rubble
     {
       const r = rng(9305);
-      g.beginPath();
-      g.moveTo(-20, 12);
+      const pts = [[-20, 12]];
       for (let i = 0; i <= 50; i++) {
         const x = -20 + i * 0.8;
         const y = 4.35 - 0.45 * r() - (i % 4 === 0 ? 0.35 : 0);
-        g.lineTo(x, y);
+        pts.push([x, y]);
       }
-      g.lineTo(20, 12);
-      g.closePath();
-      g.fillStyle = lin(g, 0, 4, 0, 8, [[0, "#2a1814"], [1, "#120807"]]);
-      g.fill();
+      pts.push([20, 12]);
+      litShade(g, () => poly(g, pts), 6, VK.rubble, VK.rubbleShade);
     }
 
     {
@@ -529,9 +508,10 @@
         g.save();
         g.translate(cx, cy);
         g.rotate(rot);
-        g.fillStyle = "#3a241c";
-        g.fillRect(-bw / 2, -bh / 2, bw, bh);
-        line(g, [[-bw / 2, -bh / 2], [bw / 2, -bh / 2]], "rgba(255,200,140,0.25)", px);
+        g.fillStyle = VK.rubble;
+        g.fillRect(-bw / 2, -bh / 2, bw / 2, bh);
+        g.fillStyle = VK.rubbleShade;
+        g.fillRect(0, -bh / 2, bw / 2, bh);
         g.restore();
       }
     }
@@ -568,18 +548,18 @@
      ================================================================ */
 
   const LW_POCKET = pocket(4101, 11, 16, 0.9);
+  const LW = { lit: "#3a3438", shade: "#1f1b1e", wall: "#332d31", wallShade: "#1c181a", hole: "#0b0809", quoin: "#9e2a22", quoinShade: "#6a1712", glow: "#ff8a3c", grille: "#5a4f52" };
   const LW_FIRES = [[-8.4, -1.95], [-3.4, -0.95], [3.4, -0.95], [8.4, -1.95], [-5.9, 1.25], [5.9, 1.25]];
   const LW_TOWERS = [[-8.4, -1.2], [-3.4, -0.2], [3.4, -0.2], [8.4, -1.2]];
   const LW_SPIKES = [1.4, 2.2, 3.6, 2.2, 1.4];
 
-  function quoins(g, xEdge, dir, yTop, px) {
+  function quoins(g, xEdge, dir, yTop, xSplit) {
     for (let j = 0; yTop + j * 0.5 < 14.5; j++) {
       const y = yTop + j * 0.5;
       const wq = j % 2 === 0 ? 0.55 : 0.35;
       const x0 = dir > 0 ? xEdge : xEdge - wq;
-      g.fillStyle = "#9a2b24";
+      g.fillStyle = x0 + wq / 2 >= xSplit ? LW.quoinShade : LW.quoin;
       g.fillRect(x0, y + 0.03, wq, 0.44);
-      line(g, [[x0, y + 0.03], [x0 + wq, y + 0.03]], "rgba(255,140,110,0.35)", px);
     }
   }
 
@@ -606,37 +586,14 @@
     g.fill();
 
     // The dark tower
-    poly(g, [[-2.2, 6], [-1.6, -9.6], [1.6, -9.6], [2.2, 6]]);
-    g.fillStyle = lin(g, -2.2, 0, 2.2, 0, [[0, "#07080b"], [0.36, "#14171d"], [1, "#050608"]]);
-    g.fill();
+    litShade(g, () => poly(g, [[-2.2, 6], [-1.6, -9.6], [1.6, -9.6], [2.2, 6]]), 0.66, LW.lit, LW.shade);
 
-    poly(g, [[-1.6, -9.6], [-2.3, -10.4], [2.3, -10.4], [1.6, -9.6]]);
-    g.fillStyle = "#07080b";
-    g.fill();
+    litShade(g, () => poly(g, [[-1.6, -9.6], [-2.3, -10.4], [2.3, -10.4], [1.6, -9.6]]), 0.69, LW.lit, LW.shade);
 
-    const spikeX = [];
     for (let i = 0; i <= 4; i++) {
       const x = -1.9 + i * 0.95;
       const h = LW_SPIKES[i];
-      spikeX.push([x, h]);
-      poly(g, [[x - 0.25, -10.4], [x, -10.4 - h], [x + 0.25, -10.4]]);
-      g.fillStyle = "#07080b";
-      g.fill();
-    }
-
-    line(g, [[-2.2, 6], [-1.6, -9.6], [-2.3, -10.4]], "rgba(170,190,215,0.35)", px);
-    for (const [x, h] of spikeX) {
-      line(g, [[x - 0.25, -10.4], [x, -10.4 - h]], "rgba(170,190,215,0.35)", px);
-    }
-
-    line(g, [[2.2, 6], [1.6, -9.6], [2.3, -10.4]], "rgba(255,110,60,0.45)", px);
-    for (const [x, h] of spikeX) {
-      line(g, [[x + 0.25, -10.4], [x, -10.4 - h]], "rgba(255,110,60,0.45)", px);
-    }
-
-    for (const y of [-6, -2, 2]) {
-      const hw = 1.6 + 0.6 * (y + 9.6) / 15.6;
-      line(g, [[-hw, y], [hw, y]], "rgba(200,210,230,0.18)", px);
+      litShade(g, () => poly(g, [[x - 0.25, -10.4], [x, -10.4 - h], [x + 0.25, -10.4]]), x, LW.lit, LW.shade);
     }
 
     {
@@ -644,34 +601,26 @@
       for (let j = 0; j <= 12; j++) {
         const y = -8.8 + j * 0.9;
         for (const x of [-0.9, -0.3, 0.3, 0.9]) {
-          if (r() < 0.55) {
-            g.fillStyle = "rgba(220,230,245,0.55)";
-            g.fillRect(x - 0.07, y, 0.14, 0.42);
-          }
+          g.fillStyle = r() < 0.55 ? LW.glow : LW.hole;
+          g.fillRect(x - 0.07, y, 0.14, 0.42);
         }
       }
     }
 
     // Walls
-    g.fillStyle = lin(g, 0, 2, 0, 12, [[0, "#121418"], [1, "#07080a"]]);
-    g.fillRect(-9.2, 2.0, 18.4, 15.0);
-    courses(g, -9.2, 2.0, 9.2, 17, 0.5, 1.1, "rgba(120,130,145,0.22)", px);
-    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, "#121418");
-    g.fillStyle = lin(g, 0, 12, 0, 6, [[0, "rgba(255,110,50,0.35)"], [1, "rgba(255,110,50,0)"]]);
-    g.fillRect(-9.2, 6, 18.4, 11.0);
-    quoins(g, -9.2, 1, 2.0, px);
-    quoins(g, 9.2, -1, 2.0, px);
+    const wallSplit = 0 + 0.3 * 9.2;
+    litShade(g, () => { g.beginPath(); g.rect(-9.2, 2.0, 18.4, 15.0); }, wallSplit, LW.wall, LW.wallShade);
+    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, wallSplit, LW.wall, LW.wallShade);
+    quoins(g, -9.2, 1, 2.0, wallSplit);
+    quoins(g, 9.2, -1, 2.0, wallSplit);
 
     for (const [cx, top] of LW_TOWERS) {
-      g.fillStyle = lin(g, 0, top, 0, 12, [[0, "#16191e"], [1, "#0a0b0e"]]);
-      g.fillRect(cx - 1.1, top, 2.2, 17 - top);
-      courses(g, cx - 1.1, top, cx + 1.1, 17, 0.5, 1.1, "rgba(120,130,145,0.22)", px);
-      g.fillStyle = lin(g, 0, 12, 0, 6, [[0, "rgba(255,110,50,0.35)"], [1, "rgba(255,110,50,0)"]]);
-      g.fillRect(cx - 1.1, 6, 2.2, 11.0);
-      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, "#16191e");
-      quoins(g, cx - 1.1, 1, top, px);
-      quoins(g, cx + 1.1, -1, top, px);
-      g.fillStyle = "rgba(255,150,80,0.6)";
+      const towerSplit = cx + 0.3 * 1.1;
+      litShade(g, () => { g.beginPath(); g.rect(cx - 1.1, top, 2.2, 17 - top); }, towerSplit, LW.wall, LW.wallShade);
+      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, towerSplit, LW.wall, LW.wallShade);
+      quoins(g, cx - 1.1, 1, top, towerSplit);
+      quoins(g, cx + 1.1, -1, top, towerSplit);
+      g.fillStyle = LW.glow;
       g.fillRect(cx - 0.1, top + 1.2, 0.2, 0.9);
     }
 
@@ -688,9 +637,7 @@
     g.arc(0, 7.5, 1.1, Math.PI, 2 * Math.PI);
     g.lineTo(1.1, 17);
     g.closePath();
-    g.fillStyle = "#16090a";
-    g.fill();
-    g.fillStyle = lin(g, 0, 14, 0, 6.5, [[0, "rgba(255,90,40,0.6)"], [1, "rgba(255,90,40,0)"]]);
+    g.fillStyle = LW.hole;
     g.fill();
 
     g.save();
@@ -702,22 +649,22 @@
     g.closePath();
     g.clip();
     for (const x of [-0.55, 0, 0.55]) {
-      line(g, [[x, 6.4], [x, 17]], "rgba(10,5,5,0.9)", 0.12);
+      line(g, [[x, 6.4], [x, 17]], LW.grille, 0.12);
     }
     for (const y of [8.5, 9.5, 10.5, 11.5]) {
-      line(g, [[-1.1, y], [1.1, y]], "rgba(10,5,5,0.9)", 0.12);
+      line(g, [[-1.1, y], [1.1, y]], LW.grille, 0.12);
     }
     g.restore();
 
     g.beginPath();
     g.arc(0, 7.5, 1.35, Math.PI, 2 * Math.PI);
-    g.strokeStyle = "#9a2b24";
+    g.strokeStyle = LW.quoin;
     g.lineWidth = 0.5;
     g.stroke();
 
     for (let k = 1; k <= 5; k++) {
       const an = Math.PI + k * Math.PI / 6;
-      line(g, [[1.1 * Math.cos(an), 7.5 + 1.1 * Math.sin(an)], [1.6 * Math.cos(an), 7.5 + 1.6 * Math.sin(an)]], "#3a0f0c", px);
+      line(g, [[1.1 * Math.cos(an), 7.5 + 1.1 * Math.sin(an)], [1.6 * Math.cos(an), 7.5 + 1.6 * Math.sin(an)]], LW.quoinShade, px);
     }
 
     // Vignette
