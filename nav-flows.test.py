@@ -628,6 +628,34 @@ def flow_rex(browser, base):
     ctx.close()
 
 
+def flow_watcher(browser, base):
+    """Claiming the Watcher spawns the Red Star and Serus, each at the spot measured in flight."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base, "#gate-world")
+    page.keyboard.press("Escape")       # skip the cutscene if it is playing
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-watcher', 1, 'The Watcher');
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.id.startsWith('bnote-watcher-'));
+    }""")
+    ids = {n["id"] for n in report}
+    check("watcher: the red star and serus spawn",
+          ids == {"bnote-watcher-redstar", "bnote-watcher-serus"}, ids)
+
+    by_id = {n["id"]: n for n in report}
+    PINNED = {"redstar": (334257, 0.24), "serus": (335882, 0.52)}
+    for name, (x, oy) in PINNED.items():
+        n = by_id["bnote-watcher-" + name]
+        check(f"watcher: {name} sits where it was measured",
+              abs(n["x"] - x) < 0.5 and abs(n["oy"] - oy) < 1e-9, (n["x"], n["oy"]))
+    ctx.close()
+
+
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
@@ -673,7 +701,7 @@ FLOWS = {
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
-    "links": flow_links,
+    "watcher": flow_watcher, "links": flow_links,
 }
 
 

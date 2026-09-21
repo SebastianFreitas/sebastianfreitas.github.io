@@ -426,6 +426,9 @@ window.World = (function () {
     }
   }
 
+  // The red star beside the Watcher, pinned where its beacon was measured in flight (NAV X / Y).
+  const RED_STAR = { x: 334257, oy: 0.24 };
+
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
     const R = Math.min(W, H) * 0.26;
@@ -439,17 +442,62 @@ window.World = (function () {
     const d = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, R * 0.1, x, y, R);
     d.addColorStop(0, "#e2c887"); d.addColorStop(0.72, "#b28c4c"); d.addColorStop(1, "#6b4f28");
     ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
-    ctx.save(); ctx.translate(x, y); ctx.rotate(t * 0.06);
-    ctx.globalAlpha = 0.9; ctx.fillStyle = "#161013";
-    ctx.beginPath(); ctx.ellipse(0, 0, R * 0.16, R * 0.62, 0, 0, 6.283); ctx.fill();
-    ctx.globalAlpha = 0.5; ctx.strokeStyle = "#1d1418"; ctx.lineWidth = R * 0.035;
-    for (let i = 0; i < 9; i++) {
-      const a2 = (i / 9) * 6.283;
-      ctx.beginPath();
-      ctx.arc(0, 0, R * (0.34 + (i % 3) * 0.2), a2, a2 + 0.7 + Math.sin(t * 0.3 + i) * 0.2);
-      ctx.stroke();
+    drawSerus(x, y, R);
+  }
+
+  function drawSerus(x, y, R) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-t * 0.03); ctx.lineCap = "round";
+    const N = 72, TURNS = 2.6;
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const f = i / N;
+      const a = f * TURNS * 6.283;
+      const r = R * (0.08 + f) + R * 0.03 * Math.sin(t * 0.4 + f * 9);
+      pts.push([Math.cos(a) * r, Math.sin(a) * r, f]);
     }
-    ctx.restore(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.strokeStyle = "#140d12"; ctx.globalAlpha = 0.95;
+    for (let i = 1; i <= N; i++) {
+      const f = pts[i][2];
+      ctx.lineWidth = R * (0.26 - 0.22 * f);
+      ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(150,100,80,0.35)"; ctx.globalAlpha = 1; ctx.lineWidth = R * 0.012;
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i <= N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    const hx = pts[0][0], hy = pts[0][1];
+    const dx = pts[1][0] - hx, dy = pts[1][1] - hy, dl = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dl, ny = dx / dl;
+    ctx.fillStyle = "#ff7a3a"; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 0.5);
+    ctx.beginPath(); ctx.arc(hx + nx * R * 0.06, hy + ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - nx * R * 0.06, hy - ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt";
+  }
+
+  function drawRedStar() {
+    const x = wx(RED_STAR.x, 0.24);
+    const r = Math.min(W, H) * 0.03;
+    if (!onScreen(x, r * 6)) return;
+    const y = H * RED_STAR.oy;
+    const p = 1 + Math.sin(t * 0.8) * 0.08;
+    const g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 6 * p);
+    g.addColorStop(0, "rgba(255,70,60,0.28)");
+    g.addColorStop(0.4, "rgba(190,30,50,0.08)");
+    g.addColorStop(1, "rgba(190,30,50,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r * 6 * p, y - r * 6 * p, r * 12 * p, r * 12 * p);
+    ctx.globalAlpha = 0.35; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const a2 = 0.3 + k * 1.5708;
+      ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a2) * r * 4 * p, y + Math.sin(a2) * r * 4 * p);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    const d = ctx.createRadialGradient(x - r * 0.25, y - r * 0.25, r * 0.1, x, y, r);
+    d.addColorStop(0, "#ffd2c4"); d.addColorStop(0.45, "#ff4a3a"); d.addColorStop(1, "#8e1024");
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fillStyle = d; ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
   function drawBand(list, par, colour, alpha) {
@@ -928,6 +976,7 @@ window.World = (function () {
       drawTendrils();
       drawFuture();
       drawWatcher();
+      drawRedStar();
       drawRex();
       drawBand(city.far, 0.30, "#161d21", 0.5);
       drawBand(city.mid, 0.46, "#182025", 0.78);

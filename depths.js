@@ -536,6 +536,45 @@ window.Depths = (function () {
       `
         }
       ]
+    },
+    {
+      root: "bnote-watcher",
+      theme: "void",
+      size: 0.6,
+      layout: {
+        shape: "branch",
+        start: [0.14, -0.18],
+        step: [0.16, 0.13],
+        fan: { dy: 0.14, gap: 0.12 }
+      },
+      nodes: [
+        {
+          id: "bnote-watcher-redstar",
+          after: ["bnote-watcher"],
+          at: [334257, 0.24],
+          name: "The Red Star",
+          sub: "Mother of the nocturnals",
+          html: `
+        <p class="tag">Watcher · red star</p>
+        <h3>The Red Star</h3>
+        <p class="body">The mother of the nocturnals and a friend of the Watcher. An ancient being of the soul kind, she keeps close to its side and helps defend it from the other eldritch entities of the Void.</p>
+        <p class="body">She also bends the light the Watcher sends toward Rex. Those on the surface who receive it become nocturnals instead of complete monstrosities. Most believe it a curse. It is the lesser evil: a small price for the mortal life of the soul kind to exist within the Void.</p>
+      `
+        },
+        {
+          id: "bnote-watcher-serus",
+          after: ["bnote-watcher"],
+          at: [335882, 0.52],
+          name: "Serus",
+          sub: "Orochronus Serus Lustrum",
+          html: `
+        <p class="tag">Watcher · serus</p>
+        <h3>Serus</h3>
+        <p class="body">Orochronus Serus Lustrum: one of the gods, the father of dragons and the god of causality. He rests in front of the Watcher, his vast, dark, serpent-like body coiled into a shield against its glare.</p>
+        <p class="body">By moving that body at set moments he makes the cycle of night and day; winter and the other seasons are his work too. By restraining the light, he gave the soul kind a way to perceive time, and much more.</p>
+      `
+        }
+      ]
     }
   ];
 
