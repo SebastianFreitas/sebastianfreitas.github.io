@@ -435,6 +435,14 @@ window.World = (function () {
   const VIKINGS = { x: 292000, oy: 0.30 };
   const bridgeOpened = () => !!(window.XP && XP.has("beacon-bnote-bridge"));
 
+  const MAIN_PAR = 0.66;
+  const SHATTERED = { x: 58400, oy: 0.30 };
+  const LIBERTECH = { x: 62300, oy: 0.26 };
+  const FIRST_DAWN = { x: 65800, oy: 0.20 };
+  const DIVINE_ACCORD = { x: 73400, oy: 0.22 };
+  const GORE_LEGION = { x: 77900, oy: 0.30 };
+  const mainlandOpened = () => !!(window.XP && XP.has("beacon-bnote-land"));
+
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
     const R = Math.min(W, H) * 0.26;
@@ -634,8 +642,9 @@ window.World = (function () {
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
-  const VIKING_STARS = [[-9.0, -1.6], [-8.3, 0.3], [-6.7, 0.9], [-5.8, 0.9], [-4.9, 0.9], [-3.3, 0.3], [-2.5, -1.7], [-5.8, -2.9], [-7.1, -1.9], [-4.5, -1.9]];
-  const VIKING_LINES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [3, 7], [7, 8], [8, 9], [9, 7]];
+  const VIKING_STARS = [[-10.2, -3.4], [-8.6, -2.6], [-7.9, -3.9], [-5.9, -1.2], [-4.8, -0.4], [-4.1, -1.6], [-3.3, 0.6], [-2.6, -0.9], [-1.9, 0.2], [-2.2, 1.4], [-3.9, 1.1], [-1.4, -1.8]];
+  const VIKING_LINES = [[0, 1], [2, 1], [1, 3], [3, 5], [5, 4], [4, 10], [10, 6], [6, 9], [9, 8], [8, 7], [7, 5], [8, 11]];
+  const VIKING_MAG = [0.7, 1.1, 0.55, 1.0, 0.8, 1.35, 0.9, 1.2, 0.75, 0.6, 1.0, 0.85];
 
   function drawVikings() {
     const s = Math.min(W, H) * 0.045;
@@ -644,11 +653,11 @@ window.World = (function () {
     if (!onScreen(bx - 5.7 * s, s * 7)) return;
     if (!bridgeOpened()) return;
 
-    const ng = ctx.createRadialGradient(bx - 5.7 * s, by - 0.6 * s, 0, bx - 5.7 * s, by - 0.6 * s, 6 * s);
+    const ng = ctx.createRadialGradient(bx - 3.6 * s, by - 0.2 * s, 0, bx - 3.6 * s, by - 0.2 * s, 6 * s);
     ng.addColorStop(0, "rgba(90,150,255,0.07)");
     ng.addColorStop(1, "rgba(90,150,255,0)");
     ctx.fillStyle = ng;
-    ctx.fillRect(bx - 5.7 * s - 6 * s, by - 0.6 * s - 6 * s, 12 * s, 12 * s);
+    ctx.fillRect(bx - 3.6 * s - 6 * s, by - 0.2 * s - 6 * s, 12 * s, 12 * s);
 
     ctx.beginPath();
     VIKING_LINES.forEach(function (l) {
@@ -661,14 +670,405 @@ window.World = (function () {
 
     VIKING_STARS.forEach(function (p, i) {
       const x = bx + p[0] * s, y = by + p[1] * s;
-      const k = 0.6 + 0.4 * Math.sin(t * 1.3 + i * 2.3);
+      const k = 0.6 + 0.4 * Math.sin(t * 1.3 + i * 2.3 + VIKING_MAG[i] * 4.1);
       ctx.globalAlpha = 0.25 * k; ctx.fillStyle = "#7fb8ff";
-      ctx.beginPath(); ctx.arc(x, y, s * 0.32, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, s * 0.32 * VIKING_MAG[i], 0, 6.283); ctx.fill();
       ctx.globalAlpha = k; ctx.fillStyle = "#cfe6ff";
-      ctx.beginPath(); ctx.arc(x, y, s * (0.09 + 0.05 * k), 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, s * (0.09 + 0.05 * k) * VIKING_MAG[i], 0, 6.283); ctx.fill();
     });
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
+
+  const SHATTER_WEDGES = [[0.00, 0.95], [0.95, 1.70], [1.70, 2.60], [2.60, 3.30], [3.30, 4.35], [4.35, 5.10], [5.10, 6.283]];
+  const SHATTER_JAG = [0.08, -0.05, 0.11, -0.03, 0.06, -0.09, 0.04];
+  const SHATTER_FLING = [1, 1, 2.6, 1, 1.3, 1, 1];
+  const SHATTER_EYES = [[-0.18, -0.08], [0.14, 0.05], [0.0, 0.2]];
+
+  function drawShattered() {
+    const R = Math.min(W, H) * 0.07;
+    const cx = wx(SHATTERED.x, MAIN_PAR) - 2.2 * R;
+    const cy = H * SHATTERED.oy;
+    if (!onScreen(cx, R * 3.5)) return;
+    if (!mainlandOpened()) return;
+
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 3 * R);
+    g.addColorStop(0, "rgba(120,255,170,0.10)");
+    g.addColorStop(0.5, "rgba(150,70,220,0.06)");
+    g.addColorStop(1, "rgba(150,70,220,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - 3 * R, cy - 3 * R, 6 * R, 6 * R);
+
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.45, 0, 6.283); ctx.fillStyle = "#030205"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.5, 0, 6.283);
+    ctx.strokeStyle = "rgba(170,110,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+    SHATTER_EYES.forEach(function (e, j) {
+      ctx.globalAlpha = 0.2 + 0.6 * Math.max(0, Math.sin(t * 0.9 + j * 2.4));
+      ctx.fillStyle = "rgba(190,255,200,0.8)";
+      ctx.beginPath(); ctx.arc(cx + e[0] * R, cy + e[1] * R, R * 0.035, 0, 6.283); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.beginPath();
+    SHATTER_WEDGES.forEach(function (w, i) {
+      const a0 = w[0], a1 = w[1];
+      const mid = (a0 + a1) / 2;
+      const e = R * (0.10 + 0.06 * Math.sin(t * 0.5 + i * 1.3)) * SHATTER_FLING[i];
+      const ox = Math.cos(mid) * e, oy = Math.sin(mid) * e;
+      const scx = cx + ox, scy = cy + oy;
+      const pts = [
+        [0.62, a0], [1.0, a0], [1.0 + SHATTER_JAG[i], mid], [1.0, a1], [0.62, a1], [0.62 - SHATTER_JAG[i] * 0.5, mid]
+      ].map(function (p) { return [scx + Math.cos(p[1]) * p[0] * R, scy + Math.sin(p[1]) * p[0] * R]; });
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.closePath();
+    });
+    ctx.fillStyle = "#1a1420"; ctx.fill();
+    ctx.strokeStyle = "rgba(140,255,180,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.beginPath();
+    SHATTER_WEDGES.forEach(function (w, i) {
+      const a = w[0];
+      const r1 = 0.5 * R;
+      const r2 = (0.9 + 0.25 * Math.sin(t * 1.1 + i)) * R;
+      ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+    });
+    ctx.strokeStyle = "rgba(170,110,255,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 1.7);
+    ctx.beginPath();
+    ctx.ellipse(cx - 1.9 * R, cy + 0.9 * R, 0.32 * R, 0.12 * R, -0.3, 0, 6.283);
+    ctx.strokeStyle = "rgba(140,255,180,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+  }
+
+  const LT_PLATES = [["#2d3a40", [[-4, 0.2], [-2.2, -0.6], [-0.4, -0.5], [-0.6, 0.7], [-3.2, 0.9]]], ["#3b3228", [[-0.6, -0.5], [1.8, -0.3], [2.6, 0.2], [1.6, 0.8], [-0.5, 0.7]]], ["#26303a", [[1.8, -0.3], [3.4, 0.05], [2.6, 0.2]]]];
+  const LT_RIVETS = [[-3, 0.3], [-1.5, 0], [0.4, 0.1], [1.3, 0.3], [2.2, 0.1]];
+  const LT_JUNK = [[-6, -1.2], [-7.2, 0.4], [-5.1, 1.6], [-8.4, -0.5], [-6.6, 2.1], [-9.1, 1.2]];
+
+  function drawLiberTech() {
+    const s = Math.min(W, H) * 0.02;
+    const bx = wx(LIBERTECH.x, MAIN_PAR) - 6 * s;
+    const by = H * LIBERTECH.oy + Math.sin(t * 0.6) * 0.25 * s;
+    if (!onScreen(bx, s * 11)) return;
+    if (!mainlandOpened()) return;
+
+    const starX = bx + 4 * s, starY = by - 5 * s;
+    const sg = ctx.createRadialGradient(starX, starY, 0, starX, starY, 2 * s);
+    sg.addColorStop(0, "rgba(255,240,190,0.25)");
+    sg.addColorStop(1, "rgba(255,240,190,0)");
+    ctx.fillStyle = sg;
+    ctx.fillRect(starX - 2 * s, starY - 2 * s, 4 * s, 4 * s);
+    ctx.beginPath(); ctx.arc(starX, starY, 0.25 * s, 0, 6.283); ctx.fillStyle = "#fff6d8"; ctx.fill();
+
+    const sway = Math.sin(t * 0.8) * 0.12;
+    const P0 = [bx + 0.6 * s, by - 3.6 * s];
+    const P1 = [bx + (3.2 + sway) * s, by - 2.9 * s];
+    const P2 = [bx + (2.8 + sway) * s, by - 0.9 * s];
+    const P3 = [bx + 0.3 * s, by - 0.9 * s];
+
+    ctx.beginPath();
+    ctx.moveTo(starX, starY); ctx.lineTo(P1[0], P1[1]); ctx.lineTo(P0[0], P0[1]); ctx.closePath();
+    ctx.fillStyle = "rgba(255,230,160,0.07)"; ctx.fill();
+
+    ctx.beginPath(); ctx.moveTo(bx + 0.2 * s, by - 0.5 * s); ctx.lineTo(P0[0], P0[1]);
+    ctx.strokeStyle = "#8a8f92"; ctx.lineWidth = 1; ctx.stroke();
+
+    const sailG = ctx.createLinearGradient(P0[0], P0[1], P2[0], P2[1]);
+    sailG.addColorStop(0, "rgba(255,225,150,0.55)");
+    sailG.addColorStop(1, "rgba(120,220,210,0.25)");
+    ctx.beginPath();
+    ctx.moveTo(P0[0], P0[1]); ctx.lineTo(P1[0], P1[1]); ctx.lineTo(P2[0], P2[1]); ctx.lineTo(P3[0], P3[1]); ctx.closePath();
+    ctx.fillStyle = sailG; ctx.fill();
+
+    function lerp(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
+    for (let k = 1; k <= 3; k++) {
+      const a = lerp(P0, P3, k / 4), z = lerp(P1, P2, k / 4);
+      ctx.globalAlpha = Math.max(0, 0.2 + 0.25 * Math.sin(t * 2 + k));
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(z[0], z[1]);
+      ctx.strokeStyle = "#fff1c8"; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.lineCap = "round"; ctx.lineWidth = 0.6 * s;
+    ctx.strokeStyle = "rgba(120,240,220,0.18)";
+    ctx.beginPath(); ctx.moveTo(bx - 4 * s, by + 0.5 * s); ctx.lineTo(bx - 7.5 * s, by + 0.8 * s); ctx.stroke();
+
+    LT_PLATES.forEach(function (plate) {
+      const colour = plate[0], pts = plate[1];
+      ctx.beginPath();
+      ctx.moveTo(bx + pts[0][0] * s, by + pts[0][1] * s);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(bx + pts[i][0] * s, by + pts[i][1] * s);
+      ctx.closePath();
+      ctx.fillStyle = colour; ctx.fill();
+    });
+    ctx.beginPath();
+    LT_PLATES.forEach(function (plate) {
+      const pts = plate[1];
+      ctx.moveTo(bx + pts[0][0] * s, by + pts[0][1] * s);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(bx + pts[i][0] * s, by + pts[i][1] * s);
+      ctx.closePath();
+    });
+    ctx.strokeStyle = "rgba(120,220,210,0.45)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.beginPath();
+    LT_RIVETS.forEach(function (r) {
+      ctx.moveTo(bx + r[0] * s + 0.08 * s, by + r[1] * s);
+      ctx.arc(bx + r[0] * s, by + r[1] * s, 0.08 * s, 0, 6.283);
+    });
+    ctx.fillStyle = "#9fe8df"; ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(bx - 4 * s, by + 0.5 * s, (0.5 + 0.15 * Math.sin(t * 9)) * s, 0, 6.283);
+    ctx.fillStyle = "rgba(120,240,220,0.6)"; ctx.fill();
+
+    ctx.beginPath();
+    LT_JUNK.forEach(function (j, i) {
+      const jx = j[0], jy = j[1];
+      const jcx = bx + (jx + Math.sin(t * 0.4 + i) * 0.3) * s;
+      const jcy = by + (jy + Math.cos(t * 0.5 + i * 1.7) * 0.3) * s;
+      const a = t * 0.7 + i;
+      const r = 0.18 * s;
+      const angs = [a, a + Math.PI / 2, a + Math.PI, a + 3 * Math.PI / 2];
+      ctx.moveTo(jcx + Math.cos(angs[0]) * r, jcy + Math.sin(angs[0]) * r);
+      for (let k = 1; k < 4; k++) ctx.lineTo(jcx + Math.cos(angs[k]) * r, jcy + Math.sin(angs[k]) * r);
+      ctx.closePath();
+    });
+    ctx.globalAlpha = 0.7; ctx.fillStyle = "#6b7a80"; ctx.fill();
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+  }
+
+  const DAWN_COLOURS = [null, "#ff5a48", "#fff6d8", "#c77dff", "#9b2b2b"];
+
+  function drawFirstDawn() {
+    const R = Math.min(W, H) * 0.075;
+    const cx = wx(FIRST_DAWN.x, MAIN_PAR) - 2.8 * R;
+    const cy = H * FIRST_DAWN.oy + 0.9 * R;
+    if (!onScreen(cx, R * 3)) return;
+    if (!mainlandOpened()) return;
+
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 2.6 * R);
+    g.addColorStop(0, "rgba(255,190,110,0.16)");
+    g.addColorStop(0.6, "rgba(200,120,255,0.05)");
+    g.addColorStop(1, "rgba(200,120,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - 2.6 * R, cy - 2.6 * R, 5.2 * R, 5.2 * R);
+
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283);
+    ctx.strokeStyle = "rgba(245,208,107,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 0.82 * R, 0, 6.283);
+    ctx.strokeStyle = "rgba(245,208,107,0.3)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.beginPath();
+    for (let i = 0; i < 24; i++) {
+      const a = i / 24 * 6.283 + t * 0.08;
+      const r0 = i % 3 === 0 ? 0.84 * R : 0.88 * R;
+      const r1 = i % 3 === 0 ? 0.98 * R : 0.95 * R;
+      ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+    }
+    ctx.strokeStyle = "rgba(245,208,107,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+
+    const hy = cy + 0.35 * R;
+    ctx.globalAlpha = 0.45 + 0.15 * Math.sin(t * 0.6);
+    ctx.beginPath(); ctx.arc(cx, hy, 0.3 * R, Math.PI, 2 * Math.PI); ctx.closePath();
+    ctx.fillStyle = "rgba(255,200,120,0.6)"; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 0.5 * R, hy); ctx.lineTo(cx + 0.5 * R, hy);
+    ctx.strokeStyle = "rgba(245,208,107,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+
+    const p = [];
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + k * 2 * Math.PI / 5 - t * 0.05;
+      p.push([cx + Math.cos(a) * 0.78 * R, cy + Math.sin(a) * 0.78 * R]);
+    }
+    ctx.beginPath();
+    [[1, 3], [2, 4], [4, 1]].forEach(function (e) {
+      ctx.moveTo(p[e[0]][0], p[e[0]][1]); ctx.lineTo(p[e[1]][0], p[e[1]][1]);
+    });
+    ctx.strokeStyle = "rgba(245,208,107,0.6)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.setLineDash([R * 0.06, R * 0.05]);
+    ctx.beginPath();
+    [[0, 2], [3, 0]].forEach(function (e) {
+      ctx.moveTo(p[e[0]][0], p[e[0]][1]); ctx.lineTo(p[e[1]][0], p[e[1]][1]);
+    });
+    ctx.strokeStyle = "rgba(245,208,107,0.35)"; ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath(); ctx.arc(p[0][0], p[0][1], 0.06 * R, 0, 6.283);
+    ctx.strokeStyle = "rgba(245,208,107,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+    for (let k = 1; k < 5; k++) {
+      ctx.beginPath(); ctx.arc(p[k][0], p[k][1], 0.05 * R, 0, 6.283);
+      ctx.fillStyle = DAWN_COLOURS[k]; ctx.fill();
+    }
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+  }
+
+  const DA_MOTE_X = [-1.4, -0.9, -0.4, 0.1, 0.5, 0.9, 1.3, -1.1];
+
+  function drawDivineAccord() {
+    const R = Math.min(W, H) * 0.06;
+    const cx = wx(DIVINE_ACCORD.x, MAIN_PAR) - 2.6 * R;
+    const cy = H * DIVINE_ACCORD.oy;
+    if (!onScreen(cx, R * 4)) return;
+    if (!mainlandOpened()) return;
+
+    const rg = ctx.createLinearGradient(0, cy, 0, H);
+    rg.addColorStop(0, "rgba(255,244,214,0.16)");
+    rg.addColorStop(1, "rgba(255,244,214,0)");
+    ctx.fillStyle = rg;
+    for (let k = 0; k < 5; k++) {
+      const bottomX = cx + (k - 2) * 1.4 * R;
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 0.5 + k * 1.9);
+      ctx.beginPath();
+      ctx.moveTo(cx - 0.08 * R, cy);
+      ctx.lineTo(cx + 0.08 * R, cy);
+      ctx.lineTo(bottomX + 0.5 * R, H);
+      ctx.lineTo(bottomX - 0.5 * R, H);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 2.2 * R);
+    g.addColorStop(0, "rgba(255,246,220,0.35)");
+    g.addColorStop(0.4, "rgba(255,236,190,0.1)");
+    g.addColorStop(1, "rgba(255,236,190,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - 2.2 * R, cy - 2.2 * R, 4.4 * R, 4.4 * R);
+
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    [-1, 1].forEach(function (sgn) {
+      for (let j = 0; j < 4; j++) {
+        const flap = Math.sin(t * 0.9) * 0.06 * R * (j + 1);
+        ctx.moveTo(cx + sgn * 0.2 * R, cy - 0.2 * R);
+        ctx.quadraticCurveTo(
+          cx + sgn * (0.8 + 0.2 * j) * R, cy - (1.1 - 0.3 * j) * R,
+          cx + sgn * (1.3 + 0.35 * j) * R, cy + (-0.9 + 0.45 * j) * R + flap
+        );
+      }
+    });
+    ctx.strokeStyle = "rgba(255,246,225,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+    ctx.beginPath(); ctx.ellipse(cx, cy - 0.9 * R, 0.55 * R, 0.16 * R, 0, 0, 6.283);
+    ctx.strokeStyle = "rgba(255,226,150,0.8)"; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(cx, cy, (0.18 + 0.03 * Math.sin(t * 1.2)) * R, 0, 6.283);
+    ctx.fillStyle = "#fffaf0"; ctx.fill();
+
+    for (let i = 0; i < 8; i++) {
+      const ph = (t * 0.08 + i * 0.125) % 1;
+      const y = cy + 3.2 * R - ph * 3.4 * R;
+      const x = cx + DA_MOTE_X[i] * R + Math.sin(t * 0.9 + i) * 0.15 * R;
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.7;
+      ctx.beginPath(); ctx.arc(x, y, 0.04 * R, 0, 6.283); ctx.fillStyle = "#fff1c8"; ctx.fill();
+    }
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
+  }
+
+  const GORE_SPIRES = [[-2.4, 0.46, 1.6, 0.45], [0, 0.22, 2.2, 0.6], [2.0, 0.38, 1.8, -0.5], [-1.0, 0.58, 1.2, -0.3]];
+  const GORE_SPARK_DX = [-1.2, -0.5, 0.3, 0.9, 1.5];
+
+  function drawGoreLegion() {
+    const s = Math.min(W, H) * 0.05;
+    const bx = wx(GORE_LEGION.x, MAIN_PAR) - 3.2 * s;
+    if (!onScreen(bx, s * 6)) return;
+    if (!mainlandOpened()) return;
+
+    function spireX(i, dx, tw, f) {
+      return bx + dx * s + Math.sin(f * 4.0 + i * 1.3) * tw * s;
+    }
+    function spireY(top, f) {
+      return H - f * (H - H * top);
+    }
+    function edges(i, spire, k) {
+      const dx = spire[0], top = spire[1], w = spire[2], tw = spire[3];
+      const f = k / 8;
+      const y = spireY(top, f);
+      const centre = spireX(i, dx, tw, f);
+      const hw = w * s * Math.pow(1 - f, 1.0) + 0.04 * s;
+      const jag = k % 2 ? 0.12 * w * s * (1 - f) : 0;
+      const lx = centre - hw - (k % 2 ? jag : 0);
+      const rx = centre + hw + (k % 2 ? 0 : 0.12 * w * s * (1 - f));
+      return { lx: lx, rx: rx, y: y, centre: centre };
+    }
+
+    ctx.beginPath();
+    GORE_SPIRES.forEach(function (spire, i) {
+      const pts = [];
+      for (let k = 0; k <= 8; k++) pts.push(edges(i, spire, k));
+      ctx.moveTo(pts[0].lx, pts[0].y);
+      for (let k = 1; k <= 8; k++) ctx.lineTo(pts[k].lx, pts[k].y);
+      for (let k = 8; k >= 0; k--) ctx.lineTo(pts[k].rx, pts[k].y);
+      ctx.closePath();
+    });
+    ctx.fillStyle = "#1e1014"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,70,50,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.beginPath();
+    GORE_SPIRES.forEach(function (spire, i) {
+      const pts = [];
+      for (let k = 0; k <= 8; k++) pts.push(edges(i, spire, k));
+      ctx.moveTo(pts[0].rx, pts[0].y);
+      for (let k = 1; k <= 8; k++) ctx.lineTo(pts[k].rx, pts[k].y);
+    });
+    ctx.strokeStyle = "rgba(255,120,90,0.22)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+    GORE_SPIRES.forEach(function (spire, i) {
+      const dx = spire[0], top = spire[1], tw = spire[3];
+      ctx.beginPath();
+      for (let n = 0; n <= 6; n++) {
+        const f = 0.15 + (n / 6) * (0.9 - 0.15);
+        const x = spireX(i, dx, tw, f);
+        const y = spireY(top, f);
+        if (n === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t * 2.1 + i * 1.7);
+      ctx.strokeStyle = "rgba(255,60,40,1)"; ctx.lineWidth = 1.2; ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+
+    const spire0 = GORE_SPIRES[0];
+    const gx = spireX(0, spire0[0], spire0[3], 0.72);
+    const gy = spireY(spire0[1], 0.72);
+    const gAng = t * 0.6;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 0.35 * s, 0, 6.283);
+    for (let n = 0; n < 8; n++) {
+      const a = gAng + n * Math.PI / 4;
+      ctx.moveTo(gx + Math.cos(a) * 0.35 * s, gy + Math.sin(a) * 0.35 * s);
+      ctx.lineTo(gx + Math.cos(a) * 0.5 * s, gy + Math.sin(a) * 0.5 * s);
+    }
+    ctx.strokeStyle = "rgba(200,120,90,0.5)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+    const spire1 = GORE_SPIRES[1];
+    const kx = spireX(1, spire1[0], spire1[3], 1);
+    const ky = H * 0.22;
+    const p = 1 + 0.15 * Math.sin(t * 3);
+    const cg = ctx.createRadialGradient(kx, ky, 0, kx, ky, 1.6 * s * p);
+    cg.addColorStop(0, "rgba(255,70,40,0.35)");
+    cg.addColorStop(1, "rgba(255,70,40,0)");
+    ctx.fillStyle = cg;
+    ctx.fillRect(kx - 1.6 * s * p, ky - 1.6 * s * p, 3.2 * s * p, 3.2 * s * p);
+    ctx.beginPath(); ctx.arc(kx, ky, 0.25 * s * p, 0, 6.283); ctx.fillStyle = "#ff4a2a"; ctx.fill();
+
+    for (let i = 0; i < 5; i++) {
+      const ph = (t * 0.5 + i * 0.2) % 1;
+      const x = kx + GORE_SPARK_DX[i] * s * ph;
+      const y = ky + ph * ph * 2.5 * s;
+      ctx.globalAlpha = 1 - ph;
+      ctx.beginPath(); ctx.arc(x, y, 0.05 * s, 0, 6.283); ctx.fillStyle = "#ffb070"; ctx.fill();
+    }
+
+    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.setLineDash([]);
   }
 
   function drawBand(list, par, colour, alpha) {
@@ -1149,6 +1549,7 @@ window.World = (function () {
       drawWatcher();
       drawRedStar();
       drawNephilim(); drawAdminTear(); drawVikings();
+      drawShattered(); drawLiberTech(); drawFirstDawn(); drawDivineAccord(); drawGoreLegion();
       drawRex();
       drawBand(city.far, 0.30, "#161d21", 0.5);
       drawBand(city.mid, 0.46, "#182025", 0.78);

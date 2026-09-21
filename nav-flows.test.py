@@ -684,6 +684,34 @@ def flow_bridge_depths(browser, base):
     ctx.close()
 
 
+def flow_land_depths(browser, base):
+    """Mainland beacon opens the Shattered, LiberTech, the Sigil of the First Dawn, the Divine Accord and the Gore-Engine Legion, each pinned where it was placed."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base, "#gate-world")
+    page.keyboard.press("Escape")       # skip the cutscene if it is playing
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-land', 1, 'The Mainland');
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.id.startsWith('bnote-land-'));
+    }""")
+    ids = {n["id"] for n in report}
+    check("landdepths: the shattered, libertech, dawn, accord and gore spawn",
+          ids == {"bnote-land-shattered", "bnote-land-libertech", "bnote-land-dawn", "bnote-land-accord", "bnote-land-gore"}, ids)
+
+    by_id = {n["id"]: n for n in report}
+    PINNED = {"shattered": (58400, 0.30), "libertech": (62300, 0.26), "dawn": (65800, 0.20), "accord": (73400, 0.22), "gore": (77900, 0.30)}
+    for name, (x, oy) in PINNED.items():
+        n = by_id["bnote-land-" + name]
+        check(f"landdepths: {name} sits where it was measured",
+              abs(n["x"] - x) < 0.5 and abs(n["oy"] - oy) < 1e-9, (n["x"], n["oy"]))
+    ctx.close()
+
+
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
@@ -729,7 +757,7 @@ FLOWS = {
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
-    "watcher": flow_watcher, "bridge": flow_bridge_depths, "links": flow_links,
+    "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links,
 }
 
 

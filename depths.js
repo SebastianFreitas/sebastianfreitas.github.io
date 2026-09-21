@@ -625,6 +625,85 @@ window.Depths = (function () {
       `
         }
       ]
+    },
+    // The Mainland beacon opens the factions that shape it, each pinned out in the empty space.
+    {
+      root: "bnote-land",
+      theme: "void",
+      size: 0.6,
+      layout: {
+        shape: "branch",
+        start: [0.14, -0.18],
+        step: [0.16, 0.13],
+        fan: { dy: 0.14, gap: 0.12 }
+      },
+      nodes: [
+        {
+          id: "bnote-land-shattered",
+          after: ["bnote-land"],
+          at: [58400, 0.30],
+          name: "The Shattered",
+          sub: "Seek the unspoken",
+          html: `
+        <p class="tag">Runaways · The western fringe</p>
+        <h3>The Shattered</h3>
+        <p class="body">They were the Mainland's scholars, until one of them reached too deep into the chaos and something reached back. The affliction took the whole circle. Now the Mainland's forces hunt them as runaways.</p>
+        <p class="body">They travel in stolen ships, on captured eldritch mounts and through portals torn open by ritual. The Abyssal Scholars still take notes. The Void Cultists pray to the dark. The Fragmented Minds came back remade, and they hear the Outsiders.</p>
+      `
+        },
+        {
+          id: "bnote-land-libertech",
+          after: ["bnote-land"],
+          at: [62300, 0.26],
+          name: "LiberTech",
+          sub: "Stars guide us",
+          html: `
+        <p class="tag">Starforgers · Founded by Elara Starshade</p>
+        <h3>LiberTech</h3>
+        <p class="body">Born among discarded tech and debris, they build Starcrafts that run on starlight and stubbornness, first to carry people away from the Sigil's dominion and now to explore the Far Realms.</p>
+        <p class="body">Nothing is junk to them. They honour whoever built a machine and defend the machine itself: a conscious machine cannot be made to obey. Some are Technomorphs, rebuilt with their own salvage.</p>
+      `
+        },
+        {
+          id: "bnote-land-dawn",
+          after: ["bnote-land"],
+          at: [65800, 0.20],
+          name: "The Sigil of the First Dawn",
+          sub: "Mordrial's vision guides",
+          html: `
+        <p class="tag">Nobility · Followers of Mordrial the Fallen</p>
+        <h3>The Sigil of the First Dawn</h3>
+        <p class="body">The Mainland's oldest money and deepest arcana. They revere the first warlock, who froze the elder evils in time and space, and they rule the greatest metropolis known, home to a quindecillion souls.</p>
+        <p class="body">Their galleons sail the ethereal winds on sails that drink magic and demand sacrifice. Serve them well and you may rise until you are demon-born, strong enough to fight the demon-born yourself.</p>
+      `
+        },
+        {
+          id: "bnote-land-accord",
+          after: ["bnote-land"],
+          at: [73400, 0.22],
+          name: "The Divine Accord",
+          sub: "In life's embrace, we find strength",
+          html: `
+        <p class="tag">Pacifists · Warden: Aelius Luxent, the Third Warlock</p>
+        <h3>The Divine Accord</h3>
+        <p class="body">The left hand of Mordrial chose the slow road. His peers took their power from darkness; Aelius took his from faith in something greater, and became the first cleric.</p>
+        <p class="body">The Accord heals, shelters and feeds whoever needs it. Its scripture, the Luminous Path, teaches that even the Five were born of flesh, and that the power to sustain life lives in everyone.</p>
+      `
+        },
+        {
+          id: "bnote-land-gore",
+          after: ["bnote-land"],
+          at: [77900, 0.30],
+          name: "The Gore-Engine Legion",
+          sub: "Destruction before creation",
+          html: `
+        <p class="tag">War-machines · Architect: Velindra, the Fourth Warlock</p>
+        <h3>The Gore-Engine Legion</h3>
+        <p class="body">Velindra forced a pact on the Queen of Chaos and fused the demon's corrupted arcana with cold machinery. Her twisted spires rise in the corners of the Mainland.</p>
+        <p class="body">From them walk the war-machines that stalk its battlefields, and the hulls of the Harrowhammer Armada. Her creed is controlled chaos: destruction must come before creation.</p>
+      `
+        }
+      ]
     }
   ];
 
