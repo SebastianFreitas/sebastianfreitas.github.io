@@ -460,14 +460,20 @@ window.World = (function () {
     if (!onScreen(x, R * 3.2)) return;
     const y = H * 0.21;
     const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 3.1);
-    g.addColorStop(0, "rgba(245,208,107,0.09)");
-    g.addColorStop(0.35, "rgba(200,150,90,0.035)");
-    g.addColorStop(1, "rgba(245,208,107,0)");
+    g.addColorStop(0, "rgba(226,226,218,0.08)");
+    g.addColorStop(0.35, "rgba(170,170,166,0.03)");
+    g.addColorStop(1, "rgba(226,226,218,0)");
     ctx.fillStyle = g; ctx.fillRect(x - R * 3.2, y - R * 3.2, R * 6.4, R * 6.4);
     const d = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, R * 0.1, x, y, R);
-    d.addColorStop(0, "#e2c887"); d.addColorStop(0.72, "#b28c4c"); d.addColorStop(1, "#6b4f28");
+    d.addColorStop(0, "#dcdbd4"); d.addColorStop(0.72, "#a7a6a0"); d.addColorStop(1, "#5c5b58");
     ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
-    faded("bnote-watcher-serus", () => drawSerus(x, y, R));
+    const cx = x + R * 0.05 * Math.cos(t * 0.11), cy = y + R * 0.05 * Math.sin(t * 0.13);
+    const rr = R * 1.32 * (1 + 0.012 * Math.sin(t * 0.3));
+    ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 6.283);
+    ctx.strokeStyle = "rgba(225,225,218,0.07)"; ctx.lineWidth = R * 0.1; ctx.stroke();
+    ctx.strokeStyle = "rgba(235,235,228,0.22)"; ctx.lineWidth = Math.max(1, R * 0.006); ctx.stroke();
+    ctx.lineWidth = 1;
+    drawSerus(x, y, R);
   }
 
   function drawSerus(x, y, R) {
@@ -486,16 +492,33 @@ window.World = (function () {
       ctx.lineWidth = R * (0.26 - 0.22 * f);
       ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(150,100,80,0.35)"; setA(1); ctx.lineWidth = R * 0.012;
-    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i <= N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
-    const hx = pts[0][0], hy = pts[0][1];
-    const dx = pts[1][0] - hx, dy = pts[1][1] - hy, dl = Math.hypot(dx, dy) || 1;
-    const nx = -dy / dl, ny = dx / dl;
-    ctx.fillStyle = "#ff7a3a"; setA(0.5 + 0.3 * Math.sin(t * 0.5));
-    ctx.beginPath(); ctx.arc(hx + nx * R * 0.06, hy + ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx - nx * R * 0.06, hy - ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
+    const a = depthAlpha("bnote-watcher-serus");
+    if (a > 0) {
+      fade = a;
+      ctx.strokeStyle = "rgba(150,100,80,0.35)"; setA(1); ctx.lineWidth = R * 0.012;
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i <= N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(150,100,80,0.3)"; setA(1); ctx.lineWidth = Math.max(1, R * 0.006);
+      ctx.beginPath();
+      for (let i = 4; i < N; i += 4) {
+        const f = pts[i][2];
+        const dx2 = pts[i + 1][0] - pts[i - 1][0], dy2 = pts[i + 1][1] - pts[i - 1][1];
+        const dl2 = Math.hypot(dx2, dy2) || 1;
+        const nx2 = -dy2 / dl2, ny2 = dx2 / dl2;
+        const hw = R * (0.26 - 0.22 * f) * 0.35;
+        ctx.moveTo(pts[i][0] - nx2 * hw, pts[i][1] - ny2 * hw);
+        ctx.lineTo(pts[i][0] + nx2 * hw, pts[i][1] + ny2 * hw);
+      }
+      ctx.stroke();
+      const hx = pts[0][0], hy = pts[0][1];
+      const dx = pts[1][0] - hx, dy = pts[1][1] - hy, dl = Math.hypot(dx, dy) || 1;
+      const nx = -dy / dl, ny = dx / dl;
+      ctx.fillStyle = "#ff7a3a"; setA(0.5 + 0.3 * Math.sin(t * 0.5));
+      ctx.beginPath(); ctx.arc(hx + nx * R * 0.06, hy + ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx - nx * R * 0.06, hy - ny * R * 0.06, R * 0.018, 0, 6.283); ctx.fill();
+      fade = 1;
+    }
     ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt";
   }
 
