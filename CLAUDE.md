@@ -46,6 +46,19 @@ Every delegation to the implementer must contain:
    <flows>`. It runs its own server and exits. Only the back/forward cache
    still needs a manual check.
 
+## Art style
+
+Every drawn place (Rex kingdoms, Mainland factions, anything new) uses one
+style. Reference: the Bone Spire in `rexart-surface.js` and the Titans cave
+in `rexart-deep.js`.
+
+- Stylised 2D silhouettes, flat palette fills.
+- Light from the left. Shadows are hard-edged flat shapes (a `litShade`
+  split, roughly the right 70% of each volume), never gradients.
+- No rim lines, outlines or brick lines on buildings.
+- Soft glow only for things that emit light (lanterns, portals, flames).
+- Places are proper buildings, not symbols or sigils.
+
 ## Commands
 
 - **Build:** none. No framework, no bundler, no npm.
