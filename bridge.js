@@ -76,8 +76,9 @@
 
   /* ---- the other setting: Game Dev sector -----------------
      Same ship, same bridge deck, a different span. Four bodies,
-     left to right, one per shipped project. No lore geography —
-     just placeholders you can fly a line through. ---- */
+     left to right, one per shipped project — beacons like the
+     lamps on the span, filed the same way. Some of them open out
+     into further nodes once reached (see depths.js). ---- */
   const GD_SLOT = SLOT;
   const gdAt = i => i * GD_SLOT;
   const GD_LAND = {
@@ -91,13 +92,13 @@
   const GD_BOUNDS = { min: gdAt(0.6), max: gdAt(49) };
 
   const PLANETS = [
-    { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7,
-      theme: "zero",       size: 1.00, name: "Sector Zero", sub: "Horror — the console is the weapon" },
-    { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7,
+    { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7, xp: 1,
+      theme: "zero",       size: 1.25, name: "Sector Zero", sub: "Horror — the console is the weapon" },
+    { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7, xp: 1,
       theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled loop" },
-    { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7,
+    { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7, xp: 1,
       theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle — light carries momentum" },
-    { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7,
+    { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7, xp: 1,
       theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "30 levels on the HeavyLight base" },
   ];
   PLANETS.forEach((m, i) => {
@@ -108,6 +109,9 @@
   });
   if (!window.Planet) {
     console.error("planet.js did not load — game dev sector has nothing to draw");
+  }
+  if (!window.Depths) {
+    console.error("depths.js did not load — the sector zero cluster will not open");
   }
 
   /* ---- canvas ---- */
@@ -252,7 +256,6 @@
   let sceneMode = "void";                 // "void" | "gamedev"
   let savedVoidCamX = LAND.bridge;
   let savedGDCamX = GD_LAND.entry;
-  const visitedPlanets = new Set();       // session-only "read" state for planets
   const activeMarks = () => sceneMode === "gamedev" ? PLANETS : MARKS;
 
   /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
@@ -404,25 +407,21 @@
     el2.classList.toggle("from-left", !right);
   }
 
-  /* claiming fires when the voidship reaches the beacon (or a planet,
-     in the game dev sector — same contact, no XP attached to those) */
+  /* claiming fires when the voidship reaches the beacon — both sectors
+     file the same way. In the game dev sector, filing one can bring
+     more into range. */
   function selectMark(m) {
     begin();
     hintDone("beacon");
+    if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
+    if (window.XP) {
+      const p = markScreen(m), r = hostBox();
+      XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
+    }
     if (sceneMode === "gamedev") {
-      if (!visitedPlanets.has(m.id)) {
-        m.pop = 1;
-        visitedPlanets.add(m.id);
-        const dot = track && track.querySelector(`[data-mark="${m.id}"]`);
-        if (dot) dot.classList.add("read");
-      }
-      pushLog(`docking: ${m.name.toLowerCase()}`, "good");
+      pushLog(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
+      revealDepths(true);
     } else {
-      if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
-      if (window.XP) {
-        const p = markScreen(m), r = hostBox();
-        XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
-      }
       pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     }
     activeMark = m;
@@ -584,7 +583,8 @@
 
   host.addEventListener("pointerdown", e => {
     if (frozen || xswitch || document.body.classList.contains("site-frozen")) return;
-    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bcn")) return;
+    // note panels scroll and hold clips, so a press inside one belongs to the panel, not a burn
+    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bcn, .bnote")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -663,9 +663,7 @@
       d.style.left = ((m.cam - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
       d.title = m.name;
       d.dataset.mark = m.id;
-      const done = sceneMode === "gamedev"
-        ? visitedPlanets.has(m.id)
-        : !!(window.XP && XP.has("beacon-" + m.id));
+      const done = !!(window.XP && XP.has("beacon-" + m.id));
       if (done) d.classList.add("read");
       track.appendChild(d);
     }
@@ -686,7 +684,7 @@
     });
   }
   document.addEventListener("xp:award", e => {
-    if (!track || sceneMode !== "void" || !/^beacon-/.test(e.detail.id)) return;
+    if (!track || !/^beacon-/.test(e.detail.id)) return;
     const id = e.detail.id.replace(/^beacon-/, "");
     const d = track.querySelector(`[data-mark="${id}"]`);
     if (d) d.classList.add("read");
@@ -723,7 +721,8 @@
         Planet.draw(ctx, p.x, p.y, {
           t, phase: m.phase, alpha: m.vis,
           active: activeMark === m, hover: hoverMark === m,
-          visited: visitedPlanets.has(m.id),
+          claimed: !!(window.XP && XP.has("beacon-" + m.id)),
+          xp: m.xp,
           theme: m.theme, size: m.size, pop: m.pop, label: m.name,
         });
       } else if (!gd) {
@@ -1079,6 +1078,68 @@
     logQueue.push({ text, kind: kind || "" });
     if (logQueue.length > LOG_MAX + 2) logQueue.splice(0, logQueue.length - (LOG_MAX + 2));
   }
+
+  /* ---- the depths -------------------------------------------
+     Some nodes are not on the map when you arrive. They come into
+     range when the ones they hang off have been filed — one node,
+     or several wired together. depths.js holds the graph; all this
+     does is place what the graph says has been earned.
+     State is the XP ledger, so it survives a reload for free. ---- */
+  const spawned = new Set();
+
+  function spawnDepth(def, animate) {
+    const cam = GD_LAND[def.camKey];
+    if (cam == null) return false;
+    const node = {
+      id: def.id, cam, off: def.off, oy: def.oy, par: def.par,
+      theme: def.theme, size: def.size, xp: def.xp,
+      name: def.name, sub: def.sub,
+    };
+    node.x = cam + (def.off * CAM.viewUnits) / def.par;
+    node.phase = PLANETS.length * 1.7 + 4;
+    node.vis = 0;
+    node.pop = animate ? 1 : 0;
+    PLANETS.push(node);
+
+    /* the panel is built here rather than sitting in index.html,
+       so the markup can't be read ahead of being earned */
+    const anchor = document.getElementById("bnote-planet-zero");
+    if (anchor && anchor.parentNode && !document.getElementById(def.id)) {
+      const aside = document.createElement("aside");
+      aside.className = "bnote deep";
+      aside.id = def.id;
+      aside.innerHTML = def.html;
+      anchor.parentNode.appendChild(aside);
+      noteEls[def.id] = aside;
+    }
+    spawned.add(def.id);
+    return true;
+  }
+
+  /* run to a fixed point: a wave can satisfy the next one's
+     prerequisites, which matters on a reload where the whole ledger
+     is already there and every wave lands in the same pass */
+  function revealDepths(animate) {
+    if (!window.Depths) return;
+    const defs = Depths.nodes();
+    let added = 0, moved = true;
+    while (moved) {
+      moved = false;
+      for (const d of defs) {
+        if (spawned.has(d.id) || document.getElementById(d.id)) continue;
+        if (!window.XP) return;
+        if (!d.after.every(id => XP.has("beacon-" + id))) continue;
+        if (spawnDepth(d, animate)) { moved = true; added++; }
+      }
+    }
+    if (!added) return;
+    rebuildTrack();
+    if (animate) pushLog(`signal resolved — ${added} contact${added > 1 ? "s" : ""} in range`, "good");
+  }
+
+  revealDepths(false);
+  addEventListener("pageshow", e => { if (e.persisted) revealDepths(false); });
+  addEventListener("storage", () => revealDepths(false));
 
   function commitLog(entry) {
     /* the tiles flash with the line, not when it was queued */
@@ -1659,9 +1720,7 @@
                        : (futureNow > 0.45 ? "future" : "void"),
         marks: activeMarks().map(m => ({
           id: m.id, cam: m.cam, oy: m.oy, name: m.name,
-          claimed: sceneMode === "gamedev"
-            ? visitedPlanets.has(m.id)
-            : !!(window.XP && XP.has("beacon-" + m.id)),
+          claimed: !!(window.XP && XP.has("beacon-" + m.id)),
         })),
         ship: st,
       });

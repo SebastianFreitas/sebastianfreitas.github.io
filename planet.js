@@ -7,7 +7,7 @@
 
      Planet.draw(ctx, x, y, opts)
 
-   opts: { t, phase, alpha, active, hover, visited, theme, size,
+   opts: { t, phase, alpha, active, hover, claimed, xp, theme, size,
            pop, label }
    =========================================================== */
 
@@ -15,6 +15,7 @@ window.Planet = (function () {
 
   const THEMES = {
     zero:       { core: ["#173323", "#070d0a"], rim: "120,255,150", ring: "90,140,110", band: "40,70,50",  hasRing: false },
+    zeroDeep:   { core: ["#0f2418", "#05090a"], rim: "96,214,128", ring: "70,116,88", band: "32,58,42", hasRing: false },
     voidscape:  { core: ["#2c1440", "#100819"], rim: "196,132,240", ring: "150,96,190", band: "70,42,96",  hasRing: false },
     heavylight: { core: ["#f7d97a", "#8a651f"], rim: "255,247,214", ring: "245,208,107", band: "205,168,90", hasRing: true  },
     conclusus:  { core: ["#a9cdd4", "#28454c"], rim: "224,240,240", ring: "143,176,184", band: "245,208,107", hasRing: true  },
@@ -29,8 +30,15 @@ window.Planet = (function () {
     const th = THEMES[o.theme] || THEMES.zero;
     const active = !!o.active, hover = !!o.hover;
     const size = o.size || 1;
+    /* the body scales all the way down, the type does not — a 0.66
+       node would otherwise label itself at 7px */
+    const tsize = Math.max(size, 0.9);
     const R = 16 * size * (hover ? 1.12 : 1) * (active ? 1.18 : 1);
     const yy = y + Math.sin(t * 0.5 + phase) * 3;
+
+    /* once it has been filed there is nothing left to take from it —
+       same read as a claimed lamp, dimmer body, no pull ring */
+    const claimed = !!o.claimed;
 
     // halo, so it separates from the starfield behind it
     const glow = ctx.createRadialGradient(x, yy, 0, x, yy, R * 3.4);
@@ -78,17 +86,26 @@ window.Planet = (function () {
       ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.arc(x, yy, R * 1.7, 0, 6.283); ctx.stroke();
     }
-    if (!active) {
+    if (!active && !claimed) {
       const pulse = (t * 0.4 + phase * 0.2) % 1;
       ctx.strokeStyle = `rgba(${th.rim},${(1 - pulse) * 0.22 * A})`;
       ctx.beginPath(); ctx.arc(x, yy, R + pulse * 34, 0, 6.283); ctx.stroke();
     }
 
-    if (o.label && (hover || active || !o.visited)) {
-      ctx.font = `500 ${Math.round(10 * size)}px "IBM Plex Mono", monospace`;
+    if (o.label && (hover || active || !o.claimed)) {
+      ctx.font = `500 ${Math.round(10 * tsize)}px "IBM Plex Mono", monospace`;
       ctx.textAlign = "center"; ctx.textBaseline = "top";
-      ctx.fillStyle = `rgba(198,204,198,${(hover ? 0.92 : 0.48) * A})`;
+      ctx.fillStyle = `rgba(198,204,198,${(hover ? 0.92 : (claimed ? 0.3 : 0.48)) * A})`;
       ctx.fillText(o.label.toUpperCase(), x, yy + R * 1.85);
+      ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+    }
+
+    // what it's worth, until it's been taken — same contract as lamp.js
+    if (!claimed && o.xp) {
+      ctx.font = `600 ${Math.round(11 * tsize)}px "IBM Plex Mono", monospace`;
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillStyle = `rgba(${th.rim},${0.62 * A})`;
+      ctx.fillText("+" + o.xp, x + R * 1.25, yy - R * 1.15);
       ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
     }
 

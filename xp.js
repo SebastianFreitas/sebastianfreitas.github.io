@@ -13,7 +13,7 @@ window.XP = (function () {
   const KEY = "arcanis.profile.v1";
   /* every level the site currently has to give — the underline under the
      top bar reads against this, so raising it is a one-line change */
-  const TOTAL = 20;
+  const TOTAL = 100;
 
   const FIRST = ["Unfiled", "Provisional", "Uncounted", "Late", "Second",
                  "Marginal", "Absent", "Recovered", "Partial", "Quiet"];

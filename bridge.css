@@ -258,6 +258,51 @@
   border-bottom: 1px solid rgba(245,208,107,0.4); padding-bottom: 3px;
 }
 .bnote a:hover { color: #fff; border-color: #fff; }
+/* ---- deep notes: the nodes that unfold around a project ----
+   These carry the whole of a case page rather than a teaser, so they
+   are wider, they scroll, and they hold a clip. Everything else about
+   them is a .bnote. */
+.bnote.deep {
+  width: min(32rem, 40vw);
+  max-height: min(62vh, 34rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(198,204,198,0.2) transparent;
+}
+.bnote.deep::-webkit-scrollbar { width: 6px; }
+.bnote.deep::-webkit-scrollbar-thumb { background: rgba(198,204,198,0.2); }
+.bnote .sub {
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--lamp);
+  margin: 1.4rem 0 0.6rem;
+}
+/* a sub-heading directly under the title doesn't need the 1.4rem
+   it uses to separate itself from the section above it */
+.bnote h3 + .sub { margin-top: 0; }
+.bnote .pts {
+  margin: 0 0 1.1rem; padding-left: 1.1rem;
+  font-size: 0.84rem; line-height: 1.6; color: var(--sage);
+}
+.bnote .pts li { margin: 0 0 0.4rem; }
+/* commands are the subject of half this prose — they should read as
+   commands, not as prose that lost its font */
+.bnote code {
+  font-family: var(--mono); font-size: 0.92em;
+  color: var(--lamp); background: rgba(245,208,107,0.08);
+  padding: 0 0.28em; border-radius: 2px;
+}
+/* the clip is opt-in: preload="none" in the markup, so nothing is
+   fetched or decoded until it is actually asked for */
+.bnote .clipbox { margin: 0 0 1.1rem; }
+.bnote .clipbox .clip {
+  display: block; width: 100%; height: auto;
+  background: #05090a; border: 1px solid rgba(198,204,198,0.12);
+}
+.bnote .clipbox figcaption {
+  font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
+  letter-spacing: 0.06em; color: var(--sage-dim); margin: 0.5rem 0 0;
+}
 /* ---- scroll cue ---- */
 .bridge-scroll {
   position: absolute; z-index: 12;
@@ -467,6 +512,9 @@ footer .rights {
     bottom: calc(var(--hud-floor) + var(--span-h) + 0.6rem) !important;
     width: auto !important;
   }
+  /* the sheet already owns the width down here; deep notes only need
+     the height cap relaxed so the clip is not squeezed to a sliver */
+  .bnote.deep { width: auto !important; max-height: 52vh; }
 }
 /* burning the voidship */
 .bridge-hero { cursor: crosshair; }
@@ -724,6 +772,8 @@ html.genesis-on .topbar {
     bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem) !important;
     max-height: 8rem; overflow: auto;
   }
+  /* 8rem is a teaser's height; a deep note needs room for a clip */
+  .bnote.deep { max-height: 15rem; }
 
   /* the setting bar folds into a gear and drops down from it */
   #bridge-modes {
