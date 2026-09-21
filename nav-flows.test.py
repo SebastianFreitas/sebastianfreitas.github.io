@@ -557,7 +557,17 @@ def flow_depths(browser, base):
       return window.depthsReport();
     }""")
     check("depths: all 18 nodes spawn", len(report) == 18, len(report))
-    check("depths: nodes stay in frame",
+    bounds_and_overlap_checks("depths", report)
+
+    errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e
+              and "net::" not in e]
+    check("depths: no console errors", not errors, errors)
+    ctx.close()
+
+
+def bounds_and_overlap_checks(label, report):
+    """Shared with flow_depths: nodes stay in frame and don't overlap within a cluster."""
+    check(f"{label}: nodes stay in frame",
           all(-0.44 <= n["off"] <= 0.44 and 0.16 <= n["oy"] <= 0.66 for n in report), report)
 
     overlaps = []
@@ -568,11 +578,70 @@ def flow_depths(browser, base):
             dist = ((a["off"] - b["off"]) ** 2 + ((a["oy"] - b["oy"]) * 0.56) ** 2) ** 0.5
             if dist < 0.06:
                 overlaps.append((a["id"], b["id"], dist))
-    check("depths: no two nodes of a cluster overlap", not overlaps, overlaps)
+    check(f"{label}: no two nodes of a cluster overlap", not overlaps, overlaps)
 
-    errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e
-              and "net::" not in e]
-    check("depths: no console errors", not errors, errors)
+
+def flow_rex(browser, base):
+    """Claiming Rex spawns its three layers, and each layer fans its kingdoms out beneath it."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base, "#gate-world")
+    page.keyboard.press("Escape")       # skip the cutscene if it is playing
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-rex', 1, 'Rex');
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.id.startsWith('bnote-rex-'));
+    }""")
+    ids = {n["id"] for n in report}
+    check("rex: the three layers spawn",
+          ids == {"bnote-rex-surface", "bnote-rex-under", "bnote-rex-hell"}, ids)
+
+    by_id = {n["id"]: n for n in report}
+    surface, under, hell = by_id["bnote-rex-surface"], by_id["bnote-rex-under"], by_id["bnote-rex-hell"]
+    check("rex: lower layers sit further right (oy)",
+          surface["oy"] < under["oy"] < hell["oy"], (surface["oy"], under["oy"], hell["oy"]))
+    check("rex: lower layers sit further right (off)",
+          surface["off"] < under["off"] < hell["off"], (surface["off"], under["off"], hell["off"]))
+
+    report = page.evaluate("""() => {
+      ['bnote-rex-surface', 'bnote-rex-under', 'bnote-rex-hell'].forEach(
+        id => XP.award('beacon-' + id, 1, id));
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.id.startsWith('bnote-rex-'));
+    }""")
+    check("rex: all 10 nodes spawn", len(report) == 10, len(report))
+
+    by_id = {n["id"]: n for n in report}
+    layers = {"firstlight": "surface", "crimson": "surface",
+              "bonespire": "under", "titans": "under",
+              "valkhar": "hell", "seal": "hell", "law": "hell"}
+    for kingdom, layer in layers.items():
+        k = by_id["bnote-rex-" + kingdom]
+        l = by_id["bnote-rex-" + layer]
+        check(f"rex: {kingdom} sits below its layer", k["oy"] > l["oy"], (k["oy"], l["oy"]))
+        check(f"rex: {kingdom} stays near its layer's off",
+              abs(k["off"] - l["off"]) <= 0.2, (k["off"], l["off"]))
+
+    check("rex: titans sit further right than bonespire",
+          by_id["bnote-rex-titans"]["off"] > by_id["bnote-rex-bonespire"]["off"],
+          (by_id["bnote-rex-titans"]["off"], by_id["bnote-rex-bonespire"]["off"]))
+    check("rex: valkhar, seal, law increase left to right",
+          by_id["bnote-rex-valkhar"]["off"] < by_id["bnote-rex-seal"]["off"] <
+          by_id["bnote-rex-law"]["off"],
+          (by_id["bnote-rex-valkhar"]["off"], by_id["bnote-rex-seal"]["off"],
+           by_id["bnote-rex-law"]["off"]))
+
+    all_report = page.evaluate("""() => {
+      const root = window.depthsReport().find(n => n.id === 'bnote-rex-surface').root;
+      const nodes = window.depthsReport().filter(n => n.root === root);
+      nodes.push({ id: root, root: root, off: -0.21, oy: 0.42 });
+      return nodes;
+    }""")
+    bounds_and_overlap_checks("rex", all_report)
     ctx.close()
 
 
@@ -620,7 +689,8 @@ FLOWS = {
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
-    "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "links": flow_links,
+    "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
+    "links": flow_links,
 }
 
 

@@ -9,12 +9,14 @@
    it the same way it spawns any other beacon node.
 
    Node positions are never typed by hand: each cluster picks a
-   layout shape (`rows`, `arc` or `chain`) and every node's
-   offset from its root is computed from that layout plus the
-   node's wave — its distance, in claim-steps, from the root.
+   layout shape (`rows`, `arc`, `chain` or `branch`) and every
+   node's offset from its root is computed from that layout plus
+   the node's wave — its distance, in claim-steps, from the root.
    This keeps clusters declarative: add a node, point its
    `after` at whatever gates it, and its place in the layout
-   falls out automatically.
+   falls out automatically. `branch` anchors each later-wave node
+   to the node that unlocked it, so children fan out beneath
+   their own parent rather than sharing a row.
 
      Depths.nodes()     -> array of flattened node defs, one per
                            node, in cluster / wave / declaration
@@ -391,6 +393,139 @@ window.Depths = (function () {
       `
         }
       ]
+    },
+    {
+      root: "bnote-rex",
+      theme: "void",
+      size: 0.6,
+      layout: {
+        shape: "branch",
+        start: [0.14, -0.18],
+        step: [0.16, 0.13],
+        fan: { dy: 0.14, gap: 0.12 }
+      },
+      nodes: [
+        {
+          id: "bnote-rex-surface",
+          after: ["bnote-rex"],
+          name: "The Surface",
+          sub: "Where the void still falls",
+          html: `
+        <p class="tag">Rex · surface</p>
+        <h3>The Surface</h3>
+        <p class="body">The Fall broke the surface of Rex and it has not finished breaking. What the Fall began, the Watcher's gaze and the Void itself keep up: storms of void matter, ground that forgets its shape, air that is sometimes not air.</p>
+        <p class="body">Life up here is almost impossible. Almost. Two banners fly above the ruin anyway.</p>
+      `
+        },
+        {
+          id: "bnote-rex-under",
+          after: ["bnote-rex"],
+          name: "The Underground",
+          sub: "Where most of Rex keeps",
+          html: `
+        <p class="tag">Rex · underground</p>
+        <h3>The Underground</h3>
+        <p class="body">Most of Rex's people live below, scattered through the deep in small and fiercely isolated civilizations. The tunnels between them are dangerous and travel is barely possible, so each pocket grew alone.</p>
+        <p class="body">The result is a patchwork no map holds: countless cultures, races, magics and machines, most of which have never heard of each other.</p>
+      `
+        },
+        {
+          id: "bnote-rex-hell",
+          after: ["bnote-rex"],
+          name: "Hell",
+          sub: "The field of the first war",
+          html: `
+        <p class="tag">Rex · hell</p>
+        <h3>Hell</h3>
+        <p class="body">Beneath the underground lies the battlefield of the first war, fought for almost ten thousand years. It never really ended. It only emptied of everything but the Vorgath.</p>
+        <p class="body">This is the one door Rex keeps to the Root, and the ground still remembers what came through it.</p>
+      `
+        },
+        {
+          id: "bnote-rex-firstlight",
+          after: ["bnote-rex-surface"],
+          name: "The Kingdom of First Light",
+          sub: "Ruled by Godrick",
+          html: `
+        <p class="tag">Rex · surface / first light</p>
+        <h3>The Kingdom of First Light</h3>
+        <p class="body">A city raised on ground that cannot hold a city. Through advances in technology and magic, the Kingdom of First Light was built on the unlivable surface and holds there still, under the rule of Godrick.</p>
+        <p class="body">It brought many races together and led them up out of the underground, to witness the impossible sky for the first time.</p>
+      `
+        },
+        {
+          id: "bnote-rex-crimson",
+          after: ["bnote-rex-surface"],
+          name: "The Crimson Court",
+          sub: "Nocturnals under a red star",
+          html: `
+        <p class="tag">Rex · surface / crimson court</p>
+        <h3>The Crimson Court</h3>
+        <p class="body">A hidden, mostly secret society of nocturnals, ruled by an eternal queen. They climbed to the surface for one reason: to be closer to their god.</p>
+        <p class="body">That god is a red star among the Watcher's eyes. From their red castle they keep vigil beneath it and commune with it.</p>
+      `
+        },
+        {
+          id: "bnote-rex-bonespire",
+          after: ["bnote-rex-under"],
+          name: "The Bone Spire",
+          sub: "Kingdom of the dragons",
+          html: `
+        <p class="tag">Rex · underground / bone spire</p>
+        <h3>The Bone Spire</h3>
+        <p class="body">The dragons' kingdom is built on a tower made from the bones of dragons. As time passes more are added, and the Spire grows.</p>
+        <p class="body">No two dragons share a shape. Each gives its endless life to one purpose, and body and mind reshape around it. One that sought a cure for a plague becomes that cure, and its touch can heal. Most purposes are unattainable, and that is the point: a dragon that masters its purpose is a dead dragon.</p>
+      `
+        },
+        {
+          id: "bnote-rex-titans",
+          after: ["bnote-rex-under"],
+          name: "The Kingdom of Titans",
+          sub: "Direct descendants of Rex Immotus",
+          html: `
+        <p class="tag">Rex · underground / titans</p>
+        <h3>The Kingdom of Titans</h3>
+        <p class="body">Giants so vast their sense of time is nothing like ours. A single step of a titan can take long enough for a tree to grow and wither.</p>
+        <p class="body">They are direct descendants of Rex Immotus himself, and they move through the deep like weather.</p>
+      `
+        },
+        {
+          id: "bnote-rex-valkhar",
+          after: ["bnote-rex-hell"],
+          name: "The Lost City of Valkhar",
+          sub: "Where the first souls were raised",
+          html: `
+        <p class="tag">Rex · hell / valkhar</p>
+        <h3>The Lost City of Valkhar</h3>
+        <p class="body">At the centre of hell stands Valkhar, a city built by the gods, where their children lived: the first mortals of the soul kind.</p>
+        <p class="body">Now it is devastated and forgotten, empty of everything but monsters.</p>
+      `
+        },
+        {
+          id: "bnote-rex-seal",
+          after: ["bnote-rex-hell"],
+          name: "The Great Seal",
+          sub: "A wall against the Root",
+          html: `
+        <p class="tag">Rex · hell / great seal</p>
+        <h3>The Great Seal</h3>
+        <p class="body">A wall raised against the Root itself, built to stop the Vorgath from coming through.</p>
+        <p class="body">Who built it, and what it costs to hold, is still to be written.</p>
+      `
+        },
+        {
+          id: "bnote-rex-law",
+          after: ["bnote-rex-hell"],
+          name: "The City of Law",
+          sub: "Where reality is written down",
+          html: `
+        <p class="tag">Rex · hell / city of law</p>
+        <h3>The City of Law</h3>
+        <p class="body">One of the remnants of Valkhar that still stands, filled with the children of Ormius. At its heart is a giant tower full of paperwork: the laws of reality, from how physics works to what a thing is allowed to be.</p>
+        <p class="body">It is heavily protected. Should anyone change what is written there, the effect on life could be vast.</p>
+      `
+        }
+      ]
     }
   ];
 
@@ -423,7 +558,7 @@ window.Depths = (function () {
   }
 
   const LAYOUTS = {
-    rows: function (w, i, n, L, k) {
+    rows: function (w, i, n, L, k, ctx) {
       const u = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
       const row = L.rows[Math.min(w, L.rows.length) - 1];
       const extra = Math.max(0, w - L.rows.length);
@@ -431,7 +566,7 @@ window.Depths = (function () {
       const dy = row.dy + (row.arch || 0) * Math.abs(u) + 0.12 * extra;
       return { dx: dx, dy: dy };
     },
-    arc: function (w, i, n, L, k) {
+    arc: function (w, i, n, L, k, ctx) {
       const ring = L.rings[Math.min(w, L.rings.length) - 1];
       const extra = Math.max(0, w - L.rings.length);
       const r = ring.r + 0.08 * extra;
@@ -440,10 +575,22 @@ window.Depths = (function () {
       const dy = r * Math.sin(a) * (L.squash || 1.2);
       return { dx: dx, dy: dy };
     },
-    chain: function (w, i, n, L, k) {
+    chain: function (w, i, n, L, k, ctx) {
       const dx = k * L.step[0];
       const dy = k * L.step[1] + (L.zig ? (k % 2 ? L.zig : -L.zig) : 0);
       return { dx: dx, dy: dy };
+    },
+    // branch: roots off L.start/L.step like a mini chain, but every
+    // later-wave node anchors to whichever node unlocked it, fanning
+    // out beneath that parent instead of sharing a row with siblings.
+    branch: function (w, i, n, L, k, ctx) {
+      if (!ctx.parent) {
+        return { dx: L.start[0] + i * L.step[0], dy: L.start[1] + i * L.step[1] };
+      }
+      return {
+        dx: ctx.parent.dx + (ctx.j - (ctx.m - 1) / 2) * L.fan.gap,
+        dy: ctx.parent.dy + L.fan.dy
+      };
     }
   };
 
@@ -469,16 +616,52 @@ window.Depths = (function () {
 
       const waveNums = Array.from(waveGroups.keys()).sort(function (a, b) { return a - b; });
 
+      const posOf = new Map();
+
+      // anchorOf: the id in node.after that belongs to this cluster
+      // (present in `wave`, not the root) with the highest wave. Ties
+      // go to the first such id in `after` order. null if there is none.
+      function anchorOf(node) {
+        let best = null;
+        let bestW = -1;
+        node.after.forEach(function (id) {
+          if (id === cluster.root || !wave.has(id)) return;
+          const w = wave.get(id);
+          if (w > bestW) {
+            bestW = w;
+            best = id;
+          }
+        });
+        return best;
+      }
+
       let k = 0;
       waveNums.forEach(function (w) {
         const group = waveGroups.get(w);
         const n = group.length;
+
+        // Sibling indices: nodes sharing an anchor (or the root, if
+        // anchorless) get consecutive j's and share m, the count.
+        const anchorCounts = new Map();
+        const js = [];
+        group.forEach(function (node) {
+          const key = anchorOf(node) || cluster.root;
+          const j = anchorCounts.get(key) || 0;
+          anchorCounts.set(key, j + 1);
+          js.push(j);
+        });
+
         group.forEach(function (node, i) {
           k++;
-          const pos = layoutFn(w, i, n, cluster.layout, k);
+          const a = anchorOf(node);
+          const m = anchorCounts.get(a || cluster.root);
+          const ctx = { parent: a ? posOf.get(a) || null : null, j: js[i], m: m };
+          const pos = layoutFn(w, i, n, cluster.layout, k, ctx);
           const dx = Math.round(pos.dx * 1000) / 1000;
           const dy = Math.round(pos.dy * 1000) / 1000;
           const size = Math.round(cluster.size * Math.pow(0.92, w - 1) * 1000) / 1000;
+
+          posOf.set(node.id, { dx: dx, dy: dy });
 
           out.push({
             id: node.id,
