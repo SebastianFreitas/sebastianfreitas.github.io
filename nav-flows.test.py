@@ -331,9 +331,29 @@ def flow_wordmark(browser, base):
 def flow_reset(browser, base):
     """?reset=1 clears progress once and leaves the URL."""
     ctx, page = new_page(browser)
+    page.goto(base + "/")
+    page.evaluate("""() => {
+        localStorage.setItem('arcanis.sector.v1', 'void');
+        localStorage.setItem('arcanis.hints.v2', '["x"]');
+        sessionStorage.setItem('arcanis.view.v1', '{"mode":"void"}');
+        localStorage.setItem('other.key', 'keep');
+    }""")
     page.goto(base + "/?reset=1")
     page.wait_for_timeout(300)
     check("reset: param removed from the URL", "reset" not in page.url, page.url)
+    check("reset: sector cleared",
+          page.evaluate("localStorage.getItem('arcanis.sector.v1')") is None,
+          page.evaluate("localStorage.getItem('arcanis.sector.v1')"))
+    check("reset: hints cleared",
+          page.evaluate("localStorage.getItem('arcanis.hints.v2')") is None,
+          page.evaluate("localStorage.getItem('arcanis.hints.v2')"))
+    view = page.evaluate("sessionStorage.getItem('arcanis.view.v1')")
+    view_mode = json.loads(view)["mode"] if view else None
+    check("reset: view cleared", view is None or view_mode != "void", view)
+    check("reset: foreign keys kept",
+          page.evaluate("localStorage.getItem('other.key')") == "keep",
+          page.evaluate("localStorage.getItem('other.key')"))
+    page.evaluate("localStorage.removeItem('other.key')")
     page.wait_for_selector("#gate-panel.on", timeout=10000)
     page.click("#gate-projects")
     page.wait_for_timeout(2500)

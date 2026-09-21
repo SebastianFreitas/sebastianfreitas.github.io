@@ -27,10 +27,21 @@ window.XP = (function () {
     return { name: `${a} ${b}`, ref: n };
   }
 
+  // every key this site writes starts "arcanis." — profile, hints, sector, view, tips
+  function wipe(store) {
+    const doomed = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (k && k.indexOf("arcanis.") === 0) doomed.push(k);
+    }
+    doomed.forEach((k) => store.removeItem(k));
+  }
+
   let state, fresh = false;
   try {
     if (/(?:[?&])reset(?:=1)?(?:&|$)/.test(location.search)) {
-      localStorage.removeItem(KEY);
+      wipe(localStorage);
+      try { wipe(sessionStorage); } catch (e) {}
       // once: out of the URL, so reload and Back don't wipe it again
       const url = new URL(location.href);
       url.searchParams.delete("reset");

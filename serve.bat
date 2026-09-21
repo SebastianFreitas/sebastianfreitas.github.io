@@ -28,7 +28,8 @@ echo   not hitting this server — close old :8000 tabs.
 echo.
 
 REM Open the browser after a short delay, so the server is up first.
-start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://127.0.0.1:%PORT%/"
+REM ?reset=1 wipes saved progress once, so every launch starts as a new visitor.
+start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://127.0.0.1:%PORT%/?reset=1"
 
 REM Prefer the no-cache server
 where py >nul 2>nul
