@@ -272,6 +272,9 @@
 }
 .bnote.deep::-webkit-scrollbar { width: 6px; }
 .bnote.deep::-webkit-scrollbar-thumb { background: rgba(198,204,198,0.2); }
+/* a node that holds a playable build needs the width a game frame reads at */
+.bnote.deep.wide { width: min(46rem, 58vw); max-height: min(78vh, 44rem); }
+.bnote.deep .embed { margin: 0.9rem 0 0.4rem; }
 .bnote .sub {
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--lamp);
@@ -774,6 +777,8 @@ html.genesis-on .topbar {
   }
   /* 8rem is a teaser's height; a deep note needs room for a clip */
   .bnote.deep { max-height: 15rem; }
+  /* a 16:9 frame at sheet width would be taller than the sheet */
+  .bnote.deep.wide .embed { aspect-ratio: auto; height: 11rem; }
 
   /* the setting bar folds into a gear and drops down from it */
   #bridge-modes {

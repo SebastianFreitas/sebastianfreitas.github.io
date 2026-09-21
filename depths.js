@@ -2,17 +2,25 @@
    DEPTHS — nodes that only exist once their prerequisites are
    claimed.
 
-   Pure data, no DOM/canvas/listeners. Each entry describes a
-   sector node that stays hidden until every id in `after` has
-   been claimed, at which point bridge.js is free to spawn it
-   the same way it spawns any other beacon node. `camKey` is
-   resolved by bridge.js against its own GD_LAND table — it is
-   not looked up here. The shape is deliberately generic (no
-   sector-zero-specific fields) so other sectors can reuse this
-   module for their own gated nodes.
+   Pure data, no DOM/canvas/listeners. Sector nodes are grouped
+   into clusters, each hanging off a root beacon id. A node
+   inside a cluster stays hidden until every id in its `after`
+   has been claimed, at which point bridge.js is free to spawn
+   it the same way it spawns any other beacon node.
 
-     Depths.nodes()  -> array of node defs (a copy, not the
-                        module's own array)
+   Node positions are never typed by hand: each cluster picks a
+   layout shape (`rows`, `arc` or `chain`) and every node's
+   offset from its root is computed from that layout plus the
+   node's wave — its distance, in claim-steps, from the root.
+   This keeps clusters declarative: add a node, point its
+   `after` at whatever gates it, and its place in the layout
+   falls out automatically.
+
+     Depths.nodes()     -> array of flattened node defs, one per
+                           node, in cluster / wave / declaration
+                           order (a copy, not the module's own
+                           array)
+     Depths.clusters()  -> array of the raw cluster defs (a copy)
    =========================================================== */
 
 window.Depths = (function () {
@@ -20,20 +28,26 @@ window.Depths = (function () {
   // preload="none" and no autoplay: bridge.js runs a rAF loop
   // every frame and must not pay for video decode it never asked for.
 
-  const NODES = [
+  const CLUSTERS = [
     {
-      id: "bnote-sz-shell",
-      after: ["bnote-planet-zero"],
-      camKey: "zero",
-      off: -0.20,
-      oy: 0.54,
-      par: 0.7,
+      root: "bnote-planet-zero",
       theme: "zeroDeep",
       size: 0.72,
-      xp: 1,
-      name: "The Shell",
-      sub: "A parser, not a prop",
-      html: `
+      layout: {
+        shape: "rows",
+        rows: [
+          { dy: 0.20, dx: 0, spread: 0.28 },
+          { dy: -0.11, dx: 0, spread: 0.48, arch: 0.05 }
+        ]
+      },
+      nodes: [
+        {
+          id: "bnote-sz-shell",
+          after: ["bnote-planet-zero"],
+          xp: 1,
+          name: "The Shell",
+          sub: "A parser, not a prop",
+          html: `
         <p class="tag">Signal · sector zero / shell</p>
         <h3>The Shell</h3>
         <figure class="clipbox">
@@ -45,20 +59,14 @@ window.Depths = (function () {
         <p class="sub">The terminal talks back</p>
         <p class="body">A mail client runs inside the shell. Messages arrive, you <code>read</code> them, and <code>reply</code> gives you numbered options — never one correct answer. It's the cheapest narrative surface in the game: a coworker who might still be alive, the company that sent you, or something that shouldn't have access to the inbox. It doubles as the hint system.</p>
       `
-    },
-    {
-      id: "bnote-sz-chair",
-      after: ["bnote-planet-zero"],
-      camKey: "zero",
-      off: 0.08,
-      oy: 0.54,
-      par: 0.7,
-      theme: "zeroDeep",
-      size: 0.72,
-      xp: 1,
-      name: "The Chair",
-      sub: "The whole game, completable seated",
-      html: `
+        },
+        {
+          id: "bnote-sz-chair",
+          after: ["bnote-planet-zero"],
+          xp: 1,
+          name: "The Chair",
+          sub: "The whole game, completable seated",
+          html: `
         <p class="tag">Signal · sector zero / movement</p>
         <h3>The Chair</h3>
         <p class="sub">Movement</p>
@@ -68,20 +76,14 @@ window.Depths = (function () {
           <figcaption>Leg impulses for thrust, tank controls, wall bounce.</figcaption>
         </figure>
       `
-    },
-    {
-      id: "bnote-sz-storm",
-      after: ["bnote-sz-shell", "bnote-sz-chair"],
-      camKey: "zero",
-      off: -0.30,
-      oy: 0.28,
-      par: 0.7,
-      theme: "zeroDeep",
-      size: 0.66,
-      xp: 1,
-      name: "The Storm",
-      sub: "Gravity fails on a curve",
-      html: `
+        },
+        {
+          id: "bnote-sz-storm",
+          after: ["bnote-sz-shell", "bnote-sz-chair"],
+          xp: 1,
+          name: "The Storm",
+          sub: "Gravity fails on a curve",
+          html: `
         <p class="tag">Signal · sector zero / storm</p>
         <h3>The Storm</h3>
         <p class="sub">The storm</p>
@@ -89,20 +91,14 @@ window.Depths = (function () {
         <p class="body">When it passes they drift back toward where they started, and don't quite make it. The lights cut, and in the dark everything is teleported the rest of the way home. The drift is what you see; the blackout hides the snap. Reality holds together only because you weren't looking.</p>
         <p class="body">One object is singled out each storm as a target. That's where the creature hooks in.</p>
       `
-    },
-    {
-      id: "bnote-sz-catalogue",
-      after: ["bnote-sz-shell", "bnote-sz-chair"],
-      camKey: "zero",
-      off: -0.16,
-      oy: 0.23,
-      par: 0.7,
-      theme: "zeroDeep",
-      size: 0.66,
-      xp: 1,
-      name: "The Catalogue",
-      sub: "Attention is the currency",
-      html: `
+        },
+        {
+          id: "bnote-sz-catalogue",
+          after: ["bnote-sz-shell", "bnote-sz-chair"],
+          xp: 1,
+          name: "The Catalogue",
+          sub: "Attention is the currency",
+          html: `
         <p class="tag">Signal · sector zero / catalogue</p>
         <h3>The Catalogue</h3>
         <p class="sub">Cataloguing is the counter-mechanic</p>
@@ -121,20 +117,14 @@ window.Depths = (function () {
           <figcaption>Creating an object after discovering it. Everything has size and weight; rarer objects carry extra attributes you can read and rewrite.</figcaption>
         </figure>
       `
-    },
-    {
-      id: "bnote-sz-brian",
-      after: ["bnote-sz-shell", "bnote-sz-chair"],
-      camKey: "zero",
-      off: 0.04,
-      oy: 0.23,
-      par: 0.7,
-      theme: "zeroDeep",
-      size: 0.66,
-      xp: 1,
-      name: "Brian",
-      sub: "The player has a file too",
-      html: `
+        },
+        {
+          id: "bnote-sz-brian",
+          after: ["bnote-sz-shell", "bnote-sz-chair"],
+          xp: 1,
+          name: "Brian",
+          sub: "The player has a file too",
+          html: `
         <p class="tag">Signal · sector zero / brian</p>
         <h3>Brian</h3>
         <p class="sub">Brian is an object</p>
@@ -145,20 +135,14 @@ window.Depths = (function () {
           <figcaption>Editing the player's own record. A spatial problem becomes a text problem.</figcaption>
         </figure>
       `
-    },
-    {
-      id: "bnote-sz-residue",
-      after: ["bnote-sz-shell", "bnote-sz-chair"],
-      camKey: "zero",
-      off: 0.18,
-      oy: 0.28,
-      par: 0.7,
-      theme: "zeroDeep",
-      size: 0.66,
-      xp: 1,
-      name: "Residue",
-      sub: "Found, not told",
-      html: `
+        },
+        {
+          id: "bnote-sz-residue",
+          after: ["bnote-sz-shell", "bnote-sz-chair"],
+          xp: 1,
+          name: "Residue",
+          sub: "Found, not told",
+          html: `
         <p class="tag">Signal · sector zero / residue</p>
         <h3>Residue</h3>
         <p class="sub">Found, not told</p>
@@ -170,8 +154,352 @@ window.Depths = (function () {
         <p class="sub">Where it goes</p>
         <p class="body">Everything above runs. The expensive part is already paid for: once the world is a filesystem and reality reads from it, a new mechanic is a new field in a text file. More gadgets, rarer storm events, a character writing to your inbox — each one slots into what already exists.</p>
       `
+        }
+      ]
     },
+    {
+      root: "bnote-planet-voidscape",
+      theme: "voidscapeDeep",
+      size: 0.7,
+      layout: {
+        shape: "arc",
+        squash: 1.2,
+        rings: [
+          { r: 0.18, from: 90, to: 90 },
+          { r: 0.25, from: 40, to: 140 },
+          { r: 0.33, from: 20, to: 160 }
+        ]
+      },
+      nodes: [
+        {
+          id: "bnote-vs-board",
+          after: ["bnote-planet-voidscape"],
+          name: "The Board",
+          sub: "You write the difficulty",
+          html: `
+        <p class="tag">Signal · voidscape / board</p>
+        <h3>The Board</h3>
+        <!-- placeholder clip: media/voidscape/runs.mp4 is not recorded yet — drop it in and swap the poster for runs.jpg -->
+        <figure class="clipbox">
+          <video class="clip" src="media/voidscape/runs.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
+          <figcaption>Starting a run. Missions roll onto the monitors — every drawback on the board raises the payout.</figcaption>
+        </figure>
+        <p class="sub">The problem</p>
+        <p class="body">Every roguelike I played had the same failure: the god run. The drops line up, damage goes exponential, and the boss you were supposed to fear dies in one shot. The run you waited ten hours for is the least interesting one you'll play, because the game stopped asking anything of you at exactly the moment it should have asked the most.</p>
+        <p class="body">Stat scaling causes it. If power is a number and enemies are a number, one eventually runs away from the other. Tuning doesn't fix that — it just moves where the break happens.</p>
+        <p class="sub">The answer: let the player set the terms</p>
+        <p class="body">The run itself is a rolled item. Before entering, you stand at a bank of monitors, each showing a generated mission with its own set of modifiers — monster health, damage and action speed; reduced healing; grenades disabled; entire damage types made immune.</p>
+        <p class="body">Every one of those drawbacks automatically raises elite chance, special-room frequency and drop rate, with a random component on top so two equally-loaded missions aren't equally worth taking. You read the board, weigh it, and choose. Missions can be rerolled or pushed further for a price.</p>
+        <p class="body">Four of the modifiers don't explain themselves at all — <code>Danger</code>, <code>ERROR</code>, <code>UnknownX</code>, <code>UnknownY</code>. They carry the lowest weights in the table. The only way to find out is to take one.</p>
+      `
+        },
+        {
+          id: "bnote-vs-colour",
+          after: ["bnote-vs-board"],
+          name: "Red and Blue",
+          sub: "Colour is a commitment",
+          html: `
+        <p class="tag">Signal · voidscape / colour</p>
+        <h3>Red and Blue</h3>
+        <!-- placeholder clip: media/voidscape/map.mp4 is not recorded yet — drop it in and swap the poster for map.jpg -->
+        <figure class="clipbox">
+          <video class="clip" src="media/voidscape/map.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
+          <figcaption>The map. Every boon you take pulls the dungeon's influence toward its colour.</figcaption>
+        </figure>
+        <p class="sub">Colour is a commitment</p>
+        <p class="body">Boons drop as Red or Blue. Taking one shifts the dungeon's influence toward that colour — and the influence cuts both ways: <strong>lean into a colour and its rooms turn hostile, while the opposite colour's rooms turn generous.</strong></p>
+        <p class="body">Blue turns monsters temporarily invisible and slows you when they connect. Red makes them faster and detonate on death. The compensation runs in the other direction: doubled monsters, doubled drops, higher elite chance. A dedicated room type lets you flip your influence mid-run, which makes it a decision you keep revisiting instead of one you make once.</p>
+        <p class="sub">Fifty boons, and most of them cost something</p>
+        <p class="body">Boons stack for the rest of the run and are weighted by rarity. The flat upgrades exist, but they're the boring ones. The interesting half are trades: lose 20 max HP for +10 fire damage. Shrink your explosion radius by 90% to double its damage. Deal all your poison damage instantly, at half value. Halve your bullet speed for +50 physical.</p>
+        <p class="body">They also convert between elements — poison feeding fire, physical becoming cold on crits, chilled enemies taking more poison. Elements aren't separate lanes, so builds collide in ways I never wrote down. Every boon is implemented to be reversible, applying and unapplying through the same path, which is what lets the influence system move them around at runtime.</p>
+      `
+        },
+        {
+          id: "bnote-vs-bench",
+          after: ["bnote-vs-board"],
+          name: "The Bench",
+          sub: "Weapons are rolled, not designed",
+          html: `
+        <p class="tag">Signal · voidscape / bench</p>
+        <h3>The Bench</h3>
+        <!-- placeholder clip: media/voidscape/crafting.mp4 is not recorded yet — drop it in and swap the poster for crafting.jpg -->
+        <figure class="clipbox">
+          <video class="clip" src="media/voidscape/crafting.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
+          <figcaption>Adding, removing, and scrapping mods at the bench.</figcaption>
+        </figure>
+        <p class="sub">Weapons are generated, not designed</p>
+        <p class="body">A gun rolls a base type, a level, and a set of modifiers drawn from three grades: interior (damage), exterior (handling), and special (build-defining effects like ignite chance, freeze chance, or double damage).</p>
+        <p class="body">The part that keeps them interesting is that grade weights decay per weapon as they roll. Land an interior mod and the next interior mod becomes far less likely on that gun; land a special and the odds barely move. Weapons come out mixed instead of stacking five of the same thing, and specials stay rare without needing a hard cap on them.</p>
+        <p class="sub">Crafting gets more expensive the better you're doing</p>
+        <p class="body">Gun parts drop from enemies and pay for adding mods, removing them, or scrapping a weapon outright. Price scales with both the weapon's level and how many mods it already carries — so pushing a good gun further costs progressively more, and a near-miss weapon is worth real money if you break it down instead. Weapons and layouts persist between runs, so building one is a decision with consequences past the session.</p>
+      `
+        },
+        {
+          id: "bnote-vs-loop",
+          after: ["bnote-vs-colour", "bnote-vs-bench"],
+          name: "The Second Loop",
+          sub: "It scales on execution",
+          html: `
+        <p class="tag">Signal · voidscape / loop</p>
+        <h3>The Second Loop</h3>
+        <p class="sub">The second loop</p>
+        <p class="body">Finishing a run doesn't end it. A second loop opens, and that one scales on execution rather than on numbers — the difficulty comes from what an encounter demands of the player, not from larger health bars. Points earned there persist into a skill tree, which attaches long-term progression to the part of the game that actually tests you.</p>
+        <p class="body">This is where the god run gets its answer. A build that trivialises the first loop still has to be played in the second.</p>
+        <p class="sub">Feel</p>
+        <p class="body">Movement carries coyote time and jump buffering so inputs land when the player means them, side and jump dashes on independent cooldowns, and locked input direction during a dash so momentum carries instead of letting you steer mid-air. Enemy hits and explosions apply real knockback through a mass-weighted impact vector — and one boon turns being launched by your own fire explosion into a speed buff, which makes shooting the floor to travel a legitimate build.</p>
+      `
+        },
+        {
+          id: "bnote-vs-ledger",
+          after: ["bnote-vs-colour", "bnote-vs-bench"],
+          name: "The Ledger",
+          sub: "What it cost, where it stands",
+          html: `
+        <p class="tag">Signal · voidscape / ledger</p>
+        <h3>The Ledger</h3>
+        <p class="sub">What it cost</p>
+        <p class="body">Fifty interacting modifiers on top of rolled weapons and rolled missions means the combination space isn't testable by hand. Most of the work wasn't writing mechanics — it was making them compose without producing states I never anticipated, and accepting that some of those states are the reason the game is worth playing. A Red-heavy build inside a mission that rolled fire immunity is a problem nobody authored, and the player has to solve it with what they brought.</p>
+        <p class="sub">Where it stands</p>
+        <p class="body">Playable through two bosses. The generators are all in place — missions, weapons, mods, boons, rooms — and what's missing is content volume rather than architecture. Adding a new modifier means adding a row to a table; adding a new room means adding a prefab. That was the point of building it this way.</p>
+        <p class="body"><a href="projects/voidscape.html">Open the full case →</a></p>
+      `
+        }
+      ]
+    },
+    {
+      root: "bnote-planet-heavylight",
+      theme: "heavylightDeep",
+      size: 0.62,
+      layout: { shape: "chain", step: [-0.13, -0.065] },
+      nodes: [
+        {
+          id: "bnote-hl-play",
+          after: ["bnote-planet-heavylight"],
+          wide: true,
+          name: "Play HeavyLight",
+          sub: "Shipped for WebGL",
+          html: `
+        <p class="tag">Signal · heavylight / play</p>
+        <h3>Play HeavyLight</h3>
+        <div class="embed embed-shell" data-src="https://itch.io/embed-upload/6434502?color=002f4b" data-title="Play HeavyLight in your browser" style="background-image:url('media/heavylight/heavylightFrontPage.webp')">
+          <button type="button" class="embed-play">Play HeavyLight</button>
+        </div>
+        <p class="body">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
+        <p class="body">Click the frame to hand it the keyboard. Flying off closes the game.</p>
+      `
+        },
+        {
+          id: "bnote-hl-rule",
+          after: ["bnote-hl-play"],
+          name: "The Rule",
+          sub: "Light carries momentum",
+          html: `
+        <p class="tag">Signal · heavylight / rule</p>
+        <h3>The Rule</h3>
+        <p class="body">A 2D puzzle platformer built on one rule: light has weight. Beams push crates, and if you stand in one, they push you. Every puzzle in the game is a consequence of that single rule.</p>
+        <p class="sub">The rule</p>
+        <p class="body">Light carries momentum proportional to its intensity, and the force falls off with distance. That means a beam is a physical object: it can hold a crate against a wall, lift you across a gap, or crush you if you let it build up.</p>
+      `
+        },
+        {
+          id: "bnote-hl-reuse",
+          after: ["bnote-hl-play"],
+          name: "Built to Be Reused",
+          sub: "The base Conclusus stands on",
+          html: `
+        <p class="tag">Signal · heavylight / reuse</p>
+        <h3>Built to Be Reused</h3>
+        <p class="sub">Built to be reused</p>
+        <p class="body">I wrote it as a base rather than a one-off. The follow-up, <a href="projects/conclusus.html">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original — which was the actual test of whether the base was any good.</p>
+        <p class="body"><a href="projects/heavylight.html">Open the full case →</a></p>
+      `
+        }
+      ]
+    },
+    {
+      root: "bnote-planet-conclusus",
+      theme: "conclususDeep",
+      size: 0.66,
+      layout: {
+        shape: "rows",
+        rows: [
+          { dy: 0.17, dx: -0.14, spread: 0.18 },
+          { dy: 0.29, dx: -0.05, spread: 0.18 }
+        ]
+      },
+      nodes: [
+        {
+          id: "bnote-cc-play",
+          after: ["bnote-planet-conclusus"],
+          wide: true,
+          name: "Play Conclusus",
+          sub: "Thirty levels, in the browser",
+          html: `
+        <p class="tag">Signal · conclusus / play</p>
+        <h3>Play Conclusus</h3>
+        <div class="embed embed-shell" data-src="https://itch.io/embed-upload/14396412?color=141a1d" data-title="Play Conclusus in your browser" style="background-image:url('media/conclusus/conclususFrontPage.webp')">
+          <button type="button" class="embed-play">Play Conclusus</button>
+        </div>
+        <p class="body">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
+        <p class="body">Click the frame to hand it the keyboard. Flying off closes the game.</p>
+      `
+        },
+        {
+          id: "bnote-cc-why",
+          after: ["bnote-planet-conclusus"],
+          name: "Why It Exists",
+          sub: "Is reusable actually cheaper?",
+          html: `
+        <p class="tag">Signal · conclusus / why</p>
+        <h3>Why It Exists</h3>
+        <p class="body">Thirty levels and four new mechanics built on top of <a href="projects/heavylight.html">HeavyLight</a>, finished in less time than the original took. Proving that was the point of building it.</p>
+        <p class="sub">Why it exists</p>
+        <p class="body">I wrote HeavyLight as a base rather than a one-off, which is easy to claim and hard to prove. Conclusus was the test: take the same foundation, build something bigger on it, and find out whether the second project is genuinely cheaper or whether "reusable" code quietly costs more than starting over.</p>
+      `
+        },
+        {
+          id: "bnote-cc-mechanics",
+          after: ["bnote-cc-play", "bnote-cc-why"],
+          name: "Four Mechanics",
+          sub: "What went on top",
+          html: `
+        <p class="tag">Signal · conclusus / mechanics</p>
+        <h3>Four Mechanics</h3>
+        <p class="sub">What went on top</p>
+        <p class="body"><strong>Shadow.</strong> Plant a shadow on the ground, then teleport back to it at any point. Position and scale both transfer, so it's a checkpoint you place yourself and a way to undo a commitment you've already made.</p>
+        <p class="body"><strong>Symbols.</strong> Collectibles that drift and spin on their own, with a rotation coroutine that stutters and reverses at random intervals so they never look scripted. Some are whole; others break into pieces that have to be gathered in sequence, each one chaining to the next.</p>
+        <p class="body"><strong>Time dilation.</strong> A burst state that drops the timescale to 0.6 for a few seconds — the level slows down while your inputs don't.</p>
+        <p class="body"><strong>Grid movement</strong> for the sections that switch from platforming to cell-by-cell positioning, snapping to tile centres with its own interpolation.</p>
+      `
+        },
+        {
+          id: "bnote-cc-reuse",
+          after: ["bnote-cc-play", "bnote-cc-why"],
+          name: "What Reuse Bought",
+          sub: "Systems yes, content no",
+          html: `
+        <p class="tag">Signal · conclusus / reuse</p>
+        <h3>What Reuse Bought</h3>
+        <p class="sub">What the reuse actually bought</p>
+        <p class="body">The character controller carried over untouched, and it's the expensive part: separate scripts for jump, movement, ground detection, hurt states and juice, with jump height, apex time, independent up and down gravity multipliers, jump cutoff, coyote time and jump buffering all exposed as tuned ranges. None of that had to be rebuilt or retuned.</p>
+        <p class="body">Everything else came from one convention. Every mechanic implements its own <code>Reset()</code>, and levels live as objects in a single scene that get switched on and off rather than loaded. Adding a mechanic meant writing its behaviour and its reset, and level transitions kept working — no scene loading, no save plumbing, no restart bugs to chase.</p>
+        <p class="sub">The result</p>
+        <p class="body">Twenty levels became thirty. Four mechanics that didn't exist in the original went in without touching the light-weight rule underneath them. And it shipped faster, which is the number that settles the question.</p>
+        <p class="sub">What I'd change</p>
+        <p class="body">Reuse worked at the systems level and not at the content level — thirty levels were still hand-placed from nothing. The next version of this argument puts the same effort into authoring tools that went into the mechanics.</p>
+        <p class="body"><a href="projects/conclusus.html">Open the full case →</a></p>
+      `
+        }
+      ]
+    }
   ];
 
-  return { nodes: () => NODES.slice() };
+  // waveOf: id -> wave number, computed to a fixed point. Root
+  // is wave 0. A node's wave is 1 + the max wave of the ids in
+  // its `after`; an id in `after` that isn't the root and isn't
+  // in the cluster counts as wave 0.
+  function waveOf(cluster) {
+    const wave = new Map();
+    wave.set(cluster.root, 0);
+    cluster.nodes.forEach(function (n) { wave.set(n.id, 0); });
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      cluster.nodes.forEach(function (n) {
+        let maxW = -1;
+        n.after.forEach(function (id) {
+          const w = wave.has(id) ? wave.get(id) : 0;
+          if (w > maxW) maxW = w;
+        });
+        const newW = maxW + 1;
+        if (wave.get(n.id) !== newW) {
+          wave.set(n.id, newW);
+          changed = true;
+        }
+      });
+    }
+    return wave;
+  }
+
+  const LAYOUTS = {
+    rows: function (w, i, n, L, k) {
+      const u = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
+      const row = L.rows[Math.min(w, L.rows.length) - 1];
+      const extra = Math.max(0, w - L.rows.length);
+      const dx = (row.dx || 0) + u * row.spread / 2;
+      const dy = row.dy + (row.arch || 0) * Math.abs(u) + 0.12 * extra;
+      return { dx: dx, dy: dy };
+    },
+    arc: function (w, i, n, L, k) {
+      const ring = L.rings[Math.min(w, L.rings.length) - 1];
+      const extra = Math.max(0, w - L.rings.length);
+      const r = ring.r + 0.08 * extra;
+      const a = (n === 1 ? (ring.from + ring.to) / 2 : ring.from + (ring.to - ring.from) * i / (n - 1)) * Math.PI / 180;
+      const dx = r * Math.cos(a);
+      const dy = r * Math.sin(a) * (L.squash || 1.2);
+      return { dx: dx, dy: dy };
+    },
+    chain: function (w, i, n, L, k) {
+      const dx = k * L.step[0];
+      const dy = k * L.step[1] + (L.zig ? (k % 2 ? L.zig : -L.zig) : 0);
+      return { dx: dx, dy: dy };
+    }
+  };
+
+  function nodes() {
+    const out = [];
+
+    CLUSTERS.forEach(function (cluster) {
+      const layoutFn = LAYOUTS[cluster.layout.shape];
+      if (!layoutFn) {
+        console.error("depths: unknown layout " + cluster.layout.shape);
+        return;
+      }
+
+      const wave = waveOf(cluster);
+
+      // Group nodes by wave, keeping declaration order within a wave.
+      const waveGroups = new Map();
+      cluster.nodes.forEach(function (n) {
+        const w = wave.get(n.id);
+        if (!waveGroups.has(w)) waveGroups.set(w, []);
+        waveGroups.get(w).push(n);
+      });
+
+      const waveNums = Array.from(waveGroups.keys()).sort(function (a, b) { return a - b; });
+
+      let k = 0;
+      waveNums.forEach(function (w) {
+        const group = waveGroups.get(w);
+        const n = group.length;
+        group.forEach(function (node, i) {
+          k++;
+          const pos = layoutFn(w, i, n, cluster.layout, k);
+          const dx = Math.round(pos.dx * 1000) / 1000;
+          const dy = Math.round(pos.dy * 1000) / 1000;
+          const size = Math.round(cluster.size * Math.pow(0.92, w - 1) * 1000) / 1000;
+
+          out.push({
+            id: node.id,
+            root: cluster.root,
+            after: node.after,
+            dx: dx,
+            dy: dy,
+            theme: cluster.theme,
+            size: size,
+            xp: node.xp || 1,
+            name: node.name,
+            sub: node.sub,
+            wide: !!node.wide,
+            html: node.html
+          });
+        });
+      });
+    });
+
+    return out;
+  }
+
+  return { nodes: nodes, clusters: function () { return CLUSTERS.slice(); } };
 })();

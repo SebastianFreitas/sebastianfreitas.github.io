@@ -19,6 +19,9 @@ window.Planet = (function () {
     voidscape:  { core: ["#2c1440", "#100819"], rim: "196,132,240", ring: "150,96,190", band: "70,42,96",  hasRing: false },
     heavylight: { core: ["#f7d97a", "#8a651f"], rim: "255,247,214", ring: "245,208,107", band: "205,168,90", hasRing: true  },
     conclusus:  { core: ["#a9cdd4", "#28454c"], rim: "224,240,240", ring: "143,176,184", band: "245,208,107", hasRing: true  },
+    voidscapeDeep:  { core: ["#1f0e2e", "#0a0511"], rim: "160,108,200", ring: "120,78,156", band: "56,34,78",  hasRing: false },
+    heavylightDeep: { core: ["#c9a650", "#4a3610"], rim: "250,232,180", ring: "220,186,96", band: "170,138,70", hasRing: false },
+    conclususDeep:  { core: ["#7fa4ab", "#1a2f34"], rim: "200,224,226", ring: "120,152,160", band: "210,180,96", hasRing: false },
   };
 
   function draw(ctx, x, y, o) {

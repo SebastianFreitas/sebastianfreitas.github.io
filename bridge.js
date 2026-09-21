@@ -111,7 +111,7 @@
     console.error("planet.js did not load — game dev sector has nothing to draw");
   }
   if (!window.Depths) {
-    console.error("depths.js did not load — the sector zero cluster will not open");
+    console.error("depths.js did not load — no beacon will open into further nodes");
   }
 
   /* ---- canvas ---- */
@@ -319,7 +319,21 @@
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
   const fmt = n => Math.round(n).toLocaleString("en-US");
   const onScreen = (x, pad) => x > -pad && x < W + pad;
-  const markScreen = m => ({ x: wx(m.x, m.par), y: m.oy * H });
+  /* a node coming into range leaves its root beacon and steps out to
+     its own spot — FLY_STEPS positions over FLY_DUR, not a smooth tween,
+     so it reads as a signal jumping and costs nothing extra per frame */
+  const FLY_DUR = 0.66, FLY_STEPS = 6, FLY_GAP = 0.16;
+  function flyK(m) {
+    const raw = Math.min(1, Math.max(0, m.fly.t / FLY_DUR));
+    const k = Math.floor(raw * FLY_STEPS) / FLY_STEPS;
+    return 1 - (1 - k) * (1 - k);
+  }
+  const markScreen = m => {
+    const x = wx(m.x, m.par), y = m.oy * H;
+    if (!m.fly) return { x, y };
+    const a = markScreen(m.fly.from), k = flyK(m);
+    return { x: a.x + (x - a.x) * k, y: a.y + (y - a.y) * k };
+  };
 
 
   /* ---- starting ---- */
@@ -356,9 +370,18 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(dropHostRect);
   if ("ResizeObserver" in window) new ResizeObserver(dropHostRect).observe(host);
 
+  /* a closed panel must not keep a clip decoding or a WebGL build running */
+  function stopNoteMedia(el2) {
+    el2.querySelectorAll("video").forEach(v => { if (!v.paused) v.pause(); });
+    if (window.Embed) Embed.reset(el2);
+  }
   function showNote(mark) {
     clearTimeout(noteTimer);
-    for (const k in noteEls) if (noteEls[k]) noteEls[k].classList.remove("show");
+    for (const k in noteEls) {
+      const e = noteEls[k];
+      if (e && e.classList.contains("show") && k !== (mark && mark.id)) stopNoteMedia(e);
+      if (e) e.classList.remove("show");
+    }
     if (!mark) return;
     const el2 = noteEls[mark.id];
     if (!el2) return;
@@ -420,10 +443,10 @@
     }
     if (sceneMode === "gamedev") {
       pushLog(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
-      revealDepths(true);
     } else {
       pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     }
+    revealDepths(true);
     activeMark = m;
     showNote(m);
     if (ship) {
@@ -479,6 +502,7 @@
     const px = clientX - r.left, py = clientY - r.top;
     let best = null, bestD = HIT;
     for (const m of activeMarks()) {
+      if (m.fly) continue;
       const p = markScreen(m);
       const d = Math.hypot(px - p.x, py - p.y);
       if (d < bestD) { best = m; bestD = d; }
@@ -707,23 +731,46 @@
     const p = markScreen(m);
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
+  window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
+    id: m.id, root: m.root, off: m.off, oy: m.oy, flying: !!m.fly,
+    wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
+  }));
+  window.depthsReveal = () => revealDepths(true);   // debug: replay a live reveal (fly-out) without flying the ship
 
   function drawMarks(dt) {
     let shown = 0;
     const gd = sceneMode === "gamedev";
     for (const m of activeMarks()) {
+      if (m.fly) {
+        m.fly.t += dt;
+        if (m.fly.t >= FLY_DUR) { m.fly = null; m.pop = 1; }   // lands with the claim burst
+        else if (m.fly.t < 0) continue;                       // still waiting its turn inside the root
+      }
       const p = markScreen(m);
       m.vis = approach(m.vis, onScreen(p.x, 60) ? 1 : 0, 3.2, dt);
       if (m.pop > 0) m.pop = Math.max(0, m.pop - dt * 1.6);
       if (m.vis < 0.02 && m.pop <= 0) continue;
       shown++;
+      if (m.fly) {
+        const a = markScreen(m.fly.from);
+        ctx.save();
+        ctx.globalAlpha = 0.35 * m.vis;
+        ctx.strokeStyle = "rgb(198,204,198)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        ctx.restore();
+      }
       if (gd && window.Planet) {
         Planet.draw(ctx, p.x, p.y, {
           t, phase: m.phase, alpha: m.vis,
           active: activeMark === m, hover: hoverMark === m,
           claimed: !!(window.XP && XP.has("beacon-" + m.id)),
           xp: m.xp,
-          theme: m.theme, size: m.size, pop: m.pop, label: m.name,
+          theme: m.theme, size: m.fly ? m.size * (0.35 + 0.65 * flyK(m)) : m.size, pop: m.pop, label: m.name,
         });
       } else if (!gd) {
         Beacon.draw(ctx, p.x, p.y, {
@@ -1083,30 +1130,37 @@
      Some nodes are not on the map when you arrive. They come into
      range when the ones they hang off have been filed — one node,
      or several wired together. depths.js holds the graph; all this
-     does is place what the graph says has been earned.
+     does is place what the graph says has been earned. Nodes hang
+     off any beacon (root), placed relative to it; they fly out of
+     it when earned live.
      State is the XP ledger, so it survives a reload for free. ---- */
   const spawned = new Set();
+  const DEPTH_OFF_MAX = 0.44, DEPTH_OY_MIN = 0.16, DEPTH_OY_MAX = 0.66;
 
-  function spawnDepth(def, animate) {
-    const cam = GD_LAND[def.camKey];
-    if (cam == null) return false;
+  function spawnDepth(def, animate, delay) {
+    const root = MARKS.concat(PLANETS).find(m => m.id === def.root);
+    if (!root) return false;
+    const list = MARKS.includes(root) ? MARKS : PLANETS;
+    const off = Math.min(DEPTH_OFF_MAX, Math.max(-DEPTH_OFF_MAX, root.off + def.dx));
+    const oy = Math.min(DEPTH_OY_MAX, Math.max(DEPTH_OY_MIN, root.oy + def.dy));
     const node = {
-      id: def.id, cam, off: def.off, oy: def.oy, par: def.par,
+      id: def.id, root: def.root, cam: root.cam, off, oy, par: root.par,
       theme: def.theme, size: def.size, xp: def.xp,
       name: def.name, sub: def.sub,
     };
-    node.x = cam + (def.off * CAM.viewUnits) / def.par;
-    node.phase = PLANETS.length * 1.7 + 4;
+    node.x = node.cam + (off * CAM.viewUnits) / node.par;
+    node.phase = list.length * 1.7 + 4;
     node.vis = 0;
-    node.pop = animate ? 1 : 0;
-    PLANETS.push(node);
+    node.pop = 0;
+    if (animate) node.fly = { from: root, t: -(delay || 0) };
+    list.push(node);
 
     /* the panel is built here rather than sitting in index.html,
        so the markup can't be read ahead of being earned */
-    const anchor = document.getElementById("bnote-planet-zero");
+    const anchor = document.getElementById(def.root);
     if (anchor && anchor.parentNode && !document.getElementById(def.id)) {
       const aside = document.createElement("aside");
-      aside.className = "bnote deep";
+      aside.className = "bnote deep" + (def.wide ? " wide" : "");
       aside.id = def.id;
       aside.innerHTML = def.html;
       anchor.parentNode.appendChild(aside);
@@ -1129,7 +1183,7 @@
         if (spawned.has(d.id) || document.getElementById(d.id)) continue;
         if (!window.XP) return;
         if (!d.after.every(id => XP.has("beacon-" + id))) continue;
-        if (spawnDepth(d, animate)) { moved = true; added++; }
+        if (spawnDepth(d, animate, added * FLY_GAP)) { moved = true; added++; }
       }
     }
     if (!added) return;
@@ -1828,6 +1882,7 @@
   function atRest() {
     if (frozen || xswitch || thrustId != null || vel !== 0) return false;
     if (window.Genesis && Genesis.active) return false;
+    if (activeMarks().some(m => m.fly)) return false;
     if (!ship) return true;
     return !ship.thrusting && ship.targetX == null
       && ship.vel === 0 && ship.vy === 0 && ship.holdT === 0

@@ -492,6 +492,90 @@ def flow_shell(browser, base):
     ctx.close()
 
 
+def flow_depths(browser, base):
+    """Beacon claims spawn depths notes in waves, fly out live, and survive reload."""
+    ctx, page = new_page(browser)
+    console_errors: list[str] = []
+    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+    page.on("pageerror", lambda e: console_errors.append(str(e)))
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base)
+
+    empty = page.evaluate("window.depthsReport().length")
+    check("depths: nothing spawned before any claim", empty == 0, empty)
+
+    report = page.evaluate("""() => {
+      XP.award('beacon-bnote-planet-voidscape', 1, 'VoidScape');
+      XP.award('beacon-bnote-planet-heavylight', 1, 'HeavyLight');
+      XP.award('beacon-bnote-planet-conclusus', 1, 'Conclusus');
+      window.depthsReveal();
+      return window.depthsReport();
+    }""")
+    ids = {n["id"] for n in report}
+    check("depths: first waves spawn",
+          ids == {"bnote-vs-board", "bnote-hl-play", "bnote-cc-play", "bnote-cc-why"}, ids)
+    check("depths: live reveal flies", all(n["flying"] for n in report), report)
+
+    page.wait_for_timeout(2000)
+    report = page.evaluate("window.depthsReport()")
+    check("depths: flights land", all(not n["flying"] for n in report), report)
+
+    by_id = {n["id"]: n for n in report}
+    check("depths: play nodes are wide",
+          by_id["bnote-hl-play"]["wide"] and by_id["bnote-cc-play"]["wide"]
+          and not by_id["bnote-cc-why"]["wide"], report)
+
+    shells = page.evaluate("""() =>
+      !!document.querySelector('#bnote-hl-play .embed-shell[data-src] .embed-play') &&
+      !!document.querySelector('#bnote-cc-play .embed-shell[data-src] .embed-play')""")
+    check("depths: game shells injected", shells, shells)
+
+    page.route("**itch.io/**", lambda r: r.abort())
+    plays, resets = page.evaluate("""() => {
+      document.querySelector('#bnote-hl-play .embed-play').click();
+      const hasFrame = !!document.querySelector('#bnote-hl-play iframe');
+      Embed.reset(document.getElementById('bnote-hl-play'));
+      return [hasFrame, !document.querySelector('#bnote-hl-play iframe') &&
+        !!document.querySelector('#bnote-hl-play .embed-shell[data-src] .embed-play')];
+    }""")
+    check("depths: embed plays on click", plays, plays)
+    check("depths: embed resets", resets, resets)
+
+    page.evaluate("XP.award('beacon-bnote-vs-board', 1, 'The Board');")
+    page.reload()
+    page.wait_for_timeout(SETTLE)
+    report = page.evaluate("window.depthsReport()")
+    ids = {n["id"] for n in report}
+    check("depths: reload restores waves, no flight",
+          "bnote-vs-colour" in ids and "bnote-vs-bench" in ids and "bnote-vs-loop" not in ids
+          and all(not n["flying"] for n in report), report)
+
+    report = page.evaluate("""() => {
+      ['bnote-planet-zero','bnote-sz-shell','bnote-sz-chair','bnote-vs-colour','bnote-vs-bench',
+       'bnote-hl-play','bnote-cc-play','bnote-cc-why'].forEach(id => XP.award('beacon-'+id, 1, id));
+      window.depthsReveal();
+      return window.depthsReport();
+    }""")
+    check("depths: all 18 nodes spawn", len(report) == 18, len(report))
+    check("depths: nodes stay in frame",
+          all(-0.44 <= n["off"] <= 0.44 and 0.16 <= n["oy"] <= 0.66 for n in report), report)
+
+    overlaps = []
+    for i, a in enumerate(report):
+        for b in report[i + 1:]:
+            if a["root"] != b["root"]:
+                continue
+            dist = ((a["off"] - b["off"]) ** 2 + ((a["oy"] - b["oy"]) * 0.56) ** 2) ** 0.5
+            if dist < 0.06:
+                overlaps.append((a["id"], b["id"], dist))
+    check("depths: no two nodes of a cluster overlap", not overlaps, overlaps)
+
+    errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e
+              and "net::" not in e]
+    check("depths: no console errors", not errors, errors)
+    ctx.close()
+
+
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
@@ -536,7 +620,7 @@ FLOWS = {
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
-    "shell": flow_shell, "phone": flow_phone, "links": flow_links,
+    "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "links": flow_links,
 }
 
 
