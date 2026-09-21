@@ -1777,6 +1777,7 @@
           claimed: !!(window.XP && XP.has("beacon-" + m.id)),
         })),
         ship: st,
+        shipOy: ship && H ? ship.y / H : null,
       });
     }
   }

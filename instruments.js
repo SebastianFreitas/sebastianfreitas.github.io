@@ -982,9 +982,9 @@ window.Instruments = (function () {
     ctx.textAlign = "right";
     setFont(mono(9));
     ctx.fillStyle = `rgba(${COLD},0.9)`;
-    ctx.fillText("BRG " + fmtK(r.camX), p.w - 5, 14);
+    ctx.fillText("X " + Math.round(r.camX).toLocaleString("en-US"), p.w - 5, 14);
     ctx.fillStyle = `rgba(${DIM},1)`;
-    ctx.fillText(r.spanPct.toFixed(1) + "% SPAN", p.w - 5, 26);
+    ctx.fillText("Y " + (r.shipOy != null ? r.shipOy.toFixed(2) : "--"), p.w - 5, 26);
 
     // strip chart
     const chartTop = 38, chartBot = inner - 28;
