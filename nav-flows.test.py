@@ -611,6 +611,11 @@ def flow_rex(browser, base):
     page.keyboard.press("Escape")
     page.wait_for_timeout(1500)
 
+    KINGDOMS = ("firstlight", "crimson", "bonespire", "titans", "valkhar", "law")
+    unseen = page.evaluate("names => names.map(n => window.depthAlpha('bnote-rex-' + n))", list(KINGDOMS))
+    check("rex: no kingdom's art is drawn before its beacon is claimed",
+          all(a == 0 for a in unseen), unseen)
+
     report = page.evaluate("""() => {
       XP.award('beacon-bnote-rex', 1, 'Rex');
       window.depthsReveal();
@@ -633,11 +638,13 @@ def flow_rex(browser, base):
           all(by_id["bnote-rex-" + n]["from"] == "bnote-rex" for n in ("surface", "under", "hell")),
           tuple(by_id["bnote-rex-" + n]["from"] for n in ("surface", "under", "hell")))
     check("rex: the kingdoms leave from the Surface",
-          all(by_id["bnote-rex-" + n]["from"] == "bnote-rex-surface" for n in ("firstlight", "crimson")),
-          tuple(by_id["bnote-rex-" + n]["from"] for n in ("firstlight", "crimson")))
+          all(by_id["bnote-rex-" + n]["from"] == "bnote-rex-surface" for n in ("firstlight", "crimson", "bonespire")),
+          tuple(by_id["bnote-rex-" + n]["from"] for n in ("firstlight", "crimson", "bonespire")))
+    check("rex: the titans leave from the Underground",
+          by_id["bnote-rex-titans"]["from"] == "bnote-rex-under", by_id["bnote-rex-titans"]["from"])
     PINNED = {
         "firstlight": (358041, 0.48), "crimson": (364671, 0.38),
-        "under": (377837, 0.30), "bonespire": (375479, 0.46),
+        "under": (377837, 0.30), "bonespire": (371857, 0.25),
         "titans": (378762, 0.25), "hell": (392889, 0.25),
         "valkhar": (387467, 0.44), "law": (393803, 0.30),
         "seal": (395393, 0.35),
@@ -651,6 +658,25 @@ def flow_rex(browser, base):
           abs(by_id["bnote-rex-surface"]["off"] - (-0.07)) < 1e-9 and
           abs(by_id["bnote-rex-surface"]["oy"] - 0.24) < 1e-9,
           (by_id["bnote-rex-surface"]["off"], by_id["bnote-rex-surface"]["oy"]))
+
+    has_art = page.evaluate("""names => names.every(n => window.RexArt && RexArt[n]
+      && typeof RexArt[n].paint === 'function' && Array.isArray(RexArt[n].box) && RexArt[n].box.length === 4)""",
+      list(KINGDOMS))
+    check("rex: every kingdom has art", has_art)
+
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    for x in (358041, 364671, 371857, 378762, 387467, 393803):
+        page.evaluate("""x => {
+          const view = JSON.stringify({ mode: 'void', voidCamX: x, gdCamX: null });
+          sessionStorage.setItem('arcanis.view.v1', view);
+          addEventListener('pagehide', () => sessionStorage.setItem('arcanis.view.v1', view));
+        }""", x)
+        page.reload()
+        page.wait_for_timeout(1500)
+    check("rex: every kingdom paints without a page error", not errors, errors)
+    restored = page.evaluate("names => names.map(n => window.depthAlpha('bnote-rex-' + n))", list(KINGDOMS))
+    check("rex: a reload restores every kingdom's art", all(a == 1 for a in restored), restored)
     ctx.close()
 
 

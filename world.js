@@ -170,33 +170,26 @@ window.World = (function () {
     return (b.base + drift + ramp + relief) * entry;
   }
 
-  /* two landmarks on the tall surface — brick keep + Dracula keep.
-     Kept close enough to read as a pair; colors contrast the void. */
-  const REX_SURF_SPAN = REX_END - REX_FROM;
-  const REX_SURF_HI   = REX_FROM + REX_SURF_SPAN * 0.62;
-  const rexProps = { brick: null, dracula: null };
-  (function buildRex() {
-    // clear stone keep — west
-    rexProps.brick = {
-      x: LAND.rex - SLOT * 1.85,
-      keep:  { w: 150, h: 118 },
-      left:  { dx: -92, w: 52, h: 152 },
-      right: { dx:  92, w: 52, h: 152 },
-      gate:  { w: 34, h: 48 },
-    };
-    // gothic / Dracula keep — east of the brick one
-    rexProps.dracula = {
-      x: LAND.rex - SLOT * 0.75,
-      body: { w: 120, h: 140 },
-      towers: [
-        { dx: -78, w: 28, h: 175, spire: 38 },
-        { dx: -28, w: 22, h: 155, spire: 30 },
-        { dx:  28, w: 22, h: 165, spire: 34 },
-        { dx:  78, w: 30, h: 190, spire: 46 },
-        { dx:   0, w: 36, h: 210, spire: 58 },
-      ],
-    };
-  })();
+  /* ---- the kingdoms of Rex ------------------------------------
+     Each is painted once into its own sprite by rexart-surface.js /
+     rexart-deep.js (window.RexArt) and copied every frame; only its
+     moving parts are drawn live. Nothing shows until its beacon has
+     landed (depthAlpha). A surface kingdom stands on a range's skyline
+     at that range's parallax, so the ranges in front hide its foot; a
+     deep one hangs in the rock at the beacons' own parallax.
+  --------------------------------------------------------- */
+  const REX_ART_PAR  = 0.62;   // bnote-rex's par: deep kingdoms move with their beacons
+  const REX_ART_UNIT = 26;     // world units per art unit, before parallax
+  // band: index into REX_BANDS the kingdom stands on, or -1 for deep (then oy is its centre, as a share of the hero)
+  const REX_PLACES = [
+    { id: "bnote-rex-firstlight", art: "firstlight", x: 357516, band: 0 },
+    { id: "bnote-rex-crimson",    art: "crimson",    x: 364204, band: 0 },
+    { id: "bnote-rex-bonespire",  art: "bonespire",  x: 371462, band: 1 },
+    { id: "bnote-rex-titans",     art: "titans",     x: 378292, band: -1, oy: 0.37 },
+    { id: "bnote-rex-valkhar",    art: "valkhar",    x: 386879, band: -1, oy: 0.37 },
+    { id: "bnote-rex-law",        art: "law",        x: 394368, band: -1, oy: 0.38 },
+  ];
+  const rexSprites = new Map();   // art name -> { key, canvas }
 
   /* ---- void: stars, chaos, and things older than the span ---- */
   const blobs = [], motes = [], swarm = [], presences = [], tendrils = [];
@@ -1169,6 +1162,7 @@ window.World = (function () {
         ctx.strokeStyle = b.edge; ctx.lineWidth = 1.2;
         strokeSkyline(pts);
       }
+      drawRexPlaces(bi);  // kingdoms standing on this range, before the nearer ranges cover their feet
     }
 
     /* everything below is inside the nearest mass */
@@ -1181,10 +1175,9 @@ window.World = (function () {
       ctx.strokeStyle = REX_BANDS[2].edge; ctx.lineWidth = 1.5;
       strokeSkyline(nearPts);
       ctx.lineWidth = 1;
-
-      rexSurface(sc);
     }
 
+    drawRexPlaces(-1);   // the deep kingdoms, over the rock
     drawHell(bottom);
   }
 
@@ -1282,136 +1275,65 @@ window.World = (function () {
 
   }
 
-  /* ---- landmarks on the tall surface -----------------------
-     Brick keep: pale stone + mortar, reads clear against the void.
-     Dracula keep: dark gothic mass with a bright rim + lit slits.
-  --------------------------------------------------------- */
-  function rexSurface(sc) {
-    const nb = REX_BANDS[0], par = nb.par;
-    const surfY = worldX => H * 1.06 - rexHeight(worldX, nb) * H;
-    const onTop = y => y > H * 0.02 && y < H * 0.72;
-    if (camX > REX_SURF_HI + SLOT * 0.4) return;
-    const s = sc * par;
+  /* ---- kingdom sprites: paint once per (unit, dpr), copy every frame ---- */
+  function rexSprite(name, art, u, dpr) {
+    const key = u.toFixed(4) + "@" + dpr;
+    const cached = rexSprites.get(name);
+    if (cached && cached.key === key) return cached.canvas;
+    const c = cached ? cached.canvas : document.createElement("canvas");
+    const [x0, y0, x1, y1] = art.box;
+    c.width = Math.max(1, Math.ceil((x1 - x0) * u * dpr));
+    c.height = Math.max(1, Math.ceil((y1 - y0) * u * dpr));
+    const g = c.getContext("2d");
+    g.setTransform(u * dpr, 0, 0, u * dpr, -x0 * u * dpr, -y0 * u * dpr);
+    art.paint(g, 1 / u);
+    rexSprites.set(name, { key, canvas: c });
+    return c;
+  }
 
-    function crenel(x, y, w, step, rise) {
-      const n = Math.max(2, Math.floor(w / step));
-      const sw = w / n;
-      for (let i = 0; i < n; i++) if (i % 2 === 0)
-        ctx.fillRect(x + i * sw, y - rise, sw * 0.92, rise);
-    }
+  /* ---- kingdoms standing on a range, or (band === -1) deep in the rock ---- */
+  function drawRexPlaces(band) {
+    const lib = window.RexArt;
+    if (!lib) return;
+    const sc = scale();
+    const dpr = ctx.getTransform().a || 1;
+    for (const p of REX_PLACES) {
+      if (p.band !== band) continue;
+      const art = lib[p.art];
+      if (!art) continue;
+      const a = depthAlpha(p.id);
+      if (a <= 0) continue;
 
-    /* ---- brick castle (clear stone) ---- */
-    const br = rexProps.brick;
-    const bx0 = wx(br.x, par);
-    if (onScreen(bx0, 520)) {
-      const base = surfY(br.x);
-      if (onTop(base)) {
-        const stone = "#a8b0aa";
-        const mortar = "#6e7872";
-        const shade = "#8e9791";
-        const warm = "#f5d06b";
+      const b = band >= 0 ? REX_BANDS[band] : null;
+      const par = b ? b.par : REX_ART_PAR;
+      const u = sc * par * REX_ART_UNIT;
+      if (!(u > 0)) continue;
 
-        function brickBlock(cx, w, h) {
-          const x = cx - w / 2, y = base - h;
-          ctx.fillStyle = stone;
-          ctx.fillRect(x, y, w, h);
-          ctx.fillStyle = shade;
-          ctx.fillRect(x + w * 0.72, y, w * 0.28, h);
-          // mortar courses
-          ctx.strokeStyle = mortar;
-          ctx.lineWidth = Math.max(1, s * 0.7);
-          const rows = Math.max(3, Math.floor(h / (10 * s)));
-          for (let r = 1; r < rows; r++) {
-            const yy = y + (h * r) / rows;
-            ctx.beginPath(); ctx.moveTo(x + 1, yy); ctx.lineTo(x + w - 1, yy); ctx.stroke();
-          }
-          ctx.lineWidth = 1;
-          // rim so it never melts into the void
-          ctx.strokeStyle = "rgba(232,236,232,0.55)";
-          ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-          crenel(x, y, w, Math.max(8, 14 * s), Math.max(4, 8 * s));
-          ctx.fillStyle = stone;
-        }
+      const [x0, y0, x1, y1] = art.box;
+      const ax = wx(p.x, par);
+      if (ax + x1 * u < -40 || ax + x0 * u > W + 40) continue;
+      const ay = b ? H * 1.06 - rexHeight(p.x, b) * H : H * p.oy;
 
-        const keepW = br.keep.w * s, keepH = br.keep.h * s;
-        brickBlock(bx0, keepW, keepH);
-        brickBlock(bx0 + br.left.dx * s, br.left.w * s, br.left.h * s);
-        brickBlock(bx0 + br.right.dx * s, br.right.w * s, br.right.h * s);
+      const sprite = rexSprite(p.art, art, u, dpr);
 
-        // gate arch
-        const gw = br.gate.w * s, gh = br.gate.h * s;
-        ctx.fillStyle = "#3a4340";
-        ctx.fillRect(bx0 - gw / 2, base - gh, gw, gh);
-        ctx.strokeStyle = "rgba(245,208,107,0.35)";
-        ctx.strokeRect(bx0 - gw / 2 + 0.5, base - gh + 0.5, gw - 1, gh - 1);
-
-        // warm windows
-        ctx.fillStyle = warm;
-        ctx.globalAlpha = 0.55;
-        ctx.fillRect(bx0 - keepW * 0.22, base - keepH * 0.72, Math.max(2, 5 * s), Math.max(3, 8 * s));
-        ctx.fillRect(bx0 + keepW * 0.12, base - keepH * 0.62, Math.max(2, 5 * s), Math.max(3, 8 * s));
-        ctx.fillRect(bx0 + br.left.dx * s - 4 * s, base - br.left.h * s * 0.7, Math.max(2, 4 * s), Math.max(3, 7 * s));
-        ctx.fillRect(bx0 + br.right.dx * s - 2 * s, base - br.right.h * s * 0.65, Math.max(2, 4 * s), Math.max(3, 7 * s));
-        ctx.globalAlpha = 1;
+      ctx.save();
+      if (art.under) {
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.translate(ax, ay);
+        ctx.scale(u, u);
+        art.under(ctx, 1 / u, t, a);
+        ctx.restore();
       }
-    }
-
-    /* ---- Dracula castle (gothic silhouette) ---- */
-    const dr = rexProps.dracula;
-    const dx0 = wx(dr.x, par);
-    if (onScreen(dx0, 560)) {
-      const base = surfY(dr.x);
-      if (onTop(base)) {
-        const body = "#1e1822";
-        const rim = "rgba(214,220,218,0.7)";
-        const slit = "#c45a52";
-
-        // central body
-        const bw = dr.body.w * s, bh = dr.body.h * s;
-        ctx.fillStyle = body;
-        ctx.fillRect(dx0 - bw / 2, base - bh, bw, bh);
-        ctx.strokeStyle = rim;
-        ctx.lineWidth = Math.max(1.2, s * 1.1);
-        ctx.strokeRect(dx0 - bw / 2 + 0.5, base - bh + 0.5, bw - 1, bh - 1);
-
-        for (const tw of dr.towers) {
-          const twx = dx0 + tw.dx * s;
-          const twW = tw.w * s, twH = tw.h * s, sp = tw.spire * s;
-          const x = twx - twW / 2, y = base - twH;
-          ctx.fillStyle = body;
-          ctx.fillRect(x, y, twW, twH);
-          // spire
-          ctx.beginPath();
-          ctx.moveTo(x - 2 * s, y);
-          ctx.lineTo(twx, y - sp);
-          ctx.lineTo(x + twW + 2 * s, y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = rim;
-          ctx.beginPath();
-          ctx.moveTo(x - 2 * s, y);
-          ctx.lineTo(twx, y - sp);
-          ctx.lineTo(x + twW + 2 * s, y);
-          ctx.stroke();
-          ctx.strokeRect(x + 0.5, y + 0.5, twW - 1, twH - 1);
-
-          // crimson window slits
-          const pulse = 0.45 + 0.55 * Math.sin(t * 1.2 + tw.dx * 0.02);
-          ctx.fillStyle = slit;
-          ctx.globalAlpha = 0.35 + 0.45 * pulse;
-          ctx.fillRect(twx - twW * 0.18, y + twH * 0.22, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.12));
-          ctx.fillRect(twx - twW * 0.18, y + twH * 0.48, Math.max(1.5, twW * 0.22), Math.max(4, twH * 0.1));
-          ctx.globalAlpha = 1;
-        }
-
-        // body windows
-        ctx.fillStyle = slit;
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(dx0 - bw * 0.28, base - bh * 0.7, Math.max(2, 4 * s), Math.max(5, 10 * s));
-        ctx.fillRect(dx0 + bw * 0.12, base - bh * 0.55, Math.max(2, 4 * s), Math.max(5, 10 * s));
-        ctx.globalAlpha = 1;
-        ctx.lineWidth = 1;
+      ctx.globalAlpha = a;
+      ctx.drawImage(sprite, ax + x0 * u, ay + y0 * u, sprite.width / dpr, sprite.height / dpr);
+      if (art.live) {
+        ctx.globalAlpha = a;
+        ctx.translate(ax, ay);
+        ctx.scale(u, u);
+        art.live(ctx, 1 / u, t, a);
       }
+      ctx.restore();
     }
   }
 

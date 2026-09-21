@@ -476,12 +476,12 @@ window.Depths = (function () {
         },
         {
           id: "bnote-rex-bonespire",
-          after: ["bnote-rex-under"],
-          at: [375479, 0.46],
+          after: ["bnote-rex-surface"],
+          at: [371857, 0.25],
           name: "The Bone Spire",
           sub: "Kingdom of the dragons",
           html: `
-        <p class="tag">Rex · underground / bone spire</p>
+        <p class="tag">Rex · surface / bone spire</p>
         <h3>The Bone Spire</h3>
         <p class="body">The dragons' kingdom is built on a tower made from the bones of dragons. As time passes more are added, and the Spire grows.</p>
         <p class="body">No two dragons share a shape. Each gives its endless life to one purpose, and body and mind reshape around it. One that sought a cure for a plague becomes that cure, and its touch can heal. Most purposes are unattainable, and that is the point: a dragon that masters its purpose is a dead dragon.</p>
