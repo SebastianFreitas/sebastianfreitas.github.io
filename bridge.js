@@ -732,7 +732,7 @@
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
-    id: m.id, root: m.root, off: m.off, oy: m.oy, flying: !!m.fly,
+    id: m.id, root: m.root, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
   }));
   window.depthsReveal = () => revealDepths(true);   // debug: replay a live reveal (fly-out) without flying the ship
@@ -1141,10 +1141,18 @@
     const root = MARKS.concat(PLANETS).find(m => m.id === def.root);
     if (!root) return false;
     const list = MARKS.includes(root) ? MARKS : PLANETS;
-    const off = Math.min(DEPTH_OFF_MAX, Math.max(-DEPTH_OFF_MAX, root.off + def.dx));
-    const oy = Math.min(DEPTH_OY_MAX, Math.max(DEPTH_OY_MIN, root.oy + def.dy));
+    let off, oy, cam;
+    if (def.at) {
+      cam = def.at[0];
+      off = 0;
+      oy = def.at[1];
+    } else {
+      off = Math.min(DEPTH_OFF_MAX, Math.max(-DEPTH_OFF_MAX, root.off + def.dx));
+      oy = Math.min(DEPTH_OY_MAX, Math.max(DEPTH_OY_MIN, root.oy + def.dy));
+      cam = root.cam;
+    }
     const node = {
-      id: def.id, root: def.root, cam: root.cam, off, oy, par: root.par,
+      id: def.id, root: def.root, cam: cam, off, oy, par: root.par,
       theme: def.theme, size: def.size, xp: def.xp,
       name: def.name, sub: def.sub,
     };

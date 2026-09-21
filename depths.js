@@ -404,6 +404,7 @@ window.Depths = (function () {
         step: [0.16, 0.13],
         fan: { dy: 0.14, gap: 0.12 }
       },
+      // at: [worldX, oy] pins a node where it was measured in flight (NAV X / Y); it overrides the layout.
       nodes: [
         {
           id: "bnote-rex-surface",
@@ -420,6 +421,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-under",
           after: ["bnote-rex"],
+          at: [377837, 0.30],
           name: "The Underground",
           sub: "Where most of Rex keeps",
           html: `
@@ -432,6 +434,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-hell",
           after: ["bnote-rex"],
+          at: [392889, 0.25],
           name: "Hell",
           sub: "The field of the first war",
           html: `
@@ -444,6 +447,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-firstlight",
           after: ["bnote-rex-surface"],
+          at: [358041, 0.48],
           name: "The Kingdom of First Light",
           sub: "Ruled by Godrick",
           html: `
@@ -456,6 +460,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-crimson",
           after: ["bnote-rex-surface"],
+          at: [364671, 0.38],
           name: "The Crimson Court",
           sub: "Nocturnals under a red star",
           html: `
@@ -468,6 +473,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-bonespire",
           after: ["bnote-rex-under"],
+          at: [375479, 0.46],
           name: "The Bone Spire",
           sub: "Kingdom of the dragons",
           html: `
@@ -480,6 +486,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-titans",
           after: ["bnote-rex-under"],
+          at: [378762, 0.25],
           name: "The Kingdom of Titans",
           sub: "Direct descendants of Rex Immotus",
           html: `
@@ -492,6 +499,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-valkhar",
           after: ["bnote-rex-hell"],
+          at: [387467, 0.44],
           name: "The Lost City of Valkhar",
           sub: "Where the first souls were raised",
           html: `
@@ -504,6 +512,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-seal",
           after: ["bnote-rex-hell"],
+          at: [395393, 0.35],
           name: "The Great Seal",
           sub: "A wall against the Root",
           html: `
@@ -516,6 +525,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-law",
           after: ["bnote-rex-hell"],
+          at: [393803, 0.30],
           name: "The City of Law",
           sub: "Where reality is written down",
           html: `
@@ -675,7 +685,8 @@ window.Depths = (function () {
             name: node.name,
             sub: node.sub,
             wide: !!node.wide,
-            html: node.html
+            html: node.html,
+            at: node.at || null
           });
         });
       });
