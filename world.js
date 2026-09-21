@@ -426,8 +426,8 @@ window.World = (function () {
     }
   }
 
-  // The red star beside the Watcher, pinned where its beacon was measured in flight (NAV X / Y).
-  const RED_STAR = { x: 334257, oy: 0.24 };
+  // The red star beside the Watcher. x / oy is where its beacon was measured in flight (NAV X / Y); the star sits `side` radii to the left so the beacon marks it rather than covering it.
+  const RED_STAR = { x: 334257, oy: 0.24, side: -3.4 };
 
   function drawWatcher() {
     const x = wx(LAND.watcher, 0.24);
@@ -475,28 +475,30 @@ window.World = (function () {
   }
 
   function drawRedStar() {
-    const x = wx(RED_STAR.x, 0.24);
     const r = Math.min(W, H) * 0.03;
+    const x = wx(RED_STAR.x, 0.24) + r * RED_STAR.side;
     if (!onScreen(x, r * 6)) return;
     const y = H * RED_STAR.oy;
     const p = 1 + Math.sin(t * 0.8) * 0.08;
-    const g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 6 * p);
-    g.addColorStop(0, "rgba(255,70,60,0.28)");
-    g.addColorStop(0.4, "rgba(190,30,50,0.08)");
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 5 * p);
+    g.addColorStop(0, "rgba(255,110,90,0.55)");
+    g.addColorStop(0.12, "rgba(255,70,60,0.3)");
+    g.addColorStop(0.45, "rgba(190,30,50,0.07)");
     g.addColorStop(1, "rgba(190,30,50,0)");
     ctx.fillStyle = g;
-    ctx.fillRect(x - r * 6 * p, y - r * 6 * p, r * 12 * p, r * 12 * p);
-    ctx.globalAlpha = 0.35; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 1;
+    ctx.fillRect(x - r * 5 * p, y - r * 5 * p, r * 10 * p, r * 10 * p);
+    ctx.globalAlpha = 0.3; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let k = 0; k < 4; k++) {
-      const a2 = 0.3 + k * 1.5708;
-      ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a2) * r * 4 * p, y + Math.sin(a2) * r * 4 * p);
+    for (let k = 0; k < 2; k++) {
+      const a2 = k * 1.5708;
+      const cx = Math.cos(a2) * r * 2.2 * p, cy = Math.sin(a2) * r * 2.2 * p;
+      ctx.moveTo(x - cx, y - cy); ctx.lineTo(x + cx, y + cy);
     }
     ctx.stroke();
-    ctx.globalAlpha = 1;
-    const d = ctx.createRadialGradient(x - r * 0.25, y - r * 0.25, r * 0.1, x, y, r);
-    d.addColorStop(0, "#ffd2c4"); d.addColorStop(0.45, "#ff4a3a"); d.addColorStop(1, "#8e1024");
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fillStyle = d; ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = "#ff5a48";
+    ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "rgba(255,226,214,0.95)";
+    ctx.beginPath(); ctx.arc(x, y, r * 0.28, 0, 6.283); ctx.fill();
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
