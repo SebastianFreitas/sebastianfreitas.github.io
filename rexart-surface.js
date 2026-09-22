@@ -16,65 +16,7 @@
 
   /* ---------------- shared drawing helpers ---------------- */
 
-  function lin(g, x0, y0, x1, y1, stops) {
-    const gr = g.createLinearGradient(x0, y0, x1, y1);
-    for (const [offset, color] of stops) gr.addColorStop(offset, color);
-    return gr;
-  }
-
-  function rad(g, x, y, r0, r1, stops) {
-    const gr = g.createRadialGradient(x, y, r0, x, y, r1);
-    for (const [offset, color] of stops) gr.addColorStop(offset, color);
-    return gr;
-  }
-
-  function rect(g, x0, y0, x1, y1, fill) {
-    g.fillStyle = fill;
-    g.fillRect(x0, y0, x1 - x0, y1 - y0);
-  }
-
-  function poly(g, pts) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.closePath();
-  }
-
-  function line(g, pts, color, w) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.strokeStyle = color;
-    g.lineWidth = w;
-    g.stroke();
-  }
-
-  // fill lit, then clip to the shape and fill the hard shadow for x >= xSplit
-  function litShade(g, trace, xSplit, lit, shade) {
-    trace();
-    g.fillStyle = lit;
-    g.fill();
-    g.save();
-    trace();
-    g.clip();
-    g.fillStyle = shade;
-    g.fillRect(xSplit, -1000, 2000, 2000);
-    g.restore();
-  }
-
-  // each merlon is flat-filled lit, or shade if its centre is at/past xSplit
-  // (xSplit omitted or shade omitted => every merlon uses lit)
-  function merlons(g, x0, x1, yTop, mw, mh, gap, lit, shade, xSplit) {
-    const n = Math.max(1, Math.floor((x1 - x0 + gap) / (mw + gap)));
-    const span = n * mw + (n - 1) * gap;
-    const start = x0 + (x1 - x0 - span) / 2;
-    for (let i = 0; i < n; i++) {
-      const mx = start + i * (mw + gap);
-      const useShade = shade !== undefined && xSplit !== undefined && (mx + mw / 2) >= xSplit;
-      g.fillStyle = useShade ? shade : lit;
-      g.fillRect(mx, yTop - mh, mw, mh);
-    }
-  }
+  const { lin, rad, rect, poly, line, litShade, merlons } = Paint;
 
   function archWin(g, cx, yTop, w, h) {
     g.beginPath();

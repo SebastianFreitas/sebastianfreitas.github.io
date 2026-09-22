@@ -10,14 +10,12 @@
    =========================================================== */
 
 window.SiteEntry = (function () {
-  const VIEW_KEY   = "arcanis.view.v1";     // sessionStorage: this tab's last view
-  const SECTOR_KEY = "arcanis.sector.v1";   // localStorage: last sector, any visit
+  const VIEW_KEY   = Util.KEYS.VIEW;     // sessionStorage: this tab's last view
+  const SECTOR_KEY = Util.KEYS.SECTOR;   // localStorage: last sector, any visit
   const SECTIONS = ["work", "experience"];
   const SECTORS  = ["void", "gamedev"];
 
-  function read(store, key) {
-    try { return store.getItem(key); } catch (e) { return null; }
-  }
+  const read = Util.read;
 
   function navType() {
     try {
@@ -46,5 +44,5 @@ window.SiteEntry = (function () {
 
   if (kind !== "first") document.documentElement.classList.add("gate-done");
 
-  return { kind, sector, view, VIEW_KEY, SECTOR_KEY };
+  return { kind, sector, view };
 })();

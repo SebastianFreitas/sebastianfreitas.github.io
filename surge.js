@@ -41,7 +41,7 @@
     document.body.appendChild(root);
   }
 
-  const easeOut = u => 1 - Math.pow(1 - u, 3);
+  const easeOut = Util.easeOut;
   const easeIn  = u => u * u * u;
 
   /* how much of the loop this level is worth */

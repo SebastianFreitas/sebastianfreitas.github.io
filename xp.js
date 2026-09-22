@@ -10,7 +10,7 @@
    =========================================================== */
 
 window.XP = (function () {
-  const KEY = "arcanis.profile.v1";
+  const KEY = Util.KEYS.PROFILE;
   /* every level the site currently has to give — the underline under the
      top bar reads against this, so raising it is a one-line change */
   const TOTAL = 100;
@@ -32,7 +32,7 @@ window.XP = (function () {
     const doomed = [];
     for (let i = 0; i < store.length; i++) {
       const k = store.key(i);
-      if (k && k.indexOf("arcanis.") === 0) doomed.push(k);
+      if (k && k.indexOf(Util.KEYS.PREFIX) === 0) doomed.push(k);
     }
     doomed.forEach((k) => store.removeItem(k));
   }
@@ -47,7 +47,7 @@ window.XP = (function () {
       url.searchParams.delete("reset");
       history.replaceState(history.state, "", url.pathname + url.search + url.hash);
     }
-    const raw = localStorage.getItem(KEY);
+    const raw = Util.read(localStorage, KEY);
     if (raw) state = JSON.parse(raw);
   } catch (e) { /* storage unavailable — run for this session only */ }
 
@@ -68,7 +68,7 @@ window.XP = (function () {
   }
 
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    Util.write(localStorage, KEY, JSON.stringify(state));
   }
 
   /* take whatever another page or tab saved since this page loaded.
@@ -77,7 +77,7 @@ window.XP = (function () {
      overwrite newer progress. */
   function sync() {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = Util.read(localStorage, KEY);
       if (!raw) return;
       const s = JSON.parse(raw);
       if (!s || typeof s.level !== "number") return;
@@ -174,7 +174,7 @@ window.XP = (function () {
     document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on } }));
 
   const easeIn  = u => u * u * u * u;                    // slow, then sharp
-  const easeOut = u => 1 - Math.pow(1 - u, 3);
+  const easeOut = Util.easeOut;
 
   let ceremonyBusy = false;
 
@@ -322,7 +322,7 @@ window.XP = (function () {
     get total() { return TOTAL; },
     mount: buildChip,
 
-    reset() { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); },
+    reset() { Util.remove(localStorage, KEY); location.reload(); },
   };
 
   if (document.readyState === "loading")

@@ -20,23 +20,8 @@ window.World = (function () {
 
   const VIEW_UNITS = 2100;     // world units across the viewport
 
-  /* ---- the small maths this file needs, kept local so world.js
-          stands on its own ---- */
-  const mulberry = a => () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let x = Math.imul(a ^ a >>> 15, 1 | a);
-    x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
-    return ((x ^ x >>> 14) >>> 0) / 4294967296;
-  };
-  function hash1(n) {
-    n = (n ^ 61) ^ (n >>> 16);
-    n = n + (n << 3); n = n ^ (n >>> 4);
-    n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15);
-    return (n >>> 0) / 4294967296;
-  }
-  const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
-  const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
-  const fmt = n => Math.round(n).toLocaleString("en-US");
+  /* ---- the small maths this file needs ---- */
+  const { mulberry, hash1, smooth, approach, fmt, vnoise, ridge } = Util;
 
 
   /* ---- world ---- */
@@ -123,18 +108,6 @@ window.World = (function () {
   const REX_FROM = LAND.rex - SLOT * 6.0;   // the ground starts here
   const REX_END  = LAND.rex + SLOT * 2.5;   // the surface finally leaves the frame
   const HELL_AT  = LAND.rex + SLOT * 4.4;   // and it starts turning
-
-  /* value noise, so a range is stable and seamless at any zoom */
-  function vnoise(x, seed) {
-    const i = Math.floor(x), f = x - i;
-    const a = hash1((i * 73856093) ^ seed);
-    const b = hash1(((i + 1) * 73856093) ^ seed);
-    return a + (b - a) * (f * f * (3 - 2 * f));
-  }
-  function ridge(x, seed) {
-    return vnoise(x, seed) * 0.55 + vnoise(x * 2.3, seed + 17) * 0.3
-         + vnoise(x * 5.1, seed + 91) * 0.15;
-  }
 
   /* near band is biggest and darkest; the ones behind are smaller,
      higher and paler, which is what makes the joins disappear */
@@ -856,13 +829,7 @@ window.World = (function () {
 
   // flat fill lit from the left: the whole mass in lit, then a copy shifted down-right in shade, clipped to the mass, leaving a hard-edged lit cap on left-facing slopes (same as genesis.js fillRidge)
   function fillRidge(path, lit, shade) {
-    ctx.fillStyle = lit; ctx.fill(path);
-    ctx.save();
-    ctx.clip(path);
-    ctx.translate(H * 0.05, H * 0.035);
-    ctx.fillStyle = shade;
-    ctx.fill(path);
-    ctx.restore();
+    Paint.fillRidge(ctx, path, lit, shade, H * 0.05, H * 0.035);
   }
 
   function drawRex() {

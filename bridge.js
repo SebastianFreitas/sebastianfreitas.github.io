@@ -20,9 +20,11 @@
   const cv   = document.getElementById("bridge-canvas");
   if (!host || !cv) return;
 
+  const { mulberry, hash1, smooth, approach, fmt } = Util;
+
   // opaque: every frame starts with a full-frame fill, and an opaque canvas composites cheaper
   const ctx = cv.getContext("2d", { alpha: false });
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = Util.reduced();
   /* reduced-motion used to skip the frame loop and blank the span on
      http:// in Firefox while file:// still looked fine — same files.
      The loop always runs; we only soften travel when reduced. */
@@ -128,21 +130,6 @@
   }
   addEventListener("resize", resize);
   resize();
-
-  const mulberry = a => () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let x = Math.imul(a ^ a >>> 15, 1 | a);
-    x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
-    return ((x ^ x >>> 14) >>> 0) / 4294967296;
-  };
-  function hash1(n) {
-    n = (n ^ 61) ^ (n >>> 16);
-    n = n + (n << 3); n = n ^ (n >>> 4);
-    n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15);
-    return (n >>> 0) / 4294967296;
-  }
-  const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
-  const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
 
   /* ---- defer interaction until the gate picks a path ---- */
   let loopOn = false, bridgeReady = false, visible = true;
@@ -318,7 +305,6 @@
   };
   const scale = () => W / viewUnitsNow();
   const wx = (worldX, par) => (worldX - camX) * par * scale() + W * 0.5;
-  const fmt = n => Math.round(n).toLocaleString("en-US");
   const onScreen = (x, pad) => x > -pad && x < W + pad;
   /* a node coming into range leaves its root beacon and steps out to
      its own spot — FLY_STEPS positions over FLY_DUR, not a smooth tween,
@@ -467,7 +453,7 @@
   function clearMark() { if (activeMark) { activeMark = null; showNote(null); } }
 
   /* ---- the hint: names one thing at a time, then goes away ---- */
-  const HINT_KEY = "arcanis.hints.v2";
+  const HINT_KEY = Util.KEYS.HINTS;
   const HINT_STEPS = [
     { id: "burn",   text: "Hold anywhere to burn the voidship toward it" },
     { id: "beacon", text: "Click a beacon to set course — contact files it" },
@@ -475,7 +461,7 @@
   ];
   const hintEl = document.getElementById("bridge-hint");
   let hintsDone = {};
-  try { hintsDone = JSON.parse(localStorage.getItem(HINT_KEY) || "{}"); } catch (e) {}
+  try { hintsDone = JSON.parse(Util.read(localStorage, HINT_KEY) || "{}"); } catch (e) {}
 
   function paintHint() {
     if (!hintEl) return;
@@ -489,7 +475,7 @@
   function hintDone(id) {
     if (hintsDone[id]) return;
     hintsDone[id] = true;
-    try { localStorage.setItem(HINT_KEY, JSON.stringify(hintsDone)); } catch (e) {}
+    Util.write(localStorage, HINT_KEY, JSON.stringify(hintsDone));
     paintHint();
   }
   paintHint();
@@ -851,7 +837,7 @@
   if (window.Instruments) {
     Instruments.mount(document.getElementById("binst"));
     Instruments.mountSys(document.getElementById("binst-sys"));
-    const IK = "arcanis.inst.scale";
+    const IK = Util.KEYS.INST_SCALE;
     const termEl = document.getElementById("bridge-term");
     const hero = document.getElementById("bridge-hero");
 
@@ -870,7 +856,7 @@
        anyone made. The desktop keeps its old floor. */
     const DESK_MIN = 0.7;
 
-    let stored = parseFloat(localStorage.getItem(IK));
+    let stored = parseFloat(Util.read(localStorage, IK));
     const deskScale = () => {
       if (Number.isFinite(stored)) return Math.max(DESK_MIN, stored);
       const maxW = termEl ? termEl.clientWidth : Instruments.TOTAL_W;
@@ -899,7 +885,7 @@
       const lo = phone ? 0.45 : DESK_MIN;
       stored = Instruments.setScale(Math.max(lo, Instruments.getScale() + d));
       syncInstBox();
-      try { localStorage.setItem(IK, String(stored)); } catch (e) {}
+      Util.write(localStorage, IK, String(stored));
     };
     const bindScale = (el, delta) => {
       if (!el) return;
@@ -971,8 +957,7 @@
     if (Number.isFinite(v.gdCamX)) savedGDCamX = clampTo(v.gdCamX, GD_BOUNDS.min, GD_BOUNDS.max);
   }
 
-  /* keys must match entry.js */
-  const VIEW_KEY = "arcanis.view.v1", SECTOR_KEY = "arcanis.sector.v1";
+  const VIEW_KEY = Util.KEYS.VIEW, SECTOR_KEY = Util.KEYS.SECTOR;
   function saveView() {
     if (!entered) return;
     const view = {
@@ -980,8 +965,8 @@
       voidCamX: sceneMode === "void" ? camX : savedVoidCamX,
       gdCamX: sceneMode === "gamedev" ? camX : savedGDCamX,
     };
-    try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch (e) {}
-    try { localStorage.setItem(SECTOR_KEY, view.mode); } catch (e) {}
+    Util.write(sessionStorage, VIEW_KEY, JSON.stringify(view));
+    Util.write(localStorage, SECTOR_KEY, view.mode);
   }
   addEventListener("pagehide", saveView);
 
@@ -1035,15 +1020,14 @@
   if (gearBtn && modesPanel) {
     /* the gear is unlabelled furniture until someone uses it once — the tip
        beside it says so, and stops saying so for good after the first open */
-    const TIPK = "arcanis.gear.seen";
-    let tipSeen = false;
-    try { tipSeen = localStorage.getItem(TIPK) === "1"; } catch (_) {}
+    const TIPK = Util.KEYS.GEAR_SEEN;
+    let tipSeen = Util.read(localStorage, TIPK) === "1";
     if (tipSeen) modesPanel.classList.add("tip-done");
     const retireTip = () => {
       if (tipSeen) return;
       tipSeen = true;
       modesPanel.classList.add("tip-done");
-      try { localStorage.setItem(TIPK, "1"); } catch (_) {}
+      Util.write(localStorage, TIPK, "1");
     };
     const setOpen = on => {
       modesPanel.classList.toggle("open", on);

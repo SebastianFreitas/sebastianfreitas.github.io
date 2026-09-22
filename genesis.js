@@ -15,6 +15,8 @@
    =========================================================== */
 
 window.Genesis = (function () {
+  const { mulberry, hash1, smooth, clamp, mix, approach, vnoise, ridge } = Util;
+  const { litShade, offsetShade } = Paint;
   const FORCE = /(?:[?&])genesis(?:=1)?(?:&|$)/.test(location.search);
   const JUMP  = /[?&]gbeat=([a-z]+)/.exec(location.search);
   /* dev switches run once: take them out of the URL so reload and
@@ -27,7 +29,7 @@ window.Genesis = (function () {
       if (changed) history.replaceState(history.state, "", url.pathname + url.search + url.hash);
     } catch (e) {}
   })(["genesis", "gbeat"]);
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = Util.reduced();
 
   const overlay = document.getElementById("genesis");
   const tagEl   = document.getElementById("genesis-tag");
@@ -173,19 +175,6 @@ window.Genesis = (function () {
   const REX_WEST = ROOT_U - 0.98;
   const REX_EAST = ROOT_U - 0.02;
 
-  const mulberry = a => () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let x = Math.imul(a ^ a >>> 15, 1 | a);
-    x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
-    return ((x ^ x >>> 14) >>> 0) / 4294967296;
-  };
-  // fill lit, then clip to the shape and fill the hard shadow for x >= xSplit
-  function litShade(ctx, trace, xSplit, lit, shade) {
-    trace(); ctx.fillStyle = lit; ctx.fill();
-    ctx.save(); trace(); ctx.clip();
-    ctx.fillStyle = shade; ctx.fillRect(xSplit, -1e5, 2e5, 2e5);
-    ctx.restore();
-  }
   // a terrain silhouette lit from the left: flat fill, then a hard-edged lit
   // cap offset up-left, clipped to the shape, so the cap reads thick on
   // rising (left-facing) slopes and vanishes on steep right-facing slopes
@@ -196,15 +185,7 @@ window.Genesis = (function () {
     for (const p of pts) path.lineTo(p[0], p[1]);
     path.lineTo(pts[pts.length - 1][0], bottom);
     path.closePath();
-    ctx.fillStyle = lit;
-    ctx.fill(path);
-
-    ctx.save();
-    ctx.clip(path);
-    ctx.translate(H * 0.05, H * 0.035);
-    ctx.fillStyle = shade;
-    ctx.fill(path);
-    ctx.restore();
+    Paint.fillRidge(ctx, path, lit, shade, H * 0.05, H * 0.035);
     return path;
   }
   // world-anchored sample points along [left, right] so terrain doesn't
@@ -219,13 +200,6 @@ window.Genesis = (function () {
       out.push([sx(wu), wu]);
     }
     return out;
-  }
-  // gives a flat shape a hard shadow that follows its outline, lit from (dx, dy)
-  function offsetShade(ctx, trace, dx, dy, lit, shade) {
-    trace(); ctx.fillStyle = shade; ctx.fill();
-    ctx.save(); trace(); ctx.clip();
-    ctx.translate(dx, dy); trace(); ctx.fillStyle = lit; ctx.fill();
-    ctx.restore();
   }
   function mixHex(a, b, u) {
     u = Math.min(1, Math.max(0, u));
@@ -266,26 +240,6 @@ window.Genesis = (function () {
     ctx.fillStyle = core;
     ctx.beginPath(); ctx.arc(x - r * 0.32, y - r * 0.30, r * 0.28, 0, 6.283); ctx.fill();
     ctx.globalAlpha = 1;
-  }
-  function hash1(n) {
-    n = (n ^ 61) ^ (n >>> 16);
-    n = n + (n << 3); n = n ^ (n >>> 4);
-    n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15);
-    return (n >>> 0) / 4294967296;
-  }
-  const smooth = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
-  const clamp  = (n, a, b) => Math.min(b, Math.max(a, n));
-  const mix    = (a, b, u) => a + (b - a) * u;
-  const approach = (cur, tgt, rate, dt) => cur + (tgt - cur) * Math.min(1, dt * rate);
-  function vnoise(x, seed) {
-    const i = Math.floor(x), f = x - i;
-    const a = hash1((i * 73856093) ^ seed);
-    const b = hash1(((i + 1) * 73856093) ^ seed);
-    return a + (b - a) * (f * f * (3 - 2 * f));
-  }
-  function ridge(x, seed) {
-    return vnoise(x, seed) * 0.55 + vnoise(x * 2.3, seed + 17) * 0.3
-         + vnoise(x * 5.1, seed + 91) * 0.15;
   }
   function rexLandHeight(wu, b) {
     const spanU = REX_EAST - REX_WEST;

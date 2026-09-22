@@ -18,9 +18,9 @@
   const shellEl = document.getElementById("gate-shell");
   const logEl   = document.getElementById("gate-log");
   const panelEl = document.getElementById("gate-panel");
-  const touch   = matchMedia("(pointer: coarse)").matches;
+  const touch   = Util.coarse();
   const entry   = window.SiteEntry || { kind: "first", sector: "gamedev", view: null };
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = Util.reduced();
 
   const PATH = {
     world:    { id: "path-world",    label: "Setting" },

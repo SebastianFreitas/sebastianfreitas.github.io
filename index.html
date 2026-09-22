@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="style.css?v=10">
 <link rel="stylesheet" href="beacon.css?v=8">
 <link rel="stylesheet" href="bridge.css?v=48">
+<script src="util.js?v=1"></script>
 <script src="xp.js?v=15"></script>
 <script src="entry.js?v=1"></script>
 <script>
@@ -19,7 +20,7 @@
    Runs once per browser: the flag is set after the cleanup finishes. */
 (function () {
   if (!("serviceWorker" in navigator)) return;
-  var FLAG = "arcanis.swcleanup.v1";
+  var FLAG = Util.KEYS.SW_CLEANUP;
   try { if (localStorage.getItem(FLAG)) return; } catch (e) {}
   var jobs = [
     navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -387,6 +388,7 @@
 <script src="planet.js?v=3"></script>
 <script src="depths.js?v=7"></script>
 <script src="instruments.js?v=21"></script>
+<script src="paint.js?v=1"></script>
 <script src="rexart-surface.js?v=4"></script>
 <script src="rexart-deep.js?v=4"></script>
 <script src="landart.js?v=1"></script>

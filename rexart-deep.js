@@ -15,78 +15,8 @@
 
   /* ---- shared helpers ---- */
 
-  function rng(seed) {
-    let s = seed | 0;
-    return () => {
-      s = s + 0x6D2B79F5 | 0;
-      let x = Math.imul(s ^ s >>> 15, 1 | s);
-      x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
-      return ((x ^ x >>> 14) >>> 0) / 4294967296;
-    };
-  }
-
-  function lin(g, x0, y0, x1, y1, stops) {
-    const gr = g.createLinearGradient(x0, y0, x1, y1);
-    for (const [o, c] of stops) gr.addColorStop(o, c);
-    return gr;
-  }
-  function rad(g, x, y, r0, r1, stops) {
-    const gr = g.createRadialGradient(x, y, r0, x, y, r1);
-    for (const [o, c] of stops) gr.addColorStop(o, c);
-    return gr;
-  }
-
-  function poly(g, pts) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.closePath();
-  }
-  function line(g, pts, color, w) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.strokeStyle = color;
-    g.lineWidth = w;
-    g.stroke();
-  }
-  function circle(g, x, y, r, fill) {
-    g.beginPath();
-    g.arc(x, y, r, 0, 2 * Math.PI);
-    g.fillStyle = fill;
-    g.fill();
-  }
-
-  function merlons(g, x0, x1, yTop, mw, mh, gap, xSplit, lit, shade) {
-    const n = Math.max(1, Math.floor((x1 - x0 + gap) / (mw + gap)));
-    const span = n * mw + (n - 1) * gap;
-    const start = x0 + (x1 - x0 - span) / 2;
-    for (let i = 0; i < n; i++) {
-      const mx = start + i * (mw + gap);
-      const cx = mx + mw / 2;
-      if (cx >= xSplit) {
-        g.fillStyle = shade;
-        g.fillRect(mx, yTop - mh, mw, mh);
-      } else {
-        g.fillStyle = lit;
-        g.fillRect(mx, yTop - mh, mw, mh);
-        g.fillStyle = shade;
-        g.fillRect(mx, yTop - 0.35 * mh, mw, 0.35 * mh);
-      }
-    }
-  }
-
-  function litShade(g, trace, xSplit, lit, shade) {
-    trace();
-    g.fillStyle = lit;
-    g.fill();
-    g.save();
-    trace();
-    g.clip();
-    g.fillStyle = shade;
-    g.fillRect(xSplit, -1000, 2000, 2000);
-    g.restore();
-  }
+  const rng = Util.mulberry;
+  const { lin, rad, poly, line, circle, merlons, litShade } = Paint;
 
   function pocket(seed, rx, ry, floor) {
     const r = rng(seed);
@@ -585,14 +515,14 @@
     // Walls
     const wallSplit = 0 + 0.3 * 9.2;
     litShade(g, () => { g.beginPath(); g.rect(-9.2, 2.0, 18.4, 15.0); }, wallSplit, LW.wall, LW.wallShade);
-    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, wallSplit, LW.wall, LW.wallShade);
+    merlons(g, -9.2, 9.2, 2.0, 0.55, 0.6, 0.45, LW.wall, LW.wallShade, wallSplit, true);
     quoins(g, -9.2, 1, 2.0, wallSplit);
     quoins(g, 9.2, -1, 2.0, wallSplit);
 
     for (const [cx, top] of LW_TOWERS) {
       const towerSplit = cx + 0.3 * 1.1;
       litShade(g, () => { g.beginPath(); g.rect(cx - 1.1, top, 2.2, 17 - top); }, towerSplit, LW.wall, LW.wallShade);
-      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, towerSplit, LW.wall, LW.wallShade);
+      merlons(g, cx - 1.1, cx + 1.1, top, 0.5, 0.6, 0.4, LW.wall, LW.wallShade, towerSplit, true);
       quoins(g, cx - 1.1, 1, top, towerSplit);
       quoins(g, cx + 1.1, -1, top, towerSplit);
       g.fillStyle = LW.glow;

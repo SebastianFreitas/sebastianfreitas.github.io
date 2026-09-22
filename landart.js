@@ -17,26 +17,7 @@
 
   /* ---------------- shared drawing helpers ---------------- */
 
-  function poly(g, pts) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.closePath();
-  }
-
-  // Fill a shape with `lit`, then hard-clip a shade region to x >= xSplit.
-  function litShade(g, trace, xSplit, lit, shade) {
-    trace();
-    g.fillStyle = lit;
-    g.fill();
-
-    g.save();
-    trace();
-    g.clip();
-    g.fillStyle = shade;
-    g.fillRect(xSplit, -1000, 2000, 2000);
-    g.restore();
-  }
+  const { poly, litShade, rect } = Paint;
 
   // A ledge/cornice band from y (bottom) to y - h, spanning cx-hw..cx+hw.
   function band(g, cx, hw, y, h, pal) {
@@ -58,12 +39,6 @@
     g.arc(cx, yShoulder, r, Math.PI, 0, false);
     g.lineTo(cx + r, yb);
     g.closePath();
-    g.fillStyle = colour;
-    g.fill();
-  }
-
-  function rect(g, x0, y0, x1, y1, colour) {
-    poly(g, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
     g.fillStyle = colour;
     g.fill();
   }

@@ -11,6 +11,8 @@
    =========================================================== */
 
 window.Voidship = (function () {
+  const { approach, clamp } = Util;
+  const wrap = Util.wrapPi;
 
   const LAMP = [245, 208, 107];
   const COLD = [143, 176, 184];
@@ -724,15 +726,6 @@ window.Voidship = (function () {
 
   /* ---- maths ------------------------------------------------------ */
 
-  function approach(cur, tgt, rate, dt) {
-    return cur + (tgt - cur) * Math.min(1, (dt || 0) * rate);
-  }
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-  function wrap(a) {
-    while (a > Math.PI) a -= Math.PI * 2;
-    while (a < -Math.PI) a += Math.PI * 2;
-    return a;
-  }
   function turn(cur, want, maxStep) {
     const d = clamp(wrap(want - cur), -maxStep, maxStep);
     return cur + d;

@@ -19,6 +19,7 @@
    =========================================================== */
 
 window.Instruments = (function () {
+  const { mix, clamp, approach, wrapPi } = Util;
 
   const LAMP = "245,208,107";
   const COLD = "143,176,184";
@@ -565,16 +566,6 @@ window.Instruments = (function () {
     ctx.stroke();
   }
 
-  function lerp(a, b, u) { return a + (b - a) * u; }
-  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-  function approach(cur, tgt, rate, dt) {
-    return cur + (tgt - cur) * Math.min(1, dt * rate);
-  }
-  function wrapPi(a) {
-    while (a > Math.PI) a -= Math.PI * 2;
-    while (a < -Math.PI) a += Math.PI * 2;
-    return a;
-  }
   function spark(xs, x0, yBot, w, h, col, a) {
     if (xs.length < 2) return;
     const step = w / Math.max(1, xs.length - 1);
@@ -1058,7 +1049,7 @@ window.Instruments = (function () {
       ctx.fillText(fit(stat, p.w - 10 - rw), 5, baseY);
     }
 
-    void u; void lerp;
+    void u;
   }
 
   /* =========================================================
