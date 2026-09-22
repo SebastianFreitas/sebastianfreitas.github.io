@@ -175,7 +175,7 @@
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 #bridge-hint {
   left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--hud-stack) + 4.5rem);
+  bottom: calc(var(--hud-stack) + 10.5rem); /* clears a full 6-line log (~9.8rem) */
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
