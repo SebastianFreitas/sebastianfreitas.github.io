@@ -20,7 +20,8 @@
   const cv   = document.getElementById("bridge-canvas");
   if (!host || !cv) return;
 
-  const ctx = cv.getContext("2d");
+  // opaque: every frame starts with a full-frame fill, and an opaque canvas composites cheaper
+  const ctx = cv.getContext("2d", { alpha: false });
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   /* reduced-motion used to skip the frame loop and blank the span on
      http:// in Firefox while file:// still looked fine — same files.
@@ -612,7 +613,7 @@
   host.addEventListener("pointerdown", e => {
     if (frozen || xswitch || document.body.classList.contains("site-frozen")) return;
     // note panels scroll and hold clips, so a press inside one belongs to the panel, not a burn
-    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bcn, .bnote")) return;
+    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bnote")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -782,7 +783,7 @@
     ctx.strokeStyle = "rgb(198,204,198)";
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 5]);
-    ctx.lineDashOffset = -m.cue * 14;   // dashes crawl outward toward the target
+    ctx.lineDashOffset = -Math.min(m.cue, CUE_PULSE) * 14;   // dashes crawl outward, then hold once the cue settles
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(p.x, p.y);
@@ -1125,11 +1126,14 @@
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.fillStyle = "#04050a";
-    ctx.fillRect(0, 0, W, H);
     if (r > 0.5) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
+      // one even-odd path: the full frame minus the disc, so the scene stays visible inside the iris
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.arc(cx, cy, r, 0, 6.283);
+      ctx.fill("evenodd");
+    } else {
+      ctx.fillRect(0, 0, W, H);
     }
     const a = opts.glow || 0;
     if (r > 1 && a > 0.02) {
@@ -1806,6 +1810,7 @@
   }
 
   let youEl, youPct = null;
+  let movingNow = false;
   function updateHUD(dt) {
     if (youEl === undefined) youEl = document.getElementById("byou");
     if (youEl) {
@@ -1828,7 +1833,8 @@
     }
     runLog(dt);
 
-    host.classList.toggle("moving", Math.abs(vel) > 200);
+    const moving = Math.abs(vel) > 200;
+    if (moving !== movingNow) { movingNow = moving; host.classList.toggle("moving", moving); }
   }
 
   /* canvas-only half of the HUD: runs after the frame's DOM writes, so the
@@ -1954,10 +1960,21 @@
   }
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
     addEventListener(type, noteInput, { passive: true, capture: true }));
+  /* a reveal keeps the loop awake until every part of it has played out:
+     the flight, the landing burst, the art fade, and the pulse of a cue
+     pointing at a node revealed off-screen. Parking during any of these
+     would drop it to the idle 10 fps. */
+  function marksSettled() {
+    for (const m of activeMarks()) {
+      if (m.fly || m.pop > 0) return false;
+      if (m.unseen ? m.cue < CUE_PULSE : m.shown < 1) return false;
+    }
+    return true;
+  }
   function atRest() {
     if (frozen || xswitch || thrustId != null || vel !== 0) return false;
     if (window.Genesis && Genesis.active) return false;
-    if (activeMarks().some(m => m.fly)) return false;
+    if (!marksSettled()) return false;
     if (!ship) return true;
     return !ship.thrusting && ship.targetX == null
       && ship.vel === 0 && ship.vy === 0 && ship.holdT === 0
