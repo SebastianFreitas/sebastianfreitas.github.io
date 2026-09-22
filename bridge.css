@@ -12,10 +12,11 @@
   min-height: 560px;
   overflow: hidden;
   isolation: isolate;
-  background: #0d1114;
-  cursor: none;
+  background: var(--ink);
   --hud-floor: 1.25rem;        /* shared baseline for instruments, log, span */
   --span-h: 2.35rem;             /* bottom track + west/east labels */
+  --hud-stack: calc(var(--hud-floor) + var(--span-h));  /* the floor plus the span strip */
+  --cold: #8fb0b8;             /* a reading from outside the hull */
 }
 #bridge-canvas {
   position: absolute; inset: 0;
@@ -47,10 +48,10 @@
 .tinst-ctl button {
   font-family: var(--mono); font-size: 0.7rem; line-height: 1;
   width: 18px; height: 18px; padding: 0; cursor: pointer;
-  color: var(--sage-dim); background: rgba(13,17,20,0.8);
+  color: var(--sage-dim); background: rgb(var(--ink-rgb) / 0.8);
   border: 1px solid rgba(255,255,255,0.09);
 }
-.tinst-ctl button:hover { color: var(--lamp); border-color: rgba(245,208,107,0.5); }
+.tinst-ctl button:hover { color: var(--lamp); border-color: rgb(var(--lamp-rgb) / 0.5); }
 #bridge-term .tinst {
   display: block; width: auto; height: auto;
   background: rgba(9,13,15,0.35);
@@ -64,7 +65,7 @@
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  bottom: calc(var(--hud-floor) + var(--span-h) + 0.4rem);
+  bottom: calc(var(--hud-stack) + 0.4rem);
   width: min(34rem, 38vw);
   max-width: calc(100vw - 4rem);
   z-index: 11;
@@ -83,7 +84,7 @@
   position: absolute;
   left: 0; right: 0; bottom: 0;
   height: 1px;
-  background: rgba(198,204,198,0.32);
+  background: rgb(var(--sage-rgb) / 0.32);
 }
 #bridge-log .tlog::after {
   content: "";
@@ -101,13 +102,14 @@
 }
 #bridge-log .tl::before { content: "> "; color: #3d4644; }
 #bridge-log .tl:last-child { color: var(--sage); }
-#bridge-log .tl.loc:last-child  { color: var(--cold, #8fb0b8); }
-#bridge-log .tl.good { color: var(--lamp) !important; }
-/* tiers: a reading that bent, and one that cannot be true */
-#bridge-log .tl.warn { color: #c2954e !important; }
-#bridge-log .tl.err  { color: #bd7163 !important; }
-#bridge-log .tl.crit { color: #cb6354 !important; font-weight: 600; }
-#bridge-log .tl.rep  { color: #7fa8b4 !important; }
+#bridge-log .tl.loc:last-child  { color: var(--cold); }
+#bridge-log .tl.good { color: var(--lamp); }
+/* tiers: a reading that bent, and one that cannot be true.
+   Same specificity as .tl:last-child above, so order decides. */
+#bridge-log .tl.warn { color: #c2954e; }
+#bridge-log .tl.err  { color: #bd7163; }
+#bridge-log .tl.crit { color: #cb6354; font-weight: 600; }
+#bridge-log .tl.rep  { color: #7fa8b4; }
 #bridge-log .tl.good::before { content: "+ "; color: inherit; }
 #bridge-log .tl.warn::before { content: "! "; color: inherit; }
 #bridge-log .tl.err::before  { content: "!! "; color: inherit; }
@@ -166,14 +168,14 @@
 }
 #bridge-map .ghost {
   position: absolute; top: 50%; margin-top: -7px;
-  width: 1px; height: 14px; background: rgba(245,208,107,0.45);
+  width: 1px; height: 14px; background: rgb(var(--lamp-rgb) / 0.45);
   opacity: 0; transition: opacity 0.15s;
 }
 #bridge-map .track:hover .ghost { opacity: 1; }
 #bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; }
 #bridge-hint {
   left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--hud-floor) + var(--span-h) + 4.5rem);
+  bottom: calc(var(--hud-stack) + 4.5rem);
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live #bridge-hint { opacity: 1; }
@@ -182,8 +184,8 @@
 .bnote {
   position: absolute; z-index: 14; left: 0; top: 0;
   width: min(25rem, 34vw); padding: 1.4rem 1.6rem;
-  background: rgba(13,17,20,0.92);
-  border: 1px solid rgba(198,204,198,0.13);
+  background: rgb(var(--ink-rgb) / 0.92);
+  border: 1px solid rgb(var(--sage-rgb) / 0.13);
   border-left: 2px solid var(--lamp);
   opacity: 0; visibility: hidden; pointer-events: none;
   transform: translate(-14px, 8px) scale(0.985);
@@ -209,7 +211,7 @@
 .bnote a {
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--lamp); text-decoration: none;
-  border-bottom: 1px solid rgba(245,208,107,0.4); padding-bottom: 3px;
+  border-bottom: 1px solid rgb(var(--lamp-rgb) / 0.4); padding-bottom: 3px;
 }
 .bnote a:hover { color: #fff; border-color: #fff; }
 /* ---- deep notes: the nodes that unfold around a project ----
@@ -222,10 +224,10 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(198,204,198,0.2) transparent;
+  scrollbar-color: rgb(var(--sage-rgb) / 0.2) transparent;
 }
 .bnote.deep::-webkit-scrollbar { width: 6px; }
-.bnote.deep::-webkit-scrollbar-thumb { background: rgba(198,204,198,0.2); }
+.bnote.deep::-webkit-scrollbar-thumb { background: rgb(var(--sage-rgb) / 0.2); }
 /* a node that holds a playable build needs the width a game frame reads at */
 .bnote.deep.wide { width: min(46rem, 58vw); max-height: min(78vh, 44rem); }
 .bnote.deep .embed { margin: 0.9rem 0 0.4rem; }
@@ -246,7 +248,7 @@
    commands, not as prose that lost its font */
 .bnote code {
   font-family: var(--mono); font-size: 0.92em;
-  color: var(--lamp); background: rgba(245,208,107,0.08);
+  color: var(--lamp); background: rgb(var(--lamp-rgb) / 0.08);
   padding: 0 0.28em; border-radius: 2px;
 }
 /* the clip is opt-in: preload="none" in the markup, so nothing is
@@ -254,7 +256,7 @@
 .bnote .clipbox { margin: 0 0 1.1rem; }
 .bnote .clipbox .clip {
   display: block; width: 100%; height: auto;
-  background: #05090a; border: 1px solid rgba(198,204,198,0.12);
+  background: #05090a; border: 1px solid rgb(var(--sage-rgb) / 0.12);
 }
 .bnote .clipbox figcaption {
   font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
@@ -282,7 +284,7 @@
   display: flex; align-items: center; gap: 1.2rem;
   padding: 0.65rem 1.1rem;
   background: rgba(9,13,15,0.86);
-  border: 1px solid rgba(198,204,198,0.18);
+  border: 1px solid rgb(var(--sage-rgb) / 0.18);
   border-top: 2px solid var(--lamp);
 }
 .modes-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
@@ -297,16 +299,16 @@
   padding: 0.42rem 0.75rem;
   color: var(--sage-dim);
   background: rgba(20,26,29,0.55);
-  border: 1px solid rgba(198,204,198,0.24);
+  border: 1px solid rgb(var(--sage-rgb) / 0.24);
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
-.modes-btn:hover { color: var(--sage); border-color: rgba(198,204,198,0.45); }
+.modes-btn:hover { color: var(--sage); border-color: rgb(var(--sage-rgb) / 0.45); }
 .modes-btn.active {
-  color: #0d1114; background: var(--lamp); border-color: var(--lamp);
+  color: var(--ink); background: var(--lamp); border-color: var(--lamp);
 }
 .modes-btn-story {
   color: var(--sage);
-  border-color: rgba(245,208,107,0.32);
+  border-color: rgb(var(--lamp-rgb) / 0.32);
 }
 .modes-btn-story:hover { color: var(--lamp); border-color: var(--lamp); }
 /* on a phone the setting bar folds into this; desktop never sees it */
@@ -317,13 +319,13 @@
   width: 32px; height: 32px; padding: 0;
   color: var(--sage-dim);
   background: rgba(9,13,15,0.62);
-  border: 1px solid rgba(245,208,107,0.38);
+  border: 1px solid rgb(var(--lamp-rgb) / 0.38);
   opacity: 0.8;
   transition: opacity 0.2s, color 0.2s, border-color 0.2s;
 }
 .modes-gear svg { display: block; width: 17px; height: 17px; }
 #bridge-modes.open .modes-gear {
-  opacity: 1; color: var(--lamp); border-color: rgba(245,208,107,0.5);
+  opacity: 1; color: var(--lamp); border-color: rgb(var(--lamp-rgb) / 0.5);
 }
 /* hidden everywhere but the phone, where the gear is the only way in */
 .modes-tip { display: none; }
@@ -357,7 +359,7 @@
   position: fixed; left: 0; top: 0; z-index: 60;
   pointer-events: none; will-change: transform;
   width: 26px; height: 26px; margin: -13px 0 0 -13px;
-  border: 1px solid rgba(245,208,107,0.45); border-radius: 50%;
+  border: 1px solid rgb(var(--lamp-rgb) / 0.45); border-radius: 50%;
   opacity: 0; transition: opacity 0.2s;
 }
 #bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
@@ -378,13 +380,13 @@
 /* the ticks that mark something worth stopping at */
 #bridge-map .mk.poi {
   margin-top: -9px; height: 18px; width: 2px;
-  background: rgba(245,208,107,0.55);
+  background: rgb(var(--lamp-rgb) / 0.55);
   pointer-events: auto; cursor: pointer;
 }
 #bridge-map .mk.poi::after {
   content: ""; position: absolute; left: -2px; top: -6px;
   width: 6px; height: 6px; border-radius: 50%;
-  background: rgba(245,208,107,0.75);
+  background: rgb(var(--lamp-rgb) / 0.75);
 }
 #bridge-map .mk.poi:hover { background: #fff; }
 #bridge-map .mk.poi:hover::after { background: #fff; }
@@ -399,7 +401,7 @@
 /* cursor over something inspectable */
 #bridge-cursor.over {
   width: 40px; height: 40px; margin: -20px 0 0 -20px;
-  border-color: rgba(245,208,107,0.55);
+  border-color: rgb(var(--lamp-rgb) / 0.55);
 }
 #bridge-cursor.over::after { inset: 17px; }
 
@@ -411,12 +413,6 @@ footer .rights {
 
 
 
-/* =========================================================
-   Provisional entry: chip, new-user card, floating awards
-   ========================================================= */
-
-
-
 /* Under 900px there is no room beside a beacon for a panel this wide, so
    the note stops chasing the beacon and becomes a sheet above the span.
    placeNote() clears its inline left/top to match — see bridge.js. */
@@ -425,7 +421,7 @@ footer .rights {
     left: 1.25rem !important;
     right: 1.25rem !important;
     top: auto !important;
-    bottom: calc(var(--hud-floor) + var(--span-h) + 0.6rem) !important;
+    bottom: calc(var(--hud-stack) + 0.6rem) !important;
     width: auto !important;
   }
   /* the sheet already owns the width down here; deep notes only need
@@ -435,7 +431,6 @@ footer .rights {
 /* burning the voidship */
 .bridge-hero { cursor: crosshair; }
 .bridge-hero.burning { cursor: crosshair; }
-#bridge-cursor.over { border-color: rgba(245,208,107,0.55); }
 /* span strip is a readout — not a jump drive */
 #bridge-map .track.readonly,
 #bridge-map .track.readonly .mk.poi {
@@ -504,7 +499,7 @@ html.genesis-on .topbar {
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--lamp);
   background: rgba(9,13,15,0.92);
-  border: 1px solid rgba(245,208,107,0.45);
+  border: 1px solid rgb(var(--lamp-rgb) / 0.45);
   padding: 0.45rem 0.75rem; cursor: pointer;
   pointer-events: auto;
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
@@ -549,7 +544,7 @@ html.genesis-on .topbar {
 }
 .genesis-prog {
   display: block; width: 100%; height: 3px;
-  background: rgba(198,204,198,0.18);
+  background: rgb(var(--sage-rgb) / 0.18);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -569,7 +564,7 @@ html.genesis-on .topbar {
   font-family: var(--mono); font-size: 0.9rem; line-height: 1;
   color: var(--lamp);
   background: rgba(9,13,15,0.92);
-  border: 1px solid rgba(245,208,107,0.45);
+  border: 1px solid rgb(var(--lamp-rgb) / 0.45);
   cursor: pointer;
   text-shadow: 0 1px 10px rgba(0,0,0,0.9);
 }
@@ -593,13 +588,13 @@ html.genesis-on .topbar {
   display: none;
   align-items: center; justify-content: center;
   padding: 2rem 1.5rem;
-  background: #0d1114;
+  background: var(--ink);
   text-align: center;
 }
 .rotate-inner { max-width: 22rem; }
 .rotate-glyph {
   width: 46px; height: 74px; margin: 0 auto 1.6rem;
-  border: 1px solid rgba(245,208,107,0.5); border-radius: 7px;
+  border: 1px solid rgb(var(--lamp-rgb) / 0.5); border-radius: 7px;
   animation: rotate-tip 2.6s ease-in-out infinite;
 }
 .rotate-say {
@@ -613,7 +608,7 @@ html.genesis-on .topbar {
 .rotate-skip {
   font-family: var(--mono); font-size: 0.74rem;
   color: var(--sage); text-decoration: none;
-  border-bottom: 1px solid rgba(198,204,198,0.3);
+  border-bottom: 1px solid rgb(var(--sage-rgb) / 0.3);
   padding-bottom: 2px;
 }
 @keyframes rotate-tip {
@@ -657,7 +652,7 @@ html.genesis-on .topbar {
   #bridge-log {
     width: calc(100vw - 1.5rem);
     max-width: none;
-    bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem);
+    bottom: calc(var(--hud-stack) + var(--inst-h, 9rem) + 0.3rem);
   }
   /* three lines and no more — bridge.js caps LOG_MAX to match, and the
      max-height is the belt to that braces: an overlong line that wraps
@@ -685,7 +680,7 @@ html.genesis-on .topbar {
   .bridge-scroll { display: none; }
 
   .bnote {
-    bottom: calc(var(--hud-floor) + var(--span-h) + var(--inst-h, 9rem) + 0.3rem) !important;
+    bottom: calc(var(--hud-stack) + var(--inst-h, 9rem) + 0.3rem) !important;
     max-height: 8rem; overflow: auto;
   }
   /* 8rem is a teaser's height; a deep note needs room for a clip */

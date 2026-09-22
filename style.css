@@ -3,6 +3,24 @@
    One stylesheet. Edit the tokens below to re-skin the site.
    ========================================================= */
 
+/* Breakpoints — every width and height the three sheets test:
+     max-width: 640px    small screens (the experience list unstacks)
+     max-width: 760px    phone width (log, map and genesis copy pull in)
+     max-width: 900px    narrow (card artwork retreats, bridge cursor goes)
+     max-width: 1100px   the SYS bank hides
+   and the pair that means "phone, held sideways":
+     (max-height: 520px) and (pointer: coarse)   landscape phone
+     max-height: 560px                           short enough to drop the hero's floor
+   plus (orientation: portrait) and (pointer: coarse) for the rotate notice,
+   and (prefers-reduced-motion: reduce) in all three files. */
+
+/* Stacking — the z ladder each file owns:
+     style.css   obj artwork 0 · obj text, work and experience 1 · topbar 3 ·
+                 site gate 100 · topbar above the gate 101
+     bridge.css  canvas 0 · panel buttons and genesis skip 2 · HUD 10 · log 11 ·
+                 scroll cue 12 · note 14 · rotate notice 45 · cursor 60 · genesis 90
+     beacon.css  xp chip 55 · xp pop 70 · xp tag 89 · xp mote 90 · surge 96 */
+
 :root {
   --petrol:    #141a1d;   /* page background — deep blue-grey, not black */
   --petrol-up: #1b2327;   /* raised surfaces (cards) */
@@ -11,6 +29,11 @@
   --lamp:      #f5d06b;   /* the light. used sparingly, on purpose */
   --brick:     #b0685a;   /* IDs, small accents */
   --line:      #2b3438;   /* hairlines */
+
+  --lamp-rgb: 245 208 107;   /* --lamp as channels, for rgb(var(--lamp-rgb) / a) */
+  --sage-rgb: 198 204 198;   /* --sage as channels */
+  --ink: #0d1114;            /* the deep background under the bridge and the gate */
+  --ink-rgb: 13 17 20;
 
   --display: "Bricolage Grotesque", system-ui, sans-serif;
   --body:    "IBM Plex Sans", system-ui, sans-serif;
@@ -26,6 +49,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
+  padding-top: 0;
   background: var(--petrol);
   color: var(--sage);
   font-family: var(--body);
@@ -44,10 +68,14 @@ a:hover { color: #fff; }
 
 /* ---------------- top bar ---------------- */
 
+/* absolute so the bar floats over the hero; grid so the level chip sits
+   dead centre whatever the wordmark and the links either side weigh */
 .topbar {
-  position: relative;
+  position: absolute;
+  top: 0; left: 0; right: 0;
   z-index: 3;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -55,6 +83,15 @@ a:hover { color: #fff; }
   font-family: var(--mono);
   font-size: 0.8rem;
   letter-spacing: 0.06em;
+}
+/* everything earned so far, kept quiet: the rule under the top bar */
+.topbar::after {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 1px;
+  width: var(--xp-progress);
+  background: linear-gradient(to right, rgb(var(--lamp-rgb) / 0.25), var(--lamp));
+  box-shadow: 0 0 10px rgb(var(--lamp-rgb) / 0.35);
+  transition: width 0.9s cubic-bezier(.6,0,.3,1);
+  pointer-events: none;
 }
 
 .wordmark {
@@ -66,9 +103,12 @@ a:hover { color: #fff; }
   text-decoration: none;
 }
 
-.topbar nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.topbar nav { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-self: end; }
 .topbar nav a { color: var(--sage-dim); text-decoration: none; }
 .topbar nav a:hover { color: var(--lamp); }
+
+/* case pages have no hero: the bar sits in the flow, above the title */
+.page-case .topbar { position: relative; }
 
 /* ---------------- site gate ---------------- */
 
@@ -91,7 +131,7 @@ body.site-frozen > .topbar {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
   padding: clamp(1.25rem, 4vw, 2.5rem);
-  background: rgba(13, 17, 20, 0.72);
+  background: rgb(var(--ink-rgb) / 0.72);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   pointer-events: auto;
@@ -171,26 +211,26 @@ body.site-frozen > .topbar {
   padding: 0.75rem 1.35rem;
   color: var(--sage);
   background: rgba(20, 26, 29, 0.65);
-  border: 1px solid rgba(198, 204, 198, 0.32);
+  border: 1px solid rgb(var(--sage-rgb) / 0.32);
   transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .gate-btn:hover {
   color: var(--lamp);
-  border-color: rgba(245, 208, 107, 0.55);
+  border-color: rgb(var(--lamp-rgb) / 0.55);
   background: rgba(27, 35, 39, 0.9);
 }
 .gate-btn-primary {
-  color: #0d1114;
+  color: var(--ink);
   background: var(--lamp);
   border-color: var(--lamp);
-  box-shadow: 0 0 18px rgba(245, 208, 107, 0.38);
+  box-shadow: 0 0 18px rgb(var(--lamp-rgb) / 0.38);
   font-weight: 500;
 }
 .gate-btn-primary:hover {
-  color: #0d1114;
+  color: var(--ink);
   background: #f8dc86;
   border-color: #f8dc86;
-  box-shadow: 0 0 26px rgba(245, 208, 107, 0.55);
+  box-shadow: 0 0 26px rgb(var(--lamp-rgb) / 0.55);
 }
 
 /* ---------------- shared section furniture ---------------- */
@@ -356,7 +396,7 @@ body.site-frozen > .topbar {
   width: 100%;
   height: 100%;
   border: 0;
-  background: rgba(13, 17, 20, 0.58);
+  background: rgb(var(--ink-rgb) / 0.58);
   color: var(--lamp);
   font-family: var(--mono);
   font-size: 0.82rem;
@@ -366,7 +406,7 @@ body.site-frozen > .topbar {
 }
 .embed-play:hover,
 .embed-play:focus-visible {
-  background: rgba(13, 17, 20, 0.36);
+  background: rgb(var(--ink-rgb) / 0.36);
   color: #fff;
 }
 
@@ -380,6 +420,17 @@ body.site-frozen > .topbar {
   color: var(--sage-dim);
 }
 .back:hover { color: var(--lamp); }
+
+/* bottom of a case page: back to the list, or on to the next one */
+.case-nav {
+  display: flex; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap;
+  margin-top: 3rem;
+}
+.case-nav a {
+  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; text-decoration: none; color: var(--sage-dim);
+}
+.case-nav a:hover { color: var(--lamp); }
 
 /* ---------------- footer ---------------- */
 
@@ -395,15 +446,27 @@ footer p { margin: 0 0 0.4rem; }
 /* ---------------- small screens ---------------- */
 
 @media (max-width: 640px) {
-  .hero { min-height: 68vh; }
-  .hint { display: none; }
   .xp li { grid-template-columns: 1fr; }
   .xp-when { grid-row: auto; }
 }
 
+/* a landscape phone has ~390px of height to spend — the topbar takes less of it */
+@media (max-height: 520px) and (pointer: coarse) {
+  .topbar { padding: 0.18rem 0.7rem; font-size: 0.5rem; gap: 0.9rem; }
+  .wordmark { font-size: 0.72rem; letter-spacing: 0.08em; }
+  .topbar nav { gap: 0.55rem; flex-wrap: nowrap; }
+}
+
+/* keyframes still run, but they land on their end state at once: killing
+   the animation outright would strand anything whose base style is invisible */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  * { transition: none !important; }
+  * {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+  }
 }
 
 /* =========================================================
@@ -474,28 +537,4 @@ footer p { margin: 0 0 0.4rem; }
   .obj-shot, .obj:hover .obj-shot { transition: none; transform: none; }
 }
 
-/* topbar over the hero */
-.topbar { position: absolute; top: 0; left: 0; right: 0; }
-
-/* case pages have no hero: the bar sits in the flow, above the title */
-.page-case .topbar { position: relative; }
-
-/* bottom of a case page: back to the list, or on to the next one */
-.case-nav {
-  display: flex; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap;
-  margin-top: 3rem;
-}
-.case-nav a {
-  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em;
-  text-transform: uppercase; text-decoration: none; color: var(--sage-dim);
-}
-.case-nav a:hover { color: var(--lamp); }
-body { padding-top: 0; }
 .work, .experience { position: relative; z-index: 1; background: var(--petrol); }
-
-/* a landscape phone has ~390px of height to spend — the topbar takes less of it */
-@media (max-height: 520px) and (pointer: coarse) {
-  .topbar { padding: 0.18rem 0.7rem; font-size: 0.5rem; gap: 0.9rem; }
-  .wordmark { font-size: 0.72rem; letter-spacing: 0.08em; }
-  .topbar nav { gap: 0.55rem; flex-wrap: nowrap; }
-}

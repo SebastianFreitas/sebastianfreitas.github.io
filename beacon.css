@@ -9,25 +9,6 @@
 /* ---- top bar: wordmark left, level centre, links right ---- */
 :root { --xp-progress: 0%; }
 
-/* NOTE: style.css positions .topbar absolute so it floats over the hero.
-   Don't set position here — an absolutely positioned element is already a
-   containing block for ::after, and overriding it drops the bar into flow,
-   which makes the page taller than the viewport. */
-.topbar {
-  display: grid !important;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-}
-/* everything earned so far, kept quiet: the rule under the top bar */
-.topbar::after {
-  content: ""; position: absolute; left: 0; bottom: 0; height: 1px;
-  width: var(--xp-progress);
-  background: linear-gradient(to right, rgba(245,208,107,0.25), var(--lamp));
-  box-shadow: 0 0 10px rgba(245,208,107,0.35);
-  transition: width 0.9s cubic-bezier(.6,0,.3,1);
-  pointer-events: none;
-}
-.topbar nav { justify-self: end; }
 .xp-slot { justify-self: center; }
 
 /* ---- the level chip ---- */
@@ -42,7 +23,7 @@
 .xp-chip .xp-lv { color: var(--sage-dim); white-space: nowrap; }
 .xp-chip .xp-lv b { color: var(--lamp); font-weight: 500; font-size: 0.92rem; margin-left: 0.3rem; }
 .xp-chip .xp-track { width: 74px; height: 2px; background: #1e262a; display: block; }
-.xp-chip .xp-track i { display: block; height: 100%; width: 0; background: var(--lamp); transition: width 0.5s ease; }
+.xp-chip .xp-track i { display: block; height: 100%; width: 0; background: var(--lamp); }
 .xp-chip .xp-ref { color: #4e5956; white-space: nowrap; }
 
 /* ---- the badge, and how it changes with rank ---- */
@@ -53,17 +34,17 @@
   stroke-linejoin: round;
 }
 .xp-chip[data-rank="dot"] .xp-badge path { fill: var(--sage-dim); stroke: none; }
-.xp-chip[data-rank="star"] .xp-badge path { fill: rgba(245,208,107,0.18); }
+.xp-chip[data-rank="star"] .xp-badge path { fill: rgb(var(--lamp-rgb) / 0.18); }
 
 /* ---- the claim ---- */
 .xp-mote {
   position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
   font-family: var(--mono); font-weight: 600; font-size: 0.95rem;
-  color: #0d1114; will-change: transform;
+  color: var(--ink); will-change: transform;
 }
 .xp-mote b {
   display: block; padding: 0.28rem 0.55rem; background: var(--lamp);
-  box-shadow: 0 0 26px 8px rgba(245,208,107,0.45);
+  box-shadow: 0 0 26px 8px rgb(var(--lamp-rgb) / 0.45);
 }
 .xp-tag {
   position: fixed; z-index: 89; pointer-events: none;
@@ -76,7 +57,7 @@
 .xp-tag.go { opacity: 1; transform: translate(-50%, 22px); }
 
 /* while the level is landing */
-.xp-chip.landing .xp-track i { box-shadow: 0 0 12px 2px rgba(245,208,107,0.7); }
+.xp-chip.landing .xp-track i { box-shadow: 0 0 12px 2px rgb(var(--lamp-rgb) / 0.7); }
 .xp-chip.landing .xp-lv b { color: #fff; }
 .xp-chip.tick .xp-lv b { animation: lvTick 0.42s cubic-bezier(.2,.9,.3,1); }
 @keyframes lvTick {
@@ -124,9 +105,6 @@
   .xp-chip .xp-lv b { font-size: 0.68rem; margin-left: 0.24rem; }
   .xp-badge { width: 11px; height: 11px; }
 }
-@media (prefers-reduced-motion: reduce) {
-}
-
 
 /* ---- the rank shape leaves before the next one arrives ---- */
 .xp-badge { transition: none; }
@@ -156,10 +134,10 @@
 .surge-rail {
   position: absolute; display: block;
   background: linear-gradient(var(--dir, 90deg),
-    rgba(245,208,107,0) 0%,
-    rgba(245,208,107,calc(0.55 + 0.45 * var(--surge-heat))) 55%,
+    rgb(var(--lamp-rgb) / 0) 0%,
+    rgb(var(--lamp-rgb) / calc(0.55 + 0.45 * var(--surge-heat))) 55%,
     #fff6dd 100%);
-  box-shadow: 0 0 calc(8px + 16px * var(--surge-heat)) rgba(245,208,107,0.7);
+  box-shadow: 0 0 calc(8px + 16px * var(--surge-heat)) rgb(var(--lamp-rgb) / 0.7);
   height: 2px; width: 0;
 }
 .surge.rank .surge-rail { height: 3px; }
