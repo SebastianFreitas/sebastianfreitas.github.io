@@ -47,28 +47,8 @@
   // doesn't need to recompute them
   const VOID_MIN = CAM.min, VOID_MAX = CAM.max;
 
-  const MARKS = [
-    { id: "bnote-future",  cam: LAND.future,   off: -0.20, oy: 0.26, par: 0.30, xp: 1,
-      name: "The Unwritten",  sub: "West of the last recorded thing" },
-    { id: "bnote-land",    cam: LAND.mainland, off:  0.22, oy: 0.40, par: 0.66, xp: 1,
-      name: "The Mainland",   sub: "Born of a war between souls" },
-    { id: "bnote-void",    cam: LAND.voidmark, off:  0.08, oy: 0.20, par: 0.30, xp: 1,
-      name: "The Void",       sub: "The uncertainty of reality itself" },
-    { id: "bnote-bridge",  cam: LAND.bridge,   off:  0.16, oy: 0.46, par: 0.94, xp: 1,
-      name: "The Bridge",     sub: "First law. It holds because it must" },
-    { id: "bnote-watcher", cam: LAND.watcher,  off:  0.23, oy: 0.30, par: 0.24, xp: 1,
-      name: "The Watcher",    sub: "It holds the void off Rex" },
-    { id: "bnote-rex",     cam: LAND.rex,      off: -0.21, oy: 0.42, par: 0.62, xp: 1,
-      name: "Rex",            sub: "Three masses, three layers, one war" },
-    { id: "bnote-root",    cam: CAM.max,       off: -0.10, oy: 0.24, par: 0.70, xp: 1,
-      name: "The Root",       sub: "Every arm of it is still climbing" },
-  ];
-  MARKS.forEach((m, i) => {
-    m.x = m.cam + (m.off * CAM.viewUnits) / m.par;
-    m.phase = i * 1.7;    // so they don't all blink together
-    m.vis = 0;            // eased in as they enter the frame
-    m.pop = 0;            // the burst when one is claimed
-  });
+  const { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT } = Marks;
+
   /* the lamp's own radius is tuned for a mouse; a fingertip on a zoomed-out
      phone needs a wider net or you sail straight past what you were aiming at */
   const HIT_BASE = (window.Beacon && Beacon.HIT) || 26;
@@ -77,39 +57,6 @@
     console.error("lamp.js did not load — canvas marks and claim flights are dead");
   }
 
-  /* ---- the other setting: Game Dev sector -----------------
-     Same ship, same bridge deck, a different span. Four bodies,
-     left to right, one per shipped project — beacons like the
-     lamps on the span, filed the same way. Some of them open out
-     into further nodes once reached (see depths.js). ---- */
-  const GD_SLOT = SLOT;
-  const gdAt = i => i * GD_SLOT;
-  const GD_LAND = {
-    entry:      gdAt(2),
-    zero:       gdAt(10),
-    voidscape:  gdAt(21),
-    heavylight: gdAt(32),
-    conclusus:  gdAt(43),
-    exit:       gdAt(48),
-  };
-  const GD_BOUNDS = { min: gdAt(0.6), max: gdAt(49) };
-
-  const PLANETS = [
-    { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7, xp: 1,
-      theme: "zero",       size: 1.25, name: "Sector Zero", sub: "Horror — the console is the weapon" },
-    { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7, xp: 1,
-      theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled loop" },
-    { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7, xp: 1,
-      theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle — light carries momentum" },
-    { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7, xp: 1,
-      theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "30 levels on the HeavyLight base" },
-  ];
-  PLANETS.forEach((m, i) => {
-    m.x = m.cam + (m.off * CAM.viewUnits) / m.par;
-    m.phase = i * 1.7 + 4;
-    m.vis = 0;
-    m.pop = 0;
-  });
   if (!window.Planet) {
     console.error("planet.js did not load — game dev sector has nothing to draw");
   }
@@ -132,7 +79,7 @@
   resize();
 
   /* ---- defer interaction until the gate picks a path ---- */
-  let loopOn = false, bridgeReady = false, visible = true;
+  let bridgeReady = false, visible = true;
   /* Portrait on a touch device: the hero is covered by #bridge-rotate, so
      nothing behind it is worth a frame. Same gate as `visible`. */
   const portraitQ = matchMedia("(orientation: portrait) and (pointer: coarse)");
@@ -145,7 +92,7 @@
 
   function syncPhone() {
     phone = phoneQ.matches;
-    LOG_MAX = phone ? 3 : 6;
+    log.setMax(phone ? 3 : 6);
     HIT = HIT_BASE * (phone ? 1.7 : 1);
     if (window.Voidship) window.Voidship.BASE.size = phone ? Math.round(SHIP_SIZE / PHONE_ZOOM) : SHIP_SIZE;
     if (window.Instruments) Instruments.setCompact(phone);
@@ -155,7 +102,6 @@
   else phoneQ.addListener(onPhoneChange);
   const rotateEl = document.getElementById("bridge-rotate");
   if (rotateEl) rotateEl.setAttribute("aria-hidden", String(!portrait));
-  let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
   let entered = false, preloaded = false;   // gate lifted / first still frame drawn
 
   function readyBridge() {
@@ -167,37 +113,13 @@
     saveView();
   }
 
+  const pacer = Pacer.create({ paint: render, atRest, alive: () => visible && !portrait && !document.hidden });
+
   function startLoop() {
-    if (loopOn) { unpark(); return; }
+    if (pacer.running) { pacer.start(); return; }   // start() on a running pacer just unparks
     if (!entered) return;
     if (!visible || portrait || document.hidden) return;
-    loopOn = true;
-    last = performance.now();
-    prevStamp = -1;                   // the gap while stopped isn't a refresh
-    refreshCount = 2 * refreshN;      // first callback paints
-    paintDue = 0;                     // and isn't a missed paint either
-    armed = false;
-    arm();
-  }
-
-  /* One pending callback at a time, whoever asks. Without this a wake that
-     races the idle timer would leave two chains running side by side. */
-  function arm() {
-    if (armed) return;
-    armed = true;
-    requestAnimationFrame(frame);
-  }
-  /* Idle: let go of the frame callback entirely and come back on a timer.
-     Holding an rAF chain open costs the same whether it paints or not. */
-  function parkIdle() {
-    if (idleTimer) return;
-    idleTimer = setTimeout(() => { idleTimer = 0; arm(); }, IDLE_PARK_MS);
-  }
-  function unpark() {
-    if (!idleTimer) return;
-    clearTimeout(idleTimer);
-    idleTimer = 0;
-    arm();
+    pacer.start();
   }
 
   /* the gate sits over one still frame; the loop only starts on site:enter */
@@ -433,9 +355,9 @@
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
     }
     if (sceneMode === "gamedev") {
-      pushLog(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
+      log.push(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
     } else {
-      pushLog(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
+      log.push(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     }
     revealDepths(true);
     activeMark = m;
@@ -541,7 +463,7 @@
       const seat = courseForMark(mark);
       Voidship.setCourse(ship, seat.worldX, seat.screenY, mark);
       courseArmAt = performance.now() + 180; // ship must actually move in
-      pushLog(`course: ${mark.name.toLowerCase()}`, "loc");
+      log.push(`course: ${mark.name.toLowerCase()}`, "loc");
       hintDone("beacon");
     } else {
       Voidship.setCourse(ship, c.worldX, c.screenY, null);
@@ -834,6 +756,7 @@
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
   const el = { log: document.getElementById("btlog") };
+  const log = BridgeLog.create(el.log);
   if (window.Instruments) {
     Instruments.mount(document.getElementById("binst"));
     Instruments.mountSys(document.getElementById("binst-sys"));
@@ -930,7 +853,7 @@
     syncLabels();
     syncModeButtons();
     if (!(opts && opts.quiet))
-      pushLog(target === "gamedev"
+      log.push(target === "gamedev"
         ? "sector: game dev — four objects on approach"
         : "sector: the void — span resumes", "good");
     saveView();
@@ -982,7 +905,7 @@
     const p = ship ? Voidship.screenPos(ship, W) : { x: W * 0.5, y: H * 0.42 };
     xswitch = { stage: XSTAGE.CLOSE, t: 0, to: target, cx: p.x, cy: p.y };
     host.classList.add("warping");
-    pushLog("drive: emergency fold engaged", "loc");
+    log.push("drive: emergency fold engaged", "loc");
   }
 
   modeBtns.forEach(btn => {
@@ -1164,14 +1087,7 @@
     }
   }
 
-  let LOG_MAX = 6;
-  let logHead = null, logQueue = [], nextIdle = 3.5;
-
-  function pushLog(text, kind) {
-    if (!el.log) return;
-    logQueue.push({ text, kind: kind || "" });
-    if (logQueue.length > LOG_MAX + 2) logQueue.splice(0, logQueue.length - (LOG_MAX + 2));
-  }
+  let nextIdle = 3.5;
 
   /* ---- the depths -------------------------------------------
      Some nodes are not on the map when you arrive. They come into
@@ -1250,64 +1166,12 @@
     }
     if (!added) return;
     rebuildTrack();
-    if (animate) pushLog(`signal resolved — ${added} contact${added > 1 ? "s" : ""} in range`, "good");
+    if (animate) log.push(`signal resolved — ${added} contact${added > 1 ? "s" : ""} in range`, "good");
   }
 
   revealDepths(false);
   addEventListener("pageshow", e => { if (e.persisted) revealDepths(false); });
   addEventListener("storage", () => revealDepths(false));
-
-  function commitLog(entry) {
-    /* the tiles flash with the line, not when it was queued */
-    if (window.Instruments && Instruments.alert) Instruments.alert(entry.kind);
-    const line = document.createElement("div");
-    line.className = "tl " + entry.kind;
-    el.log.appendChild(line);
-    while (el.log.children.length > LOG_MAX) el.log.removeChild(el.log.firstChild);
-
-    /* split into plain / numeric runs so the digits can carry weight */
-    const parts = [];
-    const re = /\d[\d,]*(?:\.\d+)?%?|∞|nan/g;
-    let last = 0, m;
-    while ((m = re.exec(entry.text)) !== null) {
-      if (m.index > last) parts.push({ text: entry.text.slice(last, m.index), num: false });
-      parts.push({ text: m[0], num: true });
-      last = m.index + m[0].length;
-    }
-    if (last < entry.text.length) parts.push({ text: entry.text.slice(last), num: false });
-
-    const spans = parts.map(p => {
-      const s = document.createElement("span");
-      if (p.num) s.className = "n";
-      line.appendChild(s);
-      return s;
-    });
-    const caret = document.createElement("span");
-    caret.className = "caret";
-    caret.textContent = "_";
-    line.appendChild(caret);
-
-    logHead = { line, parts, spans, caret, len: entry.text.length, shown: 0 };
-  }
-
-  function runLog(dt) {
-    if (!el.log) return;
-    if (logHead) {
-      logHead.shown = Math.min(logHead.len, logHead.shown + dt * 58);
-      const n = Math.floor(logHead.shown);
-      let used = 0;
-      for (let i = 0; i < logHead.parts.length; i++) {
-        const p = logHead.parts[i];
-        const take = Math.max(0, Math.min(p.text.length, n - used));
-        const next = p.text.slice(0, take);
-        if (logHead.spans[i].textContent !== next) logHead.spans[i].textContent = next;
-        used += p.text.length;
-      }
-      if (n >= logHead.len) { logHead.caret.remove(); logHead = null; }
-      return;
-    }
-    if (logQueue.length) commitLog(logQueue.shift());
-  }
 
   /* ── the readout ───────────────────────────────────────────
      Every line is an instrument talking: gravity, pressure, air,
@@ -1315,358 +1179,12 @@
      numbers sit where they should. Out on the span they don't,
      and in the worst places they leave the dial entirely and
      take a piece of the hull with them. */
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  const rint = (a, b) => Math.floor(rnd(a, b + 1));
-  const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
-  const spanPctNow = () => (CAM.max - camX) / (CAM.max - CAM.min) * 100;
-  const f1 = (a, b) => rnd(a, b).toFixed(1);
-  const f2 = (a, b) => rnd(a, b).toFixed(2);
-  const f0 = (a, b) => rnd(a, b).toFixed(0);
-
-  function fuelPool() {
-    if (!ship) return [];
-    return [() => ship.infinite
-      ? "drive: unlimited · tanks open"
-      : `fuel ${ship.fuel.toFixed(0)}/${ship.fuelMax.toFixed(0)} · burn nominal`];
-  }
-
-  /* true wherever we are */
-  const ANY = [
-    () => `bearing ${fmt(camX)} · drift ${Math.abs(vel).toFixed(0)} m/s`,
-    () => `span ${spanPctNow().toFixed(1)}% crossed`,
-    () => `sweep complete · ${activeMarks().filter(m => Math.abs(m.cam - camX) < 22000).length} in range`,
-    () => `cabin ${f1(20.8, 21.5)}°c · rh ${f0(38, 46)}%`,
-  ];
-
-  /* what the instruments say, per region */
-  const ZONES = {
-    mainland: {
-      p: { warn: 0, err: 0, crit: 0 },
-      read: [
-        () => `gravity ${f2(0.99, 1.01)}g · drift ±0.004 over 60s`,
-        () => `pressure ${f1(100.8, 101.7)} kpa · rh ${f0(38, 48)}%`,
-        () => `o2 ${f2(20.85, 21.05)}% · co2 ${rint(390, 520)} ppm`,
-        () => `ambient ${f1(14, 23)}°c · hull ${f1(8, 19)}°c`,
-        () => `field ${f1(46.8, 47.6)} µt · declination ${f1(1.1, 3.4)}°`,
-        () => `dose ${f2(0.08, 0.16)} µsv/h · background`,
-        () => `lane traffic ${rint(3, 14)} hulls · all transponding`,
-        () => `rf floor -${rint(96, 112)} dbm · ${rint(40, 220)} carriers`,
-        () => `lidar fix ±${f2(0.02, 0.18)} m at ${fmt(rint(2000, 9000))} m`,
-        () => `particulate ${rint(2, 40)}/m²·h · clean lane`,
-        () => `clock sync ±${rint(2, 18)} ppb to port time`,
-        () => `hull strain ${rint(20, 90)} µε · within spec`,
-      ],
-      warn: [], err: [], crit: [],
-    },
-
-    rex: {
-      p: { warn: 0, err: 0, crit: 0 },
-      read: [
-        () => `gravity ${f2(1.28, 1.46)}g · gradient flat`,
-        () => `pressure ${f1(88, 97)} kpa · co2 ${fmt(rint(2000, 6000))} ppm`,
-        () => `surface ${f1(-14, 41)}°c · thermals steady`,
-        () => `field ${f0(210, 340)} µt · ferrous crust`,
-        () => `dose ${f2(0.4, 1.2)} µsv/h · shielded`,
-        () => `crust density ${fmt(rint(3100, 5400))} kg/m³`,
-        () => `dock beacons ${rint(2, 7)} · handshake ${rint(88, 99)}%`,
-        () => `seismic ${f1(0.4, 2.8)} hz · continuous`,
-        () => `bus ${f1(27.4, 28.6)} v · draw ${f1(3.1, 6.8)} kw`,
-        () => `three masses ranged · Δ ${fmt(rint(4000, 9000))} m`,
-        () => `strain ${rint(60, 180)} µε · loaded, in spec`,
-      ],
-      warn: [], err: [], crit: [],
-    },
-
-    gamedev: {
-      p: { warn: 0, err: 0, crit: 0 },
-      read: [
-        () => `orbit stable · period ${rint(4, 90)} h`,
-        () => `atmosphere ${f1(0, 4)} kpa · thin`,
-        () => `surface ${f0(-120, 60)}°c · albedo 0.${rint(10, 74)}`,
-        () => `optical depth ${f2(0.02, 0.9)} · clear`,
-        () => `no traffic · ${rint(1, 4)} bodies charted`,
-        () => `field ${f1(0.2, 9)} µt · dose ${f2(0.2, 1.4)} µsv/h`,
-      ],
-      warn: [], err: [], crit: [],
-    },
-
-    void: {
-      p: { warn: 0.34, err: 0.16, crit: 0.035 },
-      read: [
-        () => `gravity ${rnd(0, 0.04).toFixed(3)}g · free span`,
-        () => `pressure ${rnd(0, 0.0004).toFixed(4)} pa · hard vacuum`,
-        () => `hull ${f0(-118, -62)}°c · cabin ${f1(20.9, 21.4)}°c`,
-        () => `field ${f1(0.2, 3.4)} µt · no anchor`,
-        () => `dose ${f2(0.8, 3.2)} µsv/h · galactic`,
-        () => `particle flux ${fmt(rint(400, 9000))}/cm²·s`,
-        () => `plasma density ${f1(0.2, 9)}/cm³`,
-        () => `chaos ${chaosNow.toFixed(2)} · unformed ${futureNow.toFixed(2)}`,
-        () => `lidar to ${fmt(rint(40, 90) * 1000)} m · no return`,
-        () => `strain ${rint(40, 180)} µε · hull quiet`,
-      ],
-      warn: [
-        () => `gravity ${f1(2.4, 9.8)}g in a ${rint(3, 40)} m pocket`,
-        () => `pressure ${f1(0.4, 12)} kpa spike on open vacuum`,
-        () => `hull ${f0(-260, -180)}°c · ${f0(12, 60)}° below model`,
-        () => `field ${rint(400, 2600)} µt · no mass to carry it`,
-        () => `dose ${f0(40, 180)} µsv/h · rising ${rint(3, 22)}%/min`,
-        () => `range finder Δ ${fmt(rint(200, 9000))} m between sweeps`,
-        () => `echo back ${f1(0.2, 2.6)}s early · rechecking`,
-        () => `strain ${fmt(rint(900, 2400))} µε · sector ${rint(1, 8)} loading`,
-        () => `clock ${f1(1.2, 40)} ms behind fleet time`,
-        () => `star count ${rint(2, 40)} · was ${rint(41, 900)} last sweep`,
-        () => `thermal gradient ${rint(90, 400)}°c/m across 0 mass`,
-        () => `bus sag ${f1(21.2, 25.9)} v · draw flat`,
-      ],
-      err: [
-        () => `gravity ∞ at ${fmt(camX + rint(400, 9000))} · sensor clipped`,
-        () => `pressure nan · barometer reset ${rint(2, 9)}x`,
-        () => `dose ${fmt(rint(1200, 9000))} µsv/h · shield at ${rint(41, 88)}%`,
-        () => `field ${fmt(rint(9000, 40000))} µt · magnetometer railed`,
-        () => `lidar returns ${rint(2, 9)} hulls at this bearing`,
-        () => `clock lost ${f1(1.4, 22)}s · the log kept writing`,
-        () => `mass nan · bearing nan · return ${f1(0.4, 3)}s`,
-        () => `strain ${fmt(rint(3200, 7400))} µε · yield rated 3,000`,
-      ],
-      crit: [
-        { t: () => `impact ${f2(1.4, 6.2)}g · ${rint(2, 40)} mm at ${fmt(rint(4, 90) * 1000)} m/s`,
-          label: "plating breach", sev: 0.5 },
-        { t: () => `dose ${fmt(rint(12000, 60000))} µsv/h · burst ${f1(0.2, 2)}s`,
-          label: "shielding burn-through", sev: 0.4 },
-        { t: () => `strain ${fmt(rint(9000, 22000))} µε · frame past yield`,
-          label: "frame deformation", sev: 0.6 },
-      ],
-    },
-
-    bridge: {
-      p: { warn: 0.34, err: 0.16, crit: 0.05 },
-      read: [
-        () => `span ranged ${fmt(rint(200, 900) * 1000)} m · both ends unlit`,
-        () => `gravity ${f2(0.02, 0.4)}g along the deck`,
-        () => `structure ringing at ${f1(0.2, 4)} hz`,
-        () => `field ${rint(40, 220)} µt · follows the deck`,
-        () => `deck temp ${f0(-90, -40)}°c · ours ${f0(-60, -20)}°c`,
-        () => `dose ${f2(1.2, 4)} µsv/h · deck shadows it`,
-      ],
-      warn: [
-        () => `deck harmonic ${f1(11, 48)} hz · hull matching it`,
-        () => `strain ${fmt(rint(1200, 3400))} µε · frame in sympathy`,
-        () => `gravity flips sign every ${f1(1.2, 9)}s`,
-        () => `range to deck ${fmt(rint(40, 900))} m · was ${fmt(rint(1000, 9000))}`,
-        () => `field rotates ${rint(20, 90)}° per span section`,
-      ],
-      err: [
-        () => `deck has no underside · ${rint(2, 9)} returns, all near`,
-        () => `resonance ${fmt(rint(200, 900))} hz · frame rated 120`,
-        () => `gravity ${f1(4, 18)}g reported and not felt`,
-      ],
-      crit: [
-        { t: () => `resonance ${fmt(rint(900, 2400))} hz · welds singing`,
-          label: "weld seam split", sev: 0.6 },
-        { t: () => `${f1(2, 9)}g slam · deck section passed ${fmt(rint(20, 400))} m`,
-          label: "plating breach", sev: 0.5 },
-      ],
-    },
-
-    watcher: {
-      p: { warn: 0.34, err: 0.20, crit: 0.09 },
-      read: [
-        () => `standing field ${rint(600, 1400)} µt · no source ranged`,
-        () => `tone ${f1(41.2, 41.9)} hz · unbroken ${rint(4, 90)} h`,
-        () => `optical ${rint(2, 9)} lines at ${rint(486, 656)} nm · no body`,
-        () => `dose ${f1(6, 22)} µsv/h · directional`,
-        () => `skin charge +${f1(0.2, 2.4)} kv · steady`,
-      ],
-      warn: [
-        () => `rf ${f1(1.2, 9.8)} ghz · ${rint(40, 90)} db over floor`,
-        () => `field rotated ${rint(40, 180)}° · the ship did not`,
-        () => `skin charge +${f1(2.4, 18)} kv · rising ${rint(4, 40)}%/min`,
-        () => `cabin ${f1(24.1, 29.8)}°c · no heat input`,
-        () => `dose ${f0(90, 600)} µsv/h · one bearing only`,
-      ],
-      err: [
-        () => `rf ${fmt(rint(60, 180))} db over floor · front end saturated`,
-        () => `field ${fmt(rint(9000, 30000))} µt · compass useless`,
-        () => `${rint(2, 9)} of ${rint(9, 14)} sensors report being addressed`,
-        () => `dose ${fmt(rint(1200, 6000))} µsv/h · collimated on us`,
-      ],
-      crit: [
-        { t: () => `rf ${fmt(rint(120, 400))} db over floor · receivers gone`,
-          label: "antenna array cooked", sev: 0.55 },
-        { t: () => `skin charge ${fmt(rint(90, 400))} kv · arc to frame`,
-          label: "bus arc-over", sev: 0.6 },
-        { t: () => `field ${fmt(rint(60000, 200000))} µt · bearing locked on us`,
-          label: "magnetometer destroyed", sev: 0.7 },
-      ],
-    },
-
-    root: {
-      p: { warn: 0.32, err: 0.24, crit: 0.11 },
-      read: [
-        () => `ambient ${rint(28, 39)}°c · rh ${rint(88, 99)}%`,
-        () => `organics ${fmt(rint(200, 4000))} ppm · ${rint(4, 40)} amino signatures`,
-        () => `tissue mass ${fmt(rint(200, 4000))} m across · contiguous`,
-        () => `pressure ${f1(4, 19)} kpa · co2 ${fmt(rint(40000, 120000))} ppm`,
-        () => `field ${rint(90, 400)} µt · organic, not ferrous`,
-      ],
-      warn: [
-        () => `pulse ${rint(11, 48)} bpm · amplitude +${rint(4, 30)}%`,
-        () => `ph ${f1(1.1, 3.4)} on outer plating · etching`,
-        () => `cabin o2 ${f1(14.2, 18.9)}% · scrubbers at ${rint(80, 100)}%`,
-        () => `field ${rint(200, 900)} µt · modulated at ${rint(11, 48)} bpm`,
-        () => `hull ${f1(31, 44)}°c · the dark here is warm`,
-      ],
-      err: [
-        () => `ph ${f1(0.4, 1.1)} · plating loss ${f2(0.1, 0.9)} mm/min`,
-        () => `co2 ${fmt(rint(120000, 200000))} ppm · seal differential falling`,
-        () => `${rint(2, 9)} masses closing · ${f1(0.4, 4)} m/s, coordinated`,
-        () => `scan refused · the scan was noticed`,
-      ],
-      crit: [
-        { t: () => `ph ${f1(0.1, 0.4)} · plating loss ${f1(1.2, 9)} mm/min`,
-          label: "hull corrosion", sev: 0.65 },
-        { t: () => `co2 ${fmt(rint(200000, 600000))} ppm · seal differential lost`,
-          label: "eclss seal breach", sev: 0.7 },
-        { t: () => `mass closed to ${fmt(rint(20, 400))} m at ${f1(2, 14)} m/s`,
-          label: "grapple strike", sev: 0.8 },
-        { t: () => `dose ${fmt(rint(40000, 120000))} µsv/h · biological, not decay`,
-          label: "shielding burn-through", sev: 0.5 },
-      ],
-    },
-
-    edgefall: {
-      p: { warn: 0.38, err: 0.12, crit: 0.06 },
-      read: [
-        () => `gravity ${f2(1.1, 1.4)}g · gradient ${rint(40, 180)} mg/m`,
-        () => `cliff face ranged ${fmt(rint(9000, 40000))} m · no floor`,
-        () => `shadow side ${f0(-92, -41)}°c · hull ${f0(-70, -30)}°c`,
-        () => `field ${rint(120, 380)} µt · ferrous, tilting`,
-        () => `dose ${f2(0.6, 2.4)} µsv/h · mass shadow`,
-      ],
-      warn: [
-        () => `tidal shear ${fmt(rint(400, 2400))} mg/m across the hull`,
-        () => `gravity ${f1(2.8, 6.4)}g bow · ${f1(0.2, 0.9)}g stern`,
-        () => `strain ${fmt(rint(1400, 4000))} µε · frame twisting`,
-        () => `pressure ${f1(0.2, 6)} kpa · outgassing off the face`,
-        () => `debris ${fmt(rint(400, 9000))}/m²·h · falling with us`,
-      ],
-      err: [
-        () => `shear ${fmt(rint(4000, 9000))} mg/m · trim compensating`,
-        () => `the face has been falling for ${fmt(rint(200, 9000))} m`,
-        () => `gravity vector ${rint(90, 180)}° off nadir`,
-      ],
-      crit: [
-        { t: () => `shear ${fmt(rint(9000, 26000))} mg/m · ${f1(2, 9)}g bow to stern`,
-          label: "spine fracture", sev: 0.7 },
-        { t: () => `debris ${fmt(rint(20, 90) * 1000)}/m²·h at ${f1(2, 9)} km/s`,
-          label: "plating breach", sev: 0.5 },
-      ],
-    },
-
-    unnamed: {
-      p: { warn: 0.36, err: 0.18, crit: 0.06 },
-      read: [
-        () => `no survey on file · charting from ${fmt(rint(4, 90) * 1000)} m`,
-        () => `gravity ${f2(0.8, 1.3)}g · unmodelled`,
-        () => `field ${rint(90, 600)} µt · unmapped`,
-        () => `albedo 0.0${rint(2, 9)} · absorbs ${rint(91, 99)}%`,
-        () => `surface ${f0(-160, -90)}°c · pressure ${f2(0, 0.8)} kpa`,
-      ],
-      warn: [
-        () => `${rint(2, 40)} returns from a body charted as 1`,
-        () => `surface ${f0(-190, -160)}°c · colder than its own shadow`,
-        () => `dose ${f0(60, 400)} µsv/h · from the surface, not the sky`,
-        () => `field ${fmt(rint(1200, 4000))} µt · no core to make it`,
-        () => `strain ${fmt(rint(800, 2200))} µε · something pulling`,
-      ],
-      err: [
-        () => `terrain moved ${fmt(rint(200, 4000))} m between sweeps`,
-        () => `lidar floor at ${fmt(rint(20, 400))} m · then none`,
-        () => `mass ${fmt(rint(200, 9000))} kg · and ${fmt(rint(90000, 400000))} kg`,
-        () => `${rint(2, 9)} horizons · one body`,
-      ],
-      crit: [
-        { t: () => `dust ${fmt(rint(4, 40) * 1000)}/cm²·s at ${fmt(rint(4, 40))} km/s`,
-          label: "sensor mast stripped", sev: 0.5 },
-        { t: () => `gravity ${f1(6, 22)}g for ${f1(0.2, 1.4)}s · unmodelled`,
-          label: "frame deformation", sev: 0.6 },
-      ],
-    },
-
-    future: {
-      p: { warn: 0.36, err: 0.20, crit: 0 },
-      read: [
-        () => `all instruments nominal · none agree`,
-        () => `gravity ${f2(0, 0.9)}g · reread ${f2(0, 0.9)}g`,
-        () => `dose ${f2(0, 0.4)} µsv/h · no source, no shield`,
-        () => `field ${f2(0, 0.4)} µt · below noise floor`,
-        () => `pressure ${rnd(0, 0.0002).toFixed(4)} pa · nothing to weigh`,
-      ],
-      warn: [
-        () => `${rint(3, 9)} sweeps · ${rint(3, 9)} different distances`,
-        () => `clock +${f1(0.4, 12)}s · then -${f1(0.4, 12)}s`,
-        () => `pressure ${f1(0, 90)} kpa · ${rint(2, 9)} readings, one sensor`,
-        () => `temperature ${f0(-270, 40)}°c · sampled ${rint(2, 9)}x, no median`,
-        () => `strain ${rint(0, 40)} µε · the frame has not decided`,
-      ],
-      err: [
-        () => `bearing nan · the chart ends ${fmt(rint(200, 9000))} m back`,
-        () => `mass ${fmt(rint(200, 9000))} kg and 0 kg · both current`,
-        () => `range ∞ · range 0 · same sweep`,
-      ],
-      crit: [],
-    },
-  };
-
-  /* what the hull says back after a reading it can't use */
-  const ERR_RESP = [
-    () => `reading rejected · sensor ${rint(1, 9)} flagged for recal`,
-    () => `filter reset · ${rint(2, 9)} samples discarded`,
-    () => `holding last good fix · ${f0(2, 40)}s stale`,
-    () => `cross-check on backup · ${rint(2, 6)} of ${rint(6, 9)} agree`,
-    () => `channel muted ${f1(2, 20)}s · nav unaffected`,
-  ];
-
-  const DC_RESP = [
-    sec => `dc team ${rint(1, 4)} to sector ${sec} · patch underway`,
-    sec => `sector ${sec} isolated · pressure held ${f1(80, 101)} kpa`,
-    sec => `bus rerouted around sector ${sec} · ${f1(0.4, 3)} kw lost`,
-    sec => `spares drawn · ${rint(2, 9)} plates, ${rint(2, 4)} seals`,
-  ];
-
-  const REPAIR_STEP = [
-    (sec, pct) => `repair · sector ${sec} · seal ${pct}%`,
-    (sec, pct) => `sector ${sec} · integrity ${pct}% and climbing`,
-    (sec, pct) => `patch cured ${pct}% · ${rint(1, 9)} min to nominal`,
-    (sec, pct) => `sector ${sec} · weld pass ${rint(1, 4)} · ${pct}% closed`,
-  ];
-
-  const DEGRADED = [
-    b => `running ${8 - breaches.length} of 8 sectors · sector ${b.sec} open`,
-    b => `sector ${b.sec} at ${Math.round(b.integrity * 100)}% · hold under ${f1(2, 6)}g`,
-    b => `sector ${b.sec} leak ${f2(0.02, 0.4)} kpa/min · within reserve`,
-  ];
-
-  /* where we are, as far as the instruments are concerned */
-  function zoneAt(x) {
-    if (sceneMode !== "void") return "gamedev";
-    if (Math.abs(x - LAND.mainland) < SLOT * 1.6) return "mainland";
-    if (x > LAND.root - SLOT * 1.4) return "root";
-    if (Math.abs(x - LAND.rex) < SLOT * 1.5) return "rex";
-    if (Math.abs(x - LAND.watcher) < SLOT * 1.5) return "watcher";
-    if (Math.abs(x - LAND.bridge) < SLOT * 1.5) return "bridge";
-    if (Math.abs(x - LAND.edgefall) < SLOT * 1.3) return "edgefall";
-    if (Math.abs(x - LAND.unnamed) < SLOT * 1.3) return "unnamed";
-    if (Math.abs(x - LAND.future) < SLOT * 2) return "future";
-    return "void";
-  }
-
-  /* open span scales with how disturbed the dark is; a named bad place
-     is always as bad as it is */
-  function zoneHeat(zone) {
-    if (zone !== "void") return 1;
-    return Math.min(1, Math.max(0.45, chaosNow));
-  }
+  const voice = BridgeVoice.create({
+    get camX() { return camX; }, get vel() { return vel; }, get chaosNow() { return chaosNow; },
+    get futureNow() { return futureNow; }, get ship() { return ship; }, get sceneMode() { return sceneMode; },
+    get breaches() { return breaches; }, activeMarks, LAND, SLOT, CAM,
+  });
+  const { pickOne, rnd, rint, f0, f1, f2, fuelPool, ANY, ZONES, ERR_RESP, DC_RESP, REPAIR_STEP, DEGRADED, zoneAt, zoneHeat } = voice;
 
   /* ── hull damage ──────────────────────────────────────────
      A crit reading isn't just a red line: it opens a sector,
@@ -1684,8 +1202,8 @@
     const integrity = Math.max(0.18, Math.min(0.88, 1 - sev * rnd(0.5, 1.1)));
     const dur = 14 + sev * 22 + rnd(0, 8);
 
-    pushLog(`hull sector ${sec} · ${label} · integrity ${Math.round(integrity * 100)}%`, "err");
-    pushLog(pickOne(DC_RESP)(sec), "rep");
+    log.push(`hull sector ${sec} · ${label} · integrity ${Math.round(integrity * 100)}%`, "err");
+    log.push(pickOne(DC_RESP)(sec), "rep");
 
     if (window.Instruments && Instruments.impact) Instruments.impact(sec, 0.4 + sev * 3.2);
     if (window.Instruments && Instruments.setRepair) Instruments.setRepair(sec, true);
@@ -1706,20 +1224,20 @@
       if (prog >= 1) {
         breaches.splice(i, 1);
         if (window.Instruments && Instruments.setRepair) Instruments.setRepair(b.sec, false);
-        pushLog(`sector ${b.sec} sealed · integrity ${rint(94, 99)}% · nominal`, "good");
+        log.push(`sector ${b.sec} sealed · integrity ${rint(94, 99)}% · nominal`, "good");
         continue;
       }
       if (b.t >= b.next) {
         b.next = b.t + b.dur * rnd(0.26, 0.4);
         const pct = Math.round((b.integrity + (1 - b.integrity) * prog) * 100);
-        pushLog(pickOne(REPAIR_STEP)(b.sec, pct), "rep");
+        log.push(pickOne(REPAIR_STEP)(b.sec, pct), "rep");
       }
     }
 
     degradeAt += dt;
     if (degradeAt > 11 && breaches.length) {
       degradeAt = 0;
-      pushLog(pickOne(DEGRADED)(pickOne(breaches)), "warn");
+      log.push(pickOne(DEGRADED)(pickOne(breaches)), "warn");
     }
   }
 
@@ -1730,20 +1248,20 @@
 
     if (z.crit.length && r < z.p.crit * heat && damageCool <= 0 && breaches.length < MAX_BREACH) {
       const c = pickOne(z.crit);
-      pushLog(c.t(), "crit");
-      if (!takeDamage(c.label, c.sev)) pushLog(pickOne(ERR_RESP)());
+      log.push(c.t(), "crit");
+      if (!takeDamage(c.label, c.sev)) log.push(pickOne(ERR_RESP)());
       return;
     }
     if (z.err.length && r < (z.p.crit + z.p.err) * heat) {
-      pushLog(pickOne(z.err)(), "err");
-      if (Math.random() < 0.7) pushLog(pickOne(ERR_RESP)());
+      log.push(pickOne(z.err)(), "err");
+      if (Math.random() < 0.7) log.push(pickOne(ERR_RESP)());
       return;
     }
     if (z.warn.length && r < (z.p.crit + z.p.err + z.p.warn) * heat) {
-      pushLog(pickOne(z.warn)(), "warn");
+      log.push(pickOne(z.warn)(), "warn");
       return;
     }
-    pushLog(pickOne(z.read.concat(ANY, fuelPool()))());
+    log.push(pickOne(z.read.concat(ANY, fuelPool()))());
   }
   let readingAt = 0;
 
@@ -1765,8 +1283,8 @@
     const name = near ? near.name : "open span";
     if (name === lastRegion) return;
     lastRegion = name;
-    if (near) pushLog(`${sceneMode === "gamedev" ? "approaching" : "entering"} ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
-    else pushLog("open span · nothing charted here", "loc");
+    if (near) log.push(`${sceneMode === "gamedev" ? "approaching" : "entering"} ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
+    else log.push("open span · nothing charted here", "loc");
   }
 
   /* the census only reports in, it doesn't sit on the panel — void only.
@@ -1789,7 +1307,7 @@
       filedGap = 14 + Math.random() * 12;
       const since = Math.round(catalogued - filedMark);
       filedMark = catalogued;
-      if (since > 0) pushLog(pickOne(CENSUS)(since));
+      if (since > 0) log.push(pickOne(CENSUS)(since));
     }
   }
 
@@ -1810,12 +1328,12 @@
     runRepair(dt);
 
     readingAt += dt;
-    if (readingAt > nextIdle && !logHead && !logQueue.length) {
+    if (readingAt > nextIdle && log.idle) {
       readingAt = 0;
       nextIdle = 3.2 + Math.random() * 3.4;
       idleLine();
     }
-    runLog(dt);
+    log.run(dt);
 
     const moving = Math.abs(vel) > 200;
     if (moving !== movingNow) { movingNow = moving; host.classList.toggle("moving", moving); }
@@ -1886,7 +1404,7 @@
       if (!ship.infinite && ship.fuel <= 0.05) {
         if (!fuelWarned) {
           fuelWarned = true;
-          pushLog("tanks dry · release to regen", "loc");
+          log.push("tanks dry · release to regen", "loc");
         }
       } else {
         fuelWarned = false;
@@ -1904,46 +1422,6 @@
   }
 
   /* ---- loop ---- */
-  let last = performance.now();
-  /* pace the scene by display refreshes, not by a ms slot: paint every Nth
-     refresh, N = floor(Hz / 60), so every painted frame is the same length.
-     60 Hz → 60 fps, 75 → 75, 120 → 60, 144 → 72, 165 → 82.5, 240 → 60.
-     The refresh interval is measured from rAF timestamps and kept up to date,
-     so moving the window to another monitor re-picks N. */
-  const REFRESH_WINDOW = 15;        // intervals kept for the measurement
-  const REFRESH_FIRST = 5;          // intervals needed for the first measurement
-  const REFRESH_MIN_MS = 2;         // intervals outside 2..50 ms aren't refreshes
-  const REFRESH_MAX_MS = 50;
-  const REFRESH_BAND = 0.4;         // intervals within ±40% of the median are averaged
-  const refreshSamples = [];        // recent rAF intervals, ms, oldest first
-  let refreshMs = 1000 / 60;        // measured refresh interval
-  let refreshN = 1;                 // paint every refreshN refreshes
-  let refreshMeasured = false;
-  let pendingN = 0;                 // a new N waits for a second measurement to agree
-  let sinceMeasure = 0;             // intervals recorded since the last measurement
-  let prevStamp = -1;               // previous rAF timestamp; -1 = none yet
-  let refreshCount = 0;             // refreshes since the last paint
-  /* and never paint more than 60 times a second, whatever the panel runs at:
-     past that a faster screen only repaints the same picture and the fans
-     hear it. N keeps painted frames on refresh boundaries; this keeps their
-     rate at 60 — on a panel whose refresh divides to 60 or less both gates
-     agree and nothing changes. */
-  const PAINT_MS = 1000 / 60;
-  const PAINT_EARLY_MS = 2;   // vsync wobble: a boundary this close still paints
-  let paintDue = 0;           // next paint's due stamp; 0 = paint on the next boundary
-  /* at rest and untouched for a while, the scene only drifts: let the frame
-     callback go and come back on a timer instead. Holding the callback open
-     costs as much as painting. Any input snaps straight back. */
-  const IDLE_AFTER_MS = 5000;
-  const IDLE_PARK_MS = 100;         // idle wake interval, ms — 10 fps
-  let lastInput = performance.now();
-  let idleNow = false;
-  function noteInput() {
-    lastInput = performance.now();
-    if (idleNow) { idleNow = false; refreshCount = 2 * refreshN; paintDue = 0; unpark(); }   // paint on the very next callback
-  }
-  ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
-    addEventListener(type, noteInput, { passive: true, capture: true }));
   /* a reveal keeps the loop awake until every part of it has played out:
      the flight, the landing burst, the art fade, and the pulse of a cue
      pointing at a node revealed off-screen. Parking during any of these
@@ -1964,92 +1442,7 @@
       && ship.vel === 0 && ship.vy === 0 && ship.holdT === 0
       && ship.thrustAmt < 0.01 && !ship.trail.length && !ship.sparks.length;
   }
-  function measureRefresh() {
-    const sorted = refreshSamples.slice().sort((a, b) => a - b);
-    const m = sorted[sorted.length >> 1];
-    let sum = 0, count = 0;
-    for (const x of refreshSamples) {
-      if (Math.abs(x - m) <= m * REFRESH_BAND) { sum += x; count++; }
-    }
-    refreshMs = sum / count;
-    const n = Math.max(1, Math.floor(1000 / refreshMs / 60 + 0.03));   // 3% margin: 59.94 and 119.88 Hz panels keep their N
-    if (!refreshMeasured) {
-      refreshN = n;
-      refreshMeasured = true;
-      pendingN = 0;
-    } else if (n === refreshN) {
-      pendingN = 0;
-    } else if (n === pendingN) {
-      refreshN = n;
-      pendingN = 0;
-    } else {
-      pendingN = n;
-    }
-  }
-  function frame(now) {
-    armed = false;
-    if (!loopOn) return;
-    if (!visible || portrait || document.hidden) {
-      loopOn = false;
-      return;
-    }
-    let refreshes = 1;
-    if (prevStamp >= 0) {
-      const delta = now - prevStamp;
-      if (delta >= REFRESH_MIN_MS && delta <= REFRESH_MAX_MS) {
-        refreshSamples.push(delta);
-        if (refreshSamples.length > REFRESH_WINDOW) refreshSamples.shift();
-        sinceMeasure++;
-        if (refreshMeasured ? sinceMeasure >= REFRESH_WINDOW
-                            : refreshSamples.length >= REFRESH_FIRST) {
-          measureRefresh();
-          sinceMeasure = 0;
-        }
-      }
-      // a janky frame that spanned several refreshes counts as all of them
-      refreshes = Math.max(1, Math.round(delta / refreshMs));
-    }
-    prevStamp = now;
-    refreshCount += refreshes;
-
-    if (!idleNow) {
-      if (now - lastInput > IDLE_AFTER_MS && atRest()) idleNow = true;
-    } else if (!atRest()) {
-      idleNow = false;
-      refreshCount = 2 * refreshN;
-      paintDue = 0;
-    }
-    const slot = idleNow ? 2 * PAINT_MS : PAINT_MS;
-    if (refreshCount < (idleNow ? 2 * refreshN : refreshN)) {
-      arm();
-      return;
-    }
-    if (paintDue && now < paintDue - PAINT_EARLY_MS) {
-      // on a refresh boundary but under the 60 fps ceiling: wait for the next one
-      arm();
-      return;
-    }
-    refreshCount = 0;   // drop the remainder: a late frame never earns a double paint
-    paintDue = !paintDue || now - paintDue > slot ? now + slot : paintDue + slot;
-    const raw = Math.min((now - last) / 1000, 1 / 20);
-    last = now;
-    if (idleNow) parkIdle(); else arm();
-    render(raw);
-  }
-  function pacingReport() {
-    const hz = 1000 / refreshMs;
-    return {
-      refreshHz: +hz.toFixed(2),
-      refreshMs: +refreshMs.toFixed(3),
-      n: refreshN,
-      measured: refreshMeasured,
-      idle: idleNow,
-      fps: idleNow ? +(1000 / IDLE_PARK_MS).toFixed(2)
-                   : +Math.min(hz / refreshN, 1000 / PAINT_MS).toFixed(2),
-      cap: idleNow ? 1000 / IDLE_PARK_MS : 60,
-    };
-  }
-  window.pacingReport = pacingReport;
+  window.pacingReport = () => pacer.report();
 
   function render(raw) {
     // a claim holds travel still while the level lands
@@ -2095,7 +1488,7 @@
       }
       drawSwitchFX();
     } catch (err) {
-      if (!frame._warned) { frame._warned = 1; console.warn("beacon layer:", err); }
+      if (!render._warned) { render._warned = 1; console.warn("beacon layer:", err); }
     }
 
     if (bridgeReady) drawInstruments(dt);
@@ -2106,7 +1499,7 @@
      when the gate lifts. */
   function paintOnce() {
     if (portrait) return;
-    if (loopOn) return;
+    if (pacer.running) return;
     chaosNow  = sceneMode === "void" ? World.chaosAt(camX)  : 0;
     futureNow = sceneMode === "void" ? World.futureAt(camX) : 0;
     if (ship) ship.alpha = 1;
@@ -2114,7 +1507,7 @@
     render(0);
   }
 
-  /* LOG_MAX and HIT are declared far below the instrument block, so settle the
-     phone-dependent numbers here, once every declaration in the file has run. */
+  /* the log (mid-file) and HIT (top) are phone-dependent, so settle those
+     numbers here, once every declaration in the file has run. */
   syncPhone();
 })();
