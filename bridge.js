@@ -1510,4 +1510,16 @@
   /* the log (mid-file) and HIT (top) are phone-dependent, so settle those
      numbers here, once every declaration in the file has run. */
   syncPhone();
+
+  // the top bar floats clear over the hero and turns solid once the hero
+  // has scrolled up under it
+  function watchTopbar() {
+    const bar = document.querySelector('.topbar');
+    const hero = document.getElementById('bridge-hero');
+    if (!bar || !hero || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(([e]) => {
+      bar.classList.toggle('is-solid', !e.isIntersecting);
+    }, { rootMargin: `-${bar.offsetHeight || 64}px 0px 0px 0px` }).observe(hero);
+  }
+  watchTopbar();
 })();
