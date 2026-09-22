@@ -96,11 +96,11 @@
     g.closePath();
   }
 
-  function fadeFoot(g, x0, x1, yFrom, yTo) {
+  function cutFoot(g, x0, x1, yCut) {
     g.save();
     g.globalCompositeOperation = "destination-out";
-    g.fillStyle = lin(g, 0, yFrom, 0, yTo, [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,1)"]]);
-    g.fillRect(x0, yFrom, x1 - x0, yTo - yFrom + 50);
+    g.fillStyle = "#000";
+    g.fillRect(x0, yCut, x1 - x0, 50);
     g.restore();
   }
 
@@ -257,8 +257,8 @@
     g.stroke();
     g.restore();
 
-    // 9. Foot fade
-    fadeFoot(g, -16, 16, -0.6, 1.6);
+    // 9. Foot cut
+    cutFoot(g, -16, 16, 0.5);
   }
 
   function underFirstLight(g, px, t, a) {
@@ -549,8 +549,8 @@
 
     line(g, [[0, 2], [0, -5.4]], CC.tracery, px);
 
-    // 5. Foot fade
-    fadeFoot(g, -16.5, 16.5, -0.6, 1.6);
+    // 5. Foot cut
+    cutFoot(g, -16.5, 16.5, 0.5);
   }
 
   function liveCrimson(g, px, t, a) {
@@ -667,8 +667,8 @@
     g.fillStyle = BS.hole;
     g.fill();
 
-    // 5. Foot fade
-    fadeFoot(g, -6, 6, -0.8, 1.6);
+    // 5. Foot cut
+    cutFoot(g, -6, 6, 0.4);
   }
 
   function liveBoneSpire(g, px, t, a) {

@@ -645,7 +645,7 @@ def flow_rex(browser, base):
     PINNED = {
         "firstlight": (358041, 0.48), "crimson": (364671, 0.38),
         "under": (377837, 0.30), "bonespire": (371857, 0.25),
-        "titans": (378762, 0.25), "hell": (392889, 0.25),
+        "titans": (379543, 0.18), "hell": (392889, 0.25),
         "valkhar": (387467, 0.44), "law": (393803, 0.30),
         "seal": (395393, 0.35),
     }
@@ -666,7 +666,7 @@ def flow_rex(browser, base):
 
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    for x in (358041, 364671, 371857, 378762, 387467, 393803):
+    for x in (358041, 364671, 371857, 379543, 387467, 393803):
         page.evaluate("""x => {
           const view = JSON.stringify({ mode: 'void', voidCamX: x, gdCamX: null });
           sessionStorage.setItem('arcanis.view.v1', view);

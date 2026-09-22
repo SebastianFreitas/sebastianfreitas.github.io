@@ -108,17 +108,13 @@
   function spill(g, rx, ry, rgb, a0) {
     g.save();
     g.scale(rx + 5, ry + 5);
-    g.fillStyle = rad(g, 0, 0, 0.45, 1, [[0, `rgba(${rgb},${a0})`], [1, `rgba(${rgb},0)`]]);
-    g.fillRect(-1, -1, 2, 2);
+    g.fillStyle = `rgba(${rgb},${a0 * 0.4})`;
+    g.beginPath(); g.arc(0, 0, 1, 0, 2 * Math.PI); g.fill();
+    g.beginPath(); g.arc(0, 0, 0.72, 0, 2 * Math.PI); g.fill();
     g.restore();
   }
 
-  function lip(g, pts, px, glow, seed) {
-    trace(g, pts);
-    g.strokeStyle = "#1b232a";
-    g.lineWidth = 0.9;
-    g.stroke();
-
+  function lip(g, pts, seed) {
     const r = rng(seed);
     const minY = Math.min(...pts.map(p => p[1]));
     for (let i = 0; i < pts.length; i++) {
@@ -129,22 +125,8 @@
         poly(g, [[x - 0.45, y - 0.1], [x + 0.45, y - 0.1], [x + j, y + len]]);
         g.fillStyle = "#1b232a";
         g.fill();
-        g.globalAlpha = 0.5;
-        line(g, [[x + 0.45, y - 0.1], [x + j, y + len]], glow, px);
-        g.globalAlpha = 1;
       }
     }
-  }
-
-  function innerShade(g, pts) {
-    trace(g, pts);
-    g.strokeStyle = "rgba(0,0,0,0.35)";
-    g.lineWidth = 2.4;
-    g.stroke();
-    trace(g, pts);
-    g.strokeStyle = "rgba(0,0,0,0.25)";
-    g.lineWidth = 1.2;
-    g.stroke();
   }
 
   /* ================================================================
@@ -179,8 +161,11 @@
     g.clip();
 
     // Backdrop
-    g.fillStyle = rad(g, -3, -6, 0, 22, [[0, "#f1f0cf"], [0.18, "#cfe2b4"], [0.45, "#86b48f"], [0.75, "#3f6e5b"], [1, "#1d3a33"]]);
-    g.fillRect(-20, -12, 40, 24);
+    g.fillStyle = "#1d3a33"; g.fillRect(-20, -12, 40, 24);
+    circle(g, -3, -6, 19.8, "#3f6e5b");
+    circle(g, -3, -6, 13.2, "#86b48f");
+    circle(g, -3, -6, 6.6, "#cfe2b4");
+    circle(g, -3, -6, 2.2, "#f1f0cf");
 
     // Light shafts
     g.globalCompositeOperation = "lighter";
@@ -201,7 +186,7 @@
     }
     g.lineTo(20, 12);
     g.closePath();
-    g.fillStyle = lin(g, 0, -6, 0, 4, [[0, "#a9c9ab"], [1, "#7fa98d"]]);
+    g.fillStyle = "#a9c9ab";
     g.fill();
 
     // The titan
@@ -234,7 +219,7 @@
 
     // Waterfall
     poly(g, [[-13.1, -10], [-12.1, -10], [-11.9, 0.5], [-13.5, 0.5]]);
-    g.fillStyle = lin(g, 0, -10, 0, 0.5, [[0, "rgba(236,250,246,0.9)"], [1, "rgba(200,236,230,0.75)"]]);
+    g.fillStyle = "rgba(226,246,240,0.85)";
     g.fill();
     g.beginPath();
     g.ellipse(-12.6, 0.8, 2.2, 0.8, 0, 0, 2 * Math.PI);
@@ -250,7 +235,7 @@
     }
     g.lineTo(20, 12);
     g.closePath();
-    g.fillStyle = lin(g, 0, -2, 0, 6, [[0, "#5f9470"], [1, "#3d6e50"]]);
+    g.fillStyle = "#5f9470";
     g.fill();
 
     {
@@ -283,21 +268,16 @@
       }
       const pts = L.concat(R.slice().reverse());
       poly(g, pts);
-      g.fillStyle = lin(g, 0, 1, 0, 10, [[0, "#e8f6ee"], [1, "#a9d8d0"]]);
+      g.fillStyle = "#d4ece4";
       g.fill();
-      line(g, L, "rgba(40,80,60,0.5)", px * 1.2);
-      line(g, R, "rgba(40,80,60,0.5)", px * 1.2);
     }
 
     // Near hills
     poly(g, [[-20, 3.0], [-15, 3.8], [-10, 5.2], [-6, 7.6], [-3.5, 12], [-20, 12]]);
-    g.fillStyle = lin(g, 0, 2, 0, 12, [[0, "#2d5a3e"], [1, "#16301f"]]);
+    g.fillStyle = "#22472f";
     g.fill();
     poly(g, [[20, 1.8], [15, 2.4], [10.5, 4.2], [7.5, 7.0], [5.8, 12], [20, 12]]);
     g.fill();
-
-    line(g, [[-20, 3.0], [-15, 3.8], [-10, 5.2], [-6, 7.6], [-3.5, 12]], "rgba(190,230,170,0.45)", px);
-    line(g, [[20, 1.8], [15, 2.4], [10.5, 4.2], [7.5, 7.0], [5.8, 12]], "rgba(190,230,170,0.45)", px);
 
     // Giant trees
     for (const [x, y, h] of [[-15.5, 3.8, 5.5], [-11.8, 4.6, 4.2], [13.8, 2.3, 6.0]]) {
@@ -324,13 +304,8 @@
       }
     }
 
-    // Vignette
-    g.fillStyle = rad(g, 0, 0, 10, 20, [[0, "rgba(8,14,12,0)"], [1, "rgba(8,14,12,0.55)"]]);
-    g.fillRect(-20, -12, 40, 24);
-
-    innerShade(g, TT_POCKET);
     g.restore();
-    lip(g, TT_POCKET, px, "rgba(190,235,180,0.45)", 7404);
+    lip(g, TT_POCKET, 7404);
   }
 
   function liveTitans(g, px, t, a) {
@@ -417,8 +392,11 @@
     g.clip();
 
     // Backdrop
-    g.fillStyle = rad(g, 0, -1, 0, 21, [[0, "#e8c689"], [0.2, "#b98752"], [0.5, "#6a3b2a"], [0.8, "#2e1714"], [1, "#170b0b"]]);
-    g.fillRect(-20, -13, 40, 26);
+    g.fillStyle = "#170b0b"; g.fillRect(-20, -13, 40, 26);
+    circle(g, 0, -1, 18.9, "#2e1714");
+    circle(g, 0, -1, 13.7, "#6a3b2a");
+    circle(g, 0, -1, 7.35, "#b98752");
+    circle(g, 0, -1, 2.5, "#e8c689");
 
     // Dust bands
     g.fillStyle = "rgba(230,190,140,0.08)";
@@ -516,13 +494,8 @@
       }
     }
 
-    // Vignette
-    g.fillStyle = rad(g, 0, 0, 11, 21, [[0, "rgba(10,5,5,0)"], [1, "rgba(10,5,5,0.6)"]]);
-    g.fillRect(-20, -13, 40, 26);
-
-    innerShade(g, VK_POCKET);
     g.restore();
-    lip(g, VK_POCKET, px, "rgba(240,190,120,0.45)", 8404);
+    lip(g, VK_POCKET, 8404);
   }
 
   function liveValkhar(g, px, t, a) {
@@ -571,8 +544,10 @@
     g.clip();
 
     // Hellfire backdrop
-    g.fillStyle = lin(g, 0, -16, 0, 16, [[0, "#1a0a0c"], [0.45, "#3a0f0e"], [0.78, "#8a2412"], [1, "#e0561c"]]);
-    g.fillRect(-12, -17, 24, 34);
+    g.fillStyle = "#1a0a0c"; g.fillRect(-12, -17, 24, 11);
+    g.fillStyle = "#3a0f0e"; g.fillRect(-12, -6, 24, 9);
+    g.fillStyle = "#8a2412"; g.fillRect(-12, 3, 24, 7);
+    g.fillStyle = "#e0561c"; g.fillRect(-12, 10, 24, 7);
     g.fillStyle = rad(g, 0, 12, 0, 12, [[0, "rgba(255,140,60,0.35)"], [1, "rgba(255,140,60,0)"]]);
     g.fillRect(-12, 0, 24, 17);
 
@@ -667,13 +642,8 @@
       line(g, [[1.1 * Math.cos(an), 7.5 + 1.1 * Math.sin(an)], [1.6 * Math.cos(an), 7.5 + 1.6 * Math.sin(an)]], LW.quoinShade, px);
     }
 
-    // Vignette
-    g.fillStyle = rad(g, 0, 0, 9, 17, [[0, "rgba(10,4,4,0)"], [1, "rgba(10,4,4,0.55)"]]);
-    g.fillRect(-12, -17, 24, 34);
-
-    innerShade(g, LW_POCKET);
     g.restore();
-    lip(g, LW_POCKET, px, "rgba(255,130,70,0.45)", 4404);
+    lip(g, LW_POCKET, 4404);
   }
 
   function liveLaw(g, px, t, a) {

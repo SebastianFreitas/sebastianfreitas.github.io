@@ -254,9 +254,9 @@ window.World = (function () {
       const rad = b.rad * Math.max(W, H);
       if (!onScreen(x, rad)) continue;
       const y = b.y * H;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-      g.addColorStop(0, `rgba(${b.hue},${b.a})`); g.addColorStop(1, `rgba(${b.hue},0)`);
-      ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      ctx.fillStyle = `rgba(${b.hue},${b.a * 0.3})`;
+      ctx.beginPath(); ctx.arc(x, y, rad * 0.8, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, rad * 0.5, 0, 6.283); ctx.fill();
     }
     const off2 = camX * 0.14 * s;
     const streak = Math.min(60, Math.abs(vel) / V.maxFling * 220);
@@ -340,28 +340,12 @@ window.World = (function () {
       const bw = p.w, bh = p.h;
 
       // a shape defined by what it hides
-      const g = ctx.createRadialGradient(x, y, 0, x, y, bw * 0.5);
-      g.addColorStop(0, `rgba(9,12,14,${0.92 * p.seen})`);
-      g.addColorStop(0.62, `rgba(10,13,16,${0.7 * p.seen})`);
-      g.addColorStop(1, "rgba(10,13,16,0)");
-      ctx.save();
-      ctx.translate(x, y); ctx.scale(1, bh / bw);
-      ctx.fillStyle = g;
-      ctx.fillRect(-bw * 0.5, -bw * 0.5, bw, bw);
-      ctx.restore();
-
-      // a faint rim, so it reads as mass rather than a hole
-      ctx.strokeStyle = `rgba(74,58,64,${0.12 * p.seen})`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, bw * 0.44, bh * 0.44, 0, 0, 6.283);
-      ctx.stroke();
+      ctx.fillStyle = `rgba(10,13,16,${0.85 * p.seen})`;
+      ctx.beginPath(); ctx.ellipse(x, y, bw * 0.44, bh * 0.44, 0, 0, 6.283); ctx.fill();
 
       // one dim core, fading with the body — nothing that changes shape
-      const cg = ctx.createRadialGradient(x, y, 0, x, y, bw * 0.28);
-      cg.addColorStop(0, `rgba(150,72,64,${0.16 * p.seen})`);
-      cg.addColorStop(1, "rgba(150,72,64,0)");
-      ctx.fillStyle = cg;
-      ctx.fillRect(x - bw * 0.3, y - bh * 0.3, bw * 0.6, bh * 0.6);
+      ctx.fillStyle = `rgba(150,72,64,${0.12 * p.seen})`;
+      ctx.beginPath(); ctx.ellipse(x, y, bw * 0.14, bh * 0.14, 0, 0, 6.283); ctx.fill();
     }
   }
 
@@ -402,11 +386,8 @@ window.World = (function () {
   function drawFuture() {
     if (futureNow < 0.02) return;
     const a = futureNow;
-    const g = ctx.createLinearGradient(0, 0, W * 0.75, 0);
-    g.addColorStop(0, `rgba(196,206,210,${0.09 * a})`);
-    g.addColorStop(0.45, `rgba(150,166,174,${0.03 * a})`);
-    g.addColorStop(1, "rgba(150,166,174,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W * 0.75, H);
+    ctx.fillStyle = `rgba(170,184,190,${0.03 * a})`; ctx.fillRect(0, 0, W * 0.5, H);
+    ctx.fillStyle = `rgba(196,206,210,${0.05 * a})`; ctx.fillRect(0, 0, W * 0.22, H);
 
     // unformed vertical light, drifting
     ctx.lineWidth = 1;
@@ -459,9 +440,12 @@ window.World = (function () {
     g.addColorStop(0.35, "rgba(170,170,166,0.03)");
     g.addColorStop(1, "rgba(226,226,218,0)");
     ctx.fillStyle = g; ctx.fillRect(x - R * 3.2, y - R * 3.2, R * 6.4, R * 6.4);
-    const d = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, R * 0.1, x, y, R);
-    d.addColorStop(0, "#dcdbd4"); d.addColorStop(0.72, "#a7a6a0"); d.addColorStop(1, "#5c5b58");
-    ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fillStyle = d; ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283);
+    ctx.fillStyle = "#dcdbd4"; ctx.fill();
+    ctx.clip();
+    ctx.fillStyle = "#a7a6a0"; ctx.fillRect(x - R * 0.4, y - R - 2, R * 2 + 4, R * 2 + 4);
+    ctx.restore();
     const cx = x + R * 0.05 * Math.cos(t * 0.11), cy = y + R * 0.05 * Math.sin(t * 0.13);
     const rr = R * 1.32 * (1 + 0.012 * Math.sin(t * 0.3));
     ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 6.283);
@@ -1097,21 +1081,11 @@ window.World = (function () {
 
     const breath = 0.5 + 0.5 * Math.sin(t * 0.34);
 
-    // you feel it before you see it
-    const halo = ctx.createLinearGradient(face - 560, 0, face + 40, 0);
-    halo.addColorStop(0, "rgba(120,22,26,0)");
-    halo.addColorStop(1, `rgba(150,30,32,${0.12 + 0.07 * breath})`);
-    ctx.fillStyle = halo;
-    ctx.fillRect(face - 560, 0, 600, H);
-
     // and past the line there is nothing to look at
     const cx = Math.max(face, -80);
-    const body = ctx.createLinearGradient(cx, 0, cx + 520, 0);
-    body.addColorStop(0, "#5c1114");
-    body.addColorStop(0.45, "#3a0b0f");
-    body.addColorStop(1, "#1d060a");
-    ctx.fillStyle = body;
-    ctx.fillRect(cx, 0, W - cx + 80, H);
+    ctx.fillStyle = "#5c1114"; ctx.fillRect(cx, 0, 234, H);
+    ctx.fillStyle = "#3a0b0f"; ctx.fillRect(cx + 234, 0, 286, H);
+    ctx.fillStyle = "#1d060a"; ctx.fillRect(cx + 520, 0, Math.max(0, W - cx - 440), H);
 
     // the edge, which is the only part worth drawing
     ctx.strokeStyle = `rgba(214,72,68,${0.34 + 0.2 * breath})`;
@@ -1135,36 +1109,26 @@ window.World = (function () {
     const rise  = bayPx * 0.20;
     const legBot = H * 1.22;
 
-    const gl = ctx.createLinearGradient(0, deckY - 90, 0, deckY + 40);
-    gl.addColorStop(0, "rgba(245,208,107,0)");
-    gl.addColorStop(0.78, "rgba(245,208,107,0.055)");
-    gl.addColorStop(1, "rgba(245,208,107,0)");
-    ctx.fillStyle = gl; ctx.fillRect(0, deckY - 90, W, 130);
-
     const first = Math.floor((camX - VIEW_UNITS) / BAY) - 1;
     const last  = Math.ceil((camX + VIEW_UNITS) / BAY) + 1;
 
-    const lg = ctx.createLinearGradient(0, deckY, 0, legBot);
-    lg.addColorStop(0, "rgba(150,168,178,0.62)");
-    lg.addColorStop(0.28, "rgba(112,130,140,0.30)");
-    lg.addColorStop(0.72, "rgba(86,102,112,0.08)");
-    lg.addColorStop(1, "rgba(70,84,92,0)");
-    ctx.fillStyle = lg;
+    ctx.fillStyle = "rgba(112,130,140,0.55)";
     for (let b = first; b <= last; b++) {
       const x = wx(b * BAY, par);
       if (!onScreen(x, 20)) continue;
       ctx.fillRect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
     }
-    ctx.strokeStyle = "rgba(132,150,159,0.26)";
-    ctx.lineWidth = Math.max(0.8, legW * 0.55);
+    const archT = Math.max(1, legW * 0.55);
+    ctx.fillStyle = "rgba(112,130,140,0.30)";
     for (let b = first; b <= last; b++) {
       const x0 = wx(b * BAY, par);
       if (!onScreen(x0, bayPx + 20)) continue;
+      const cx = x0 + bayPx / 2, cy = deckY + deckH + rise, rx = bayPx / 2 - legW;
       ctx.beginPath();
-      ctx.ellipse(x0 + bayPx / 2, deckY + deckH + rise, bayPx / 2 - legW, rise, 0, Math.PI, 0);
-      ctx.stroke();
+      ctx.ellipse(cx, cy, rx, rise, 0, Math.PI, 0);
+      ctx.ellipse(cx, cy, rx - archT, rise - archT, 0, 0, Math.PI, true);
+      ctx.closePath(); ctx.fill();
     }
-    ctx.lineWidth = 1;
     for (let b = first; b <= last; b++) {
       const x = wx(b * BAY, par);
       if (!onScreen(x, 24)) continue;

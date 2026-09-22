@@ -23,11 +23,6 @@
   z-index: 0;
   touch-action: pan-y;      /* we take horizontal drags, the page keeps vertical */
 }
-.bridge-hero .vignette { position: absolute; inset: 0; pointer-events: none; }
-.bridge-hero .vignette {
-  z-index: 4;
-  background: radial-gradient(ellipse 92% 74% at 50% 52%, transparent 32%, rgba(0,0,0,0.62) 100%);
-}
 .bridge-hero .edge { display: none; }
 /* ---- the pitch ---- */
 .bridge-copy {
