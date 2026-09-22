@@ -2035,7 +2035,9 @@ window.Genesis = (function () {
       return deckY + d * W * (shear || 2.2) * broken;
     };
 
-    /* the two ranges behind, first */
+    /* the two ranges behind, first
+       past the rim the back ranges ride 8px under the near range's tail, otherwise
+       their shallower shear left a lighter band hugging the bridge at the frame edges */
     const cu = corrupt * 0.7;
     for (const b of MAIN_BANDS) {
       const pts = [];
@@ -2043,7 +2045,7 @@ window.Genesis = (function () {
         const dome = mainDome(wu);
         const y = dome > 0.002
           ? deckY - mainBandHeight(wu, b) * H
-          : rimY(wu, b.shear, b.out, b.seed);
+          : rimY(wu, 2.9, 0, 7703) + 8;
         if (y > H + 120) continue;
         pts.push([px, mix(H + 24, y, rise)]);
       }
