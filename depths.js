@@ -490,7 +490,7 @@ window.Depths = (function () {
         {
           id: "bnote-rex-titans",
           after: ["bnote-rex-under"],
-          at: [378762, 0.25],
+          at: [379543, 0.18],
           name: "The Kingdom of Titans",
           sub: "Direct descendants of Rex Immotus",
           html: `
