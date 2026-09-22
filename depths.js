@@ -185,9 +185,8 @@ window.Depths = (function () {
           html: `
         <p class="tag">Signal · voidscape / board</p>
         <h3>The Board</h3>
-        <!-- placeholder clip: media/voidscape/runs.mp4 is not recorded yet — drop it in and swap the poster for runs.jpg -->
         <figure class="clipbox">
-          <video class="clip" src="media/voidscape/runs.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
+          <video class="clip" src="media/voidscape/missions.mp4" poster="media/voidscape/missions.jpg" muted loop playsinline preload="none" controls></video>
           <figcaption>Starting a run. Missions roll onto the monitors — every drawback on the board raises the payout.</figcaption>
         </figure>
         <p class="sub">The problem</p>
@@ -207,10 +206,10 @@ window.Depths = (function () {
           html: `
         <p class="tag">Signal · voidscape / colour</p>
         <h3>Red and Blue</h3>
-        <!-- placeholder clip: media/voidscape/map.mp4 is not recorded yet — drop it in and swap the poster for map.jpg -->
+        <!-- no footage of the Red/Blue influence switch: it was removed from HellEscape on 2022-05-25 (746f653d). Record it from 746f653d^ and add it here. -->
         <figure class="clipbox">
-          <video class="clip" src="media/voidscape/map.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
-          <figcaption>The map. Every boon you take pulls the dungeon's influence toward its colour.</figcaption>
+          <video class="clip" src="media/voidscape/boons.mp4" poster="media/voidscape/boons.jpg" muted loop playsinline preload="none" controls></video>
+          <figcaption>A boon offer after a fight. Take it, turn it down, or pay to reroll.</figcaption>
         </figure>
         <p class="sub">Colour is a commitment</p>
         <p class="body">Boons drop as Red or Blue. Taking one shifts the dungeon's influence toward that colour — and the influence cuts both ways: <strong>lean into a colour and its rooms turn hostile, while the opposite colour's rooms turn generous.</strong></p>
@@ -228,9 +227,8 @@ window.Depths = (function () {
           html: `
         <p class="tag">Signal · voidscape / bench</p>
         <h3>The Bench</h3>
-        <!-- placeholder clip: media/voidscape/crafting.mp4 is not recorded yet — drop it in and swap the poster for crafting.jpg -->
         <figure class="clipbox">
-          <video class="clip" src="media/voidscape/crafting.mp4" poster="media/voidscape/voidscapeFrontPage.webp" muted loop playsinline preload="none" controls></video>
+          <video class="clip" src="media/voidscape/crafting.mp4" poster="media/voidscape/crafting.jpg" muted loop playsinline preload="none" controls></video>
           <figcaption>Adding, removing, and scrapping mods at the bench.</figcaption>
         </figure>
         <p class="sub">Weapons are generated, not designed</p>
@@ -263,6 +261,10 @@ window.Depths = (function () {
           html: `
         <p class="tag">Signal · voidscape / ledger</p>
         <h3>The Ledger</h3>
+        <figure class="clipbox">
+          <video class="clip" src="media/voidscape/run.mp4" poster="media/voidscape/run.jpg" muted loop playsinline preload="none" controls></video>
+          <figcaption>One full run on a short mission, from the hub down and back. 1:43, uncut.</figcaption>
+        </figure>
         <p class="sub">What it cost</p>
         <p class="body">Fifty interacting modifiers on top of rolled weapons and rolled missions means the combination space isn't testable by hand. Most of the work wasn't writing mechanics — it was making them compose without producing states I never anticipated, and accepting that some of those states are the reason the game is worth playing. A Red-heavy build inside a mission that rolled fire immunity is a problem nobody authored, and the player has to solve it with what they brought.</p>
         <p class="sub">Where it stands</p>

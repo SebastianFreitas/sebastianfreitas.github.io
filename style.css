@@ -237,6 +237,7 @@ a:hover { color: #fff; }
   display: block;
   width: 100%;
   max-width: 72rem;
+  height: auto;
   margin: 1.5rem 0 0.5rem;
   background: #000;
   border: 1px solid var(--line);

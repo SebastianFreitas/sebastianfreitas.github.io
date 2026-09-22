@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=72">
-<link rel="stylesheet" href="../beacon.css?v=72">
+<link rel="stylesheet" href="../style.css?v=73">
+<link rel="stylesheet" href="../beacon.css?v=73">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -48,12 +48,8 @@
      difficulty slider — every hard choice is one the player made on purpose, and the game pays out
      in proportion. Runs, weapons, and modifiers are all rolled, not authored.</p>
 
-  <!-- ============ CLIP — media/voidscape/mission.mp4 ============
-       Suggested: reading a mission's rolled modifiers on the monitors,
-       then opening the portal into it.
-  <video class="clip" src="../media/voidscape/mission.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <video class="clip" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
   <p class="caption">Choosing a run. Every drawback on the board raises the payout.</p>
-  ========================================================== -->
 
   <h2>The problem</h2>
   <p>Every roguelike I played had the same failure: the god run. The drops line up, damage goes
@@ -84,10 +80,10 @@
      drops, higher elite chance. A dedicated room type lets you flip your influence mid-run, which
      makes it a decision you keep revisiting instead of one you make once.</p>
 
-  <!-- ============ CLIP — media/voidscape/boons.mp4 ============
+  <!-- CLIP wanted: the Red/Blue influence switch. Removed from HellEscape on 2022-05-25 (746f653d); record it from 746f653d^. Text above describes that build. -->
+
   <video class="clip" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Boons are mostly trade-offs, not upgrades.</p>
-  ========================================================== -->
+  <p class="caption">A boon offer after a fight. Take it, turn it down, or pay to reroll.</p>
 
   <h2>Fifty boons, and most of them cost something</h2>
   <p>Boons stack for the rest of the run and are weighted by rarity. The flat upgrades exist, but
@@ -108,10 +104,11 @@
      and the odds barely move. Weapons come out mixed instead of stacking five of the same thing,
      and specials stay rare without needing a hard cap on them.</p>
 
-  <!-- ============ CLIP — media/voidscape/crafting.mp4 ============
+  <img class="clip" src="../media/voidscape/shop.webp" alt="Shop screen for a rolled machinegun: base stats and four rolled mods" width="1482" height="988" loading="lazy">
+  <p class="caption">A rolled machinegun in the shop. Base stats on the left, one rolled mod per row.</p>
+
   <video class="clip" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
   <p class="caption">Adding, removing, and scrapping mods at the bench.</p>
-  ========================================================== -->
 
   <h2>Crafting gets more expensive the better you're doing</h2>
   <p>Gun parts drop from enemies and pay for adding mods, removing them, or scrapping a weapon
@@ -128,12 +125,18 @@
   <p>This is where the god run gets its answer. A build that trivialises the first loop still has to
      be played in the second.</p>
 
+  <img class="clip" src="../media/voidscape/enemy.webp" alt="Mid-fight in a generated corridor, a red enemy taking hits" width="1600" height="986" loading="lazy">
+  <p class="caption">Mid-fight in a generated corridor.</p>
+
   <h2>Feel</h2>
   <p>Movement carries coyote time and jump buffering so inputs land when the player means them,
      side and jump dashes on independent cooldowns, and locked input direction during a dash so
      momentum carries instead of letting you steer mid-air. Enemy hits and explosions apply real
      knockback through a mass-weighted impact vector — and one boon turns being launched by your own
      fire explosion into a speed buff, which makes shooting the floor to travel a legitimate build.</p>
+
+  <img class="clip" src="../media/voidscape/room.webp" alt="A generated room with catwalks and railings over a lower floor" width="1600" height="904" loading="lazy">
+  <p class="caption">One generated room. Catwalks and drops give the dashes somewhere to go.</p>
 
   <h2>What it cost</h2>
   <p>Fifty interacting modifiers on top of rolled weapons and rolled missions means the combination
@@ -148,6 +151,9 @@
      means adding a row to a table; adding a new room means adding a prefab. That was the point of
      building it this way.</p>
 
+  <video class="clip" src="../media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
+  <p class="caption">One full run on a short mission, from the hub down and back. 1:43, uncut.</p>
+
   <nav class="case-nav" aria-label="More work">
     <a class="back" href="../index.html#work">← All work</a>
     <a class="next" rel="next" href="heavylight.html">Next: HeavyLight →</a>
@@ -161,10 +167,10 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="../util.js?v=72"></script>
-<script src="../xp.js?v=72"></script>
-<script src="../surge.js?v=72"></script>
-<script src="../lazy-video.js?v=72"></script>
+<script src="../util.js?v=73"></script>
+<script src="../xp.js?v=73"></script>
+<script src="../surge.js?v=73"></script>
+<script src="../lazy-video.js?v=73"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-voidscape",2,"VoidScape");});</script>
 </body>
 </html>
