@@ -879,25 +879,14 @@ window.World = (function () {
   function drawHell(bottom) {
     const par = REX_BANDS[2].par;
     const hx = wx(HELL_AT, par);
-    const rx = wx(LAND.root, 0.70);
     if (hx > W + 60) return;
 
     const x0 = Math.max(hx, -160);
     const pulse = 0.5 + 0.5 * Math.sin(t * 0.4);
 
-    // flat red steps, hotter the deeper toward the Root
-    const L = Math.max(120, (rx - hx) * 0.6);
-    const steps = [
-      [hx,            hx + L * 0.30, `rgba(80,14,13,${0.22 + 0.05 * pulse})`],
-      [hx + L * 0.30, hx + L * 0.70, `rgba(96,18,16,${0.55 + 0.08 * pulse})`],
-      [hx + L * 0.70, W + 160,       "rgba(132,26,22,0.92)"],
-    ];
-    for (const [a, z, c] of steps) {
-      const sx0 = Math.max(x0, a), sx1 = Math.min(z, W + 160);
-      if (sx1 <= sx0) continue;
-      ctx.fillStyle = c;
-      ctx.fillRect(sx0, 0, sx1 - sx0, H + 60);
-    }
+    // one flat red from the seal on
+    ctx.fillStyle = `rgba(132,26,22,${0.8 + 0.05 * pulse})`;
+    ctx.fillRect(x0, 0, W - x0 + 160, H + 60);
 
     // one flat darkening over the whole of hell, no horizontal seam
     ctx.fillStyle = "rgba(0,0,0,0.3)";
@@ -905,7 +894,7 @@ window.World = (function () {
 
     for (let i = 0; i < 34; i++) {
       const u = hash1(i * 401), span = Math.max(90, W - x0);
-      const ex = x0 + ((u * span + t * (18 + u * 40)) % span);
+      const ex = x0 + ((((u * span + t * (18 + u * 40) + hx - x0) % span) + span) % span);
       const ey = H - ((t * (26 + u * 60) + u * H) % (H * 0.95));
       ctx.fillStyle = `rgba(246,126,74,${0.14 + 0.3 * hash1(i * 77)})`;
       ctx.fillRect(ex, ey, 1.8, 1.8);
@@ -1050,9 +1039,7 @@ window.World = (function () {
 
     // and past the line there is nothing to look at
     const cx = Math.max(face, -80);
-    ctx.fillStyle = "#5c1114"; ctx.fillRect(cx, 0, 234, H);
-    ctx.fillStyle = "#3a0b0f"; ctx.fillRect(cx + 234, 0, 286, H);
-    ctx.fillStyle = "#1d060a"; ctx.fillRect(cx + 520, 0, Math.max(0, W - cx - 440), H);
+    ctx.fillStyle = "#2a080c"; ctx.fillRect(cx, 0, W - cx + 80, H);
 
     // the edge, which is the only part worth drawing
     ctx.strokeStyle = `rgba(214,72,68,${0.34 + 0.2 * breath})`;
