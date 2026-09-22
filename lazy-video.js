@@ -40,7 +40,7 @@
     }
   });
  
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = Util.reduced();
   if (!("IntersectionObserver" in window) || reduced) {
     videos.forEach((v) => { v.controls = true; v.preload = "metadata"; });
     return;

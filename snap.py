@@ -119,6 +119,20 @@ def rest(page):
         page.wait_for_timeout(100)
 
 
+# A page that throws still paints, so a broken scene can shoot a picture that
+# looks right. Every page reports into one list, which capture() reads out and
+# empties around each scene.
+ERRORS = []
+
+
+def watch_errors(page):
+    page.on("pageerror", lambda e: ERRORS.append(str(e)))
+    # the harness aborts every mp4 itself (posters only), and Chromium logs that abort as an error
+    page.on("console", lambda msg: msg.type == "error"
+            and not (msg.location or {}).get("url", "").endswith(".mp4")
+            and ERRORS.append(msg.text))
+
+
 def new_ctx(browser, viewport=None, **opts):
     ctx = browser.new_context(viewport=viewport or nav.DESKTOP, **opts)
     ctx.set_default_timeout(15000)
@@ -127,7 +141,9 @@ def new_ctx(browser, viewport=None, **opts):
     ctx.add_init_script(nav.INIT)
     ctx.add_init_script(SEED)
     ctx.route("**/*.mp4", lambda route: route.abort())   # posters only, see PARK_VIDEO
-    return ctx, ctx.new_page()
+    page = ctx.new_page()
+    watch_errors(page)
+    return ctx, page
 
 
 # Video plays on its own clock, not the faked one, and lazy-video.js fetches
@@ -177,9 +193,9 @@ def shot(page, out_dir, name, full_page=False):
 
 # ------------------------------------------------------------------ the map
 
-# The beacon lists are plain consts inside bridge.js's IIFE, and each mark's
-# world x is computed from the map in world.js, so the blocks are lifted out
-# of the source and run in the page, where World is a global.
+# The scene names are the ids of the beacon lists in marks.js and of the beats
+# in genesis-state.js, read out of the source so a new entry shows up as a new
+# scene. The world x of each beacon is read off the live globals instead.
 
 
 def js_block(source, opener, closer):
@@ -192,12 +208,12 @@ def js_block(source, opener, closer):
     return source[i:j + len(closer)]
 
 
-BRIDGE_SRC = (ROOT / "bridge.js").read_text(encoding="utf-8")
-GENESIS_SRC = (ROOT / "genesis.js").read_text(encoding="utf-8")
+MARKS_SRC_FILE = (ROOT / "marks.js").read_text(encoding="utf-8")
+BEATS_SRC_FILE = (ROOT / "genesis-state.js").read_text(encoding="utf-8")
 
-MARKS_SRC = js_block(BRIDGE_SRC, "const MARKS = [", "\n  ];")
-PLANETS_SRC = js_block(BRIDGE_SRC, "const PLANETS = [", "\n  ];")
-BEATS_SRC = js_block(GENESIS_SRC, "const BEATS = [", "\n  ];")
+MARKS_SRC = js_block(MARKS_SRC_FILE, "const MARKS = [", "\n  ];")
+PLANETS_SRC = js_block(MARKS_SRC_FILE, "const PLANETS = [", "\n  ];")
+BEATS_SRC = js_block(BEATS_SRC_FILE, "G.BEATS = [", "\n  ];")
 
 MARK_IDS = re.findall(r'id:\s*"([^"]+)"', MARKS_SRC)
 PLANET_IDS = re.findall(r'id:\s*"([^"]+)"', PLANETS_SRC)
@@ -206,31 +222,14 @@ if not (MARK_IDS and PLANET_IDS and BEAT_IDS):
     raise RuntimeError("snap.py: MARKS / PLANETS / BEATS no longer parse — "
                        "no scene names can be built")
 
-MAP_JS = """() => {
-  const SLOT = World.SLOT, LAND = World.LAND, BOUNDS = World.BOUNDS;
-  %(cam)s
-  %(gd_slot)s
-  %(gd_at)s
-  %(gd_land)s
-  %(marks)s
-  %(marks_each)s
-  %(planets)s
-  %(planets_each)s
-  return {
-    marks: MARKS.map(m => ({ id: m.id, x: m.x })),
-    planets: PLANETS.map(m => ({ id: m.id, x: m.x })),
-    land: Object.keys(LAND), landBridge: LAND.bridge,
-  };
-}""" % {
-    "cam": js_block(BRIDGE_SRC, "const CAM = {", "\n  };"),
-    "gd_slot": js_block(BRIDGE_SRC, "const GD_SLOT = SLOT;", ";"),
-    "gd_at": js_block(BRIDGE_SRC, "const gdAt = i => i * GD_SLOT;", ";"),
-    "gd_land": js_block(BRIDGE_SRC, "const GD_LAND = {", "\n  };"),
-    "marks": MARKS_SRC,
-    "marks_each": js_block(BRIDGE_SRC, "MARKS.forEach((m, i) => {", "\n  });"),
-    "planets": PLANETS_SRC,
-    "planets_each": js_block(BRIDGE_SRC, "PLANETS.forEach((m, i) => {", "\n  });"),
-}
+# bridge.js pushes a depth node into these lists as each beacon is claimed, so
+# the map holds more than the source does: every scene looks its id up here
+# rather than walking the map.
+MAP_JS = """() => ({
+  marks: Marks.MARKS.map(m => ({ id: m.id, x: m.x })),
+  planets: Marks.PLANETS.map(m => ({ id: m.id, x: m.x })),
+  land: Object.keys(World.LAND), landBridge: World.LAND.bridge,
+})"""
 
 _map = {}
 
@@ -435,12 +434,17 @@ def capture(name, only=None):
             browser = p.chromium.launch(args=CHROME)
             for n, fn in chosen:
                 t0 = time.time()
+                ERRORS.clear()
                 try:
                     fn(browser, base, out_dir)
                     print(f"  {n:34} {time.time() - t0:6.1f}s")
                 except Exception as e:
                     failed.append(n)
                     print(f"FAIL {n}: {type(e).__name__}: {e}".splitlines()[0])
+                if ERRORS:
+                    if n not in failed:
+                        failed.append(n)
+                    print(f"ERR {n} ({len(ERRORS)}): {ERRORS[0]}".splitlines()[0])
             close_shared()
             browser.close()
     finally:

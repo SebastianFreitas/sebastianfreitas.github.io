@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sebastianfreitas.github.io/sitemap.xml
