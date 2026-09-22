@@ -141,12 +141,12 @@ window.World = (function () {
   const REX_BANDS = [
     // furthest back: highest and climbs hardest, so it leaves the frame first
     { par: 0.50, seed: 1201, amp: 0.055, base: 0.34, drift: 0.16, rampAt: 0.60, climb: 2.4, cell: 2600,
-      fill: ["#39485a", "#26313d"], edge: "rgba(178,204,214,0.30)" },
+      lit: "#39485a", shade: "#26313d" },
     { par: 0.59, seed: 3307, amp: 0.075, base: 0.20, drift: 0.13, rampAt: 0.70, climb: 2.1, cell: 1900,
-      fill: ["#2b3742", "#1c242d"], edge: "rgba(172,198,208,0.38)" },
+      lit: "#2b3742", shade: "#1c242d" },
     // nearest: lowest and slowest, so the two behind stay visible over it
     { par: 0.68, seed: 5501, amp: 0.095, base: 0.06, drift: 0.10, rampAt: 0.80, climb: 1.8, cell: 1400,
-      fill: ["#233039", "#2a2320"], edge: "rgba(186,208,214,0.55)" },
+      lit: "#2a3640", shade: "#1b2228" },
   ];
 
   /* height of a band at a world position, as a share of the hero */
@@ -870,12 +870,23 @@ window.World = (function () {
     ctx.globalAlpha = 1;
   }
 
+  // flat fill lit from the left: the whole mass in lit, then a copy shifted down-right in shade, clipped to the mass, leaving a hard-edged lit cap on left-facing slopes (same as genesis.js fillRidge)
+  function fillRidge(path, lit, shade) {
+    ctx.fillStyle = lit; ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    ctx.translate(H * 0.05, H * 0.035);
+    ctx.fillStyle = shade;
+    ctx.fill(path);
+    ctx.restore();
+  }
+
   function drawRex() {
     const sc = scale();
     const bottom = H * 1.3;
     const toWorld = (px, par) => camX + (px - W * 0.5) / (par * sc);
 
-    let nearPath = null, nearPts = null;
+    let nearPath = null;
 
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
@@ -892,15 +903,9 @@ window.World = (function () {
       path.lineTo(pts[pts.length - 1][0], bottom);
       path.closePath();
 
-      const g = ctx.createLinearGradient(0, H * 0.05, 0, bottom);
-      g.addColorStop(0, b.fill[0]); g.addColorStop(1, b.fill[1]);
-      ctx.fillStyle = g; ctx.fill(path);
+      fillRidge(path, b.lit, b.shade);
 
-      if (bi === REX_BANDS.length - 1) { nearPath = path; nearPts = pts; }
-      else {
-        ctx.strokeStyle = b.edge; ctx.lineWidth = 1.2;
-        strokeSkyline(pts);
-      }
+      if (bi === REX_BANDS.length - 1) nearPath = path;
       drawRexPlaces(bi);  // kingdoms standing on this range, before the nearer ranges cover their feet
     }
 
@@ -910,10 +915,6 @@ window.World = (function () {
       ctx.clip(nearPath);
       rexInterior(sc, bottom);
       ctx.restore();
-
-      ctx.strokeStyle = REX_BANDS[2].edge; ctx.lineWidth = 1.5;
-      strokeSkyline(nearPts);
-      ctx.lineWidth = 1;
     }
 
     drawRexPlaces(-1);   // the deep kingdoms, over the rock
@@ -933,19 +934,22 @@ window.World = (function () {
     const x0 = Math.max(hx, -160);
     const pulse = 0.5 + 0.5 * Math.sin(t * 0.4);
 
-    const rg = ctx.createLinearGradient(hx, 0, hx + Math.max(120, (rx - hx) * 0.6), 0);
-    rg.addColorStop(0, "rgba(60,10,10,0)");
-    rg.addColorStop(0.30, `rgba(96,18,16,${0.55 + 0.08 * pulse})`);
-    rg.addColorStop(1, `rgba(132,26,22,${0.92})`);
-    ctx.fillStyle = rg;
-    ctx.fillRect(x0, 0, W - x0 + 160, H + 60);
+    // flat red steps, hotter the deeper toward the Root
+    const L = Math.max(120, (rx - hx) * 0.6);
+    const steps = [
+      [hx,            hx + L * 0.30, `rgba(80,14,13,${0.22 + 0.05 * pulse})`],
+      [hx + L * 0.30, hx + L * 0.70, `rgba(96,18,16,${0.55 + 0.08 * pulse})`],
+      [hx + L * 0.70, W + 160,       "rgba(132,26,22,0.92)"],
+    ];
+    for (const [a, z, c] of steps) {
+      const sx0 = Math.max(x0, a), sx1 = Math.min(z, W + 160);
+      if (sx1 <= sx0) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(sx0, 0, sx1 - sx0, H + 60);
+    }
 
-    // hotter toward the floor
-    const dg = ctx.createLinearGradient(0, 0, 0, bottom);
-    dg.addColorStop(0, "rgba(0,0,0,0.55)");
-    dg.addColorStop(0.55, "rgba(0,0,0,0.12)");
-    dg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = dg;
+    // one flat darkening over the whole of hell, no horizontal seam
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.fillRect(x0, 0, W - x0 + 160, H + 60);
 
     for (let i = 0; i < 34; i++) {
@@ -971,36 +975,12 @@ window.World = (function () {
     }
   }
 
-  function strokeSkyline(pts) {
-    ctx.beginPath();
-    let drawing = false;
-    for (const p of pts) {
-      if (p[1] < -30) { drawing = false; continue; }
-      drawing ? ctx.lineTo(p[0], p[1]) : (ctx.moveTo(p[0], p[1]), drawing = true);
-    }
-    ctx.stroke();
-  }
-
   /* ---- what the rock looks like once you're in it -------------
      Without this the underground is a flat fill and reads as void,
      which is exactly how it looked.
   --------------------------------------------------------- */
   function rexInterior(sc, bottom) {
     const nb = REX_BANDS[2], par = nb.par;
-
-    // bedding planes, sagging the way strata do
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 16; i++) {
-      const y0 = H * (0.16 + i * 0.075);
-      const off = camX * par * sc * 0.06;
-      ctx.strokeStyle = `rgba(150,168,180,${0.05 + 0.03 * (i % 3)})`;
-      ctx.beginPath();
-      for (let px = -40; px <= W + 40; px += 26) {
-        const y = y0 + Math.sin((px + off) * 0.004 + i) * 12 + Math.sin((px + off) * 0.011 + i * 2) * 5;
-        px === -40 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
-      }
-      ctx.stroke();
-    }
 
     // rubble, so it has grain rather than being a wash
     for (let i = 0; i < 90; i++) {
