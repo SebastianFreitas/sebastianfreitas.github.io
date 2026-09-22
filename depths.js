@@ -557,7 +557,7 @@ window.Depths = (function () {
         {
           id: "bnote-watcher-redstar",
           after: ["bnote-watcher"],
-          at: [334257, 0.24],
+          at: [334257, 0.40],
           name: "The Red Star",
           sub: "Mother of the nocturnals",
           html: `

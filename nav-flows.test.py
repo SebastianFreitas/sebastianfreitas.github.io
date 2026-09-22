@@ -709,7 +709,7 @@ def flow_watcher(browser, base):
           ids == {"bnote-watcher-redstar", "bnote-watcher-serus"}, ids)
 
     by_id = {n["id"]: n for n in report}
-    PINNED = {"redstar": (334257, 0.24), "serus": (335882, 0.52)}
+    PINNED = {"redstar": (334257, 0.40), "serus": (335882, 0.52)}
     for name, (x, oy) in PINNED.items():
         n = by_id["bnote-watcher-" + name]
         check(f"watcher: {name} sits where it was measured",
