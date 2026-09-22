@@ -113,75 +113,6 @@
 }
 .xp-pop.go { opacity: 1; transform: translate(-50%, -54px); }
 
-/* =========================================================
-   The beacon, as a thing you can put anywhere.
-   Markup is handled by lamp.js:
-     <button data-beacon data-beacon-id="x" data-xp="2"
-             data-label="Name"><span class="bcn-lbl">Text</span></button>
-   ========================================================= */
-.bcn,
-button.bcn,
-#entry-go {
-  -webkit-appearance: none; appearance: none;
-  background: none !important; border: 0; box-shadow: none; color: inherit;
-}
-.bcn {
-  position: relative; cursor: pointer;
-  display: inline-flex; flex-direction: column; align-items: center; gap: 0.85rem;
-  padding: 1.3rem 1.9rem 0.9rem; color: inherit; text-decoration: none;
-  font: inherit;
-}
-.bcn-mark { position: relative; width: 46px; height: 46px; display: block; }
-.bcn-arm {
-  position: absolute; left: 50%; top: 50%; background: rgba(255,240,205,0.85);
-  animation: bcnArm 2.4s ease-in-out infinite;
-}
-.bcn-arm:nth-of-type(1) { width: 30px; height: 1px; margin: 0 0 0 -15px; }
-.bcn-arm:nth-of-type(2) { width: 1px; height: 30px; margin: -15px 0 0 0; }
-.bcn-core {
-  position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
-  border-radius: 50%; background: #fff5dc;
-  box-shadow: 0 0 16px 6px rgba(245,208,107,0.4);
-  animation: bcnCore 2.4s ease-in-out infinite;
-}
-.bcn-ring {
-  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
-  border: 1px solid rgba(245,208,107,0.5); border-radius: 50%;
-  animation: bcnRing 2.4s ease-out infinite;
-}
-.bcn-xp {
-  position: absolute; right: 1rem; top: 1rem;
-  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--lamp);
-  animation: bcnCore 2.4s ease-in-out infinite;
-}
-.bcn-lbl {
-  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--sage-dim);
-}
-.bcn:hover .bcn-lbl { color: var(--lamp); }
-.bcn:hover .bcn-ring { border-color: #fff; }
-
-/* once it's been taken it stops asking for attention */
-.bcn.claimed .bcn-arm,
-.bcn.claimed .bcn-core,
-.bcn.claimed .bcn-ring { animation: none; opacity: 0.28; }
-.bcn.claimed .bcn-xp { display: none; }
-.bcn.claimed { cursor: default; }
-
-/* an inline variant, for dropping into a paragraph */
-.bcn.inline {
-  flex-direction: row; gap: 0.5rem; padding: 0.2rem 0.5rem; vertical-align: middle;
-}
-.bcn.inline .bcn-mark { width: 22px; height: 22px; }
-.bcn.inline .bcn-arm:nth-of-type(1) { width: 15px; margin-left: -7.5px; }
-.bcn.inline .bcn-arm:nth-of-type(2) { height: 15px; margin-top: -7.5px; }
-.bcn.inline .bcn-ring { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
-.bcn.inline .bcn-xp { position: static; font-size: 0.68rem; }
-
-@keyframes bcnArm  { 0%,100% { opacity: 0.25; transform: scale(0.7); } 55% { opacity: 1; transform: scale(1); } }
-@keyframes bcnCore { 0%,100% { opacity: 0.45; } 55% { opacity: 1; } }
-@keyframes bcnRing { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(1.5); opacity: 0; } }
-
 @media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
   .xp-chip .xp-ref, .xp-chip .xp-track { display: none; }
 }
@@ -194,32 +125,8 @@ button.bcn,
   .xp-badge { width: 11px; height: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bcn-arm, .bcn-core, .bcn-ring, .bcn-xp { animation: none; }
 }
 
-
-/* ---- claiming a beacon ---- */
-.bcn.claiming .bcn-mark::after,
-.bcn.claiming .bcn-mark::before {
-  content: ""; position: absolute; left: 50%; top: 50%;
-  border-radius: 50%; pointer-events: none;
-}
-.bcn.claiming .bcn-mark::after {
-  width: 46px; height: 46px; margin: -23px 0 0 -23px;
-  border: 2px solid var(--lamp);
-  animation: bcnBurst 0.7s cubic-bezier(.15,.7,.3,1) forwards;
-}
-.bcn.claiming .bcn-mark::before {
-  width: 46px; height: 46px; margin: -23px 0 0 -23px;
-  background: radial-gradient(circle, rgba(255,248,225,0.75), rgba(255,248,225,0));
-  animation: bcnFlash 0.45s ease-out forwards;
-}
-.bcn.claiming .bcn-core { animation: bcnKick 0.55s cubic-bezier(.2,.9,.3,1); }
-@keyframes bcnBurst { 0% { transform: scale(0.35); opacity: 0.95; }
-                      100% { transform: scale(3.4); opacity: 0; } }
-@keyframes bcnFlash { 0% { transform: scale(0.4); opacity: 0.9; }
-                      100% { transform: scale(2.4); opacity: 0; } }
-@keyframes bcnKick  { 0% { transform: scale(1); } 30% { transform: scale(2.6); } 100% { transform: scale(1); } }
 
 /* ---- the rank shape leaves before the next one arrives ---- */
 .xp-badge { transition: none; }
@@ -230,9 +137,6 @@ button.bcn,
 @keyframes rankIn  { 0% { transform: scale(0.15) rotate(-120deg); opacity: 0; }
                      55% { transform: scale(1.45) rotate(8deg); opacity: 1; }
                      100% { transform: none; opacity: 1; } }
-
-/* the surge flash scales with how far the light reached */
-
 
 /* =========================================================
    SURGE — six rails of light around the edge of the page.
@@ -281,4 +185,3 @@ button.bcn,
 }
 .surge-flash.go { opacity: 0.14; }
 
-/* keep .surge visible — claim light is the feedback, not decoration */

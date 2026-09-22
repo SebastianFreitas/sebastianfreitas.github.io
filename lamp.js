@@ -1,5 +1,5 @@
 /* ===========================================================
-   LAMP — one definition, two surfaces. (was beacon.js)
+   LAMP — one definition, one surface. (was beacon.js)
 
    Renamed off beacon.js because uBlock/EasyList and friends
    silently drop any http://…/beacon.js request. file:// was
@@ -7,19 +7,10 @@
    and entry claims never grew a flying +1.
 
    A lamp marks something unfiled. Claiming it raises a level.
-   It exists in two forms and both come from here:
+   It is painted into a canvas scene:
 
-     Beacon.draw(ctx, x, y, opts)   painted into a canvas scene
-     Beacon.attach(el, opts)        any element becomes one
-
-   Anything on any page carrying data-beacon is wired up
-   automatically, so dropping one into a project page is markup
-   only:
-
-     <span data-beacon data-beacon-id="thing" data-xp="2"
-           data-label="Something">Look at this</span>
-
-   Requires xp.js.
+     Beacon.draw(ctx, x, y, opts)   the mark itself
+     Beacon.HIT                     px radius for a hit test
    =========================================================== */
 
 window.Beacon = (function () {
@@ -114,75 +105,5 @@ window.Beacon = (function () {
     }
   }
 
-  /* ---------- DOM ---------- */
-  const VISUAL =
-    '<span class="bcn-mark" aria-hidden="true">' +
-      '<i class="bcn-arm"></i><i class="bcn-arm"></i>' +
-      '<i class="bcn-core"></i><i class="bcn-ring"></i>' +
-    '</span>';
-
-  function attach(el, opts) {
-    if (!el || el.dataset.bcnReady) return el;
-    el.dataset.bcnReady = "1";
-
-    const id    = opts.id || el.dataset.beaconId || el.id || ("bcn-" + Math.random().toString(36).slice(2));
-    const xp    = opts.xp != null ? opts.xp : parseInt(el.dataset.xp || "1", 10);
-    const label = opts.label || el.dataset.label || "";
-    const onClaim = opts.onClaim;
-
-    el.classList.add("bcn");
-    if (!el.querySelector(".bcn-mark")) el.insertAdjacentHTML("afterbegin", VISUAL);
-
-    let badge = el.querySelector(".bcn-xp");
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "bcn-xp";
-      el.appendChild(badge);
-    }
-    badge.textContent = "+" + xp;
-
-    const claimed = () => window.XP && XP.has(id);
-    const paint = () => el.classList.toggle("claimed", claimed());
-    paint();
-
-    el.addEventListener("click", ev => {
-      if (el.tagName !== "A") ev.preventDefault();
-      if (window.XP) {
-        const r = el.getBoundingClientRect();
-        XP.award(id, xp, label, r.left + r.width / 2, r.top + r.height / 2);
-      }
-      el.classList.remove("claiming");
-      void el.offsetWidth;
-      el.classList.add("claiming");
-      setTimeout(() => el.classList.remove("claiming"), 750);
-      paint();
-      if (onClaim) onClaim();
-    });
-
-    document.addEventListener("xp:award", e => { if (e.detail.id === id) paint(); });
-    return el;
-  }
-
-  function create(opts) {
-    const el = document.createElement("button");
-    el.type = "button";
-    if (opts.text) {
-      const s = document.createElement("span");
-      s.className = "bcn-lbl"; s.textContent = opts.text;
-      el.appendChild(s);
-    }
-    attach(el, opts);
-    return el;
-  }
-
-  /* wire anything declared in markup */
-  function scan(root) {
-    (root || document).querySelectorAll("[data-beacon]").forEach(el => attach(el, {}));
-  }
-
-  if (document.readyState === "loading")
-    document.addEventListener("DOMContentLoaded", () => scan());
-  else scan();
-
-  return { draw, attach, create, scan, HIT };
+  return { draw, HIT };
 })();
