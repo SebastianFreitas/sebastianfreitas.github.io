@@ -591,17 +591,17 @@ window.World = (function () {
       const hs = Math.min(1, f / 0.14);
       const neck = hw0 > 0 ? 0.62 * u / hw0 : 1;
       const head = neck + (1 - neck) * hs * hs * (3 - 2 * hs);
-      const tail = f < 0.8 ? 1 : 1 - 0.85 * (f - 0.8) / 0.2;
+      const tail = f < 0.8 ? 1 : 1 - (f - 0.8) / 0.2;
       const hw = hw0 * head * tail;
       pts.push({ a, r, hw, f });
     }
+    const outer = (p, extra) => {
+      const rr = p.r + p.hw + extra;
+      return [Math.cos(p.a) * rr, Math.sin(p.a) * rr];
+    };
     ctx.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const p = pts[i];
-      const rr = p.r + p.hw;
-      const px = Math.cos(p.a) * rr, py = Math.sin(p.a) * rr;
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
+    ctx.moveTo(...outer(pts[0], 0));
+    for (let i = 1; i <= N; i++) ctx.lineTo(...outer(pts[i], 0));
     for (let i = N; i >= 0; i--) {
       const p = pts[i];
       const rr = Math.max(0, p.r - p.hw);
@@ -609,6 +609,37 @@ window.World = (function () {
     }
     ctx.closePath();
     ctx.fillStyle = "#140d12"; setA(1); ctx.fill("nonzero");
+
+    // Dorsal spines: thin raked triangles spaced by arc length along the outer edge
+    const cx = pts.map(p => Math.cos(p.a) * p.r);
+    const cy = pts.map(p => Math.sin(p.a) * p.r);
+    const cum = [0];
+    for (let i = 1; i <= N; i++) cum[i] = cum[i - 1] + Math.hypot(cx[i] - cx[i - 1], cy[i] - cy[i - 1]);
+    if (cum[N] > 0) {
+      const gap = Math.max(2, hw0 * 0.7);
+      ctx.beginPath();
+      let i = 0;
+      for (let s = cum[N] * 0.05, k = 0; s < cum[N] * 0.985; s += gap, k++) {
+        while (i < N - 1 && cum[i + 1] < s) i++;
+        const m = (s - cum[i]) / (cum[i + 1] - cum[i]);
+        const a = pts[i].a + (pts[i + 1].a - pts[i].a) * m;
+        const r = pts[i].r + (pts[i + 1].r - pts[i].r) * m;
+        const hw = pts[i].hw + (pts[i + 1].hw - pts[i].hw) * m;
+        if (hw < R * 0.006) continue;
+        const nrx = Math.cos(a), nry = Math.sin(a);
+        const tgx = -Math.sin(a), tgy = Math.cos(a);
+        const ex = (r + hw) * nrx, ey = (r + hw) * nry;
+        const v = 0.75 + 0.25 * ((k * 37) % 11) / 10;
+        const crest = s < cum[N] * 0.18 ? 1.35 : 1;
+        const b = hw * 0.22;
+        const hgt = hw * 0.75 * v * crest;
+        const p1x = ex - tgx * b - nrx * hw * 0.15, p1y = ey - tgy * b - nry * hw * 0.15;
+        const p2x = ex + tgx * b - nrx * hw * 0.15, p2y = ey + tgy * b - nry * hw * 0.15;
+        const tx = ex + nrx * hgt + tgx * (b * 2.2), ty = ey + nry * hgt + tgy * (b * 2.2);
+        ctx.moveTo(p1x, p1y); ctx.lineTo(tx, ty); ctx.lineTo(p2x, p2y); ctx.closePath();
+      }
+      ctx.fillStyle = "#140d12"; setA(1); ctx.fill();
+    }
 
     // Night core: full closure reads as a solid eclipse
     if (ph.closure > 0.8) {
@@ -630,15 +661,19 @@ window.World = (function () {
       const ty = Math.sin(q.a) * q.r - Math.sin(o.a) * o.r;
       const th = Math.atan2(ty, tx);
       const rows = (i / 2) % 2 === 0 ? [-0.45, 0.45] : [0];
+      const dx = Math.cos(th), dy = Math.sin(th);
+      const nx = -dy, ny = dx;
       for (let j = 0; j < rows.length; j++) {
         const v = rows[j];
         const cx = Math.cos(p.a) * (p.r + v * p.hw);
         const cy = Math.sin(p.a) * (p.r + v * p.hw);
-        const s = p.hw * 0.32;
-        ctx.moveTo(cx + Math.cos(th - 1.5708) * s, cy + Math.sin(th - 1.5708) * s);
-        ctx.arc(cx, cy, s, th - 1.5708, th + 1.5708);
+        const s = p.hw * 0.3;
+        ctx.moveTo(cx + nx * s - dx * s * 0.6, cy + ny * s - dy * s * 0.6);
+        ctx.lineTo(cx + dx * s * 0.55, cy + dy * s * 0.55);
+        ctx.lineTo(cx - nx * s - dx * s * 0.6, cy - ny * s - dy * s * 0.6);
       }
     }
+    ctx.lineJoin = "miter";
     ctx.stroke(); setA(1);
 
     // Snake head, drawn in a frame aligned to the coil's inner tangent
@@ -649,36 +684,51 @@ window.World = (function () {
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(hd);
 
     const hpts = [
-      [-0.5, 0.62], [0.3, 0.9], [1.1, 0.95], [1.8, 0.7], [2.3, 0.3], [2.45, 0],
-      [2.3, -0.3], [1.8, -0.7], [1.1, -0.95], [0.3, -0.9], [-0.5, -0.62]
+      [-0.5, 0.62], [0.1, 0.85], [0.9, 0.98], [1.35, 0.72], [2.0, 0.52], [2.35, 0.5],
+      [2.62, 0.3], [2.64, 0.06], [1.75, -0.02], [2.45, -0.14], [2.2, -0.4], [1.4, -0.62],
+      [0.6, -0.88], [0.35, -1.2], [0.2, -0.84], [-0.1, -0.95], [-0.25, -0.74], [-0.5, -0.62]
     ];
     ctx.fillStyle = "#140d12"; setA(1);
     ctx.beginPath();
     ctx.moveTo(hpts[0][0] * u, hpts[0][1] * u);
-    ctx.lineTo((hpts[0][0] + hpts[1][0]) / 2 * u, (hpts[0][1] + hpts[1][1]) / 2 * u);
-    for (let i = 1; i < hpts.length - 1; i++) {
-      const p = hpts[i], n = hpts[i + 1];
-      ctx.quadraticCurveTo(p[0] * u, p[1] * u, (p[0] + n[0]) / 2 * u, (p[1] + n[1]) / 2 * u);
-    }
-    ctx.lineTo(hpts[hpts.length - 1][0] * u, hpts[hpts.length - 1][1] * u);
+    for (let i = 1; i < hpts.length; i++) ctx.lineTo(hpts[i][0] * u, hpts[i][1] * u);
     ctx.closePath(); ctx.fill();
 
-    ctx.beginPath(); ctx.arc(1.25 * u, 0.42 * u, 0.27 * u, 0, 6.283);
-    ctx.fillStyle = "#dcdbd4"; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(1.28 * u, 0.42 * u, 0.07 * u, 0.2 * u, 0, 0, 6.283);
-    ctx.fillStyle = "#140d12"; ctx.fill();
+    const hornA = [[0.35, 0.82], [0.95, 0.96], [-2.2, 1.9]];
+    ctx.beginPath();
+    ctx.moveTo(hornA[0][0] * u, hornA[0][1] * u);
+    ctx.lineTo(hornA[1][0] * u, hornA[1][1] * u);
+    ctx.lineTo(hornA[2][0] * u, hornA[2][1] * u);
+    ctx.closePath(); ctx.fill();
 
-    if (Math.sin(t * 0.9) > 0.55) {
-      ctx.strokeStyle = "#140d12"; ctx.lineWidth = Math.max(1, R * 0.004); ctx.lineCap = "round";
+    const hornB = [[0.0, 0.72], [0.4, 0.84], [-1.4, 1.35]];
+    ctx.beginPath();
+    ctx.moveTo(hornB[0][0] * u, hornB[0][1] * u);
+    ctx.lineTo(hornB[1][0] * u, hornB[1][1] * u);
+    ctx.lineTo(hornB[2][0] * u, hornB[2][1] * u);
+    ctx.closePath(); ctx.fill();
+
+    // Eye: shut almost always, opens rarely and briefly
+    const EYE_PERIOD = 29, EYE_OPEN = 1.8;
+    const el = (t + 11) % EYE_PERIOD;
+    const eo = el < EYE_OPEN ? Math.max(0, Math.min(1, el / 0.3, (EYE_OPEN - el) / 0.4)) : 0;
+    if (eo > 0.01) {
       ctx.beginPath();
-      ctx.moveTo(2.4 * u, 0); ctx.lineTo(3.1 * u, 0);
-      ctx.moveTo(3.1 * u, 0); ctx.lineTo(3.4 * u, 0.2 * u);
-      ctx.moveTo(3.1 * u, 0); ctx.lineTo(3.4 * u, -0.2 * u);
-      ctx.stroke();
+      ctx.moveTo(0.9 * u, 0.62 * u);
+      ctx.lineTo(1.45 * u, 0.47 * u);
+      ctx.quadraticCurveTo(1.15 * u, (0.54 - 0.26 * eo) * u, 0.9 * u, 0.62 * u);
+      ctx.closePath();
+      ctx.fillStyle = "#d9c38a"; ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.beginPath();
+      ctx.ellipse(1.15 * u, (0.52 - 0.05 * eo) * u, 0.035 * u, 0.1 * u * eo, 0, 0, 6.283);
+      ctx.fillStyle = "#140d12"; ctx.fill();
+      ctx.restore();
     }
     ctx.restore();
 
-    ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt";
+    ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.lineJoin = "miter";
   }
 
   function drawRedStar() {
