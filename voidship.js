@@ -19,20 +19,26 @@ window.Voidship = (function () {
   const BASE = {
     accelTau: 0.30,   // s, velocity time constant when speeding up (world x)
     brakeTau: 0.07,   // s, when slowing/reversing: full stop in ~0.3 s
-    yAccelTau: 0.18,
-    yBrakeTau: 0.06,
     maxSpeed: 9000,   // world u/s at holdT 0
     holdBoost: 3.4,   // cruise multiplier at holdT 1 (stats only)
     holdBuild: 1.35,  // s of held far pointer to reach holdT 1
     holdDecay: 1.6,   // s to bleed holdT back to 0
     brakeX: 14000,    // u/s², arrive profile v = sqrt(2*brakeX*d)
-    brakeY: 2400,     // px/s²
-    yMax: 900,        // px/s
+    brakeY: 700,      // px/s², arrive profile v = sqrt(2*brakeY*d)
+    yMax: 420,        // px/s at rest
+    yMaxFast: 0.5,    // fraction of yMax left at base cruise: fast sideways = shallow climbs
+    yAccel: 520,      // px/s² the belly thrusters can add: the hull is heavy
+    yBrake: 1200,     // px/s² when catching a vertical speed
+    yTau: 0.06,       // s, shapes only the last approach to the wanted vertical speed
     yBand: 0.24,
     farUnits: 600,    // a held pointer further than this = cruise, nearer = arrive
     limpSpeed: 0.25,  // cruise fraction with dry tanks
     turnTime: 0.6,    // s for a full 180° yaw
-    pitchMax: 0.08,   // rad of nose lift at full climb
+    pitchMax: 0.08,   // rad, nose angle cap
+    pitchRef: 4000,   // px/s of virtual headway: sets how much the nose lifts at rest
+    pitchLead: 0.03,  // rad the nose leads a climb (and flares when levelling off)
+    pitchRate: 0.14,  // rad/s cap on how fast the nose swings
+    pitchEase: 3.5,   // 1/s, nose settles toward its target at this rate
     fuelMax: 100,
     burnFull: 7.5,
     fuelRegen: 14,
@@ -170,14 +176,24 @@ window.Voidship = (function () {
     let cruise = BASE.maxSpeed * P.maxSpeed * (1 + 2.4 * ship.holdT * ship.holdT);
     if (!canBurn(ship)) cruise = BASE.maxSpeed * P.maxSpeed * BASE.limpSpeed;
 
+    // vertical authority: full at rest, down to yMaxFast of it by base cruise speed
+    const vFrac = clamp(Math.abs(ship.vel) / (BASE.maxSpeed * P.maxSpeed), 0, 1);
+    const yCap = BASE.yMax * (1 - (1 - BASE.yMaxFast) * vFrac);
+
     let vWantX = 0, vWantY = 0, burning = false, demand = 0;
     const active = hasTarget(ship) && (ship.thrusting || !ship.arrived);
     if (active) {
       const sx = Math.sign(dx), sy = Math.sign(dy);
       vWantX = far ? sx * cruise : sx * Math.min(cruise, Math.sqrt(2 * BASE.brakeX * Math.abs(dx)));
-      vWantY = sy * Math.min(BASE.yMax, Math.sqrt(2 * BASE.brakeY * Math.abs(dy)));
+      vWantY = sy * Math.min(yCap, Math.sqrt(2 * BASE.brakeY * Math.abs(dy)));
       if (Math.abs(dx) < BASE.arriveWorld) vWantX = 0;
       if (Math.abs(dy) < BASE.arriveY) vWantY = 0;
+      // a seek flies a straight line to the mark: climb no faster than the path needs,
+      // so height and distance run out together instead of an L-shaped hop
+      if (!far && Math.abs(dx) >= BASE.arriveWorld && vWantX !== 0) {
+        const vLine = Math.abs(vWantX) * Math.abs(dy) / Math.abs(dx);
+        if (vLine < Math.abs(vWantY)) vWantY = sy * vLine;
+      }
       demand = far ? 1 : clamp(Math.abs(vWantX) / cruise, 0, 1);
       burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
     }
@@ -204,7 +220,12 @@ window.Voidship = (function () {
     } else {
       ship.vel = ease(ship.vel, vWantX, dt, BASE.accelTau, BASE.brakeTau);
     }
-    ship.vy = ease(ship.vy, vWantY, dt, BASE.yAccelTau, BASE.yBrakeTau);
+    // heavy hull: vertical speed may only change at thruster rate; the exponential
+    // term only rounds off the last approach to the wanted speed
+    const growingY = Math.abs(vWantY) > Math.abs(ship.vy) && (Math.sign(vWantY) === Math.sign(ship.vy) || ship.vy === 0);
+    const ayMax = growingY ? BASE.yAccel : BASE.yBrake;
+    const vyGain = (vWantY - ship.vy) * (1 - Math.exp(-dt / BASE.yTau));
+    ship.vy += clamp(vyGain, -ayMax * dt, ayMax * dt);
     if (vWantX === 0 && Math.abs(ship.vel) < 6) ship.vel = 0;
     if (vWantY === 0 && Math.abs(ship.vy) < 2) ship.vy = 0;
     const topSpeed = BASE.maxSpeed * BASE.holdBoost * P.maxSpeed;
@@ -252,9 +273,16 @@ window.Voidship = (function () {
 
     ship.thrustAmt = approach(ship.thrustAmt, burning ? 0.45 + 0.55 * demand : 0, burning ? 10 : 5, dt);
 
-    const want = BASE.pitchMax * clamp(ship.vy / BASE.yMax, -1, 1) * (ship.face >= 0 ? 1 : -1);
-    ship.pitch = approach(ship.pitch, want, 4, dt);
-    if (ship.vy === 0 && Math.abs(ship.pitch) < 0.002) ship.pitch = 0;
+    // the nose follows the flight path (shallow when fast sideways, steeper at rest),
+    // leads into a climb and flares as the ship levels off, and swings slowly
+    const vxPx = Math.abs(ship.vel) * pxPerUnit;
+    const pathAng = Math.atan2(ship.vy, vxPx + BASE.pitchRef);
+    const lead = BASE.pitchLead * clamp((vWantY - ship.vy) / BASE.yMax, -1, 1);
+    const want = clamp(pathAng + lead, -BASE.pitchMax, BASE.pitchMax) * (ship.face >= 0 ? 1 : -1);
+    const eased = approach(ship.pitch, want, BASE.pitchEase, dt);
+    const pitchStep = BASE.pitchRate * dt;
+    ship.pitch += clamp(eased - ship.pitch, -pitchStep, pitchStep);
+    if (ship.vy === 0 && vWantY === 0 && Math.abs(ship.pitch) < 0.003) ship.pitch = 0;
 
     // RCS jets fire against the vertical push: belly nozzles when the hull is shoved up
     // (launching a climb, braking a descent), deck nozzles when it is shoved down.
