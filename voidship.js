@@ -12,69 +12,52 @@
 
 window.Voidship = (function () {
   const { approach, clamp } = Util;
-  const wrap = Util.wrapPi;
 
   const LAMP = [245, 208, 107];
-  const COLD = [143, 176, 184];
-  const HULL = [28, 38, 42];
-  const HULL_HI = [58, 72, 76];
-  const BRICK = [176, 104, 90];
 
   /* Tunables that later unlocks multiply. Keep them named. */
   const BASE = {
-    accel: 3800,           // world u/s² — heavy; max speed still comes from a long hold
-    maxSpeed: 9000,        // base cruise; hold ramps this up
-    holdBoost: 3.4,        // max cruise multiplier while held
-    holdBuild: 1.35,       // seconds toward full boost
-    holdDecay: 1.6,        // seconds to shed boost after release
-    brakeMult: 5,          // emergency-brake accel vs. normal thrust accel
-    coastAbove: 1600,      // release speed above which free-hold means "go this way", not "go to that spot"
-    yAccel: 180,           // screen px/s²
-    yMax: 220,             // screen px/s
-    yBand: 0.24,           // ± of H — must cover every beacon oy (0.20–0.46)
+    accelTau: 0.30,   // s, velocity time constant when speeding up (world x)
+    brakeTau: 0.07,   // s, when slowing/reversing: full stop in ~0.3 s
+    yAccelTau: 0.18,
+    yBrakeTau: 0.06,
+    maxSpeed: 9000,   // world u/s at holdT 0
+    holdBoost: 3.4,   // cruise multiplier at holdT 1 (stats only)
+    holdBuild: 1.35,  // s of held far pointer to reach holdT 1
+    holdDecay: 1.6,   // s to bleed holdT back to 0
+    brakeX: 14000,    // u/s², arrive profile v = sqrt(2*brakeX*d)
+    brakeY: 2400,     // px/s²
+    yMax: 900,        // px/s
+    yBand: 0.24,
+    farUnits: 600,    // a held pointer further than this = cruise, nearer = arrive
+    limpSpeed: 0.25,  // cruise fraction with dry tanks
+    turnTime: 0.6,    // s for a full 180° yaw
+    pitchMax: 0.08,   // rad of nose lift at full climb
     fuelMax: 100,
-    burnFull: 7.5,         // fuel/s at hard burn
-    fuelRegen: 14,         // fuel/s when not burning — tanks refill on their own
-    burnIdle: 0,           // no drip while coasting
-    size: 72,              // nose-to-tail drawing length
-    arriveWorld: 18,       // snap-stop distance
+    burnFull: 7.5,
+    fuelRegen: 14,
+    size: 96,         // nose-to-tail px (bridge divides by 1.5 on phones)
+    arriveWorld: 18,
     arriveY: 2.5,
+    fumeCap: 140,
   };
 
   function rgba(c, a) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
 
   function create() {
     return {
-      // pose — world X is the camera; screen Y floats in a band
-      y: 0,                 // set on first resize
-      vy: 0,
-      vel: 0,               // world X velocity (same units as bridge vel)
-      angle: 0,
-      bank: 0,
-
-      // drive
-      thrusting: false,
-      holdT: 0,             // 0..1 boost charge from holding
-      targetX: null,
-      targetY: null,
-      courseMark: null,     // beacon id we're flying to, or null
-      arrived: true,
-
-      // tanks
-      fuel: BASE.fuelMax,
-      fuelMax: BASE.fuelMax,
-      infinite: false,
-
-      // feel
-      thrustAmt: 0,         // 0..1 visual/engine load
-      trail: [],
-      sparks: [],
-      trailAcc: 1 / 60,   // seconds toward the next trail point
-      sparkAcc: 0,        // sparks owed, fractional
-      bob: 0,
-      alpha: 1,             // seated under the boot veil — no pop-in later
-
-      // power multipliers (unlocks later)
+      y: 0, vy: 0, vel: 0,
+      camX: 0,            // cache of the last camX seen by step (setThrusting needs it)
+      yaw: 0,              // 0 = nose right, Math.PI = nose left
+      yawTarget: 0,
+      face: 1,             // cos(yaw): the sprite's x-scale, sign = facing
+      pitch: 0,             // canvas rotation, nose rises on a climb
+      thrusting: false, holdT: 0,
+      targetX: null, targetY: null, courseMark: null, arrived: true,
+      fuel: BASE.fuelMax, fuelMax: BASE.fuelMax, infinite: false,
+      thrustAmt: 0,
+      fumes: [], fumeAcc: 0, ringAcc: 0,
+      bob: 0, alpha: 1,
       power: { accel: 1, maxSpeed: 1, fuelMax: 1, burn: 1 },
     };
   }
@@ -114,8 +97,15 @@ window.Voidship = (function () {
   }
 
   function setThrusting(ship, on) {
-    ship.thrusting = !!on;
-    if (!on) ship.courseMark = ship.courseMark; // keep course; just stop feeding boost
+    on = !!on;
+    if (ship.thrusting === on) return;
+    ship.thrusting = on;
+    if (on || !hasTarget(ship) || ship.courseMark) return;
+    // released a free hold: keep the point only if the ship can still stop on it
+    const dx = ship.targetX - ship.camX;
+    const stopV = Math.sqrt(2 * BASE.brakeX * Math.abs(dx)) * 1.1 + 40;
+    const towards = dx * ship.vel >= 0 || Math.abs(ship.vel) < 400;
+    if (!(Math.abs(ship.vel) <= stopV && towards)) clearCourse(ship);
   }
 
   function clearCourse(ship) {
@@ -127,244 +117,170 @@ window.Voidship = (function () {
 
   /* ---- integration ------------------------------------------------ */
 
-  /* trail points and sparks are laid down per second, not per frame,
-     so a high-refresh screen doesn't draw a shorter trail or more sparks */
-  const TRAIL_STEP = 1 / 60;    // one trail point per 1/60 s
-  const SPARK_RATE = 120;       // sparks per second while thrusting
-  const TICK_SLACK = 0.002;     // a step this close to due still counts (timestamp jitter)
-  const SPARK_SLACK = 0.25;     // likewise for the spark count
-
-  function step(ship, dt, env) {
-    const { W, H, frozen } = env;
-    let camX = env.camX;
-    
-    if (frozen) {
-      ship.vel = 0;
-      ship.vy = 0;
-      ship.thrustAmt = approach(ship.thrustAmt, 0, 8, dt || 0.016);
-      ship.bob += dt; // keep bobbing
-      return { camX, vel: 0 };
-    }
-    
-    if (dt <= 0) {
-      return { camX, vel: ship.vel };
-    }
-
-    resize(ship, W, H);
-
-    const accel = BASE.accel * ship.power.accel;
-    const yAccel = BASE.yAccel * ship.power.accel;
-    const maxBase = BASE.maxSpeed * ship.power.maxSpeed;
-
-    // hold builds a cruise multiplier so a long press can cross the span
-    if (ship.thrusting && canBurn(ship) && (hasTarget(ship) || env.aim)) {
-      ship.holdT = Math.min(1, ship.holdT + dt / BASE.holdBuild);
-    } else {
-      ship.holdT = Math.max(0, ship.holdT - dt / BASE.holdDecay);
-    }
-    const cruise = maxBase * (1 + (BASE.holdBoost - 1) * ship.holdT * ship.holdT);
-
-    let burning = false;
-    let demand = 0;
-
-    /* Two drive modes:
-         STEER  — throttle open, no beacon lock: the pointer's screen
-                  offset from the ship is a live thrust stick. Speed
-                  can climb with hold-boost. This used to be driven by
-                  a world-space "carrot" that was re-planted a fixed
-                  distance ahead every single frame — which let speed
-                  build up far past what that fixed distance could
-                  ever brake within, so releasing (or arriving) meant
-                  a sudden one-frame velocity slam. Reading the stick
-                  straight from screen pixels removes that mismatch:
-                  there's no runaway "distance" to reconcile later.
-         SEEK   — beacon lock, or throttle closed: brake onto the
-                  waypoint so we never overshoot. */
-    const steering = ship.thrusting && canBurn(ship) && !!env.aim;
-
-    if (steering) {
-      const dx = env.aim.px - W * 0.5;
-      const dy = env.aim.py - ship.y;
-      const len = Math.hypot(dx, dy);
-      let dirX = 0, dirY = 0;
-      if (len > 6) { dirX = dx / len; dirY = dy / len; }
-      const vWant = dirX * cruise;
-      const vyWant = dirY * BASE.yMax;
-
-      const dv = vWant - ship.vel;
-      ship.vel += clamp(dv, -accel * dt, accel * dt);
-      const dvy = vyWant - ship.vy;
-      ship.vy += clamp(dvy, -yAccel * dt, yAccel * dt);
-
-      burning = len > 6;
-      demand = burning ? 1 : 0;
-      ship.arrived = false;
-    } else if (hasTarget(ship)) {
-      const dx = ship.targetX - camX;
-      const dy = ship.targetY - ship.y;
-      const adx = Math.abs(dx);
-      const ady = Math.abs(dy);
-
-      // desired speeds taper with remaining distance → no overshoot
-      const vWant = Math.sign(dx || ship.vel) * Math.min(cruise, Math.sqrt(Math.max(0, 2 * accel * adx)));
-      const vyWant = Math.sign(dy || ship.vy) * Math.min(BASE.yMax, Math.sqrt(Math.max(0, 2 * yAccel * ady)));
-
-      const seeking = ship.thrusting || !ship.arrived;
-      if (seeking) {
-        // if we're going too fast to stop in the remaining distance,
-        // bleed the excess with a hard brake — ramped over a few
-        // frames (via brakeMult) rather than an instant snap, which
-        // used to show up as a visible one-frame velocity jolt.
-        if (adx > 0.5 && Math.sign(ship.vel) === Math.sign(dx) &&
-            ship.vel * ship.vel > 2 * accel * adx) {
-          const safeV = Math.sign(dx) * Math.sqrt(2 * accel * adx);
-          ship.vel += clamp(safeV - ship.vel, -accel * BASE.brakeMult * dt, accel * BASE.brakeMult * dt);
-        }
-        if (ady > 0.5 && Math.sign(ship.vy) === Math.sign(dy) &&
-            ship.vy * ship.vy > 2 * yAccel * ady) {
-          const safeVy = Math.sign(dy) * Math.sqrt(2 * yAccel * ady);
-          ship.vy += clamp(safeVy - ship.vy, -yAccel * BASE.brakeMult * dt, yAccel * BASE.brakeMult * dt);
-        }
-
-        const dv = vWant - ship.vel;
-        const stepV = clamp(dv, -accel * dt, accel * dt);
-        if (ship.thrusting && canBurn(ship) && Math.abs(vWant) > 30 && Math.sign(stepV) === Math.sign(vWant || 1)) {
-          ship.vel += stepV;
-          burning = true;
-          demand = Math.min(1, Math.abs(vWant) / Math.max(1, cruise));
-        } else if (!canBurn(ship) && ship.thrusting) {
-          ship.vel *= Math.exp(-dt * 1.4);
-          ship.vel += stepV * 0.35;
-        } else {
-          ship.vel += stepV;
-        }
-
-        const dvy = vyWant - ship.vy;
-        ship.vy += clamp(dvy, -yAccel * dt, yAccel * dt);
-      }
-
-      // crossed the mark — stop on it
-      if (Math.sign(dx) !== Math.sign(ship.targetX - (camX + ship.vel * dt)) && adx < cruise) {
-        camX = ship.targetX;
-        ship.vel = 0;
-      }
-
-      // arrive
-      if (adx < BASE.arriveWorld && Math.abs(ship.vel) < 40) {
-        camX = ship.targetX;
-        ship.vel = 0;
-      }
-      if (ady < BASE.arriveY && Math.abs(ship.vy) < 8) {
-        ship.y = ship.targetY;
-        ship.vy = 0;
-      }
-      if (adx < BASE.arriveWorld && ady < BASE.arriveY &&
-          Math.abs(ship.vel) < 40 && Math.abs(ship.vy) < 8) {
-        ship.arrived = true;
-        if (!ship.thrusting) {
-          ship.targetX = null;
-          ship.targetY = null;
-        }
-      }
-    } else {
-      // no course: gentle damp
-      ship.vel *= Math.exp(-dt * 2.2);
-      ship.vy *= Math.exp(-dt * 3.0);
-      if (Math.abs(ship.vel) < 6) ship.vel = 0;
-      if (Math.abs(ship.vy) < 2) ship.vy = 0;
-    }
-
-    // integrate
-    camX += ship.vel * dt;
-    ship.y += ship.vy * dt;
-
-    const mid = deckY(H);
-    const band = H * BASE.yBand;
-    if (ship.y < mid - band) { ship.y = mid - band; ship.vy = Math.max(0, ship.vy); }
-    if (ship.y > mid + band) { ship.y = mid + band; ship.vy = Math.min(0, ship.vy); }
-
-    // fuel — burns under thrust; refills when the drive is idle
-    if (burning && !ship.infinite) {
-      const rate = BASE.burnFull * ship.power.burn * (0.35 + 0.65 * demand);
-      ship.fuel = Math.max(0, ship.fuel - rate * dt);
-    } else if (!ship.infinite && ship.fuel < ship.fuelMax) {
-      ship.fuel = Math.min(ship.fuelMax, ship.fuel + BASE.fuelRegen * ship.power.fuelMax * dt);
-    }
-
-    ship.thrustAmt = approach(ship.thrustAmt, burning ? (0.45 + 0.55 * demand) : 0, burning ? 10 : 5, dt);
-
-    // heading from velocity; fall back to course bearing when nearly
-    // still. If neither is strong enough to mean anything — e.g. the
-    // instant after arriving, when both vel and the remaining offset
-    // are zeroed together — just keep the nose where it was. (This
-    // used to fall through to atan2(0, 0 || 1) = 0, which snapped the
-    // ship to face due "east" on every arrival, no matter which way
-    // it had actually been travelling.)
-    let aimX = ship.vel;
-    let aimY = ship.vy;
-    if (Math.hypot(aimX, aimY) < 80 && hasTarget(ship)) {
-      aimX = (ship.targetX - camX);
-      aimY = (ship.targetY - ship.y) * 40;
-    }
-    let wantAng = ship.angle;
-    if (Math.hypot(aimX, aimY) > 1) {
-      wantAng = Math.atan2(aimY, aimX);
-      ship.angle = turn(ship.angle, wantAng, dt * 5.5);
-    }
-
-    const turnRate = wrap(wantAng - ship.angle);
-    ship.bank = approach(ship.bank, clamp(turnRate * 0.55, -0.45, 0.45), 6, dt);
-    ship.bob += dt;
-
-    // motion trail
-    if (Math.abs(ship.vel) > 400 || ship.thrustAmt > 0.1) {
-      ship.trailAcc += dt;
-      if (ship.trailAcc >= TRAIL_STEP - TICK_SLACK) {
-        // at most one point per frame; a long stall doesn't queue a burst
-        ship.trailAcc = Math.min(ship.trailAcc - TRAIL_STEP, TRAIL_STEP);
-        ship.trail.push({ x: W * 0.5, y: ship.y, a: ship.angle, life: 1 });
-        if (ship.trail.length > 18) ship.trail.shift();
-      }
-    } else {
-      ship.trailAcc = TRAIL_STEP;   // the first moving frame lays a point at once
-    }
-    for (let i = ship.trail.length - 1; i >= 0; i--) {
-      ship.trail[i].life -= dt * 2.4;
-      if (ship.trail[i].life <= 0) ship.trail.splice(i, 1);
-    }
-
-    // exhaust sparks
-    if (ship.thrustAmt > 0.2) {
-      ship.sparkAcc += dt * SPARK_RATE;
-      const count = Math.floor(ship.sparkAcc + SPARK_SLACK);
-      ship.sparkAcc -= count;
-      for (let i = 0; i < count; i++) {
-        const back = -BASE.size * 0.48;
-        ship.sparks.push({
-          x: back - Math.random() * 10 * ship.thrustAmt,
-          y: (Math.random() - 0.5) * 10,
-          vx: -40 - Math.random() * 120 * ship.thrustAmt,
-          vy: (Math.random() - 0.5) * 40,
-          life: 0.25 + Math.random() * 0.35,
-        });
-      }
-    } else {
-      ship.sparkAcc = 0;
-    }
-    for (let i = ship.sparks.length - 1; i >= 0; i--) {
-      const s = ship.sparks[i];
-      s.life -= dt;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      if (s.life <= 0) ship.sparks.splice(i, 1);
-    }
-    if (ship.sparks.length > 40) ship.sparks.splice(0, ship.sparks.length - 40);
-
-    return { camX, vel: ship.vel };
+  function ease(v, want, dt, tauUp, tauDown) {
+    const speeding = Math.abs(want) > Math.abs(v) && (Math.sign(want) === Math.sign(v) || v === 0);
+    return v + (want - v) * (1 - Math.exp(-dt / (speeding ? tauUp : tauDown)));
   }
 
   function canBurn(ship) { return ship.infinite || ship.fuel > 0.05; }
   function hasTarget(ship) { return ship.targetX != null && ship.targetY != null; }
+
+  function step(ship, dt, env) {
+    let camX = env.camX;
+    if (env.frozen) {
+      ship.vel = ship.vy = 0;
+      ship.thrustAmt = approach(ship.thrustAmt, 0, 8, dt || 0.016);
+      ship.bob += dt || 0.016;
+      ship.camX = camX;
+      return { camX, vel: 0 };
+    }
+    if (!(dt > 0)) return { camX, vel: ship.vel };
+    dt = Math.min(dt, 0.05);
+
+    resize(ship, env.W, env.H);
+
+    const P = ship.power;
+    const pxPerUnit = env.W / (env.viewUnits || 2100);
+    const L = BASE.size;
+
+    let dx = 0, dy = 0;
+    if (hasTarget(ship)) {
+      dx = ship.targetX - camX;
+      dy = ship.targetY - ship.y;
+    }
+
+    const far = hasTarget(ship) && ship.thrusting && !ship.courseMark && Math.abs(dx) > BASE.farUnits;
+    const charging = far && canBurn(ship);
+    ship.holdT = clamp(ship.holdT + (charging ? dt / BASE.holdBuild : -dt / BASE.holdDecay), 0, 1);
+
+    let cruise = BASE.maxSpeed * P.maxSpeed * (1 + 2.4 * ship.holdT * ship.holdT);
+    if (!canBurn(ship)) cruise = BASE.maxSpeed * P.maxSpeed * BASE.limpSpeed;
+
+    let vWantX = 0, vWantY = 0, burning = false, demand = 0;
+    const active = hasTarget(ship) && (ship.thrusting || !ship.arrived);
+    if (active) {
+      const sx = Math.sign(dx), sy = Math.sign(dy);
+      vWantX = far ? sx * cruise : sx * Math.min(cruise, Math.sqrt(2 * BASE.brakeX * Math.abs(dx)));
+      vWantY = sy * Math.min(BASE.yMax, Math.sqrt(2 * BASE.brakeY * Math.abs(dy)));
+      if (Math.abs(dx) < BASE.arriveWorld) vWantX = 0;
+      if (Math.abs(dy) < BASE.arriveY) vWantY = 0;
+      demand = far ? 1 : clamp(Math.abs(vWantX) / cruise, 0, 1);
+      burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
+    }
+
+    if (Math.abs(vWantX) > 150) ship.yawTarget = vWantX > 0 ? 0 : Math.PI;
+    if (vWantX !== 0) vWantX *= clamp((Math.sign(vWantX) * ship.face + 1) / 2, 0.12, 1);
+    const stepA = Math.PI / BASE.turnTime * dt;
+    ship.yaw += clamp(ship.yawTarget - ship.yaw, -stepA, stepA);
+    if (Math.abs(ship.yawTarget - ship.yaw) < 1e-3) ship.yaw = ship.yawTarget;
+    ship.face = Math.cos(ship.yaw);
+    if (ship.yaw === 0) ship.face = 1;
+    if (ship.yaw === Math.PI) ship.face = -1;
+
+    const prevVel = ship.vel;
+    const prevVy = ship.vy;
+    ship.vel = ease(ship.vel, vWantX, dt, BASE.accelTau, BASE.brakeTau);
+    ship.vy = ease(ship.vy, vWantY, dt, BASE.yAccelTau, BASE.yBrakeTau);
+    if (vWantX === 0 && Math.abs(ship.vel) < 6) ship.vel = 0;
+    if (vWantY === 0 && Math.abs(ship.vy) < 2) ship.vy = 0;
+
+    const prevX = camX, prevY = ship.y;
+    camX += ship.vel * dt;
+    ship.y += ship.vy * dt;
+    const mid = deckY(env.H);
+    const band = env.H * BASE.yBand;
+    const top = mid - band, bot = mid + band;
+    if (ship.y < top) { ship.y = top; if (ship.vy < 0) ship.vy = 0; }
+    if (ship.y > bot) { ship.y = bot; if (ship.vy > 0) ship.vy = 0; }
+
+    if (hasTarget(ship)) {
+      let atX = false, atY = false;
+      if ((!far && (ship.targetX - prevX) * (ship.targetX - camX) <= 0) ||
+        (Math.abs(ship.targetX - camX) < BASE.arriveWorld && Math.abs(ship.vel) < 40)) {
+        camX = ship.targetX; ship.vel = 0; atX = true;
+      }
+      if ((ship.targetY - prevY) * (ship.targetY - ship.y) <= 0 ||
+        (Math.abs(ship.targetY - ship.y) < BASE.arriveY && Math.abs(ship.vy) < 8)) {
+        ship.y = ship.targetY; ship.vy = 0; atY = true;
+      }
+      if (atX && atY) {
+        ship.arrived = true;
+        if (!ship.thrusting) clearCourse(ship);
+      }
+    }
+
+    if (Math.abs(prevVel) >= 1500 && ship.vel === 0) {
+      ship.fumes.push({ x: env.W * 0.5, y: ship.y, bx: 0, vx: 0, vy: 0, age: 0, life: 0.55, r0: 0.08 * L, grow: 0.9 * L, kind: 2, seed: 0 });
+    }
+
+    if (burning && !ship.infinite) {
+      ship.fuel = Math.max(0, ship.fuel - BASE.burnFull * P.burn * (0.35 + 0.65 * demand) * dt);
+    } else {
+      ship.fuel = Math.min(ship.fuelMax, ship.fuel + BASE.fuelRegen * P.fuelMax * dt);
+    }
+
+    ship.thrustAmt = approach(ship.thrustAmt, burning ? 0.45 + 0.55 * demand : 0, burning ? 10 : 5, dt);
+
+    const want = BASE.pitchMax * clamp(ship.vy / BASE.yMax, -1, 1) * (ship.face >= 0 ? 1 : -1);
+    ship.pitch = approach(ship.pitch, want, 4, dt);
+    if (ship.vy === 0 && Math.abs(ship.pitch) < 0.002) ship.pitch = 0;
+
+    ship.bob += dt;
+
+    const rs = L / 200, dir = ship.face >= 0 ? 1 : -1, EM = (window.VoidshipArt && VoidshipArt.EMIT) || [];
+    const half = Util.reduced() ? 0.5 : 1;
+    if (ship.thrustAmt > 0.06 && EM.length) {
+      ship.fumeAcc += (10 + 70 * ship.thrustAmt) * half * dt;
+      let n = Math.floor(ship.fumeAcc); ship.fumeAcc -= n;
+      for (; n > 0; n--) {
+        const e = EM[Math.floor(Math.random() * EM.length)];
+        const bx = -dir * (120 + Math.random() * 280) * rs;
+        ship.fumes.push({
+          x: env.W * 0.5 + e.x * L * ship.face, y: ship.y + e.y * L,
+          bx, vx: bx, vy: (Math.random() - 0.5) * 40 * rs,
+          age: 0, life: 1.0 + Math.random() * 1.1,
+          r0: (3 + Math.random() * 5) * rs, grow: (16 + Math.random() * 26) * rs,
+          kind: Math.random() < 0.18 ? 1 : 0, seed: Math.random(),
+        });
+      }
+      if (ship.thrustAmt > 0.3) {
+        ship.ringAcc += dt * half;
+        if (ship.ringAcc >= 0.16) {
+          ship.ringAcc = 0;
+          const e = EM[1] || EM[0];
+          ship.fumes.push({ x: env.W * 0.5 + e.x * L * ship.face, y: ship.y + e.y * L,
+            bx: -dir * 90 * rs, vx: -dir * 90 * rs, vy: 0, age: 0, life: 0.7,
+            r0: 2 * rs, grow: 70 * rs, kind: 1, seed: Math.random() });
+        }
+      }
+    }
+    while (ship.fumes.length > BASE.fumeCap) ship.fumes.shift();
+    const dvx = (ship.vel - prevVel) * pxPerUnit;   // the hull's speed change this frame, px/s
+    const dvy = ship.vy - prevVy;
+    const relax = 1 - Math.exp(-2 * dt), ky = Math.exp(-1.8 * dt), lim = 1400 * rs;
+    for (let i = ship.fumes.length - 1; i >= 0; i--) {
+      const p = ship.fumes[i];
+      p.age += dt;
+      if (p.age >= p.life) { ship.fumes.splice(i, 1); continue; }
+      // partial inertia: when the hull brakes the plume surges ahead of it,
+      // when it accelerates the plume is left behind; then it settles back
+      // onto its own drift
+      p.vx = clamp(p.vx - dvx * 0.2, p.bx - lim, p.bx + lim);
+      p.vy -= dvy * 0.5;
+      p.vx += (p.bx - p.vx) * relax;
+      p.vy *= ky;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+
+    ship.camX = camX;
+    return { camX, vel: ship.vel };
+  }
+
+  function settled(ship) {
+    return !ship.thrusting && ship.targetX == null && ship.vel === 0 && ship.vy === 0
+      && ship.holdT === 0 && ship.thrustAmt < 0.01 && ship.fumes.length === 0
+      && ship.yaw === ship.yawTarget && ship.pitch === 0;
+  }
 
   function screenPos(ship, W) {
     return { x: W * 0.5, y: ship.y };
@@ -401,22 +317,22 @@ window.Voidship = (function () {
       arrived: ship.arrived,
       courseMark: ship.courseMark && ship.courseMark.id,
       courseName: ship.courseMark && ship.courseMark.name,
-      angle: ship.angle,
-      bank: ship.bank,
+      angle: ship.yaw,
+      bank: ship.pitch,
       vy: ship.vy,
       power: ship.power,
+      face: ship.face,
     };
   }
 
   /* ---- drawing ---------------------------------------------------- */
 
   function draw(ship, ctx, env) {
-    const { W, H, t } = env;
+    const { W, H } = env;
     if (!ship._seated) resize(ship, W, H);
     if (!ship._seated) return;
 
-    const p = screenPos(ship, W);
-    const S = BASE.size;
+    const L = BASE.size, t = env.t || 0, pxPerUnit = env.W / (env.viewUnits || 2100), p = screenPos(ship, env.W);
     const a = ship.alpha == null ? 1 : ship.alpha;
     if (a < 0.01) return;
 
@@ -440,300 +356,30 @@ window.Voidship = (function () {
       ctx.restore();
     }
 
-    // motion smear — kept faint so the hull stays sharp
-    for (let i = 0; i < ship.trail.length; i++) {
-      const tr = ship.trail[i];
-      ctx.save();
-      ctx.translate(tr.x, tr.y);
-      ctx.rotate(tr.a);
-      ctx.globalAlpha = a * tr.life * 0.10;
-      ctx.fillStyle = rgba(COLD, 0.5);
-      ctx.beginPath();
-      ctx.moveTo(S * 0.15, 0);
-      ctx.lineTo(-S * 0.25, S * 0.12);
-      ctx.lineTo(-S * 0.25, -S * 0.12);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
+    if (window.VoidshipArt) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
 
-    const bobY = Math.sin(ship.bob * 1.7) * 1.2 * (1 - ship.thrustAmt * 0.7);
-
+    const bobY = Math.sin(ship.bob * 0.6) * 1.5;
     ctx.save();
     ctx.translate(p.x, p.y + bobY);
-    ctx.rotate(ship.angle);
-    // perspective bank — squash Y slightly and skew
-    ctx.transform(1, 0, ship.bank * 0.35, 1 - Math.abs(ship.bank) * 0.12, 0, 0);
-
-    drawGlow(ctx, S, ship, t);
-    drawExhaust(ctx, S, ship, t);
-    drawHull(ctx, S, ship, t);
-    drawSparks(ctx, ship);
-
-    ctx.restore(); // hull
-    ctx.restore(); // alpha
-    void H;
-  }
-
-  function drawGlow(ctx, S, ship, t) {
-    const a = ship.thrustAmt;
-    const r = S * (a > 0.05 ? 0.42 : 0.55);
-    const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r);
-    g.addColorStop(0, rgba(LAMP, 0.06 + a * 0.10));
-    g.addColorStop(0.55, rgba(COLD, 0.03));
-    g.addColorStop(1, rgba(COLD, 0));
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-
-    if (a < 0.05) {
-      const ug = ctx.createRadialGradient(0, S * 0.35, 0, 0, S * 0.5, S * 0.55);
-      ug.addColorStop(0, rgba(LAMP, 0.06 + 0.04 * Math.sin(t * 3)));
-      ug.addColorStop(1, rgba(LAMP, 0));
-      ctx.fillStyle = ug;
-      ctx.beginPath(); ctx.ellipse(0, S * 0.4, S * 0.45, S * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(ship.pitch);
+    const d = Math.abs(ship.face);                        // 1 side-on … 0 front-on
+    const fk = clamp((0.35 - d) / 0.12, 0, 1);            // front view weight
+    const sign = ship.face !== 0 ? (ship.face > 0 ? 1 : -1) : (ship.yaw <= Math.PI / 2 ? 1 : -1);
+    if (fk < 1 && window.VoidshipArt) {
+      ctx.save();
+      ctx.globalAlpha *= 1 - fk;
+      ctx.scale(Math.max(d, 0.30) * sign, 1);
+      VoidshipArt.drawHull(ctx, ship, L, t);
+      ctx.restore();
     }
-  }
+    if (fk > 0.01 && window.VoidshipArt) VoidshipArt.drawFront(ctx, ship, L, t, fk);
+    ctx.restore();
 
-  function drawExhaust(ctx, S, ship, t) {
-    const a = ship.thrustAmt;
-    if (a < 0.02) {
-      ctx.fillStyle = rgba(LAMP, 0.35 + 0.12 * Math.sin(t * 5));
-      ctx.beginPath(); ctx.arc(-S * 0.42, -S * 0.11, 1.2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(-S * 0.42,  S * 0.11, 1.2, 0, Math.PI * 2); ctx.fill();
-      return;
-    }
-
-    const flick = 0.92 + 0.08 * Math.sin(t * 38 + a * 7);
-    const len = S * (0.38 + a * 0.72) * flick;
-    const nx = -S * 0.48;
-
-    for (const side of [-1, 1]) {
-      const oy = side * S * 0.105;
-      const tip = nx - len;
-
-      // outer cone — flat fills read sharper than wide gradients
-      ctx.fillStyle = rgba(BRICK, 0.55 * a);
-      ctx.beginPath();
-      ctx.moveTo(nx, oy - 4.5);
-      ctx.lineTo(tip, oy);
-      ctx.lineTo(nx, oy + 4.5);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = rgba(LAMP, 0.72 * a);
-      ctx.beginPath();
-      ctx.moveTo(nx, oy - 2.8);
-      ctx.lineTo(tip + len * 0.18, oy);
-      ctx.lineTo(nx, oy + 2.8);
-      ctx.closePath();
-      ctx.fill();
-
-      // hot core + nozzle point
-      ctx.fillStyle = rgba([255, 248, 228], 0.92 * a);
-      ctx.beginPath();
-      ctx.moveTo(nx + 1.5, oy - 1.4);
-      ctx.lineTo(tip + len * 0.28, oy);
-      ctx.lineTo(nx + 1.5, oy + 1.4);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = rgba([255, 255, 255], 0.85 * a);
-      ctx.fillRect(nx - 0.5, oy - 0.5, 2.5, 1);
-
-      // twin streaks — structured, not a soft blob
-      ctx.strokeStyle = rgba(LAMP, 0.65 * a);
-      ctx.lineWidth = 1;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(nx + 0.5, oy - 1.8);
-      ctx.lineTo(tip + len * 0.42, oy - 0.6);
-      ctx.moveTo(nx + 0.5, oy + 1.8);
-      ctx.lineTo(tip + len * 0.42, oy + 0.6);
-      ctx.stroke();
-      ctx.lineCap = "butt";
-    }
-  }
-
-  function drawSparks(ctx, ship) {
-    for (const s of ship.sparks) {
-      ctx.fillStyle = rgba(LAMP, Math.max(0, s.life * 2.2));
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, 0.8 + s.life * 1.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawHull(ctx, S, ship, t) {
-    // ---- twin thruster bells
-    for (const side of [-1, 1]) {
-      const oy = side * S * 0.105;
-      ctx.fillStyle = rgba([14, 18, 20], 1);
-      ctx.beginPath();
-      ctx.moveTo(-S * 0.26, oy - 6);
-      ctx.lineTo(-S * 0.48, oy - 5);
-      ctx.quadraticCurveTo(-S * 0.56, oy, -S * 0.48, oy + 5);
-      ctx.lineTo(-S * 0.26, oy + 6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = rgba(HULL_HI, 0.85);
-      ctx.lineWidth = 1.1;
-      ctx.stroke();
-      // lit rim
-      ctx.strokeStyle = rgba(LAMP, 0.4 + ship.thrustAmt * 0.5);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(-S * 0.48, oy, 2.6, 4.6, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    // ---- swept ventral planes (read as wings at a glance)
-    ctx.fillStyle = rgba([12, 16, 18], 0.98);
-    ctx.beginPath();
-    ctx.moveTo(S * 0.12, 0);
-    ctx.lineTo(-S * 0.12, S * 0.42);
-    ctx.lineTo(-S * 0.36, S * 0.36);
-    ctx.lineTo(-S * 0.14, S * 0.04);
-    ctx.lineTo(-S * 0.14, -S * 0.04);
-    ctx.lineTo(-S * 0.36, -S * 0.36);
-    ctx.lineTo(-S * 0.12, -S * 0.42);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(COLD, 0.45);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.08, -2);
-    ctx.lineTo(-S * 0.14, -S * 0.40);
-    ctx.lineTo(-S * 0.34, -S * 0.34);
-    ctx.moveTo(S * 0.08, 2);
-    ctx.lineTo(-S * 0.14, S * 0.40);
-    ctx.lineTo(-S * 0.34, S * 0.34);
-    ctx.stroke();
-    // wingtip lamps
-    ctx.fillStyle = rgba(LAMP, 0.7);
-    ctx.beginPath(); ctx.arc(-S * 0.14, -S * 0.40, 1.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = rgba(BRICK, 0.75);
-    ctx.beginPath(); ctx.arc(-S * 0.14,  S * 0.40, 1.6, 0, Math.PI * 2); ctx.fill();
-
-    // ---- main fuselage
-    ctx.fillStyle = rgba(HULL, 1);
-    ctx.beginPath();
-    ctx.moveTo(S * 0.52, 0);
-    ctx.bezierCurveTo(S * 0.36, -S * 0.075, S * 0.08, -S * 0.145, -S * 0.1, -S * 0.15);
-    ctx.lineTo(-S * 0.36, -S * 0.12);
-    ctx.quadraticCurveTo(-S * 0.44, 0, -S * 0.36, S * 0.12);
-    ctx.lineTo(-S * 0.1, S * 0.15);
-    ctx.bezierCurveTo(S * 0.08, S * 0.145, S * 0.36, S * 0.075, S * 0.52, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    // dorsal armour ridge
-    const ridge = ctx.createLinearGradient(S * 0.48, 0, -S * 0.32, 0);
-    ridge.addColorStop(0, rgba([120, 132, 128], 1));
-    ridge.addColorStop(0.25, rgba([78, 92, 96], 1));
-    ridge.addColorStop(1, rgba(HULL, 1));
-    ctx.fillStyle = ridge;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.48, 0);
-    ctx.bezierCurveTo(S * 0.28, -S * 0.06, S * 0.02, -S * 0.1, -S * 0.22, -S * 0.09);
-    ctx.lineTo(-S * 0.34, -S * 0.035);
-    ctx.lineTo(-S * 0.34, S * 0.035);
-    ctx.lineTo(-S * 0.22, S * 0.09);
-    ctx.bezierCurveTo(S * 0.02, S * 0.1, S * 0.28, S * 0.06, S * 0.48, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    // bright hull stroke so it doesn't dissolve into the void
-    ctx.strokeStyle = rgba([210, 220, 214], 0.42);
-    ctx.lineWidth = 1.15;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.52, 0);
-    ctx.bezierCurveTo(S * 0.36, -S * 0.075, S * 0.08, -S * 0.145, -S * 0.1, -S * 0.15);
-    ctx.lineTo(-S * 0.36, -S * 0.12);
-    ctx.quadraticCurveTo(-S * 0.44, 0, -S * 0.36, S * 0.12);
-    ctx.lineTo(-S * 0.1, S * 0.15);
-    ctx.bezierCurveTo(S * 0.08, S * 0.145, S * 0.36, S * 0.075, S * 0.52, 0);
-    ctx.stroke();
-
-    // panel seams
-    ctx.strokeStyle = rgba(COLD, 0.28);
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.24, -S * 0.065); ctx.lineTo(S * 0.24, S * 0.065);
-    ctx.moveTo(S * 0.02, -S * 0.1);  ctx.lineTo(S * 0.02, S * 0.1);
-    ctx.moveTo(-S * 0.18, -S * 0.1); ctx.lineTo(-S * 0.18, S * 0.1);
-    ctx.stroke();
-
-    // ---- canopy glass
-    const canopy = ctx.createLinearGradient(S * 0.32, -S * 0.09, S * 0.06, S * 0.07);
-    canopy.addColorStop(0, rgba([230, 245, 248], 0.7));
-    canopy.addColorStop(0.35, rgba(COLD, 0.65));
-    canopy.addColorStop(1, rgba([30, 55, 62], 0.85));
-    ctx.fillStyle = canopy;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.36, 0);
-    ctx.bezierCurveTo(S * 0.3, -S * 0.095, S * 0.12, -S * 0.1, S * 0.02, -S * 0.055);
-    ctx.lineTo(S * 0.02, S * 0.055);
-    ctx.bezierCurveTo(S * 0.12, S * 0.1, S * 0.3, S * 0.095, S * 0.36, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(LAMP, 0.55);
-    ctx.lineWidth = 1.1;
-    ctx.stroke();
-    // specular
-    ctx.strokeStyle = rgba([255, 255, 255], 0.55);
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.32, -S * 0.025);
-    ctx.quadraticCurveTo(S * 0.22, -S * 0.08, S * 0.1, -S * 0.06);
-    ctx.stroke();
-
-    // ---- side rail guns / sensors
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = rgba(HULL_HI, 0.95);
-      ctx.fillRect(-S * 0.2, side * S * 0.155 - 1.3, S * 0.3, 2.6);
-      ctx.fillStyle = rgba(LAMP, 0.7);
-      ctx.fillRect(S * 0.06, side * S * 0.155 - 0.8, S * 0.05, 1.6);
-      // forward tip of rail
-      ctx.fillStyle = rgba([230, 236, 232], 0.7);
-      ctx.fillRect(S * 0.1, side * S * 0.155 - 0.5, S * 0.08, 1);
-    }
-
-    // ---- nose needle + lamp tip
-    ctx.strokeStyle = rgba([220, 228, 224], 0.85);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.42, 0);
-    ctx.lineTo(S * 0.62, 0);
-    ctx.stroke();
-    const tipPulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t * 6));
-    ctx.fillStyle = rgba(LAMP, 0.28 * tipPulse);
-    ctx.beginPath(); ctx.arc(S * 0.62, 0, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = rgba(LAMP, 0.95 * tipPulse);
-    ctx.beginPath(); ctx.arc(S * 0.62, 0, 2.2, 0, Math.PI * 2); ctx.fill();
-
-    // chin intake scoop
-    ctx.fillStyle = rgba([8, 10, 12], 0.95);
-    ctx.beginPath();
-    ctx.moveTo(S * 0.2, S * 0.055);
-    ctx.lineTo(S * 0.02, S * 0.12);
-    ctx.lineTo(-S * 0.08, S * 0.105);
-    ctx.lineTo(S * 0.1, S * 0.045);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(BRICK, 0.35);
-    ctx.stroke();
-  }
-
-  /* ---- maths ------------------------------------------------------ */
-
-  function turn(cur, want, maxStep) {
-    const d = clamp(wrap(want - cur), -maxStep, maxStep);
-    return cur + d;
+    ctx.restore();
   }
 
   return {
-    BASE, create, resize, setPower, setCourse, setThrusting,
-    clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn,
-    addFuel,
+    BASE, create, resize, setPower, setCourse, setThrusting, clearCourse,
+    step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled,
   };
 })();

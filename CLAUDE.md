@@ -30,7 +30,7 @@ implementer alike.
 
 - **Never read a whole file over 300 lines.** The files over 500 lines are
   `bridge.js`, `world.js`, `depths.js`, `instruments-tiles.js`,
-  `voidship.js`, `genesis-void.js`, `genesis-saga.js`, `rexart-deep.js`,
+  `genesis-void.js`, `genesis-saga.js`, `rexart-deep.js`,
   `rexart-surface.js`, `instruments.js`, `landart.js` and `genesis.js`. Use
   the File map below to pick the function or section, then `Grep -n` for the
   name and `Read` with `offset`/`limit` around the hit. Line numbers in this
@@ -85,7 +85,8 @@ one global on `window`. Sizes are line counts.
 | `instruments-tiles.js` | 857 | The eight HUD tiles (radar, signal, drive, nav, eclss, rad, hull, bus) and `tickSys` | registers itself with `Instruments.registerTiles` |
 | `world.js` | 1195 | Scenery only: Arcanis geography and painting. No input, no HUD | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw}`; uses `RexArt`, `LandArt`, `depthAlpha` |
 | `depths.js` | 874 | Pure data: beacon-gated node clusters and layouts. No DOM | `window.Depths {nodes, clusters}` |
-| `voidship.js` | 738 | The craft: thrust/brake, fuel, hull hit-test | `window.Voidship {create, resize, setPower, setCourse, setThrusting, step, draw, screenPos, touching, stats, canBurn, addFuel, …}` |
+| `voidship-art.js` | ~480 | The craft's painters: angular side-view city-ship hull (`drawHull`, corners only, every thin part floored at 1 px because L is only 96 px), solid front-on block shown mid-turn (`drawFront`), alien drive fumes (`drawFumes`), emitter seats `EMIT`, palette `COLORS`. Local frame: +x nose, +y down, units of hull length L; the caller mirrors with `scale(face,1)` and `block()` keeps the lit side on screen-left | `window.VoidshipArt`; uses `Paint`, `Util` |
+| `voidship.js` | ~380 | The craft: hold-as-stick / tap-to-seek motion, release-stops rule, fuel, yaw flip + pitch, fume particles (screen frame, damped inertia), draw orchestration | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
 | `rexart-deep.js` | 638 | Painters for the three Rex caverns | `window.RexArt.titans / .valkhar / .law` |
 | `rexart-surface.js` | 625 | Painters for Rex surface landmarks | `window.RexArt.firstlight / .crimson / .bonespire` |
 | `landart.js` | 587 | Painters for the five Mainland factions. `+y` is UP here, opposite of rexart | `window.LandArt.shattered / .libertech / .dawn / .accord / .gore` |
@@ -117,7 +118,7 @@ one global on `window`. Sizes are line counts.
 `util.js`, `xp.js`, `entry.js` (blocking, on purpose), then the inline SW
 purge. Body tail: `surge → lamp → planet → depths → instruments →
 instruments-tiles → paint → rexart-surface → rexart-deep → landart → world →
-voidship → embed → pacer → marks → bridge-log → bridge-voice → bridge →
+voidship-art → voidship → embed → pacer → marks → bridge-log → bridge-voice → bridge →
 genesis-state → genesis-paint → genesis-void → genesis-rex → genesis-saga →
 genesis → intro`.
 
@@ -171,6 +172,17 @@ Grep these names; the ranges are approximate.
   `drawRoot` (~1044), `drawBridge` (~1070), `draw` (~1155).
 - **depths.js** — `CLUSTERS` data (~37–718; Bone Spire ~481, Titans ~494),
   `waveOf` (~719), `LAYOUTS` (~743), `nodes()` (~780).
+- **voidship.js** — `BASE` tunables (top), `create`, `setThrusting` (the
+  release rule: keep the point only if the ship can still stop on it),
+  `step` in order: hold boost → wanted velocities (`far` = cruise, else the
+  `sqrt(2·brake·d)` arrive profile) → yaw target + turn gating → `ease`
+  (asymmetric accel/brake time constants) → arrival snaps → anchor pulse →
+  fuel → `thrustAmt` → pitch → fume spawn/update; then `settled`, `stats`,
+  `draw` (cue → fumes → translate/rotate(pitch)/scale(face) → `drawHull` →
+  `drawFront`).
+- **voidship-art.js** — `block` (facing-aware `Paint.litShade` wrapper),
+  `drawHull` (underside → hull → belly → panels → windows → superstructure
+  → spires → booms → drive), `drawFront`, `drawFumes`.
 - **CSS** — each file has `/* --- */` section comments; grep the section
   name rather than reading the file.
 
@@ -184,6 +196,8 @@ Grep these names; the ranges are approximate.
 | Titans cave (style reference) | `rexart-deep.js` `paintTitans` / `liveTitans` |
 | `litShade` | One copy, `paint.js` |
 | Camera / pan / input | `bridge.js` `camX`, `wx()`, `clientToCourse`, listeners block |
+| Ship motion and feel | `voidship.js` `BASE` + `step` + `setThrusting`; bridge glue `retargetFromPointer` / `beginBurn` / `endBurn` / `atRest` (calls `Voidship.settled`) |
+| Ship art and fumes | `voidship-art.js`; particle schema is defined where `voidship.js` spawns them (`fumeAcc +=`) |
 | Landmarks / beacons | `marks.js` `MARKS`/`PLANETS`; gated extras `depths.js` |
 | Main rAF loop | `pacer.js` (`frame`), created in `bridge.js` as `pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `util.js` `KEYS` (never type a key literal) |
