@@ -571,12 +571,12 @@ def flow_depths(browser, base):
           and all(not n["flying"] for n in report), report)
 
     report = page.evaluate("""() => {
-      ['bnote-planet-zero','bnote-sz-shell','bnote-sz-chair','bnote-vs-godrun','bnote-vs-board','bnote-vs-deeper','bnote-vs-progress','bnote-vs-boons','bnote-vs-bench','bnote-vs-map','bnote-vs-rooms','bnote-vs-feel',
+      ['bnote-planet-zero','bnote-sz-room','bnote-sz-quiet','bnote-sz-storm','bnote-sz-shell','bnote-sz-register','bnote-sz-chair','bnote-sz-brian','bnote-sz-dark','bnote-sz-crew','bnote-vs-godrun','bnote-vs-board','bnote-vs-deeper','bnote-vs-progress','bnote-vs-boons','bnote-vs-bench','bnote-vs-map','bnote-vs-rooms','bnote-vs-feel',
        'bnote-hl-play','bnote-cc-play','bnote-cc-why'].forEach(id => XP.award('beacon-'+id, 1, id));
       window.depthsReveal();
       return window.depthsReport();
     }""")
-    check("depths: all 23 nodes spawn", len(report) == 23, len(report))
+    check("depths: all 27 nodes spawn", len(report) == 27, len(report))
     bounds_and_overlap_checks("depths", report)
 
     errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e
