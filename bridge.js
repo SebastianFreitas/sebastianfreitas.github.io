@@ -168,6 +168,7 @@
   let savedGDCamX = GD_SPAWN;
   const activeMarks = () => sceneMode === "gamedev" ? PLANETS : MARKS;
   const ZERO_MARK = PLANETS.find(m => m.id === "bnote-planet-zero"); // the storm sits beside it
+  const VS_MARK = PLANETS.find(m => m.id === "bnote-planet-voidscape"); // the bench and run console sit beside it
 
   /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
   const XSTAGE = { CLOSE: 0, HOLD: 1, OPEN: 2 };
@@ -354,6 +355,8 @@
     if (window.XP) {
       const p = markScreen(m), r = hostBox();
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
+      if (m.id === "bnote-vs-bench") Forge.unlock("bench");
+      else if (m.id === "bnote-vs-map") Forge.unlock("console");
     }
     if (sceneMode === "gamedev") {
       log.push(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
@@ -509,6 +512,10 @@
     if (frozen || xswitch || document.body.classList.contains("site-frozen")) return;
     // note panels scroll and hold clips, so a press inside one belongs to the panel, not a burn
     if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bnote")) return;
+    if (sceneMode === "gamedev") {
+      const r = hostBox();
+      if (Forge.hit(e.clientX - r.left, e.clientY - r.top)) return;   // a press on a panel is a button, not a burn
+    }
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -541,7 +548,7 @@
 
     if (!inside) { hoverMark = null; if (cursor) cursor.classList.remove("over"); return; }
     hoverMark = markAt(e.clientX, e.clientY);
-    if (cursor) cursor.classList.toggle("over", !!hoverMark);
+    if (cursor) cursor.classList.toggle("over", !!hoverMark || (sceneMode === "gamedev" && Forge.over(e.clientX - r.left, e.clientY - r.top)));
   }, { passive: true });
 
   addEventListener("pointerup", endBurn);
@@ -632,6 +639,7 @@
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
   window.stormReport = () => Storm.report();
+  window.forgeReport = () => Forge.report();
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
     id: m.id, root: m.root, from: m.from, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
@@ -753,6 +761,17 @@
     const env = stormEnv();
     Storm.step(dt, env);
     Storm.draw(ctx, env);
+  }
+
+  // --- VoidScape bench and run console (forge.js): flat panels beside the planet ---
+  function forgeEnv() {
+    const a = markScreen(VS_MARK);
+    return { ax: a.x, ay: a.y, W, H, reduced };
+  }
+  function drawForge(dt) {
+    const env = forgeEnv();
+    Forge.step(dt, env);
+    Forge.draw(ctx, env);
   }
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
@@ -1438,6 +1457,7 @@
     if (window.Genesis && Genesis.active) return false;
     if (!marksSettled()) return false;
     if (sceneMode === "gamedev" && Storm.lively()) return false;
+    if (sceneMode === "gamedev" && Forge.lively()) return false;
     if (!ship) return true;
     return Voidship.settled(ship);
   }
@@ -1483,6 +1503,7 @@
     try {
       drawMarks(raw);
       if (sceneMode === "gamedev" && ship) drawStorm(dt);
+      if (sceneMode === "gamedev") drawForge(dt);
       if (ship) {
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: viewUnitsNow() });
       }

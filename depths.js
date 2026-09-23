@@ -167,9 +167,10 @@ window.Depths = (function () {
       root: "bnote-planet-voidscape",
       theme: "voidscapeDeep",
       size: 0.7,
-      // Ten notes in six waves. Rings 4 to 6 tuck the later pairs inside and
-      // below the first fan so every node stays inside off ±0.44 / oy ≤ 0.66
-      // and at least 0.06 from its neighbours (see nav-flows bounds check).
+      // Ten notes in six waves. Rings 4 to 6 sit below the first fan so every
+      // node stays inside off ±0.44 / oy ≤ 0.66 and at least 0.06 from its
+      // neighbours (see nav-flows bounds check); the bench and map nodes go
+      // under the planet so the forge panels beside it stay clear.
       layout: {
         shape: "arc",
         squash: 1.2,
@@ -177,7 +178,7 @@ window.Depths = (function () {
           { r: 0.18, from: 90, to: 90 },
           { r: 0.25, from: 40, to: 140 },
           { r: 0.33, from: 20, to: 160 },
-          { r: 0.166, from: 25, to: 155 },
+          { r: 0.30, from: 110, to: 70 },
           { r: 0.416, from: 33, to: 147 },
           { r: 0.275, from: 90, to: 90 }
         ]

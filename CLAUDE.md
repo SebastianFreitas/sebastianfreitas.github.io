@@ -88,6 +88,7 @@ one global on `window`. Sizes are line counts.
 | `voidship-art.js` | ~480 | The craft's painters: angular side-view city-ship hull (`drawHull`, corners only, every thin part floored at 1 px because L is only 96 px), solid front-on block shown mid-turn (`drawFront`), alien drive fumes (`drawFumes`), emitter seats `EMIT`, palette `COLORS`. Local frame: +x nose, +y down, units of hull length L; the caller mirrors with `scale(face,1)` and `block()` keeps the lit side on screen-left | `window.VoidshipArt`; uses `Paint`, `Util` |
 | `voidship.js` | ~380 | The craft: hold-as-stick / tap-to-seek motion, release-stops rule, fuel, yaw flip + pitch, fume particles (screen frame, damped inertia), draw orchestration | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
 | `storm.js` | 527 | The Sector Zero storm: two debris compositions beside the planet, a desk to the right (tower, floppy, CRT, speaker, heater, keyboard, can, mug, note) and a repair station below-left (open case, side panel, motherboard, GPU, open hard disk, PSU, RAM, CPU, fan, the game's screwdriver); the cycle home → storm → gather (objects kicked loose, drift on noise inside a tether, spring home, silent snap), ship shoving via three hull circles, object-object circles, deck-line and top-bar bounce, the terminal flicker on the CRT, faint ghost terminal lines that type and fade. Positions are px relative to the planet's screen centre (the station tracks a fraction of H); one seeded `mulberry` for every random choice | `window.Storm {step, draw, lively, report}`; uses `Util`, `Paint`; fed by `bridge.js` `stormEnv` |
+| `forge.js` | 837 | VoidScape bench and run console beside the planet: crafting bench (gun with mod rows, add/remove/destroy), mission console (search three paths, select, empower, reload, open portal → generated floor plan); panels unlock when the bench / map depth nodes are reached | `window.Forge {step, draw, hit, over, lively, report, unlock}`; uses `Util`; fed by `bridge.js` `forgeEnv` |
 | `rexart-deep.js` | 638 | Painters for the three Rex caverns | `window.RexArt.titans / .valkhar / .law` |
 | `rexart-surface.js` | 625 | Painters for Rex surface landmarks | `window.RexArt.firstlight / .crimson / .bonespire` |
 | `landart.js` | 587 | Painters for the five Mainland factions. `+y` is UP here, opposite of rexart | `window.LandArt.shattered / .libertech / .dawn / .accord / .gore` |
@@ -119,7 +120,7 @@ one global on `window`. Sizes are line counts.
 `util.js`, `xp.js`, `entry.js` (blocking, on purpose), then the inline SW
 purge. Body tail: `surge → lamp → planet → depths → instruments →
 instruments-tiles → paint → rexart-surface → rexart-deep → landart → world →
-voidship-art → voidship → storm → embed → pacer → marks → bridge-log → bridge-voice → bridge →
+voidship-art → voidship → storm → forge → embed → pacer → marks → bridge-log → bridge-voice → bridge →
 genesis-state → genesis-paint → genesis-void → genesis-rex → genesis-saga →
 genesis → intro`.
 
@@ -151,7 +152,8 @@ Grep these names; the ranges are approximate.
   `updateHUD`/`drawInstruments` (~1316–1367), movement `step` (~1368),
   `atRest` (~1436), `render`/`paintOnce` (~1447–1513), storm glue
   `stormEnv`/`drawStorm` (after `drawMarks`) and the `Storm.lively()` check
-  in `atRest`, `pacer =
+  in `atRest`, forge glue `forgeEnv`/`drawForge` and the `Forge.hit` test in
+  pointerdown, `pacer =
   Pacer.create` (~116).
 - **genesis-state.js** — `BEATS` (~22), world constants (~70–176), state
   block (~177–195), `seed` (~196), queries
@@ -208,6 +210,7 @@ Grep these names; the ranges are approximate.
 | Ship motion and feel | `voidship.js` `BASE` + `step` + `setThrusting`; bridge glue `retargetFromPointer` / `beginBurn` / `endBurn` / `atRest` (calls `Voidship.settled`) |
 | Ship art and fumes | `voidship-art.js`; particle schema is defined where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero debris, storm cycle, CRT flicker, ghost terminal lines | `storm.js`; anchored to the planet by `bridge.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
+| VoidScape bench, run console, floor-plan generator | `forge.js`; anchored to the planet by `bridge.js` `forgeEnv`, hit-tested in the pointerdown listener |
 | Landmarks / beacons | `marks.js` `MARKS`/`PLANETS`; gated extras `depths.js` |
 | Main rAF loop | `pacer.js` (`frame`), created in `bridge.js` as `pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `util.js` `KEYS` (never type a key literal) |
