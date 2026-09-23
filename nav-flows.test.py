@@ -533,7 +533,7 @@ def flow_depths(browser, base):
     }""")
     ids = {n["id"] for n in report}
     check("depths: first waves spawn",
-          ids == {"bnote-vs-godrun", "bnote-hl-play", "bnote-cc-play", "bnote-cc-why"}, ids)
+          ids == {"bnote-vs-godrun", "bnote-hl-play", "bnote-cc-play"}, ids)
     check("depths: off-screen reveal points the way instead of flying", all(n["cue"] and not n["flying"] for n in report), report)
 
     page.wait_for_timeout(2000)
@@ -542,8 +542,7 @@ def flow_depths(browser, base):
 
     by_id = {n["id"]: n for n in report}
     check("depths: play nodes are wide",
-          by_id["bnote-hl-play"]["wide"] and by_id["bnote-cc-play"]["wide"]
-          and not by_id["bnote-cc-why"]["wide"], report)
+          by_id["bnote-hl-play"]["wide"] and by_id["bnote-cc-play"]["wide"], report)
 
     shells = page.evaluate("""() =>
       !!document.querySelector('#bnote-hl-play .embed-shell[data-src] .embed-play') &&
@@ -572,11 +571,11 @@ def flow_depths(browser, base):
 
     report = page.evaluate("""() => {
       ['bnote-planet-zero','bnote-sz-room','bnote-sz-quiet','bnote-sz-storm','bnote-sz-shell','bnote-sz-register','bnote-sz-chair','bnote-sz-brian','bnote-sz-dark','bnote-sz-crew','bnote-vs-godrun','bnote-vs-board','bnote-vs-deeper','bnote-vs-progress','bnote-vs-boons','bnote-vs-bench','bnote-vs-map','bnote-vs-rooms','bnote-vs-feel',
-       'bnote-hl-play','bnote-cc-play','bnote-cc-why'].forEach(id => XP.award('beacon-'+id, 1, id));
+       'bnote-hl-play','bnote-cc-play','bnote-cc-brief','bnote-cc-controls','bnote-cc-key','bnote-cc-pins','bnote-cc-shadow','bnote-cc-twins','bnote-cc-levels','bnote-cc-polish'].forEach(id => XP.award('beacon-'+id, 1, id));
       window.depthsReveal();
       return window.depthsReport();
     }""")
-    check("depths: all 27 nodes spawn", len(report) == 27, len(report))
+    check("depths: all 33 nodes spawn", len(report) == 33, len(report))
     bounds_and_overlap_checks("depths", report)
 
     errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e

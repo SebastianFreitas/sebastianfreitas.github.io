@@ -65,7 +65,7 @@ window.Marks = (function () {
     { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7, xp: 1,
       theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle platformer. Light has weight" },
     { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7, xp: 1,
-      theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "30 levels on the HeavyLight base" },
+      theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "Precision platformer. Plant a shadow, jump back" },
   ];
   PLANETS.forEach((m, i) => {
     m.x = m.cam + (m.off * CAM.viewUnits) / m.par;

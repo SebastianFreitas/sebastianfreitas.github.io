@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conclusus — Sebastião Freitas</title>
-<meta name="description" content="30 levels and four new mechanics built on the HeavyLight base, in less time than the original. Unity, WebGL.">
+<meta name="description" content="Precision platformer on the HeavyLight base: thirty levels, a shadow you plant and teleport back to, pins that launch you, and silhouettes that switch between safe and deadly. Unity, WebGL.">
 <link rel="canonical" href="https://sebastianfreitas.github.io/projects/conclusus.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Conclusus — Sebastião Freitas">
-<meta property="og:description" content="30 levels and four new mechanics built on the HeavyLight base, in less time than the original. Unity, WebGL.">
+<meta property="og:description" content="Precision platformer on the HeavyLight base: thirty levels, a shadow you plant and teleport back to, pins that launch you, and silhouettes that switch between safe and deadly. Unity, WebGL.">
 <meta property="og:url" content="https://sebastianfreitas.github.io/projects/conclusus.html">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0d1114">
@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../style.css?v=92">
-<link rel="stylesheet" href="../beacon.css?v=92">
+<link rel="stylesheet" href="../style.css?v=93">
+<link rel="stylesheet" href="../beacon.css?v=93">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -38,14 +38,15 @@
   <h1>Conclusus</h1>
 
   <dl class="props">
-    <div><dt>Engine</dt><dd>Unity — WebGL</dd></div>
+    <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
     <div><dt>Language</dt><dd>C#</dd></div>
     <div><dt>Role</dt><dd>Solo</dd></div>
     <div><dt>Year</dt><dd>2022</dd></div>
+    <div><dt>Base</dt><dd><a href="heavylight.html">HeavyLight</a></dd></div>
+    <div><dt>Music</dt><dd>George Tantchev</dd></div>
   </dl>
 
-  <p>Thirty levels and four new mechanics built on top of <a href="heavylight.html">HeavyLight</a>,
-     finished in less time than the original took. Proving that was the point of building it.</p>
+  <p>A precision platformer built on the <a href="heavylight.html">HeavyLight</a> base. Thirty levels, a symbol to carry to a door, pins that launch you, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly every 1.2 seconds.</p>
 
   <div class="embed embed-shell"
        data-src="https://itch.io/embed-upload/14396412?color=141a1d"
@@ -55,44 +56,54 @@
   </div>
   <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
 
-  <h2>Why it exists</h2>
-  <p>I wrote HeavyLight as a base rather than a one-off, which is easy to claim and hard to prove.
-     Conclusus was the test: take the same foundation, build something bigger on it, and find out
-     whether the second project is genuinely cheaper or whether "reusable" code quietly costs more
-     than starting over.</p>
+  <h2>The brief</h2>
+  <p>HeavyLight ran on one mechanic, which meant its level design had to carry the whole game. For Conclusus I chose the opposite: several mechanics that players already understand, so each level could combine them instead of inventing something new. That took weight off the level design and let me spend it where I am strongest, on the feel of the controls and on the look of the game.</p>
+  <p>It is a game of technical difficulty rather than puzzles. The levels are short, one hit kills, and the retry is instant, so the challenge is execution.</p>
 
-  <h2>What went on top</h2>
-  <p><strong>Shadow.</strong> Plant a shadow on the ground, then teleport back to it at any point.
-     Position and scale both transfer, so it's a checkpoint you place yourself and a way to undo a
-     commitment you've already made.</p>
-  <p><strong>Symbols.</strong> Collectibles that drift and spin on their own, with a rotation
-     coroutine that stutters and reverses at random intervals so they never look scripted. Some are
-     whole; others break into pieces that have to be gathered in sequence, each one chaining to the
-     next.</p>
-  <p><strong>Time dilation.</strong> A burst state that drops the timescale to 0.6 for a few
-     seconds — the level slows down while your inputs don't.</p>
-  <p><strong>Grid movement</strong> for the sections that switch from platforming to cell-by-cell
-     positioning, snapping to tile centres with its own interpolation.</p>
+  <h2>The controls</h2>
+  <p>The character controller is the one from HeavyLight, carried over untouched. Coyote time and a jump buffer of 0.15 seconds each, a jump that reaches its apex in 0.4 seconds with 1.75 times gravity on the way up, and a deceleration high enough that you stop the frame you release the key. Move with A and D or the arrows, jump with Space, W or Up, and use the shadow with S or Down.</p>
+  <p>Any hazard kills in one touch. You respawn at the start of the level in about a second, with the shadow, the platforms and the symbol reset with you.</p>
 
-  <h2>What the reuse actually bought</h2>
-  <p>The character controller carried over untouched, and it's the expensive part: separate scripts
-     for jump, movement, ground detection, hurt states and juice, with jump height, apex time,
-     independent up and down gravity multipliers, jump cutoff, coyote time and jump buffering all
-     exposed as tuned ranges. None of that had to be rebuilt or retuned.</p>
-  <p>Everything else came from one convention. Every mechanic implements its own
-     <code>Reset()</code>, and levels live as objects in a single scene that get switched on and off
-     rather than loaded. Adding a mechanic meant writing its behaviour and its reset, and level
-     transitions kept working — no scene loading, no save plumbing, no restart bugs to chase.</p>
+  <h2>Key and door</h2>
+  <p>Every level ends at a door with a spinning symbol somewhere in the level. Touch the symbol and it glides to the door over one second, and the door opens. In ten levels the symbol is split into three pieces that must be collected in order, each playing its own note.</p>
+  <p>Twenty levels add a second condition: every platform in the level has to be lit at the same moment. Stepping on a platform lights a shard on it, and the light fades over about five seconds. The route through the level becomes a race to reach the last platform before the first goes dark. When the last one lights with the symbol in place, a chime and a burst of particles tell you the door is open.</p>
+  <!-- MEDIA PLACEHOLDER: clip of a level where every platform has to be lit, ending on the last platform lighting and the door opening with the bloom flare. Use <video class="clip" src="../media/conclusus/<name>.mp4" muted loop playsinline preload="none" data-lazy></video> like sector-zero.html. -->
+  <p class="caption">Clip to come: lighting every platform in a level, then the door opening on the last one.</p>
 
-  <h2>The result</h2>
-  <p>Twenty levels became thirty. Four mechanics that didn't exist in the original went in without
-     touching the light-weight rule underneath them. And it shipped faster, which is the number that
-     settles the question.</p>
+  <h2>Pins</h2>
+  <p>Pins are the first mechanic the game introduces. There are 88 of them. Touching one snaps you to it, cancels your momentum and fires you in the direction it points. For the next second your fall speed is held close to zero, so you hang in the air with time to steer toward the next pin or a platform. The pin spins, plays its animation and springs as you leave.</p>
+  <p>Chains of pins are how the game does its flying sections. The float window after each launch is what keeps them readable at speed.</p>
 
-  <h2>What I'd change</h2>
-  <p>Reuse worked at the systems level and not at the content level — thirty levels were still
-     hand-placed from nothing. The next version of this argument puts the same effort into authoring
-     tools that went into the mechanics.</p>
+  <h2>The shadow</h2>
+  <p>The main mechanic. Press S while standing on the ground and a grass green copy of you stays where you were. Press S again from anywhere in the level and you teleport back into it, keeping your speed and facing. Only one shadow exists at a time, and walking back into it on foot also uses it up. Placing plays a grass footstep and teleporting plays another, with a particle burst on arrival.</p>
+  <p>The shadow is unlocked by a pickup in level 7, with a short tutorial that fades in. From then on the levels are built around it: cross a gap of silhouettes once by pin, plant the shadow, collect the symbol, and jump straight back.</p>
+  <!-- MEDIA PLACEHOLDER: clip of planting the shadow, crossing a gap with a pin, collecting the symbol and teleporting back. Use <video class="clip" src="../media/conclusus/<name>.mp4" muted loop playsinline preload="none" data-lazy></video> like sector-zero.html. -->
+  <p class="caption">Clip to come: planting the shadow, crossing a gap with a pin, then teleporting back.</p>
+
+  <h2>The silhouettes</h2>
+  <p>The last mechanic keeps the theme of other selves. The late levels hold figures shaped like your shadow. All of them switch state together every 1.2 seconds: green means safe, and touching one teleports you into it and removes it; silver means deadly, and touching one kills you. The switch is fixed and synchronised, so a level can be read, timed and learned.</p>
+  <p>There are 40 silhouettes in the game, first appearing in level 16 and filling levels 25 to 30, where the timing of the switch becomes the whole level.</p>
+  <!-- MEDIA PLACEHOLDER: clip of a corridor of silhouettes switching from green to silver as the player threads through them. Use <video class="clip" src="../media/conclusus/<name>.mp4" muted loop playsinline preload="none" data-lazy></video> like sector-zero.html. -->
+  <p class="caption">Clip to come: a corridor of silhouettes switching from green to silver as the player threads through.</p>
+
+  <h2>Thirty levels</h2>
+  <p>Thirty levels in three chapters, each chapter closing with a heavier rain. The first levels teach walking, jumping and pins. Level 7 gives you the shadow, level 16 gives you a double jump and the first silhouettes, and the last six levels combine everything. Progress is a single saved number, and a level select with thirty buttons opens them in order.</p>
+  <p>There is no optional content. The journal, secret levels and collectibles from HeavyLight were cut on purpose, and the time went into mechanics and polish instead.</p>
+  <!-- MEDIA PLACEHOLDER: screenshot of the level select with all thirty buttons, some locked. Use <img class="clip" src="../media/conclusus/<name>.webp" alt="..." loading="lazy">. -->
+  <p class="caption">Image to come: the level select with all thirty buttons.</p>
+
+  <h2>The polish</h2>
+  <p>Most of the time saved by reusing the base went into how the game looks and feels. The whole game is drawn from one palette file. Every platform picks one of five grass sprites or four floor sprites when it appears, so no two levels tile the same way. The symbol wobbles and reverses on random timings. Spike balls spin and bob, each at its own height. Rain falls through every level.</p>
+  <p>Finishing a level is an event. Your input locks, the bloom ramps from 1.5 to 50 in half a second, the rain doubles, and the level fades out over three seconds before the next fades in. At the end of a chapter the rain pours at twenty times its speed. The soundtrack is one track, Waves, by George Tantchev.</p>
+
+  <h2>Under the hood</h2>
+  <p>Unity 2021.3 with the Universal Render Pipeline, a Bloom volume, Cinemachine and the new Input System, built for WebGL. All thirty levels are objects in one scene that get switched on and off rather than loaded, and every mechanic implements its own Reset, so a restart puts the shadow, the platforms, the symbol and every silhouette back in one call. Sprites are 32 pixels and sort by height. The build checks which site it runs on, and a copy uploaded elsewhere sends you to a gif and quits.</p>
+
+  <h2>Built on HeavyLight</h2>
+  <p>I wrote HeavyLight as a base rather than a one off, and Conclusus was the proof. The controller, the level switching, the reset convention and the door logic came over as they were, and the pins, the shadow, the silhouettes and the lit platforms went on top without touching them. Thirty levels and four new mechanics took less time than the original twenty.</p>
+
+  <h2>What it taught me</h2>
+  <p>Conclusus started from a base and a deadline rather than from a locked concept, and the shadow, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
 
   <nav class="case-nav" aria-label="More work">
     <a class="back" href="../index.html#work">← All work</a>
@@ -107,10 +118,10 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="../util.js?v=92"></script>
-<script src="../xp.js?v=92"></script>
-<script src="../surge.js?v=92"></script>
-<script src="../embed.js?v=92"></script>
+<script src="../util.js?v=93"></script>
+<script src="../xp.js?v=93"></script>
+<script src="../surge.js?v=93"></script>
+<script src="../embed.js?v=93"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-conclusus",1,"Conclusus");});</script>
 </body>
 </html>
