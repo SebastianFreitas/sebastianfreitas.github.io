@@ -14,18 +14,19 @@ window.Storm = (function () {
 
   // two compositions: the desk to the right of the planet, the repair station below-left.
   // y is px from the planet, or a fraction of H (yFrac) when the spot must track the deck line.
+  // ox/oy is the resolved origin filled in by layout.
   const COMPS = [
-    { x: 250, y: 10,   yFrac: null, tilt: -9 * Math.PI / 180 },
-    { x: -200, y: 0,   yFrac: 0.53, tilt:  6 * Math.PI / 180 },
+    { x: 250,  y: 10, yFrac: null,  tilt: -9 * Math.PI / 180, ox: 0, oy: 0 },   // 0 = desk, right of planet
+    { x: -200, y: 0,  yFrac: 0.595, tilt:  6 * Math.PI / 180, ox: 0, oy: 0 },   // 1 = repair station, below-left
   ];
   const HOLD_FIRST = 6, HOLD = [5, 8], STORM = [35, 70], GATHER = 3.0;
   const GUST = [4, 8];
   const DRIFT_ACC = 6, DAMP = 0.45, SPIN_ACC = 0.25, ADAMP = 0.3;
-  const TETHER_R = 200, TETHER_K = 0.08;
+  const TETHER_R = 260, TETHER_K = 0.08;
   const SHIP_R = 22, SHIP_OFF = 30;
   const FLOOR = 0.62, CEIL = 0.10, BOUNCE = 0.4;   // screen fractions of H: the deck line and the top bar
   const E = 0.35;                              // restitution
-  const MAX_V = 130, MAX_VA = 4;
+  const MAX_V = 180, MAX_VA = 4;
   const LIVELY_V = 24, LIVELY_VA = 0.9, HOT = 3;
 
   const PC = ["#a09e93", "#5f5e57"], DK = ["#4a4d4a", "#2b2d2b"], MUG = ["#c3c3bf", "#71716d"],
@@ -36,6 +37,13 @@ window.Storm = (function () {
   const PLATTER = "#a9adb2", DIE = "#6c7078", SHAFT = "#b9bcc0", GOLD = "#b3a23a";
   const GREEN = a => `rgba(120,255,150,${a})`;
 
+  // static furniture the objects rest on: the desk (comp 0) and the shelving rack (comp 1).
+  // Local px, y down, before the composition tilt. Shelf/desk "top" values are the
+  // surfaces the roster bottoms sit on.
+  const FURN = { wood: ["#8a6a48", "#5a4430"], steel: ["#6e7480", "#3e424a"], desk: ["#7d7266", "#4b433b"] };
+  const DESK = { x0: -125, x1: 125, top: 0, thick: 8, legX: 112, legW: 6, legBot: 56, bar: 44 };
+  const RACK = { x0: -93, x1: 93, top: -206, upW: 6, shelfT: 6, beamT: 2, shelves: [-200, -150, -100, -50, -6] };
+
   // a wrapper, not a new litShade: flat fill lit left 30%, shade right 70%
   function box(g, x0, y0, x1, y1, pal) {
     Paint.litShade(g, () => { g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); },
@@ -43,27 +51,28 @@ window.Storm = (function () {
   }
 
   // draw order, back to front, and home layout relative to each composition's
-  // origin (see COMPS, above) before its tilt; c picks the composition
+  // origin (see COMPS, above) before its tilt; c picks the composition. Every
+  // home puts the object's bottom edge on a DESK/RACK surface (or on another object).
   const ROSTER = [
-    { id: "tower",    w: 30, h: 64, r: 26, hx: -54, hy: -4,  ha: 0,   c: 0 },
-    { id: "floppy",   w: 14, h: 10, r: 7,  hx: -52, hy: -42, ha: -12, c: 0 },
-    { id: "heater",   w: 36, h: 24, r: 15, hx: 72,  hy: 12,  ha: 0,   c: 0 },
-    { id: "speaker",  w: 18, h: 24, r: 11, hx: 40,  hy: 8,   ha: 0,   c: 0 },
-    { id: "monitor",  w: 52, h: 50, r: 24, hx: 0,   hy: -2,  ha: 0,   c: 0 },
-    { id: "keyboard", w: 74, h: 20, r: 18, hx: -2,  hy: 42,  ha: -6,  c: 0 },
-    { id: "can",      w: 11, h: 34, r: 13, hx: -86, hy: 30,  ha: 4,   c: 0 },
-    { id: "mug",      w: 19, h: 17, r: 9,  hx: 60,  hy: 46,  ha: 0,   c: 0 },
-    { id: "note",     w: 12, h: 10, r: 6,  hx: 30,  hy: 58,  ha: 8,   c: 0 },
-    { id: "case",     w: 30, h: 40, r: 21, hx: -80, hy: 0,   ha: 0,   c: 1 },
-    { id: "panel",    w: 26, h: 36, r: 15, hx: -42, hy: 8,   ha: 12,  c: 1 },
-    { id: "mobo",     w: 40, h: 34, r: 22, hx: -4,  hy: -4,  ha: 0,   c: 1 },
-    { id: "gpu",      w: 44, h: 18, r: 18, hx: 38,  hy: -17, ha: -4,  c: 1 },
-    { id: "hdd",      w: 30, h: 22, r: 15, hx: 36,  hy: 18,  ha: 0,   c: 1 },
-    { id: "psu",      w: 26, h: 20, r: 14, hx: 74,  hy: -6,  ha: 0,   c: 1 },
-    { id: "ram",      w: 26, h: 6,  r: 9,  hx: 0,   hy: 28,  ha: 8,   c: 1 },
-    { id: "chip",     w: 12, h: 12, r: 7,  hx: -28, hy: 28,  ha: -10, c: 1 },
-    { id: "fan",      w: 18, h: 18, r: 10, hx: 72,  hy: 22,  ha: 0,   c: 1 },
-    { id: "driver",   w: 28, h: 6,  r: 9,  hx: 52,  hy: 40,  ha: -20, c: 1 },
+    { id: "tower",    w: 30, h: 64, r: 26, hx: -84, hy: -32, ha: 0,   c: 0 },
+    { id: "floppy",   w: 14, h: 10, r: 7,  hx: -84, hy: -69, ha: 0,   c: 0 },   // sits on the tower top
+    { id: "heater",   w: 36, h: 24, r: 15, hx: 70,  hy: 44,  ha: 0,   c: 0 },   // on the floor under the desk, between the legs
+    { id: "speaker",  w: 18, h: 24, r: 11, hx: 86,  hy: -12, ha: 0,   c: 0 },
+    { id: "monitor",  w: 52, h: 50, r: 24, hx: 46,  hy: -27, ha: 0,   c: 0 },
+    { id: "keyboard", w: 74, h: 20, r: 18, hx: -30, hy: -10, ha: 0,   c: 0 },
+    { id: "can",      w: 11, h: 34, r: 13, hx: -108, hy: -15, ha: 0,  c: 0 },
+    { id: "mug",      w: 19, h: 17, r: 9,  hx: 106, hy: -9,  ha: 0,   c: 0 },
+    { id: "note",     w: 12, h: 10, r: 6,  hx: 64,  hy: -10, ha: 6,   c: 0 },   // stuck to the monitor's lower-right bezel
+    { id: "case",     w: 30, h: 40, r: 21, hx: -36, hy: -170, ha: 0,  c: 1 },   // top shelf
+    { id: "panel",    w: 26, h: 36, r: 15, hx: -68, hy: -170, ha: 12, c: 1 },   // leaning on the case
+    { id: "mobo",     w: 40, h: 34, r: 22, hx: -50, hy: -117, ha: 0,  c: 1 },   // shelf 2
+    { id: "gpu",      w: 44, h: 18, r: 18, hx: 10,  hy: -109, ha: 0,  c: 1 },   // shelf 2
+    { id: "hdd",      w: 30, h: 22, r: 15, hx: 50,  hy: -17, ha: 0,   c: 1 },   // bottom shelf
+    { id: "psu",      w: 26, h: 20, r: 14, hx: 30,  hy: -160, ha: 0,  c: 1 },   // top shelf
+    { id: "ram",      w: 26, h: 6,  r: 9,  hx: -60, hy: -53, ha: 0,     c: 1 },   // shelf 3
+    { id: "chip",     w: 12, h: 12, r: 7,  hx: -28, hy: -56, ha: 0,    c: 1 },   // shelf 3
+    { id: "fan",      w: 18, h: 18, r: 10, hx: 60,  hy: -109, ha: 0,  c: 1 },   // shelf 2
+    { id: "driver",   w: 28, h: 6,  r: 9,  hx: 20,  hy: -53, ha: 0,    c: 1 },   // shelf 3
   ];
 
   // module init: comp-0-style home computed with a fixed H/ay so report()
@@ -71,6 +80,7 @@ window.Storm = (function () {
   const objs = ROSTER.map(r => {
     const comp = COMPS[r.c];
     const cx = comp.x, cy = comp.yFrac == null ? comp.y : comp.yFrac * 900 - 306;
+    comp.ox = cx; comp.oy = cy;
     const home = {
       x: cx + r.hx * Math.cos(comp.tilt) - r.hy * Math.sin(comp.tilt),
       y: cy + r.hx * Math.sin(comp.tilt) + r.hy * Math.cos(comp.tilt),
@@ -225,6 +235,7 @@ window.Storm = (function () {
     for (const o of objs) {
       const c = COMPS[o.c];
       const cx = c.x, cy = c.yFrac == null ? c.y : c.yFrac * env.H - env.ay;
+      c.ox = cx; c.oy = cy;
       o.home.x = cx + o.hx * Math.cos(c.tilt) - o.hy * Math.sin(c.tilt);
       o.home.y = cy + o.hx * Math.sin(c.tilt) + o.hy * Math.cos(c.tilt);
       o.home.a = o.ha * Math.PI / 180 + c.tilt;
@@ -254,10 +265,10 @@ window.Storm = (function () {
     for (const o of joined) {
       o.loose = true;
       const th = rnd() * Math.PI * 2;
-      let dx = Math.cos(th), dy = Math.sin(th) - 0.35;
+      let dx = Math.cos(th), dy = Math.sin(th);
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
-      const sp = mix(14, 55, power);
+      const sp = mix(40, 110, power);
       o.vx += dx * sp; o.vy += dy * sp;
       o.va += (rnd() < 0.5 ? -1 : 1) * mix(0.3, 1.2, power);
     }
@@ -277,7 +288,7 @@ window.Storm = (function () {
     }
     for (let n = 0; n < count && candidates.length > 0; n++) {
       const o = candidates.splice(Math.floor(rnd() * candidates.length), 1)[0];
-      const th = rnd() * Math.PI * 2, sp = rand(10, 22);
+      const th = rnd() * Math.PI * 2, sp = rand(25, 50);
       o.vx += Math.cos(th) * sp; o.vy += Math.sin(th) * sp;
       o.va += (rnd() < 0.5 ? -1 : 1) * rand(0.15, 0.5);
     }
@@ -311,11 +322,29 @@ window.Storm = (function () {
   ];
   const LINE_FONT = '11px Consolas, "Courier New", monospace';
   const LINE_ALPHA = 0.16, LINE_CPS = 22, LINE_HOLD = 2.2, LINE_FADE = 1.6, LINE_MAX = 3, LINE_FIRST = 5;
-  const LINE_GAP = [4, 8], LINE_X = [-250, -70], LINE_Y = [-150, -40];   // px from the planet
+  const LINE_GAP = [4, 8];
+  // where a line may start, px from the planet: anywhere in a box around it, kept
+  // off the beacon, its label and its chip (LINE_KEEP), and off the top bar and
+  // deck line (LINE_EDGE). LINE_CH is the width of one glyph in LINE_FONT.
+  const LINE_SPAN = [320, 230], LINE_KEEP = { x: 125, y0: -85, y1: 115 }, LINE_EDGE = 30, LINE_CH = 6.1;
 
   const lines = [];
   let lineT = LINE_FIRST;
   let lineIdx = Math.floor(rnd() * LINES.length);
+
+  // pick a start for a ghost line: retry until the whole text clears the beacon
+  // and the screen band; fall back to the old spot up-left of the planet
+  function linePos(text) {
+    const w = text.length * LINE_CH;
+    const yMin = CEIL * lastH - lastAy + LINE_EDGE, yMax = FLOOR * lastH - lastAy - LINE_EDGE;
+    for (let i = 0; i < 12; i++) {
+      const x = rand(-LINE_SPAN[0], LINE_SPAN[0] - w), y = rand(-LINE_SPAN[1], LINE_SPAN[1]);
+      if (y < yMin || y > yMax) continue;
+      if (x < LINE_KEEP.x && x + w > -LINE_KEEP.x && y > LINE_KEEP.y0 && y < LINE_KEEP.y1) continue;
+      return { x, y };
+    }
+    return { x: -250, y: -120 };
+  }
 
   function stepLines(dt) {
     for (let i = lines.length - 1; i >= 0; i--) {
@@ -327,8 +356,8 @@ window.Storm = (function () {
     lineT -= dt;
     if (lineT <= 0) {
       if (lines.length < LINE_MAX) {
-        lines.push({ text: LINES[lineIdx++ % LINES.length],
-                     x: rand(LINE_X[0], LINE_X[1]), y: rand(LINE_Y[0], LINE_Y[1]), age: 0 });
+        const text = LINES[lineIdx++ % LINES.length], p = linePos(text);
+        lines.push({ text, x: p.x, y: p.y, age: 0 });
       }
       lineT = rand(LINE_GAP[0], LINE_GAP[1]);
     }
@@ -480,9 +509,37 @@ window.Storm = (function () {
     return false;
   }
 
+  // the desk: two steel legs, a cross bar, then the laminate top over them
+  function drawDesk(g) {
+    for (const s of [-1, 1])
+      box(g, s * DESK.legX - DESK.legW / 2, DESK.top + DESK.thick, s * DESK.legX + DESK.legW / 2, DESK.legBot, FURN.steel);
+    Paint.rect(g, -DESK.legX, DESK.bar, DESK.legX, DESK.bar + 3, FURN.steel[1]);
+    box(g, DESK.x0, DESK.top, DESK.x1, DESK.top + DESK.thick, FURN.desk);
+  }
+  // the shelving rack: wooden shelves with a steel beam under each front edge,
+  // then the two uprights in front of the shelf ends
+  function drawRack(g) {
+    for (const s of RACK.shelves) {
+      box(g, RACK.x0, s, RACK.x1, s + RACK.shelfT, FURN.wood);
+      Paint.rect(g, RACK.x0, s + RACK.shelfT, RACK.x1, s + RACK.shelfT + RACK.beamT, FURN.steel[1]);
+    }
+    box(g, RACK.x0, RACK.top, RACK.x0 + RACK.upW, 0, FURN.steel);
+    box(g, RACK.x1 - RACK.upW, RACK.top, RACK.x1, 0, FURN.steel);
+  }
+  function drawFurniture(ctx, env) {
+    COMPS.forEach((c, i) => {
+      ctx.save();
+      ctx.translate(env.ax + c.ox, env.ay + c.oy);
+      ctx.rotate(c.tilt);
+      if (i === 0) drawDesk(ctx); else drawRack(ctx);
+      ctx.restore();
+    });
+  }
+
   function draw(ctx, env) {
     if (env.H !== lastH || env.ay !== lastAy) layout(env);
     if (env.ax >= -450 && env.ax <= env.W + 450) {
+      drawFurniture(ctx, env);
       for (const o of objs) {
         ctx.save();
         ctx.translate(env.ax + o.x, env.ay + o.y);
