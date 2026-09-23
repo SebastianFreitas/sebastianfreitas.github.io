@@ -1,7 +1,8 @@
 /* zones.js — ambient backdrop art for three Game Dev sector planets so each
    area feels like its game: Conclusus (real 32px sprites from the game,
-   embedded as pixel data below), HeavyLight (hand-drawn cave tiles, spikes,
-   crate, red figure, red key, blue light cone) and VoidScape (rising embers
+   embedded as pixel data below), HeavyLight (real 16px sprites from the
+   game: sewer slabs, spikes, crate, wall glyph, desk lamp and beam, red
+   key, the red player with his lantern) and VoidScape (rising embers
    plus three lime shards). bridge.js draws this BEFORE the planets, storm,
    forge and ship, so it is pure backdrop and never has to hit-test. Every
    static thing is pre-rendered once to an offscreen canvas and blitted with
@@ -65,10 +66,17 @@ window.Zones = (function () {
     sym1:  { w:12, h:12, ox:10, oy:10, px:".....dd...................d..........................dd.....d...dddd...dd...dddd...d.....dd..........................d...................dd....." },
   };
 
+  // a sprite lives in one of two tables, Conclusus (32px art) or HeavyLight
+  // (16px art); both are drawn at S
+  function spriteOf(name) {
+    if (CSPR[name]) return { s: CSPR[name], pal: CPAL };
+    if (HSPR[name]) return { s: HSPR[name], pal: HPAL };
+    return null;
+  }
   function spriteCanvas(name) {
     if (canvases.has(name)) return canvases.get(name);
     if (typeof document === "undefined") { canvases.set(name, null); return null; }
-    const s = CSPR[name];
+    const e = spriteOf(name); const s = e && e.s;
     if (!s || s.px.length !== s.w * s.h) {
       console.warn("zones: bad sprite " + name);
       canvases.set(name, null);
@@ -85,7 +93,7 @@ window.Zones = (function () {
         if (c === ".") { x++; continue; }
         let run = 1;
         while (x + run < s.w && s.px[y * s.w + x + run] === c) run++;
-        g.fillStyle = CPAL[c.charCodeAt(0) - 97];
+        g.fillStyle = e.pal[c.charCodeAt(0) - 97];
         g.fillRect(x * S, y * S, run * S, S);
         x += run;
       }
@@ -96,6 +104,29 @@ window.Zones = (function () {
   // blit sprite `name` with grid origin (gx, gy) already in screen px
   function blitSprite(ctx, name, gx, gy) {
     const cv = spriteCanvas(name);
+    if (!cv) return;
+    const s = spriteOf(name).s;
+    ctx.drawImage(cv, Math.round(gx + s.ox * S), Math.round(gy + s.oy * S));
+  }
+  // a planted shadow (the game's shadow-teleport mechanic): the idle sprite
+  // darkened once into its own canvas, cached under "shadow:" + name
+  function shadowCanvas(name) {
+    const key = "shadow:" + name;
+    if (canvases.has(key)) return canvases.get(key);
+    const src = spriteCanvas(name);
+    if (!src) { canvases.set(key, null); return null; }
+    const cv = document.createElement("canvas");
+    cv.width = src.width; cv.height = src.height;
+    const g = cv.getContext("2d");
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = "rgba(24,28,22,0.66)";
+    g.fillRect(0, 0, cv.width, cv.height);
+    canvases.set(key, cv);
+    return cv;
+  }
+  function blitShadow(ctx, name, gx, gy) {
+    const cv = shadowCanvas(name);
     if (!cv) return;
     const s = CSPR[name];
     ctx.drawImage(cv, Math.round(gx + s.ox * S), Math.round(gy + s.oy * S));
@@ -135,6 +166,8 @@ window.Zones = (function () {
     const room = roomBelow(env, at);
     const lift = Math.max(0, 248 - room);
     const oy = -lift;
+    // the arch's lit fill breathes in and out (~4 s) instead of snapping frames
+    const lit = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(T * 1.6));
 
     for (const p of conclususMotes) {
       const x = p.bx + Math.sin(T * p.w1 + p.p1) * p.ax;
@@ -147,6 +180,7 @@ window.Zones = (function () {
 
     ctx.save();
     ctx.translate(ax + 344, ay - 52 + oy);
+    ctx.globalAlpha = 0.6 + 0.4 * lit;
     ctx.fillStyle = portalGlow(ctx);
     ctx.fillRect(-70, -70, 140, 140);
     ctx.restore();
@@ -163,9 +197,20 @@ window.Zones = (function () {
         const frame = Math.floor(T / 0.7) % 2;
         blitSprite(ctx, frame === 0 ? "idle0" : "idle1", ax - 314, ay + 92 + bob + oy);
       }
+      if (plat.k === 2) {
+        // the planted shadow: still, dim, a faint slow pulse
+        ctx.globalAlpha = 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(T * 1.1));
+        blitShadow(ctx, "idle0", ax + 142, ay + 82 + bob + oy);
+        ctx.globalAlpha = 1;
+      }
       if (plat.k === 3) {
-        const frame = Math.floor(T / 0.25) % 2;
-        blitSprite(ctx, frame === 0 ? "door0" : "door1", ax + 312, ay - 84 + bob + oy);
+        // door0 is the bare arch, door1 the arch with its lit fill: draw the
+        // arch, then fade the lit frame over it with the breath
+        const dx = ax + 312, dy = ay - 84 + bob + oy;
+        blitSprite(ctx, "door0", dx, dy);
+        ctx.globalAlpha = lit;
+        blitSprite(ctx, "door1", dx, dy);
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -181,195 +226,137 @@ window.Zones = (function () {
   }
 
   /* ================= HeavyLight (seed 11) ================= */
-  const HL = { fill:"#031a2b", speck:"#0b3350", edge:"#5f92b8", hi:"#a9d3ee", red:"#d8302a", key:"#ff3b30", cone:"40,60,230" };
-
-  const HL_CHUNKS = {
-    hlA: {
-      cells: [[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[0,1],[1,1],[2,1],[3,1],[4,1],[5,1]],
-      pad: 24,
-      props: [
-        { type: "spike", cx: 1, cy: 0 },
-        { type: "spike", cx: 2, cy: 0 },
-        { type: "spike", cx: 3, cy: 0 },
-        { type: "crate", cx: 5, cy: 0 },
-      ],
-    },
-    hlB: {
-      cells: [[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[3,0]],
-      pad: 24,
-      props: [
-        { type: "figure", cx: 1, cy: 1 },
-        { type: "lamp", cx: 2, cy: 1 },
-      ],
-    },
-    hlC: {
-      cells: [[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]],
-      pad: 0,
-      props: [],
-    },
+  /* real 16px sprites from the game: sewer slabs, spikes, a crate, a red wall
+     glyph, the desk lamp and its beam, the red key, and the red player with
+     his lantern. h_plat / h_wallDrip / h_pillarDrip are the game's tiles with
+     airFloor1's dripping bottom four rows pasted on so the slabs can float.
+     Every static group is pre-rendered once (groupCanvas); per frame there
+     are four group blits, the player, the crate, two cached glows and the
+     beam. */
+  const HPAL = ["#04253c","#143f5e","#306082","#5a86a5","#2d546f","#961a1a","#ff0000","#b44545","#780b0b","#5a0e0e","#000000"];
+  const HSPR = {
+    h_floor1: { w:16, h:16, ox:0, oy:0, px:"cddddddddddddddccccccccccccccccdbbbbbbbbbbbbbbbbaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    h_floorR: { w:16, h:16, ox:0, oy:0, px:"ddddddddddddddd.ccccccccccccccbdbbbbbbbbbbbbbbb.abbaaaaaaaaabbcdaabaaaaaaaaabbcdaaaaaaaababaabb.aaabaaaaaaabbcddaaaaaaaaaaabbccdaaabbaaaaaaabbb.aaabbaaabbabbcddaaaabaaabbabbccdaaaaaaaaaaaabbb.aaaaaaaaaabbcdddaaaaaaaaaabbcccdaaaaaaabbabbcccdaaaaaaaaababbbb." },
+    h_wallDrip: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_symbol1: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaagaaaaaaaaaaaaaaagaaaaaaaaaaaggaagaaaaaaaaaaaaaaagaaaaaaaggggggaagaaaaaaaaaaagaaaaaaaaaaaaaaagaagaaaaaaaaggggggaggaaaaaaaaaaaaaaagaaaaaaaaaaagaaagaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    h_doubleFloor: { w:16, h:16, ox:0, oy:0, px:"aaaaaabaaabccccdaaaaaaabbabccdddaaaaaabbaabbbbb.aaaaaaaaaaabcdddaaaaaaaaaabbcccdaaaaaaabbaabbbb.aaaaaabaaaaabcddaaaaaaaaaaaabccdabbaaababaabbbb.abbaaaaaaabbcdddaaaaaaabaaabcccdbbbbaabbbbbbbbb.bccbbbbccbccbcddbdcbccbcdbcdbccdbdcbcdbddbddbccd.dd.dd.dd.dd.ddd" },
+    h_spike: { w:16, h:12, ox:0, oy:4, px:"....a......a........a......a........a......a.......aba....aba......aba....aba.....abcba..abcba....abcba..abcba....abcba..abcba...abcccbaabcccba..abcdcbaabcdcba.abccdccabccdccbabcccdcabcccdcccb" },
+    h_box: { w:14, h:14, ox:1, oy:1, px:"c.c.c.cc.c.c.c.cccccccccccc.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecccceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.cccccccccccc.c.c.c.cc.c.c.c" },
+    h_plat: { w:16, h:16, ox:0, oy:0, px:"cddddddddddddddccccccccccccccccdbbbbbbbbbbbbbbbbaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaabccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_airFloor1: { w:16, h:16, ox:0, oy:0, px:"cdddddddddddddd.dbcccccccccccccdbbbbbbbbbbbbbbbbaaaaaaaaaaabcccdaaaaaaabbabbccddaaaaaaabbaabbbb.aaaaaaaaaaaabcddaaaaabaaaaaabccdaabaabbbaaabbbb.abbaaaaaaabbccddaaaaaaabaabbcccdbbbbaabbbbbbbbb.bccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_lamp: { w:13, h:16, ox:0, oy:0, px:".......c...........ccccc.......ccccccc.......ccccccc.....ccccccc.....c.ccccc.....c...ccc.....c.....c......c............c............c............c............c............c..g........cccccc......cccccccc....." },
+    h_pillarTop: { w:16, h:16, ox:0, oy:0, px:"ddddddddddddddd..bcccccbccccccbddcccbbbbbbbbbbb.dcccbbaaaaaabbcddddcbbaaaaaabbcd.bbbaaaababaabb.dccbbabbaaabbcddddcbbbbbaaabbccd.bbbaaaaaaaabbb.dccbbaaabbabbcddddcbbaabbbabbccd.bbaabbbaaaabbb.dcbbaaaaaabbcddddcbbaaaaaabbcccd.bbbbbbbbabbcccddbbbbbbbababbbb." },
+    h_pillarBody: { w:16, h:16, ox:0, oy:0, px:"ddaaaaaaaaaaaad..bbbbaaaaaaaccbddcccbaaaaababbb.dcccbbaaaaaabbcddddcbbaaaaaabbcd.bbbaaaabaaaabb.dccbbaabaaaabcddddcbbbaaaaaabccd.bbbaaaaaaaaabb.dccbbaaaaaabacddddcbbaabaaaaaccd.bbaababaaaaabb.dcbbaaaaaaaaaddddcbbaaaaaaaaaccd.bbbbbbaaaaaaccddbcaaaaaaaaaaab." },
+    h_pillarDrip: { w:16, h:16, ox:0, oy:0, px:"ddaaaaaaaaaaaad..bbbbaaaaaaaccbddcccbaaaaababbb.dcccbbaaaaaabbcddddcbbaaaaaabbcd.bbbaaaabaaaabb.dccbbaabaaaabcddddcbbbaaaaaabccd.bbbaaaaaaaaabb.dccbbaaaaaabacddddcbbaabaaaaaccd.bbaababaaaaabb.bccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_key5: { w:7, h:15, ox:5, oy:1, px:"..ggg...g...g.g.....gg.....g.g...g...ggg.....g......g......g......g......g.....gg......g....ggg......g..." },
+    h_lan1: { w:8, h:13, ox:5, oy:3, px:"..fhh.....fhh.....fhh......j.....fffif..f.ffi.f.f.ffi.f.f.jjj.f.h.ffi.kk..f.i.....f.i.....f.i.....j.j..." },
+    h_lan2: { w:8, h:13, ox:5, oy:3, px:"..fhh.....fhh.....fhh......j.....fffif..f.ffi.f.f.ffi.f.f.jjj.f..hffi.kk..f.i.....f.i.....f.i.....j.j..." },
+    h_lan3: { w:7, h:12, ox:6, oy:4, px:".fhh....fhh....fhh.....j....fffif..fffi.f.fjjj.f.hffi.kk.f.i....f.i....f.i....j.j..." },
   };
 
-  function caveCanvas(name) {
-    if (canvases.has(name)) return canvases.get(name);
-    if (typeof document === "undefined") { canvases.set(name, null); return null; }
-    const chunk = HL_CHUNKS[name];
-    if (!chunk) { canvases.set(name, null); return null; }
-    const CELL = 24, MARGIN = 4;
-    const cellSet = new Set(chunk.cells.map(c => c[0] + "," + c[1]));
-    let minCx = Infinity, minCy = Infinity, maxCx = -Infinity, maxCy = -Infinity;
-    for (const [cx, cy] of chunk.cells) {
-      minCx = Math.min(minCx, cx); maxCx = Math.max(maxCx, cx);
-      minCy = Math.min(minCy, cy); maxCy = Math.max(maxCy, cy);
+  const HL = { cone: "110,160,240", key: "255,60,40", lamp: "170,215,240" };
+
+  // static groups: tiles are [sprite, x, y] with x/y the 16-grid origin in px
+  // from the planet centre (sprite grid cells are 32px on screen); k is the
+  // bob phase shared by everything that rides on that group
+  const HL_GROUPS = {
+    slabL: { k: 0, tiles: [
+      ["h_floor1", -440, 40], ["h_floor1", -408, 40], ["h_floor1", -376, 40], ["h_floor1", -344, 40], ["h_floorR", -312, 40],
+      ["h_wallDrip", -440, 72], ["h_symbol1", -408, 72], ["h_wallDrip", -376, 72], ["h_wallDrip", -344, 72], ["h_doubleFloor", -312, 72],
+      ["h_spike", -408, 8], ["h_spike", -376, 8], ["h_box", -320, 8],
+    ] },
+    platM: { k: 1, tiles: [
+      ["h_plat", -96, 110], ["h_plat", -64, 110], ["h_plat", -32, 110], ["h_plat", 0, 110], ["h_airFloor1", 32, 110],
+      ["h_lamp", -26, 78],
+    ] },
+    pillarR: { k: 2, tiles: [
+      ["h_pillarTop", 300, -60], ["h_pillarBody", 300, -28], ["h_pillarDrip", 300, 4],
+    ] },
+    platR: { k: 3, tiles: [
+      ["h_plat", 392, 70], ["h_airFloor1", 424, 70], ["h_spike", 424, 38],
+    ] },
+  };
+  const HL_ORDER = ["slabL", "pillarR", "platR", "platM"];
+  const CELL = 16 * S;
+
+  // one offscreen canvas per group; cv._ox/_oy is the group's top-left in px
+  // from the planet centre
+  function groupCanvas(name) {
+    const key = "hl:" + name;
+    if (canvases.has(key)) return canvases.get(key);
+    if (typeof document === "undefined") { canvases.set(key, null); return null; }
+    const grp = HL_GROUPS[name];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [, x, y] of grp.tiles) {
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + CELL); maxY = Math.max(maxY, y + CELL);
     }
-    const cw = (maxCx - minCx + 1) * CELL + MARGIN * 2;
-    const chh = (maxCy - minCy + 1) * CELL + MARGIN * 2 + chunk.pad;
     const cv = document.createElement("canvas");
-    cv.width = cw; cv.height = chh;
+    cv.width = maxX - minX; cv.height = maxY - minY;
     const g = cv.getContext("2d");
-    const cellPx = (cx, cy) => ({
-      x: MARGIN + (cx - minCx) * CELL,
-      y: MARGIN + chunk.pad + (cy - minCy) * CELL,
-    });
-
-    chunk.cells.forEach(([cx, cy], idx) => {
-      const p = cellPx(cx, cy);
-      g.fillStyle = HL.fill;
-      g.fillRect(p.x, p.y, CELL, CELL);
-
-      // interior speckle: 6 dots from deterministic hashes
-      for (let j = 0; j < 6; j++) {
-        const hx = hash1(idx * 97 + j * 13 + 1);
-        const hy = hash1(idx * 97 + j * 13 + 2);
-        g.fillStyle = HL.speck;
-        g.fillRect(Math.floor(p.x + 2 + hx * 20), Math.floor(p.y + 2 + hy * 20), 2, 2);
-      }
-
-      // jagged light-rim edges where a neighbour cell is missing
-      const sides = [
-        { has: cellSet.has((cx - 1) + "," + cy), dir: "l" },
-        { has: cellSet.has((cx + 1) + "," + cy), dir: "r" },
-        { has: cellSet.has(cx + "," + (cy - 1)), dir: "t" },
-        { has: cellSet.has(cx + "," + (cy + 1)), dir: "b" },
-      ];
-      for (const side of sides) {
-        if (side.has) continue;
-        for (let j = 0; j < 6; j++) {
-          const h = hash1(idx * 401 + side.dir.charCodeAt(0) * 31 + j * 7);
-          const d = 2 + Math.floor(h * 4);
-          g.fillStyle = HL.edge;
-          let hix, hiy;
-          if (side.dir === "t") {
-            g.fillRect(p.x + j * 4, p.y - d, 4, d);
-            hix = p.x + j * 4 + 1; hiy = p.y - d;
-          } else if (side.dir === "b") {
-            g.fillRect(p.x + j * 4, p.y + CELL, 4, d);
-            hix = p.x + j * 4 + 1; hiy = p.y + CELL + d - 2;
-          } else if (side.dir === "l") {
-            g.fillRect(p.x - d, p.y + j * 4, d, 4);
-            hix = p.x - d; hiy = p.y + j * 4 + 1;
-          } else {
-            g.fillRect(p.x + CELL, p.y + j * 4, d, 4);
-            hix = p.x + CELL + d - 2; hiy = p.y + j * 4 + 1;
-          }
-          if (j % 2 === 1) {
-            g.fillStyle = HL.hi;
-            g.fillRect(hix, hiy, 2, 2);
-          }
-        }
-      }
-    });
-
-    for (const prop of chunk.props) {
-      const p = cellPx(prop.cx, prop.cy);
-      const midx = p.x + CELL / 2;
-      if (prop.type === "spike") {
-        g.beginPath();
-        g.moveTo(midx - 10, p.y);
-        g.lineTo(midx + 10, p.y);
-        g.lineTo(midx, p.y - 22);
-        g.closePath();
-        g.fillStyle = HL.fill;
-        g.fill();
-        g.strokeStyle = HL.edge;
-        g.lineWidth = 1.5;
-        g.stroke();
-      } else if (prop.type === "crate") {
-        const x0 = midx - 11, y0 = p.y - 22;
-        g.fillStyle = HL.fill;
-        g.fillRect(x0, y0, 22, 22);
-        g.strokeStyle = HL.edge;
-        g.lineWidth = 2;
-        g.strokeRect(x0, y0, 22, 22);
-        g.beginPath();
-        g.moveTo(x0, y0); g.lineTo(x0 + 22, y0 + 22);
-        g.moveTo(x0 + 22, y0); g.lineTo(x0, y0 + 22);
-        g.stroke();
-      } else if (prop.type === "figure") {
-        const ox = midx - 4, oy = p.y - 18;
-        g.fillStyle = HL.red;
-        g.fillRect(ox + 1, oy + 0, 6, 6);
-        g.fillRect(ox + 1, oy + 6, 6, 8);
-        g.fillRect(ox + 1, oy + 14, 2, 4);
-        g.fillRect(ox + 5, oy + 14, 2, 4);
-      } else if (prop.type === "lamp") {
-        g.fillStyle = HL.edge;
-        g.fillRect(midx - 4, p.y - 6, 8, 6);
-      }
-    }
-
-    cv._ox = MARGIN - minCx * CELL;
-    cv._oy = MARGIN + chunk.pad - minCy * CELL;
-    canvases.set(name, cv);
+    for (const [spr, x, y] of grp.tiles) blitSprite(g, spr, x - minX, y - minY);
+    cv._ox = minX; cv._oy = minY;
+    canvases.set(key, cv);
     return cv;
   }
 
-  const HL_PLACE = [
-    { name: "hlA", k: 0, x: -400 },
-    { name: "hlB", k: 1, x: -40 },
-    { name: "hlC", k: 2, x: 300, y: -60 },
-  ];
-
-  let keyGlowGrad = null;
+  let keyGlowGrad = null, lampGlowGrad = null;
   function keyGlow(ctx) {
     if (!keyGlowGrad) {
       keyGlowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
-      keyGlowGrad.addColorStop(0, "rgba(255,60,40,0.35)");
-      keyGlowGrad.addColorStop(1, "rgba(255,60,40,0)");
+      keyGlowGrad.addColorStop(0, "rgba(" + HL.key + ",0.35)");
+      keyGlowGrad.addColorStop(1, "rgba(" + HL.key + ",0)");
     }
     return keyGlowGrad;
+  }
+  function lampGlow(ctx) {
+    if (!lampGlowGrad) {
+      lampGlowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 26);
+      lampGlowGrad.addColorStop(0, "rgba(" + HL.lamp + ",0.28)");
+      lampGlowGrad.addColorStop(1, "rgba(" + HL.lamp + ",0)");
+    }
+    return lampGlowGrad;
   }
 
   const heavylightRnd = mulberry(11);
   const hlDust = makeMotes(heavylightRnd, 10, 10, [-460, 440], [-220, 140], [6, 14], [5, 10], 120);
+  const LANTERN = ["h_lan1", "h_lan2", "h_lan3", "h_lan2"];
 
   function drawHeavyLight(ctx, ax, ay, env, at) {
     const room = roomBelow(env, at);
-    const hlAy = Math.min(60, room - 64);
-    const hlBy = Math.min(110, room - 88);
+    const lift = Math.max(0, 150 - room);   // lowest sprite bottom is 142 px below the centre
+    const oy = -lift;
+    const bob = k => Math.sin(T * 0.4 + k * 2.1) * 2;
 
     for (const p of hlDust) {
       const x = p.bx + Math.sin(T * p.w1 + p.p1) * p.ax;
-      let y = p.by + Math.sin(T * p.w2 + p.p2) * p.ay;
+      let y = p.by + Math.sin(T * p.w2 + p.p2) * p.ay + oy;
       y = Math.min(y, room - 8);
       const a = 0.12 + (0.35 - 0.12) * (0.5 + 0.5 * Math.sin(T * p.w3 + p.p3));
       ctx.fillStyle = "rgba(170,215,240," + a + ")";
       ctx.fillRect(Math.round(ax + x), Math.round(ay + y), p.size, p.size);
     }
 
-    for (const name of ["hlA", "hlC", "hlB"]) {
-      const place = HL_PLACE.find(pl => pl.name === name);
-      const cv = caveCanvas(name);
+    for (const name of HL_ORDER) {
+      const cv = groupCanvas(name);
       if (!cv) continue;
-      const bob = Math.sin(T * 0.4 + place.k * 2.1) * 2;
-      const py = name === "hlA" ? hlAy : name === "hlB" ? hlBy : place.y;
-      ctx.drawImage(cv, Math.round(ax + place.x - cv._ox), Math.round(ay + py + bob - cv._oy));
+      ctx.drawImage(cv, Math.round(ax + cv._ox), Math.round(ay + cv._oy + bob(HL_GROUPS[name].k) + oy));
     }
 
-    // light cone from hlB's lamp, drawn after hlB
-    const bB = Math.sin(T * 0.4 + 1 * 2.1) * 2;
-    const apexX = ax + (-40) + 64;
-    const apexY = ay + hlBy + 21 + bB;
-    const ca = 0.28 + 0.04 * Math.sin(T * 3.1);
+    // on the middle platform: the player with his lantern, the crate the beam leans on
+    const bM = bob(1);
+    const frame = Math.floor(T / 0.45) % 4;
+    blitSprite(ctx, LANTERN[frame], ax - 84, ay + 78 + bM + oy);
+    blitSprite(ctx, "h_box", ax + 26 + Math.round(3 + 3 * Math.sin(T * 0.9)), ay + 78 + bM + oy);
+
+    // the lamp head glows and throws its beam to the right, over the crate
+    const apexX = ax - 2, apexY = ay + 86 + bM + oy;
+    ctx.save();
+    ctx.translate(apexX, apexY);
+    ctx.fillStyle = lampGlow(ctx);
+    ctx.fillRect(-26, -26, 52, 52);
+    ctx.restore();
+    const ca = 0.20 + 0.03 * Math.sin(T * 3.1);
     ctx.beginPath();
     ctx.moveTo(apexX, apexY);
     ctx.lineTo(apexX + 175, apexY - 22);
@@ -378,22 +365,14 @@ window.Zones = (function () {
     ctx.fillStyle = "rgba(" + HL.cone + "," + ca + ")";
     ctx.fill();
 
-    // key
-    const kx = ax + 372, ky = ay - 30 + Math.sin(T * 0.9) * 4;
+    // the red key floats above the pillar
+    const ky = ay - 118 + Math.sin(T * 0.9) * 4 + oy;
     ctx.save();
-    ctx.translate(kx, ky);
+    ctx.translate(ax + 317, ky + 17);
     ctx.fillStyle = keyGlow(ctx);
     ctx.fillRect(-22, -22, 44, 44);
     ctx.restore();
-    ctx.strokeStyle = HL.key;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(kx, ky, 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = HL.key;
-    ctx.fillRect(kx - 1, ky + 5, 2, 12);
-    ctx.fillRect(kx + 1, ky + 10, 4, 2);
-    ctx.fillRect(kx + 1, ky + 14, 3, 2);
+    blitSprite(ctx, "h_key5", ax + 300, ky);
   }
 
   /* ================= VoidScape (seed 5) ================= */
