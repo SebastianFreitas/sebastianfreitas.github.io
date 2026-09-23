@@ -55,6 +55,7 @@ window.Marks = (function () {
     exit:       gdAt(48),
   };
   const GD_BOUNDS = { min: gdAt(0.6), max: gdAt(49) };
+  const GD_SPAWN = 59226; // camera x the Game Dev sector opens at: Sector Zero sits at 0.70W
 
   const PLANETS = [
     { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7, xp: 1,
@@ -73,5 +74,5 @@ window.Marks = (function () {
     m.pop = 0;
   });
 
-  return { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT };
+  return { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT, GD_SPAWN };
 })();

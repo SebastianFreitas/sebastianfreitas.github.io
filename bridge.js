@@ -47,7 +47,7 @@
   // doesn't need to recompute them
   const VOID_MIN = CAM.min, VOID_MAX = CAM.max;
 
-  const { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT } = Marks;
+  const { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT, GD_SPAWN } = Marks;
 
   /* the lamp's own radius is tuned for a mouse; a fingertip on a zoomed-out
      phone needs a wider net or you sail straight past what you were aiming at */
@@ -165,8 +165,9 @@
   /* ---- setting: which map is currently under the bridge ---- */
   let sceneMode = "void";                 // "void" | "gamedev"
   let savedVoidCamX = LAND.bridge;
-  let savedGDCamX = GD_LAND.entry;
+  let savedGDCamX = GD_SPAWN;
   const activeMarks = () => sceneMode === "gamedev" ? PLANETS : MARKS;
+  const ZERO_MARK = PLANETS.find(m => m.id === "bnote-planet-zero"); // the storm sits beside it
 
   /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
   const XSTAGE = { CLOSE: 0, HOLD: 1, OPEN: 2 };
@@ -630,6 +631,7 @@
     const p = markScreen(m);
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
+  window.stormReport = () => Storm.report();
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
     id: m.id, root: m.root, from: m.from, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
@@ -738,6 +740,19 @@
     // if none ever appear, say so once — beaconReport() has the detail
     if (!shown && markDebug < 4 && (markDebug += dt) >= 4)
       console.warn("no marks drawn in 4s — run beaconReport() for why");
+  }
+
+  // --- Sector Zero storm (storm.js): debris beside the planet, shoved by the ship ---
+  function stormEnv() {
+    const a = markScreen(ZERO_MARK);
+    const sp = Voidship.screenPos(ship, W);
+    return { ax: a.x, ay: a.y, W, H, sx: sp.x, sy: sp.y,
+             svx: ship.vel * ZERO_MARK.par * scale(), svy: ship.vy, spitch: ship.pitch, reduced };
+  }
+  function drawStorm(dt) {
+    const env = stormEnv();
+    Storm.step(dt, env);
+    Storm.draw(ctx, env);
   }
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
@@ -1422,6 +1437,7 @@
     if (frozen || xswitch || thrustId != null || vel !== 0) return false;
     if (window.Genesis && Genesis.active) return false;
     if (!marksSettled()) return false;
+    if (sceneMode === "gamedev" && Storm.lively()) return false;
     if (!ship) return true;
     return Voidship.settled(ship);
   }
@@ -1466,6 +1482,7 @@
     // so the span looked empty (and stayed empty if unfreeze glitched).
     try {
       drawMarks(raw);
+      if (sceneMode === "gamedev" && ship) drawStorm(dt);
       if (ship) {
         Voidship.draw(ship, ctx, { W, H, t, camX, viewUnits: viewUnitsNow() });
       }
