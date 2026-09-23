@@ -51,6 +51,14 @@ window.VoidshipArt = (function () {
     { x: -0.455, y: 0.048 }
   ];
 
+  // sustainer nozzles at the aft spar tips (phase 2 onward)
+  const SUST = [{ x: -0.52, y: 0.070 }, { x: -0.585, y: -0.076 }];
+  // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent). Placed on free hull edge.
+  const JETS = { belly: [{ x: 0.42, y: 0.032 }, { x: -0.38, y: 0.064 }], top: [{ x: 0.34, y: -0.044 }, { x: -0.39, y: -0.049 }] };
+  // streamer roots: nose lamp, forward boom tip, tallest spire tip, keel probe tip
+  const TRAIL_SEATS = [{ x: 0.805, y: 0.0 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.339, y: 0.305 }];
+  const TRAIL_COL = [LAMP, COLD, DRIVE_A, DRIVE_A];
+
   const HULL = [
     [0.66, 0.000],
     [0.44, -0.030],
@@ -334,25 +342,57 @@ window.VoidshipArt = (function () {
     }
 
     // 7. Drive at the stern
+    const flare = clamp(ship.flare || 0, 0, 1), strain = clamp(ship.strain || 0, 0, 1), tf = Math.min(1, th + 0.8 * flare);
     for (const cy of [-0.032, 0.008, 0.048]) {
       g.fillStyle = rgba(SHADE, 1);
       rectL(-0.455, cy - 0.013, -0.405, cy + 0.013)(); g.fill();
-      g.fillStyle = rgba(DRIVE_A, 0.25 + 0.75 * th);
+      g.fillStyle = rgba(DRIVE_A, 0.25 + 0.75 * tf);
       rectL(-0.452, cy - 0.006, -0.430, cy + 0.006)(); g.fill();
     }
     {
       const shim = 0.85 + 0.15 * Math.sin(t * 9);
-      if (th > 0.05) {
-        Paint.poly(g, [[-0.462, -0.082], [-0.440, 0.008], [-0.462, 0.098], [-0.484, 0.008]].map(([x, y]) => [x * L, y * L]));
-        g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * th);
+      if (tf > 0.05) {
+        const k = 1 + 1.1 * flare;
+        Paint.poly(g, [[-0.462, -0.082], [-0.440, 0.008], [-0.462, 0.098], [-0.484, 0.008]]
+          .map(([x, y]) => [-0.462 + (x + 0.462) * k, 0.008 + (y - 0.008) * k])
+          .map(([x, y]) => [x * L, y * L]));
+        g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * tf);
         g.fill();
       }
       Paint.poly(g, [[-0.462, -0.058], [-0.448, 0.008], [-0.462, 0.074], [-0.476, 0.008]].map(([x, y]) => [x * L, y * L]));
-      g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * th);
+      g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * tf);
       g.fill();
       g.lineWidth = 1;
-      g.strokeStyle = rgba(DRIVE_A, (0.25 + 0.65 * th) * shim);
+      g.strokeStyle = rgba(DRIVE_A, Math.min(1, (0.25 + 0.65 * th) * shim + 0.35 * strain));
       g.stroke();
+    }
+
+    // 8. Sustainers, RCS jets, bow strain
+    const su = clamp(ship.sustain || 0, 0, 1);
+    if (su > 0.02) for (const s of SUST) {
+      Paint.circle(g, s.x * L, s.y * L, Math.max(0.016 * L, 2) * (0.6 + 0.4 * su), rgba(DRIVE_B, 0.35 * su));
+      Paint.circle(g, s.x * L, s.y * L, Math.max(0.006 * L, 1), rgba(DRIVE_A, 0.9 * su));
+    }
+    const jet = ship.jet || 0, ja = Math.abs(jet);
+    if (ja > 0.03) {
+      const seats = jet < 0 ? JETS.belly : JETS.top, sgn = jet < 0 ? 1 : -1, hw = 0.012;
+      for (const s of seats) {
+        const fl = 0.85 + 0.15 * Math.sin(t * 37 + s.x * 40);
+        const len = (0.05 + 0.10 * ja) * fl;
+        Paint.poly(g, [[s.x - hw, s.y], [s.x + hw, s.y], [s.x, s.y + sgn * len]].map(([x, y]) => [x * L, y * L]));
+        g.fillStyle = rgba(DRIVE_A, 0.55 * ja); g.fill();
+        Paint.poly(g, [[s.x - hw * 0.5, s.y], [s.x + hw * 0.5, s.y], [s.x, s.y + sgn * len * 0.55]].map(([x, y]) => [x * L, y * L]));
+        g.fillStyle = rgba(WHITE, 0.7 * ja); g.fill();
+      }
+    }
+    if (strain > 0.02) {
+      // the void pushing back on the prow: two flat chevrons ahead of the nose
+      const fl = 0.8 + 0.2 * Math.sin(t * 41);
+      g.lineWidth = 1;
+      g.strokeStyle = rgba(DRIVE_A, 0.45 * strain * fl);
+      g.beginPath(); g.moveTo(0.60 * L, -0.24 * L); g.lineTo(0.84 * L, 0); g.lineTo(0.60 * L, 0.24 * L); g.stroke();
+      g.strokeStyle = rgba(WHITE, 0.22 * strain * fl);
+      g.beginPath(); g.moveTo(0.66 * L, -0.19 * L); g.lineTo(0.88 * L, 0); g.lineTo(0.66 * L, 0.19 * L); g.stroke();
     }
   }
 
@@ -459,7 +499,7 @@ window.VoidshipArt = (function () {
       const r = p.r0 + p.grow * p.age;
       const sx = p.x;
       if (sx < -r || sx > env.W + r) continue;
-      const sy = p.y + Math.sin(p.age * (1.5 + p.seed * 2.5) + p.seed * 6.283) * (4 + 10 * p.seed) * Math.min(1, p.age * 2);
+      const sy = p.kind === 3 ? p.y : p.y + Math.sin(p.age * (1.5 + p.seed * 2.5) + p.seed * 6.283) * (4 + 10 * p.seed) * Math.min(1, p.age * 2);
       if (p.kind === 0) {
         const col = f < 0.5 ? mixc(DRIVE_A, DRIVE_B, f * 2) : mixc(DRIVE_B, DRIVE_C, (f - 0.5) * 2);
         const a = Math.pow(1 - f, 1.6) * 0.55;
@@ -469,6 +509,11 @@ window.VoidshipArt = (function () {
         const col = mixc(DRIVE_A, DRIVE_B, f);
         const a = Math.pow(1 - f, 1.2) * 0.7;
         g.beginPath(); g.arc(sx, sy, r, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = rgba(col, a); g.stroke();
+      } else if (p.kind === 3) {
+        const col = mixc(DRIVE_B, DRIVE_A, f);
+        const len = p.r0 * (0.6 + 0.8 * (1 - f)), s = p.vx < 0 ? 1 : -1;
+        g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - s * len, sy);
+        g.lineWidth = 1.2; g.strokeStyle = rgba(col, (1 - f) * 0.85); g.stroke();
       } else {
         const col = mixc(WHITE, DRIVE_A, f);
         const a = (1 - f) * 0.8;
@@ -477,7 +522,45 @@ window.VoidshipArt = (function () {
     }
   }
 
+  function drawWake(g, ship, env) {
+    // streamers: per-segment taper, newest segment brightest and widest
+    const life = env.trailLife || 0.34;
+    const rs = env.rs || 0.48;
+    for (let i = 0; i < ship.trails.length; i++) {
+      const pts = ship.trails[i]; const n = pts.length;
+      if (!n) continue;
+      const col = TRAIL_COL[i] || DRIVE_A;
+      let px = ship.heads[i][0], py = ship.heads[i][1];
+      for (let j = n - 1; j >= 0; j--) {
+        const q = pts[j], k = (j + 1) / n, u = q.age / life;
+        const a = q.a * Math.pow(1 - u, 1.8) * 0.7 * k;
+        const qy = q.y + Math.sin(q.age * 16 + q.seed * 6.283) * 14 * rs * u;
+        if (a >= 0.02) {
+          g.lineWidth = Math.max(1, 2.4 * k);
+          g.strokeStyle = rgba(col, a);
+          g.beginPath(); g.moveTo(px, py); g.lineTo(q.x, qy); g.stroke();
+        }
+        px = q.x; py = qy;
+      }
+    }
+    // sparks: two batched paths (white, drive-cyan), one stroke each
+    const sp = ship.sparks, strain = clamp(ship.strain || 0, 0, 1);
+    if (sp.length && strain > 0.02) {
+      g.lineWidth = 1;
+      for (let pass = 0; pass < 2; pass++) {
+        g.beginPath();
+        for (const p of sp) {
+          if ((p.seed < 0.5) !== (pass === 0)) continue;
+          const f = p.age / p.life, len = 5 + 16 * (1 - f), s = p.vx < 0 ? 1 : -1;
+          g.moveTo(p.x, p.y); g.lineTo(p.x - s * len, p.y);
+        }
+        g.strokeStyle = pass === 0 ? rgba(WHITE, 0.7 * strain) : rgba(DRIVE_A, 0.5 * strain);
+        g.stroke();
+      }
+    }
+  }
+
   const COLORS = { LIT, MID, SHADE, DEEP, LAMP, COLD, RED, DRIVE_A, DRIVE_B, DRIVE_C };
 
-  return { EMIT, drawHull, drawFront, drawFumes, COLORS };
+  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS };
 })();

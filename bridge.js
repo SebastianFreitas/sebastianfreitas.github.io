@@ -1462,6 +1462,7 @@
     return Voidship.settled(ship);
   }
   window.pacingReport = () => pacer.report();
+  window.shipReport = () => ship ? Voidship.stats(ship) : null;
 
   function render(raw) {
     // a claim holds travel still while the level lands
