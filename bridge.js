@@ -360,6 +360,8 @@
       if (m.id === "bnote-vs-bench") Forge.unlock("bench");
       else if (m.id === "bnote-vs-map") Forge.unlock("console");
     }
+    // reaching HeavyLight or any of its depth nodes drops a crate into the lamp's beam
+    if (window.Zones && HL_MARK && (m === HL_MARK || m.root === HL_MARK.id)) Zones.dropCrate();
     if (sceneMode === "gamedev") {
       log.push(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
     } else {

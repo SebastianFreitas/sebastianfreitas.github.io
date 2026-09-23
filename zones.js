@@ -64,6 +64,8 @@ window.Zones = (function () {
     idle1: { w:8, h:25, ox:11, oy:7, px:"...b.......bbbb...bbbd.....dfd......dd.....gff...hhhgfg..hhhheg..hhhheh.hh.hheh.hh.hhbh.hh.hhbhhgghhhbhg.dhhhehd..hhhee...hhhee...hhhee..hhhh.e..hhhh.e..hhhh.e..hhh..e...e...e...e...e...b...b...b...b." },
     sym0:  { w:10, h:10, ox:11, oy:11, px:"....dd..................dd.......dddd...d.dddddd.dd.dddddd.d...dddd.......dd..................dd...." },
     sym1:  { w:12, h:12, ox:10, oy:10, px:".....dd...................d..........................dd.....d...dddd...dd...dddd...d.....dd..........................d...................dd....." },
+    shade0: { w:8, h:26, ox:13, oy:6, px:"....a....aaaa.....aaaa....aaa.....aa......aaa....aaaaaa..aaaaaa..aaaaaa..aaaa.aa.aaaa.aa.aaaa.aaaaaaaaaaaaaaaaaaaaaaaaa..aaaaa...aaaaa...a.aaaa..a.aaaa..a.aaaa..a..aaa..a...a...a...a...a...a...a...a...a...a.." },
+    shade1: { w:8, h:25, ox:13, oy:7, px:"....a....aaaa.....aaaa....aaa.....aa......aaa....aaaaaa..aaaaaa..aaaaaa..aaaa.aa.aaaa.aaaaaaa.aaaaaaaaaaaaaaaaa..aaaaa...aaaaa...aaaaa...a.aaaa..a.aaaa..a.aaaa..a..aaa..a...a...a...a...a...a...a...a.." },
   };
 
   // a sprite lives in one of two tables, Conclusus (32px art) or HeavyLight
@@ -108,30 +110,6 @@ window.Zones = (function () {
     const s = spriteOf(name).s;
     ctx.drawImage(cv, Math.round(gx + s.ox * S), Math.round(gy + s.oy * S));
   }
-  // a planted shadow (the game's shadow-teleport mechanic): the idle sprite
-  // darkened once into its own canvas, cached under "shadow:" + name
-  function shadowCanvas(name) {
-    const key = "shadow:" + name;
-    if (canvases.has(key)) return canvases.get(key);
-    const src = spriteCanvas(name);
-    if (!src) { canvases.set(key, null); return null; }
-    const cv = document.createElement("canvas");
-    cv.width = src.width; cv.height = src.height;
-    const g = cv.getContext("2d");
-    g.drawImage(src, 0, 0);
-    g.globalCompositeOperation = "source-atop";
-    g.fillStyle = "rgba(24,28,22,0.66)";
-    g.fillRect(0, 0, cv.width, cv.height);
-    canvases.set(key, cv);
-    return cv;
-  }
-  function blitShadow(ctx, name, gx, gy) {
-    const cv = shadowCanvas(name);
-    if (!cv) return;
-    const s = CSPR[name];
-    ctx.drawImage(cv, Math.round(gx + s.ox * S), Math.round(gy + s.oy * S));
-  }
-
   // platforms: grid origin (px from planet centre), row of tiles 64px wide each, bob by k
   const CPLATS = [
     { k: 0, gx: -330, gy: 126, tiles: ["tileA", "tileB"] },
@@ -198,10 +176,10 @@ window.Zones = (function () {
         blitSprite(ctx, frame === 0 ? "idle0" : "idle1", ax - 314, ay + 92 + bob + oy);
       }
       if (plat.k === 2) {
-        // the planted shadow: still, dim, a faint slow pulse
-        ctx.globalAlpha = 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(T * 1.1));
-        blitShadow(ctx, "idle0", ax + 142, ay + 82 + bob + oy);
-        ctx.globalAlpha = 1;
+        // the planted shadow: the game's flat-green twin, facing the player,
+        // idling half a beat behind him
+        const tframe = Math.floor(T / 0.7 + 0.5) % 2;
+        blitSprite(ctx, tframe === 0 ? "shade0" : "shade1", ax + 138, ay + 82 + bob + oy);
       }
       if (plat.k === 3) {
         // door0 is the bare arch, door1 the arch with its lit fill: draw the
@@ -236,13 +214,19 @@ window.Zones = (function () {
   const HPAL = ["#04253c","#143f5e","#306082","#5a86a5","#2d546f","#961a1a","#ff0000","#b44545","#780b0b","#5a0e0e","#000000"];
   const HSPR = {
     h_floor1: { w:16, h:16, ox:0, oy:0, px:"cddddddddddddddccccccccccccccccdbbbbbbbbbbbbbbbbaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    h_floorL: { w:16, h:16, ox:0, oy:0, px:".ddddddddddddddddbcccccccccccccc.bbbbbbbbbbbbbbbdcbbaaaaaaaaabbadcbbaaaaaaaaabaa.bbaababaaaaaaaaddcbbaaaaaaabaaadccbbaaaaaaaaaaa.bbbaaaaaaabbaaaddcbbabbaaabbaaadccbbabbaaabaaaa.bbbaaaaaaaaaaaadddcbbaaaaaaaaaadcccbbaaaaaaaaaadcccbbabbaaaaaaa.bbbbabaaaaaaaaa" },
     h_floorR: { w:16, h:16, ox:0, oy:0, px:"ddddddddddddddd.ccccccccccccccbdbbbbbbbbbbbbbbb.abbaaaaaaaaabbcdaabaaaaaaaaabbcdaaaaaaaababaabb.aaabaaaaaaabbcddaaaaaaaaaaabbccdaaabbaaaaaaabbb.aaabbaaabbabbcddaaaabaaabbabbccdaaaaaaaaaaaabbb.aaaaaaaaaabbcdddaaaaaaaaaabbcccdaaaaaaabbabbcccdaaaaaaaaababbbb." },
-    h_wallDrip: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
-    h_symbol1: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaagaaaaaaaaaaaaaaagaaaaaaaaaaaggaagaaaaaaaaaaaaaaagaaaaaaaggggggaagaaaaaaaaaaagaaaaaaaaaaaaaaagaagaaaaaaaaggggggaggaaaaaaaaaaaaaaagaaaaaaaaaaagaaagaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    h_wall: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    h_wallL: { w:16, h:16, ox:0, oy:0, px:"ddccbabbaaaaaaaaddccbbaaaaaaaaaa.bbbbaabaaaaaaaaddccbabbbaaaaaaadcccbbaabaaaaaaa.bbbbaaaaaaaaaaadccbaaaaaaaaaaaadccbabbaaaaaaaaaddcbbbbabaaaaaaa.bbbbaaaaaaaaaaadcccbaaaaaaaaaaaddccbbaaaaaaaaaa.bbbbabaaaaaaaaaddccbaaaaaaaaaaadcccbababaaaaaaa.bbbbbaaaaaaaaaa" },
+    h_wallR: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaabbabccddaaaaaaaaaabbccddaaaaaaaabaabbbb.aaaaaaabbbabccddaaaaaaabaabbcccdaaaaaaaaaaabbbb.aaaaaaaaaaaabccdaaaaaaaaabbabccdaaaaaaababbbbcddaaaaaaaaaaabbbb.aaaaaaaaaaabcccdaaaaaaaaaabbccddaaaaaaaaababbbb.aaaaaaaaaaabccddaaaaaaabababcccdaaaaaaaaaabbbbb." },
+    h_wallDrip: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaabccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_dripL: { w:16, h:16, ox:0, oy:0, px:"dccccbaaabaaaaaadddccbabbaaaaaaa.bbbbbaabbaaaaaadddcbaaaaaaaaaaadcccbbaaaaaaaaaa.bbbbaabbaaaaaaaddcbaaaaabaaaaaadccbaaaaaaaaaaaa.bbbbaababaaabbadddcbbaaaaaaabbadcccbaaabaaaaaaa.bbbbbbbbbaabbbbddcbccbccbbbbccbdccbdcbdcbccbcdbdccbddbddbdcbcdbddd.dd.dd.dd.dd." },
     h_doubleFloor: { w:16, h:16, ox:0, oy:0, px:"aaaaaabaaabccccdaaaaaaabbabccdddaaaaaabbaabbbbb.aaaaaaaaaaabcdddaaaaaaaaaabbcccdaaaaaaabbaabbbb.aaaaaabaaaaabcddaaaaaaaaaaaabccdabbaaababaabbbb.abbaaaaaaabbcdddaaaaaaabaaabcccdbbbbaabbbbbbbbb.bccbbbbccbccbcddbdcbccbcdbcdbccdbdcbcdbddbddbccd.dd.dd.dd.dd.ddd" },
+    h_symbol1: { w:16, h:16, ox:0, oy:0, px:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaagaaaaaaaaaaaaaaagaaaaaaaaaaaggaagaaaaaaaaaaaaaaagaaaaaaaggggggaagaaaaaaaaaaagaaaaaaaaaaaaaaagaagaaaaaaaaggggggaggaaaaaaaaaaaaaaagaaaaaaaaaaagaaagaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
     h_spike: { w:16, h:12, ox:0, oy:4, px:"....a......a........a......a........a......a.......aba....aba......aba....aba.....abcba..abcba....abcba..abcba....abcba..abcba...abcccbaabcccba..abcdcbaabcdcba.abccdccabccdccbabcccdcabcccdcccb" },
     h_box: { w:14, h:14, ox:1, oy:1, px:"c.c.c.cc.c.c.c.cccccccccccc.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecccceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.ceeeeeeeeeec.cceeeeeeeeeecc.cccccccccccc.c.c.c.cc.c.c.c" },
     h_plat: { w:16, h:16, ox:0, oy:0, px:"cddddddddddddddccccccccccccccccdbbbbbbbbbbbbbbbbaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaabccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
+    h_platL: { w:16, h:16, ox:0, oy:0, px:".ddddddddddddddcdcccccccccccccbdbbbbbbbbbbbbbbbbdcccbaaaaaaaaaaaddccbbabbaaaaaaa.bbbbaabbaaaaaaaddcbaaaaaaaaaaaadccbaaaaaabaaaaa.bbbbaaabbbaabaaddccbbaaaaaaabbadcccbbaabaaaaaaa.bbbbbbbbbaabbbbddcbccbccbbbbccbdccbccbdcbccbcdbdccbcdbdcbdcbcdbddd.dd.dd.dd.dd." },
     h_airFloor1: { w:16, h:16, ox:0, oy:0, px:"cdddddddddddddd.dbcccccccccccccdbbbbbbbbbbbbbbbbaaaaaaaaaaabcccdaaaaaaabbabbccddaaaaaaabbaabbbb.aaaaaaaaaaaabcddaaaaabaaaaaabccdaabaabbbaaabbbb.abbaaaaaaabbccddaaaaaaabaabbcccdbbbbaabbbbbbbbb.bccbbbbccbccbcddbdcbccbcdbccbccdbdcbcdbcdbdcbccd.dd.dd.dd.dd.ddd" },
     h_lamp: { w:13, h:16, ox:0, oy:0, px:".......c...........ccccc.......ccccccc.......ccccccc.....ccccccc.....c.ccccc.....c...ccc.....c.....c......c............c............c............c............c............c..g........cccccc......cccccccc....." },
     h_pillarTop: { w:16, h:16, ox:0, oy:0, px:"ddddddddddddddd..bcccccbccccccbddcccbbbbbbbbbbb.dcccbbaaaaaabbcddddcbbaaaaaabbcd.bbbaaaababaabb.dccbbabbaaabbcddddcbbbbbaaabbccd.bbbaaaaaaaabbb.dccbbaaabbabbcddddcbbaabbbabbccd.bbaabbbaaaabbb.dcbbaaaaaabbcddddcbbaaaaaabbcccd.bbbbbbbbabbcccddbbbbbbbababbbb." },
@@ -261,19 +245,20 @@ window.Zones = (function () {
   // bob phase shared by everything that rides on that group
   const HL_GROUPS = {
     slabL: { k: 0, tiles: [
-      ["h_floor1", -440, 40], ["h_floor1", -408, 40], ["h_floor1", -376, 40], ["h_floor1", -344, 40], ["h_floorR", -312, 40],
-      ["h_wallDrip", -440, 72], ["h_symbol1", -408, 72], ["h_wallDrip", -376, 72], ["h_wallDrip", -344, 72], ["h_doubleFloor", -312, 72],
+      ["h_floorL", -440, 40], ["h_floor1", -408, 40], ["h_floor1", -376, 40], ["h_floor1", -344, 40], ["h_floorR", -312, 40],
+      ["h_wallL", -440, 72], ["h_symbol1", -408, 72], ["h_wall", -376, 72], ["h_wall", -344, 72], ["h_wallR", -312, 72],
+      ["h_dripL", -440, 104], ["h_wallDrip", -408, 104], ["h_wallDrip", -376, 104], ["h_wallDrip", -344, 104], ["h_doubleFloor", -312, 104],
       ["h_spike", -408, 8], ["h_spike", -376, 8], ["h_box", -320, 8],
     ] },
     platM: { k: 1, tiles: [
-      ["h_plat", -96, 110], ["h_plat", -64, 110], ["h_plat", -32, 110], ["h_plat", 0, 110], ["h_airFloor1", 32, 110],
+      ["h_platL", -96, 110], ["h_plat", -64, 110], ["h_plat", -32, 110], ["h_plat", 0, 110], ["h_airFloor1", 32, 110],
       ["h_lamp", -26, 78],
     ] },
     pillarR: { k: 2, tiles: [
       ["h_pillarTop", 300, -60], ["h_pillarBody", 300, -28], ["h_pillarDrip", 300, 4],
     ] },
     platR: { k: 3, tiles: [
-      ["h_plat", 392, 70], ["h_airFloor1", 424, 70], ["h_spike", 424, 38],
+      ["h_platL", 392, 70], ["h_airFloor1", 424, 70], ["h_spike", 424, 38],
     ] },
   };
   const HL_ORDER = ["slabL", "pillarR", "platR", "platM"];
@@ -321,6 +306,42 @@ window.Zones = (function () {
   const heavylightRnd = mulberry(11);
   const hlDust = makeMotes(heavylightRnd, 10, 10, [-460, 440], [-220, 140], [6, 14], [5, 10], 120);
   const LANTERN = ["h_lan1", "h_lan2", "h_lan3", "h_lan2"];
+  // the lamp's beam: apex at the lamp head (zone px, before bob/lift), aimed
+  // down-right, and it runs until it hits the deck line
+  const BEAM = { x: -2, y: 86, ang: 20 * Math.PI / 180, spread: 7 * Math.PI / 180 };
+  // crates dropped in from above the screen when a HeavyLight beacon is
+  // reached: they fall, the beam catches them and carries them down it
+  const crates = [];
+  const CRATE = { g: 420, fall: 240, ride: 300, ease: 0.06, max: 4, life: 10 };   // fall = terminal speed so the beam can catch it
+  function dropCrate() {
+    if (crates.length >= CRATE.max) crates.shift();
+    crates.push({ x: 140 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // clear of the platform's right end (64)
+  }
+  function stepCrates(dt, env) {
+    if (!crates.length) return;
+    const at = env && env.at && env.at.heavylight;
+    if (!at || !isFinite(at.x)) { crates.length = 0; return; }
+    const room = roomBelow(env, at);
+    const lift = Math.max(0, 150 - room);
+    const apexX = BEAM.x, apexY = BEAM.y - lift;
+    for (let i = crates.length - 1; i >= 0; i--) {
+      const c = crates[i];
+      if (!isFinite(c.y)) c.y = -at.y - 40;   // start just above the top edge of the screen
+      c.t += dt;
+      const dx = c.x - apexX, dy = c.y - apexY;
+      const inBeam = dx > 0 && Math.abs(Math.atan2(dy, dx) - BEAM.ang) <= BEAM.spread;
+      if (inBeam) {
+        const k = Math.min(1, dt / CRATE.ease);
+        c.vx += (Math.cos(BEAM.ang) * CRATE.ride - c.vx) * k;
+        c.vy += (Math.sin(BEAM.ang) * CRATE.ride - c.vy) * k;
+      } else {
+        c.vy = Math.min(c.vy + CRATE.g * dt, CRATE.fall);
+      }
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      if (c.y > room - 6 || c.t > CRATE.life || at.x + c.x > env.W + 80) crates.splice(i, 1);
+    }
+  }
 
   function drawHeavyLight(ctx, ax, ay, env, at) {
     const room = roomBelow(env, at);
@@ -343,27 +364,37 @@ window.Zones = (function () {
       ctx.drawImage(cv, Math.round(ax + cv._ox), Math.round(ay + cv._oy + bob(HL_GROUPS[name].k) + oy));
     }
 
-    // on the middle platform: the player with his lantern, the crate the beam leans on
+    // on the middle platform: the player with his lantern
     const bM = bob(1);
     const frame = Math.floor(T / 0.45) % 4;
     blitSprite(ctx, LANTERN[frame], ax - 84, ay + 78 + bM + oy);
-    blitSprite(ctx, "h_box", ax + 26 + Math.round(3 + 3 * Math.sin(T * 0.9)), ay + 78 + bM + oy);
 
-    // the lamp head glows and throws its beam to the right, over the crate
-    const apexX = ax - 2, apexY = ay + 86 + bM + oy;
+    // crates riding the light (drawn under the beam so the light lies on them)
+    for (const c of crates) {
+      if (!isFinite(c.y)) continue;
+      blitSprite(ctx, "h_box", ax + c.x - 16, ay + c.y - 16);
+    }
+
+    // the lamp head glows and throws its beam down-right until it meets the deck line
+    const apexX = ax + BEAM.x, apexY = ay + BEAM.y + bM + oy;
     ctx.save();
     ctx.translate(apexX, apexY);
     ctx.fillStyle = lampGlow(ctx);
     ctx.fillRect(-26, -26, 52, 52);
     ctx.restore();
-    const ca = 0.20 + 0.03 * Math.sin(T * 3.1);
-    ctx.beginPath();
-    ctx.moveTo(apexX, apexY);
-    ctx.lineTo(apexX + 175, apexY - 22);
-    ctx.lineTo(apexX + 175, apexY + 42);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(" + HL.cone + "," + ca + ")";
-    ctx.fill();
+    const deckY = ay + room;
+    const drop = deckY - apexY;
+    if (drop > 12) {
+      const ca = 0.20 + 0.03 * Math.sin(T * 3.1);
+      const hi = BEAM.ang - BEAM.spread, lo = BEAM.ang + BEAM.spread;
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY);
+      ctx.lineTo(apexX + drop / Math.tan(hi), deckY);
+      ctx.lineTo(apexX + drop / Math.tan(lo), deckY);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(" + HL.cone + "," + ca + ")";
+      ctx.fill();
+    }
 
     // the red key floats above the pillar
     const ky = ay - 118 + Math.sin(T * 0.9) * 4 + oy;
@@ -430,6 +461,7 @@ window.Zones = (function () {
   function step(dt, env) {
     if (typeof dt !== "number" || !isFinite(dt) || dt < 0) dt = 0;
     if (!(env && env.reduced)) T += dt;
+    stepCrates(dt, env);
   }
 
   const ZONE_DRAW = { conclusus: drawConclusus, heavylight: drawHeavyLight, voidscape: drawVoidScape };
@@ -459,5 +491,5 @@ window.Zones = (function () {
 
   function report() { return lastReport; }
 
-  return { step, draw, report };
+  return { step, draw, report, dropCrate };
 })();
