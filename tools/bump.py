@@ -33,4 +33,4 @@ for path, src in sources.items():
 
 print("v=%d" % version)
 for path in touched:
-    print("  " + path)
+    print("  " + path.relative_to(ROOT).as_posix())
