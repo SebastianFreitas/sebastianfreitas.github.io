@@ -533,7 +533,7 @@ def flow_depths(browser, base):
     }""")
     ids = {n["id"] for n in report}
     check("depths: first waves spawn",
-          ids == {"bnote-vs-board", "bnote-hl-play", "bnote-cc-play", "bnote-cc-why"}, ids)
+          ids == {"bnote-vs-godrun", "bnote-hl-play", "bnote-cc-play", "bnote-cc-why"}, ids)
     check("depths: off-screen reveal points the way instead of flying", all(n["cue"] and not n["flying"] for n in report), report)
 
     page.wait_for_timeout(2000)
@@ -561,22 +561,22 @@ def flow_depths(browser, base):
     check("depths: embed plays on click", plays, plays)
     check("depths: embed resets", resets, resets)
 
-    page.evaluate("XP.award('beacon-bnote-vs-board', 1, 'The Board');")
+    page.evaluate("XP.award('beacon-bnote-vs-godrun', 1, 'The God Run');")
     page.reload()
     page.wait_for_timeout(SETTLE)
     report = page.evaluate("window.depthsReport()")
     ids = {n["id"] for n in report}
     check("depths: reload restores waves, no flight",
-          "bnote-vs-colour" in ids and "bnote-vs-bench" in ids and "bnote-vs-loop" not in ids
+          "bnote-vs-board" in ids and "bnote-vs-deeper" in ids and "bnote-vs-progress" not in ids
           and all(not n["flying"] for n in report), report)
 
     report = page.evaluate("""() => {
-      ['bnote-planet-zero','bnote-sz-shell','bnote-sz-chair','bnote-vs-colour','bnote-vs-bench',
+      ['bnote-planet-zero','bnote-sz-shell','bnote-sz-chair','bnote-vs-godrun','bnote-vs-board','bnote-vs-deeper','bnote-vs-progress','bnote-vs-boons','bnote-vs-bench','bnote-vs-map','bnote-vs-rooms','bnote-vs-feel',
        'bnote-hl-play','bnote-cc-play','bnote-cc-why'].forEach(id => XP.award('beacon-'+id, 1, id));
       window.depthsReveal();
       return window.depthsReport();
     }""")
-    check("depths: all 18 nodes spawn", len(report) == 18, len(report))
+    check("depths: all 23 nodes spawn", len(report) == 23, len(report))
     bounds_and_overlap_checks("depths", report)
 
     errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e

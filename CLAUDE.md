@@ -84,7 +84,7 @@ one global on `window`. Sizes are line counts.
 | `instruments.js` | 603 | HUD framework: banks/layout, alarms, static-blit cache, paint loop, `registerTiles` | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
 | `instruments-tiles.js` | 857 | The eight HUD tiles (radar, signal, drive, nav, eclss, rad, hull, bus) and `tickSys` | registers itself with `Instruments.registerTiles` |
 | `world.js` | 1195 | Scenery only: Arcanis geography and painting. No input, no HUD | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw}`; uses `RexArt`, `LandArt`, `depthAlpha` |
-| `depths.js` | 874 | Pure data: beacon-gated node clusters and layouts. No DOM | `window.Depths {nodes, clusters}` |
+| `depths.js` | 977 | Pure data: beacon-gated node clusters and layouts. No DOM | `window.Depths {nodes, clusters}` |
 | `voidship-art.js` | ~480 | The craft's painters: angular side-view city-ship hull (`drawHull`, corners only, every thin part floored at 1 px because L is only 96 px), solid front-on block shown mid-turn (`drawFront`), alien drive fumes (`drawFumes`), emitter seats `EMIT`, palette `COLORS`. Local frame: +x nose, +y down, units of hull length L; the caller mirrors with `scale(face,1)` and `block()` keeps the lit side on screen-left | `window.VoidshipArt`; uses `Paint`, `Util` |
 | `voidship.js` | ~380 | The craft: hold-as-stick / tap-to-seek motion, release-stops rule, fuel, yaw flip + pitch, fume particles (screen frame, damped inertia), draw orchestration | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
 | `rexart-deep.js` | 638 | Painters for the three Rex caverns | `window.RexArt.titans / .valkhar / .law` |
@@ -105,7 +105,7 @@ one global on `window`. Sizes are line counts.
 | `bridge.css` | 726 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay | index only |
 | `beacon.css` | 165 | Level chip, claim ceremony, surge | |
 | `index.html` | 423 | Homepage. Inline head script is only the service-worker purge | |
-| `projects/*.html` | ~87–170 | Four case-study pages, same shell | |
+| `projects/*.html` | ~87–253 | Four case-study pages, same shell | |
 | `404.html` | 54 | Not-found page | |
 | `nav-flows.test.py` | 891 | Playwright flows; starts its own server on a free port | |
 | `snap.py` | 531 | Screenshot regression harness: `capture`, `compare`, `list` | |
@@ -170,8 +170,9 @@ Grep these names; the ranges are approximate.
   (~431), `drawNephilim` (~592), `drawVikings` (~756), `drawRex` (~835),
   `drawHell` (~879), `drawRexPlaces` (~965), `drawLandPlace` (~1011),
   `drawRoot` (~1044), `drawBridge` (~1070), `draw` (~1155).
-- **depths.js** — `CLUSTERS` data (~37–718; Bone Spire ~481, Titans ~494),
-  `waveOf` (~719), `LAYOUTS` (~743), `nodes()` (~780).
+- **depths.js** — `CLUSTERS` data (~37–820; VoidScape `bnote-vs-*` ~166–380,
+  Bone Spire ~581, Titans ~594), `waveOf` (~822), `LAYOUTS` (~846), `nodes()`
+  (~883).
 - **voidship.js** — `BASE` tunables (top), `create`, `setThrusting` (the
   release rule: keep the point only if the ship can still stop on it),
   `step` in order: hold boost → wanted velocities (`far` = cruise, else the

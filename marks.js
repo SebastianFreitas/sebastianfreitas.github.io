@@ -60,7 +60,7 @@ window.Marks = (function () {
     { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7, xp: 1,
       theme: "zero",       size: 1.25, name: "Sector Zero", sub: "Horror — the console is the weapon" },
     { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7, xp: 1,
-      theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled loop" },
+      theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled special run" },
     { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7, xp: 1,
       theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle — light carries momentum" },
     { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7, xp: 1,
