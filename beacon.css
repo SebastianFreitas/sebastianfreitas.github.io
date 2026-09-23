@@ -27,14 +27,19 @@
 .xp-chip .xp-ref { color: #4e5956; white-space: nowrap; }
 
 /* ---- the badge, and how it changes with rank ---- */
-.xp-badge { display: block; width: 15px; height: 15px; }
-.xp-badge svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.xp-badge { display: block; width: 15px; height: 15px; transform-origin: 50% 50%; }
+.xp-badge svg { display: block; width: 100%; height: 100%; overflow: visible; transition: filter 0.6s ease; }
 .xp-badge path {
   fill: none; stroke: var(--lamp); stroke-width: 1.6;
   stroke-linejoin: round;
 }
-.xp-chip[data-rank="dot"] .xp-badge path { fill: var(--sage-dim); stroke: none; }
-.xp-chip[data-rank="star"] .xp-badge path { fill: rgb(var(--lamp-rgb) / 0.18); }
+.xp-chip[data-rank="circle"] .xp-badge path { stroke: var(--sage-dim); }
+.xp-chip[data-rank="star"] .xp-badge path,
+.xp-chip[data-rank="megastar"] .xp-badge path { fill: rgb(var(--lamp-rgb) / 0.18); }
+.xp-chip[data-rank="sealed"] .xp-badge path,
+.xp-chip[data-rank="compass"] .xp-badge path,
+.xp-chip[data-rank="sun"] .xp-badge path,
+.xp-chip[data-rank="crest"] .xp-badge path { stroke-width: 1.2; }
 
 /* ---- the claim ---- */
 .xp-mote {
@@ -69,19 +74,8 @@
 .xp-chip .xp-track i { transition: none; }
 
 /* crossing into a new rank */
-.xp-chip.rankup .xp-badge { animation: rankPop 1.1s cubic-bezier(.2,.8,.3,1); }
-.xp-chip.rankup .xp-badge::after {
-  content: ""; position: absolute; left: 50%; top: 50%;
-  width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px;
-  border: 1px solid var(--lamp); border-radius: 50%;
-  animation: rankRing 1.1s ease-out;
-}
+.xp-chip.rankup .xp-badge svg { filter: drop-shadow(0 0 3px rgb(var(--lamp-rgb) / 0.85)); }
 .xp-chip .xp-badge { position: relative; }
-@keyframes rankPop  { 0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
-                      45% { transform: scale(1.5) rotate(6deg); opacity: 1; }
-                      100% { transform: none; opacity: 1; } }
-@keyframes rankRing { 0% { transform: scale(0.6); opacity: 0.9; }
-                      100% { transform: scale(5); opacity: 0; } }
 
 /* the old corner pop, still used when there's nowhere to fly from */
 .xp-pop {
@@ -108,12 +102,12 @@
 
 /* ---- the rank shape leaves before the next one arrives ---- */
 .xp-badge { transition: none; }
-.xp-badge.swapping { animation: rankOut 0.22s ease-in forwards; }
-.xp-badge.arrived  { animation: rankIn 0.5s cubic-bezier(.2,.9,.3,1); }
-@keyframes rankOut { 0% { transform: scale(1) rotate(0); opacity: 1; }
-                     100% { transform: scale(0.1) rotate(140deg); opacity: 0; } }
-@keyframes rankIn  { 0% { transform: scale(0.15) rotate(-120deg); opacity: 0; }
-                     55% { transform: scale(1.45) rotate(8deg); opacity: 1; }
+.xp-badge.swapping { animation: rankOut 0.2s ease-in forwards; }
+.xp-badge.arrived  { animation: rankIn 0.55s cubic-bezier(.2,.9,.3,1); }
+@keyframes rankOut { 0% { transform: none; opacity: 1; }
+                     100% { transform: scale(0.4) rotate(60deg); opacity: 0; } }
+@keyframes rankIn  { 0% { transform: scale(0.4) rotate(-60deg); opacity: 0; }
+                     60% { transform: scale(1.25) rotate(4deg); opacity: 1; }
                      100% { transform: none; opacity: 1; } }
 
 /* =========================================================

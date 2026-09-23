@@ -88,25 +88,57 @@ window.XP = (function () {
   }
 
   /* ---- rank: the badge changes shape as the level climbs ---- */
-  const RANKS = [
-    { at: 0,  key: "dot",      d: "M12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z" },
-    { at: 1,  key: "triangle", d: "M12 3 22 20H2z" },
-    { at: 10, key: "square",   d: "M4 4h16v16H4z" },
-    { at: 20, key: "squircle", d: "M12 3c7 0 9 2 9 9s-2 9-9 9-9-2-9-9 2-9 9-9z" },
-    { at: 30, key: "circle",   d: "M12 2.6A9.4 9.4 0 1 0 12 21.4 9.4 9.4 0 0 0 12 2.6z" },
-    { at: 40, key: "star",     d: "M12 1.8l3.1 6.9 7.5.8-5.6 5 1.6 7.4-6.6-3.8-6.6 3.8 1.6-7.4-5.6-5 7.5-.8z" },
-  ];
-  const rankFor = lv => RANKS.slice().reverse().find(r => lv >= r.at) || RANKS[0];
-  function rankProgress(lv) {
-    const i = RANKS.findIndex(r => lv < r.at);
-    if (i === -1) return { u: (lv % 10) / 10, next: null };
-    const prev = i > 0 ? RANKS[i - 1].at : 0;
-    return { u: (lv - prev) / (RANKS[i].at - prev), next: RANKS[i].at };
+  const RANK_STEP = 10;   // levels per badge shape; tune once the site's final level total is known
+
+  // all shapes live in a 24x24 viewBox centred on 12,12; angle 0 points straight up
+  function ptAt(r, a) { return [12 + r * Math.sin(a), 12 - r * Math.cos(a)]; }
+
+  function poly(n, r, rot = 0) {
+    let d = "";
+    for (let k = 0; k < n; k++) {
+      const a = rot + k * 2 * Math.PI / n;
+      const [x, y] = ptAt(r, a);
+      d += (k === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    }
+    return d + "Z";
   }
-  const MILESTONES = new Set(RANKS.map(r => r.at).filter(n => n > 0));
+
+  function star(n, ro, ri, rot = 0) {
+    let d = "";
+    for (let k = 0; k < 2 * n; k++) {
+      const a = rot + k * Math.PI / n;
+      const [x, y] = ptAt(k % 2 === 0 ? ro : ri, a);
+      d += (k === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    }
+    return d + "Z";
+  }
+
+  function ring(r) {
+    return "M12 " + (12 - r).toFixed(2) +
+      "a" + r.toFixed(2) + " " + r.toFixed(2) + " 0 1 0 0 " + (2 * r).toFixed(2) +
+      "a" + r.toFixed(2) + " " + r.toFixed(2) + " 0 1 0 0 " + (-2 * r).toFixed(2) + "Z";
+  }
+
+  const RANKS = [
+    { key: "circle",   d: ring(8) },
+    { key: "triangle", d: poly(3, 10.4) },
+    { key: "square",   d: poly(4, 10.6, Math.PI / 4) },
+    { key: "pentagon", d: poly(5, 10) },
+    { key: "hexagon",  d: poly(6, 10) },
+    { key: "star",     d: star(5, 10.8, 4.4) },
+    { key: "megastar", d: star(8, 11, 5) },
+    { key: "sealed",   d: ring(11) + " " + star(8, 8.6, 3.9) },
+    { key: "compass",  d: ring(7.2) + " " + star(4, 11.5, 2.6) + " " + star(4, 7.4, 2.2, Math.PI / 4) },
+    { key: "sun",      d: star(12, 11.4, 7.6) + " " + poly(6, 5) + " " + ring(1.6) },
+    { key: "crest",    d: ring(11.2) + " " + star(16, 10, 7.2) + " " + star(5, 5.6, 2.3) + " " + ring(0.9) },
+  ];
+  const rankIndex = lv => Math.max(0, Math.min(RANKS.length - 1, Math.floor(lv / RANK_STEP)));
+  const rankFor = lv => RANKS[rankIndex(lv)];
 
   /* ---- the chip ---- */
   let chip, chipLevel, chipName, chipFill, chipBadge, chipPath;
+  let rankKey = "";
+  let swapOut = 0, swapIn = 0;
   function buildChip() {
     if (chip) return;
     chip = document.createElement("div");
@@ -138,19 +170,28 @@ window.XP = (function () {
     chipName.textContent = state.name + " · " + state.ref;
     chipLevel.textContent = lv;
     const rk = rankFor(lv);
-    if (chipPath && chipBadge && chip.dataset.rank !== rk.key) {
-      const first = !chip.dataset.rank;
-      chip.dataset.rank = rk.key;
-      if (first) chipPath.setAttribute("d", rk.d);
-      else {
+    if (chipPath && chipBadge && rankKey !== rk.key) {
+      const first = !rankKey;
+      rankKey = rk.key;
+      if (first || Util.reduced()) {
+        clearTimeout(swapOut); clearTimeout(swapIn);
+        chipBadge.classList.remove("swapping", "arrived");
+        chip.dataset.rank = rankKey;
+        chipPath.setAttribute("d", rk.d);
+      } else {
         // the old shape leaves before the new one arrives
+        clearTimeout(swapOut); clearTimeout(swapIn);
+        chipBadge.classList.remove("arrived");
         chipBadge.classList.add("swapping");
-        setTimeout(() => {
-          chipPath.setAttribute("d", rk.d);
+        swapOut = setTimeout(() => {
+          const target = RANKS.find(r => r.key === rankKey);
+          chip.dataset.rank = rankKey;
+          chipPath.setAttribute("d", target.d);
           chipBadge.classList.remove("swapping");
+          void chipBadge.offsetWidth;
           chipBadge.classList.add("arrived");
-          setTimeout(() => chipBadge.classList.remove("arrived"), 520);
-        }, 220);
+          swapIn = setTimeout(() => chipBadge.classList.remove("arrived"), 560);
+        }, 200);
       }
     }
     // the chip bar is the level being earned right now, nothing more
@@ -181,8 +222,7 @@ window.XP = (function () {
   function ceremony(n, label, x, y, fromLevel) {
     if (!chip) { paint(); return; }
     const toLevel = fromLevel + n;
-    const milestone = MILESTONES.has(toLevel) ||
-                      Math.floor(fromLevel / 10) !== Math.floor(toLevel / 10);
+    const milestone = rankIndex(fromLevel) !== rankIndex(toLevel);
 
     ceremonyBusy = true;
     freeze(true);
@@ -285,6 +325,7 @@ window.XP = (function () {
     chip.classList.remove("bump");
     void chip.offsetWidth;
     chip.classList.add("bump");
+    setTimeout(() => chip.classList.remove("bump"), 300);   // swell, then settle back
   }
 
   const api = {
