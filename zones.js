@@ -250,11 +250,11 @@ window.Zones = (function () {
       ["h_floorL", -440, 40], ["h_floor1", -408, 40], ["h_floor1", -376, 40], ["h_floor1", -344, 40], ["h_floorR", -312, 40],
       ["h_wallL", -440, 72], ["h_symbol1", -408, 72], ["h_wall", -376, 72], ["h_wall", -344, 72], ["h_wallR", -312, 72],
       ["h_dripL", -440, 104], ["h_wallDrip", -408, 104], ["h_wallDrip", -376, 104], ["h_wallDrip", -344, 104], ["h_doubleFloor", -312, 104],
-      ["h_spike", -408, 8], ["h_spike", -376, 8], ["h_box", -320, 8],
+      ["h_spike", -408, 8], ["h_spike", -376, 8], ["h_box", -320, 10],
     ] },
     platM: { k: 1, tiles: [
       ["h_platL", -96, 110], ["h_plat", -64, 110], ["h_plat", -32, 110], ["h_plat", 0, 110], ["h_airFloor1", 32, 110],
-      ["h_lamp", -26, 78],
+      ["h_lamp", 38, 78],
     ] },
     pillarR: { k: 2, tiles: [
       ["h_pillarTop", 300, -60], ["h_pillarBody", 300, -28], ["h_pillarDrip", 300, 4],
@@ -311,14 +311,14 @@ window.Zones = (function () {
   // the lamp's beam: source centred on the lamp head's lower-right face
   // (zone px before bob/lift), half the face width, aimed down-right, and it
   // runs past the deck line to just beyond the bottom of the screen
-  const BEAM = { x: -6, y: 88, half: 6, ang: 42 * Math.PI / 180, spread: 6 * Math.PI / 180, over: 24 };
+  const BEAM = { x: 58, y: 88, half: 6, ang: 42 * Math.PI / 180, spread: 6 * Math.PI / 180, over: 24 };
   // crates dropped in from above the screen when a HeavyLight beacon is
   // reached: they fall, the beam catches them and carries them down it
   const crates = [];
   const CRATE = { g: 420, fall: 240, ride: 300, ease: 0.06, max: 4, life: 10 };   // fall = terminal speed so the beam can catch it
   function dropCrate() {
     if (crates.length >= CRATE.max) crates.shift();
-    crates.push({ x: 90 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // falls clear of the platform's right end (64) into the beam
+    crates.push({ x: 154 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // falls clear of the platform's right end (64) into the beam
   }
   function stepCrates(dt, env) {
     if (!crates.length) return;
