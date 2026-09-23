@@ -39,7 +39,7 @@ except ImportError:
           "  py -3 -m playwright install chromium")
     sys.exit(2)
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DESKTOP = {"width": 1440, "height": 900}
 PHONE = {"width": 390, "height": 844}
 PHONE_LANDSCAPE = {"width": 844, "height": 390}

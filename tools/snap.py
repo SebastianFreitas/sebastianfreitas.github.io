@@ -7,10 +7,10 @@ Setup (once):
     py -3 -m pip install playwright pillow numpy
     py -3 -m playwright install chromium
 
-Capture:      py -3 snap.py capture base-a
-Some scenes:  py -3 snap.py capture base-a --only bridge
-Compare:      py -3 snap.py compare base-a base-b
-List scenes:  py -3 snap.py list
+Capture:      py -3 tools/snap.py capture base-a
+Some scenes:  py -3 tools/snap.py capture base-a --only bridge
+Compare:      py -3 tools/snap.py compare base-a base-b
+List scenes:  py -3 tools/snap.py list
 
 PNGs land in snapshots/<name>/, diff images in snapshots/diff-<a>-<b>/.
 The script serves the repo itself on a free port and stops it when done,
@@ -35,12 +35,12 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 SHOTS = ROOT / "snapshots"
 
 # nav-flows.test.py owns the static server and the page helpers; the dash in
 # its name blocks a plain import, and its __main__ guard keeps the suite quiet.
-_spec = importlib.util.spec_from_file_location("nav_flows_test", ROOT / "nav-flows.test.py")
+_spec = importlib.util.spec_from_file_location("nav_flows_test", ROOT / "tools" / "nav-flows.test.py")
 nav = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(nav)
 
@@ -208,8 +208,8 @@ def js_block(source, opener, closer):
     return source[i:j + len(closer)]
 
 
-MARKS_SRC_FILE = (ROOT / "marks.js").read_text(encoding="utf-8")
-BEATS_SRC_FILE = (ROOT / "genesis-state.js").read_text(encoding="utf-8")
+MARKS_SRC_FILE = (ROOT / "js" / "bridge" / "marks.js").read_text(encoding="utf-8")
+BEATS_SRC_FILE = (ROOT / "js" / "genesis" / "genesis-state.js").read_text(encoding="utf-8")
 
 MARKS_SRC = js_block(MARKS_SRC_FILE, "const MARKS = [", "\n  ];")
 PLANETS_SRC = js_block(MARKS_SRC_FILE, "const PLANETS = [", "\n  ];")
@@ -425,7 +425,7 @@ def capture(name, only=None):
     out_dir.mkdir(parents=True, exist_ok=True)
     chosen = [(n, fn) for n, fn in scenes() if not only or only in n]
     if not chosen:
-        print(f"no scene matches {only!r} - use: py -3 snap.py list")
+        print(f"no scene matches {only!r} - use: py -3 tools/snap.py list")
         return 2
     failed = []
     httpd, base = nav.start_server()
@@ -496,9 +496,9 @@ def compare(a, b, threshold):
 # ------------------------------------------------------------------ cli
 
 USAGE = """usage:
-  py -3 snap.py capture <name> [--only <substring>]
-  py -3 snap.py compare <a> <b> [--threshold 0.5]
-  py -3 snap.py list"""
+  py -3 tools/snap.py capture <name> [--only <substring>]
+  py -3 tools/snap.py compare <a> <b> [--threshold 0.5]
+  py -3 tools/snap.py list"""
 
 
 def main():

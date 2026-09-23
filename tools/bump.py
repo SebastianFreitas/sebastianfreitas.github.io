@@ -9,8 +9,11 @@ Reads and writes bytes, so CRLF line endings survive untouched.
 import glob
 import re
 import sys
+from pathlib import Path
 
-PAGES = ["index.html", "404.html"] + sorted(glob.glob("projects/*.html"))
+ROOT = Path(__file__).resolve().parent.parent
+
+PAGES = [ROOT / "index.html", ROOT / "404.html"] + sorted(ROOT.glob("projects/*.html"))
 TAG = re.compile(rb"\?v=(\d+)")
 
 version = int(sys.argv[1]) if len(sys.argv) > 1 else None

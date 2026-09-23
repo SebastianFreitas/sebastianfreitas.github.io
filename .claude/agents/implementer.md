@@ -28,10 +28,11 @@ exactly as written.
 - If the spec gives a verification command, run it and include the result.
   If it says none, skip it. Never start a server or any other long-running
   process.
-- Read only the region you are changing. The big files (`genesis.js`,
-  `bridge.js`, `instruments.js`, `world.js`, `depths.js`) are 900–2700
-  lines; never read one top to bottom. Grep for the function names the spec
-  gives you, then Read with `offset`/`limit` around the hit. Never open
+- Read only the region you are changing. The big files (`js/bridge/bridge.js`,
+  `js/world/world.js`, `js/depths/depths.js`, `js/hud/instruments-tiles.js`,
+  `js/gamedev/forge.js`) are 800–1600 lines; never read one top to bottom.
+  Grep for the function names the spec gives you, then Read with
+  `offset`/`limit` around the hit. Never open
   `cv.pdf`, `media/`, `Temporary VoidScape Media/` or `__pycache__/`.
 - Every JS file is an IIFE publishing one `window.X` global. Cross-file
   references are by that global, so grep `X.` to find callers rather than
@@ -53,4 +54,4 @@ When you finish (or stop), reply with:
 ### Commands
 
 - **Build:** none. No framework, no bundler, no npm.
-- **Test:** `py -3 nav-flows.test.py`
+- **Test:** `py -3 tools/nav-flows.test.py`
