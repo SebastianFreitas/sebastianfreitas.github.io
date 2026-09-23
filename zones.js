@@ -7,7 +7,9 @@
    forge and ship, so it is pure backdrop and never has to hit-test. Every
    static thing is pre-rendered once to an offscreen canvas and blitted with
    drawImage; per frame there are only blits, a few dozen fillRects and two
-   or three cached gradients. */
+   or three cached gradients. The one thing that crosses the deck line is
+   the HeavyLight lamp's beam and the crates it carries: they run to the
+   bottom of the screen on purpose. */
 window.Zones = (function () {
   const { mix, mulberry, hash1 } = Util;
 
@@ -306,16 +308,17 @@ window.Zones = (function () {
   const heavylightRnd = mulberry(11);
   const hlDust = makeMotes(heavylightRnd, 10, 10, [-460, 440], [-220, 140], [6, 14], [5, 10], 120);
   const LANTERN = ["h_lan1", "h_lan2", "h_lan3", "h_lan2"];
-  // the lamp's beam: apex at the lamp head (zone px, before bob/lift), aimed
-  // down-right, and it runs until it hits the deck line
-  const BEAM = { x: -2, y: 86, ang: 20 * Math.PI / 180, spread: 7 * Math.PI / 180 };
+  // the lamp's beam: source centred on the lamp head's lower-right face
+  // (zone px before bob/lift), half the face width, aimed down-right, and it
+  // runs past the deck line to just beyond the bottom of the screen
+  const BEAM = { x: -6, y: 88, half: 6, ang: 42 * Math.PI / 180, spread: 6 * Math.PI / 180, over: 24 };
   // crates dropped in from above the screen when a HeavyLight beacon is
   // reached: they fall, the beam catches them and carries them down it
   const crates = [];
   const CRATE = { g: 420, fall: 240, ride: 300, ease: 0.06, max: 4, life: 10 };   // fall = terminal speed so the beam can catch it
   function dropCrate() {
     if (crates.length >= CRATE.max) crates.shift();
-    crates.push({ x: 140 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // clear of the platform's right end (64)
+    crates.push({ x: 90 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // falls clear of the platform's right end (64) into the beam
   }
   function stepCrates(dt, env) {
     if (!crates.length) return;
@@ -324,12 +327,16 @@ window.Zones = (function () {
     const room = roomBelow(env, at);
     const lift = Math.max(0, 150 - room);
     const apexX = BEAM.x, apexY = BEAM.y - lift;
+    const cosA = Math.cos(BEAM.ang), sinA = Math.sin(BEAM.ang);
     for (let i = crates.length - 1; i >= 0; i--) {
       const c = crates[i];
       if (!isFinite(c.y)) c.y = -at.y - 40;   // start just above the top edge of the screen
       c.t += dt;
+      // along-beam distance t and perpendicular distance pd from the beam's centreline
       const dx = c.x - apexX, dy = c.y - apexY;
-      const inBeam = dx > 0 && Math.abs(Math.atan2(dy, dx) - BEAM.ang) <= BEAM.spread;
+      const t = dx * cosA + dy * sinA;
+      const pd = Math.abs(dx * sinA - dy * cosA);
+      const inBeam = t > 0 && pd <= BEAM.half + t * Math.tan(BEAM.spread) + 8;
       if (inBeam) {
         const k = Math.min(1, dt / CRATE.ease);
         c.vx += (Math.cos(BEAM.ang) * CRATE.ride - c.vx) * k;
@@ -339,7 +346,8 @@ window.Zones = (function () {
       }
       c.x += c.vx * dt;
       c.y += c.vy * dt;
-      if (c.y > room - 6 || c.t > CRATE.life || at.x + c.x > env.W + 80) crates.splice(i, 1);
+      // gone only once it has left the screen at the bottom or the right
+      if (at.y + c.y > env.H + 40 || c.t > CRATE.life || at.x + c.x > env.W + 80) crates.splice(i, 1);
     }
   }
 
@@ -375,22 +383,28 @@ window.Zones = (function () {
       blitSprite(ctx, "h_box", ax + c.x - 16, ay + c.y - 16);
     }
 
-    // the lamp head glows and throws its beam down-right until it meets the deck line
-    const apexX = ax + BEAM.x, apexY = ay + BEAM.y + bM + oy;
+    // the lamp head glows; its beam leaves the head's lower-right face as a
+    // band as wide as the face and runs to just past the bottom of the screen
+    const cosA = Math.cos(BEAM.ang), sinA = Math.sin(BEAM.ang);
+    const cx0 = ax + BEAM.x + cosA * 2, cy0 = ay + BEAM.y + bM + oy + sinA * 2;   // nudged 2px off the face
     ctx.save();
-    ctx.translate(apexX, apexY);
+    ctx.translate(cx0, cy0);
     ctx.fillStyle = lampGlow(ctx);
     ctx.fillRect(-26, -26, 52, 52);
     ctx.restore();
-    const deckY = ay + room;
-    const drop = deckY - apexY;
-    if (drop > 12) {
+    const endY = env.H + BEAM.over;
+    if (endY - cy0 > 12) {
       const ca = 0.20 + 0.03 * Math.sin(T * 3.1);
+      const nx = -sinA * BEAM.half, ny = cosA * BEAM.half;   // half the face, perpendicular to the beam
+      const ux = cx0 - nx, uy = cy0 - ny;                      // upper edge start
+      const lx = cx0 + nx, ly = cy0 + ny;                      // lower edge start
       const hi = BEAM.ang - BEAM.spread, lo = BEAM.ang + BEAM.spread;
+      const tu = (endY - uy) / Math.sin(hi), tl = (endY - ly) / Math.sin(lo);
       ctx.beginPath();
-      ctx.moveTo(apexX, apexY);
-      ctx.lineTo(apexX + drop / Math.tan(hi), deckY);
-      ctx.lineTo(apexX + drop / Math.tan(lo), deckY);
+      ctx.moveTo(ux, uy);
+      ctx.lineTo(ux + Math.cos(hi) * tu, endY);
+      ctx.lineTo(lx + Math.cos(lo) * tl, endY);
+      ctx.lineTo(lx, ly);
       ctx.closePath();
       ctx.fillStyle = "rgba(" + HL.cone + "," + ca + ")";
       ctx.fill();
