@@ -578,30 +578,48 @@ window.World = (function () {
 
   function drawSerus(x, y, R, ph) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(-t * 0.03);
-    const N = 96, TURNS = 3;
+    const N = 288, TURNS = 3;
     const Rout = R * (0.3 + 0.45 * ph.season);
     const pitch = Rout * 0.96 / TURNS;
-    const hw0 = 0.5 * pitch * (0.42 + 0.68 * ph.closure);
+    let hw0 = 0.5 * pitch * (0.42 + 0.68 * ph.closure);
     const u = Math.min(hw0 * 0.9, Rout * 0.1);
+    hw0 *= 1 + 0.03 * Math.sin(t * 0.8);
+
+    const ss = k => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+
+    // Tail flick: a brief sinuous kick near the tail, most of the time at rest
+    const TF_PERIOD = 47, TF_LEN = 3.2;
+    const tl = (t + 5) % TF_PERIOD;
+    const tk = tl < TF_LEN ? tl / TF_LEN : 0;
+    const env = Math.pow(Math.sin(Math.PI * tk), 2);
+
     const pts = [];
     for (let i = 0; i <= N; i++) {
       const f = i / N;
       const a = f * TURNS * 6.283;
-      const r = Rout * (0.07 + 0.93 * f) + R * 0.01 * Math.sin(t * 0.4 + f * 9);
+      let r = Rout * (0.07 + 0.93 * f) + R * 0.01 * Math.sin(t * 0.4 + f * 9);
+      if (f > 0.6) r += hw0 * 0.9 * env * Math.sin((f - 0.6) * 14 - tk * 9) * ((f - 0.6) / 0.4);
       const hs = Math.min(1, f / 0.14);
       const neck = hw0 > 0 ? 0.62 * u / hw0 : 1;
       const head = neck + (1 - neck) * hs * hs * (3 - 2 * hs);
-      const tail = f < 0.8 ? 1 : 1 - (f - 0.8) / 0.2;
-      const hw = hw0 * head * tail;
+      const tail = f < 0.45 ? 1 : 1 - 0.93 * ss((f - 0.45) / 0.55);
+      let hw = hw0 * head * tail;
+      hw = Math.max(R * 0.004, hw);
       pts.push({ a, r, hw, f });
     }
-    const outer = (p, extra) => {
-      const rr = p.r + p.hw + extra;
+
+    const cx = pts.map(p => Math.cos(p.a) * p.r);
+    const cy = pts.map(p => Math.sin(p.a) * p.r);
+    const cum = [0];
+    for (let i = 1; i <= N; i++) cum[i] = cum[i - 1] + Math.hypot(cx[i] - cx[i - 1], cy[i] - cy[i - 1]);
+
+    const outer = (p) => {
+      const rr = p.r + p.hw;
       return [Math.cos(p.a) * rr, Math.sin(p.a) * rr];
     };
     ctx.beginPath();
-    ctx.moveTo(...outer(pts[0], 0));
-    for (let i = 1; i <= N; i++) ctx.lineTo(...outer(pts[i], 0));
+    ctx.moveTo(...outer(pts[0]));
+    for (let i = 1; i <= N; i++) ctx.lineTo(...outer(pts[i]));
     for (let i = N; i >= 0; i--) {
       const p = pts[i];
       const rr = Math.max(0, p.r - p.hw);
@@ -610,122 +628,83 @@ window.World = (function () {
     ctx.closePath();
     ctx.fillStyle = "#140d12"; setA(1); ctx.fill("nonzero");
 
-    // Dorsal spines: thin raked triangles spaced by arc length along the outer edge
-    const cx = pts.map(p => Math.cos(p.a) * p.r);
-    const cy = pts.map(p => Math.sin(p.a) * p.r);
-    const cum = [0];
-    for (let i = 1; i <= N; i++) cum[i] = cum[i - 1] + Math.hypot(cx[i] - cx[i - 1], cy[i] - cy[i - 1]);
-    if (cum[N] > 0) {
-      const gap = Math.max(2, hw0 * 0.7);
-      ctx.beginPath();
-      let i = 0;
-      for (let s = cum[N] * 0.05, k = 0; s < cum[N] * 0.985; s += gap, k++) {
-        while (i < N - 1 && cum[i + 1] < s) i++;
-        const m = (s - cum[i]) / (cum[i + 1] - cum[i]);
-        const a = pts[i].a + (pts[i + 1].a - pts[i].a) * m;
-        const r = pts[i].r + (pts[i + 1].r - pts[i].r) * m;
-        const hw = pts[i].hw + (pts[i + 1].hw - pts[i].hw) * m;
-        if (hw < R * 0.006) continue;
-        const nrx = Math.cos(a), nry = Math.sin(a);
-        const tgx = -Math.sin(a), tgy = Math.cos(a);
-        const ex = (r + hw) * nrx, ey = (r + hw) * nry;
-        const v = 0.75 + 0.25 * ((k * 37) % 11) / 10;
-        const crest = s < cum[N] * 0.18 ? 1.35 : 1;
-        const b = hw * 0.22;
-        const hgt = hw * 0.75 * v * crest;
-        const p1x = ex - tgx * b - nrx * hw * 0.15, p1y = ey - tgy * b - nry * hw * 0.15;
-        const p2x = ex + tgx * b - nrx * hw * 0.15, p2y = ey + tgy * b - nry * hw * 0.15;
-        const tx = ex + nrx * hgt + tgx * (b * 2.2), ty = ey + nry * hgt + tgy * (b * 2.2);
-        ctx.moveTo(p1x, p1y); ctx.lineTo(tx, ty); ctx.lineTo(p2x, p2y); ctx.closePath();
-      }
-      ctx.fillStyle = "#140d12"; setA(1); ctx.fill();
-    }
-
     // Night core: full closure reads as a solid eclipse
     if (ph.closure > 0.8) {
       const nr = Rout * 0.96 * Math.min(1, (ph.closure - 0.8) / 0.2);
       ctx.beginPath(); ctx.arc(0, 0, nr, 0, 6.283); ctx.fill();
     }
 
-    // Subtle scales: a row (or two, staggered) of shallow arcs bulging tailward
-    const sa = depthAlpha("bnote-watcher-serus");
-    ctx.strokeStyle = "rgba(125,112,118,1)";
-    setA(0.2 + 0.15 * sa);
-    ctx.lineWidth = Math.max(1, R * 0.004);
-    ctx.beginPath();
-    for (let i = 4; i <= N - 4; i += 2) {
-      const p = pts[i];
-      if (p.hw < R * 0.012) continue;
-      const q = pts[i + 1], o = pts[i - 1];
-      const tx = Math.cos(q.a) * q.r - Math.cos(o.a) * o.r;
-      const ty = Math.sin(q.a) * q.r - Math.sin(o.a) * o.r;
-      const th = Math.atan2(ty, tx);
-      const rows = (i / 2) % 2 === 0 ? [-0.45, 0.45] : [0];
-      const dx = Math.cos(th), dy = Math.sin(th);
-      const nx = -dy, ny = dx;
-      for (let j = 0; j < rows.length; j++) {
-        const v = rows[j];
-        const cx = Math.cos(p.a) * (p.r + v * p.hw);
-        const cy = Math.sin(p.a) * (p.r + v * p.hw);
-        const s = p.hw * 0.3;
-        ctx.moveTo(cx + nx * s - dx * s * 0.6, cy + ny * s - dy * s * 0.6);
-        ctx.lineTo(cx + dx * s * 0.55, cy + dy * s * 0.55);
-        ctx.lineTo(cx - nx * s - dx * s * 0.6, cy - ny * s - dy * s * 0.6);
+    // Crest: short low crest near the head only
+    if (cum[N] > 0) {
+      const gap = Math.max(3, hw0 * 1.1);
+      let i = 0;
+      for (let s = cum[N] * 0.05, k = 0; s < cum[N] * 0.28; s += gap, k++) {
+        while (i < N - 1 && cum[i + 1] < s) i++;
+        const m = (s - cum[i]) / (cum[i + 1] - cum[i]);
+        const a = pts[i].a + (pts[i + 1].a - pts[i].a) * m;
+        const r = pts[i].r + (pts[i + 1].r - pts[i].r) * m;
+        const hw = pts[i].hw + (pts[i + 1].hw - pts[i].hw) * m;
+        if (hw < R * 0.008) continue;
+        const nrx = Math.cos(a), nry = Math.sin(a);
+        const tgx = -Math.sin(a), tgy = Math.cos(a);
+        const ex = (r + hw) * nrx, ey = (r + hw) * nry;
+        const b = hw * 0.28, hgt = hw * 0.4;
+        const p1x = ex - tgx * b - nrx * hw * 0.15, p1y = ey - tgy * b - nry * hw * 0.15;
+        const p2x = ex + tgx * b - nrx * hw * 0.15, p2y = ey + tgy * b - nry * hw * 0.15;
+        const tx = ex + nrx * hgt + tgx * (b * 1.2), ty = ey + nry * hgt + tgy * (b * 1.2);
+        ctx.beginPath();
+        ctx.moveTo(p1x, p1y);
+        ctx.quadraticCurveTo(tx, ty, p2x, p2y);
+        ctx.closePath();
+        ctx.fillStyle = "#140d12"; setA(1); ctx.fill();
       }
     }
-    ctx.lineJoin = "miter";
-    ctx.stroke(); setA(1);
 
-    // Snake head, drawn in a frame aligned to the coil's inner tangent
+    // Stripe: one faint centre line
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= N; i++) {
+      if (pts[i].f < 0.10 || pts[i].f > 0.95) continue;
+      if (!started) { ctx.moveTo(cx[i], cy[i]); started = true; }
+      else ctx.lineTo(cx[i], cy[i]);
+    }
+    ctx.strokeStyle = "rgba(125,112,118,1)";
+    setA(0.16 + 0.08 * depthAlpha("bnote-watcher-serus"));
+    ctx.lineWidth = Math.max(1, R * 0.0035);
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    setA(1);
+
+    // Soft head, drawn in a frame aligned to the coil's inner tangent, plus sway
     const h0 = pts[0], h1 = pts[1];
     const hx = Math.cos(h0.a) * h0.r, hy = Math.sin(h0.a) * h0.r;
     const h1x = Math.cos(h1.a) * h1.r, h1y = Math.sin(h1.a) * h1.r;
     const hd = Math.atan2(hy - h1y, hx - h1x);
-    ctx.save(); ctx.translate(hx, hy); ctx.rotate(hd);
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(hd + 0.06 * Math.sin(t * 0.23));
 
-    const hpts = [
-      [-0.5, 0.62], [0.1, 0.85], [0.9, 0.98], [1.35, 0.72], [2.0, 0.52], [2.35, 0.5],
-      [2.62, 0.3], [2.64, 0.06], [1.75, -0.02], [2.45, -0.14], [2.2, -0.4], [1.4, -0.62],
-      [0.6, -0.88], [0.35, -1.2], [0.2, -0.84], [-0.1, -0.95], [-0.25, -0.74], [-0.5, -0.62]
-    ];
     ctx.fillStyle = "#140d12"; setA(1);
     ctx.beginPath();
-    ctx.moveTo(hpts[0][0] * u, hpts[0][1] * u);
-    for (let i = 1; i < hpts.length; i++) ctx.lineTo(hpts[i][0] * u, hpts[i][1] * u);
+    ctx.moveTo(-0.5 * u, 0.62 * u);
+    ctx.bezierCurveTo(0.3 * u, 0.95 * u, 1.4 * u, 0.8 * u, 2.3 * u, 0.5 * u);
+    ctx.bezierCurveTo(2.7 * u, 0.35 * u, 2.7 * u, -0.1 * u, 2.35 * u, -0.3 * u);
+    ctx.bezierCurveTo(1.7 * u, -0.65 * u, 0.7 * u, -0.9 * u, -0.1 * u, -0.95 * u);
+    ctx.bezierCurveTo(-0.35 * u, -0.9 * u, -0.5 * u, -0.75 * u, -0.5 * u, -0.62 * u);
     ctx.closePath(); ctx.fill();
 
-    const hornA = [[0.35, 0.82], [0.95, 0.96], [-2.2, 1.9]];
     ctx.beginPath();
-    ctx.moveTo(hornA[0][0] * u, hornA[0][1] * u);
-    ctx.lineTo(hornA[1][0] * u, hornA[1][1] * u);
-    ctx.lineTo(hornA[2][0] * u, hornA[2][1] * u);
+    ctx.moveTo(0.35 * u, 0.82 * u);
+    ctx.lineTo(0.95 * u, 0.96 * u);
+    ctx.quadraticCurveTo(-0.6 * u, 1.7 * u, -2.2 * u, 1.75 * u);
+    ctx.quadraticCurveTo(-0.9 * u, 1.3 * u, 0.35 * u, 0.82 * u);
     ctx.closePath(); ctx.fill();
 
-    const hornB = [[0.0, 0.72], [0.4, 0.84], [-1.4, 1.35]];
     ctx.beginPath();
-    ctx.moveTo(hornB[0][0] * u, hornB[0][1] * u);
-    ctx.lineTo(hornB[1][0] * u, hornB[1][1] * u);
-    ctx.lineTo(hornB[2][0] * u, hornB[2][1] * u);
+    ctx.moveTo(0.0 * u, 0.72 * u);
+    ctx.lineTo(0.4 * u, 0.84 * u);
+    ctx.quadraticCurveTo(-0.7 * u, 1.25 * u, -1.4 * u, 1.2 * u);
+    ctx.quadraticCurveTo(-0.6 * u, 0.95 * u, 0.0 * u, 0.72 * u);
     ctx.closePath(); ctx.fill();
 
-    // Eye: shut almost always, opens rarely and briefly
-    const EYE_PERIOD = 29, EYE_OPEN = 1.8;
-    const el = (t + 11) % EYE_PERIOD;
-    const eo = el < EYE_OPEN ? Math.max(0, Math.min(1, el / 0.3, (EYE_OPEN - el) / 0.4)) : 0;
-    if (eo > 0.01) {
-      ctx.beginPath();
-      ctx.moveTo(0.9 * u, 0.62 * u);
-      ctx.lineTo(1.45 * u, 0.47 * u);
-      ctx.quadraticCurveTo(1.15 * u, (0.54 - 0.26 * eo) * u, 0.9 * u, 0.62 * u);
-      ctx.closePath();
-      ctx.fillStyle = "#d9c38a"; ctx.fill();
-      ctx.save();
-      ctx.clip();
-      ctx.beginPath();
-      ctx.ellipse(1.15 * u, (0.52 - 0.05 * eo) * u, 0.035 * u, 0.1 * u * eo, 0, 0, 6.283);
-      ctx.fillStyle = "#140d12"; ctx.fill();
-      ctx.restore();
-    }
     ctx.restore();
 
     ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.lineJoin = "miter";
