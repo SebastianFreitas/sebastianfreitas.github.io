@@ -17,7 +17,8 @@
 
    Feed a readings object each frame; it owns everything else.
 
-   What each tile draws lives in instruments-tiles.js; this file owns the
+   What each tile draws lives in tiles-nav.js (radar, signal, drive, nav)
+   and tiles-sys.js (tickSys, eclss, rad, hull, bus); this file owns the
    banks, the layout, the alarms and the paint loop.
    =========================================================== */
 
@@ -82,7 +83,7 @@ window.Instruments = (function () {
   const PAINT_STEP = 0.045;
   let paintAcc = PAINT_STEP;   // first draw paints at once
   let uiScale = 1;
-  let tiles = null;            // the eight tiles, from instruments-tiles.js
+  let tiles = null;            // the eight tiles, merged from tiles-nav.js and tiles-sys.js
   let tilesWarned = false;
 
   /* Alarm — master caution. A reading must hold to be believed, only one
@@ -307,13 +308,13 @@ window.Instruments = (function () {
     if (!tiles) {
       if (!tilesWarned) {
         tilesWarned = true;
-        console.error("instruments-tiles.js did not load — the HUD has no tiles");
+        console.error("tiles-nav.js / tiles-sys.js did not load — the HUD has no tiles");
       }
       return;
     }
     t += dt;
     decayAlarms(dt);
-    tiles.tickSys(dt, r);
+    if (tiles.tickSys) tiles.tickSys(dt, r);
     lastR = r;
     paintAcc += dt;
     if (paintAcc < PAINT_STEP) return;
@@ -327,8 +328,6 @@ window.Instruments = (function () {
      brief dip past one never reaches the lamp — see qualify(). */
   function tickAlarms(dt, r) {
     const s = r && r.ship;
-    const sys = tiles.sys;             // the readings the tiles integrate
-    const rep = tiles.repairState();
 
     // fuel — the one gauge with a real floor. Regen is fast, so only a hold
     // on the burn keeps it down here long enough to count.
@@ -336,16 +335,21 @@ window.Instruments = (function () {
     alarmRaw.set("phase", (s && s.infinite) ? A_NONE
       : fuelN < 0.09 ? A_ERR : fuelN < 0.22 ? A_WARN : A_NONE);
 
-    // cabin — only the deepest unformed space pulls the pressure down this far
-    alarmRaw.set("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
-      : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6) ? A_WARN : A_NONE);
+    if (tiles.sys) {
+      const sys = tiles.sys;             // the readings the tiles integrate
+      const rep = tiles.repairState();
 
-    // dose — only the peak of a flare, which is rare by construction
-    alarmRaw.set("rad", sys.dose > 0.50 ? A_ERR : sys.dose > 0.16 ? A_WARN : A_NONE);
+      // cabin — only the deepest unformed space pulls the pressure down this far
+      alarmRaw.set("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
+        : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6) ? A_WARN : A_NONE);
 
-    // skin — an open breach, but only while it is fresh. The bridge log
-    // narrates the rest of the repair; the tile does not need to nag.
-    alarmRaw.set("hull", (rep.count > 0 && rep.age < 12) ? A_WARN : A_NONE);
+      // dose — only the peak of a flare, which is rare by construction
+      alarmRaw.set("rad", sys.dose > 0.50 ? A_ERR : sys.dose > 0.16 ? A_WARN : A_NONE);
+
+      // skin — an open breach, but only while it is fresh. The bridge log
+      // narrates the rest of the repair; the tile does not need to nag.
+      alarmRaw.set("hull", (rep.count > 0 && rep.age < 12) ? A_WARN : A_NONE);
+    }
 
     // these have no abnormal state worth a lamp
     alarmRaw.set("radar",  A_NONE);
@@ -590,7 +594,12 @@ window.Instruments = (function () {
      clock stays this file's. */
   const F = { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, spark, fit, fmtK, now: () => t };
 
-  function registerTiles(factory) { tiles = factory(F); }
+  function registerTiles(factory) {
+    const part = factory(F);
+    if (!tiles) tiles = { paint: {}, paintStatic: {}, paintSys: {} };
+    for (const k of ["paint", "paintStatic", "paintSys"]) Object.assign(tiles[k], part[k] || {});
+    for (const k of ["tickSys", "impact", "setRepair", "sys", "repairState"]) if (part[k] !== undefined) tiles[k] = part[k];
+  }
 
   return {
     mount, mountSys, draw, setScale, getScale, setCompact, registerTiles,

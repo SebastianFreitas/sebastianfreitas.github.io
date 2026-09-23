@@ -4,23 +4,13 @@
    canvas drawings, hit-tested from bridge.js pointer events. Modelled on
    storm.js: one seeded mulberry for every random choice, flat fills, no
    outlines. Numbers ported from the HellEscape Unity scripts this alludes
-   to. */
+   to. The weapon tables live in forge-guns.js; the mission rolls and the
+   floor-plan generator live in forge-missions.js. */
 window.Forge = (function () {
   const { clamp } = Util;
-  const rnd = Util.mulberry(Date.now() & 0x7fffffff); // not Math.random: same reason as storm.js
-  const rint = (a, b) => a + Math.floor(rnd() * (b - a));   // int in [a, b)
-
-  // weighted pick: total = sum of wOf(item), walk a random point along it
-  function pick(list, wOf) {
-    let total = 0;
-    for (const item of list) total += wOf(item);
-    let r = rnd() * total;
-    for (const item of list) {
-      r -= wOf(item);
-      if (r <= 0) return item;
-    }
-    return list[list.length - 1];
-  }
+  const { rnd, rint, pick } = ForgeGuns;
+  const { MAX_MODS, MAX_PATH_MODS, MAX_EMPOWER, rollMod, makeGun, randomGun, stats } = ForgeGuns;
+  const { rollRunMod, regood, makeMission, genPlan } = ForgeMissions;
 
   const PANEL_W = 500, BENCH_H = 220;
   const CONS_W = 640;     // console panel width (bench keeps PANEL_W)
@@ -31,7 +21,6 @@ window.Forge = (function () {
   const TOP_Y = -140;     // panel top, px from planet centre
   const MIN_W = 900;      // below this hero width nothing is drawn or hit
   const FLASH = 0.3, ERR_FLASH = 0.4, ARM = 0.9;   // seconds
-  const MAX_MODS = 6, MAX_PATH_MODS = 2, MAX_EMPOWER = 9;
   const C = {
     green: "#82cc3c", greenInk: "#1e4a10", blue: "#4633cc", blueInk: "#b8f26a",
     red: "#d92b2b", redInk: "#c8ff5a", yellow: "#e6d43a", yellowInk: "#3d3608",
@@ -55,121 +44,6 @@ window.Forge = (function () {
     else if (align === "center") { g.textAlign = "center"; g.fillText(str, x + w / 2, y + h / 2); }
     else { g.textAlign = "left"; g.fillText(str, x + 7, y + h / 2); }
     g.restore();
-  }
-
-  /* ---- gun types, ported from HellEscape's weapon table ---- */
-  const GUN_BASE = [
-    { name: "basic", weight: 1000, rate: 2, phys: 50, bounces: 5, bullets: 1, speed: 2500 },
-    { name: "shotgun", weight: 750, rate: 1, phys: 20, bounces: 5, bullets: 8, speed: 1500 },
-    { name: "machinegun", weight: 750, rate: 5, phys: 20, bounces: 5, bullets: 1, speed: 1500 },
-    { name: "sniper", weight: 750, rate: 0.5, phys: 200, bounces: 10, bullets: 1, speed: 5000 },
-    { name: "basic_A1", weight: 20, rate: 1.25, phys: 150, bounces: 5, bullets: 1, speed: 4000 },
-    { name: "shotgun_A1", weight: 20, rate: 1.2, phys: 40, bounces: 5, bullets: 10, speed: 1500 },
-    { name: "machinegun_A1", weight: 20, rate: 4, phys: 40, bounces: 5, bullets: 1, speed: 2000 },
-    { name: "sniper_A1", weight: 20, rate: 0.75, phys: 300, bounces: 10, bullets: 1, speed: 5000 },
-  ];
-  const GUN_TYPES = GUN_BASE.map(g => Object.assign({ fire: 0, cold: 0, poison: 0 }, g));
-
-  const ELEMENTS = [["fire", "FD"], ["cold", "CD"], ["poison", "PD"]];
-  for (const base of GUN_BASE) {
-    if (!base.name.endsWith("_A1")) continue;
-    for (const [el, suffix] of ELEMENTS) {
-      const variant = {
-        name: `${base.name}${suffix}`, weight: 15, rate: base.rate, bounces: base.bounces,
-        bullets: base.bullets, speed: base.speed, phys: 0, fire: 0, cold: 0, poison: 0,
-      };
-      variant[el] = base.phys;
-      if (base.name === "machinegun_A1" && (el === "cold" || el === "poison")) {
-        variant.phys = 40;
-        variant[el] = 40;
-      }
-      GUN_TYPES.push(variant);
-    }
-  }
-
-  /* ---- mod pools ---- */
-  const MODS = [
-    { grade: 0, name: "Fire Damage", lo: 1, hi: 3, op: "plus", w: 1 },
-    { grade: 0, name: "Cold Damage", lo: 1, hi: 3, op: "plus", w: 1 },
-    { grade: 0, name: "Poison Damage", lo: 1, hi: 3, op: "plus", w: 1 },
-    { grade: 0, name: "Physical Damage", lo: 2, hi: 5, op: "inc", w: 1 },
-    { grade: 0, name: "Critical Damage", lo: 2, hi: 5, op: "inc", w: 1 },
-    { grade: 1, name: "Movement Speed", lo: 1, hi: 3, op: "inc", w: 3 },
-    { grade: 1, name: "Ricochets", lo: 1, hi: 6, op: "inc", w: 3 },
-    { grade: 1, name: "Fire Rate", lo: 1, hi: 3, op: "inc", w: 2 },
-    { grade: 1, name: "Bullet Speed", lo: 2, hi: 5, op: "inc", w: 3 },
-    { grade: 1, name: "Bullet Size", lo: 1, hi: 5, op: "inc", w: 3 },
-    { grade: 2, name: "Explosion Area", lo: 1, hi: 3, op: "inc", w: 30 },
-    { grade: 2, name: "Ignite Chance", lo: 2, hi: 6, op: "inc", w: 15 },
-    { grade: 2, name: "Poison Rate", lo: 1, hi: 2, op: "inc", w: 10 },
-    { grade: 2, name: "Poison Duration", lo: 2, hi: 6, op: "inc", w: 35 },
-    { grade: 2, name: "Freeze Chance", lo: 1, hi: 2, op: "inc", w: 10 },
-    { grade: 2, name: "Cold Projectile Chance", lo: 2, hi: 6, op: "pct", w: 303 },
-    { grade: 2, name: "Double Damage Chance", lo: 1, hi: 2, op: "pct", w: 30 },
-    { grade: 2, name: "Bleeding Chance", lo: 1, hi: 2, op: "pct", w: 30 },
-  ];
-
-  function rollMod(gun, L) {
-    const counts = [0, 0, 0];
-    for (const m of gun.mods) counts[m.grade]++;
-    const weights = [
-      Math.max(0, 200 - counts[0] * 100),
-      Math.max(0, 200 - counts[1] * 100),
-      Math.max(0, 2 - counts[2] * 1),
-    ];
-    if (weights[0] + weights[1] + weights[2] === 0) return null;
-    const grade = pick([0, 1, 2], i => weights[i]);
-    let candidates = MODS.filter(m => m.grade === grade && !gun.mods.some(gm => gm.name === m.name));
-    if (gun.mods.some(gm => gm.name === "Double Damage Chance" || gm.name === "Bleeding Chance")) {
-      candidates = candidates.filter(m => m.name !== "Double Damage Chance" && m.name !== "Bleeding Chance");
-    }
-    if (candidates.length === 0) return null;
-    const cand = pick(candidates, m => m.w);
-    const tiers = [];
-    for (let i = 1; i <= L; i++) tiers.push(i);
-    const tier = pick(tiers, x => x);
-    const d = (cand.hi - cand.lo) * tier;
-    const val = cand.lo + d + rint(0, Math.max(1, cand.hi - cand.lo));
-    let text;
-    if (cand.op === "plus") text = `+${val} ${cand.name}`;
-    else if (cand.op === "inc") text = `${val}% INCREASED ${cand.name}`;
-    else text = `+${val}% ${cand.name}`;
-    return { name: cand.name, grade: cand.grade, op: cand.op, val, text };
-  }
-
-  function makeGun(typeName, modCount, L) {
-    const base = GUN_TYPES.find(g => g.name === typeName);
-    const gun = { type: typeName, level: 10, mods: [], base };
-    for (let i = 0; i < modCount; i++) {
-      const m = rollMod(gun, L);
-      if (!m) break;
-      gun.mods.push(m);
-    }
-    return gun;
-  }
-
-  function randomGun() {
-    const type = pick(GUN_TYPES, g => g.weight);
-    const weights = [700, 900, 900, 700, 500, 100, 10, 1];
-    const idx = pick(weights.map((w, i) => i), i => weights[i]);
-    const modCount = clamp(idx + 1, 1, MAX_MODS);
-    return makeGun(type.name, modCount, 5);
-  }
-
-  function stats(gun) {
-    const b = gun.base;
-    const inc = name => gun.mods.filter(m => m.name === name && m.op === "inc").reduce((s, m) => s + m.val, 0);
-    const flat = name => gun.mods.filter(m => m.name === name && m.op === "plus").reduce((s, m) => s + m.val, 0);
-    return [
-      ["ITEM LEVEL", gun.level - 9],
-      ["PHYSICAL", Math.round(b.phys * (1 + inc("Physical Damage") / 100))],
-      ["FIRE", b.fire + flat("Fire Damage")],
-      ["COLD", b.cold + flat("Cold Damage")],
-      ["POISON", b.poison + flat("Poison Damage")],
-      ["FIRE RATE", Math.round(b.rate * (1 + inc("Fire Rate") / 100))],
-      ["SHOT SPEED", Math.floor(Math.floor(b.speed * (1 + inc("Bullet Speed") / 100)) / 100)],
-      ["RICOCHETS", Math.round(b.bounces * (1 + inc("Ricochets") / 100))],
-    ];
   }
 
   /* ---- shared state ---- */
@@ -292,168 +166,6 @@ window.Forge = (function () {
         tile(g, bx + 200, y, w, 22, set[0], set[1], "-", "left", C.dim);
       }
     }
-  }
-
-  /* ---- run-modifier table ---- */
-  const RUN_MODS = [
-    { text: "Weapon level", lo: 1, hi: 4, op: "plus", w: 100 },
-    { text: "Mission length", lo: 1, hi: 9, op: "plus", w: 100 },
-    { text: "Double drop chance", lo: 0, hi: 0, op: "non", w: 25 },
-    { text: "Monsters potentially found per room", lo: 2, hi: 5, op: "plus", w: 100 },
-    { text: "All side rooms are special", lo: 0, hi: 0, op: "non", w: 25 },
-    { text: "Chance for encounters to drop health", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Danger", lo: 0, hi: 0, op: "non", w: 4 },
-    { text: "Movement speed", lo: 10, hi: 49, op: "red", w: 100 },
-    { text: "Located boons", lo: 2, hi: 3, op: "plus", w: 50 },
-    { text: "ERROR", lo: 0, hi: 0, op: "non", w: 4 },
-    { text: "Located additional rewards", lo: 0, hi: 0, op: "non", w: 10 },
-    { text: "Gun parts drops", lo: 1, hi: 4, op: "plus", w: 100 },
-    { text: "50% reduced healing", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monster health", lo: 15, hi: 99, op: "plus", w: 250 },
-    { text: "Monster damage", lo: 1, hi: 9, op: "plus", w: 250 },
-    { text: "Monster action speed", lo: 1, hi: 24, op: "inc", w: 250 },
-    { text: "Cannot use grenade", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "UnknownX", lo: 0, hi: 0, op: "non", w: 8 },
-    { text: "UnknownY", lo: 0, hi: 0, op: "non", w: 8 },
-    { text: "Monsters are immune to fire damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to cold damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to poison damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to physical damage", lo: 0, hi: 0, op: "non", w: 100 },
-  ];
-
-  function rollRunMod(exclude) {
-    const candidates = RUN_MODS.filter(m => !exclude.includes(m.text));
-    const cand = pick(candidates, m => m.w);
-    if (cand.op === "non") return { text: cand.text, val: 0, line: cand.text };
-    const val = rint(cand.lo, cand.hi);
-    let line;
-    if (cand.op === "plus") line = `+${val} ${cand.text}`;
-    else if (cand.op === "inc") line = `${val}% INCREASED ${cand.text}`;
-    else line = `${val}% REDUCED ${cand.text}`;
-    return { text: cand.text, val, line };
-  }
-
-  function regood(m) {
-    const n = m.mods.length;
-    const has = name => m.mods.some(mm => mm.text === name);
-    const depth = m.len;
-    const elite = 5 + n + rint(1, Math.max(2, n));
-    const special = has("All side rooms are special") ? 75 : 25 + 2 * n + rint(1, 4 * n);
-    const z = (2 * n + rint(1, 2 * n)) * (has("Double drop chance") ? 2 : 1);
-    const drop = (1 + z * 3 / 100).toFixed(2);
-    m.good = [`${depth} DEPTH LEVEL`, `${elite}% ELITE CHANCE`, `${special}% SPECIAL ROOMS`, `${drop}% WEAPON DROP`];
-  }
-
-  function makeMission() {
-    const weights = [0, 10, 20, 10, 4, 2, 1];
-    const idx = pick(weights.map((w, i) => i), i => weights[i]);
-    const n = clamp(idx, 1, 1 + MAX_PATH_MODS);
-    const mods = [];
-    const names = [];
-    for (let i = 0; i < n; i++) {
-      const m = rollRunMod(names);
-      names.push(m.text);
-      mods.push(m);
-    }
-    let len = rint(10, 20);
-    for (const m of mods) if (m.text === "Mission length") len += m.val;
-    const mission = { mods, len, lines: null };
-    regood(mission);
-    return mission;
-  }
-
-  /* ---- floor-plan generator ---- */
-  const DIRS = [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }]; // E N W S
-  function turnDirs(dirIdx) { return [DIRS[(dirIdx + 3) % 4], DIRS[(dirIdx + 1) % 4]]; }
-
-  function genPlan(mission) {
-    const N = mission.len;
-    const steps = [];
-    for (let i = 0; i < N; i++) { steps.push("corridor"); steps.push("room"); }
-    steps.push("corridor");
-    steps.push("boss");
-
-    let cells, occ;
-    for (let attempt = 1; attempt <= 25; attempt++) {
-      cells = [];
-      occ = new Set(["0,0"]);
-      let pos = { x: 0, y: 0 };
-      let dirIdx = 0;
-      cells.push({ x: 0, y: 0, type: "start", main: true, mi: 0, dir: DIRS[dirIdx] });
-      let failed = false;
-      let mi = 0;
-      for (const kind of steps) {
-        mi++;
-        const [left, right] = turnDirs(dirIdx);
-        const candidates = (kind === "room" && rnd() < 0.35)
-          ? [left, right, DIRS[dirIdx]]
-          : [DIRS[dirIdx], left, right];
-        let moved = false;
-        for (const cand of candidates) {
-          const nx = pos.x + cand.x, ny = pos.y + cand.y;
-          const key = `${nx},${ny}`;
-          if (!occ.has(key)) {
-            pos = { x: nx, y: ny };
-            dirIdx = DIRS.indexOf(cand);
-            occ.add(key);
-            const cell = { x: nx, y: ny, type: kind, mi, dir: cand };
-            if (kind === "room") cell.main = true;
-            cells.push(cell);
-            moved = true;
-            break;
-          }
-        }
-        if (!moved) { failed = true; break; }
-      }
-      if (!failed || attempt === 25) break;
-    }
-
-    // side rooms, off each main room's perpendicular flanks
-    const sides = [];
-    for (const cell of cells) {
-      if (cell.type !== "room") continue;
-      const dirIdx2 = DIRS.indexOf(cell.dir);
-      const [left, right] = turnDirs(dirIdx2);
-      for (const perp of [left, right]) {
-        if (rnd() < 0.45) {
-          const nx = cell.x + perp.x, ny = cell.y + perp.y;
-          const key = `${nx},${ny}`;
-          if (!occ.has(key)) {
-            occ.add(key);
-            const kind = rnd() < 0.25 ? "special" : "encounter";
-            sides.push({ x: nx, y: ny, type: "side", kind, dir: perp });
-          }
-        }
-      }
-    }
-
-    // points of interest, walked along the side list
-    let kinds = ["choice", "item", "shop", "exit"];
-    if (mission.mods.some(m => m.text === "Located additional rewards")) kinds = kinds.concat(["choice", "item", "shop"]);
-    let idx = rint(0, 5), ki = 0;
-    while (idx < sides.length) {
-      sides[idx].kind = kinds[ki];
-      ki++;
-      if (ki >= kinds.length) { ki = 0; idx += 1 + rint(5, 10); }
-      else idx += 1;
-    }
-
-    // boons, among main rooms deep enough in the path
-    const b = 1 + mission.mods.filter(m => m.text === "Located boons").reduce((s, m) => s + m.val, 0);
-    const pool = cells.filter(c => c.type === "room" && c.mi >= 6);
-    for (let i = 0; i < b && pool.length > 0; i++) {
-      const j = rint(0, pool.length);
-      pool[j].kind = "boon";
-      pool.splice(j, 1);
-    }
-
-    const all = cells.concat(sides);
-    let minX = 0, maxX = 0, minY = 0, maxY = 0;
-    for (const c of all) {
-      if (c.x < minX) minX = c.x; if (c.x > maxX) maxX = c.x;
-      if (c.y < minY) minY = c.y; if (c.y > maxY) maxY = c.y;
-    }
-    return { cells: all, minX, maxX, minY, maxY };
   }
 
   function cellColor(c) {
