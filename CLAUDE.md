@@ -24,213 +24,291 @@ anything needs fixing.
 
 ## Token budget
 
-This repo is small in file count but the hero code is big. Whole-file reads
-are the main cost. These rules apply to the main session, Explore and the
-implementer alike.
+The repo was split on 2026-09-23 so that no JS file is over 620 lines and
+most are under 300. Whole-file reads are still the main cost. These rules
+apply to the main session, Explore and the implementer alike.
 
-- **Never read a whole file over 300 lines.** The files over 500 lines are
-  `bridge.js`, `world.js`, `depths.js`, `instruments-tiles.js`,
-  `genesis-void.js`, `genesis-saga.js`, `rexart-deep.js`,
-  `rexart-surface.js`, `instruments.js`, `landart.js` and `genesis.js`. Use
-  the File map below to pick the function or section, then `Grep -n` for the
-  name and `Read` with `offset`/`limit` around the hit. Line numbers in this
-  file drift; the function names do not, so grep the name rather than
-  trusting the number.
+- **Never read a whole file over 300 lines.** Files still over 500 lines:
+  `css/bridge.css` (726), `js/hud/instruments.js` (612), `js/gamedev/storm.js`
+  (585), `js/ship/voidship-art.js` (566), `js/ship/voidship.js` (553),
+  `js/gamedev/forge.js` (549), `js/genesis/genesis.js` (515),
+  `js/gamedev/zones.js` (509), `tools/snap.py` (531),
+  `tools/nav-flows.test.py` (890). Use the File map below to pick the file
+  and function, then `Grep -n` for the name and `Read` with `offset`/`limit`
+  around the hit. Function names do not drift; line numbers do.
 - **Never open** `cv.pdf`, anything under `media/`, `Temporary VoidScape
-  Media/`, or `__pycache__/`. They are binaries and staging assets. `Glob`
-  or `ls` them if you need names; never `cat`, `Read` or `wc` them.
+  Media/`, `snapshots/` or `__pycache__/`. They are binaries and staging
+  assets. `Glob` or `ls` them if you need names; never `cat`, `Read` or `wc`
+  them.
 - **Do not re-survey the repo.** The file map, load order, storage keys and
   test flows are already below. Only re-derive them if a grep proves the map
   wrong, and then fix the map here.
 - **Explore prompts must be narrow:** name the file, the function or the
   concept, and ask for `file:line` anchors and a summary, not code bodies.
-  "Read bridge.js and tell me how it works" is the failure mode.
 - **Specs carry their own anchors.** The implementer has `omitClaudeMd: true`
-  and never sees this file. Put the target function names (and a grep
-  string) in the spec so it can jump straight there instead of reading the
-  file top to bottom.
+  and never sees this file. Put the target file paths and function names in
+  the spec so it can jump straight there.
 - **One file per implementer call** unless the change genuinely spans files.
-  Do not send the implementer `world.js` and `bridge.js` for a one-file fix.
-- **Test only the flows you touched.** `py -3 nav-flows.test.py <flow>`; the
-  full suite is 20 flows and only needed before a commit that touches
-  navigation, the gate or storage.
+- **Test only the flows you touched.** `py -3 tools/nav-flows.test.py
+  <flow>`; the full suite is 20 flows and only needed before a commit that
+  touches navigation, the gate or storage. Three checks fail on `main`
+  before this refactor and still do (`gate-exits` / `worklink` "lands on
+  Work": the scroll lands 72 px above the section); they are not a
+  regression signal.
 - **Screenshot regression is mandatory for any change that paints or
-  styles.** `py -3 snap.py capture <name>` (about 3.5 min, 50 scenes) then
-  `py -3 snap.py compare <before> <after>`. Capture once before touching
-  code, once after; the compare must be `same` on every scene you did not
-  intend to change. The last verified capture folders live under
-  `snapshots/` (gitignored).
-- Bump every `?v=` at once with `py -3 bump.py` before a commit that changes
-  any script or stylesheet; never edit the numbers by hand.
+  styles.** `py -3 tools/snap.py capture <name>` (about 3.5 min, 50 scenes)
+  then `py -3 tools/snap.py compare <before> <after>`. Capture once before
+  touching code, once after; the compare must be `same` on every scene you
+  did not intend to change. Capture folders live under `snapshots/`
+  (gitignored).
+- Bump every `?v=` at once with `py -3 tools/bump.py` before a commit that
+  changes any script or stylesheet; never edit the numbers by hand.
+
+## Layout
+
+No framework, no bundler, no npm. GitHub Pages user site, so the pages and
+site assets stay at the root; everything else lives in a folder.
+
+```
+index.html 404.html projects/ media/ cv.pdf robots.txt sitemap.xml .nojekyll
+serve.py serve.bat            local no-cache server on 8765
+css/                          style, gate, beacon, bridge
+js/lib/                       util, paint, pacer
+js/site/                      xp, entry, intro, surge, embed, lazy-video
+js/hud/                       instruments, tiles-nav, tiles-sys
+js/bridge/                    bridge core + 7 parts, bridge-voice, bridge-log, marks, lamp, planet
+js/depths/                    depths core + zero, voidscape, heavylight, conclusus, lore
+js/ship/                      voidship, voidship-art
+js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
+js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
+js/genesis/                   genesis-state, -paint, -void, -orb, -rex, -saga-state, -saga, genesis
+tools/                        nav-flows.test.py, snap.py, bump.py
+```
+
+Every JS file is an IIFE that publishes or extends one global on `window`.
+Two folders share one state object across files, the way the cutscene
+shares `Gen`:
+
+- **`js/bridge/`**: `bridge.js` declares `const B = window.Bridge = {}`. Every
+  other bridge file starts `const B = window.Bridge; if (!B) return;`,
+  destructures constants and containers once (`CAM`, `MARKS`, `host`,
+  `scale`, `wx`, `markScreen`, …) and reads mutable state at call time
+  (`B.camX`, `B.vel`, `B.sceneMode`, `B.ship`, `B.W`, `B.H`, `B.t`,
+  `B.activeMark`, `B.xswitch`, `B.log`, `B.voice`, `B.pacer`, …). Functions
+  used across files are published as `B.fn` and called as `B.fn(...)`. To
+  find every reader and writer of a field, grep `B.name` across the folder.
+- **`js/world/`**: `world.js` publishes `World` with `F` (per-frame:
+  `ctx, W, H, camX, t, vel, chaosNow, futureNow, dtNow, V`) and `P` (painter
+  registry). Each painter file destructures what it needs from `World`,
+  starts every painter with `const { ctx, W, H, t } = F;` (only the fields
+  it reads), and ends with `P.drawX = drawX`. `draw` in the core sets `F`
+  and calls `P.*` in a fixed order.
 
 ## File map
 
-No framework, no bundler, no npm. Every JS file is an IIFE that publishes
-one global on `window`. Sizes are line counts.
+Sizes are line counts after the split.
+
+### js/lib
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `util.js` | 67 | Shared maths (`clamp mix smooth approach easeOut wrapPi mulberry hash1 vnoise ridge fmt`), `reduced()`/`coarse()` media queries, storage `KEYS` + `read`/`write`/`remove` | `window.Util`. Loaded first on every page |
+| `paint.js` | 82 | Flat-art primitives (`poly line rect circle lin rad litShade offsetShade merlons fillRidge`) | `window.Paint` |
+| `pacer.js` | 163 | rAF scheduler: paints on refresh boundaries, parks to a 10 fps timer at rest, wakes on input | `window.Pacer {create}` |
+
+### js/site
 
 | File | Lines | Purpose | Publishes / uses |
 |---|---|---|---|
-| `bridge.js` | 1513 | Hero orchestrator: camera, pointer/burn input, notes, marks drawing, depths reveal, sector switch, HUD wiring, render | `window.beaconReport`, `depthsReport`, `depthsReveal`, `depthAlpha`, `__bridgeRefit`, `pacingReport`; uses everything below |
-| `pacer.js` | 163 | rAF scheduler: paints on refresh boundaries (every Nth refresh, 60 fps cap), parks to a 10 fps timer when the scene is at rest and untouched, wakes on input | `window.Pacer {create}`; one instance per animated canvas |
-| `marks.js` | 77 | The landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS` | `window.Marks`; uses `World` |
-| `bridge-voice.js` | 367 | What the readout says per region, with warn/err/crit odds | `window.BridgeVoice {create(S)}`, a factory over a view `S` of bridge state |
-| `bridge-log.js` | 68 | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
-| `genesis-state.js` | 333 | Cutscene shared state: BEATS, world constants, seeded scenery, transport state (beat/local/cam/…), timeline queries `since`/`linear`/`only`/`sx` | `window.Gen`; every genesis file reads/writes through `Gen` |
-| `genesis-paint.js` | 136 | Cutscene helpers and terrain (`flatGlow`, `flatSphere`, `gridXs`, `fillRidge`, `mixHex`, `rexLandHeight`, `mainHeight`, …) | `window.GenPaint` |
-| `genesis-void.js` | 678 | Cutscene painters: motes, chaos, the point, the span, the womb and old ones, orbs, rings, beams, names | `window.GenVoid` |
-| `genesis-rex.js` | 442 | Cutscene painters: chases/duel, Rex land, the hole, the grip, the buried god, the gods' birth, the depths | `window.GenRex` |
-| `genesis-saga.js` | 672 | Cutscene painters: `sagaAt` (all saga-beat state), mainland, city, armies, nest pit, `drawSaga`, `drawLiveWorld` | `window.GenSaga` |
-| `genesis.js` | 515 | Cutscene core: DOM/overlay, transport `play`/`skip`/`seek`/`finish`, `camAim`/`step`, the `draw` conductor, input | `window.Genesis {active, pending, play, skip, seek, step, draw}` |
-| `instruments.js` | 603 | HUD framework: banks/layout, alarms, static-blit cache, paint loop, `registerTiles` | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
-| `instruments-tiles.js` | 857 | The eight HUD tiles (radar, signal, drive, nav, eclss, rad, hull, bus) and `tickSys` | registers itself with `Instruments.registerTiles` |
-| `world.js` | 1195 | Scenery only: Arcanis geography and painting. No input, no HUD | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw}`; uses `RexArt`, `LandArt`, `depthAlpha` |
-| `depths.js` | 977 | Pure data: beacon-gated node clusters and layouts. No DOM | `window.Depths {nodes, clusters}` |
-| `voidship-art.js` | ~480 | The craft's painters: angular side-view city-ship hull (`drawHull`, corners only, every thin part floored at 1 px because L is only 96 px), solid front-on block shown mid-turn (`drawFront`), alien drive fumes (`drawFumes`), emitter seats `EMIT`, palette `COLORS`. Local frame: +x nose, +y down, units of hull length L; the caller mirrors with `scale(face,1)` and `block()` keeps the lit side on screen-left | `window.VoidshipArt`; uses `Paint`, `Util` |
-| `voidship.js` | ~380 | The craft: hold-as-stick / tap-to-seek motion, release-stops rule, fuel, yaw flip + pitch, fume particles (screen frame, damped inertia), draw orchestration | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
-| `storm.js` | 527 | The Sector Zero storm: two debris compositions beside the planet, a desk to the right (tower, floppy, CRT, speaker, heater, keyboard, can, mug, note) and a repair station below-left (open case, side panel, motherboard, GPU, open hard disk, PSU, RAM, CPU, fan, the game's screwdriver); the cycle home → storm → gather (objects kicked loose, drift on noise inside a tether, spring home, silent snap), ship shoving via three hull circles, object-object circles, deck-line and top-bar bounce, the terminal flicker on the CRT, faint ghost terminal lines that type and fade. Positions are px relative to the planet's screen centre (the station tracks a fraction of H); one seeded `mulberry` for every random choice | `window.Storm {step, draw, lively, report}`; uses `Util`, `Paint`; fed by `bridge.js` `stormEnv` |
-| `forge.js` | 837 | VoidScape bench and run console beside the planet: crafting bench (gun with mod rows, add/remove/destroy), mission console (search three paths, select, empower, reload, open portal → generated floor plan); panels unlock when the bench / map depth nodes are reached | `window.Forge {step, draw, hit, over, lively, report, unlock}`; uses `Util`; fed by `bridge.js` `forgeEnv` |
-| `zones.js` | ~540 | Backdrop art around the Conclusus, HeavyLight and VoidScape planets so each area reads as its game. Both games share one sprite pipeline: pixel-string tables (`CPAL`/`CSPR` for Conclusus 32px art, `HPAL`/`HSPR` for HeavyLight 16px art, resolved by `spriteOf`) → `spriteCanvas` cache → `blitSprite` at 2x. Conclusus: floating grass tiles, the idle player, his planted shadow (`shadowCanvas`, the game's shadow-teleport), the arch whose lit fill breathes (`lit`), a drifting symbol. HeavyLight: sewer slabs/pillar pre-rendered per group (`HL_GROUPS`/`groupCanvas`), spikes, crate, wall glyph, desk lamp with glow and beam, red key, the red player with his lantern (`LANTERN` frames). VoidScape: rising embers plus lime shards. Skipped under 900px wide; nothing below the deck line (`roomBelow`) except the lamp's beam and the crates it carries (`BEAM`, `dropCrate`/`stepCrates`: a crate drops from above the screen when the ship reaches HeavyLight or one of its depth nodes, `bridge.js` `selectMark`, and rides the beam off the bottom). Painted before the planets, so it never hit-tests | `window.Zones {step, draw, report}`; uses `Util`; fed by `bridge.js` `zonesEnv` |
-| `rexart-deep.js` | 638 | Painters for the three Rex caverns | `window.RexArt.titans / .valkhar / .law` |
-| `rexart-surface.js` | 625 | Painters for Rex surface landmarks | `window.RexArt.firstlight / .crimson / .bonespire` |
-| `landart.js` | 587 | Painters for the five Mainland factions. `+y` is UP here, opposite of rexart | `window.LandArt.shattered / .libertech / .dawn / .accord / .gore` |
-| `xp.js` | 338 | Site-wide progression, level chip, cross-tab sync, `?reset=1` | `window.XP {award, has, total, mount, reset, …}`; fires `xp:surge` |
-| `intro.js` | 206 | Entry gate UI: boot log, the two paths, exits | uses `SiteEntry`, `XP` |
-| `lamp.js` | 109 | Canvas beacon draw + HIT radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
-| `planet.js` | 136 | Placeholder worlds for the Game Dev sector | `window.Planet {draw}` |
-| `lazy-video.js` | 137 | Swaps in `media/**/sd/` encodes on slow connections | none |
-| `surge.js` | 132 | Level-up light animation, listens for `xp:surge` | `window.Surge {play, reachFor}` |
+| `xp.js` | 379 | Site-wide progression, level chip, cross-tab sync, `?reset=1` | `window.XP {award, has, total, mount, reset, …}`; fires `xp:surge` |
 | `entry.js` | 48 | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
+| `intro.js` | 206 | Entry gate UI: boot log, the two paths, exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
+| `surge.js` | 132 | Level-up light animation, listens for `xp:surge` | `window.Surge {play, reachFor}` |
 | `embed.js` | 30 | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `util.js` | 67 | Shared maths (`clamp mix smooth approach easeOut wrapPi mulberry hash1 vnoise ridge fmt`), `reduced()`/`coarse()` media queries, storage `KEYS` + `read`/`write`/`remove` | `window.Util`. Loaded first on every page |
-| `paint.js` | 82 | Flat-art primitives (`poly line rect circle lin rad litShade offsetShade merlons fillRidge`) | `window.Paint`. Used by landart, rexart-*, world, genesis |
-| `style.css` | 422 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top | |
-| `gate.css` | 126 | The entry gate: boot log, then the two paths | index only |
-| `bridge.css` | 726 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay | index only |
-| `beacon.css` | 165 | Level chip, claim ceremony, surge | |
-| `index.html` | 423 | Homepage. Inline head script is only the service-worker purge | |
-| `projects/*.html` | ~87–253 | Four case-study pages, same shell | |
-| `404.html` | 54 | Not-found page | |
-| `nav-flows.test.py` | 891 | Playwright flows; starts its own server on a free port | |
-| `snap.py` | 531 | Screenshot regression harness: `capture`, `compare`, `list` | |
-| `bump.py` | 33 | Sets every `?v=` across the HTML pages | |
-| `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) | |
+| `lazy-video.js` | 137 | Swaps in `media/**/sd/` encodes on slow connections | none |
+
+### js/hud
+
+| File | Lines | Purpose | Publishes / uses |
+|---|---|---|---|
+| `instruments.js` | 612 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms`/`alert`, the `F` kit, `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
+| `tiles-nav.js` | 471 | The nav bank: `radarStatic`, `radar`, `signal`, `drive` (key `phase`), `nav` (key `rec`) | registers `{paint, paintStatic}` |
+| `tiles-sys.js` | 401 | The sys bank and its shared state: `tickSys`, `eclss`, `rad`, `impact`, `setRepair`, `hull`, `bus`, `sys`, `repairState` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
+
+### js/bridge
+
+Load order is the table order; all eight bridge files share `B`.
+
+| File | Lines | Purpose | Publishes on `B` / `window` |
+|---|---|---|---|
+| `bridge.js` | 301 | Core: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state, scene-mode consts (`ZERO_MARK VS_MARK HL_MARK CONC_MARK XSTAGE`), `B.ship = Voidship.create`, `xp:freeze`, cursor, sheet, projection `viewUnitsNow`/`scale`/`wx`/`onScreen`/`flyK`/`markScreen`, `begin` | `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin` |
+| `bridge-notes.js` | 157 | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
+| `bridge-input.js` | 244 | Pointer/burn input: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels` | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
+| `bridge-marks.js` | 176 | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
+| `bridge-panel.js` | 347 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`), setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
+| `bridge-depths.js` | 99 | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
+| `bridge-readout.js` | 205 | `B.voice = BridgeVoice.create`, hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
+| `bridge-loop.js` | 167 | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
+| `bridge-voice.js` | 367 | What the readout says per region (`ZONES`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
+| `bridge-log.js` | 68 | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
+| `marks.js` | 78 | Landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS`/`GD_SPAWN` | `window.Marks`; uses `World` |
+| `lamp.js` | 109 | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
+| `planet.js` | 136 | Placeholder worlds for the Game Dev sector, `THEMES` per game | `window.Planet {draw}` |
+
+### js/depths
+
+| File | Lines | Purpose |
+|---|---|---|
+| `depths.js` | 201 | Core: `CLUSTERS` registry, `add`, `waveOf`, `LAYOUTS` (`rows arc chain branch`), `nodes()` | `window.Depths {nodes, clusters, add}` |
+| `zero.js` `voidscape.js` `heavylight.js` `conclusus.js` | 199 / 216 / 164 / 166 | One planet cluster each (10 nodes, `arc` layout), ids `bnote-sz-* bnote-vs-* bnote-hl-* bnote-cc-*`; registered with `Depths.add` in load order = cluster order |
+| `lore.js` | 318 | The four lore-beacon clusters in order: `bnote-rex` (10), `bnote-watcher` (2), `bnote-void` (3, `bnote-bridge-*`), `bnote-land` (5); mostly pinned with `at:` |
+
+### js/ship
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `voidship.js` | 553 | `BASE` tunables, `create`, `setThrusting` (release rule), `step` (hold boost → wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw` | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
+| `voidship-art.js` | 566 | `block`, `drawHull`, `drawFront`, `drawFumes`, `EMIT`, `COLORS`; local frame +x nose, +y down, units of hull length L | `window.VoidshipArt` |
+
+### js/gamedev
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `storm.js` | 585 | Sector Zero storm: `COMPS`/`HOLD`/`STORM`, `layout`, `ROSTER`, `PAINTERS`, cycle `startStorm`/`gust`/`snapHome`, `stepFlicker`, ghost `LINES`/`stepLines`, `step`, `draw`, `report` | `window.Storm {step, draw, lively, report}`; fed by `bridge-marks.js` `stormEnv` |
+| `forge-guns.js` | 137 | The one seeded `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
+| `forge-missions.js` | 169 | `RUN_MODS`, `rollRunMod`, `regood`, `makeMission`, floor plan `genPlan` | `window.ForgeMissions`; uses `ForgeGuns` |
+| `forge.js` | 549 | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock` | `window.Forge`; fed by `bridge-marks.js` `forgeEnv`, hit-tested in `bridge-input.js` pointerdown |
+| `zones.js` | 509 | Backdrop art around Conclusus / HeavyLight / VoidScape: sprite pipeline `CPAL`/`CSPR`/`HPAL`/`HSPR` → `spriteCanvas` → `blitSprite`, `HL_GROUPS`, `LANTERN`, `BEAM`, `dropCrate`/`stepCrates` | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
+
+### js/world
+
+| File | Lines | Purpose |
+|---|---|---|
+| `world.js` | 285 | Core: `VIEW_UNITS`, `SLOT`, `LAND`, `BOUNDS`, `DECK`, `FLOOR`, `BAY`, `chaosAt`, `futureAt`, seeded `city` and particle arrays, Rex consts `REX_BANDS`/`REX_FROM`/`REX_END`/`HELL_AT`/`rexHeight`/`REX_PLACES`, `rexSprite` cache, `depthAlpha`/`setA`/`faded`, `MAIN_PAR` + faction anchors, `F`, `P`, `scale`/`wx`/`onScreen`, `draw` (paint order lives here) | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw, F, P, …}` |
+| `void.js` | 217 | `drawVoid`, `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture`, `drawSectorGlow` |
+| `watcher.js` | 220 | `WATCHER_SHARDS`/`WATCHER_CRACKS`, `drawWatcher` (calls `P.serusPhase`/`P.drawSerus`), `RED_STAR`, `drawRedStar` |
+| `serus.js` | 154 | `serusPhase`, `drawSerus` (the alien coiled in the Watcher) |
+| `nephilim.js` | 194 | `NEPHILIM` anchor, `nephRng`, `NEPH_*`, `nephWalk`, `nephRibbon`, `flatVolume`, `drawNephilim` |
+| `admin-tear.js` | 75 | `ADMIN_TEAR`, `TEAR_JAG`, `drawAdminTear` |
+| `vikings.js` | 47 | `VIKINGS`, `VIKING_STARS`/`LINES`/`MAG`, `drawVikings` |
+| `rex.js` | 166 | `fillRidge` wrapper, `drawRex`, `drawHell`, `rexInterior`, `drawRexPlaces` (reads `window.RexArt`) |
+| `city.js` | 169 | `drawBand`, `drawCityNear`, `drawLandPlace` (reads `window.LandArt`), `drawRoot`, `drawBridge` |
+
+### js/world/art
+
+Each place file is `const RexArt = window.RexArt = window.RexArt || {}` (or
+`LandArt`) plus one section and one `RexArt.<key> = {box, paint, live, …}`.
+Shape: Rex entries `{box, paint, live}` (`firstlight` also `under`); Land
+entries `{box, top, paint, live}`. `+y` is UP in the land painters.
+
+| File | Lines | Key | Notes |
+|---|---|---|---|
+| `rex-kit.js` | 76 | `window.RexKit {archWin, lancet, cutFoot, pocket, trace, spill, lip}` | loads first |
+| `firstlight.js` `crimson.js` `bonespire.js` | 218 / 275 / 128 | `RexArt.firstlight / .crimson / .bonespire` | surface; Bone Spire is the style reference |
+| `titans.js` `valkhar.js` `law.js` | 226 / 198 / 206 | `RexArt.titans / .valkhar / .law` | caverns; Titans is the style reference; `*_POCKET` call `pocket()` at parse time |
+| `land-kit.js` | 36 | `window.LandKit {band, arch, litRect}` | loads before the factions |
+| `shattered.js` `libertech.js` `dawn.js` `accord.js` `gore.js` | 100 / 132 / 135 / 96 / 171 | `LandArt.shattered / .libertech / .dawn / .accord / .gore` | |
+
+### js/genesis
+
+All share `window.Gen` (`G`). Values that change per frame are read as
+`G.x` at call time; constants, arrays and helpers are destructured once.
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `genesis-state.js` | 333 | `BEATS`, world constants, state block, seeded scenery, queries `since`/`linear`/`only`/`sx`/`beatDur`; dev params `?genesis=1` (`G.FORCE`), `?gbeat=<name>` (`G.JUMP`) | `window.Gen` |
+| `genesis-paint.js` | 136 | `flatGlow`, `flatSphere`, `gridXs`, `fillRidge`, `mixHex`, `rexLandHeight`, `mainHeight`, … | `window.GenPaint` |
+| `genesis-void.js` | 410 | `fillBg`, `drawMotes`, `drawChaos`, `drawPoint`, `drawBridgeLine`, old ones (`walkerPos`, `drawAlien`, `drawOldOnes`), `drawStains`, `fleshPath`, `drawFlesh`, `drawSouls` | extends `window.GenVoid` |
+| `genesis-orb.js` | 279 | `drawRip`, `lightsAt`, `pushTrail`, `drawTrail`, `drawOrb`, `drawRings`, `drawBeam`, `drawTintBeam`, `yWob`, `drawName` | extends `window.GenVoid` |
+| `genesis-rex.js` | 442 | `chaseAt` … `drawDepths`: chases/duel, Rex land, the hole, the grip, the buried god, the gods' birth | `window.GenRex` |
+| `genesis-saga-state.js` | 297 | `sagaAt`: every saga-beat quantity for the frame | extends `window.GenSaga` |
+| `genesis-saga.js` | 383 | `drawMainland`, `drawCity`, `drawArmies`, `drawNestPit`, `drawSaga`, `drawLiveWorld` | extends `window.GenSaga` |
+| `genesis.js` | 515 | DOM/overlay, transport `play`/`skip`/`seek`/`finish`, `camAim`/`step`, the `draw` conductor, input | `window.Genesis {active, pending, play, skip, seek, step, draw}` |
+
+### css, pages, tools
+
+| File | Lines | Purpose |
+|---|---|---|
+| `css/style.css` | 431 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
+| `css/gate.css` | 126 | The entry gate: boot log, then the two paths. index only |
+| `css/bridge.css` | 726 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay. index only |
+| `css/beacon.css` | 159 | Level chip, claim ceremony, surge |
+| `index.html` | 460 | Homepage. Inline head script is only the service-worker purge |
+| `projects/*.html` | 110–253 | Four case-study pages, same shell |
+| `404.html` | 54 | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
+| `tools/nav-flows.test.py` | 890 | Playwright flows; starts its own server on a free port; `ROOT` is the repo root |
+| `tools/snap.py` | 531 | Screenshot regression: `capture`, `compare`, `list`; imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js` |
+| `tools/bump.py` | 36 | Sets every `?v=` across the HTML pages; works from any cwd |
+| `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) |
 
 ### Load order
 
-`index.html` head: `style.css`, `gate.css`, `beacon.css`, `bridge.css`, then
-`util.js`, `xp.js`, `entry.js` (blocking, on purpose), then the inline SW
-purge. Body tail: `surge → lamp → planet → depths → instruments →
-instruments-tiles → paint → rexart-surface → rexart-deep → landart → world →
-voidship-art → voidship → storm → forge → zones → embed → pacer → marks → bridge-log → bridge-voice → bridge →
-genesis-state → genesis-paint → genesis-void → genesis-rex → genesis-saga →
-genesis → intro`.
+`index.html` head: `css/style.css`, `css/gate.css`, `css/beacon.css`,
+`css/bridge.css`, then `js/lib/util.js`, `js/site/xp.js`, `js/site/entry.js`
+(blocking, on purpose), then the inline SW purge. Body tail, in this order:
+
+`site/surge → bridge/lamp → bridge/planet → depths/depths → depths/{zero,
+voidscape, heavylight, conclusus, lore} → hud/instruments → hud/tiles-nav →
+hud/tiles-sys → lib/paint → world/art/rex-kit → world/art/{firstlight,
+crimson, bonespire, titans, valkhar, law} → world/art/land-kit →
+world/art/{shattered, libertech, dawn, accord, gore} → world/world →
+world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
+ship/voidship-art → ship/voidship → gamedev/storm → gamedev/forge-guns →
+gamedev/forge-missions → gamedev/forge → gamedev/zones → site/embed →
+lib/pacer → bridge/marks → bridge/bridge-log → bridge/bridge-voice →
+bridge/{bridge, bridge-notes, bridge-input, bridge-marks, bridge-panel,
+bridge-depths, bridge-readout, bridge-loop} → genesis/{genesis-state,
+genesis-paint, genesis-void, genesis-orb, genesis-rex, genesis-saga-state,
+genesis-saga, genesis} → site/intro`.
 
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
-`site:preload` synchronously at top level, so every file that registers a
-listener has to be parsed before it. `bridge.js` reads `World` (and `Util`,
-`Marks`) at parse time, so those must precede it. Scripts carry `?v=N`
-cache-busters; bump them with `py -3 bump.py`.
+`site:preload` synchronously at top level. Order constraints inside a
+folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
+`instruments.js`, kits before places, `forge-guns` before `forge-missions`
+before `forge`); `genesis-void` and `genesis-orb` before `genesis-rex`
+(it destructures `GenVoid` at parse time); `genesis-saga-state` before
+`genesis-saga`. Scripts carry `?v=N` cache-busters; bump them with
+`py -3 tools/bump.py`.
 
-Project pages load only `style.css`, `beacon.css`, then `util → xp → surge`
-plus `embed.js` (conclusus, heavylight) or `lazy-video.js` (sector-zero,
-voidscape), and an inline `XP.award(...)`.
-
-### Section anchors
-
-Grep these names; the ranges are approximate.
-
-- **bridge.js** — gate deferral `readyBridge`/`startLoop` (~107–130), state +
-  `wx()` world→screen (~158–229), notes `showNote`/`placeNote`/`selectMark`
-  (~291–376), hints `HINT_STEPS`/`hintDone` (~377–401), input
-  `clientToCourse`/`beginBurn`/`endBurn` + listeners (~426–590), minimap
-  `rebuildTrack` (~593), marks `drawCue`/`drawCueLine`/`drawMarks`
-  (~654–802) and `marksSettled` (~1429), `__bridgeRefit`/`applyScale`
-  (~798–805), setting panel `applySceneMode`/`beginModeSwitch`/`drawIris`/
-  `drawSwitchFX` (~838–1103), depths `spawnDepth`/`revealDepths`
-  (~1104–1181), `voice = BridgeVoice.create` (~1182), hull
-  `takeDamage`/`runRepair` (~1196–1243), voice glue
-  `idleLine`/`checkRegion`/`reportFiled` (~1244–1315),
-  `updateHUD`/`drawInstruments` (~1316–1367), movement `step` (~1368),
-  `atRest` (~1436), `render`/`paintOnce` (~1447–1513), storm glue
-  `stormEnv`/`drawStorm` (after `drawMarks`) and the `Storm.lively()` check
-  in `atRest`, forge glue `forgeEnv`/`drawForge` and the `Forge.hit` test in
-  pointerdown, `pacer =
-  Pacer.create` (~116).
-- **genesis-state.js** — `BEATS` (~22), world constants (~70–176), state
-  block (~177–195), `seed` (~196), queries
-  `since`/`linear`/`only`/`sx`/`beatDur` (~307–333).
-- **genesis.js** — transport `play`/`skip`/`seek`/`finish` (~124–209),
-  `camAim` (~229), `step` (~293), `draw` (~326).
-- **genesis-void.js** — `fillBg` (~11) … `drawName` (~651).
-- **genesis-rex.js** — `chaseAt` (~27) … `drawDepths` (~294).
-- **genesis-saga.js** — `sagaAt` (~13) … `drawLiveWorld` (~652).
-- **instruments.js** — layout `CELL_W`/`gridW` (~33–72), `mount`/`mountSys`
-  (~148–219), `blitStatic` (~248), `draw` (~306), alarms `tickAlarms`
-  (~328)/`alert` (~426), `F` kit (~591), `registerTiles` (~593).
-- **instruments-tiles.js** — `radarStatic` (~62), `radar` (~91), `signal`
-  (~188), `drive` (~256), `nav` (~386), `tickSys` (~491), `eclss` (~568),
-  `rad` (~613), `hull` (~684), `bus` (~766).
-- **world.js** — consts (~28), mainland `band` (~78), Rex `rexHeight`
-  (~126), `REX_PLACES` roster (~159), then one `drawX` per feature:
-  `drawVoid` (~221), `drawChaos` (~252), `drawWatcher` (~406), `drawSerus`
-  (~431), `drawNephilim` (~592), `drawVikings` (~756), `drawRex` (~835),
-  `drawHell` (~879), `drawRexPlaces` (~965), `drawLandPlace` (~1011),
-  `drawRoot` (~1044), `drawBridge` (~1070), `draw` (~1155).
-- **depths.js** — `CLUSTERS` data (~37–820; VoidScape `bnote-vs-*` ~166–380,
-  Bone Spire ~581, Titans ~594), `waveOf` (~822), `LAYOUTS` (~846), `nodes()`
-  (~883).
-- **voidship.js** — `BASE` tunables (top), `create`, `setThrusting` (the
-  release rule: keep the point only if the ship can still stop on it),
-  `step` in order: hold boost → wanted velocities (`far` = cruise, else the
-  `sqrt(2·brake·d)` arrive profile) → yaw target + turn gating → `ease`
-  (asymmetric accel/brake time constants) → arrival snaps → anchor pulse →
-  fuel → `thrustAmt` → pitch → fume spawn/update; then `settled`, `stats`,
-  `draw` (cue → fumes → translate/rotate(pitch)/scale(face) → `drawHull` →
-  `drawFront`).
-- **voidship-art.js** — `block` (facing-aware `Paint.litShade` wrapper),
-  `drawHull` (underside → hull → belly → panels → windows → superstructure
-  → spires → booms → drive), `drawFront`, `drawFumes`.
-- **storm.js** — constants `COMPS`/`HOLD`/`STORM` (top), `layout`, `ROSTER`
-  (home layout), `PAINTERS` (one per object id), cycle
-  `startStorm`/`gust`/`snapHome`, `stepFlicker`, ghost lines
-  `LINES`/`stepLines`, then `step` (cycle → forces → ship circles → pairs
-  → hot), `draw` (both compositions, then the ghost lines), `report`.
-- **CSS** — each file has `/* --- */` section comments; grep the section
-  name rather than reading the file.
+Project pages load only `css/style.css`, `css/beacon.css`, then
+`js/lib/util.js → js/site/xp.js → js/site/surge.js` plus `js/site/embed.js`
+(conclusus, heavylight) or `js/site/lazy-video.js` (sector-zero, voidscape),
+and an inline `XP.award(...)`.
 
 ### Where things live
 
 | Concept | Go to |
 |---|---|
-| Rex kingdoms | `world.js` `drawRexPlaces` + `REX_PLACES`; art in `rexart-surface.js` / `rexart-deep.js` |
-| Mainland factions | `world.js` `drawLandPlace`; art in `landart.js` |
-| Bone Spire (style reference) | `rexart-surface.js` `paintBoneSpire` / `liveBoneSpire`; placed in `REX_PLACES`; node in `depths.js` |
-| Titans cave (style reference) | `rexart-deep.js` `paintTitans` / `liveTitans` |
-| `litShade` | One copy, `paint.js` |
-| Camera / pan / input | `bridge.js` `camX`, `wx()`, `clientToCourse`, listeners block |
-| Ship motion and feel | `voidship.js` `BASE` + `step` + `setThrusting`; bridge glue `retargetFromPointer` / `beginBurn` / `endBurn` / `atRest` (calls `Voidship.settled`) |
-| Ship art and fumes | `voidship-art.js`; particle schema is defined where `voidship.js` spawns them (`fumeAcc +=`) |
-| Sector Zero debris, storm cycle, CRT flicker, ghost terminal lines | `storm.js`; anchored to the planet by `bridge.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
-| VoidScape bench, run console, floor-plan generator | `forge.js`; anchored to the planet by `bridge.js` `forgeEnv`, hit-tested in the pointerdown listener |
-| Game-themed backdrop around Conclusus / HeavyLight / VoidScape | `zones.js`; anchored by `bridge.js` `zonesEnv`/`drawZones` (called right before `drawMarks` in `render`); planet colours per game in `planet.js` `THEMES` |
-| Landmarks / beacons | `marks.js` `MARKS`/`PLANETS`; gated extras `depths.js` |
-| Main rAF loop | `pacer.js` (`frame`), created in `bridge.js` as `pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
-| Storage keys | `util.js` `KEYS` (never type a key literal) |
-| Readout text | `bridge-voice.js` `ZONES` |
-| HUD tiles | `instruments-tiles.js` |
-| Entry gate | decision `entry.js`, UI `intro.js`, CSS `gate.css` + `bridge.css` boot terminal, bridge defers in `readyBridge` |
-| Entry gate CSS | `gate.css` |
-| Cutscene | `genesis-state.js` (BEATS, state), painters in `genesis-void/rex/saga.js`, transport in `genesis.js` |
-| Reduced motion | `Util.reduced()` (one query, `util.js`); read in `bridge.js` top (loop keeps running, travel softens), `genesis-state.js`, `intro.js`, `lazy-video.js`; the global collapse of transitions and animations is in `style.css`, with small per-file blocks in the other sheets |
-| Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` (`G.FORCE`, `G.JUMP`) |
+| Rex kingdoms | `js/world/rex.js` `drawRexPlaces` + `world.js` `REX_PLACES`; art in `js/world/art/{firstlight,crimson,bonespire,titans,valkhar,law}.js` |
+| Mainland factions | `js/world/city.js` `drawLandPlace`; art in `js/world/art/{shattered,libertech,dawn,accord,gore}.js` |
+| Style references | Bone Spire `js/world/art/bonespire.js`, Titans cave `js/world/art/titans.js` |
+| `litShade` | One copy, `js/lib/paint.js` |
+| Camera / pan / projection | `js/bridge/bridge.js` `B.camX`, `wx()`, `markScreen`; input in `js/bridge/bridge-input.js` |
+| Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
+| Ship art and fumes | `js/ship/voidship-art.js`; particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
+| Sector Zero storm | `js/gamedev/storm.js`; anchored by `bridge-marks.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
+| VoidScape bench / console / floor plan | `js/gamedev/forge.js` (+ `forge-guns.js`, `forge-missions.js`); anchored by `bridge-marks.js` `forgeEnv`; hit-tested in `bridge-input.js` pointerdown |
+| Game-themed backdrops | `js/gamedev/zones.js`; anchored by `bridge-marks.js` `zonesEnv`; planet colours in `bridge/planet.js` `THEMES` |
+| Landmarks / beacons | `js/bridge/marks.js` `MARKS`/`PLANETS`; gated extras `js/depths/*` |
+| Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
+| Notes and hints | `js/bridge/bridge-notes.js` |
+| Setting switch (void ↔ gamedev), iris FX, view persistence | `js/bridge/bridge-panel.js` |
+| Readout text | `js/bridge/bridge-voice.js` `ZONES`; glue and hull damage in `bridge-readout.js` |
+| HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |
+| Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
+| Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
+| Entry gate | decision `js/site/entry.js`, UI `js/site/intro.js`, CSS `css/gate.css` + `css/bridge.css` boot terminal, bridge defers in `bridge.js` `readyBridge` |
+| Cutscene | `js/genesis/` (see table); painters split void/orb, saga state/draw |
+| Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
+| Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
 
 ### Storage keys
 
-All keys are in `util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1` (xp.js),
-HINTS `arcanis.hints.v2` (bridge.js), VIEW `arcanis.view.v1` session
-(bridge/entry), SECTOR `arcanis.sector.v1` (bridge/entry), INST_SCALE,
-GEAR_SEEN (bridge.js), SW_CLEANUP (index.html head). `?reset=1` wipes every
-key with the PREFIX.
+All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
+(xp.js), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
+session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
+INST_SCALE, GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
+`?reset=1` wipes every key with the PREFIX.
 
 ## Delegation
 
@@ -238,7 +316,10 @@ key with the PREFIX.
 - The spec must be complete enough that the implementer never has to choose a
   name, a file location or a design.
 - Run implementer calls in parallel only when their tasks touch completely
-  separate files.
+  separate files. If several parallel tasks must each add `<script>` lines
+  to `index.html`, tell each to edit only its own line with one `Edit` and
+  to re-read and retry if the file changed underneath it; that worked for
+  the split.
 
 ## Spec format
 
@@ -253,15 +334,16 @@ Every delegation to the implementer must contain:
 5. **Do not touch:** files, symbols or behaviour that must stay unchanged.
 6. **Verification:** the exact command to run, or "none" if the change isn't
    covered by a test. Never `python serve.py` — it is a blocking server and
-   will hang the implementer. Browser behaviour: `py -3 nav-flows.test.py
-   <flows>`. It runs its own server and exits. Only the back/forward cache
-   still needs a manual check.
+   will hang the implementer. Browser behaviour: `py -3
+   tools/nav-flows.test.py <flows>`. It runs its own server and exits. Only
+   the back/forward cache still needs a manual check. There is no `node`
+   on this machine; a passing flow is the syntax check.
 
 ## Art style
 
 Every drawn place (Rex kingdoms, Mainland factions, anything new) uses one
-style. Reference: the Bone Spire in `rexart-surface.js` and the Titans cave
-in `rexart-deep.js`.
+style. Reference: the Bone Spire in `js/world/art/bonespire.js` and the
+Titans cave in `js/world/art/titans.js`.
 
 - Stylised 2D silhouettes, flat palette fills.
 - Light from the left. Shadows are hard-edged flat shapes (a `litShade`
@@ -269,20 +351,22 @@ in `rexart-deep.js`.
 - No rim lines, outlines or brick lines on buildings.
 - Soft glow only for things that emit light (lanterns, portals, flames).
 - Places are proper buildings, not symbols or sigils.
-- The primitives are in `paint.js`; do not add a new `litShade` anywhere.
+- The primitives are in `js/lib/paint.js`; do not add a new `litShade`
+  anywhere. Shared building helpers go in `rex-kit.js` / `land-kit.js`.
 
 ## Commands
 
 - **Build:** none. No framework, no bundler, no npm.
 - **Run:** `python serve.py`, then open `http://127.0.0.1:8765/`
-- **Test:** `py -3 nav-flows.test.py` (Playwright; pass flow names to run a
-  subset, `--list` to see them). Flows: `first`, `gate-exits`, `back`,
+- **Test:** `py -3 tools/nav-flows.test.py` (Playwright; pass flow names to
+  run a subset, `--list` to see them). Flows: `first`, `gate-exits`, `back`,
   `reload`, `worklink`, `deeplink`, `returning`, `wordmark`, `reset`,
   `genesis`, `twotabs`, `header`, `shell`, `phone`, `depths`, `rex`,
   `watcher`, `bridge`, `landdepths`, `links`.
-- **Screenshots:** `py -3 snap.py capture <name>` writes a run under
-  `snapshots/`, `py -3 snap.py compare <a> <b>` diffs two runs, `py -3
-  snap.py list` names the scenes.
-- **Cache-bust:** `py -3 bump.py` rewrites every `?v=` in the HTML pages.
+- **Screenshots:** `py -3 tools/snap.py capture <name>` writes a run under
+  `snapshots/`, `py -3 tools/snap.py compare <a> <b>` diffs two runs, `py -3
+  tools/snap.py list` names the scenes.
+- **Cache-bust:** `py -3 tools/bump.py` rewrites every `?v=` in the HTML
+  pages.
 - **Git:** commit straight to `main`, no branches. A `.gitignore` covers
   `__pycache__/`, `*.pyc`, `snapshots/` and `Temporary VoidScape Media/`.

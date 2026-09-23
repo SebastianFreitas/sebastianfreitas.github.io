@@ -1,7 +1,7 @@
 """One cache-busting number for the whole site.
 
-    py -3 bump.py        every ?v= becomes (highest found) + 1
-    py -3 bump.py 80     every ?v= becomes 80
+    py -3 tools/bump.py        every ?v= becomes (highest found) + 1
+    py -3 tools/bump.py 80     every ?v= becomes 80
 
 Reads and writes bytes, so CRLF line endings survive untouched.
 """

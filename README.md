@@ -30,7 +30,7 @@ Games featured:
 No framework, no bundler, no npm.
 
 - **HTML / CSS / vanilla JS** — site shell and interactions
-- **Canvas 2D** — bridge hero (`bridge.js`, `world.js`, `instruments*.js`, `genesis*.js`)
+- **Canvas 2D** — bridge hero (`js/bridge/`, `js/world/`, `js/hud/`, `js/genesis/`)
 - **Python 3** — optional local server with cache disabled (`serve.py`)
 
 Target engines for the games themselves (documented on each case study): Unity (C#), Unreal 5 (C++ / Blueprint).
@@ -53,9 +53,9 @@ Opening `index.html` as a file works for a quick look; use the server if itch em
 ### Check
 
 ```bash
-py -3 nav-flows.test.py          # navigation and state flows (Playwright)
-py -3 snap.py capture before     # deterministic screenshots of every scene
-py -3 snap.py compare before after
+py -3 tools/nav-flows.test.py          # navigation and state flows (Playwright)
+py -3 tools/snap.py capture before     # deterministic screenshots of every scene
+py -3 tools/snap.py compare before after
 ```
 
 ---
@@ -65,29 +65,25 @@ py -3 snap.py compare before after
 ```
 ├── index.html          Homepage (hero + work + experience)
 ├── 404.html            Not-found page
-├── style.css           Design tokens, layout and breakpoints
-├── gate.css            First-visit entry gate
-├── bridge.css          Hero cockpit: HUD, notes, overlays
-├── beacon.css          Level chip and claim ceremony
-├── util.js             Shared maths, media queries, storage keys
-├── paint.js            Flat-art drawing primitives
-├── bridge*.js          Hero: camera, input, readout voice and log
-├── pacer.js            Frame scheduler that parks when nothing moves
-├── marks.js            Landmark and planet roster
-├── world.js            Geography and drawing of the bridge world
-├── depths.js           Beacon-gated node clusters
-├── voidship.js         The craft: thrust, fuel, hull
-├── instruments*.js     HUD panel framework and its eight tiles
-├── genesis*.js         Origin cutscene: state, painters, transport
-├── rexart-*.js / landart.js / planet.js   Painters for the places
-├── xp.js / surge.js / lamp.js             Progression, level-up light, beacons
-├── entry.js            decides in <head> whether the first-visit gate shows
-├── intro.js            Entry gate UI: boot log and the two paths
-├── embed.js / lazy-video.js               itch embeds, low-bandwidth video
 ├── serve.py            Local no-cache static server
-├── nav-flows.test.py   browser test for navigation and state
-├── snap.py             Deterministic screenshots and a pixel compare
-├── bump.py             Rewrites every ?v= cache-buster at once
+├── css/
+│   ├── style.css       Design tokens, layout and breakpoints
+│   ├── gate.css        First-visit entry gate
+│   ├── bridge.css      Hero cockpit: HUD, notes, overlays
+│   └── beacon.css      Level chip and claim ceremony
+├── js/
+│   ├── lib/            util (maths, media queries, storage keys), paint (flat-art primitives), pacer (frame scheduler)
+│   ├── site/            xp, entry, intro, surge, embed, lazy-video: progression, the entry gate, level-up light, embeds
+│   ├── bridge/          The hero: bridge core, notes, input, marks, panel, depths, readout, loop; voice, log, marks roster, lamp, planet
+│   ├── depths/          Beacon-gated node clusters: core plus one data file per planet and one for the lore beacons
+│   ├── ship/             The voidship: motion and art
+│   ├── gamedev/          Sector Zero storm, VoidScape forge (bench, guns, missions), game zones backdrop
+│   ├── world/            Geography and one painter file per feature; art/ holds one file per Rex kingdom and Mainland faction
+│   └── genesis/          Origin cutscene: state, paint helpers, painters, transport
+├── tools/
+│   ├── nav-flows.test.py   Browser test for navigation and state
+│   ├── snap.py             Deterministic screenshots and a pixel compare
+│   └── bump.py             Rewrites every ?v= cache-buster at once
 ├── projects/           Per-game case study pages
 └── media/              Images and video for projects
 ```

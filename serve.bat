@@ -22,7 +22,7 @@ echo   Leave this window open while you work.
 echo   Close it (or press Ctrl+C) to stop the server.
 echo.
 echo   In the server log you should see EVERY script:
-echo     xp.js  surge.js  lamp.js  world.js  bridge.js
+echo     css/  js/
 echo   If you only see index + bridge.js, the browser is still
 echo   not hitting this server — close old :8000 tabs.
 echo.
