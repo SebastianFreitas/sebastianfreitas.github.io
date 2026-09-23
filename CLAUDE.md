@@ -89,6 +89,7 @@ one global on `window`. Sizes are line counts.
 | `voidship.js` | ~380 | The craft: hold-as-stick / tap-to-seek motion, release-stops rule, fuel, yaw flip + pitch, fume particles (screen frame, damped inertia), draw orchestration | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
 | `storm.js` | 527 | The Sector Zero storm: two debris compositions beside the planet, a desk to the right (tower, floppy, CRT, speaker, heater, keyboard, can, mug, note) and a repair station below-left (open case, side panel, motherboard, GPU, open hard disk, PSU, RAM, CPU, fan, the game's screwdriver); the cycle home → storm → gather (objects kicked loose, drift on noise inside a tether, spring home, silent snap), ship shoving via three hull circles, object-object circles, deck-line and top-bar bounce, the terminal flicker on the CRT, faint ghost terminal lines that type and fade. Positions are px relative to the planet's screen centre (the station tracks a fraction of H); one seeded `mulberry` for every random choice | `window.Storm {step, draw, lively, report}`; uses `Util`, `Paint`; fed by `bridge.js` `stormEnv` |
 | `forge.js` | 837 | VoidScape bench and run console beside the planet: crafting bench (gun with mod rows, add/remove/destroy), mission console (search three paths, select, empower, reload, open portal → generated floor plan); panels unlock when the bench / map depth nodes are reached | `window.Forge {step, draw, hit, over, lively, report, unlock}`; uses `Util`; fed by `bridge.js` `forgeEnv` |
+| `zones.js` | 484 | Backdrop art around the Conclusus, HeavyLight and VoidScape planets so each area reads as its game: Conclusus uses the game's real 32px sprites (palette `CPAL`, pixel strings `CSPR`, drawn at 2x), HeavyLight is hand-drawn cave chunks (`caveCanvas`) with spikes, crate, red figure, key and light cone, VoidScape is rising embers plus lime shards. Everything static is pre-rendered once to offscreen canvases; skipped under 900px wide; nothing below the deck line (`roomBelow`). Painted before the planets, so it never hit-tests | `window.Zones {step, draw, report}`; uses `Util`; fed by `bridge.js` `zonesEnv` |
 | `rexart-deep.js` | 638 | Painters for the three Rex caverns | `window.RexArt.titans / .valkhar / .law` |
 | `rexart-surface.js` | 625 | Painters for Rex surface landmarks | `window.RexArt.firstlight / .crimson / .bonespire` |
 | `landart.js` | 587 | Painters for the five Mainland factions. `+y` is UP here, opposite of rexart | `window.LandArt.shattered / .libertech / .dawn / .accord / .gore` |
@@ -120,7 +121,7 @@ one global on `window`. Sizes are line counts.
 `util.js`, `xp.js`, `entry.js` (blocking, on purpose), then the inline SW
 purge. Body tail: `surge → lamp → planet → depths → instruments →
 instruments-tiles → paint → rexart-surface → rexart-deep → landart → world →
-voidship-art → voidship → storm → forge → embed → pacer → marks → bridge-log → bridge-voice → bridge →
+voidship-art → voidship → storm → forge → zones → embed → pacer → marks → bridge-log → bridge-voice → bridge →
 genesis-state → genesis-paint → genesis-void → genesis-rex → genesis-saga →
 genesis → intro`.
 
@@ -211,6 +212,7 @@ Grep these names; the ranges are approximate.
 | Ship art and fumes | `voidship-art.js`; particle schema is defined where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero debris, storm cycle, CRT flicker, ghost terminal lines | `storm.js`; anchored to the planet by `bridge.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
 | VoidScape bench, run console, floor-plan generator | `forge.js`; anchored to the planet by `bridge.js` `forgeEnv`, hit-tested in the pointerdown listener |
+| Game-themed backdrop around Conclusus / HeavyLight / VoidScape | `zones.js`; anchored by `bridge.js` `zonesEnv`/`drawZones` (called right before `drawMarks` in `render`); planet colours per game in `planet.js` `THEMES` |
 | Landmarks / beacons | `marks.js` `MARKS`/`PLANETS`; gated extras `depths.js` |
 | Main rAF loop | `pacer.js` (`frame`), created in `bridge.js` as `pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `util.js` `KEYS` (never type a key literal) |

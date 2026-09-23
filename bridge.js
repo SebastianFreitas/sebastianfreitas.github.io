@@ -169,6 +169,8 @@
   const activeMarks = () => sceneMode === "gamedev" ? PLANETS : MARKS;
   const ZERO_MARK = PLANETS.find(m => m.id === "bnote-planet-zero"); // the storm sits beside it
   const VS_MARK = PLANETS.find(m => m.id === "bnote-planet-voidscape"); // the bench and run console sit beside it
+  const HL_MARK = PLANETS.find(m => m.id === "bnote-planet-heavylight"); // zone art sits around it (zones.js)
+  const CONC_MARK = PLANETS.find(m => m.id === "bnote-planet-conclusus");
 
   /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
   const XSTAGE = { CLOSE: 0, HOLD: 1, OPEN: 2 };
@@ -640,6 +642,7 @@
   }).join("\n") + `\ncamX=${camX.toFixed(0)} mode=${sceneMode} frozen=${frozen} W=${W} H=${H}`;
   window.stormReport = () => Storm.report();
   window.forgeReport = () => Forge.report();
+  window.zonesReport = () => Zones.report();
   window.depthsReport = () => MARKS.concat(PLANETS).filter(m => m.root).map(m => ({
     id: m.id, root: m.root, from: m.from, off: m.off, oy: m.oy, x: m.x, flying: !!m.fly, cue: !!m.unseen,
     wide: !!(noteEls[m.id] && noteEls[m.id].classList.contains("wide")),
@@ -772,6 +775,17 @@
     const env = forgeEnv();
     Forge.step(dt, env);
     Forge.draw(ctx, env);
+  }
+
+  // --- game zones (zones.js): ambient art around VoidScape, HeavyLight and Conclusus, painted under the planets ---
+  function zonesEnv() {
+    return { W, H, reduced,
+             at: { voidscape: markScreen(VS_MARK), heavylight: markScreen(HL_MARK), conclusus: markScreen(CONC_MARK) } };
+  }
+  function drawZones(dt) {
+    const env = zonesEnv();
+    Zones.step(dt, env);
+    Zones.draw(ctx, env);
   }
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
@@ -1502,6 +1516,7 @@
     // entry claim left every mark at vis=0 for the whole ceremony,
     // so the span looked empty (and stayed empty if unfreeze glitched).
     try {
+      if (sceneMode === "gamedev") drawZones(dt);
       drawMarks(raw);
       if (sceneMode === "gamedev" && ship) drawStorm(dt);
       if (sceneMode === "gamedev") drawForge(dt);
