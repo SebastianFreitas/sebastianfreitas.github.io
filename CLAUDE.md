@@ -370,3 +370,9 @@ Titans cave in `js/world/art/titans.js`.
   pages.
 - **Git:** commit straight to `main`, no branches. A `.gitignore` covers
   `__pycache__/`, `*.pyc`, `snapshots/` and `Temporary VoidScape Media/`.
+- **Every task ends with a commit, unasked.** Once the work is verified, run
+  `py -3 tools/bump.py` if any script or stylesheet changed, then commit. Do
+  not stop at "ready to commit" and do not hand the user a commit command.
+- **Commands shown to the user run in Windows PowerShell 5.1.** Never print
+  `&&`, `||`, `$(...)` or bash `if` for them; chain with `;` or give one
+  command per block. The Bash tool is fine for Claude's own use.
