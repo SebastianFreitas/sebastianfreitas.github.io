@@ -56,6 +56,8 @@ Opening `index.html` as a file works for a quick look; use the server if itch em
 py -3 tools/nav-flows.test.py          # navigation and state flows (Playwright)
 py -3 tools/snap.py capture before     # deterministic screenshots of every scene
 py -3 tools/snap.py compare before after
+py -3 tools/gframes.py before          # genesis beat frame sheets for review
+py -3 tools/jscheck.py js/genesis/genesis-figures.js --eval "return typeof GenFig"  # headless JS check, no node
 ```
 
 ---
@@ -79,7 +81,7 @@ py -3 tools/snap.py compare before after
 │   ├── ship/             The voidship: motion and art
 │   ├── gamedev/          Sector Zero storm, VoidScape forge (bench, guns, missions), game zones backdrop
 │   ├── world/            Geography and one painter file per feature; art/ holds one file per Rex kingdom and Mainland faction
-│   └── genesis/          Origin cutscene: state, paint helpers, painters, transport
+│   └── genesis/          genesis-state, -paint, -void, -flesh, -oldones, -figures, -titans, -mainland, -armies, -orb, -rex, -depths, -saga-state, -saga, genesis
 ├── tools/
 │   ├── nav-flows.test.py   Browser test for navigation and state
 │   ├── snap.py             Deterministic screenshots and a pixel compare

@@ -2,9 +2,8 @@
    the old ones, Primordisentia, the two lights and their trails. */
 (function () {
   const G = window.Gen;
-  const { hash1, smooth, clamp, mix } = Util;
-  const { offsetShade } = Paint;
-  const { ROOT_U, DECK, BAY_U, SPAN_START_U, motes, oldones, souls, idxOf, since, sx } = G;
+  const { hash1, clamp, mix, mulberry } = Util;
+  const { ROOT_U, DECK, BAY_U, SPAN_START_U, motes, idxOf, sx } = G;
   const { flatGlow } = GenPaint;
 
   function fillBg(ctx) {
@@ -35,67 +34,143 @@
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
+  // the far realms: three parallax layers of slow blobs, built once at load
+  const CHAOS_LAYERS = [[], [], []];
+  const FAR_LIGHTS = [];
+  (function seedChaos() {
+    const rnd = mulberry(9004);
+    for (let L = 0; L < 3; L++) {
+      for (let i = 0; i < 7; i++) {
+        CHAOS_LAYERS[L].push({
+          u0: -1.2 + rnd() * 6.8,
+          yf: 0.05 + rnd() * 0.9,
+          r: 0.22 + rnd() * 0.33,
+          k1: 1 + Math.floor(rnd() * 3),
+          k2: 1 + Math.floor(rnd() * 3),
+          ph: rnd() * 6.283,
+          drift: 2 + rnd() * 5,
+        });
+      }
+    }
+    for (let i = 0; i < 40; i++) {
+      FAR_LIGHTS.push({ u: -1.2 + rnd() * 6.8, yf: rnd(), tint: Math.floor(rnd() * 3), ph: rnd() * 6.283 });
+    }
+  })();
+  const CHAOS_COLOR = ["#10161b", "#14191f", "#1a1a22"];
+  const CHAOS_PAR = [0.22, 0.38, 0.55];
+  const LIGHT_TINT = ["200,120,110", "110,140,200", "190,170,120"];
+
   function drawChaos(ctx, amt) {
     if (amt < 0.02) return;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const baseY = G.H * (0.10 + i * 0.155);
-      const amp = (40 + i * 22) * amt;
-      ctx.beginPath();
-      for (let px = -60; px <= G.W + 60; px += 24) {
-        const u = px * 0.0018 + G.cam * 2.4;
-        const y = baseY
-          + Math.sin(u + G.t * 0.18 + i * 1.3) * amp
-          + Math.sin(u * 2.9 - G.t * 0.11 + i) * amp * 0.45;
-        px === -60 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+    const span = 6.8 * G.W;
+    ctx.globalAlpha = amt * 0.95;
+    for (let L = 0; L < 3; L++) {
+      const par = CHAOS_PAR[L];
+      ctx.fillStyle = CHAOS_COLOR[L];
+      for (const b of CHAOS_LAYERS[L]) {
+        let x = (b.u0 - G.cam * par) * G.W + G.W * 0.5 + b.drift * G.t;
+        x = ((x % span) + span) % span - 0.9 * G.W;
+        const margin = 1.6 * b.r * G.H * 1.6;
+        if (x < -margin || x > G.W + margin) continue;
+        const y = b.yf * G.H;
+        ctx.beginPath();
+        for (let i = 0; i < 20; i++) {
+          const th = (i / 20) * 6.283;
+          const rad = b.r * G.H * (1
+            + 0.10 * Math.sin(b.k1 * th + G.t * 0.11 + b.ph)
+            + 0.06 * Math.sin(b.k2 * th - G.t * 0.07));
+          const vx = x + Math.cos(th) * rad * 1.6;
+          const vy = y + Math.sin(th) * rad;
+          i ? ctx.lineTo(vx, vy) : ctx.moveTo(vx, vy);
+        }
+        ctx.closePath();
+        ctx.fill();
       }
-      const a = amt * (0.05 + 0.05 * Math.sin(G.t * 0.23 + i));
-      ctx.strokeStyle = i % 2 ? `rgba(96,66,74,${a})` : `rgba(58,84,92,${a})`;
-      ctx.stroke();
     }
-    ctx.lineWidth = 1;
+    ctx.globalAlpha = 1;
+    for (const s of FAR_LIGHTS) {
+      let x = (s.u - G.cam * 0.15) * G.W + G.W * 0.5;
+      x = ((x % span) + span) % span - 0.9 * G.W;
+      const y = s.yf * G.H;
+      const a = amt * 0.35 * (0.6 + 0.4 * Math.sin(G.t * 1.7 + s.ph));
+      ctx.fillStyle = `rgba(${LIGHT_TINT[s.tint]},${a})`;
+      ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
+    }
+    ctx.globalAlpha = 1;
   }
+
+  // the minds: tiny specks orbiting the Point, built once at load
+  const MINDS = [];
+  (function seedMinds() {
+    const rnd = mulberry(9005);
+    for (let i = 0; i < 90; i++) {
+      MINDS.push({
+        r: 6 + rnd() * 26,
+        speed: (2 + rnd() * 4) * (rnd() < 0.5 ? -1 : 1),
+        ph: rnd() * 6.283,
+        size: 0.6 + rnd() * 0.7,
+        g: Math.round(170 + rnd() * 50),
+      });
+    }
+  })();
 
   function drawPoint(ctx, amt, crack) {
     if (amt < 0.01 && crack < 0.02) return;
     const cx = sx(0), cy = G.H * 0.46;
-    const pulse = 0.85 + 0.15 * Math.sin(G.t * 1.7);
-    const glow = (10 + amt * 36) * pulse;
-    flatGlow(ctx, cx, cy, glow, "245,208,107", 0.55 + 0.25 * amt);
+    const m = Math.min(G.W, G.H);
 
-    const n = 7;
-    for (let i = 0; i < n; i++) {
-      const ang = G.t * 0.4 + i * (6.283 / n);
-      const j = 1.2 + Math.sin(G.t * 2.1 + i) * 0.8;
-      ctx.fillStyle = i % 2
-        ? `rgba(176,104,90,${0.35 * amt})`
-        : `rgba(143,176,184,${0.3 * amt})`;
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 5; k++) {
+      const base = (0.10 + 0.07 * k) * m;
+      const f = G.t * 0.22 + k * 0.2;
+      const r = base * (1 - 0.08 * (f - Math.floor(f)));
+      ctx.strokeStyle = `rgba(120,128,124,${0.16 * amt * (1 - 0.12 * k)})`;
       ctx.beginPath();
-      ctx.arc(cx + Math.cos(ang) * j, cy + Math.sin(ang) * j, 1.4, 0, 6.283);
-      ctx.fill();
+      ctx.arc(cx, cy, r, 0, 6.283);
+      ctx.stroke();
     }
-    ctx.fillStyle = `rgba(245,208,107,${0.95 * amt})`;
-    ctx.beginPath(); ctx.arc(cx, cy, 1.8 + amt * 0.8, 0, 6.283); ctx.fill();
+
+    const pulse = 0.85 + 0.15 * Math.sin(G.t * 1.7);
+    flatGlow(ctx, cx, cy, (26 + 60 * amt) * pulse * 1.3, "245,208,107", 0.7 + 0.3 * amt);
+
+    for (const s of MINDS) {
+      const a = s.ph + G.t * s.speed;
+      const x = cx + Math.cos(a) * s.r * (1 + 0.3 * amt);
+      const y = cy + Math.sin(a) * s.r * 0.7 * (1 + 0.3 * amt);
+      ctx.fillStyle = `rgba(${s.g},${s.g},${s.g},${0.55 * amt})`;
+      ctx.fillRect(x - s.size * 0.75, y - s.size * 0.75, s.size * 1.5, s.size * 1.5);
+    }
+
+    ctx.fillStyle = "#fff3d0";
+    ctx.beginPath(); ctx.arc(cx, cy, 4 + 3 * amt, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(cx, cy, 3 + 2 * amt, 0, 6.283); ctx.fill();
 
     if (crack > 0.02) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = `rgba(245,208,107,${0.78 * crack})`;
-      ctx.lineWidth = 1.15;
+      ctx.strokeStyle = `rgba(255,248,230,${0.85 * crack})`;
+      ctx.lineWidth = 1.3;
       ctx.lineCap = "round";
-      for (let i = 0; i < n; i++) {
-        const ang = i * (6.283 / n) + G.t * 0.05;
-        const len = (16 + (i % 3) * 16) * crack;
+      const lens = [12, 22, 34];
+      for (let i = 0; i < 9; i++) {
+        const base = i * (6.283 / 9) + G.t * 0.05;
+        let px = cx, py = cy;
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * len, cy + Math.sin(ang) * len);
+        ctx.moveTo(px, py);
+        for (let k = 0; k < 3; k++) {
+          const ang = base + (k % 2 === 0 ? 0.35 : -0.35);
+          px += Math.cos(ang) * lens[k] * crack;
+          py += Math.sin(ang) * lens[k] * crack;
+          ctx.lineTo(px, py);
+        }
         ctx.stroke();
       }
-      ctx.restore();
+      ctx.lineCap = "butt";
     }
+    ctx.lineWidth = 1;
   }
 
-  function drawBridgeLine(ctx, grow) {
+  // the Span: dark, cold, straight, monumental
+  function drawSpan(ctx, grow) {
     if (grow < 0.02) return;
     const deckY = G.H * DECK;
     const inf = G.beat >= idxOf("flee");
@@ -105,306 +180,108 @@
     const x1 = sx(endU);
     if (x1 < -40 || x0 > G.W + 40) return;
 
-    const bayPx = Math.max(24, BAY_U * G.W);
-    const legW  = Math.min(3, Math.max(1.2, bayPx * 0.007));
-    const deckH = Math.min(6, Math.max(2.5, bayPx * 0.013));
-    const rise  = bayPx * 0.20;
-    const legBot = G.H * 1.22;
-
     ctx.save();
     ctx.beginPath();
     ctx.rect(x0 - 2, 0, Math.max(2, x1 - x0) + 4, G.H);
     ctx.clip();
+    ctx.globalAlpha = clamp(grow * 3, 0, 1);
 
-    const first = Math.floor(startU / BAY_U) - 1;
-    const last  = Math.ceil(endU / BAY_U) + 1;
+    const bay = Math.max(24, BAY_U * G.W);
+    const slab = 0.055 * G.H;
+    const first = Math.floor((G.cam - 0.5) / BAY_U) - 2;
+    const last  = Math.ceil((G.cam + 0.5) / BAY_U) + 2;
 
-    ctx.fillStyle = `rgba(112,130,140,${0.55 * grow})`;
+    // piers: one batched lit fill, then a clipped shade rect per pier (right 65%)
+    const piers = [];
+    ctx.fillStyle = "#2a343c";
     ctx.beginPath();
     for (let b = first; b <= last; b++) {
-      const x = sx(b * BAY_U);
-      if (x < x0 - 8 || x > x1 + 8) continue;
-      ctx.rect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
+      const xb = sx(b * BAY_U);
+      const great = b % 4 === 0;
+      const k = great ? 1.7 : 1;
+      const wTop = 0.11 * bay * k, wBot = 0.15 * bay * k;
+      ctx.moveTo(xb - wTop, deckY + slab);
+      ctx.lineTo(xb + wTop, deckY + slab);
+      ctx.lineTo(xb + wBot, G.H * 1.25);
+      ctx.lineTo(xb - wBot, G.H * 1.25);
+      ctx.closePath();
+      if (great) {
+        const wCap = 0.24 * bay;
+        ctx.rect(xb - wCap, deckY + slab, wCap * 2, G.H * 0.03);
+      }
+      piers.push({ xb, wTop, wBot, great });
     }
     ctx.fill();
-    const archT = Math.max(1, legW * 0.55);
-    for (let b = first; b <= last; b++) {
-      const xa = sx(b * BAY_U);
-      if (xa < x0 - bayPx || xa > x1 + 8) continue;
-      const cx = xa + bayPx / 2, cy = deckY + deckH + rise, rx = bayPx / 2 - legW;
+    ctx.fillStyle = "#1c2329";
+    for (const p of piers) {
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, rise, 0, Math.PI, 0);
-      ctx.ellipse(cx, cy, Math.max(0.5, rx - archT), Math.max(0.5, rise - archT), 0, 0, Math.PI, true);
+      ctx.moveTo(p.xb - p.wTop, deckY + slab);
+      ctx.lineTo(p.xb + p.wTop, deckY + slab);
+      ctx.lineTo(p.xb + p.wBot, G.H * 1.25);
+      ctx.lineTo(p.xb - p.wBot, G.H * 1.25);
       ctx.closePath();
-      ctx.fillStyle = `rgba(112,130,140,${0.30 * grow})`;
-      ctx.fill();
-    }
-    for (let b = first; b <= last; b++) {
-      const x = sx(b * BAY_U);
-      if (x < x0 - 8 || x > x1 + 8) continue;
-      const r = hash1(b * 911 + 7);
-      ctx.fillStyle = `rgba(120,138,147,${0.4 * grow})`;
-      ctx.fillRect(x - legW * 0.4, deckY - deckH * 1.9, legW * 0.8, deckH * 1.9);
-      if (r < 0.13) {
-        const mh = deckH * (4.5 + r * 22);
-        ctx.fillStyle = `rgba(120,138,147,${0.34 * grow})`;
-        ctx.fillRect(x - legW * 0.3, deckY - mh, legW * 0.6, mh);
-        ctx.fillStyle = `rgba(245,208,107,${0.75 * grow})`;
-        ctx.fillRect(x - legW * 0.55, deckY - mh - legW * 0.7, legW * 1.1, legW * 1.1);
+      if (p.great) {
+        const wCap = 0.24 * bay;
+        ctx.rect(p.xb - wCap, deckY + slab, wCap * 2, G.H * 0.03);
       }
-    }
-    ctx.fillStyle = `rgba(36,45,51,${0.92 * grow})`;
-    ctx.fillRect(x0, deckY, x1 - x0, deckH);
-    ctx.fillStyle = `rgba(245,208,107,${0.62 * grow})`;
-    for (let b = first; b <= last; b++) {
-      const x = sx(b * BAY_U);
-      if (x < x0 - 4 || x > x1 + 4) continue;
-      const xEnd = Math.min(x + bayPx + 1, x1);
-      if (xEnd <= x) continue;
-      ctx.fillRect(x, deckY - 1.6, xEnd - x, 2.4);
-    }
-    ctx.restore();
-  }
-
-  function fleshGeom(womb) {
-    const vis = clamp(since("root") + 0.35, 0.35, 1);
-    const cx = sx(ROOT_U), cy = G.H * 0.5;
-    const rx = Math.min(G.W, G.H) * (0.26 + 0.14 * vis) * mix(1, 0.86, womb);
-    const ry = Math.min(G.W, G.H) * (0.34 + 0.16 * vis) * mix(1, 0.94, womb);
-    return { cx, cy, rx, ry };
-  }
-
-  function walkerPos(o, burst, walk, cling, still, watch, flesh) {
-    const cy = G.H * 0.46;
-    const deckY = G.H * DECK;
-    const r = (0.06 + o.sp / 360) * burst;
-    const xBurst = Math.cos(o.ang) * r * 0.45;
-    const yBurst = cy + Math.sin(o.ang) * r * G.H * 0.16;
-    const settle = smooth(clamp((burst - 0.18) / 0.42, 0, 1));
-    const splitU = o.side * (0.05 + o.gait * 0.14) * settle;
-    const along = o.side < 0
-      ? splitU - o.gait * walk * 2.2
-      : mix(splitU, ROOT_U - 0.06 + o.lane * 0.002, clamp(walk * (0.88 + o.gait * 0.18), 0, 1));
-    const yDeck = deckY - 8 + o.lane + Math.sin(G.t * (2.1 + o.gait) + o.ph) * 2.4 * settle;
-    const deckX = sx(mix(xBurst, along, settle));
-    const deckYPos = mix(yBurst, yDeck, settle);
-
-    let x = deckX, y = deckYPos;
-    if (o.side > 0 && flesh && cling > 0.02) {
-      const ang = o.clingAng + G.t * o.spin * (1 - still * 0.85);
-      const bite = mix(1.08, 0.86, cling * (1 - still));
-      const back = mix(1, 1.16, still);
-      const watchR = mix(1, 1.22, watch);
-      const rr = bite * back * watchR;
-      const fx = flesh.cx + Math.cos(ang) * flesh.rx * rr;
-      const fy = flesh.cy + Math.sin(ang) * flesh.ry * rr;
-      const u = smooth(clamp((cling - 0.05) / 0.55, 0, 1));
-      x = mix(deckX, fx, u);
-      y = mix(deckYPos, fy, u);
+      ctx.clip();
+      ctx.fillRect(p.xb - 0.3 * p.wBot, -1e5, 2e5, 2e5);
+      ctx.restore();
     }
 
-    let a = o.a * clamp(burst * 4.2, 0, 1);
-    if (x < 12) a *= clamp(x / 12, 0, 1);
-    a *= 1 - since("land") * 0.92;
-    if (watch > 0.4) a *= mix(1, 0.55, watch);
-    return { x, y, a, onDeck: settle > 0.55 && cling < 0.25 };
-  }
-
-  function drawAlien(ctx, o, x, y, a) {
-    if (a < 0.03) return;
-    const s = o.tall * 0.42;
-    const wob = G.t * (0.7 + o.gait * 0.35) + o.ph;
+    // arches: same batched-then-clipped approach, under the slab between piers;
+    // clipped to y >= deckY+slab so the crown can never paint above the slab
+    const R1 = bay * 0.5, R2 = bay * 0.5 - 0.022 * G.H;
     ctx.save();
-    ctx.globalAlpha = a;
-
-    flatGlow(ctx, x, y, s * 1.8, o.hue, 0.5);
-
-    ctx.fillStyle = `rgba(${o.hue},0.92)`;
-    ctx.strokeStyle = `rgba(${o.hue},0.72)`;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    const kind = o.kind || "blob";
-    if (kind === "spindle") {
-      ctx.beginPath();
-      ctx.ellipse(x, y, s * 0.28, s * 1.15, Math.sin(wob) * 0.12, 0, 6.283);
-      ctx.fill();
-      ctx.lineWidth = 1.05;
-      const arms = 2 + (o.limbs % 3);
-      for (let k = 0; k < arms; k++) {
-        const ang = -0.55 + k * (1.1 / Math.max(1, arms - 1)) + Math.sin(wob + k) * 0.2;
-        const len = s * (0.7 + 0.25 * Math.sin(wob * 1.2 + k));
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.quadraticCurveTo(x + Math.sin(ang) * len * 0.4, y + len * 0.35, x + Math.sin(ang) * len, y + len * 0.85);
-        ctx.stroke();
-      }
-    } else if (kind === "cluster") {
-      const n = 3 + o.holes + (o.limbs % 3);
-      for (let i = 0; i < n; i++) {
-        const ang = o.ang + i * (6.283 / n) + Math.sin(wob + i) * 0.18;
-        const rad = s * (0.22 + (i % 3) * 0.12);
-        const cx = x + Math.cos(ang) * s * 0.42;
-        const cy = y + Math.sin(ang) * s * 0.34;
-        ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.283); ctx.fill();
-      }
-    } else if (kind === "crawler") {
-      ctx.beginPath();
-      ctx.ellipse(x, y - s * 0.12, s * 0.72, s * 0.38, Math.sin(wob) * 0.08, 0, 6.283);
-      ctx.fill();
-      ctx.lineWidth = 1.2;
-      const legs = 5 + (o.limbs % 4);
-      for (let k = 0; k < legs; k++) {
-        const side = k < legs / 2 ? -1 : 1;
-        const u = (k % Math.ceil(legs / 2)) / Math.max(1, Math.ceil(legs / 2) - 1);
-        const bx = x + side * mix(s * 0.15, s * 0.55, u);
-        const gait = Math.sin(wob * 1.6 + k * 0.9) * s * 0.18;
-        ctx.beginPath();
-        ctx.moveTo(bx, y);
-        ctx.lineTo(bx + side * s * 0.22 + gait, y + s * 0.55);
-        ctx.lineTo(bx + side * s * 0.08 + gait * 0.4, y + s * 0.95);
-        ctx.stroke();
-      }
-    } else if (kind === "shard") {
-      ctx.beginPath();
-      const n = 5 + (o.limbs % 3);
-      for (let i = 0; i <= n; i++) {
-        const ang = o.ang + (i / n) * 6.283;
-        const rad = s * (i % 2 ? 0.95 : 0.38) * (1 + 0.08 * Math.sin(wob + i));
-        const px = x + Math.cos(ang) * rad;
-        const py = y + Math.sin(ang) * rad * 0.9;
-        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-      }
+    ctx.beginPath();
+    ctx.rect(x0, deckY + slab, x1 - x0, 1.3 * G.H - (deckY + slab));
+    ctx.clip();
+    const arches = [];
+    ctx.fillStyle = "#2e3941";
+    ctx.beginPath();
+    for (let b = first; b <= last; b++) {
+      const xb = sx(b * BAY_U);
+      const acx = xb + R1, acy = deckY + slab + R1;
+      ctx.moveTo(acx - R1, acy);
+      ctx.arc(acx, acy, R1, Math.PI, 2 * Math.PI);
+      ctx.arc(acx, acy, R2, 2 * Math.PI, Math.PI, true);
       ctx.closePath();
-      ctx.fill();
-    } else if (kind === "ring") {
-      ctx.lineWidth = Math.max(1.4, s * 0.16);
+      arches.push({ acx, acy });
+    }
+    ctx.fill();
+    ctx.fillStyle = "#232c33";
+    for (const a of arches) {
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(x, y, s * 0.78, s * 0.52, o.ang * 0.2 + Math.sin(wob) * 0.15, 0, 6.283);
-      ctx.stroke();
-      ctx.lineWidth = Math.max(0.8, s * 0.08);
-      ctx.beginPath();
-      ctx.ellipse(x, y, s * 0.42, s * 0.28, -o.ang * 0.15, 0, 6.283);
-      ctx.stroke();
-      ctx.fillStyle = `rgba(${o.hue},0.85)`;
-      ctx.beginPath(); ctx.arc(x + Math.cos(wob) * s * 0.38, y + Math.sin(wob) * s * 0.22, 1.6, 0, 6.283); ctx.fill();
-    } else {
-      ctx.beginPath();
-      const n = 9 + o.limbs;
-      for (let i = 0; i <= n; i++) {
-        const ang = (i / n) * 6.283 + o.ang * 0.35;
-        const rad = s * (0.52
-          + 0.28 * Math.sin(ang * 3 + wob)
-          + 0.18 * Math.sin(ang * 5 - wob * 1.2)
-          + ((i * 13 + Math.floor(o.sp)) % 4 === 0 ? 0.28 * Math.sin(wob * 1.4) : 0));
-        const px = x + Math.cos(ang) * rad;
-        const py = y + Math.sin(ang) * rad * 0.82;
-        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-      }
+      ctx.moveTo(a.acx - R1, a.acy);
+      ctx.arc(a.acx, a.acy, R1, Math.PI, 2 * Math.PI);
+      ctx.arc(a.acx, a.acy, R2, 2 * Math.PI, Math.PI, true);
       ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = "rgba(13,17,20,0.82)";
-      for (let h = 0; h < o.holes; h++) {
-        const ha = o.ph + h * 2.15 + Math.sin(wob + h) * 0.45;
-        ctx.beginPath();
-        ctx.arc(
-          x + Math.cos(ha) * s * 0.22,
-          y + Math.sin(ha) * s * 0.18,
-          s * (0.11 + h * 0.05),
-          0, 6.283
-        );
-        ctx.fill();
-      }
-
-      ctx.strokeStyle = `rgba(${o.hue},0.72)`;
-      ctx.lineWidth = 1.15;
-      for (let k = 0; k < o.limbs; k++) {
-        const ang = o.ang + k * (6.283 / o.limbs) + Math.sin(wob + k) * 0.55;
-        const len = s * (0.85 + 0.55 * Math.sin(wob * 1.35 + k));
-        const mx = x + Math.cos(ang) * len * 0.5;
-        const my = y + Math.sin(ang) * len * 0.5;
-        const twist = 0.45 * Math.sin(wob + k * 1.7);
-        const ex = x + Math.cos(ang + twist) * len;
-        const ey = y + Math.sin(ang + twist) * len;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.quadraticCurveTo(mx, my, ex, ey);
-        ctx.stroke();
-        ctx.fillStyle = `rgba(${o.hue},0.85)`;
-        ctx.beginPath(); ctx.arc(ex, ey, 1.35, 0, 6.283); ctx.fill();
-      }
+      ctx.clip();
+      ctx.fillRect(a.acx - R1 + 0.35 * bay, -1e5, 2e5, 2e5);
+      ctx.restore();
     }
     ctx.restore();
-  }
 
-  function drawOldOnes(ctx, burst, walk, cling, still, watch, flesh) {
-    if (burst < 0.01 && walk < 0.02) return;
-    for (const o of oldones) {
-      const p = walkerPos(o, burst, walk, cling, still, watch, flesh);
-      if (p.a < 0.03) continue;
-      if (p.x < -40 || p.x > G.W + 40) continue;
-      drawAlien(ctx, o, p.x, p.y, p.a);
-    }
-  }
+    // under-deck dark band
+    ctx.fillStyle = "rgba(9,12,15,0.9)";
+    ctx.fillRect(x0, deckY + slab, x1 - x0, 0.018 * G.H);
 
-  function drawStains(ctx, flesh, amt) {
-    if (!flesh || amt < 0.04) return;
-    for (const o of oldones) {
-      if (o.side < 0) continue;
-      const ang = o.clingAng + G.t * o.spin * 0.4;
-      const x = flesh.cx + Math.cos(ang) * flesh.rx * 0.72;
-      const y = flesh.cy + Math.sin(ang) * flesh.ry * 0.72;
-      ctx.fillStyle = `rgba(${o.hue},${0.2 * amt})`;
-      ctx.beginPath(); ctx.arc(x, y, 14 + o.rr * 6, 0, 6.283); ctx.fill();
-    }
-  }
+    // slab, and its cold lit top face (light from above-left)
+    ctx.fillStyle = "#1d252b";
+    ctx.fillRect(x0, deckY, x1 - x0, slab);
+    ctx.fillStyle = "#5a6c78";
+    ctx.fillRect(x0, deckY - 0.012 * G.H, x1 - x0, 0.012 * G.H);
 
-  function fleshPath(ctx, cx, cy, rx, ry, pain, seed) {
-    ctx.beginPath();
-    const n = 80;
-    for (let i = 0; i <= n; i++) {
-      const u = i / n, ang = u * 6.283;
-      const wob = 1
-        + Math.sin(ang * 3 + G.t * 0.5 + seed) * 0.08 * pain
-        + Math.sin(ang * 7 - G.t * 0.35) * 0.05 * pain
-        + Math.sin(ang * 2 + G.t * 0.22) * 0.05
-        + Math.sin(ang * 11 + G.t * 1.1) * 0.03 * pain;
-      const x = cx + Math.cos(ang) * rx * wob;
-      const y = cy + Math.sin(ang) * ry * wob;
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    }
-    ctx.closePath();
-  }
+    // gold rail
+    ctx.fillStyle = "rgba(245,208,107,0.55)";
+    ctx.fillRect(x0, deckY - 0.012 * G.H - 1, x1 - x0, 2);
 
-  function drawFlesh(ctx, vis, pain, womb) {
-    if (vis < 0.02) return null;
-    const { cx, cy, rx, ry } = fleshGeom(womb);
-
-    if (womb > 0.08) {
-      flatGlow(ctx, cx, cy, rx * 1.15, "245,208,107", womb * vis);
-    }
-
-    const lit = womb > 0.4 ? "#6a2418" : "#5c1114";
-    ctx.globalAlpha = vis;
-    offsetShade(ctx, () => fleshPath(ctx, cx, cy, rx, ry, pain, 1), -rx * 0.28, -ry * 0.10, lit, "#2e080c");
-    ctx.globalAlpha = 1;
-    return { cx, cy, rx, ry };
-  }
-
-  function drawSouls(ctx, flesh, amt) {
-    if (!flesh || amt < 0.02) return;
-    const { cx, cy, rx, ry } = flesh;
-    for (const s of souls) {
-      const x = cx + (s.u - 0.5) * rx * 1.05;
-      const y = cy + (s.v - 0.5) * ry * 1.05 + Math.sin(G.t * 0.8 + s.ph) * 4;
-      ctx.fillStyle = `rgba(245,208,107,${s.a * amt})`;
-      ctx.beginPath(); ctx.arc(x, y, s.rr * mix(1, 1.35, since("womb")), 0, 6.283); ctx.fill();
-    }
+    ctx.restore();
   }
 
   window.GenVoid = Object.assign(window.GenVoid || {}, {
-    fillBg, drawMotes, drawChaos, drawPoint, drawBridgeLine,
-    drawOldOnes, drawStains, fleshPath, drawFlesh, drawSouls,
+    fillBg, drawMotes, drawChaos, drawPoint, drawSpan,
   });
 })();

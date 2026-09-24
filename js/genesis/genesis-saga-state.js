@@ -3,7 +3,7 @@
   const G = window.Gen;
   const { smooth, clamp, mix } = Util;
   const { MAIN_U, EAST_U, WEST_U, CITY_U, NEST_U, BURY_U, idxOf, since, linear } = G;
-  const { mainSurfY, rexSurfY, standY } = GenPaint;
+  const { mainSurfY, rexSurfY } = GenPaint;
   const { yWob } = GenVoid;
   const { chaseAt, chaseFightAt, duelAt, ringFightAt } = GenRex;
 
@@ -20,12 +20,15 @@
     const ret = since("return");
     const et = since("eternity");
     const etLin = linear("eternity");
+    const fallBeat = G.beat === idxOf("fall");
+    const etBeat = G.beat === idxOf("eternity");
     const span = Math.min(G.W, G.H);
     const godsOut = clamp((lock - 0.14) / 0.62, 0, 1);
     const fallIn = clamp(fall / 0.22, 0, 1);
     const up = smooth(clamp(fall / 0.22, 0, 1));
     const down = smooth(clamp((fall - 0.80) / 0.18, 0, 1));
     const air = up * (1 - down);
+    const lashM = fall > 0.74 && fall < 0.82 ? Math.pow(Math.sin((fall - 0.74) / 0.08 * Math.PI), 2) : 0;
     const fallStrikes = [0, 0, 0, 0, 0];
     /* the fight against Obrokxus happens on vorgath's own ground —
        deep in the red zone, not walked back to the middle. Nest and
@@ -63,7 +66,7 @@
     if (ret > 0) civAmt = mix(0.55, 1, smooth(clamp(ret / 0.82, 0, 1)));
     if (et > 0) civAmt = 1;
 
-    const gy = (lane, wu) => standY(lane, wu, mainRise, scar);
+    const gy = (lane, wu) => GenMain.surfYAt(wu == null ? MAIN_U : wu, mainRise, scar) - 12 - lane * 0.075 * G.H;
     const skyY = (u, y) => Math.min(y, mainSurfY(u, mainRise, scar) - 14);
 
     /* ---- the chase, and the flank that ends it -----------------
@@ -87,6 +90,7 @@
     } else if (fall > 0) {
       ou = mix(EAST_U, DUEL_U, fallIn) + Math.sin(fall * 14) * 0.04 * up;
       oy = mix(yWob(0.2, 0.026), G.H * 0.30 + Math.sin(fall * 11 + 1) * span * 0.05, up);
+      oy += 0.14 * G.H * smooth(clamp((fall - 0.78) / 0.22, 0, 1));
       oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
     } else {
       oAmt = mix(0.88, 1, settle);
@@ -168,9 +172,11 @@
 
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
     const dieM = smooth(clamp((fall - 0.76) / 0.20, 0, 1));
+    const mdFall = smooth(clamp((fall - 0.78) / 0.12, 0, 1));
+    const mdDark = smooth(clamp((fall - 0.86) / 0.10, 0, 1));
     let mdU = mix(MAIN_U - 0.02, MAIN_U - 0.14, four);
     let mdY = gy(0.10, mdU);
-    let mdAmt = born * (1 - dieM);
+    let mdAmt = born * (1 - 0.75 * mdDark);
     if (fifth > 0) {
       /* all four cross to the nest together for the Hound's birth,
          not just Cadmus; blend the endpoint heights rather than
@@ -185,7 +191,7 @@
       const gU = NEST_U - 0.10;
       mdU = mix(gU, R0.u, up);
       const skyMd = skyY(mdU, mix(gy(0.08, gU), R0.y, up));
-      mdY = mix(skyMd, mainSurfY(mdU, mainRise, scar) + 26, dieM);
+      mdY = mix(skyMd, gy(0.10, mdU), mdFall);
     }
     if (ret > 0) mdAmt = 0;
 
@@ -259,6 +265,56 @@
       hAmt = mix(1, 0.12, clamp((ret - 0.45) / 0.55, 0, 1));
     }
 
+    /* Eldrin, the fifth beat's mortal witness: he crosses to the pit
+       behind the gods and steps down into it once they've done what
+       they came to do */
+    const elU = mix(NEST_U - 0.24, NEST_U - 0.03, smooth(clamp((fifth - 0.12) / 0.40, 0, 1)));
+    const elDrop = smooth(clamp((fifth - 0.52) / 0.14, 0, 1));
+    const elAmt = fifth > 0.08 ? clamp((fifth - 0.08) / 0.08, 0, 1) * (1 - elDrop) : 0;
+    const elY = gy(0.05, elU) + elDrop * 0.07 * G.H;
+
+    /* facing: figures instead of discs need a direction to look. Obrokxus
+       faces whoever he's nearest once the war starts; Ormius and Ava turn
+       to face him once they've landed the flank. The warlocks and the
+       hound face the way they're walking, and turn to face him instead
+       once the ring fight starts. */
+    const inFour = G.beat === idxOf("four");
+    const inFifth = G.beat === idxOf("fifth");
+    const inReturn = G.beat === idxOf("return");
+    const inFall = G.beat === idxOf("fall");
+    const sgn = (d) => d > 0 ? 1 : -1;
+
+    let oFace = -1;
+    if (war > 0) {
+      const opp = [[mu, mAmt], [au, aAmt], [mdU, mdAmt], [cU, cAmt], [aelU, aelAmt], [vU, vAmt], [hU, hAmt]];
+      let nearU = null, nearD = Infinity;
+      for (const o of opp) {
+        if (o[1] < 0.02) continue;
+        const d = Math.abs(o[0] - ou);
+        if (d < nearD) { nearD = d; nearU = o[0]; }
+      }
+      oFace = nearU == null ? 1 : sgn(nearU - ou);
+    }
+    const mFace = lock > 0 ? 1 : -1;
+    const aFace = lock > 0 ? 1 : -1;
+
+    const ringMd = fall > 0;
+    const ringOthers = fall > 0 && ret <= 0;
+    const mdFace = ringMd ? sgn(ou - mdU) : inFour ? -1 : inFifth ? 1 : sgn(ou - mdU);
+    const cFace = ringOthers ? sgn(ou - cU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - cU);
+    const aelFace = ringOthers ? sgn(ou - aelU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - aelU);
+    const vFace = ringOthers ? sgn(ou - vU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - vU);
+    const hFace = ringOthers ? sgn(ou - hU) : inReturn ? -1 : sgn(ou - hU);
+
+    /* movement flags: true only while a figure's u target is actually
+       changing this beat, so the walk/run cycle doesn't play while they
+       stand still or while they're airborne in the ring fight */
+    const mdWalk = inFour || inFifth;
+    const cWalk = inFifth || inReturn;
+    const aelWalk = inFifth || inReturn;
+    const vWalk = inFifth || inReturn;
+    const hRun = inFall || inReturn;
+
     let army = 0;
     if (war > 0) army = mix(0, 0.32, clamp(war, 0, 1));
     if (stall > 0) army = mix(0.32, 0.42, stall);
@@ -285,11 +341,14 @@
 
     return {
       ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
-      mdU, mdY, mdAmt, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
+      mdU, mdY, mdAmt, mdFall, mdDark, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
       nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
       fightW: war > 0 ? 0 : F.w, strikeM: F.strikeM, strikeA: F.strikeA,
       fallStrikes, etStrike: et > 0 ? duelAt(etLin).strike : 0,
+      fallBeat, etBeat, lashM, elU, elDrop, elAmt, elY,
+      oFace, mFace, aFace, mdFace, cFace, aelFace, vFace, hFace,
+      mdWalk, cWalk, aelWalk, vWalk, hRun,
     };
   }
 

@@ -29,13 +29,15 @@ most are under 300. Whole-file reads are still the main cost. These rules
 apply to the main session, Explore and the implementer alike.
 
 - **Never read a whole file over 300 lines.** Files still over 500 lines:
-  `css/bridge.css` (726), `js/hud/instruments.js` (612), `js/gamedev/storm.js`
-  (585), `js/ship/voidship-art.js` (566), `js/ship/voidship.js` (553),
-  `js/gamedev/forge.js` (549), `js/genesis/genesis.js` (515),
-  `js/gamedev/zones.js` (509), `tools/snap.py` (531),
-  `tools/nav-flows.test.py` (890). Use the File map below to pick the file
-  and function, then `Grep -n` for the name and `Read` with `offset`/`limit`
-  around the hit. Function names do not drift; line numbers do.
+  `css/bridge.css` (726), `js/hud/instruments.js` (652),
+  `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (621),
+  `js/gamedev/storm.js` (585), `js/ship/voidship-art.js` (566),
+  `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
+  `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (501),
+  `tools/snap.py` (531), `tools/nav-flows.test.py` (890). Use the File map
+  below to pick the file and function, then `Grep -n` for the name and
+  `Read` with `offset`/`limit` around the hit. Function names do not drift;
+  line numbers do.
 - **Never open** `cv.pdf`, anything under `media/`, `Temporary VoidScape
   Media/`, `snapshots/` or `__pycache__/`. They are binaries and staging
   assets. `Glob` or `ls` them if you need names; never `cat`, `Read` or `wc`
@@ -76,13 +78,13 @@ css/                          style, gate, beacon, bridge
 js/lib/                       util, paint, pacer
 js/site/                      xp, entry, intro, surge, embed, lazy-video
 js/hud/                       instruments, tiles-nav, tiles-sys
-js/bridge/                    bridge core + 7 parts, bridge-voice, bridge-log, marks, lamp, planet
+js/bridge/                    bridge core + 8 parts, bridge-sites, bridge-voice, bridge-log, marks, lamp, planet
 js/depths/                    depths core + zero, voidscape, heavylight, conclusus, lore
 js/ship/                      voidship, voidship-art
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
-js/genesis/                   genesis-state, -paint, -void, -orb, -rex, -saga-state, -saga, genesis
-tools/                        nav-flows.test.py, snap.py, bump.py
+js/genesis/                   genesis-state, -paint, -void, -flesh, -oldones, -figures, -titans, -mainland, -armies, -orb, -rex, -depths, -saga-state, -saga, genesis
+tools/                        nav-flows.test.py, snap.py, bump.py, gframes.py, jscheck.py
 ```
 
 Every JS file is an IIFE that publishes or extends one global on `window`.
@@ -131,13 +133,14 @@ Sizes are line counts after the split.
 
 | File | Lines | Purpose | Publishes / uses |
 |---|---|---|---|
-| `instruments.js` | 612 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms`/`alert`, the `F` kit, `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
-| `tiles-nav.js` | 471 | The nav bank: `radarStatic`, `radar`, `signal`, `drive` (key `phase`), `nav` (key `rec`) | registers `{paint, paintStatic}` |
-| `tiles-sys.js` | 401 | The sys bank and its shared state: `tickSys`, `eclss`, `rad`, `impact`, `setRepair`, `hull`, `bus`, `sys`, `repairState` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
+| `instruments.js` | 652 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once, one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
+| `tiles-nav.js` | 625 | The nav bank: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, glow bitmaps cached per colour; `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`; `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus` | registers `{paint, paintStatic}` |
+| `tiles-sys.js` | 495 | The sys bank and its shared state: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt` (integrity, cosmetic) and `sys.wear`; `eclss` rows are bars with nominal bands; `hull` has a STRESS/REGEN header, sector stress flicker, an INT bar and WEAR ×n; `bus` sags with `sway`, shows UPLINK on `link`; static layers `eclssStatic`/`radStatic`/`hullStatic`/`busStatic` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
 
 ### js/bridge
 
-Load order is the table order; all eight bridge files share `B`.
+Load order is the table order; nine bridge files share `B`. `bridge-sites.js`
+does not — it is pure data, no dependency on `B`.
 
 | File | Lines | Purpose | Publishes on `B` / `window` |
 |---|---|---|---|
@@ -145,11 +148,13 @@ Load order is the table order; all eight bridge files share `B`.
 | `bridge-notes.js` | 157 | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | 244 | Pointer/burn input: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels` | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
 | `bridge-marks.js` | 176 | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
-| `bridge-panel.js` | 347 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`), setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
+| `bridge-panel.js` | 352 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins; setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
 | `bridge-depths.js` | 99 | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
-| `bridge-readout.js` | 205 | `B.voice = BridgeVoice.create`, hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
+| `bridge-env.js` | 105 | The environment model: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, gAnom, tag, site, siteName, w, n1, n2, n3, t}`; `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases; debug `window.envReport` | `B.env stepEnv`; `window.envReport` |
+| `bridge-readout.js` | 210 | `B.voice = BridgeVoice.create` (voice state carries `env`), hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` (calls `B.stepEnv(dt)`, passes `env` to `Instruments.draw`); `VOICE_OF` maps the four planet marks to per-game voices | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
 | `bridge-loop.js` | 167 | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
-| `bridge-voice.js` | 367 | What the readout says per region (`ZONES`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
+| `bridge-sites.js` | 458 | The places that bend the instruments: `SITES` (void setting, 18 entries, order matters — later entries override earlier ones) and `GD_SITES` (one per game), each `{id, name, gate, x, r \| ramp, f:{fields}, tag, osc?, tags?}`; `lines(S, h)` returns one readout zone per site (same shape as `bridge-voice.js` `ZONES`) | `window.BridgeSites {SITES, GD_SITES, lines}` |
+| `bridge-voice.js` | 382 | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds; `zoneAt` returns the dominant site (`env.w >= 0.5`) before the x-range checks; extra optics/coherent lines in the void, watcher, root and unnamed zones | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | 68 | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
 | `marks.js` | 78 | Landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS`/`GD_SPAWN` | `window.Marks`; uses `World` |
 | `lamp.js` | 109 | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
@@ -216,14 +221,21 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
-| `genesis-state.js` | 333 | `BEATS`, world constants, state block, seeded scenery, queries `since`/`linear`/`only`/`sx`/`beatDur`; dev params `?genesis=1` (`G.FORCE`), `?gbeat=<name>` (`G.JUMP`) | `window.Gen` |
-| `genesis-paint.js` | 136 | `flatGlow`, `flatSphere`, `gridXs`, `fillRidge`, `mixHex`, `rexLandHeight`, `mainHeight`, … | `window.GenPaint` |
-| `genesis-void.js` | 410 | `fillBg`, `drawMotes`, `drawChaos`, `drawPoint`, `drawBridgeLine`, old ones (`walkerPos`, `drawAlien`, `drawOldOnes`), `drawStains`, `fleshPath`, `drawFlesh`, `drawSouls` | extends `window.GenVoid` |
-| `genesis-orb.js` | 279 | `drawRip`, `lightsAt`, `pushTrail`, `drawTrail`, `drawOrb`, `drawRings`, `drawBeam`, `drawTintBeam`, `yWob`, `drawName` | extends `window.GenVoid` |
-| `genesis-rex.js` | 442 | `chaseAt` … `drawDepths`: chases/duel, Rex land, the hole, the grip, the buried god, the gods' birth | `window.GenRex` |
-| `genesis-saga-state.js` | 297 | `sagaAt`: every saga-beat quantity for the frame | extends `window.GenSaga` |
-| `genesis-saga.js` | 383 | `drawMainland`, `drawCity`, `drawArmies`, `drawNestPit`, `drawSaga`, `drawLiveWorld` | extends `window.GenSaga` |
-| `genesis.js` | 515 | DOM/overlay, transport `play`/`skip`/`seek`/`finish`, `camAim`/`step`, the `draw` conductor, input | `window.Genesis {active, pending, play, skip, seek, step, draw}` |
+| `genesis-state.js` | 338 | `BEATS` (23 beats, Roman-numeral tags, biblical lines), world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), seeded scenery, O(1) `idxOf`, `since/linear/only/sx/beatDur`, dev params `?genesis=1` / `?gbeat=<name>` | `window.Gen` |
+| `genesis-paint.js` | 136 | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
+| `genesis-void.js` | 287 | `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks), `drawSpan` (the monumental bridge: slab, piers, arches, gold rail) | `window.GenVoid` |
+| `genesis-flesh.js` | 259 | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
+| `genesis-oldones.js` | 477 | 44 old ones in ten kinds / five locomotions (walk, slide, fly, blink, roll): `ROSTER ORDER place drawOldOnes drawShards drawKind makeOne` | `window.GenOld` |
+| `genesis-figures.js` | 313 | flat silhouette cast: `drawGod` (crowns: bars/rings/orbit/clock/petals/spikes), `drawWarlock` (returns the staff gem), `drawTroop`, `drawMortal` + shared `fillPoly shadedPoly quad withTilt` | `window.GenFig` |
+| `genesis-titans.js` | 237 | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"`: stand/lunge/climb/flee) and `drawHound` | extends `window.GenFig` |
+| `genesis-mainland.js` | 374 | mainland bands, the surface cache `surfY(px)`/`surfYAt(wu, rise, scar)` every figure stands on, rooted red spires, the city (roofs, walls, windows, lamps), the nest pit | `window.GenMain` |
+| `genesis-armies.js` | 251 | the war simulation: `step(dt, S)`, `draw(ctx, S)`, `reset()` (march, front tide, sparks, volleys, deaths, corpses, reinforcements) | `window.GenArmies` |
+| `genesis-orb.js` | 281 | `drawRip lightsAt` (titan keyframe paths) `pushTrail drawTrail drawOrb drawRings drawBeam drawTintBeam yWob drawName` | extends `window.GenVoid` |
+| `genesis-rex.js` | 501 | `chaseAt chaseFightAt duelAt ringFightAt`, `drawRexLand` (hot rock cooling to slate, fissures), `drawRexHole`, `drawRexGrip`, `drawBuried` (the eye in the ground), `drawGodsBirth` (five gods as figures) | `window.GenRex` |
+| `genesis-depths.js` | 280 | `drawDepths`: rock, ribs, stalactites, the pocket, Obrokxus in Rex's grip, the five gods circling, 70 brothers (old-one kinds in red), the year counter | `window.GenDepths` |
+| `genesis-saga-state.js` | 356 | `sagaAt`: every saga quantity for the frame (feet via `GenMain.surfYAt`, Mordrial's fall/dark, Obrokxus's lash and sinking, Eldrin, facing and walk flags, `fallBeat/etBeat`) | extends `window.GenSaga` |
+| `genesis-saga.js` | 312 | `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, the cast as figures, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld` | extends `window.GenSaga` |
+| `genesis.js` | 621 | DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash, titans in the fight, the depths, the saga, the now-fade), input | `window.Genesis` |
 
 ### css, pages, tools
 
@@ -231,7 +243,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 |---|---|---|
 | `css/style.css` | 431 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | 126 | The entry gate: boot log, then the two paths. index only |
-| `css/bridge.css` | 726 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay. index only |
+| `css/bridge.css` | 744 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | 159 | Level chip, claim ceremony, surge |
 | `index.html` | 460 | Homepage. Inline head script is only the service-worker purge |
 | `projects/*.html` | 110–253 | Four case-study pages, same shell |
@@ -239,6 +251,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `tools/nav-flows.test.py` | 890 | Playwright flows; starts its own server on a free port; `ROOT` is the repo root |
 | `tools/snap.py` | 531 | Screenshot regression: `capture`, `compare`, `list`; imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js` |
 | `tools/bump.py` | 36 | Sets every `?v=` across the HTML pages; works from any cwd |
+| `tools/gframes.py` | 63 | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
+| `tools/jscheck.py` | 49 | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) |
 
 ### Load order
@@ -255,20 +269,26 @@ world/art/{shattered, libertech, dawn, accord, gore} → world/world →
 world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
 ship/voidship-art → ship/voidship → gamedev/storm → gamedev/forge-guns →
 gamedev/forge-missions → gamedev/forge → gamedev/zones → site/embed →
-lib/pacer → bridge/marks → bridge/bridge-log → bridge/bridge-voice →
-bridge/{bridge, bridge-notes, bridge-input, bridge-marks, bridge-panel,
-bridge-depths, bridge-readout, bridge-loop} → genesis/{genesis-state,
-genesis-paint, genesis-void, genesis-orb, genesis-rex, genesis-saga-state,
-genesis-saga, genesis} → site/intro`.
+lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
+bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
+bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
+bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
+genesis-flesh, genesis-oldones, genesis-figures, genesis-titans,
+genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,
+genesis-saga-state, genesis-saga, genesis} → site/intro`.
 
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
 `instruments.js`, kits before places, `forge-guns` before `forge-missions`
-before `forge`); `genesis-void` and `genesis-orb` before `genesis-rex`
-(it destructures `GenVoid` at parse time); `genesis-saga-state` before
-`genesis-saga`. Scripts carry `?v=N` cache-busters; bump them with
-`py -3 tools/bump.py`.
+before `forge`); `bridge-sites` before `bridge-voice`; `bridge-env`
+after `bridge-depths` and before `bridge-readout`; `genesis-flesh` before
+`genesis-rex` (it destructures `fleshPath` at parse time);
+`genesis-figures`/`genesis-titans` before `genesis-rex`, `genesis-depths`
+and `genesis-saga` (used at call time, kept before for clarity);
+`genesis-mainland` and `genesis-armies` before `genesis-saga-state`/
+`genesis-saga`; `genesis-saga-state` before `genesis-saga`. Scripts carry
+`?v=N` cache-busters; bump them with `py -3 tools/bump.py`.
 
 Project pages load only `css/style.css`, `css/beacon.css`, then
 `js/lib/util.js → js/site/xp.js → js/site/surge.js` plus `js/site/embed.js`
@@ -293,12 +313,14 @@ and an inline `XP.award(...)`.
 | Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
 | Notes and hints | `js/bridge/bridge-notes.js` |
 | Setting switch (void ↔ gamedev), iris FX, view persistence | `js/bridge/bridge-panel.js` |
-| Readout text | `js/bridge/bridge-voice.js` `ZONES`; glue and hull damage in `bridge-readout.js` |
+| Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`); one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate` |
+| Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
 | Entry gate | decision `js/site/entry.js`, UI `js/site/intro.js`, CSS `css/gate.css` + `css/bridge.css` boot terminal, bridge defers in `bridge.js` `readyBridge` |
-| Cutscene | `js/genesis/` (see table); painters split void/orb, saga state/draw |
+| Cutscene | `js/genesis/` (see table); cast painters `genesis-figures.js` + `genesis-titans.js`; the old ones `genesis-oldones.js`; the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`; the war `genesis-armies.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`; zoom/captions/letterbox `genesis.js` + `css/bridge.css` genesis block |
+| Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
 
@@ -354,6 +376,22 @@ Titans cave in `js/world/art/titans.js`.
 - The primitives are in `js/lib/paint.js`; do not add a new `litShade`
   anywhere. Shared building helpers go in `rex-kit.js` / `land-kit.js`.
 
+## Instrument readings
+
+- Readings are visual first: a bar climbing or a tile blinking red, then a
+  number, then a line in the log. Never a mechanic; nothing here costs the
+  visitor anything.
+- Every place that bends the instruments is one entry in
+  `js/bridge/bridge-sites.js`, gated on its depth node (`gate`). The beacon
+  marks nothing; the art does. Add a site, not a special case in a tile.
+- Two axes: `chaos` is the incoherent one (noise, the world's `chaosAt`);
+  `nomic` is the coherent one (constants displaced, in step). On the HUD
+  and in the log say `incoherent` / `coherent` / `nomic`; never `magic`.
+  Keep the voice's style: `value · unit · impossible clause`, lowercase,
+  dry.
+- Tiles read `r.env` only; they never reach into `Bridge`. Anything that
+  does not change per paint goes in the tile's `paintStatic`.
+
 ## Commands
 
 - **Build:** none. No framework, no bundler, no npm.
@@ -363,6 +401,10 @@ Titans cave in `js/world/art/titans.js`.
   `reload`, `worklink`, `deeplink`, `returning`, `wordmark`, `reset`,
   `genesis`, `twotabs`, `header`, `shell`, `phone`, `depths`, `rex`,
   `watcher`, `bridge`, `landdepths`, `links`.
+- **Cutscene frames:** `py -3 tools/gframes.py <run> [beat ...]` writes
+  `snapshots/frames/<run>/<beat>.png` contact sheets. **JS check:** `py -3
+  tools/jscheck.py js/genesis/genesis-figures.js --eval "return typeof
+  GenFig"` loads files in a headless page (no node on this machine).
 - **Screenshots:** `py -3 tools/snap.py capture <name>` writes a run under
   `snapshots/`, `py -3 tools/snap.py compare <a> <b>` diffs two runs, `py -3
   tools/snap.py list` names the scenes.

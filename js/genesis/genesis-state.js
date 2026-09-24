@@ -20,52 +20,55 @@ window.Gen = (function () {
   G.reduced = Util.reduced();
 
   G.BEATS = [
-    { id: "point", dur: 5.2, tag: "before record",
-      line: "There was no place. Only a point, and the dark around it." },
-    { id: "drawn", dur: 5.0, tag: "the first law",
-      line: "The span came out of the dark, and it did not turn." },
-    { id: "break", dur: 5.4, tag: "the old ones",
-      line: "The point broke. What stepped out of it had no colour, and no name yet." },
-    { id: "walk",  dur: 7.0, tag: "one side",
-      line: "Some took the span west. This record follows those who went east." },
-    { id: "root",  dur: 5.4, tag: "primordisentia",
-      line: "At the far end they found a cry that was a body." },
-    { id: "swarm", dur: 6.8, tag: "hunger",
-      line: "They closed on it, and made it into what they were hungry for." },
-    { id: "womb",  dur: 6.6, tag: "Crede, ergo magica est.",
-      line: "They sealed the wound and named the seal a womb." },
-    { id: "birth", dur: 5.8, tag: "first born",
-      line: "Two lights tore out of it: Obrokxus, already wrong — and Rex, orange as a new star." },
-    { id: "fight", dur: 8.2, tag: "obrokxus · rex",
-      line: "They met in the void. Rex broke." },
-    { id: "land",  dur: 6.0, tag: "rex the surface",
-      line: "With the last of himself, Rex closed around Obrokxus and fell. His body cooled into ground, and held him there." },
-    { id: "gods", dur: 7.0, tag: "the others",
-      line: "It bought time. The womb tore again: Ormius, Ava, Kaeron, Kaelum, Orochronus." },
-    { id: "deep", dur: 11.0, tag: "inside rex",
-      line: "They went down after him, into Rex's deepest places. Chaos came up to meet them, answering to no one. The war lasted almost ten thousand years." },
-    { id: "slip", dur: 7.0, tag: "his brothers",
-      line: "In time Obrokxus set his brothers on the gods, and while they were held, he climbed." },
-    { id: "flee", dur: 11.6, tag: "obrokxus flees",
-      line: "He tore out through Rex and left a hole behind. Two lights followed: Ormius, law in gold-red — and Ava, pale as a healing wound." },
-    { id: "war", dur: 9.2, tag: "their children",
-      line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim — an everlasting war." },
-    { id: "stalemate", dur: 5.4, tag: "nothing won",
-      line: "Even then the war led to nothing." },
-    { id: "firstlock", dur: 6.8, tag: "mordrial",
-      line: "They made one thing together, half Seravim, half Malgrur. Mordrial — the first warlock." },
-    { id: "four", dur: 8.5, tag: "four of the void",
-      line: "Four stood: Mordrial of the Void, Cadmus Baalzur, Aelius Luxent, Velindra the Chaos Binder." },
-    { id: "fifth", dur: 7.8, tag: "the hound",
-      line: "Cadmus made a fifth — not a person, a weapon. Eldrin walked into the nest and became the Hound." },
-    { id: "fall", dur: 8.6, tag: "mordrial fell",
-      line: "They met Obrokxus. The fight outlasted counting. Mordrial fell. The rest called it victory." },
-    { id: "return", dur: 7.6, tag: "the mainland",
-      line: "They turned home, to life and the void. Only Ormius still believed Obrokxus had survived." },
-    { id: "eternity", dur: 8.8, tag: "still fighting",
-      line: "No one has gone far enough to see. They fight there still." },
+    { id: "point", dur: 6.0, tag: "I · Before the record",
+      line: "There was no place, and no time to say it in. Only a point, and all that would ever be, pressed inside it." },
+    { id: "drawn", dur: 5.6, tag: "II · The first law",
+      line: "Out of the dark came the span, cold and straight. It did not turn, and that was the first law." },
+    { id: "break", dur: 6.0, tag: "III · The old ones",
+      line: "The point broke. What came out of it we cannot name. It had no colour, and no shape that would hold." },
+    { id: "walk",  dur: 7.0, tag: "IV · One side",
+      line: "Some took the span west, and of them nothing is written. This record follows those who went east." },
+    { id: "root",  dur: 5.8, tag: "V · Primordisentia",
+      line: "At the far end they found a cry, and the cry was a body, greater than the sky." },
+    { id: "swarm", dur: 6.8, tag: "VI · Hunger",
+      line: "They fell upon it. Each remade it in the image of its own hunger, and the body screamed, and none of them heard." },
+    { id: "womb",  dur: 7.0, tag: "VII · Crede, ergo magica est",
+      line: "Then a silence came over them, and with it the first guilt. They bound the wound in gold, and named the binding a womb." },
+    { id: "birth", dur: 6.2, tag: "VIII · First born",
+      line: "Two lights tore out of the womb. Obrokxus, wrong from his first breath. And Rex, burning like a new star." },
+    { id: "fight", dur: 8.2, tag: "IX · Obrokxus · Rex",
+      line: "They met in the void, and the void shook to its roots. We are told that Rex broke. We are not told how." },
+    { id: "land",  dur: 6.6, tag: "X · Rex the surface",
+      line: "With the last of himself Rex closed about Obrokxus, and fell. His body cooled into ground, and the ground held." },
+    { id: "gods", dur: 7.0, tag: "XI · The others",
+      line: "It bought time. The womb tore again, and five walked out of it, and we have only their names: Ormius, Ava, Kaeron, Kaelum, Orochronus." },
+    { id: "deep", dur: 11.0, tag: "XII · Inside Rex",
+      line: "They went down after him, into the deepest places of Rex. Chaos rose to meet them, answering to no one. Ten thousand years the war ran." },
+    { id: "slip", dur: 7.0, tag: "XIII · His brothers",
+      line: "In time Obrokxus set his brothers upon the gods, and while the gods were held, he climbed." },
+    { id: "flee", dur: 11.6, tag: "XIV · Obrokxus flees",
+      line: "He tore up through Rex and left a hole where he had been. Two lights followed: Ormius, the law in gold and red, and Ava, pale as a wound that heals." },
+    { id: "war", dur: 9.2, tag: "XV · Their children",
+      line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim, and a war with no end." },
+    { id: "stalemate", dur: 5.4, tag: "XVI · Nothing won",
+      line: "Even so, the war led to nothing. It took everything, and gave nothing back." },
+    { id: "firstlock", dur: 6.8, tag: "XVII · Mordrial",
+      line: "Out of the war they made one thing together, half Seravim and half Malgrur: Mordrial, the first warlock." },
+    { id: "four", dur: 8.5, tag: "XVIII · Four of the void",
+      line: "Four stood against the dark: Mordrial of the Void, Cadmus Baalzur, Aelius Luxent, and Velindra the Chaos Binder." },
+    { id: "fifth", dur: 7.8, tag: "XIX · The Hound",
+      line: "Cadmus made a fifth, and it was not a person but a weapon. Eldrin walked into the nest, and the Hound walked out." },
+    { id: "fall", dur: 8.6, tag: "XX · Mordrial fell",
+      line: "They met Obrokxus, and the fight outlasted counting. Mordrial fell. The rest called it victory, and went home." },
+    { id: "return", dur: 7.6, tag: "XXI · The mainland",
+      line: "They returned to the living and to the void. Only Ormius believed that Obrokxus had survived." },
+    { id: "eternity", dur: 8.8, tag: "XXII · Still fighting",
+      line: "No one has gone far enough to see it. Past the edge of every record, they fight there still." },
     { id: "now",   dur: 2.6, tag: "", line: "" },
   ];
+
+  const BEAT_INDEX = {};
+  G.BEATS.forEach((b, i) => { BEAT_INDEX[b.id] = i; });
 
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;
@@ -177,6 +180,8 @@ window.Gen = (function () {
   G.active = false; G.beat = 0; G.local = 0; G.thenMode = "void"; G.thenCamX = null;
   G.W = 0; G.H = 0; G.t = 0; G.shake = 0; G.flash = 0; G.clashCool = 0;
   G.cam = 0; G.camTarget = 0;
+  /* slow cinematic push/pull per beat; zoomKick is a clash punch */
+  G.zoom = 1; G.zoomTarget = 1; G.zoomKick = 0;
   G.trailY = []; G.trailR = []; G.trailM = []; G.trailA = []; G.trailH = []; G.rings = [];
   G.trailG = [[], [], [], [], []];
   /* trails and shake jitter step 60 times a second, not once per frame,
@@ -301,8 +306,8 @@ window.Gen = (function () {
   };
 
   G.idxOf = function (id) {
-    for (let i = 0; i < G.BEATS.length; i++) if (G.BEATS[i].id === id) return i;
-    return 0;
+    const i = BEAT_INDEX[id];
+    return i == null ? 0 : i;
   };
   G.since = function (id) {
     const i = G.idxOf(id);

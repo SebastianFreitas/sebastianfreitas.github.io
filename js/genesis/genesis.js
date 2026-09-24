@@ -19,12 +19,11 @@ window.Genesis = (function () {
   const { smooth, clamp, mix, approach } = Util;
   const { FORCE, JUMP, reduced, BEATS, ROOT_U, MAIN_U, EAST_U, CITY_U, NEST_U, DIVE_DEPTH,
           FLEE_CAM_RATE, ET_CAM_RATE, TICK_STEP, TICK_SLACK, pending, idxOf, since, linear,
-          only } = G;
-  const { fillBg, drawMotes, drawChaos, drawPoint, drawBridgeLine, drawOldOnes, drawStains,
-          drawFlesh, drawSouls, drawRip, lightsAt, pushTrail, drawTrail, drawOrb, drawRings,
-          drawBeam, drawName } = GenVoid;
+          only, sx } = G;
+  const { fillBg, drawMotes, drawChaos, drawPoint, drawRip, lightsAt, pushTrail, drawTrail,
+          drawOrb, drawRings, drawBeam, drawName } = GenVoid;
   const { chaseAt, chaseCamLead, duelDrift, duelCamLead, drawRexLand, drawRexHole,
-          drawRexGrip, drawBuried, drawGodsBirth, drawDepths } = GenRex;
+          drawBuried, drawGodsBirth } = GenRex;
   const { drawSaga, drawLiveWorld } = GenSaga;
 
   const overlay = document.getElementById("genesis");
@@ -38,20 +37,29 @@ window.Genesis = (function () {
   const skipEl  = document.getElementById("genesis-skip");
   const host    = document.getElementById("bridge-hero");
 
-  function paintCopy() {
+  let copyTimer = 0;
+  let broke = false;
+  function paintCopy(immediate) {
     const b = BEATS[G.beat];
     if (!b || !copyEl) return;
     if (overlay) overlay.dataset.beat = b.id || "";
+    clearTimeout(copyTimer);
     if (!b.line) {
       copyEl.classList.remove("on");
       copyEl.classList.add("out");
       if (tagEl) tagEl.textContent = "";
       return;
     }
-    copyEl.classList.remove("on", "out");
-    if (tagEl) tagEl.textContent = b.tag;
-    if (lineEl) lineEl.textContent = b.line;
-    requestAnimationFrame(() => copyEl.classList.add("on"));
+    const show = () => {
+      copyEl.classList.remove("on", "out");
+      if (tagEl) tagEl.textContent = b.tag;
+      if (lineEl) lineEl.textContent = b.line;
+      requestAnimationFrame(() => copyEl.classList.add("on"));
+    };
+    if (immediate || !copyEl.classList.contains("on")) { show(); return; }
+    copyEl.classList.remove("on");
+    copyEl.classList.add("out");
+    copyTimer = setTimeout(show, 420);
   }
 
   function paintTicks() {
@@ -71,6 +79,7 @@ window.Genesis = (function () {
   function go(i) {
     G.beat = clamp(i, 0, BEATS.length - 1);
     G.local = 0;
+    broke = i > idxOf("break");
     if (BEATS[G.beat] && BEATS[G.beat].id === "flee") {
       G.trailY.length = 0;
       G.trailR.length = 0;
@@ -173,10 +182,7 @@ window.Genesis = (function () {
     if (jump) {
       const i = idxOf(jump[1]);
       if (i > 0) {
-        go(i);
-        if (i >= idxOf("war")) { G.cam = MAIN_U; G.camTarget = MAIN_U; }
-        else if (i >= idxOf("flee")) { G.cam = ROOT_U - 0.30; G.camTarget = G.cam; }
-        else if (i >= idxOf("land")) { G.cam = ROOT_U - 0.30; G.camTarget = G.cam; }
+        seek(i, 0);
       }
     }
     paintCopy();
@@ -194,16 +200,23 @@ window.Genesis = (function () {
   function seek(i, frac) {
     if (!G.active) return;
     i = clamp(i, 0, BEATS.length - 1);
+    broke = i > idxOf("break");
     frac = clamp(frac, 0, 1);
     if (i === BEATS.length - 1) frac = 0;
     if (i !== G.beat) go(i);
+    paintCopy(true);
     const dur = BEATS[i].dur;
     G.local = frac >= 1 ? dur - 0.001 : frac * dur;
     resetFX();
     G.shake = 0;
     const aim = camAim();
-    G.camTarget = aim.target;
     G.cam = aim.target;
+    G.camTarget = aim.target;
+    G.zoom = aim.zoom;
+    G.zoomTarget = aim.zoom;
+    G.zoomKick = 0;
+    if (window.GenArmies) GenArmies.reset();
+    if (G.sparks) G.sparks.length = 0;
     paintTicks();
   }
 
@@ -225,6 +238,16 @@ window.Genesis = (function () {
     const i = Math.floor(pos);
     seek(i, pos - i);
   }
+
+  /* slow push-in / pull-out per beat: [from, to] applied over the beat */
+  const ZOOM = {
+    point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05], walk: [1.05, 1.02],
+    root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], birth: [1.00, 1.06],
+    fight: [1.06, 1.06], land: [1.06, 1.00], gods: [1.00, 1.05], deep: [1.05, 1.00],
+    slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
+    firstlock: [1.02, 1.08], four: [1.08, 1.02], fifth: [1.02, 1.08], fall: [1.08, 1.00],
+    return: [1.00, 1.05], eternity: [1.05, 1.00], now: [1.00, 1.00],
+  };
 
   function camAim() {
     let target = 0;
@@ -287,7 +310,10 @@ window.Genesis = (function () {
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
     if (uFlee > 0 && uWar < 0.02) camRate = FLEE_CAM_RATE;
     if (camRateOverride != null) camRate = camRateOverride;
-    return { target, rate: camRate };
+    const cur = BEATS[G.beat];
+    const zk = (cur && ZOOM[cur.id]) || [1, 1];
+    const zoom = G.reduced ? 1 : mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1)));
+    return { target, rate: camRate, zoom };
   }
 
   function step(dt) {
@@ -309,10 +335,20 @@ window.Genesis = (function () {
       G.rings[i].a -= dt * 1.35;
       if (G.rings[i].a <= 0) G.rings.splice(i, 1);
     }
+    if (G.sparks) {
+      for (let i = G.sparks.length - 1; i >= 0; i--) {
+        const s = G.sparks[i];
+        s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 900 * dt; s.t += dt;
+        if (s.t > 0.45) G.sparks.splice(i, 1);
+      }
+    }
 
     const aim = camAim();
     G.camTarget = aim.target;
     G.cam = approach(G.cam, G.camTarget, aim.rate, dt);
+    G.zoomTarget = aim.zoom;
+    G.zoomKick = Math.max(0, G.zoomKick - dt * 0.16);
+    G.zoom = approach(G.zoom, G.zoomTarget + G.zoomKick, 3.0, dt);
     paintTicks();
 
     const b = BEATS[G.beat];
@@ -323,8 +359,20 @@ window.Genesis = (function () {
     return true;
   }
 
+  const DASH = [[0.10, 0.14], [0.23, 0.27], [0.42, 0.46], [0.84, 0.88]];   // Rex's lunges
+  const LASH = [[0.30, 0.36], [0.56, 0.62], [0.74, 0.80]];                 // Obrokxus's lunges
+  function bump(windows, u) {   // 0..1 bump that rises over a window and settles 0.10 after it
+    let v = 0;
+    for (const [a, b] of windows) {
+      const k = (u - (a - 0.02)) / ((b - a) + 0.12);
+      if (k > 0 && k < 1) v = Math.max(v, Math.sin(Math.PI * k));
+    }
+    return v;
+  }
+
   function draw(ctx, env) {
     if (!G.active) return;
+    G.sparks = G.sparks || [];
     G.W = env.W; G.H = env.H;
     if (env.t != null) G.t = env.t;
 
@@ -332,6 +380,12 @@ window.Genesis = (function () {
     const syh = G.shakeRY * G.shake * 9;
     ctx.save();
     ctx.translate(sxh, syh);
+    const z = G.zoom || 1;
+    if (z !== 1) {
+      ctx.translate(G.W * 0.5, G.H * 0.5);
+      ctx.scale(z, z);
+      ctx.translate(-G.W * 0.5, -G.H * 0.5);
+    }
 
     const uDrawn = since("drawn");
     const uBreak = since("break");
@@ -346,11 +400,11 @@ window.Genesis = (function () {
     const uNow   = only("now");
 
     fillBg(ctx);
+    drawChaos(ctx, clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1));
     const streak = uWalk * (1 - uRoot) * 52
       + uFlee * (1 - since("war")) * 70
       + since("eternity") * 84;
     drawMotes(ctx, clamp(uBreak * 0.55 + uWalk * 0.45 + uLand * 0.15 + uFlee * 0.2, 0, 1), streak);
-    drawChaos(ctx, clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1));
 
     const iDeep = idxOf("deep"), iSlip = idxOf("slip");
     let dive = 0;
@@ -366,20 +420,36 @@ window.Genesis = (function () {
     const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
     const pointVis = (G.beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
     drawPoint(ctx, pointVis, crack);
-    drawBridgeLine(ctx, uDrawn);
+
+    /* the instant the point breaks: one flash, one shock ring, a hard shake */
+    const breakLin = linear("break");
+    if (breakLin > 0.20 && !broke) {
+      broke = true;
+      G.flash = 1;
+      G.shake = Math.max(G.shake, 1.3);
+      G.zoomKick = Math.max(G.zoomKick, 0.05);
+      G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
+    }
+    GenVoid.drawSpan(ctx, uDrawn);
+    GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1));
 
     const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
     const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
     const fleshVis = approaching * (1 - uLand * 0.28);
-    const flesh = drawFlesh(ctx, fleshVis, pain, uWomb);
-    drawStains(ctx, flesh, uSwarm * (1 - uWomb) * fleshVis);
+    const geom = GenFlesh.fleshGeom(uWomb);
+    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (1 - since("land"));
+    if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
+    const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb);
+    const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1);
+    GenFlesh.drawCry(ctx, flesh, cryAmt);
+    GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis, GenOld.ROSTER);
     const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
-    drawSouls(ctx, flesh, soulAmt);
+    GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
 
     const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
     const still = uWomb;
     const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
-    drawOldOnes(ctx, burst, uWalk, cling, still, watch, flesh);
+    GenOld.drawOldOnes(ctx, { burst, walk: uWalk, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
     drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
@@ -389,21 +459,57 @@ window.Genesis = (function () {
       drawTrail(ctx, G.trailY, "245,138,52", L.yAmt);
       drawTrail(ctx, G.trailR, "90,12,18", L.rAmt, true);
 
-      const dx = L.yx - L.rx, dy = L.yy - L.ry;
-      const dist = Math.hypot(dx, dy);
-      if (uFight > 0.05 && uLand < 0.15 && dist < 38 && G.clashCool <= 0 && L.wrap < 0.3) {
-        G.flash = 1;
+      const m = Math.min(G.W, G.H);
+      const uF = linear("fight");
+      const rexLunge = bump(DASH, uF), obLash = bump(LASH, uF);
+      const emerge = clamp(uBirth * 1.35, 0, 1);
+      const hR = 0.26 * m * (0.4 + 0.6 * emerge), hO = 0.26 * m * (0.4 + 0.6 * emerge);
+      const fR = L.rx >= L.yx ? 1 : -1, fO = -fR;
+      const yFootR = L.yy + 0.45 * hR, yFootO = L.ry + 0.45 * hO;
+      const obEye = { x: L.rx + fO * 0.10 * hO, y: yFootO - 0.50 * hO };
+      const rexHead = { x: L.yx, y: yFootR - 0.86 * hR };
+      const landLin = linear("land");
+      const cool = smooth(clamp((landLin - 0.2) / 0.6, 0, 1));
+      let rexPose = "stand", rexTilt = 0;
+      if (L.wrap > 0.02) rexPose = "grapple";
+      else if (rexLunge > 0.05) rexPose = "lunge";
+      if (L.die > 0.02) { rexPose = "fall"; rexTilt = (Math.PI / 2) * smooth(L.die); }
+      const obPose = obLash > 0.05 && L.wrap < 0.02 ? "lunge" : "stand";
+
+      const near = Math.hypot(L.yx - L.rx, L.yy - L.ry) < 0.30 * m;
+      if (near && (rexLunge > 0.55 || obLash > 0.55) && G.clashCool <= 0) {
+        G.flash = 0.7;
         G.shake = Math.max(G.shake, 0.95);
         G.clashCool = 0.26;
+        G.zoomKick = Math.max(G.zoomKick, 0.035);
         G.rings.push({ x: (L.yx + L.rx) * 0.5, y: (L.yy + L.ry) * 0.5, r: 10, a: 1 });
+        for (let i = 0; i < 10; i++) {
+          G.sparks.push({ x: obEye.x, y: obEye.y, vx: (Math.random() - 0.5) * 520, vy: -Math.random() * 420 - 80, t: 0 });
+        }
       }
       const beamU = (uFight > 0.66 && uFight < 0.78) ? 1 - Math.abs(uFight - 0.72) / 0.12 : 0;
-      drawBeam(ctx, L.yx, L.yy, L.rx, L.ry, beamU * Math.max(L.yAmt, L.rAmt));
-      drawOrb(ctx, L.rx, L.ry, L.rAmt, "obrokxus");
-      drawRexGrip(ctx, L.rx, L.ry, L.wrap * (1 - L.bury), Math.min(G.W, G.H) * mix(0.26, 0.11, L.wrap));
-      drawOrb(ctx, L.yx, L.yy, L.yAmt, "rex");
-      drawName(ctx, L.rx, L.ry, L.rAmt, "OBROKXUS", 34);
-      drawName(ctx, L.yx, L.yy, L.yAmt, "REX", 30);
+
+      const F = window.GenFig;
+      if (F) {
+        F.drawTitan(ctx, L.rx, yFootO, hO, "obrokxus", { a: L.rAmt, face: fO, pose: obPose, reach: rexHead, look: rexHead, ph: 0.4, tilt: -0.3 * smooth(L.die) });
+        F.drawTitan(ctx, L.yx, yFootR, hR, "rex", { a: L.yAmt, face: fR, pose: rexPose, reach: rexPose === "grapple" ? { x: L.rx, y: L.ry } : obEye, reachAmt: rexLunge, cool, tilt: rexTilt });
+      }
+
+      const shX = L.yx + fR * 0.26 * hR, shY = yFootR - 0.62 * hR;
+      const hdx = obEye.x - shX, hdy = obEye.y - shY;
+      const hdLen = Math.hypot(hdx, hdy) || 1;
+      const handX = shX + (hdx / hdLen) * 0.46 * hR, handY = shY + (hdy / hdLen) * 0.46 * hR;
+      drawBeam(ctx, handX, handY, obEye.x, obEye.y, beamU * Math.max(L.yAmt, L.rAmt));
+
+      for (const s of G.sparks) {
+        const a = 1 - s.t / 0.45;
+        if (a <= 0) continue;
+        ctx.fillStyle = `rgba(255,226,190,${a})`;
+        ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
+      }
+
+      drawName(ctx, L.rx, yFootO + 14, L.rAmt, "OBROKXUS", 0);
+      drawName(ctx, L.yx, yFootR + 14, L.yAmt, "REX", 0);
       drawRings(ctx);
     }
     drawGodsBirth(ctx, flesh);
@@ -419,7 +525,7 @@ window.Genesis = (function () {
     const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
     drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
     drawBuried(ctx);
-    drawDepths(ctx, dive, diveY);
+    if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
     drawRexHole(ctx);
     drawSaga(ctx);
     ctx.restore();

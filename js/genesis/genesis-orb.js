@@ -45,17 +45,17 @@
   function lightsAt(uBirth, uFight, uLand, flesh) {
     const exitX = flesh ? flesh.cx - flesh.rx * 0.92 : sx(ROOT_U) - Math.min(G.W, G.H) * 0.28;
     const exitY = flesh ? flesh.cy + flesh.ry * 0.04 : G.H * 0.5;
-    const west = flesh ? flesh.cx - flesh.rx - 22 : exitX;
-    const arenaX = west - Math.min(G.W, G.H) * 0.16;
+    const west = flesh ? flesh.cx - flesh.rx - Math.min(G.W, G.H) * 0.12 : exitX;
+    const arenaX = west - Math.min(G.W, G.H) * 0.34;
     const arenaY = G.H * 0.40;
     const span = Math.min(G.W, G.H);
     const emerge = clamp(uBirth * 1.35, 0, 1);
     const yK = keyAt(YELLOW_KEYS, uFight);
     const rK = keyAt(RED_KEYS, uFight);
-    let yx = mix(exitX, arenaX + yK.x * span * 0.28, emerge);
-    let yy = mix(exitY, arenaY + yK.y * span * 0.30, emerge);
-    let rx = mix(exitX, arenaX + rK.x * span * 0.28, emerge);
-    let ry = mix(exitY, arenaY + rK.y * span * 0.30, emerge);
+    let yx = mix(exitX, arenaX + yK.x * span * 0.44, emerge);
+    let yy = mix(exitY, arenaY + yK.y * span * 0.32, emerge);
+    let rx = mix(exitX, arenaX + rK.x * span * 0.44, emerge);
+    let ry = mix(exitY, arenaY + rK.y * span * 0.32, emerge);
     yx = Math.min(yx, west);
     rx = Math.min(rx, west);
 
@@ -251,6 +251,7 @@
 
   /* who is who. The lines name them once; the labels keep naming
      them, quietly, for as long as they are on the deck. */
+  const NAME_W = new Map();
   function drawName(ctx, x, y, amt, text, drop) {
     if (amt < 0.12 || !text) return;
     if (amt >= 0.5 && G.nameSeen[text] == null) G.nameSeen[text] = G.t;
@@ -264,7 +265,8 @@
     ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    const w = ctx.measureText(text).width;
+    let w = NAME_W.get(text);
+    if (w == null) { w = ctx.measureText(text).width; NAME_W.set(text, w); }
     ctx.fillStyle = `rgba(8,11,13,${0.62 * a})`;
     ctx.fillRect(x - w * 0.5 - 5, dy - 3, w + 10, 15);
     ctx.fillStyle = `rgba(220,230,232,${a})`;

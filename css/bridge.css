@@ -495,15 +495,23 @@ html.genesis-on .topbar {
   position: fixed; inset: 0; z-index: 90;
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start;
-  padding: 4.6rem 1.5rem 0;
+  padding: calc(6.5vh + 2.2rem) 1.5rem 0;
   pointer-events: auto;
   cursor: default;
   background: radial-gradient(ellipse 70% 55% at 50% 48%, rgba(8,11,13,0.22) 0%, transparent 70%);
 }
 .genesis[hidden] { display: none; }
 
+/* cinematic bars; the controls live inside them */
+.genesis::before, .genesis::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 6.5vh;
+  background: #05070a; z-index: 1; pointer-events: none;
+}
+.genesis::before { top: 0; }
+.genesis::after { bottom: 0; }
+
 .genesis-skip {
-  position: absolute; top: 1.25rem; right: 1.4rem; z-index: 2;
+  position: absolute; top: calc(3.25vh - 0.85rem); right: 1.4rem; z-index: 2;
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--lamp);
   background: rgba(9,13,15,0.92);
@@ -515,7 +523,8 @@ html.genesis-on .topbar {
 .genesis-skip:hover { color: var(--lamp); }
 
 .genesis-copy {
-  max-width: min(38rem, 86vw);
+  max-width: min(44rem, 88vw);
+  position: relative; z-index: 2;
   text-align: center;
   pointer-events: none;
   opacity: 0;
@@ -524,22 +533,22 @@ html.genesis-on .topbar {
   transition: opacity 1.15s ease, transform 1.15s cubic-bezier(.2,.8,.3,1);
 }
 .genesis-copy.on { opacity: 1; transform: none; }
-.genesis-copy.out { opacity: 0; transform: translateY(-8px); }
+.genesis-copy.out { opacity: 0; transform: translateY(-8px); transition-duration: 0.4s, 0.4s; }
 
 .genesis-tag {
-  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.22em; opacity: 0.85;
   text-transform: uppercase; color: var(--sage-dim); margin: 0 0 0.85rem;
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
 }
 .genesis-line {
-  font-family: var(--display); font-weight: 700;
-  font-size: clamp(1.28rem, 3.1vw, 2.05rem);
-  line-height: 1.4; color: #e8ece8; margin: 0;
+  font-family: var(--display); font-weight: 600;
+  font-size: clamp(1.18rem, 2.5vw, 1.72rem);
+  line-height: 1.48; color: #e8ece8; margin: 0;
   text-shadow: 0 2px 28px rgba(0,0,0,0.95);
 }
 
 .genesis-ticks {
-  position: absolute; bottom: 2.1rem;
+  position: absolute; bottom: calc(3.25vh - 0.8rem); z-index: 2;
   width: min(20rem, 78vw);
   display: flex; align-items: center; gap: 0.55rem;
   pointer-events: auto;
@@ -564,7 +573,7 @@ html.genesis-on .topbar {
 }
 .genesis-prog::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to right, transparent calc(100% - 1px), rgba(9,13,15,0.85) calc(100% - 1px)) 0 0 / calc(100% / 19) 100% repeat-x;
+  background: linear-gradient(to right, transparent calc(100% - 1px), rgba(9,13,15,0.85) calc(100% - 1px)) 0 0 / calc(100% / 22) 100% repeat-x;
 }
 .genesis-step {
   flex: none;
@@ -579,8 +588,9 @@ html.genesis-on .topbar {
 .genesis-step:hover { border-color: var(--lamp); }
 
 @media (max-width: 760px) {
-  .genesis { padding-top: 3.6rem; }
-  .genesis-skip { top: 0.75rem; right: 0.85rem; }
+  .genesis { padding-top: calc(4.5vh + 1.6rem); }
+  .genesis::before, .genesis::after { height: 4.5vh; }
+  .genesis-skip { top: calc(2.25vh - 0.75rem); right: 0.85rem; }
   .genesis-ticks { bottom: calc(var(--hud-floor) + 0.4rem); }
 }
 

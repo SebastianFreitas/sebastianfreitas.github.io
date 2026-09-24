@@ -2,14 +2,15 @@
    the hole, the grip, the birth of the gods and the depths inside him. */
 window.GenRex = (function () {
   const G = window.Gen;
-  const { smooth, clamp, mix } = Util;
+  const { smooth, clamp, mix, hash1, mulberry } = Util;
   const { offsetShade } = Paint;
   const { ROOT_U, EAST_U, ET_END_U, ET_START_U, FLEE_START_U, BURY_U, DEEP_U, DEEP_Y,
-          FLEE_CAM_RATE, SIEGE_GODS, REX_BANDS, REX_WEST, REX_EAST, brothers, idxOf, linear,
-          sx, beatDur } = G;
-  const { fillRidge, gridXs, flatGlow, ease, easeV, rexLandHeight, rexSurfY } = GenPaint;
-  const { fleshPath, drawRip, pushTrail, drawTrail, drawOrb, drawRings, drawTintBeam,
+          FLEE_CAM_RATE, SIEGE_GODS, ORB_STYLE, REX_BANDS, REX_WEST, REX_EAST, brothers,
+          idxOf, linear, since, sx, beatDur } = G;
+  const { fillRidge, gridXs, mixHex, flatGlow, ease, easeV, rexLandHeight, rexSurfY } = GenPaint;
+  const { drawRip, pushTrail, drawTrail, drawOrb, drawRings, drawTintBeam,
           drawName } = GenVoid;
+  const { fleshPath } = GenFlesh;
 
   /* ---- the two chases ---------------------------------------
      Both are written as ONE path, with the followers placed at an
@@ -96,8 +97,26 @@ window.GenRex = (function () {
     return { u: cu + Math.cos(ang) * rU, y: cy + Math.sin(ang) * rY * 0.8, strike };
   }
 
+  /* fissures across Rex's back, built once: they glow through the crust
+     while he cools from the fall */
+  const REX_CRACKS = (function () {
+    const r = mulberry(9011);
+    const out = [];
+    for (let i = 0; i < 9; i++) {
+      out.push({
+        u: REX_WEST + 0.08 + r() * (REX_EAST - REX_WEST - 0.16),
+        len: 0.02 + r() * 0.05,
+        seg: 4,
+        ph: r() * 6.28,
+        drop: 0.02 + r() * 0.05,
+      });
+    }
+    return out;
+  })();
+
   function drawRexLand(ctx, rise, originX, originY, floorY) {
     if (rise < 0.02) return;
+    const cool = smooth(clamp((since("land") - 0.22) / 0.65, 0, 1));
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
     const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
     const yC = mix(originY, G.H * 1.16, rise);
@@ -132,9 +151,33 @@ window.GenRex = (function () {
           pts.unshift([first[0] - tailW, bottom]);
         }
       }
+      const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
+      const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
       ctx.globalAlpha = rise;
-      fillRidge(ctx, pts, bottom, b.lit, b.shade);
+      fillRidge(ctx, pts, bottom, lit, shade);
       ctx.globalAlpha = 1;
+    }
+    if (cool < 0.98 && rise > 0.3) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = `rgba(255,150,60,${0.85 * (1 - cool) * rise})`;
+      ctx.lineWidth = 2.2;
+      ctx.lineJoin = "round";
+      for (let k = 0; k < REX_CRACKS.length; k++) {
+        const c = REX_CRACKS[k];
+        const cx = sx(c.u), cy = mix(yC, rexSurfY(c.u), rise) + 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        for (let i = 0; i < c.seg; i++) {
+          const f = (i + 1) / c.seg;
+          const ex = cx + f * c.len * G.W;
+          const ey = cy + c.drop * G.H * f + (hash1(k * 13 + i) - 0.5) * 0.03 * G.H;
+          ctx.lineTo(ex, ey);
+        }
+        ctx.stroke();
+        flatGlow(ctx, cx, cy, 0.035 * G.H, "245,138,52", 0.5 * (1 - cool) * rise);
+      }
+      ctx.restore();
     }
     if (rise > 0.12 && rise < 0.92) {
       const glint = (1 - Math.abs(rise - 0.42) / 0.42) * (1 - rise * 0.35);
@@ -241,12 +284,26 @@ window.GenRex = (function () {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     flatGlow(ctx, x, y, R, "200,36,40", amt);
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(150,18,24,${0.75 * amt})`;
+    ctx.beginPath(); ctx.arc(x, y, 0.030 * G.H, 0, 6.283); ctx.fill();
+    ctx.fillStyle = `rgba(8,1,2,${0.9 * amt})`;
+    ctx.beginPath();
+    ctx.arc(x + 0.006 * G.H * Math.sin(G.t * 0.7), y, 0.012 * G.H, 0, 6.283);
+    ctx.fill();
+
     ctx.restore();
   }
+
+  /* which crown each god wears, by kind */
+  const CROWN = { ormius: "bars", ava: "rings", kaeron: "orbit", kaelum: "petals", orochronus: "clock" };
 
   /* the womb tears again, and the five gods come out over the buried
      ground, then dive down into it to join the war */
   function drawGodsBirth(ctx, flesh) {
+    const F = window.GenFig;
+    if (!F) return;
     if (G.beat !== idxOf("gods")) return;
     const p = linear("gods"), span = Math.min(G.W, G.H);
     const exitX = flesh ? flesh.cx - flesh.rx * 0.92 : sx(ROOT_U) - span * 0.28;
@@ -262,8 +319,8 @@ window.GenRex = (function () {
       const g = SIEGE_GODS[i];
       const out = smooth(clamp((p - 0.06 - i * 0.08) / 0.20, 0, 1));
       if (out <= 0) continue;
-      const hoverX = exitX - span * (0.30 + i * 0.07);
-      const hoverY = G.H * (0.22 + ((i * 37) % 5) * 0.045) + Math.sin(G.t * 1.3 + g.ph) * span * 0.02;
+      const hoverX = exitX - span * (0.22 + i * 0.11);
+      const hoverY = [0.18, 0.42, 0.26, 0.46, 0.34][i] * G.H + Math.sin(G.t * 1.3 + g.ph) * span * 0.02;
       let x = mix(exitX, hoverX, out), y = mix(exitY, hoverY, out);
 
       const dive = clamp((p - 0.60 - i * 0.05) / 0.25, 0, 1);
@@ -272,10 +329,12 @@ window.GenRex = (function () {
       y = mix(y, by + G.H * 0.08, dive * dive);
 
       const amt = clamp(out * 1.4, 0, 1) * (1 - smooth(clamp((dive - 0.85) / 0.15, 0, 1)));
-      pushTrail(G.trailG[i], x, y);
-      drawTrail(ctx, G.trailG[i], g.rgb, amt);
-      drawOrb(ctx, x, y, amt, g.kind, 0.62);
-      drawName(ctx, x, y, amt, g.name, 24);
+      const h = Math.min(G.W, G.H) * 0.16;
+      F.drawGod(ctx, x, y + h * 0.45, h, ORB_STYLE[g.kind], {
+        a: amt, face: -1, crown: CROWN[g.kind], wings: g.kind === "ava",
+        tilt: -dive * 0.55 + 0.25 * (1 - out), ph: g.ph,
+      });
+      drawName(ctx, x, y + h * 0.45 + 14, amt, g.name, 0);
 
       const fl = Math.sin(Math.PI * clamp((dive - 0.75) / 0.25, 0, 1));
       if (fl > 0.02) {
