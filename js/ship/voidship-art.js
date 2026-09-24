@@ -57,8 +57,8 @@ window.VoidshipArt = (function () {
   const SUST = [{ x: -0.52, y: 0.070 }, { x: -0.585, y: -0.076 }];
   // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent). Placed on free hull edge.
   const JETS = { belly: [{ x: 0.40, y: 0.092 }, { x: -0.38, y: 0.064 }], top: [{ x: 0.36, y: -0.078 }, { x: -0.39, y: -0.049 }] };
-  // streamer roots: claw tip, forward boom tip, tallest spire tip, foot lamp tip
-  const TRAIL_SEATS = [{ x: 1.04, y: -0.206 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.55, y: 0.34 }];
+  // streamer roots: front blade tip, forward boom tip, tallest spire tip, dagger tip
+  const TRAIL_SEATS = [{ x: 0.90, y: -0.40 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.54, y: 0.30 }];
   const TRAIL_COL = [LAMP, COLD, DRIVE_A, DRIVE_A];
 
   const HULL = [
