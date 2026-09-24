@@ -518,7 +518,7 @@ window.GenTrade = (function () {
   const HUES = ["230,70,60", "70,130,255", "120,214,96", "236,92,150", "245,208,107", "140,70,210"];
   const trnd = mulberry(9303);
   const TRAV = [];
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 200; i++) {
     const type = TRAV_TYPES[Math.floor(trnd() * 6)];
     const east = trnd() < 0.62;
     const u0 = (trnd() - 0.5) * 0.7;
@@ -531,7 +531,8 @@ window.GenTrade = (function () {
     const hueA = Math.floor(trnd() * 6), hueB = Math.floor(trnd() * 6);
     const pal = Math.floor(trnd() * 6);
     const endOff = trnd() * 0.35;
-    TRAV.push({ type, east, u0, delay, gait, air, size, ph, hueA, hueB, pal, endOff });
+    const rate = 0.05 + trnd() * 0.10;
+    TRAV.push({ type, east, u0, delay, gait, air, size, ph, hueA, hueB, pal, endOff, rate });
   }
 
   function drawTraveller(ctx, tv, x, y, alpha) {
@@ -596,19 +597,21 @@ window.GenTrade = (function () {
     const swarmSince = G.since ? G.since("swarm") : 0;
     if (swarmSince >= 1) return;
     const landSince = G.since ? G.since("land") : 0;
+    const rootSince = G.since ? G.since("root") : 0;
     const W = G.W, H = G.H;
     if (W === 0) return;
     for (const tv of TRAV) {
       const tsince = base - 7.2 - tv.delay;
       if (tsince < 0) continue;
-      const f = smooth(clamp(tsince / (10.0 - 7.2 + 7.0), 0, 1));
+      const ft = Math.max(0, base - 7.2 - tv.delay);
       const u = tv.east
-        ? mix(tv.u0, G.ROOT_U - 0.12 - tv.endOff, clamp(f * (0.8 + 0.3 * tv.gait), 0, 1))
-        : tv.u0 - f * (1.6 + 1.1 * tv.gait);
+        ? G.cam - 0.75 + (((tv.u0 + 0.7 + ft * tv.rate) % 1.5 + 1.5) % 1.5)
+        : G.cam + 0.75 - (((tv.u0 + 0.7 + ft * tv.rate * 1.4) % 1.5 + 1.5) % 1.5);
       const x = sx(u);
       if (x < -20 || x > W + 20) continue;
+      const edge = clamp(Math.min(x + 40, W + 40 - x) / 120, 0, 1);
       const y = G.DECK * H - 3 - tv.air * H + Math.sin(G.t * 2 + tv.ph) * (tv.air > 0.03 ? 6 : 1.5);
-      const alpha = Math.min(1, tsince / 0.6) * (1 - swarmSince) * (1 - landSince);
+      const alpha = Math.min(1, tsince / 0.6) * (1 - swarmSince) * (1 - landSince) * (1 - rootSince * 0.6) * edge;
       if (alpha < 0.02) continue;
       drawTraveller(ctx, tv, x, y, alpha);
     }
