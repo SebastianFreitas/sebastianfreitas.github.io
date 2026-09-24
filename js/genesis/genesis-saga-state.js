@@ -69,6 +69,10 @@
     if (ret > 0) civAmt = mix(0.55, 1, smooth(clamp(ret / 0.82, 0, 1)));
     if (et > 0) civAmt = 1;
 
+    /* the city modernises after the war: towers rise through the return
+       and the first moments of eternity */
+    const modern = 0.75 * clamp((ret - 0.2) / 0.8, 0, 1) + 0.25 * clamp(etLin / 0.2, 0, 1);
+
     const gy = (lane, wu) => GenMain.surfYAt(wu == null ? MAIN_U : wu, mainRise, scar) - 12 - lane * 0.075 * G.H;
     const skyY = (u, y) => Math.min(y, mainSurfY(u, mainRise, scar) - 14);
 
@@ -360,7 +364,7 @@
     return {
       ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
       mdU, mdY, mdAmt, mdFall, mdDark, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
-      nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, scar, mainRise,
+      nestU, nestAmt, hU, hY, hAmt, army, civAmt, modern, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
       cad, ael, vel, mid, cadL, aelL, velL, fifthL, cMortal, teach, pact, pactHit,
       aelChild, bless, vTaint, vHelp, vForge, ritual, drain, hBorn: houndBorn,

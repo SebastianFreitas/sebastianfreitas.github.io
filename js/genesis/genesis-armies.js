@@ -1,10 +1,14 @@
-/* genesis-armies.js — the everlasting war: two hosts march to a front
-   that tides back and forth, fight, loose volleys, die, and are replaced.
+/* genesis-armies.js — the everlasting war: angels and devils against
+   abominations of bone and flesh, marching to a front that tides back and
+   forth; they fight hand to hand and with spells, die, and are replaced.
    A tiny simulation stepped per frame from the saga clocks; corpses stay
    on the field. */
 window.GenArmies = (function () {
   const G = window.Gen;
   const { clamp, mix, hash1, mulberry } = Util;
+
+  const S0 = 0.028;
+  let rnd = mulberry(9011);
 
   const TROOPS = [];
   (function seed() {
@@ -18,24 +22,27 @@ window.GenArmies = (function () {
           s: 0.9 + 0.25 * r(),
           gait: 0.8 + 0.5 * r(),
           ph: r() * 6.28,
-          shield: r() < 0.3,
-          banner: i % 12 === 0,
+          variant: i % 3,
+          caster: fac === "vorgath" ? r() < 0.15 : r() < 0.45,
+          cd: 1 + 3 * r(),
+          cast: 0,
           rank: i,
           state: "home", walk: 0, lunge: 0, deadT: 0, goneT: 0, alive: true, a: 0,
         });
       }
     }
-    host("vorgath",  1, 65, f => G.MAIN_U + 0.14 + f * 0.60);
-    host("seraphin", -1, 45, f => G.MAIN_U - 0.14 - f * 0.60);
-    host("malgrur",  -1, 40, f => G.MAIN_U - 0.10 - f * 0.62);
+    host("vorgath",  1, 44, f => G.MAIN_U + 0.14 + f * 0.60);
+    host("seraphin", -1, 26, f => G.MAIN_U - 0.14 - f * 0.60);
+    host("malgrur",  -1, 24, f => G.MAIN_U - 0.10 - f * 0.62);
   })();
-  /* draw back-to-front by lane; lanes are fixed at seed time */
-  const DRAW_ORDER = TROOPS.map((_, i) => i).sort((a, b) => TROOPS[a].lane - TROOPS[b].lane);
+  /* draw back-to-front by lane; lane +1 sits higher and smaller (the back
+     row) and must paint first */
+  const DRAW_ORDER = TROOPS.map((_, i) => i).sort((a, b) => TROOPS[b].lane - TROOPS[a].lane);
 
-  const CORPSES = [];   // {u, lane, fac, side, a}
-  const SPARKS = [];    // {x, y, t, dust}
-  const ARROWS = [];    // {u0, u1, t, dur, h, side}
-  let volleyT = 0;
+  const CORPSES = [];   // {u, lane, fac, side, a, variant, s}
+  const SPARKS = [];    // {u, lane, dy, t}
+  const BOLTS = [];     // {fac, side, u0, lane0, dy0, u1, lane1, t, dur, h}
+  const BURSTS = [];    // {u, lane, fac, t}
 
   function pushCap(arr, item, cap) {
     arr.push(item);
@@ -44,8 +51,14 @@ window.GenArmies = (function () {
   function footY(u, lane) {
     return GenMain.surfY(G.sx(u)) - 2 - lane * 0.018 * G.H;
   }
-  function rgbOf(fac) {
-    return fac === "vorgath" ? "160,24,28" : fac === "seraphin" ? "214,230,222" : "255,176,90";
+  function sizeOf(lane, s) {
+    return S0 * G.H * s * (1 - 0.12 * lane);
+  }
+  function paintOne(ctx, fac, x, y, s, o) {
+    if (!window.GenHosts) return;
+    if (fac === "seraphin") GenHosts.drawAngel(ctx, x, y, s, o);
+    else if (fac === "malgrur") GenHosts.drawDevil(ctx, x, y, s, o);
+    else GenHosts.drawAbom(ctx, x, y, s, o);
   }
 
   function step(dt, S) {
@@ -62,13 +75,13 @@ window.GenArmies = (function () {
       for (let i = 0; i < TROOPS.length; i++) {
         const T = TROOPS[i];
 
-        /* 1. spawn: the host grows with the war */
-        if (hash1(i * 13) > vis * 1.15) T.a = 0;
-        else T.a += (vis - T.a) * Math.min(1, dt * 2);
+        /* 1. spawn: the host grows with the war, eased */
+        const tgt = hash1(i * 13) > vis * 1.15 ? 0 : vis;
+        T.a += (tgt - T.a) * Math.min(1, dt * 2.5);
 
         /* 2. march to the front and fight */
         if (T.alive && fighting) {
-          const tu = front - T.side * (0.012 + 0.0045 * (T.rank % 14));
+          const tu = front - T.side * (0.014 + 0.006 * (T.rank % 10));
           const maxStep = 0.07 * T.gait * march * dt;
           const moved = clamp(tu - T.u, -maxStep, maxStep);
           T.u += moved;
@@ -81,16 +94,57 @@ window.GenArmies = (function () {
           if (T.state === "fight") {
             T.lunge = Math.max(0, Math.sin(G.t * 6 + T.ph));
             if (T.lunge > 0.92 && G.tick60 && hash1(Math.floor(G.t * 60) + i) < 0.35) {
-              const sc = 1 - 0.12 * T.lane;
-              const s = 0.015 * G.H * T.s * sc;
-              pushCap(SPARKS, { x: G.sx(T.u) - T.side * 0.35 * s, y: footY(T.u, T.lane) - 0.9 * s, t: 0 }, 40);
+              const s = sizeOf(T.lane, T.s);
+              pushCap(SPARKS, { u: T.u, lane: T.lane, off: -T.side * 0.35, s, t: 0 }, 40);
             }
-            if (Math.random() < death * dt * 0.20) {
+            if (rnd() < death * dt * 0.20) {
               T.alive = false;
               T.deadT = 0;
-              pushCap(CORPSES, { u: T.u, lane: T.lane, fac: T.fac, side: T.side, a: 1 }, 140);
+              pushCap(CORPSES, { u: T.u, lane: T.lane, fac: T.fac, side: T.side, a: 1, variant: T.variant, s: T.s }, 140);
             }
           }
+
+          /* casting: spells replace arrows */
+          if (T.caster && war > 0.10 && T.a > 0.3 && Math.abs(T.u - front) < 0.09) {
+            T.cd -= dt;
+            if (T.cd <= 0 && T.cast === 0) T.casting = true;
+            if (T.casting) {
+              T.cast = Math.min(1, T.cast + dt / 0.35);
+              if (T.cast >= 1) {
+                T.casting = false;
+                T.cd = 2.2 + 3 * rnd();
+                if (window.GenHosts) {
+                  let best = null, bestD = 0.14;
+                  for (let k = 0; k < TROOPS.length; k++) {
+                    const T2 = TROOPS[k];
+                    if (T2.side === T.side || T2.a <= 0.3) continue;
+                    if ((T2.u - T.u) * -T.side <= 0) continue;
+                    const d = Math.abs(T2.u - T.u);
+                    if (d < bestD) { bestD = d; best = T2; }
+                  }
+                  let u1, lane1;
+                  if (best) { u1 = best.u; lane1 = best.lane; }
+                  else { u1 = T.u - T.side * (0.05 + 0.05 * rnd()); lane1 = rnd() * 2 - 1; }
+                  const s = sizeOf(T.lane, T.s);
+                  pushCap(BOLTS, {
+                    fac: T.fac, side: T.side, u0: T.u, lane0: T.lane,
+                    hx: -T.side * GenHosts.HAND[0] * s, dy0: GenHosts.HAND[1] * s,
+                    u1, lane1, t: 0, dur: 0.40 + 0.25 * rnd(), h: 0.015 + 0.03 * rnd(),
+                  }, 30);
+                }
+              }
+            } else {
+              T.cast = Math.max(0, T.cast - dt * 3);
+            }
+          }
+          if (T.cast > 0 && T.state === "fight") T.lunge = 0;
+        }
+
+        /* not fighting (or dead): ease lunge/cast down and unfreeze state */
+        if (!T.alive || !fighting) {
+          T.lunge = Math.max(0, T.lunge * (1 - dt * 6));
+          T.cast = Math.max(0, T.cast - dt * 3);
+          if (T.state === "fight") T.state = "march";
         }
 
         /* 3. the dead lie 2.5s, then reinforcements retake the field */
@@ -103,51 +157,39 @@ window.GenArmies = (function () {
       }
     }
 
-    /* 4. volleys: both hosts loose 9 arrows every 2.6s while the war is hot */
-    if (fighting && war > 0.10) {
-      volleyT += dt;
-      if (volleyT >= 2.6) {
-        volleyT -= 2.6;
-        for (const side of [1, -1]) {
-          for (let k = 0; k < 9; k++) {
-            pushCap(ARROWS, {
-              u0: front - side * (0.10 + 0.05 * Math.random()),
-              u1: front + side * (0.02 + 0.06 * Math.random()),
-              t: 0, dur: 1.15,
-              h: 0.11 + 0.04 * Math.random(),
-              side,
-            }, 40);
-          }
-        }
-      }
-    }
-    for (let j = ARROWS.length - 1; j >= 0; j--) {
-      const A = ARROWS[j];
-      A.t += dt;
-      if (A.t >= A.dur) {
-        ARROWS.splice(j, 1);
-        pushCap(SPARKS, { x: G.sx(A.u1), y: footY(A.u1, 0), t: -0.05, dust: true }, 40);
-        if (Math.random() < 0.5 * death) {
+    /* 4. bolts: a fired spell flies to its target, then bursts */
+    for (let j = BOLTS.length - 1; j >= 0; j--) {
+      const B = BOLTS[j];
+      B.t += dt;
+      if (B.t >= B.dur) {
+        BOLTS.splice(j, 1);
+        pushCap(BURSTS, { u: B.u1, lane: B.lane1, fac: B.fac, t: 0 }, 30);
+        if (rnd() < 0.5 * death) {
           let best = null, bestD = 0.012;
           for (let k = 0; k < TROOPS.length; k++) {
             const T2 = TROOPS[k];
-            if (!T2.alive || T2.side === A.side) continue;
-            const d = Math.abs(T2.u - A.u1);
+            if (!T2.alive || T2.side === B.side) continue;
+            const d = Math.abs(T2.u - B.u1);
             if (d < bestD) { bestD = d; best = T2; }
           }
           if (best) {
             best.alive = false; best.deadT = 0;
-            pushCap(CORPSES, { u: best.u, lane: best.lane, fac: best.fac, side: best.side, a: 1 }, 140);
+            pushCap(CORPSES, { u: best.u, lane: best.lane, fac: best.fac, side: best.side, a: 1, variant: best.variant, s: best.s }, 140);
           }
         }
       }
     }
 
-    /* 5. age sparks and let corpses fade once the record starts to return */
+    /* 5. age sparks, bursts, and let corpses fade once the record returns */
     for (let j = SPARKS.length - 1; j >= 0; j--) {
       const sp = SPARKS[j];
       sp.t += dt;
-      if (sp.t >= (sp.dust ? 0.30 : 0.14)) SPARKS.splice(j, 1);
+      if (sp.t >= 0.16) SPARKS.splice(j, 1);
+    }
+    for (let j = BURSTS.length - 1; j >= 0; j--) {
+      const b = BURSTS[j];
+      b.t += dt;
+      if (b.t >= 0.40) BURSTS.splice(j, 1);
     }
     for (let j = CORPSES.length - 1; j >= 0; j--) {
       const c = CORPSES[j];
@@ -157,14 +199,13 @@ window.GenArmies = (function () {
   }
 
   function draw(ctx, S) {
-    if (S.army < 0.01 && CORPSES.length === 0) return;
-    const s0 = 0.015 * G.H;
+    if (S.army < 0.01 && CORPSES.length === 0 && BOLTS.length === 0 && BURSTS.length === 0) return;
+    ctx.save();
 
     /* 1. corpses first, insertion order */
     for (const c of CORPSES) {
-      const sc = 1 - 0.12 * c.lane;
-      GenFig.drawTroop(ctx, G.sx(c.u), footY(c.u, c.lane), s0 * sc, rgbOf(c.fac),
-        { pose: "dead", down: 1, face: -c.side, a: 0.45 * c.a });
+      paintOne(ctx, c.fac, G.sx(c.u), footY(c.u, c.lane), sizeOf(c.lane, c.s || 1),
+        { pose: "dead", down: 1, face: -c.side, a: 0.45 * c.a, variant: c.variant });
     }
 
     /* 2. troops, back-to-front by lane */
@@ -173,68 +214,88 @@ window.GenArmies = (function () {
       if (T.a < 0.02) continue;
       if (!T.alive && T.deadT > 2.5) continue;
       const x = G.sx(T.u);
-      if (x < -40 || x > G.W + 40) continue;
-      const sc = 1 - 0.12 * T.lane;
-      GenFig.drawTroop(ctx, x, footY(T.u, T.lane), s0 * T.s * sc, rgbOf(T.fac), {
+      if (x < -60 || x > G.W + 60) continue;
+      paintOne(ctx, T.fac, x, footY(T.u, T.lane), sizeOf(T.lane, T.s), {
         a: T.a,
         face: -T.side,
         walk: T.walk,
         pose: T.alive ? T.state : "dead",
         down: T.alive ? 0 : clamp(T.deadT * 3, 0, 1),
         lunge: T.lunge,
-        thrust: T.lunge,
-        shield: T.shield,
-        banner: T.banner,
+        cast: T.cast,
         ph: T.ph,
+        variant: T.variant,
       });
     }
 
-    /* 3. arrows: a flat sliver riding the parabola, tipped lighter at the head */
-    for (const A of ARROWS) {
-      const q = A.t / A.dur;
-      const x0 = G.sx(A.u0), x1 = G.sx(A.u1);
-      const fy0 = footY(A.u0, 0), fy1 = footY(A.u1, 0);
+    const k = G.H / 900;
+
+    /* 3. bolts: a flat spell riding the parabola, styled per host */
+    for (const B of BOLTS) {
+      const q = B.t / B.dur;
+      const x0 = G.sx(B.u0) + B.hx, y0 = footY(B.u0, B.lane0) - B.dy0;
+      const x1 = G.sx(B.u1), y1 = footY(B.u1, B.lane1) - 0.5 * S0 * G.H;
       const x = mix(x0, x1, q);
-      const y = mix(fy0, fy1, q) - G.H * 4 * q * (1 - q) * A.h;
-      const dxdq = x1 - x0;
-      const dydq = (fy1 - fy0) + G.H * 4 * A.h * (2 * q - 1);
-      const len = Math.hypot(dxdq, dydq) || 1;
-      const nx = dxdq / len, ny = dydq / len;
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = "rgba(30,26,24,0.9)";
+      const y = mix(y0, y1, q) - G.H * 4 * q * (1 - q) * B.h;
+      const dx = x1 - x0, dy = y1 - y0;
+      const len = Math.hypot(dx, dy) || 1;
+      const dirx = dx / len, diry = dy / len;
+
+      if (B.fac === "seraphin") {
+        GenPaint.flatGlow(ctx, x, y, 10 * k, "255,226,140", 0.9);
+        ctx.strokeStyle = "#fff2c0";
+        ctx.lineWidth = Math.max(1, 2 * k);
+        ctx.beginPath();
+        ctx.moveTo(x - dirx * 12 * k, y - diry * 12 * k);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      } else if (B.fac === "malgrur") {
+        GenPaint.flatGlow(ctx, x, y, 12 * k, "255,120,40", 0.9);
+        Paint.circle(ctx, x, y, 3 * k, "#ffb24a");
+        const trail = [[5, 2.4, 0.7], [10, 1.8, 0.45], [15, 1.2, 0.25]];
+        for (const [d, rr, a] of trail) {
+          Paint.circle(ctx, x - dirx * d * k, y - diry * d * k, rr * k, `rgba(255,106,42,${a})`);
+        }
+      } else {
+        GenPaint.flatGlow(ctx, x, y, 9 * k, "200,30,50", 0.8);
+        Paint.circle(ctx, x, y, 3 * k, "#7a1622");
+        Paint.circle(ctx, x - dirx * 6 * k, y - diry * 6 * k, 2 * k, "rgba(122,22,34,0.5)");
+      }
+    }
+
+    /* 4. bursts: a flat glow ring where a bolt landed */
+    for (const b of BURSTS) {
+      const p = b.t / 0.40;
+      const x = G.sx(b.u), y = footY(b.u, b.lane) - 0.5 * S0 * G.H;
+      const rgb = b.fac === "seraphin" ? "255,226,140" : b.fac === "malgrur" ? "255,130,40" : "200,30,50";
+      GenPaint.flatGlow(ctx, x, y, (8 + 22 * p) * k, rgb, 0.9 * (1 - p));
+      ctx.strokeStyle = `rgba(${rgb},${0.8 * (1 - p)})`;
+      ctx.lineWidth = Math.max(1, 2 * k);
       ctx.beginPath();
-      ctx.moveTo(x - nx * 3.5, y - ny * 3.5);
-      ctx.lineTo(x + nx * 3.5, y + ny * 3.5);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(200,190,170,0.9)";
-      ctx.beginPath();
-      ctx.moveTo(x + nx * 1.5, y + ny * 1.5);
-      ctx.lineTo(x + nx * 3.5, y + ny * 3.5);
+      ctx.arc(x, y, (4 + 18 * p) * k, 0, 6.283);
       ctx.stroke();
     }
 
-    /* 4. sparks: a flat cross; dust puffs: two flat dots */
+    /* 5. sparks: a flat cross where blades meet */
     for (const sp of SPARKS) {
-      if (sp.dust) {
-        const a = 0.5 * (1 - sp.t / 0.30);
-        if (a <= 0) continue;
-        ctx.fillStyle = `rgba(120,110,100,${a})`;
-        ctx.beginPath(); ctx.arc(sp.x - 1.5, sp.y, 1.5, 0, 6.283); ctx.fill();
-        ctx.beginPath(); ctx.arc(sp.x + 1.5, sp.y, 1.5, 0, 6.283); ctx.fill();
-      } else {
-        const a = 1 - sp.t / 0.14;
-        if (a <= 0) continue;
-        ctx.fillStyle = `rgba(255,236,190,${a})`;
-        ctx.fillRect(sp.x - 1.5, sp.y - 0.5, 3, 1);
-        ctx.fillRect(sp.x - 0.5, sp.y - 1.5, 1, 3);
-      }
+      const a = 1 - sp.t / 0.16;
+      if (a <= 0) continue;
+      const x = G.sx(sp.u) + sp.off * sp.s;
+      const y = footY(sp.u, sp.lane) - 0.55 * sp.s;
+      ctx.fillStyle = `rgba(255,236,190,${a})`;
+      ctx.fillRect(x - 1.5, y - 0.5, 3, 1);
+      ctx.fillRect(x - 0.5, y - 1.5, 1, 3);
     }
+
+    ctx.restore();
   }
 
   function reset() {
     CORPSES.length = 0;
     SPARKS.length = 0;
-    ARROWS.length = 0;
+    BOLTS.length = 0;
+    BURSTS.length = 0;
+    rnd = mulberry(9011);
     for (const T of TROOPS) {
       T.u = T.homeU;
       T.state = "home";
@@ -244,6 +305,9 @@ window.GenArmies = (function () {
       T.goneT = 0;
       T.alive = true;
       T.a = 0;
+      T.cast = 0;
+      T.casting = false;
+      T.cd = 1 + 3 * hash1(T.rank * 7 + (T.side > 0 ? 1 : 2));
     }
   }
 

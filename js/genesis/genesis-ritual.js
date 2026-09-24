@@ -1,6 +1,7 @@
 /* js/genesis/genesis-ritual.js — the fifth spire's ritual: the pact rift,
-   the blessing, the corrupting help, the drain of victims and souls into
-   the newborn Hound, drawn from the same saga state S as genesis-saga.js. */
+   the blessing, the corrupting help, the drain of Obrokxus's brood, the
+   corrupted souls and spells into the newborn Hound, drawn from the same
+   saga state S as genesis-saga.js. */
 (function () {
   const G = window.Gen;
   const { clamp, mix, smooth, mulberry } = Util;
@@ -15,18 +16,20 @@
 
   /* ---- seeded rosters, fractions only: screen-space is applied at
      draw time, never baked in here ---- */
-  const VICTIMS = (function () {
+  const BROOD = (function () {
     const r = mulberry(7707);
     const list = [];
     for (let i = 0; i < 12; i++) {
       const side = i % 2 ? 1 : -1;
-      const du = side * (0.06 + r() * 0.24);
-      const lane = r() * 0.18;
-      const hs = 0.075 + r() * 0.02;
+      const du = side * (0.07 + r() * 0.22);
+      const lane = r() * 0.5;
+      const hs = 0.030 + r() * 0.012;
       const delay = r() * 0.35;
       const spin = (r() < 0.5 ? -1 : 1) * (1 + r() * 1.5);
-      const face = r() < 0.5 ? -1 : 1;
-      list.push({ du, lane, hs, delay, spin, face });
+      const face = side > 0 ? -1 : 1;
+      const variant = i % 3;
+      const ph = r() * 6.283;
+      list.push({ du, lane, hs, delay, spin, face, variant, ph });
     }
     return list;
   })();
@@ -108,20 +111,22 @@
       ctx.ellipse(xr, yr, 1.1 * R * p, 0.18 * R * p, 0, 0, 6.283);
       ctx.fillStyle = `rgba(6,0,2,${0.95 * p})`;
       ctx.fill();
-      if (Math.sin(G.t * 0.9) >= -0.92) {
-        ctx.fillStyle = `rgba(224,58,42,${p})`;
+      const blink = clamp((Math.sin(G.t * 0.9) + 0.97) / 0.10, 0, 1);
+      if (blink > 0.01) {
+        ctx.fillStyle = `rgba(224,58,42,${p * blink})`;
         ctx.beginPath();
         ctx.arc(xr - 0.35 * R * p, yr - 0.03 * R, 0.07 * R, 0, 6.283);
         ctx.arc(xr + 0.35 * R * p, yr - 0.03 * R, 0.07 * R, 0, 6.283);
         ctx.fill();
       }
-      ctx.globalAlpha = p;
       for (let k = 0; k < 5; k++) {
-        if (S.cadL > 0.50 + 0.03 * k) continue;
+        const keep = clamp((0.50 + 0.03 * k + 0.03 - S.cadL) / 0.03, 0, 1);
+        if (keep <= 0.01) continue;
         const x = xr + (k - 2) * 0.4 * R * p;
         const w = 0.09 * R, x0 = x - w * 0.5, x1 = x + w * 0.5;
-        const yTop = yr - 0.28 * R, yBot = yr + 0.22 * R;
+        const yTop = yr - 0.28 * R * keep, yBot = yr + 0.22 * R * keep;
         const splitX = x0 + 0.3 * w;
+        ctx.globalAlpha = p * keep;
         ctx.fillStyle = "#d8b04a";
         ctx.fillRect(x0, yTop, splitX - x0, yBot - yTop);
         ctx.fillStyle = "#8a6424";
@@ -157,7 +162,7 @@
       }
     }
 
-    /* ---- the drain: spires, victims and souls feeding the Hound ---- */
+    /* ---- the drain: spires, the brood and souls feeding the Hound ---- */
     if (S.fifthL > 0 && S.fifthL < 1) {
       const T = target(S);
 
@@ -169,19 +174,26 @@
         }
       }
 
-      for (let i = 0; i < VICTIMS.length; i++) {
-        const v = VICTIMS[i];
-        const x0 = G.sx(S.nestU + v.du);
-        const y0 = GenMain.surfY(x0) - 6 - v.lane * 0.06 * G.H;
-        const a = clamp((S.fifthL - 0.10) / 0.10, 0, 1);
-        const p = smooth(clamp((S.drain - v.delay) / 0.55, 0, 1));
+      const a = clamp((S.fifthL - 0.10) / 0.10, 0, 1);
+      const creep = smooth(clamp((S.fifthL - 0.10) / 0.36, 0, 1));
+      for (let i = 0; i < BROOD.length; i++) {
+        const b = BROOD[i];
+        const p = smooth(clamp((S.drain - b.delay) / 0.55, 0, 1));
         if (p >= 0.999 || a <= 0.01) continue;
+        const u = S.nestU + b.du * (1 - 0.35 * creep);
+        const x0 = G.sx(u);
+        const sz0 = b.hs * G.H;
+        const y0 = GenMain.surfY(x0) - b.lane * 0.012 * G.H;
+        const sz = sz0 * (1 - 0.75 * p);
         const x = mix(x0, T.x, p);
-        const y = mix(y0, T.y, p) - Math.sin(Math.PI * p) * 0.12 * G.H;
+        const yc = mix(y0 - 0.45 * sz0, T.y, p) - Math.sin(Math.PI * p) * 0.12 * G.H;
+        const walk = p < 0.05 ? G.t * 9 + b.ph : b.ph;
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(v.spin * p * Math.PI);
-        F.drawMortal(ctx, 0, 0, v.hs * G.H * (1 - 0.75 * p), { a: a * (1 - p * p * p), face: v.face, walk: 0 });
+        ctx.translate(x, yc);
+        ctx.rotate(b.spin * p * Math.PI);
+        if (window.GenHosts) {
+          GenHosts.drawAbom(ctx, 0, 0.45 * sz, sz, { a: a * (1 - p * p * p), face: b.face, walk, pose: "march", variant: b.variant, ph: b.ph });
+        }
         ctx.restore();
       }
 
