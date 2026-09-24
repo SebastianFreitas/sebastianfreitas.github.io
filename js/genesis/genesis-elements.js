@@ -78,7 +78,7 @@
       if (birth + life > 20.5) life = 20.5 - birth;
       const ang = r() * TAU;
       const spd = 0.55 + r() * 0.75;
-      const size = 1 + r() * 1;
+      const size = 1.5 + r() * 1.5;
       const ph = r() * TAU;
       const hueA = Math.floor(r() * 8);
       let hueB = Math.floor(r() * 8);
@@ -183,7 +183,7 @@
     } else if (q < 0.8) {
       const sep = 6 + 14 * Math.sin((q - 0.4) / 0.4 * Math.PI);
       const perpx = -Math.sin(angle), perpy = Math.cos(angle);
-      ctx.globalAlpha = alpha * 0.55;
+      ctx.globalAlpha = alpha * 0.75;
       ctx.fillStyle = HUE_FILL[hueIdx];
       ctx.beginPath(); ctx.arc(x - perpx * sep * 0.5, y - perpy * sep * 0.5, r * 0.6, 0, TAU); ctx.fill();
       ctx.fillStyle = HUE_FILL[otherIdx];
@@ -200,7 +200,7 @@
 
   function drawLight(ctx, pt, x, y, a, q, alpha, sizeMul) {
     if (q < 0.4) {
-      flatGlow(ctx, x, y, 7 * sizeMul, "255,236,190", alpha);
+      flatGlow(ctx, x, y, 9 * sizeMul, "255,236,190", alpha);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "#ffffff";
       ctx.beginPath(); ctx.arc(x, y, 1.6 * sizeMul, 0, TAU); ctx.fill();
