@@ -31,7 +31,7 @@ window.Gen = (function () {
     { id: "matter", dur: 9.5, tag: "V · Matter",
       line: "Then came matter: flesh, and stone, and things that were both. It floated, it fell, it broke. Small lives crawled out of it and died where they crawled." },
     { id: "trade", dur: 10.0, tag: "VI · The old ones",
-      line: "Almost none of them woke, and those that woke had nothing to wake in. They tore from each other what they lacked, and gave what they could spare, until a few could hold." },
+      line: "The matter drew together and would not come apart. Almost nothing in it woke, and what woke had to climb out of the stone, one by one, slowly, until a few stood." },
     { id: "walk",  dur: 7.0, tag: "VII · One side",
       line: "Some took the span west, and of them nothing is written. This record follows those who went east." },
     { id: "root",  dur: 5.8, tag: "VIII · Primordisentia",

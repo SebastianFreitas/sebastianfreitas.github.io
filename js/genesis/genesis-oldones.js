@@ -1,8 +1,8 @@
 /* genesis-oldones.js — the old ones: 24 grey beings, no two alike, in six
-   ways of moving. They rise out of the trade wave where their blob stood,
-   take the span east (or west and out of the record), halt before the
-   body, climb onto it, and kneel when the seal is laid. Screen-space
-   painters; feet on the deck. */
+   ways of moving. They climb out of the mass of matter one by one, take
+   the span east (or west and out of the record), halt before the body,
+   climb onto it, and kneel when the seal is laid. Screen-space painters;
+   feet on the deck. */
 window.GenOld = (function () {
   const G = window.Gen;
   const { clamp, mix, smooth, hash1, mulberry } = Util;
@@ -15,14 +15,16 @@ window.GenOld = (function () {
 
   /* twenty-four old ones, no two alike: the first ten are the old kinds,
      one each; the rest are painted in genesis-oldkin.js */
+  // the humanoid and animal-like kinds go west and out of the record; the
+  // strange ones go east, where the record follows
   const ROSTER_SPECS = [
-    ["colossus", 1, 0.27], ["strider", 1, 0.14], ["crawler", -1, 0.055], ["slider", -1, 0.07],
-    ["floater", 1, 0.10], ["winged", -1, 0.07], ["blinker", 1, 0.065], ["roller", -1, 0.055],
+    ["colossus", -1, 0.27], ["strider", -1, 0.14], ["crawler", -1, 0.055], ["slider", -1, 0.07],
+    ["floater", -1, 0.10], ["winged", -1, 0.07], ["blinker", 1, 0.065], ["roller", 1, 0.055],
     ["eye", 1, 0.09], ["mass", 1, 0.08],
-    ["tower", 1, 0.20], ["pearl", 1, 0.06], ["bundle", 1, 0.08], ["needle", -1, 0.05],
-    ["slab", 1, 0.09], ["bloom", 1, 0.07], ["comb", 1, 0.08], ["veil", -1, 0.06],
-    ["knot", -1, 0.06], ["husk", 1, 0.10], ["chime", 1, 0.09], ["prism", 1, 0.08],
-    ["swarmling", -1, 0.07], ["mound", 1, 0.12],
+    ["tower", 1, 0.20], ["pearl", -1, 0.06], ["bundle", 1, 0.08], ["needle", 1, 0.05],
+    ["slab", 1, 0.09], ["bloom", 1, 0.07], ["comb", 1, 0.08], ["veil", 1, 0.06],
+    ["knot", 1, 0.06], ["husk", -1, 0.10], ["chime", 1, 0.09], ["prism", 1, 0.08],
+    ["swarmling", 1, 0.07], ["mound", 1, 0.12],
   ];
   const MOVE = {
     colossus: "walk", strider: "walk", crawler: "walk", mass: "walk",
@@ -97,6 +99,53 @@ window.GenOld = (function () {
   })();
   const ORDER = ROSTER.map((o, i) => i).sort((a, b) => ROSTER[a].lane - ROSTER[b].lane);
 
+  /* ---- emergence: one by one out of the mass of matter ------------- */
+  const VENT_DUR = 1.8, VENT_FIRST = 0.6, VENT_STEP = 0.28;
+  const VENT_T0 = (function () {
+    const rank = ROSTER.map((o, i) => i), sh = mulberry(9005);
+    for (let i = rank.length - 1; i > 0; i--) { const j = Math.floor(sh() * (i + 1)); const t = rank[i]; rank[i] = rank[j]; rank[j] = t; }
+    const t0 = [];
+    rank.forEach((idx, k) => { t0[idx] = VENT_FIRST + k * VENT_STEP; });
+    return t0;
+  })();
+
+  // upper-left rim of the mass for west-goers, upper-right for east-goers
+  function ventAng(o) {
+    const h = hash1(o.idx * 17 + 2);
+    return o.side < 0 ? -Math.PI * (0.55 + 0.40 * h) : -Math.PI * (0.05 + 0.40 * h);
+  }
+
+  const VENT = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  function ventOf(o) {
+    const M = window.GenMatter && GenMatter.MASS;
+    const cx = sx(0);
+    const cy = (M ? M.yf : 0.52) * G.H;
+    const ms = window.GenMatter ? GenMatter.massScale(VENT_T0[o.idx] + VENT_DUR * 0.5) : 1;
+    const rx = (M ? M.rxH : 0.30) * G.H * ms;
+    const ry = (M ? M.ryH : 0.12) * G.H * ms;
+    const a = ventAng(o);
+    VENT.x0 = cx + Math.cos(a) * rx * 0.3;
+    VENT.y0 = cy + Math.sin(a) * ry * 0.3;
+    VENT.x1 = cx + Math.cos(a) * rx * 1.1;
+    VENT.y1 = cy + Math.sin(a) * ry * 1.1 - 0.01 * G.H;
+    return VENT;
+  }
+
+  function emergeK(o, trs) { return clamp((trs - VENT_T0[o.idx]) / VENT_DUR, 0, 1); }
+
+  const VENTS_OUT = [];
+  function activeVents(trs) {
+    VENTS_OUT.length = 0;
+    for (const o of ROSTER) {
+      const e = emergeK(o, trs);
+      if (e > 0 && e < 1) {
+        const v = ventOf(o);
+        VENTS_OUT.push({ x: mix(v.x0, v.x1, 0.6), y: mix(v.y0, v.y1, 0.6), k: Math.sin(Math.PI * e) });
+      }
+    }
+    return VENTS_OUT;
+  }
+
   // a single fresh being of `kind`, for files that draw an old one outside the
   // roster (Obrokxus's brothers); side is always +1, tint optionally overrides
   // the grey lit/shade with {lit, shade} CSS colour strings
@@ -112,24 +161,21 @@ window.GenOld = (function () {
   function place(o, env) {
     const W = G.W, H = G.H, deckY = DECK * H;
     const idx = o.idx;
-    const { burst, walk, cling, still, watch, flesh } = env;
+    const { emerge, walk, cling, still, watch, flesh } = env;
 
-    /* 1. rise out of the trade wave where their blob stood */
-    const spot = window.GenTrade && GenTrade.SPOTS[o.idx];
-    const ox = spot ? sx(0) + spot[0] * W : sx(0);
-    const oy = spot ? spot[1] * H : 0.46 * H;
-    const r = (0.01 + 0.025 * o.sp) * burst;
-    const x0 = ox + Math.cos(o.ang) * r * 0.45 * W;
-    const y0 = oy + Math.sin(o.ang) * r * 0.16 * H;
-    const settle = smooth((burst - 0.30) / 0.55);
-    const rot = (1 - settle) * (o.ang * 3 + burst * 6 * o.sp);
-    const scale = mix(0.2, 1, smooth(burst * 1.3));
+    /* 1. climb out of the mass */
+    const e = emergeK(o, emerge);
+    const v = ventOf(o);
+    const ee = smooth(e);
+    const xe = mix(v.x0, v.x1, ee), ye = mix(v.y0, v.y1, ee);
+    const scale = mix(0.35, 1, ee);
+    const rot = 0;
+    const settle = smooth(clamp((emerge - VENT_T0[idx] - VENT_DUR) / 1.2, 0, 1));
 
     /* 2. split to the deck */
     const splitU = o.side * (0.15 + 0.08 * hash1(idx * 7 + 1));
     const xd = sx(splitU), yd = deckY;
-    let x = mix(x0, xd, settle);
-    let y = mix(y0, yd, settle);
+    let x, y;
 
     /* 3. walk (or slide / roll / fly — same progress formula; blink hops) */
     const isBlinker = o.move === "blink";
@@ -158,6 +204,9 @@ window.GenOld = (function () {
     else y = deckY - 2 + o.lane * 0.012 * H;
     if (isFlyer) x += 0.04 * W * Math.sin(G.t * 0.5 + o.ph);
 
+    // from the rim of the mass down to the deck
+    x = mix(xe, x, settle); y = mix(ye, y, settle);
+
     /* 4. cling to the body */
     if (o.side > 0 && flesh && cling > 0.05) {
       const ca = o.clingAng + G.t * o.spin * (1 - 0.85 * still);
@@ -181,13 +230,14 @@ window.GenOld = (function () {
     if (isFlyer) y = mix(y, deckY - 0.05 * H, still * 0.8);
 
     /* 6. alpha */
-    let a = clamp(4.2 * burst, 0, 1) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("land"));
+    let a = clamp(e / 0.35, 0, 1) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("land"));
     if (watch > 0.5) a *= 0.55;
 
     const p = o.p;
     p.x = x; p.y = y; p.a = a; p.rot = rot; p.scale = scale;
     p.phase = phase; p.sy = sy; p.kneel = still;
     p.look = env.look != null ? env.look : sx(0);
+    p.e = e;
     return p;
   }
 
@@ -441,10 +491,12 @@ window.GenOld = (function () {
 
   function drawOldOnes(ctx, env) {
     const W = G.W, H = G.H;
+    const inside = env.layer === "inside";
     ctx.save();
     for (const idx of ORDER) {
       const o = ROSTER[idx];
       const p = place(o, env);
+      if (inside ? !(p.e > 0 && p.e < 0.85) : p.e < 0.85) continue;
       if (p.a < 0.04 || p.x < -0.35 * H || p.x > W + 0.35 * H) continue;
       ctx.globalAlpha = p.a;
       ctx.save();
@@ -499,5 +551,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawKind, makeOne, litSplit, eyeDot };
+  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR };
 })();

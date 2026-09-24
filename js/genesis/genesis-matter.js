@@ -17,14 +17,25 @@
 
   /* ---- chunks ---------------------------------------------------------
      100 pieces of matter: flesh, stone, or both at once (meld), launched
-     from the Point, floating or falling or flying apart. */
+     from the Point, flying briefly, then gathering into one mass that the
+     old ones climb out of. */
   const CHUNKS_N = 100;
   const CHUNKS = [];
+  const MASS = { yf: 0.52, rxH: 0.30, ryH: 0.12 };
+  // 1 while chunks are still flying, shrinks the mass as old ones climb out
+  function massScale(trs) {
+    return 1 - 0.7 * smooth(clamp((trs - 2.0) / 7.5, 0, 1));
+  }
+  // 0..1: how much of the way a chunk has been pulled into the mass
+  function gatherK(c, s) {
+    if (c.mode === "break") return 0;
+    return smooth(clamp((s - c.birth - 0.8) / 2.2, 0, 1));
+  }
   (function seedChunks() {
     const r = mulberry(9201);
     for (let i = 0; i < CHUNKS_N; i++) {
       const mr = r();
-      const mat = mr < 0.4 ? "flesh" : mr < 0.75 ? "stone" : "meld";
+      const mat = mr < 0.25 ? "flesh" : mr < 0.75 ? "stone" : "meld";
       const modeR = r();
       const c = {
         mat,
@@ -33,8 +44,8 @@
         // launch speed as a fraction of H: G.H is 0 at load time (before the
         // conductor sizes the canvas), so the actual px/s speed is resolved
         // against the current G.H wherever it's used, not baked in here.
-        vf: 0.10 + r() * 0.32,
-        mode: modeR < 0.4 ? "float" : modeR < 0.75 ? "fall" : "break",
+        vf: 0.06 + r() * 0.16,
+        mode: modeR < 0.45 ? "float" : modeR < 0.85 ? "fall" : "break",
         size: 7 + r() * r() * 46,
         spin: (r() - 0.5) * 2.2,
         tb: 1.2 + r() * 2.6,
@@ -53,6 +64,10 @@
         verts.push([Math.cos(a) * jit, Math.sin(a) * jit]);
       }
       c.verts = verts;
+      // where this chunk settles in the mass (unit disc, no r() calls so
+      // the seed sequence above stays untouched)
+      const sa = hash1(i * 3 + 101) * TAU, sr = Math.sqrt(hash1(i * 5 + 211));
+      c.mx = Math.cos(sa) * sr; c.my = Math.min(0.8, Math.sin(sa) * sr); c.mr = sr;
       CHUNKS.push(c);
     }
   })();
@@ -113,16 +128,7 @@
     const c = CHUNKS[i];
     const Ox = G.sx(0), Oy = 0.46 * G.H, v = c.vf * G.H;
     let a = s - c.birth;
-    scratch.alive = a >= 0 && a <= c.life;
-    // during trade, a chunk that was alive when trade began keeps living
-    // until trade reaches 2.2s, so it can be pulled together instead of dying
-    if (!scratch.alive && c.mode !== "break") {
-      const trs = G.secs("trade");
-      if (trs > 0 && trs < 2.2) {
-        const aAtStart = (s - trs) - c.birth;
-        if (aAtStart >= 0 && aAtStart <= c.life) scratch.alive = true;
-      }
-    }
+    scratch.alive = c.mode === "break" ? (a >= 0 && a <= c.life) : (a >= 0);
     if (a < 0) a = 0;
     let x, y;
     if (c.mode === "fall") {
@@ -133,9 +139,17 @@
       x = Ox + Math.cos(c.ang) * v * a * 0.55;
       y = Oy + Math.sin(c.ang) * v * a * 0.55 + Math.sin(a * 1.3 + c.seed) * 8;
     }
+    if (c.mode !== "break") {
+      const g = gatherK(c, s);
+      const br = 1 + 0.025 * Math.sin(G.t * 1.4 + c.seed);
+      const mxp = G.sx(0) + c.mx * MASS.rxH * G.H * br, myp = MASS.yf * G.H + c.my * MASS.ryH * G.H * br;
+      x = mix(x, mxp, g); y = mix(y, myp, g);
+    }
     scratch.x = x; scratch.y = y;
-    scratch.rot = c.spin * a;
-    scratch.a = Math.min(1, a / 0.3) * (a > c.life - 1 ? Math.max(0, c.life - a) : 1);
+    scratch.rot = c.mode === "break" ? c.spin * a : c.spin * Math.min(a, 2.0);
+    scratch.a = c.mode === "break"
+      ? Math.min(1, a / 0.3) * (a > c.life - 1 ? Math.max(0, c.life - a) : 1)
+      : Math.min(1, a / 0.3);
     return scratch;
   }
 
@@ -155,8 +169,9 @@
     const pull = a < 1.9 ? smooth((a - 1.0) / 0.7) : (1 - smooth((a - 1.9) / 0.5));
     const me = chunkAtRaw(i, s), them = chunkAtRaw(other, s);
     const mx = (me.x + them.x) * 0.5, my = (me.y + them.y) * 0.5;
-    MELD_OFFSET.x = (mx - me.x) * pull;
-    MELD_OFFSET.y = (my - me.y) * pull;
+    const fade = 1 - gatherK(c, s);
+    MELD_OFFSET.x = (mx - me.x) * pull * fade;
+    MELD_OFFSET.y = (my - me.y) * pull * fade;
     return MELD_OFFSET;
   }
   // raw position without meld/trade offsets, for meldOffset's own midpoint calc
@@ -321,17 +336,26 @@
       }
     }
 
-    // trade hand-off: pull surviving matter to screen centre, fade it out
     const trs = G.secs("trade");
-    if (trs > 0) {
-      const tx = G.W * 0.5 + (hash1(i * 3) - 0.5) * G.W * 0.5;
-      const ty = G.H * 0.47 + (hash1(i * 5) - 0.5) * G.H * 0.3;
-      const pull = smooth(clamp(trs / 1.4, 0, 1));
-      x = mix(x, tx, pull); y = mix(y, ty, pull);
-      alpha *= 1 - smooth(clamp((trs - 1.2) / 1.0, 0, 1));
+    if (c.mode !== "break" && trs > 0) {
+      // the mass opens where an old one is climbing out
+      const vents = window.GenOld && GenOld.activeVents ? GenOld.activeVents(trs) : null;
+      if (vents) {
+        const R = 0.14 * G.H;
+        for (let k = 0; k < vents.length; k++) {
+          const v = vents[k], dx = x - v.x, dy = y - v.y, d = Math.hypot(dx, dy);
+          if (d > 0.001 && d < R) { const push = (1 - d / R) * 0.06 * G.H * v.k; x += dx / d * push; y += dy / d * push; }
+        }
+      }
+      // the mass crumbles from the outside in as they leave, then goes
+      const m = massScale(trs);
+      const keep = clamp((m - c.mr * 0.6) / 0.2, 0, 1);
+      y += (1 - keep) * 0.05 * G.H;
+      alpha *= keep * (1 - smooth(clamp((trs - 9.2) / 0.8, 0, 1)));
     }
 
     if (x < -c.size - 40 || x > G.W + c.size + 40 || y < -c.size - 40 || y > G.H + c.size + 40) return;
+    if (alpha < 0.01) return;
 
     const rot = p.rot;
     if (c.mode === "break" && s - c.birth > c.tb) {
@@ -581,7 +605,7 @@
     if (typeof G.secs !== "function") return;
     if (G.W === 0) return;
     const s = G.secs("matter") + 0.8;
-    if (s < 0 || s > 16) return;
+    if (s < 0 || s > 20.6) return;
 
     drawStormsLayer(ctx, s, false); // air, rain: behind
     for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, s);
@@ -592,5 +616,5 @@
     ctx.lineWidth = 1;
   }
 
-  window.GenMatter = { draw, chunkAt };
+  window.GenMatter = { draw, chunkAt, MASS, massScale };
 })();
