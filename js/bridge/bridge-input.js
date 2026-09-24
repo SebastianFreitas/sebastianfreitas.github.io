@@ -60,6 +60,9 @@
   let lastPtr = { x: 0, y: 0 };
   let downPtr = { x: 0, y: 0 };   // where the hold began
   const DRAG_LOCK = 12;           // px the pointer must travel from the press before a move can lock a beacon
+  const TAP_MS = 320;             // a press shorter than this on nothing is a tap, and a tap dismisses a note
+  let burnAt = 0;                 // when the current hold began
+  let burnLocked = false;         // the current hold locked a beacon at some point
   B.fuelWarned = false;
   B.courseArmAt = 0; // ignore contact briefly after locking a course
 
@@ -71,6 +74,8 @@
     lastPtr.y = e.clientY;
     downPtr.x = e.clientX;
     downPtr.y = e.clientY;
+    burnAt = performance.now();
+    burnLocked = !!mark;
     const c = clientToCourse(e.clientX, e.clientY);
     if (mark) {
       const seat = courseForMark(mark);
@@ -98,8 +103,9 @@
     if (B.ship) {
       Voidship.setThrusting(B.ship, false);
     }
-    // a tap on nothing with almost no burn dismisses a note
-    if (B.ship && B.ship.arrived) B.clearMark();
+    // a tap on nothing with almost no burn dismisses a note; a hold that
+    // locked a beacon, or ran long, leaves the note it may have just opened
+    if (B.ship && B.ship.arrived && !burnLocked && performance.now() - burnAt < TAP_MS) B.clearMark();
   }
   B.endBurn = endBurn;
 
@@ -155,6 +161,7 @@
       lastPtr.y = e.clientY;
       if (m && (m === B.ship.courseMark || entered)) {
         if (B.ship.courseMark !== m) B.courseArmAt = performance.now() + 180;
+        burnLocked = true;
         const seat = courseForMark(m);
         Voidship.setCourse(B.ship, seat.worldX, seat.screenY, m);
       } else if (!B.ship.courseMark) {
