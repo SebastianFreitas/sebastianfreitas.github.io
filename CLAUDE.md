@@ -29,8 +29,9 @@ most are under 300. Whole-file reads are still the main cost. These rules
 apply to the main session, Explore and the implementer alike.
 
 - **Never read a whole file over 300 lines.** Files still over 500 lines:
-  `css/bridge.css` (726), `js/hud/instruments.js` (612), `js/gamedev/storm.js`
-  (585), `js/ship/voidship-art.js` (566), `js/ship/voidship.js` (553),
+  `css/bridge.css` (726), `js/hud/instruments.js` (652),
+  `js/hud/tiles-nav.js` (625), `js/gamedev/storm.js` (585),
+  `js/ship/voidship-art.js` (566), `js/ship/voidship.js` (553),
   `js/gamedev/forge.js` (549), `js/genesis/genesis.js` (515),
   `js/gamedev/zones.js` (509), `tools/snap.py` (531),
   `tools/nav-flows.test.py` (890). Use the File map below to pick the file
@@ -76,7 +77,7 @@ css/                          style, gate, beacon, bridge
 js/lib/                       util, paint, pacer
 js/site/                      xp, entry, intro, surge, embed, lazy-video
 js/hud/                       instruments, tiles-nav, tiles-sys
-js/bridge/                    bridge core + 7 parts, bridge-voice, bridge-log, marks, lamp, planet
+js/bridge/                    bridge core + 8 parts, bridge-sites, bridge-voice, bridge-log, marks, lamp, planet
 js/depths/                    depths core + zero, voidscape, heavylight, conclusus, lore
 js/ship/                      voidship, voidship-art
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
@@ -131,13 +132,14 @@ Sizes are line counts after the split.
 
 | File | Lines | Purpose | Publishes / uses |
 |---|---|---|---|
-| `instruments.js` | 612 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms`/`alert`, the `F` kit, `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
-| `tiles-nav.js` | 471 | The nav bank: `radarStatic`, `radar`, `signal`, `drive` (key `phase`), `nav` (key `rec`) | registers `{paint, paintStatic}` |
-| `tiles-sys.js` | 401 | The sys bank and its shared state: `tickSys`, `eclss`, `rad`, `impact`, `setRepair`, `hull`, `bus`, `sys`, `repairState` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
+| `instruments.js` | 652 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once, one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
+| `tiles-nav.js` | 625 | The nav bank: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, glow bitmaps cached per colour; `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`; `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus` | registers `{paint, paintStatic}` |
+| `tiles-sys.js` | 495 | The sys bank and its shared state: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt` (integrity, cosmetic) and `sys.wear`; `eclss` rows are bars with nominal bands; `hull` has a STRESS/REGEN header, sector stress flicker, an INT bar and WEAR ×n; `bus` sags with `sway`, shows UPLINK on `link`; static layers `eclssStatic`/`radStatic`/`hullStatic`/`busStatic` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
 
 ### js/bridge
 
-Load order is the table order; all eight bridge files share `B`.
+Load order is the table order; nine bridge files share `B`. `bridge-sites.js`
+does not — it is pure data, no dependency on `B`.
 
 | File | Lines | Purpose | Publishes on `B` / `window` |
 |---|---|---|---|
@@ -145,11 +147,13 @@ Load order is the table order; all eight bridge files share `B`.
 | `bridge-notes.js` | 157 | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | 244 | Pointer/burn input: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels` | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
 | `bridge-marks.js` | 176 | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
-| `bridge-panel.js` | 347 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`), setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
+| `bridge-panel.js` | 352 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins; setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
 | `bridge-depths.js` | 99 | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
-| `bridge-readout.js` | 205 | `B.voice = BridgeVoice.create`, hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
+| `bridge-env.js` | 105 | The environment model: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, gAnom, tag, site, siteName, w, n1, n2, n3, t}`; `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases; debug `window.envReport` | `B.env stepEnv`; `window.envReport` |
+| `bridge-readout.js` | 210 | `B.voice = BridgeVoice.create` (voice state carries `env`), hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` (calls `B.stepEnv(dt)`, passes `env` to `Instruments.draw`); `VOICE_OF` maps the four planet marks to per-game voices | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
 | `bridge-loop.js` | 167 | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
-| `bridge-voice.js` | 367 | What the readout says per region (`ZONES`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
+| `bridge-sites.js` | 458 | The places that bend the instruments: `SITES` (void setting, 18 entries, order matters — later entries override earlier ones) and `GD_SITES` (one per game), each `{id, name, gate, x, r \| ramp, f:{fields}, tag, osc?, tags?}`; `lines(S, h)` returns one readout zone per site (same shape as `bridge-voice.js` `ZONES`) | `window.BridgeSites {SITES, GD_SITES, lines}` |
+| `bridge-voice.js` | 382 | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds; `zoneAt` returns the dominant site (`env.w >= 0.5`) before the x-range checks; extra optics/coherent lines in the void, watcher, root and unnamed zones | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | 68 | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
 | `marks.js` | 78 | Landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS`/`GD_SPAWN` | `window.Marks`; uses `World` |
 | `lamp.js` | 109 | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
@@ -255,20 +259,22 @@ world/art/{shattered, libertech, dawn, accord, gore} → world/world →
 world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
 ship/voidship-art → ship/voidship → gamedev/storm → gamedev/forge-guns →
 gamedev/forge-missions → gamedev/forge → gamedev/zones → site/embed →
-lib/pacer → bridge/marks → bridge/bridge-log → bridge/bridge-voice →
-bridge/{bridge, bridge-notes, bridge-input, bridge-marks, bridge-panel,
-bridge-depths, bridge-readout, bridge-loop} → genesis/{genesis-state,
-genesis-paint, genesis-void, genesis-orb, genesis-rex, genesis-saga-state,
-genesis-saga, genesis} → site/intro`.
+lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
+bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
+bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
+bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
+genesis-orb, genesis-rex, genesis-saga-state, genesis-saga, genesis} →
+site/intro`.
 
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
 `instruments.js`, kits before places, `forge-guns` before `forge-missions`
-before `forge`); `genesis-void` and `genesis-orb` before `genesis-rex`
-(it destructures `GenVoid` at parse time); `genesis-saga-state` before
-`genesis-saga`. Scripts carry `?v=N` cache-busters; bump them with
-`py -3 tools/bump.py`.
+before `forge`); `bridge-sites` before `bridge-voice`; `bridge-env`
+after `bridge-depths` and before `bridge-readout`; `genesis-void` and
+`genesis-orb` before `genesis-rex` (it destructures `GenVoid` at parse
+time); `genesis-saga-state` before `genesis-saga`. Scripts carry `?v=N`
+cache-busters; bump them with `py -3 tools/bump.py`.
 
 Project pages load only `css/style.css`, `css/beacon.css`, then
 `js/lib/util.js → js/site/xp.js → js/site/surge.js` plus `js/site/embed.js`
@@ -293,7 +299,8 @@ and an inline `XP.award(...)`.
 | Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
 | Notes and hints | `js/bridge/bridge-notes.js` |
 | Setting switch (void ↔ gamedev), iris FX, view persistence | `js/bridge/bridge-panel.js` |
-| Readout text | `js/bridge/bridge-voice.js` `ZONES`; glue and hull damage in `bridge-readout.js` |
+| Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`); one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate` |
+| Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
@@ -353,6 +360,22 @@ Titans cave in `js/world/art/titans.js`.
 - Places are proper buildings, not symbols or sigils.
 - The primitives are in `js/lib/paint.js`; do not add a new `litShade`
   anywhere. Shared building helpers go in `rex-kit.js` / `land-kit.js`.
+
+## Instrument readings
+
+- Readings are visual first: a bar climbing or a tile blinking red, then a
+  number, then a line in the log. Never a mechanic; nothing here costs the
+  visitor anything.
+- Every place that bends the instruments is one entry in
+  `js/bridge/bridge-sites.js`, gated on its depth node (`gate`). The beacon
+  marks nothing; the art does. Add a site, not a special case in a tile.
+- Two axes: `chaos` is the incoherent one (noise, the world's `chaosAt`);
+  `nomic` is the coherent one (constants displaced, in step). On the HUD
+  and in the log say `incoherent` / `coherent` / `nomic`; never `magic`.
+  Keep the voice's style: `value · unit · impossible clause`, lowercase,
+  dry.
+- Tiles read `r.env` only; they never reach into `Bridge`. Anything that
+  does not change per paint goes in the tile's `paintStatic`.
 
 ## Commands
 

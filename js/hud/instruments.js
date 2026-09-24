@@ -86,10 +86,9 @@ window.Instruments = (function () {
   let tiles = null;            // the eight tiles, merged from tiles-nav.js and tiles-sys.js
   let tilesWarned = false;
 
-  /* Alarm — master caution. A reading must hold to be believed, only one
-     tile may be lit at a time, and the panel stays quiet for a while after
-     one clears. RADAR, SIGNAL, NAV and PWR have nothing that qualifies, so
-     they never light. */
+  /* Alarm — master caution. A reading must hold to be believed. Every fault
+     lights at once; among warnings only one may show at a time, and the
+     panel stays quiet for a while after the one shown warning clears. */
   const A_NONE = 0, A_WARN = 1, A_ERR = 2;
   const alarmRaw = new Map();   // key -> level the readings ask for right now
   const alarmVal = new Map();   // key -> level that has held long enough to count
@@ -106,10 +105,11 @@ window.Instruments = (function () {
      It gets a glance instead of a dwell; RELEASE still keeps the lamp steady
      once it is lit. */
   const DWELL_FAST = { phase: 0.35 };
-  /* who gets the lamp when two tiles both have something to say */
-  const A_PRIO = ["hull", "phase", "eclss", "rad"];
-  const QUIET = 22;             // seconds of hush after a lamp goes out
-  let alarmLit = null;          // the one key allowed to show itself
+  /* who gets the one warn lamp when more than one tile has a warning to
+     show; an error lights regardless of this order */
+  const A_PRIO = ["hull", "phase", "eclss", "rad", "signal", "radar", "bus", "rec"];
+  const QUIET = 22;             // seconds of hush after the warn lamp goes out
+  let lit = {};                 // key -> level (A_WARN/A_ERR) shown now; absent = off
   let alarmQuiet = 0;           // seconds of hush still owed
 
   function bindFocus(canvas, panelsFn, getter, setter) {
@@ -351,11 +351,33 @@ window.Instruments = (function () {
       alarmRaw.set("hull", (rep.count > 0 && rep.age < 12) ? A_WARN : A_NONE);
     }
 
-    // these have no abnormal state worth a lamp
+    // these have no abnormal state of their own worth a lamp — the
+    // environment can still trip them, below
     alarmRaw.set("radar",  A_NONE);
     alarmRaw.set("signal", A_NONE);
     alarmRaw.set("rec",    A_NONE);
     alarmRaw.set("bus",    A_NONE);
+
+    // environment — a hostile reading can light a lamp on its own, on top of
+    // whatever the ship's own instruments already asked for. ce knocks down
+    // the readings that are really about being outside the hull once the
+    // ship is contained; phase, eclss and rad are untouched here since their
+    // own inputs already move with the environment.
+    const e = r.env || {};
+    const ce = 1 - (e.contained || 0);
+    const lv = (err, warn) => err ? A_ERR : warn ? A_WARN : A_NONE;
+    // the open void reads chaos 1 for most of the map; only a place (a dominant site) turns that into a lamp
+    const sc = (e.w || 0) >= 0.5 ? (e.chaos || 0) : 0;
+    alarmRaw.set("signal", Math.max(alarmRaw.get("signal") || A_NONE,
+      lv(sc > 0.92 || (e.nomic || 0) * ce > 0.85, sc > 0.78 || (e.nomic || 0) * ce > 0.6)));
+    alarmRaw.set("radar", Math.max(alarmRaw.get("radar") || A_NONE,
+      lv((e.glare || 0) > 0.8, (e.glare || 0) > 0.55)));
+    alarmRaw.set("hull", Math.max(alarmRaw.get("hull") || A_NONE,
+      lv((e.wear || 0) > 0.65, (e.wear || 0) > 0.3)));
+    alarmRaw.set("bus", Math.max(alarmRaw.get("bus") || A_NONE,
+      lv((e.sway || 0) * ce > 0.85, (e.sway || 0) * ce > 0.6)));
+    alarmRaw.set("rec", Math.max(alarmRaw.get("rec") || A_NONE,
+      lv((e.gAnom || 0) > 0.8, (e.gAnom || 0) > 0.35)));
 
     qualify(dt);
     arbitrate(dt);
@@ -385,33 +407,33 @@ window.Instruments = (function () {
     }
   }
 
-  /* one lamp at a time. Severity first, then the fixed order above, and a
-     tile already lit keeps the lamp against an equal claim. A fresh warning
-     waits out the hush; a real error does not. */
+  /* every error lights, all at once. Among warnings only one shows: the key
+     already showing one keeps it while it is still a warning, otherwise the
+     fixed order above picks the next. A fresh warning waits out the hush;
+     an error never does. */
   function arbitrate(dt) {
     if (alarmQuiet > 0) alarmQuiet = Math.max(0, alarmQuiet - dt);
 
-    let best = null, bestLv = A_NONE;
-    for (const key of A_PRIO) {
-      const lv = alarmVal.get(key) || A_NONE;
-      if (lv > bestLv) { bestLv = lv; best = key; }
+    const anyErr = Object.values(lit).some(v => v === A_ERR);
+    const curWarn = Object.keys(lit).find(k => lit[k] === A_WARN) || null;
+    let warn = (curWarn && (alarmVal.get(curWarn) || A_NONE) === A_WARN) ? curWarn : null;
+    if (!warn) {
+      for (const key of A_PRIO) {
+        if ((alarmVal.get(key) || A_NONE) === A_WARN) { warn = key; break; }
+      }
+      if (!anyErr && warn && alarmQuiet > 0) warn = null;
     }
-    if (bestLv > A_NONE && best !== alarmLit && (alarmVal.get(alarmLit) || A_NONE) === bestLv) {
-      best = alarmLit;
-    }
-    if (best && best !== alarmLit && bestLv < A_ERR && alarmQuiet > 0) { best = null; bestLv = A_NONE; }
+    if (!warn && curWarn) alarmQuiet = QUIET;
 
-    if (best !== alarmLit) {
-      if (!best) alarmQuiet = QUIET;
-      alarmLit = best;
-      alarmAge.set(best || "", 0);
+    const next = {};
+    for (const [key, v] of alarmVal) if (v === A_ERR) next[key] = A_ERR;
+    if (warn) next[warn] = A_WARN;
+
+    for (const key of new Set([...Object.keys(lit), ...Object.keys(next)])) {
+      if (next[key]) alarmAge.set(key, lit[key] === next[key] ? (alarmAge.get(key) || 0) + dt : 0);
+      else alarmAge.delete(key);
     }
-    if (alarmLit) {
-      const lv = alarmVal.get(alarmLit) || A_NONE;
-      const prev = alarmAge.get("_lv");
-      alarmAge.set("_lv", lv);
-      alarmAge.set(alarmLit, prev === lv ? (alarmAge.get(alarmLit) || 0) + dt : 0);
-    }
+    lit = next;
   }
 
   function decayAlarms(dt) {
@@ -422,7 +444,7 @@ window.Instruments = (function () {
   }
 
   function alarmLevel(key) {
-    return key === alarmLit ? (alarmVal.get(key) || A_NONE) : A_NONE;
+    return lit[key] || A_NONE;
   }
 
   /* the bridge log calls this on every line it prints. Only a critical one
@@ -438,29 +460,27 @@ window.Instruments = (function () {
     }
   }
 
-  /* no flicker — it comes up and holds, with a slow breathe so it reads as
-     live without becoming a light show */
-  function alarmFlick(lv, age) {
-    if (lv <= A_NONE) return 0;
-    const rate = lv >= A_ERR ? 0.5 : 0.35;
-    const depth = lv >= A_ERR ? 0.1 : 0.06;
-    return (1 - depth) + depth * Math.sin(age * rate * 6.283);
-  }
-
-  /* drawn over the tile's own readout, on top of the static chrome */
+  /* drawn over the tile's own readout, on top of the static chrome. A real
+     blink, timed off the module clock: fast for an error, slow for a
+     warning, and every lit tile beats in step. */
   function alarmOverlay(p, key) {
     const lv = alarmLevel(key);
     if (!lv) return;
-    const a = alarmFlick(lv, alarmAge.get(key) || 0);
-    const col = lv === A_WARN ? WARN : BAD;
+    const err = lv >= A_ERR;
+    const bl = blink(err ? 1.1 : 0.5);
+    const col = err ? BAD : WARN;
     ctx.save();
-    ctx.fillStyle = `rgba(${col},${(lv === A_WARN ? 0.015 : 0.03) * a})`;
+    ctx.fillStyle = `rgba(${col},${err ? 0.03 + 0.05 * bl : 0.015 + 0.01 * bl})`;
     ctx.fillRect(0, 0, p.w, p.h - 4);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(${col},${(lv === A_WARN ? 0.3 : 0.48) * a})`;
+    ctx.strokeStyle = `rgba(${col},${err ? 0.34 + 0.3 * bl : 0.3 + 0.14 * bl})`;
     ctx.strokeRect(0.8, 0.8, p.w - 1.6, p.h - 5.6);
+    if (err) {
+      ctx.strokeStyle = `rgba(${col},${0.12 * bl})`;
+      ctx.strokeRect(3.5, 3.5, p.w - 7, p.h - 11);
+    }
     // relight the chrome's corner ticks in the alarm colour
-    ctx.strokeStyle = `rgba(${col},${0.4 * a})`;
+    ctx.strokeStyle = `rgba(${col},${err ? 0.4 + 0.35 * bl : 0.4})`;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0.8, 9); ctx.lineTo(0.8, 0.8); ctx.lineTo(9, 0.8);
@@ -489,7 +509,7 @@ window.Instruments = (function () {
     const saved = ctx;
     ctx = sysCtx;
     curFont = null;
-    drawBank(sysPanels(), sysFocus, paintSys, dt, r, null);
+    drawBank(sysPanels(), sysFocus, paintSys, dt, r, paintStatic);
     ctx = saved;
     curFont = null;
   }
@@ -573,6 +593,28 @@ window.Instruments = (function () {
     while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
     return s + "…";
   }
+
+  /* a filled bar over a dim track — the shared meter for every tile that
+     shows a level. A live reading above zero always shows at least a
+     sliver, even one that rounds to under a pixel. */
+  function meter(x, y, w, h, v, col, a = 1) {
+    ctx.fillStyle = `rgba(${DIM},${0.22 * a})`;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = `rgba(${col},${0.9 * a})`;
+    ctx.fillRect(x, y, Math.max(v > 0 ? 1 : 0, w * Util.clamp(v, 0, 1)), h);
+  }
+
+  /* the shared thresholds for a reading that goes from fine to bad */
+  function lvCol(v, warnAt, badAt) {
+    return v >= badAt ? BAD : v >= warnAt ? WARN : LAMP;
+  }
+
+  /* a slow breathing 0..1, timed off the module clock so every blinking
+     thing on the panel beats together */
+  function blink(hz) {
+    return 0.5 + 0.5 * Math.sin(t * Util.TAU * hz);
+  }
+
   const fontCache = new Map();
   function mono(px, weight = "500") {
     const k = weight + " " + px;
@@ -592,7 +634,7 @@ window.Instruments = (function () {
 
   /* what a tile is allowed to reach for. `t` is read through now() so the
      clock stays this file's. */
-  const F = { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, spark, fit, fmtK, now: () => t };
+  const F = { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, spark, fit, meter, lvCol, blink, fmtK, now: () => t };
 
   function registerTiles(factory) {
     const part = factory(F);

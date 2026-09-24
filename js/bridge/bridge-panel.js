@@ -12,7 +12,6 @@
     Instruments.mount(document.getElementById("binst"));
     Instruments.mountSys(document.getElementById("binst-sys"));
     const IK = Util.KEYS.INST_SCALE;
-    const termEl = document.getElementById("bridge-term");
     const hero = document.getElementById("bridge-hero");
 
     /* the compact bank is one narrow column: give it a share of the height and
@@ -31,10 +30,16 @@
     const DESK_MIN = 0.7;
 
     let stored = parseFloat(Util.read(localStorage, IK));
+
+    /* a wide, tall desktop gets the banks a fifth bigger by default: the
+       tiles are the show and there is room. Narrow or short screens keep 1. */
+    const deskDefault = () => {
+      if (innerHeight < 800) return 1;
+      return 1 + 0.2 * Math.max(0, Math.min(1, (innerWidth - 1200) / 600));
+    };
     const deskScale = () => {
       if (Number.isFinite(stored)) return Math.max(DESK_MIN, stored);
-      const maxW = termEl ? termEl.clientWidth : Instruments.TOTAL_W;
-      return Math.min(1, maxW / Instruments.TOTAL_W);
+      return deskDefault();
     };
 
     /* the phone stylesheet floats the log clear of the banks off --inst-h,
