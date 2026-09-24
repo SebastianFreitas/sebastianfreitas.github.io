@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 Temporary VoidScape Media/
 snapshots/
+/temporary media
