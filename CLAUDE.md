@@ -423,7 +423,8 @@ Titans cave in `js/world/art/titans.js`.
   tools/snap.py list` names the scenes.
 - **Cache-bust:** `py -3 tools/bump.py` rewrites every `?v=` in the HTML
   pages.
-- **Git:** commit straight to `main`, no branches. A `.gitignore` covers
+- **Git:** on the local machine, commit straight to `main`, no branches.
+  In a cloud session, see Cloud sessions below. A `.gitignore` covers
   `__pycache__/`, `*.pyc`, `snapshots/` and `Temporary VoidScape Media/`.
 - **Every task ends with a commit, unasked.** Once the work is verified, run
   `py -3 tools/bump.py` if any script or stylesheet changed, then commit. Do
@@ -431,3 +432,29 @@ Titans cave in `js/world/art/titans.js`.
 - **Commands shown to the user run in Windows PowerShell 5.1.** Never print
   `&&`, `||`, `$(...)` or bash `if` for them; chain with `;` or give one
   command per block. The Bash tool is fine for Claude's own use.
+
+## Cloud sessions
+
+A cloud session (claude.ai/code, the Claude app) is a fresh Linux clone of
+GitHub, one container and one `claude/<name>` branch per session, so
+parallel sessions never share files. The live site deploys from `main`, so
+nothing a cloud session pushes goes live until the owner merges it.
+
+- **Branch:** work, commit and push only on the branch the session was
+  assigned. Never push to `main` and never merge into it; the owner merges.
+  This overrides "commit straight to `main`" above.
+- **Commands:** `py -3` does not exist in the container; run the same tools
+  with `python3` (`python3 tools/nav-flows.test.py header`). Everything
+  else in this file applies unchanged.
+- **Playwright:** the environment's setup script installs
+  `playwright==1.56.0`, the version that matches the pre-installed Chromium
+  build (`/opt/pw-browsers/chromium-1194`). Never run `playwright install`
+  and never upgrade the package. If a flow prints "Looks like Playwright was
+  just installed", the pin and the Chromium build disagree: say so and stop.
+- **Parallel branches collide in two places:** the `?v=` numbers in every
+  HTML page (each branch bumps them) and the line counts in this file's
+  File map. When merging a branch whose only conflicts are those, take
+  either side, then re-run `python3 tools/bump.py` and re-count the lines
+  of the files that changed.
+- **No scratch files in the repo.** GitHub Pages publishes every committed
+  file; logs and notes go in the session's scratchpad, not the root.
