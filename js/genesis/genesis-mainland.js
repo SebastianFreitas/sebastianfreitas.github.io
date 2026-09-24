@@ -4,7 +4,7 @@
    saga state S (rise/scar/corrupt/civAmt/nestAmt...). */
 window.GenMain = (function () {
   const G = window.Gen;
-  const { clamp, mix, hash1, mulberry, ridge } = Util;
+  const { clamp, mix, hash1, mulberry, ridge, smooth } = Util;
   const { litShade, offsetShade, merlons, poly, circle } = Paint;
   const { fillRidge, gridXs, mixHex, flatGlow, mainHeight, mainBandHeight, mainDome } = GenPaint;
   const { MAIN_U, MAIN_HALF, CITY_U, NEST_U, DECK, MAIN_BANDS, sx } = G;
@@ -57,6 +57,36 @@ window.GenMain = (function () {
     }
     return list;
   })();
+
+  /* ---- drain: spires near the nest lose their thorns from the top as
+     their pieces fly off into the newborn Hound ---- */
+  function spirePull(sp, S) {
+    if (!S || !(S.drain > 0)) return 0;
+    const d = Math.abs(MAIN_U + sp.u * MAIN_HALF - S.nestU) / 0.24;
+    if (d >= 1) return 0;
+    return smooth(clamp((S.drain - 0.4 * d) / 0.6, 0, 1));
+  }
+
+  /* per-spire geometry, shared with whatever draws the flying pieces;
+     callers must call this after drawMainland has run in the same frame,
+     since it reads the surfY() cache drawMainland fills */
+  function spireGeom(k, S) {
+    const corrupt = (S && S.corrupt) || 0;
+    if (corrupt <= 0.06) return null;
+    const sp = SPIRES[k];
+    if (sp.born > corrupt) return null;
+    const grow = clamp((corrupt - sp.born) / 0.22, 0, 1);
+    const x = sx(MAIN_U + sp.u * MAIN_HALF);
+    const tw = sp.w * G.H * mix(0.7, 1, grow);
+    const th0 = sp.h * G.H * grow * mix(0.55, 1.15, corrupt) * (0.85 + 0.15 * Math.sin(G.t * 1.3 + sp.ph));
+    const ln = sp.lean * G.H * grow;
+    const pulled = spirePull(sp, S);
+    const th = th0 * (1 - pulled);
+    const rootY = surfY(x) + 2;
+    const topY = rootY - 0.10 * tw;
+    const lit = hash1(k * 7) < 0.4 ? "#4a070b" : "#6e0a10";
+    return { x, tw, ln, th0, th, pulled, rootY, topY, lit };
+  }
 
   /* ---- the city roster: three bands far to near, one mulberry(9008) draw ---- */
   const CITY = (function () {
@@ -156,15 +186,13 @@ window.GenMain = (function () {
       ctx.globalAlpha = rise * 0.95;
       for (let k = 0; k < SPIRES.length; k++) {
         const sp = SPIRES[k];
-        if (sp.born > corrupt) continue;
-        const grow = clamp((corrupt - sp.born) / 0.22, 0, 1);
-        const x = sx(MAIN_U + sp.u * MAIN_HALF);
-        const tw = sp.w * G.H * mix(0.7, 1, grow);
-        const th = sp.h * G.H * grow * mix(0.55, 1.15, corrupt) * (0.85 + 0.15 * Math.sin(G.t * 1.3 + sp.ph));
-        const ln = sp.lean * G.H * grow;
+        const g = spireGeom(k, S);
+        if (!g) continue;
+        const { x, tw, ln, th, topY, pulled, lit: litCol } = g;
 
         /* root: sample the ground with the polyline it was actually drawn
-           with, not the height field, so nothing floats or buries itself */
+           with, not the height field, so nothing floats or buries itself;
+           this stays put even as the thorn above it is drained away */
         const xs0 = x - 0.75 * tw, xs1 = x - 0.35 * tw, xs2 = x, xs3 = x + 0.35 * tw, xs4 = x + 0.75 * tw;
         const ys0 = surfY(xs0) + 2, ys1 = surfY(xs1) + 2, ys2 = surfY(xs2) + 2, ys3 = surfY(xs3) + 2, ys4 = surfY(xs4) + 2;
         const rootPts = [
@@ -174,10 +202,11 @@ window.GenMain = (function () {
         ];
         litShade(ctx, () => poly(ctx, rootPts), x - 0.3 * tw, "#4a070b", "#2a0407");
 
+        if (pulled >= 0.999) continue;
+
         /* thorn: a spine that leans, edges serrated with a per-tooth hash;
            left half and right half are filled as two separate polygons so
            the shade split follows the lean instead of a straight cut */
-        const topY = ys2 - 0.10 * tw;
         const n = sp.teeth;
         const spine = [], leftEdge = [], rightEdge = [];
         for (let i = 0; i <= n; i++) {
@@ -196,7 +225,6 @@ window.GenMain = (function () {
         const rightPoly = spine.slice();
         for (let i = n - 1; i >= 0; i--) rightPoly.push(rightEdge[i]);
 
-        const litCol = hash1(k * 7) < 0.4 ? "#4a070b" : "#6e0a10";
         poly(ctx, leftPoly); ctx.fillStyle = litCol; ctx.fill();
         poly(ctx, rightPoly); ctx.fillStyle = "#2a0407"; ctx.fill();
 
@@ -370,5 +398,5 @@ window.GenMain = (function () {
     ctx.restore();
   }
 
-  return { heightAt, surfYAt, surfY, surfSlope, drawMainland, drawCity, drawNestPit };
+  return { heightAt, surfYAt, surfY, surfSlope, drawMainland, drawCity, drawNestPit, SPIRES, spireGeom };
 })();

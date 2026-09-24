@@ -14,8 +14,11 @@
     const war = since("war");
     const stall = since("stalemate");
     const lock = since("firstlock");
+    const cad = since("cadmus"), ael = since("aelius"), vel = since("velindra");
     const four = since("four");
     const fifth = since("fifth");
+    const cadL = linear("cadmus"), aelL = linear("aelius"), velL = linear("velindra"), fifthL = linear("fifth");
+    const mid = (cad + ael + vel + four) / 4;
     const fall = linear("fall");
     const ret = since("return");
     const et = since("eternity");
@@ -48,7 +51,7 @@
     if (war > 0) scar = mix(0, 0.30, clamp(war, 0, 1));
     if (stall > 0) scar = mix(0.30, 0.44, stall);
     if (lock > 0) scar = mix(0.44, 0.64, lock);
-    if (four > 0) scar = mix(0.64, 0.86, four);
+    if (mid > 0) scar = mix(0.64, 0.86, mid);
     if (fifth > 0) scar = mix(0.86, 0.95, fifth);
     if (fall > 0) scar = mix(0.95, 1, fall);
     if (ret > 0 || et > 0) scar = 1;
@@ -60,7 +63,7 @@
     /* the city fills west to east and finishes when the war does */
     let civAmt = 0;
     if (lock > 0.12) civAmt = mix(0, 0.32, clamp((lock - 0.12) / 0.88, 0, 1));
-    if (four > 0) civAmt = mix(0.32, 0.44, four);
+    if (mid > 0) civAmt = mix(0.32, 0.44, mid);
     if (fifth > 0) civAmt = mix(0.44, 0.50, fifth);
     if (fall > 0) civAmt = mix(0.50, 0.55, fall);
     if (ret > 0) civAmt = mix(0.55, 1, smooth(clamp(ret / 0.82, 0, 1)));
@@ -177,13 +180,14 @@
     let mdU = mix(MAIN_U - 0.02, MAIN_U - 0.14, four);
     let mdY = gy(0.10, mdU);
     let mdAmt = born * (1 - 0.75 * mdDark);
+    const walkK = smooth(clamp(fifthL / 0.34, 0, 1));
     if (fifth > 0) {
       /* all four cross to the nest together for the Hound's birth,
          not just Cadmus; blend the endpoint heights rather than
          sampling the live terrain across that whole crossing, or
          they bob over every ripple of ground on the way. */
-      mdU = mix(MAIN_U - 0.14, NEST_U - 0.10, fifth);
-      mdY = mix(gy(0.08, MAIN_U - 0.14), gy(0.08, NEST_U - 0.10), fifth);
+      mdU = mix(MAIN_U - 0.14, NEST_U - 0.10, walkK);
+      mdY = mix(gy(0.08, MAIN_U - 0.14), gy(0.08, NEST_U - 0.10), walkK);
     }
     if (fall > 0) {
       const R0 = ringFightAt(0, fall, ou, oy, 1 - dieM);
@@ -195,17 +199,28 @@
     }
     if (ret > 0) mdAmt = 0;
 
-    const slot = (start) => clamp((four - start) / 0.22, 0, 1);
-    let cU = mix(MAIN_U - 0.24, NEST_U + 0.16, fifth);
-    let cAmt = slot(0.12);
-    let aelU = mix(MAIN_U - 0.32, NEST_U - 0.20, fifth);
-    let aelAmt = slot(0.36);
-    let vU = mix(MAIN_U - 0.17, NEST_U - 0.34, fifth);
-    let vAmt = slot(0.58);
+    const cWar = smooth(clamp((cadL - 0.56) / 0.20, 0, 1));
+    const cMortal = clamp(cadL / 0.12, 0, 1) * (1 - cWar);
+    const teach = Math.sin(Math.PI * clamp((cadL - 0.12) / 0.36, 0, 1));
+    const pact = smooth(clamp((cadL - 0.36) / 0.14, 0, 1)) * (1 - smooth(clamp((cadL - 0.82) / 0.16, 0, 1)));
+    const pactHit = cadL > 0.56 && cadL < 0.70 ? Math.sin(Math.PI * (cadL - 0.56) / 0.14) : 0;
+    const aelWar = smooth(clamp((aelL - 0.54) / 0.22, 0, 1));
+    const aelChild = clamp((aelL - 0.04) / 0.14, 0, 1) * (1 - aelWar);
+    const bless = Math.sin(Math.PI * clamp((aelL - 0.20) / 0.52, 0, 1));
+    const vCure = smooth(clamp((velL - 0.58) / 0.20, 0, 1));
+    const vTaint = clamp((velL - 0.04) / 0.16, 0, 1) * (1 - vCure);
+    const vHelp = Math.sin(Math.PI * clamp((velL - 0.34) / 0.40, 0, 1));
+    const vForge = smooth(clamp((velL - 0.78) / 0.16, 0, 1)) * (1 - four);
+    let cU = mix(MAIN_U - 0.24, NEST_U + 0.16, walkK);
+    let cAmt = cWar;
+    let aelU = mix(MAIN_U - 0.32, NEST_U - 0.20, walkK);
+    let aelAmt = aelWar;
+    let vU = mix(MAIN_U - 0.17, NEST_U - 0.34, walkK);
+    let vAmt = vCure;
     /* same terrain-bob fix as Mordrial above, for all three */
-    let cY = mix(gy(0.14, MAIN_U - 0.24), gy(0.06, NEST_U + 0.16), fifth);
-    let aelY = mix(gy(0.02, MAIN_U - 0.32), gy(0.00, NEST_U - 0.20), fifth);
-    let vY = mix(gy(0.20, MAIN_U - 0.17), gy(0.22, NEST_U - 0.34), fifth);
+    let cY = mix(gy(0.14, MAIN_U - 0.24), gy(0.06, NEST_U + 0.16), walkK);
+    let aelY = mix(gy(0.02, MAIN_U - 0.32), gy(0.00, NEST_U - 0.20), walkK);
+    let vY = mix(gy(0.20, MAIN_U - 0.17), gy(0.22, NEST_U - 0.34), walkK);
     /* through the fight itself they hold their ground at the nest
        (cU/aelU/vU keep the "fifth" end value, since `fifth` is
        already at 1 by the time `fall` starts) instead of drifting
@@ -243,10 +258,12 @@
     }
 
     const nestU = NEST_U;
-    const nestAmt = fifth > 0
-      ? mix(0.25, 1, clamp(fifth * 2.4, 0, 1)) * (1 - clamp((fifth - 0.58) / 0.38, 0, 1))
+    const ritual = smooth(clamp((fifthL - 0.28) / 0.10, 0, 1)) * (1 - smooth(clamp((fifthL - 0.84) / 0.10, 0, 1)));
+    const drain = smooth(clamp((fifthL - 0.46) / 0.42, 0, 1));
+    const nestAmt = fifthL > 0
+      ? mix(0.25, 1, clamp(fifthL * 2.4, 0, 1)) * (1 - clamp((fifthL - 0.70) / 0.25, 0, 1))
       : 0;
-    const houndBorn = clamp((fifth - 0.50) / 0.34, 0, 1);
+    const houndBorn = clamp((fifthL - 0.62) / 0.26, 0, 1);
     /* the Hound stays at the fight too, instead of already walking
        west while Mordrial and Obrokxus are still at it */
     let hU = mix(nestU, DUEL_U - 0.05, fallIn);
@@ -265,12 +282,11 @@
       hAmt = mix(1, 0.12, clamp((ret - 0.45) / 0.55, 0, 1));
     }
 
-    /* Eldrin, the fifth beat's mortal witness: he crosses to the pit
-       behind the gods and steps down into it once they've done what
-       they came to do */
-    const elU = mix(NEST_U - 0.24, NEST_U - 0.03, smooth(clamp((fifth - 0.12) / 0.40, 0, 1)));
-    const elDrop = smooth(clamp((fifth - 0.52) / 0.14, 0, 1));
-    const elAmt = fifth > 0.08 ? clamp((fifth - 0.08) / 0.08, 0, 1) * (1 - elDrop) : 0;
+    /* Eldrin, the fifth beat's mortal witness: he walks in and drops
+       before the four warlocks draw everything into him */
+    const elU = mix(NEST_U - 0.24, NEST_U - 0.03, smooth(clamp((fifthL - 0.08) / 0.34, 0, 1)));
+    const elDrop = smooth(clamp((fifthL - 0.44) / 0.12, 0, 1));
+    const elAmt = fifthL > 0.06 ? clamp((fifthL - 0.06) / 0.06, 0, 1) * (1 - elDrop) : 0;
     const elY = gy(0.05, elU) + elDrop * 0.07 * G.H;
 
     /* facing: figures instead of discs need a direction to look. Obrokxus
@@ -282,6 +298,7 @@
     const inFifth = G.beat === idxOf("fifth");
     const inReturn = G.beat === idxOf("return");
     const inFall = G.beat === idxOf("fall");
+    const inCad = G.beat === idxOf("cadmus"), inAel = G.beat === idxOf("aelius"), inVel = G.beat === idxOf("velindra");
     const sgn = (d) => d > 0 ? 1 : -1;
 
     let oFace = -1;
@@ -300,26 +317,27 @@
 
     const ringMd = fall > 0;
     const ringOthers = fall > 0 && ret <= 0;
-    const mdFace = ringMd ? sgn(ou - mdU) : inFour ? -1 : inFifth ? 1 : sgn(ou - mdU);
-    const cFace = ringOthers ? sgn(ou - cU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - cU);
-    const aelFace = ringOthers ? sgn(ou - aelU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - aelU);
-    const vFace = ringOthers ? sgn(ou - vU) : inFifth ? 1 : inReturn ? -1 : sgn(ou - vU);
+    const mdFace = ringMd ? sgn(ou - mdU) : (inCad || inAel || inVel || inFour) ? -1 : inFifth ? sgn(nestU - mdU) : sgn(ou - mdU);
+    const cFace = ringOthers ? sgn(ou - cU) : inCad ? (cadL < 0.40 ? 1 : -1) : inVel ? 1 : inFifth ? sgn(nestU - cU) : inReturn ? -1 : sgn(ou - cU);
+    const aelFace = ringOthers ? sgn(ou - aelU) : inAel ? 1 : inFifth ? sgn(nestU - aelU) : inReturn ? -1 : sgn(ou - aelU);
+    const vFace = ringOthers ? sgn(ou - vU) : inVel ? -1 : inFifth ? sgn(nestU - vU) : inReturn ? -1 : sgn(ou - vU);
     const hFace = ringOthers ? sgn(ou - hU) : inReturn ? -1 : sgn(ou - hU);
 
     /* movement flags: true only while a figure's u target is actually
        changing this beat, so the walk/run cycle doesn't play while they
        stand still or while they're airborne in the ring fight */
-    const mdWalk = inFour || inFifth;
-    const cWalk = inFifth || inReturn;
-    const aelWalk = inFifth || inReturn;
-    const vWalk = inFifth || inReturn;
+    const walkingIn = inFifth && fifthL < 0.34;
+    const mdWalk = inFour || walkingIn;
+    const cWalk = walkingIn || inReturn;
+    const aelWalk = walkingIn || inReturn;
+    const vWalk = walkingIn || inReturn;
     const hRun = inFall || inReturn;
 
     let army = 0;
     if (war > 0) army = mix(0, 0.32, clamp(war, 0, 1));
     if (stall > 0) army = mix(0.32, 0.42, stall);
     if (lock > 0) army = mix(0.42, 0.55, lock);
-    if (four > 0) army = mix(0.55, 0.82, four);
+    if (mid > 0) army = mix(0.55, 0.82, mid);
     if (fifth > 0) army = mix(0.82, 0.92, fifth);
     if (fall > 0) army = mix(0.92, 1, fall);
     if (ret > 0) army = mix(1, 0, clamp(ret / 0.55, 0, 1));
@@ -344,6 +362,8 @@
       mdU, mdY, mdAmt, mdFall, mdDark, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
       nestU, nestAmt, hU, hY, hAmt, army, civAmt, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
+      cad, ael, vel, mid, cadL, aelL, velL, fifthL, cMortal, teach, pact, pactHit,
+      aelChild, bless, vTaint, vHelp, vForge, ritual, drain, hBorn: houndBorn,
       fightW: war > 0 ? 0 : F.w, strikeM: F.strikeM, strikeA: F.strikeA,
       fallStrikes, etStrike: et > 0 ? duelAt(etLin).strike : 0,
       fallBeat, etBeat, lashM, elU, elDrop, elAmt, elY,

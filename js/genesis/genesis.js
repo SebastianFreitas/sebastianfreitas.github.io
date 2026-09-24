@@ -6,8 +6,9 @@
    left of the frame, the old ones walk the deck, Primordisentia
    is found and warped then bound, two lights tear out and fight
    in the void. Obrokxus wins. Rex becomes Rex the Surface.
-   Then the chase, the children's war, the warlocks, the Hound,
-   Mordrial's fall, and the duel that has not ended. Skip /
+   Then the chase, the children's war, the warlocks born one by one
+   (Cadmus, Aelius, Velindra) and bound fifth in a ritual of all four,
+   the Hound, Mordrial's fall, and the duel that has not ended. Skip /
    Escape jumps to the fade into the live bridge.
 
    Direction: u grows east, east is screen right, and the record
@@ -246,7 +247,8 @@ window.Genesis = (function () {
     root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], birth: [1.00, 1.06],
     fight: [1.06, 1.06], land: [1.06, 1.00], gods: [1.00, 1.05], deep: [1.05, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
-    firstlock: [1.02, 1.08], four: [1.08, 1.02], fifth: [1.02, 1.08], fall: [1.08, 1.00],
+    firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
+    four: [1.10, 1.02], fifth: [1.02, 1.10], fall: [1.10, 1.00],
     return: [1.00, 1.05], eternity: [1.05, 1.00], now: [1.00, 1.00],
   };
 
@@ -258,6 +260,9 @@ window.Genesis = (function () {
     const uWar   = since("war");
     const uStall = since("stalemate");
     const uLock  = since("firstlock");
+    const uCad   = since("cadmus");
+    const uAel   = since("aelius");
+    const uVel   = since("velindra");
     const uFour  = since("four");
     const uFifth = since("fifth");
     const uFall  = since("fall");
@@ -281,9 +286,15 @@ window.Genesis = (function () {
       target = mix(onFight, MAIN_U - 0.04, smooth(clamp((uFall - 0.80) / 0.20, 0, 1)));
     }
     else if (uFifth > 0.02)
-      target = mix(MAIN_U + 0.16, NEST_U + 0.04, smooth(uFifth));
+      target = mix(MAIN_U + 0.10, NEST_U + 0.02, smooth(uFifth));
     else if (uFour > 0.02)
-      target = mix(MAIN_U + 0.02, MAIN_U + 0.20, smooth(uFour));
+      target = mix(MAIN_U - 0.18, MAIN_U + 0.10, smooth(uFour));
+    else if (uVel > 0.02)
+      target = mix(MAIN_U - 0.26, MAIN_U - 0.18, smooth(uVel));
+    else if (uAel > 0.02)
+      target = mix(MAIN_U - 0.14, MAIN_U - 0.26, smooth(uAel));
+    else if (uCad > 0.02)
+      target = mix(MAIN_U + 0.04, MAIN_U - 0.14, smooth(uCad));
     else if (uLock > 0.02)
       target = mix(MAIN_U - 0.10, MAIN_U + 0.04, smooth(uLock));
     else if (uStall > 0.02)

@@ -1,7 +1,8 @@
 /* genesis-saga.js — the mainland's war, drawn from one state object per
    frame (sagaAt): the ground and city come from GenMain, the armies from
    GenArmies, and the cast — Obrokxus, the three gods, the four warlocks,
-   the Hound and Eldrin — are figures from GenFig, not glowing discs. */
+   the Hound and Eldrin — are figures from GenFig, not glowing discs. The
+   warlocks' births and the Hound's ritual are painted by GenRitual. */
 (function () {
   const G = window.Gen;
   const { clamp } = Util;
@@ -38,6 +39,10 @@
     const F = window.GenFig;
     if (!F) return;
 
+    const R = window.GenRitual;
+    if (R) R.drawUnder(ctx, S, F);
+    const T = R && S.ritual > 0.01 ? R.target(S) : null;
+
     /* ---- cast geometry: screen x, height, and yFoot (ground/hover y)
        for everyone. The three gods hover — their state y is the body
        CENTRE, so yFoot is that plus 0.45h; everyone else already has a
@@ -69,7 +74,7 @@
 
     const mdStyle = { lit: "#c8202a", shade: "#7a1218", glow: "190,30,36", core: "#f2e6d8" };
     let mdPose = "stand";
-    if (S.fallStrikes[0] > 0.05) mdPose = "cast";
+    if (S.fallStrikes[0] > 0.05 || S.ritual > 0.1 || S.teach > 0.1) mdPose = "cast";
     else if (S.mdWalk) mdPose = "walk";
     else if (S.mdFall > 0.9) mdPose = "dead";
     let mdG = { gx: 0, gy: 0 };
@@ -77,36 +82,40 @@
       mdG = F.drawWarlock(ctx, mdX, mdYFoot, hMd, mdStyle, {
         a: S.mdAmt, face: S.mdFace, pose: mdPose, split: true,
         tilt: S.mdFall * (Math.PI / 2) * S.mdFace, walk: G.t * 140,
+        reach: T ? T : S.teach > 0.1 ? { x: cX, y: cYFoot - 0.06 * G.H } : undefined,
       });
     }
 
     let cPose = "stand";
-    if (S.fallStrikes[1] > 0.05 || (S.fifth > 0.12 && S.fifth < 0.72)) cPose = "cast";
+    if (S.fallStrikes[1] > 0.05 || S.ritual > 0.1 || S.vHelp > 0.1) cPose = "cast";
     else if (S.cWalk) cPose = "walk";
     let cG = { gx: 0, gy: 0 };
     if (S.cAmt > 0.01) {
       cG = F.drawWarlock(ctx, cX, cYFoot, hC, ORB_STYLE.cadmus, {
         a: S.cAmt, face: S.cFace, pose: cPose, walk: G.t * 140,
+        reach: T ? T : S.vHelp > 0.1 ? { x: vX, y: vYFoot - 0.6 * hV } : undefined,
       });
     }
 
     let aelPose = "stand";
-    if (S.fallStrikes[2] > 0.05) aelPose = "cast";
+    if (S.fallStrikes[2] > 0.05 || S.ritual > 0.1) aelPose = "cast";
     else if (S.aelWalk) aelPose = "walk";
     let aelG = { gx: 0, gy: 0 };
     if (S.aelAmt > 0.01) {
       aelG = F.drawWarlock(ctx, aelX, aelYFoot, hAel, ORB_STYLE.aelius, {
         a: S.aelAmt, face: S.aelFace, pose: aelPose, walk: G.t * 140,
+        reach: T || undefined,
       });
     }
 
     let vPose = "stand";
-    if (S.fallStrikes[3] > 0.05) vPose = "cast";
+    if (S.fallStrikes[3] > 0.05 || S.ritual > 0.1) vPose = "cast";
     else if (S.vWalk) vPose = "walk";
     let vG = { gx: 0, gy: 0 };
     if (S.vAmt > 0.01) {
       vG = F.drawWarlock(ctx, vX, vYFoot, hV, ORB_STYLE.velindra, {
         a: S.vAmt, face: S.vFace, pose: vPose, walk: G.t * 140,
+        reach: T || undefined,
       });
     }
 
@@ -199,12 +208,6 @@
       }
     }
 
-    if (S.fifth > 0.12 && S.fifth < 0.72 && S.cAmt > 0.1) {
-      const beam = Math.sin(clamp((S.fifth - 0.12) / 0.5, 0, 1) * 3.14);
-      const nestX = sx(S.nestU), nestY = GenMain.surfY(nestX) + 4;
-      drawTintBeam(ctx, cG.gx, cG.gy, nestX, nestY, "170,60,40", beam * S.cAmt * 0.85);
-    }
-
     if (S.fall > 0.10 && S.fall < 0.86 && S.oAmt > 0.2) {
       const five = [
         { gx: mdG.gx, gy: mdG.gy, bx: mdX, by: mdYFoot, amt: S.mdAmt, rgb: "200,32,40", strike: S.fallStrikes[0] },
@@ -225,6 +228,8 @@
         }
       }
     }
+
+    if (R) R.drawOver(ctx, S, { mdG, cG, aelG, vG });
 
     if (S.et > 0.12 && S.oAmt > 0.2 && S.mAmt > 0.2) {
       const mHand = godHand(mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
@@ -286,16 +291,16 @@
 
     if (S.fleeLin > 0.08 && S.fleeLin < 0.96) G.shake = Math.max(G.shake, 0.10);
     if (S.war > 0.05 && S.war < 0.95) G.shake = Math.max(G.shake, 0.14);
-    if (S.fifth > 0.2 && S.fifth < 0.8) G.shake = Math.max(G.shake, 0.22);
+    if (S.ritual > 0.1) G.shake = Math.max(G.shake, 0.22 * S.ritual + 0.25 * S.drain * S.ritual);
     if (S.fallBeat) G.shake = Math.max(G.shake, 0.20 + S.fall * 0.22);
     if (S.etBeat) G.shake = Math.max(G.shake, 0.20 + S.etLin * 0.22);
     if (S.dieM > 0.05 && S.dieM < 0.7) G.shake = Math.max(G.shake, 0.55);
 
     const nameUp = S.et > 0 ? 0 : 1;
     drawName(ctx, mdX, mdYFoot + 12, S.mdAmt * (1 - S.dieM) * nameUp, "MORDRIAL", 0);
-    drawName(ctx, cX, cYFoot + 12, S.cAmt * nameUp, "CADMUS", 0);
-    drawName(ctx, aelX, aelYFoot + 12, S.aelAmt * nameUp, "AELIUS", 0);
-    drawName(ctx, vX, vYFoot + 12, S.vAmt * nameUp, "VELINDRA", 0);
+    drawName(ctx, cX, cYFoot + 12, Math.max(S.cAmt, S.cMortal || 0) * nameUp, "CADMUS", 0);
+    drawName(ctx, aelX, aelYFoot + 12, Math.max(S.aelAmt, S.aelChild || 0) * nameUp, "AELIUS", 0);
+    drawName(ctx, vX, vYFoot + 12, Math.max(S.vAmt, S.vTaint || 0) * nameUp, "VELINDRA", 0);
     drawName(ctx, hX, hYFoot + 12, S.hAmt * nameUp, "THE HOUND", 0);
     drawName(ctx, oxS, oyFootO + 12, S.oAmt, "OBROKXUS", 0);
     drawName(ctx, mX, mYFoot + 12, S.mAmt, "ORMIUS", 0);
