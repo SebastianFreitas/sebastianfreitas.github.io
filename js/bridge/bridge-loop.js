@@ -20,6 +20,7 @@
     if (!B.started) return;
 
     if (B.ship) {
+      B.retargetFromPointer();
       const prev = B.camX;
       const out = Voidship.step(B.ship, dt, {
         camX: B.camX, W: B.W, H: B.H, frozen: B.frozen, viewUnits: viewUnitsNow(),

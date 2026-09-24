@@ -254,6 +254,16 @@ a:hover { color: #fff; }
   margin: 0 0 2rem;
 }
 
+/* media placeholder: a marked spot for a clip or image still to come */
+.caption.todo {
+  padding: 2.4rem 1rem;
+  margin: 1.5rem 0 2rem;
+  max-width: 72rem;
+  border: 1px dashed rgb(198 204 198 / 0.32);
+  border-radius: 2px;
+  text-align: center;
+}
+
 .embed {
   width: 100%;
   aspect-ratio: 16 / 9;

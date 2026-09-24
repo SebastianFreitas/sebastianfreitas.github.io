@@ -58,6 +58,8 @@
 
   B.thrustId = null;
   let lastPtr = { x: 0, y: 0 };
+  let downPtr = { x: 0, y: 0 };   // where the hold began
+  const DRAG_LOCK = 12;           // px the pointer must travel from the press before a move can lock a beacon
   B.fuelWarned = false;
   B.courseArmAt = 0; // ignore contact briefly after locking a course
 
@@ -67,6 +69,8 @@
     B.clearMark();
     lastPtr.x = e.clientX;
     lastPtr.y = e.clientY;
+    downPtr.x = e.clientX;
+    downPtr.y = e.clientY;
     const c = clientToCourse(e.clientX, e.clientY);
     if (mark) {
       const seat = courseForMark(mark);
@@ -140,10 +144,16 @@
     }
 
     if (B.thrustId != null && e.pointerId === B.thrustId && B.ship) {
+      // a beacon only becomes the course when the pointer is dragged onto it:
+      // the press must have travelled DRAG_LOCK px, and the previous pointer
+      // spot must be off the beacon (the world scrolling under a still pointer
+      // does not count). A beacon already locked keeps its lock.
+      const m = markAt(e.clientX, e.clientY);
+      const dragged = Math.hypot(e.clientX - downPtr.x, e.clientY - downPtr.y) >= DRAG_LOCK;
+      const entered = m && m !== B.ship.courseMark && dragged && markAt(lastPtr.x, lastPtr.y) !== m;
       lastPtr.x = e.clientX;
       lastPtr.y = e.clientY;
-      const m = markAt(e.clientX, e.clientY);
-      if (m) {
+      if (m && (m === B.ship.courseMark || entered)) {
         if (B.ship.courseMark !== m) B.courseArmAt = performance.now() + 180;
         const seat = courseForMark(m);
         Voidship.setCourse(B.ship, seat.worldX, seat.screenY, m);

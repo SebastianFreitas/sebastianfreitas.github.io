@@ -262,6 +262,14 @@
   font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
   letter-spacing: 0.06em; color: var(--sage-dim); margin: 0.5rem 0 0;
 }
+/* an empty clipbox is a placeholder: frame it so the missing media is obvious */
+.bnote .clipbox.todo {
+  padding: 1.6rem 0.8rem;
+  border: 1px dashed rgb(var(--sage-rgb) / 0.32);
+  border-radius: 2px;
+  text-align: center;
+}
+.bnote .clipbox.todo figcaption { margin: 0; }
 /* ---- scroll cue ---- */
 .bridge-scroll {
   position: absolute; z-index: 12;

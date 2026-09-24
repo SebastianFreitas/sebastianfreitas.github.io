@@ -75,7 +75,7 @@
         <h3>Lamps</h3>
         <p class="body">Most lamps start off. Press E and the beam comes on for a few seconds, then clicks off on its own. Some blink on a cycle and cannot be touched.</p>
         <p class="body">Timers and blink cycles are the whole difficulty curve. The same lamp is a lift in one level and a trap in the next.</p>
-        <figure class="clipbox"><figcaption>Clip to come: a timed lamp lifting a crate up a shaft, then dropping it when the timer runs out.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Clip to come: a timed lamp lifting a crate up a shaft, then dropping it when the timer runs out.</figcaption></figure>
       `
       },
       {
@@ -115,7 +115,7 @@
         <h3>The Journal</h3>
         <p class="body">ESC opens the journal: pause menu and level select in one. Every level shows a mark, reached, passed, or fully completed. Fully completed means you found every clue in it.</p>
         <p class="body">Any level can be replayed from here.</p>
-        <figure class="clipbox"><figcaption>Image to come: the journal with a mix of passed and fully completed levels.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Image to come: the journal with a mix of passed and fully completed levels.</figcaption></figure>
       `
       },
       {

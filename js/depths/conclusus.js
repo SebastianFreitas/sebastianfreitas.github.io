@@ -75,7 +75,7 @@
         <h3>Key and Door</h3>
         <p class="body">Every level has a door and a spinning symbol. Touch the symbol and it flies to the door. In ten levels it comes in three pieces, gathered in order, each with its own note.</p>
         <p class="body">Twenty levels add a rule: every platform must be lit at the same time. Stepping on one lights it for about five seconds, so the route is a race against the first platform going dark.</p>
-        <figure class="clipbox"><figcaption>Clip to come: lighting every platform in a level, then the door opening on the last one.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Clip to come: lighting every platform in a level, then the door opening on the last one.</figcaption></figure>
       `
       },
       {
@@ -102,7 +102,7 @@
         <h3>The Shadow</h3>
         <p class="body">Press S on the ground and a grass green copy of you stays behind. Press S again from anywhere and you are back in it, keeping your speed and direction.</p>
         <p class="body">One shadow at a time. A gap you cannot clear becomes a gap you cross in two moves. Unlocked by a pickup in level 7.</p>
-        <figure class="clipbox"><figcaption>Clip to come: planting the shadow, crossing a gap with a pin, then teleporting back.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Clip to come: planting the shadow, crossing a gap with a pin, then teleporting back.</figcaption></figure>
       `
       },
       {
@@ -116,7 +116,7 @@
         <h3>The Silhouettes</h3>
         <p class="body">The late levels are full of figures shaped like your shadow. Every 1.2 seconds they all switch together. Green is safe and teleports you into it. Silver kills on touch.</p>
         <p class="body">Forty of them across level 16 and levels 25 to 30. The timing is fixed, so every route can be learned.</p>
-        <figure class="clipbox"><figcaption>Clip to come: a corridor of silhouettes switching from green to silver as the player threads through.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Clip to come: a corridor of silhouettes switching from green to silver as the player threads through.</figcaption></figure>
       `
       },
       {
@@ -130,7 +130,7 @@
         <h3>Thirty Levels</h3>
         <p class="body">Thirty levels in three chapters. Walking and jumping first, then pins, the shadow at level 7, then a double jump and the first silhouettes at level 16.</p>
         <p class="body">Progress is one saved number. A level select with thirty buttons opens them in order. No optional content: that time went into the mechanics.</p>
-        <figure class="clipbox"><figcaption>Image to come: the level select with all thirty buttons.</figcaption></figure>
+        <figure class="clipbox todo"><figcaption>Image to come: the level select with all thirty buttons.</figcaption></figure>
       `
       },
       {
