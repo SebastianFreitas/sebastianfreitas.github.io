@@ -24,51 +24,63 @@ window.Gen = (function () {
       line: "There was no place, and no time to say it in. Only a point, and all that would ever be, pressed inside it." },
     { id: "drawn", dur: 5.6, tag: "II · The first law",
       line: "Out of the dark came the span, cold and straight. It did not turn, and that was the first law." },
-    { id: "break", dur: 6.0, tag: "III · The old ones",
-      line: "The point broke. What came out of it we cannot name. It had no colour, and no shape that would hold." },
-    { id: "walk",  dur: 7.0, tag: "IV · One side",
+    { id: "break", dur: 6.0, tag: "III · The breaking",
+      line: "The point broke. What came out of it we cannot name. It had no colour of its own, and no shape that would hold." },
+    { id: "elements", dur: 9.0, tag: "IV · What had no body",
+      line: "First came what had no body: the dust, the air, the wind, the sound, the colour and the light. No law held for long, and every law changed its mind." },
+    { id: "matter", dur: 9.5, tag: "V · Matter",
+      line: "Then came matter: flesh, and stone, and things that were both. It floated, it fell, it broke. Small lives crawled out of it and died where they crawled." },
+    { id: "trade", dur: 10.0, tag: "VI · The old ones",
+      line: "Almost none of them woke, and those that woke had nothing to wake in. They tore from each other what they lacked, and gave what they could spare, until a few could hold." },
+    { id: "walk",  dur: 7.0, tag: "VII · One side",
       line: "Some took the span west, and of them nothing is written. This record follows those who went east." },
-    { id: "root",  dur: 5.8, tag: "V · Primordisentia",
+    { id: "root",  dur: 5.8, tag: "VIII · Primordisentia",
       line: "At the far end they found a cry, and the cry was a body, greater than the sky." },
-    { id: "swarm", dur: 6.8, tag: "VI · Hunger",
+    { id: "swarm", dur: 6.8, tag: "IX · Hunger",
       line: "They fell upon it. Each remade it in the image of its own hunger, and the body screamed, and none of them heard." },
-    { id: "womb",  dur: 7.0, tag: "VII · Crede, ergo magica est",
+    { id: "womb",  dur: 7.0, tag: "X · Crede, ergo magica est",
       line: "Then a silence came over them, and with it the first guilt. They bound the wound in gold, and named the binding a womb." },
-    { id: "birth", dur: 6.2, tag: "VIII · First born",
+    { id: "birth", dur: 6.2, tag: "XI · First born",
       line: "Two lights tore out of the womb. Obrokxus, wrong from his first breath. And Rex, burning like a new star." },
-    { id: "fight", dur: 8.2, tag: "IX · Obrokxus · Rex",
+    { id: "fight", dur: 8.2, tag: "XII · Obrokxus · Rex",
       line: "They met in the void, and the void shook to its roots. We are told that Rex broke. We are not told how." },
-    { id: "land",  dur: 6.6, tag: "X · Rex the surface",
+    { id: "land",  dur: 6.6, tag: "XIII · Rex the surface",
       line: "With the last of himself Rex closed about Obrokxus, and fell. His body cooled into ground, and the ground held." },
-    { id: "gods", dur: 7.0, tag: "XI · The others",
+    { id: "gods", dur: 7.0, tag: "XIV · The others",
       line: "It bought time. The womb tore again, and five walked out of it, and we have only their names: Ormius, Ava, Kaeron, Kaelum, Orochronus." },
-    { id: "deep", dur: 11.0, tag: "XII · Inside Rex",
+    { id: "deep", dur: 11.0, tag: "XV · Inside Rex",
       line: "They went down after him, into the deepest places of Rex. Chaos rose to meet them, answering to no one. Ten thousand years the war ran." },
-    { id: "slip", dur: 7.0, tag: "XIII · His brothers",
+    { id: "slip", dur: 7.0, tag: "XVI · His brothers",
       line: "In time Obrokxus set his brothers upon the gods, and while the gods were held, he climbed." },
-    { id: "flee", dur: 11.6, tag: "XIV · Obrokxus flees",
+    { id: "flee", dur: 11.6, tag: "XVII · Obrokxus flees",
       line: "He tore up through Rex and left a hole where he had been. Two lights followed: Ormius, the law in gold and red, and Ava, pale as a wound that heals." },
-    { id: "war", dur: 9.2, tag: "XV · Their children",
+    { id: "war", dur: 9.2, tag: "XVIII · Their children",
       line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim, and a war with no end." },
-    { id: "stalemate", dur: 5.4, tag: "XVI · Nothing won",
+    { id: "stalemate", dur: 5.4, tag: "XIX · Nothing won",
       line: "Even so, the war led to nothing. It took everything, and gave nothing back." },
-    { id: "firstlock", dur: 6.8, tag: "XVII · Mordrial",
+    { id: "firstlock", dur: 6.8, tag: "XX · Mordrial",
       line: "Out of the war they made one thing together, half Seravim and half Malgrur: Mordrial, the first warlock." },
-    { id: "four", dur: 8.5, tag: "XVIII · Four of the void",
+    { id: "four", dur: 8.5, tag: "XXI · Four of the void",
       line: "Four stood against the dark: Mordrial of the Void, Cadmus Baalzur, Aelius Luxent, and Velindra the Chaos Binder." },
-    { id: "fifth", dur: 7.8, tag: "XIX · The Hound",
+    { id: "fifth", dur: 7.8, tag: "XXII · The Hound",
       line: "Cadmus made a fifth, and it was not a person but a weapon. Eldrin walked into the nest, and the Hound walked out." },
-    { id: "fall", dur: 8.6, tag: "XX · Mordrial fell",
+    { id: "fall", dur: 8.6, tag: "XXIII · Mordrial fell",
       line: "They met Obrokxus, and the fight outlasted counting. Mordrial fell. The rest called it victory, and went home." },
-    { id: "return", dur: 7.6, tag: "XXI · The mainland",
+    { id: "return", dur: 7.6, tag: "XXIV · The mainland",
       line: "They returned to the living and to the void. Only Ormius believed that Obrokxus had survived." },
-    { id: "eternity", dur: 8.8, tag: "XXII · Still fighting",
+    { id: "eternity", dur: 8.8, tag: "XXV · Still fighting",
       line: "No one has gone far enough to see it. Past the edge of every record, they fight there still." },
     { id: "now",   dur: 2.6, tag: "", line: "" },
   ];
 
   const BEAT_INDEX = {};
   G.BEATS.forEach((b, i) => { BEAT_INDEX[b.id] = i; });
+
+  G.BEAT_START = [];
+  (function () {
+    let acc = 0;
+    for (let i = 0; i < G.BEATS.length; i++) { G.BEAT_START[i] = acc; acc += G.BEATS[i].dur; }
+  })();
 
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;
@@ -97,20 +109,12 @@ window.Gen = (function () {
   G.DIVE_DEPTH = 1.12;          /* how far the camera sinks, in screen heights */
   G.FLEE_CAM_RATE = 2.20;
   G.ET_CAM_RATE   = 2.60;
-  G.KINDS  = ["spindle", "cluster", "crawler", "shard", "ring", "blob", "spindle", "crawler"];
   G.SIEGE_GODS = [
     { kind: "ormius",     name: "ORMIUS",     rgb: "210,70,48",   ang: 3.40, ph: 0.0 },
     { kind: "ava",        name: "AVA",        rgb: "120,214,96",  ang: 2.20, ph: 1.3 },
     { kind: "kaeron",     name: "KAERON",     rgb: "70,130,255",  ang: 0.35, ph: 2.6 },
     { kind: "kaelum",     name: "KAELUM",     rgb: "236,92,150",  ang: 4.60, ph: 3.9 },
     { kind: "orochronus", name: "OROCHRONUS", rgb: "196,206,226", ang: 5.70, ph: 5.2 },
-  ];
-  G.GREYS  = [
-    [16, 18, 20],
-    [44, 48, 52],
-    [86, 90, 94],
-    [132, 136, 140],
-    [198, 200, 196],
   ];
 
   G.YELLOW_KEYS = [
@@ -196,37 +200,16 @@ window.Gen = (function () {
   G.NAME_DELAY = 1.5;
   G.NAME_FADE = 0.8;
 
-  G.motes = []; G.oldones = []; G.souls = []; G.troops = []; G.brothers = [];
+  G.motes = []; G.souls = []; G.troops = []; G.brothers = [];
   G.cityFar = []; G.cityMid = []; G.cityNear = []; G.spikes = [];
   (function seed() {
-    const { motes, oldones, souls, troops, brothers, cityFar, cityMid, cityNear, spikes,
-            GREYS, KINDS } = G;
+    const { motes, souls, troops, brothers, cityFar, cityMid, cityNear, spikes } = G;
     const r = mulberry(4242);
     for (let i = 0; i < 280; i++)
       motes.push({ u: r(), y: r(), rr: 0.4 + r() * 1.4, ph: r() * 6.28, a: 0.06 + r() * 0.28 });
-    for (let i = 0; i < 56; i++) {
-      const ga = GREYS[Math.floor(r() * GREYS.length)];
-      const gb = GREYS[Math.floor(r() * GREYS.length)];
-      const gu = r();
-      const sz = r();
-      oldones.push({
-        side: r() < 0.42 ? -1 : 1,
-        ph: r() * 6.28,
-        rr: 0.7 + r() * 1.5,
-        hue: `${Math.round(ga[0] + (gb[0] - ga[0]) * gu)},${Math.round(ga[1] + (gb[1] - ga[1]) * gu)},${Math.round(ga[2] + (gb[2] - ga[2]) * gu)}`,
-        a: 0.4 + r() * 0.5,
-        gait: 0.72 + r() * 0.55,
-        lane: (r() - 0.5) * 14,
-        tall: sz < 0.12 ? 8 + r() * 7 : sz > 0.9 ? 44 + r() * 16 : 14 + r() * 26,
-        ang: r() * 6.283,
-        sp: 28 + r() * 90,
-        limbs: 3 + Math.floor(r() * 4),
-        holes: 1 + Math.floor(r() * 2),
-        clingAng: r() * 6.283,
-        spin: (r() - 0.5) * 0.55,
-        kind: KINDS[Math.floor(r() * KINDS.length)],
-      });
-    }
+    // burn the rolls the old seeded roster used, so everything seeded after keeps its values
+    for (let i = 0; i < 56; i++)
+      for (let k = 0; k < 18; k++) r();
     for (let i = 0; i < 90; i++)
       souls.push({ u: r(), v: r(), ph: r() * 6.28, rr: 0.5 + r() * 1.2, a: 0.2 + r() * 0.5 });
     function troop(kind, home0, home1, n) {
@@ -332,6 +315,11 @@ window.Gen = (function () {
   G.beatDur = function (id) {
     const b = G.BEATS[G.idxOf(id)];
     return (b && b.dur) || 1;
+  };
+
+  /* seconds since beat `id` began: negative before it, still counting after it */
+  G.secs = function (id) {
+    return G.BEAT_START[G.beat] + G.local - G.BEAT_START[G.idxOf(id)];
   };
 
   return G;
