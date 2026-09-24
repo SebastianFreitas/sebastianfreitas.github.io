@@ -30,10 +30,12 @@ apply to the main session, Explore and the implementer alike.
 
 - **Never read a whole file over 300 lines.** Files still over 500 lines:
   `css/bridge.css` (726), `js/hud/instruments.js` (652),
-  `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (621),
-  `js/gamedev/storm.js` (585), `js/ship/voidship-art.js` (566),
+  `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (631),
+  `js/genesis/genesis-trade.js` (622), `js/gamedev/storm.js` (585),
+  `js/genesis/genesis-matter.js` (596), `js/ship/voidship-art.js` (566),
   `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
   `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (501),
+  `js/genesis/genesis-oldones.js` (503),
   `tools/snap.py` (531), `tools/nav-flows.test.py` (890). Use the File map
   below to pick the file and function, then `Grep -n` for the name and
   `Read` with `offset`/`limit` around the hit. Function names do not drift;
@@ -83,7 +85,7 @@ js/depths/                    depths core + zero, voidscape, heavylight, conclus
 js/ship/                      voidship, voidship-art
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
-js/genesis/                   genesis-state, -paint, -void, -flesh, -oldones, -figures, -titans, -mainland, -armies, -orb, -rex, -depths, -saga-state, -saga, genesis
+js/genesis/                   genesis-state, -paint, -void, -flesh, -elements, -matter, -trade, -oldones, -oldkin, -figures, -titans, -mainland, -armies, -orb, -rex, -depths, -saga-state, -saga, genesis
 tools/                        nav-flows.test.py, snap.py, bump.py, gframes.py, jscheck.py
 ```
 
@@ -221,11 +223,15 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
-| `genesis-state.js` | 338 | `BEATS` (23 beats, Roman-numeral tags, biblical lines), world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), seeded scenery, O(1) `idxOf`, `since/linear/only/sx/beatDur`, dev params `?genesis=1` / `?gbeat=<name>` | `window.Gen` |
+| `genesis-state.js` | 326 | `BEATS` (26 beats, Roman-numeral tags, biblical lines), world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>` | `window.Gen` |
 | `genesis-paint.js` | 136 | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-void.js` | 287 | `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks), `drawSpan` (the monumental bridge: slab, piers, arches, gold rail) | `window.GenVoid` |
 | `genesis-flesh.js` | 259 | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
-| `genesis-oldones.js` | 477 | 44 old ones in ten kinds / five locomotions (walk, slide, fly, blink, roll): `ROSTER ORDER place drawOldOnes drawShards drawKind makeOne` | `window.GenOld` |
+| `genesis-elements.js` | 400 | wave one after the break: dust, air, wind, sound, colour (oil/water flips), light; 460 particles, three forms each, rage events and slosh; `drawResidue` = the permanent void traces (dust, wind streaks, colour stains, lights, sound rings) drawn every frame after the far realms | `window.GenElem {draw, drawResidue, rage}` |
+| `genesis-matter.js` | 596 | wave two: 100 flesh/stone/meld chunks (float, fall, break, meld pairs), 150 insects hatching (deformed, most die; storm deaths), 7 lawless storms (air, rain, fire, lightning); pulled together at the start of trade | `window.GenMatter {draw, chunkAt}` |
+| `genesis-trade.js` | 622 | wave three: 36 minds (wet, pointy, rect, fat, thin, many, one) stealing and trading pieces, chaos attacks, 12 deaths, 8 helping pairs; `SPOTS` where the 24 old ones rise; `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {SPOTS, draw, drawStream}` |
+| `genesis-oldones.js` | 503 | 24 old ones, no two alike: one each of the ten old kinds plus fourteen painted in genesis-oldkin.js, six locomotions (walk, slide, fly, blink, roll); they rise from `GenTrade.SPOTS` during the trade beat: `ROSTER_SPECS ROSTER ORDER place drawOldOnes drawShards drawKind makeOne` | `window.GenOld` (also `PAINT litSplit eyeDot`) |
+| `genesis-oldkin.js` | 362 | painters for the fourteen new old ones (tower pearl bundle needle slab bloom comb veil knot husk chime prism swarmling mound), registered into `GenOld.PAINT` | extends `window.GenOld` |
 | `genesis-figures.js` | 313 | flat silhouette cast: `drawGod` (crowns: bars/rings/orbit/clock/petals/spikes), `drawWarlock` (returns the staff gem), `drawTroop`, `drawMortal` + shared `fillPoly shadedPoly quad withTilt` | `window.GenFig` |
 | `genesis-titans.js` | 237 | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"`: stand/lunge/climb/flee) and `drawHound` | extends `window.GenFig` |
 | `genesis-mainland.js` | 374 | mainland bands, the surface cache `surfY(px)`/`surfYAt(wu, rise, scar)` every figure stands on, rooted red spires, the city (roofs, walls, windows, lamps), the nest pit | `window.GenMain` |
@@ -235,7 +241,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-depths.js` | 280 | `drawDepths`: rock, ribs, stalactites, the pocket, Obrokxus in Rex's grip, the five gods circling, 70 brothers (old-one kinds in red), the year counter | `window.GenDepths` |
 | `genesis-saga-state.js` | 356 | `sagaAt`: every saga quantity for the frame (feet via `GenMain.surfYAt`, Mordrial's fall/dark, Obrokxus's lash and sinking, Eldrin, facing and walk flags, `fallBeat/etBeat`) | extends `window.GenSaga` |
 | `genesis-saga.js` | 312 | `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, the cast as figures, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld` | extends `window.GenSaga` |
-| `genesis.js` | 621 | DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash, titans in the fight, the depths, the saga, the now-fade), input | `window.Genesis` |
+| `genesis.js` | 631 | DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash, titans in the fight, the depths, the saga, the now-fade), the three waves (`GenElem`/`GenMatter`/`GenTrade`) and the stream, the old ones' `form`/`march` timing, input | `window.Genesis` |
 
 ### css, pages, tools
 
@@ -273,7 +279,8 @@ lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
 bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
 bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
-genesis-flesh, genesis-oldones, genesis-figures, genesis-titans,
+genesis-flesh, genesis-elements, genesis-matter, genesis-trade,
+genesis-oldones, genesis-oldkin, genesis-figures, genesis-titans,
 genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,
 genesis-saga-state, genesis-saga, genesis} → site/intro`.
 
@@ -287,8 +294,14 @@ after `bridge-depths` and before `bridge-readout`; `genesis-flesh` before
 `genesis-figures`/`genesis-titans` before `genesis-rex`, `genesis-depths`
 and `genesis-saga` (used at call time, kept before for clarity);
 `genesis-mainland` and `genesis-armies` before `genesis-saga-state`/
-`genesis-saga`; `genesis-saga-state` before `genesis-saga`. Scripts carry
-`?v=N` cache-busters; bump them with `py -3 tools/bump.py`.
+`genesis-saga`; `genesis-saga-state` before `genesis-saga`;
+`genesis-trade` before `genesis-oldones` (SPOTS, read at call time);
+`genesis-oldkin` right after `genesis-oldones` (registers into
+`GenOld.PAINT` at parse time). Never bake `G.W`/`G.H` into data at load:
+they are 0 until the cutscene sizes its canvas; store fractions and
+multiply at draw time. `Util.clamp` has no default bounds: always pass
+`0, 1`. Scripts carry `?v=N` cache-busters; bump them with
+`py -3 tools/bump.py`.
 
 Project pages load only `css/style.css`, `css/beacon.css`, then
 `js/lib/util.js → js/site/xp.js → js/site/surge.js` plus `js/site/embed.js`
@@ -319,7 +332,7 @@ and an inline `XP.award(...)`.
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
 | Entry gate | decision `js/site/entry.js`, UI `js/site/intro.js`, CSS `css/gate.css` + `css/bridge.css` boot terminal, bridge defers in `bridge.js` `readyBridge` |
-| Cutscene | `js/genesis/` (see table); cast painters `genesis-figures.js` + `genesis-titans.js`; the old ones `genesis-oldones.js`; the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`; the war `genesis-armies.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`; zoom/captions/letterbox `genesis.js` + `css/bridge.css` genesis block |
+| Cutscene | `js/genesis/` (see table); cast painters `genesis-figures.js` + `genesis-titans.js`; the old ones `genesis-oldones.js`; the birth waves `genesis-elements.js` (wave one + permanent residue), `genesis-matter.js` (matter, insects, storms), `genesis-trade.js` (minds trading pieces, the travelling stream); the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`; the war `genesis-armies.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`; zoom/captions/letterbox `genesis.js` + `css/bridge.css` genesis block |
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |

@@ -1,7 +1,8 @@
-/* genesis-oldones.js — the old ones: 44 grey beings in ten kinds and five
-   ways of moving. They burst out of the point, take the span east (or west
-   and out of the record), halt before the body, climb onto it, and kneel
-   when the seal is laid. Screen-space painters; feet on the deck. */
+/* genesis-oldones.js — the old ones: 24 grey beings, no two alike, in six
+   ways of moving. They rise out of the trade wave where their blob stood,
+   take the span east (or west and out of the record), halt before the
+   body, climb onto it, and kneel when the seal is laid. Screen-space
+   painters; feet on the deck. */
 window.GenOld = (function () {
   const G = window.Gen;
   const { clamp, mix, smooth, hash1, mulberry } = Util;
@@ -12,17 +13,16 @@ window.GenOld = (function () {
 
   /* ---- roster ---------------------------------------------------- */
 
-  const KIND_SPECS = [
-    ["colossus", 3, 0.22, 0.32],
-    ["strider",  5, 0.12, 0.18],
-    ["crawler",  7, 0.04, 0.07],
-    ["slider",   6, 0.05, 0.09],
-    ["floater",  5, 0.07, 0.13],
-    ["winged",   5, 0.05, 0.09],
-    ["blinker",  4, 0.05, 0.08],
-    ["roller",   4, 0.04, 0.07],
-    ["eye",      3, 0.06, 0.10],
-    ["mass",     2, 0.06, 0.10],
+  /* twenty-four old ones, no two alike: the first ten are the old kinds,
+     one each; the rest are painted in genesis-oldkin.js */
+  const ROSTER_SPECS = [
+    ["colossus", 1, 0.27], ["strider", 1, 0.14], ["crawler", -1, 0.055], ["slider", -1, 0.07],
+    ["floater", 1, 0.10], ["winged", -1, 0.07], ["blinker", 1, 0.065], ["roller", -1, 0.055],
+    ["eye", 1, 0.09], ["mass", 1, 0.08],
+    ["tower", 1, 0.20], ["pearl", 1, 0.06], ["bundle", 1, 0.08], ["needle", -1, 0.05],
+    ["slab", 1, 0.09], ["bloom", 1, 0.07], ["comb", 1, 0.08], ["veil", -1, 0.06],
+    ["knot", -1, 0.06], ["husk", 1, 0.10], ["chime", 1, 0.09], ["prism", 1, 0.08],
+    ["swarmling", -1, 0.07], ["mound", 1, 0.12],
   ];
   const MOVE = {
     colossus: "walk", strider: "walk", crawler: "walk", mass: "walk",
@@ -30,6 +30,11 @@ window.GenOld = (function () {
     floater: "fly", winged: "fly", eye: "fly",
     blinker: "blink",
     roller: "roll",
+    tower: "walk", slab: "walk", comb: "walk", husk: "walk",
+    pearl: "roll", knot: "roll",
+    bundle: "fly", needle: "fly", veil: "fly", chime: "fly", swarmling: "fly",
+    bloom: "slide", mound: "slide",
+    prism: "blink",
   };
   const HUES = ["220,60,50", "70,130,255", "120,214,96", "236,92,150", "245,208,107", "140,70,210"];
 
@@ -58,18 +63,36 @@ window.GenOld = (function () {
     };
   }
 
+  // standard HSL -> "r,g,b" (h in 0..1), same comma format as HUES
+  function hslStr(h, s, l) {
+    const f = n => {
+      const k = (n + h * 12) % 12;
+      const a = s * Math.min(l, 1 - l);
+      return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    };
+    return `${Math.round(f(0) * 255)},${Math.round(f(8) * 255)},${Math.round(f(4) * 255)}`;
+  }
+
   const ROSTER = (function build() {
     const rnd = mulberry(9001);
     const list = [];
-    for (const [kind, n, hfLo, hfHi] of KIND_SPECS) {
-      for (let i = 0; i < n; i++) {
-        const forceEast = kind === "colossus" || kind === "eye";
-        const side = forceEast ? 1 : (rnd() < 0.35 ? -1 : 1);
-        const o = rollBeing(kind, side, hfLo, hfHi, rnd);
-        o.idx = list.length;
-        list.push(o);
-      }
+    for (const [kind, side, hf] of ROSTER_SPECS) {
+      const o = rollBeing(kind, side, hf, hf, rnd);
+      o.idx = list.length;
+      list.push(o);
     }
+    // no two share a grey: an even spread of 24 greys, shuffled onto the roster
+    const greys = list.map((o, i) => 70 + Math.round(i * 130 / 23));
+    const shuffle = mulberry(9004);
+    for (let i = greys.length - 1; i > 0; i--) {
+      const j = Math.floor(shuffle() * (i + 1));
+      const t = greys[i]; greys[i] = greys[j]; greys[j] = t;
+    }
+    list.forEach((o, i) => {
+      const g = greys[i], sg = Math.round(g * 0.45);
+      o.g = g; o.lit = `rgb(${g},${g},${g})`; o.shade = `rgb(${sg},${sg},${sg})`;
+      o.hue = i < 6 ? HUES[i] : hslStr((i * 0.41) % 1, 0.65, 0.6);
+    });
     return list;
   })();
   const ORDER = ROSTER.map((o, i) => i).sort((a, b) => ROSTER[a].lane - ROSTER[b].lane);
@@ -78,8 +101,8 @@ window.GenOld = (function () {
   // roster (Obrokxus's brothers); side is always +1, tint optionally overrides
   // the grey lit/shade with {lit, shade} CSS colour strings
   function makeOne(kind, seed, tint) {
-    const spec = KIND_SPECS.find(s => s[0] === kind);
-    const o = rollBeing(kind, 1, spec[2], spec[3], mulberry(seed));
+    const spec = ROSTER_SPECS.find(s => s[0] === kind);
+    const o = rollBeing(kind, 1, spec[2] * 0.8, spec[2] * 1.25, mulberry(seed));
     if (tint) { o.lit = tint.lit; o.shade = tint.shade; }
     return o;
   }
@@ -91,10 +114,13 @@ window.GenOld = (function () {
     const idx = o.idx;
     const { burst, walk, cling, still, watch, flesh } = env;
 
-    /* 1. burst out of the point */
-    const r = (0.10 + 0.45 * o.sp) * burst;
-    const x0 = sx(0) + Math.cos(o.ang) * r * 0.45 * W;
-    const y0 = 0.46 * H + Math.sin(o.ang) * r * 0.16 * H;
+    /* 1. rise out of the trade wave where their blob stood */
+    const spot = window.GenTrade && GenTrade.SPOTS[o.idx];
+    const ox = spot ? sx(0) + spot[0] * W : sx(0);
+    const oy = spot ? spot[1] * H : 0.46 * H;
+    const r = (0.01 + 0.025 * o.sp) * burst;
+    const x0 = ox + Math.cos(o.ang) * r * 0.45 * W;
+    const y0 = oy + Math.sin(o.ang) * r * 0.16 * H;
     const settle = smooth((burst - 0.30) / 0.55);
     const rot = (1 - settle) * (o.ang * 3 + burst * 6 * o.sp);
     const scale = mix(0.2, 1, smooth(burst * 1.3));
@@ -473,5 +499,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { ROSTER, ORDER, place, drawOldOnes, drawShards, drawKind, makeOne };
+  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawKind, makeOne, litSplit, eyeDot };
 })();

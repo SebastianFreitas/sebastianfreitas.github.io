@@ -241,7 +241,8 @@ window.Genesis = (function () {
 
   /* slow push-in / pull-out per beat: [from, to] applied over the beat */
   const ZOOM = {
-    point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05], walk: [1.05, 1.02],
+    point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05],
+    elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
     root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], birth: [1.00, 1.06],
     fight: [1.06, 1.06], land: [1.06, 1.00], gods: [1.00, 1.05], deep: [1.05, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
@@ -405,6 +406,7 @@ window.Genesis = (function () {
       + uFlee * (1 - since("war")) * 70
       + since("eternity") * 84;
     drawMotes(ctx, clamp(uBreak * 0.55 + uWalk * 0.45 + uLand * 0.15 + uFlee * 0.2, 0, 1), streak);
+    GenElem.drawResidue(ctx);   // what the first waves left in the void, for good
 
     const iDeep = idxOf("deep"), iSlip = idxOf("slip");
     let dive = 0;
@@ -416,7 +418,6 @@ window.Genesis = (function () {
 
     const uBreakLin = linear("break");
     const leave = smooth(clamp(uBreakLin * 3.2, 0, 1));
-    const burst = smooth(clamp((uBreakLin - 0.22) / 0.45, 0, 1));
     const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
     const pointVis = (G.beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
     drawPoint(ctx, pointVis, crack);
@@ -432,6 +433,9 @@ window.Genesis = (function () {
     }
     GenVoid.drawSpan(ctx, uDrawn);
     GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1));
+    GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light
+    GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms
+    GenTrade.draw(ctx);       // wave three: the minds trading pieces
 
     const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
     const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
@@ -449,7 +453,13 @@ window.Genesis = (function () {
     const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
     const still = uWomb;
     const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
-    GenOld.drawOldOnes(ctx, { burst, walk: uWalk, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
+    /* the old ones rise out of the trade wave where their blob stood, and start
+       down the span before the beat ends, so the procession never stops */
+    const tTrade = G.secs("trade");
+    const form = smooth(clamp((tTrade - 7.0) / 2.2, 0, 1));
+    const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, uWalk);   // step off early, then keep pace with the camera
+    GenTrade.drawStream(ctx);   // everything that travels with them
+    GenOld.drawOldOnes(ctx, { burst: form, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
     drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
