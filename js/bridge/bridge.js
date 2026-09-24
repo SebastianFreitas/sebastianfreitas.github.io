@@ -128,6 +128,7 @@
   }
 
   function startLoop() {
+    if (!B.pacer) return;   // an observer can fire between scripts, before bridge-loop.js has made the pacer; site:enter starts it later
     if (B.pacer.running) { B.pacer.start(); return; }   // start() on a running pacer just unparks
     if (!B.entered) return;
     if (!B.visible || B.portrait || document.hidden) return;

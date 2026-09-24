@@ -93,7 +93,8 @@ window.BridgeVoice = (function () {
           () => `dose ${f2(0.8, 3.2)} µsv/h · galactic`,
           () => `particle flux ${fmt(rint(400, 9000))}/cm²·s`,
           () => `plasma density ${f1(0.2, 9)}/cm³`,
-          () => `chaos ${S.chaosNow.toFixed(2)} · unformed ${S.futureNow.toFixed(2)}`,
+          () => { const e = S.env; return `incoherent ${(e ? e.chaos : S.chaosNow).toFixed(2)} · unformed ${(e ? e.future : S.futureNow).toFixed(2)}`; },
+          () => `coherent ${(S.env ? S.env.nomic : 0).toFixed(2)} · incoherent ${(S.env ? S.env.chaos : S.chaosNow).toFixed(2)}`,
           () => `lidar to ${fmt(rint(40, 90) * 1000)} m · no return`,
           () => `strain ${rint(40, 180)} µε · hull quiet`,
         ],
@@ -169,6 +170,8 @@ window.BridgeVoice = (function () {
           () => `optical ${rint(2, 9)} lines at ${rint(486, 656)} nm · no body`,
           () => `dose ${f1(6, 22)} µsv/h · directional`,
           () => `skin charge +${f1(0.2, 2.4)} kv · steady`,
+          () => `optics ${rint(60, 95)}% washed · the light has no source ranged`,
+          () => `camera ${rint(1, 4)} · frame white · exposure at minimum`,
         ],
         warn: [
           () => `rf ${f1(1.2, 9.8)} ghz · ${rint(40, 90)} db over floor`,
@@ -201,6 +204,8 @@ window.BridgeVoice = (function () {
           () => `tissue mass ${fmt(rint(200, 4000))} m across · contiguous`,
           () => `pressure ${f1(4, 19)} kpa · co2 ${fmt(rint(40000, 120000))} ppm`,
           () => `field ${rint(90, 400)} µt · organic, not ferrous`,
+          () => `coherent ${f2(0.9, 1)} · sign negative · every channel swinging · no noise`,
+          () => `constants ${rint(2, 9)}% off · together · in step`,
         ],
         warn: [
           () => `pulse ${rint(11, 48)} bpm · amplitude +${rint(4, 30)}%`,
@@ -208,6 +213,7 @@ window.BridgeVoice = (function () {
           () => `cabin o2 ${f1(14.2, 18.9)}% · scrubbers at ${rint(80, 100)}%`,
           () => `field ${rint(200, 900)} µt · modulated at ${rint(11, 48)} bpm`,
           () => `hull ${f1(31, 44)}°c · the dark here is warm`,
+          () => `bus ${f1(21, 25)} v · swinging ${f1(0.2, 0.8)} hz · load flat`,
         ],
         err: [
           () => `ph ${f1(0.4, 1.1)} · plating loss ${f2(0.1, 0.9)} mm/min`,
@@ -264,6 +270,7 @@ window.BridgeVoice = (function () {
           () => `field ${rint(90, 600)} µt · unmapped`,
           () => `albedo 0.0${rint(2, 9)} · absorbs ${rint(91, 99)}%`,
           () => `surface ${f0(-160, -90)}°c · pressure ${f2(0, 0.8)} kpa`,
+          () => `coherent ${(S.env ? S.env.nomic : 0).toFixed(2)} · rising with bearing · incoherent 0.00`,
         ],
         warn: [
           () => `${rint(2, 40)} returns from a body charted as 1`,
@@ -311,6 +318,12 @@ window.BridgeVoice = (function () {
       },
     };
 
+    /* the places in bridge-sites.js carry their own lines */
+    if (window.BridgeSites && BridgeSites.lines) {
+      const siteZones = BridgeSites.lines(S, { rnd, rint, f0, f1, f2, fmt, pickOne });
+      for (const id in siteZones) ZONES["site:" + id] = siteZones[id];
+    }
+
     /* what the hull says back after a reading it can't use */
     const ERR_RESP = [
       () => `reading rejected · sensor ${rint(1, 9)} flagged for recal`,
@@ -342,6 +355,8 @@ window.BridgeVoice = (function () {
 
     /* where we are, as far as the instruments are concerned */
     function zoneAt(x) {
+      const e = S.env;
+      if (e && e.site && e.w >= 0.5 && ZONES["site:" + e.site]) return "site:" + e.site;
       if (S.sceneMode !== "void") return "gamedev";
       if (Math.abs(x - LAND.mainland) < SLOT * 1.6) return "mainland";
       if (x > LAND.root - SLOT * 1.4) return "root";

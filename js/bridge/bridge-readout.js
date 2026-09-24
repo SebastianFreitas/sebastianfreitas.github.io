@@ -14,6 +14,7 @@
   B.voice = BridgeVoice.create({
     get camX() { return B.camX; }, get vel() { return B.vel; }, get chaosNow() { return B.chaosNow; },
     get futureNow() { return B.futureNow; }, get ship() { return B.ship; }, get sceneMode() { return B.sceneMode; },
+    get env() { return B.env; },
     get breaches() { return breaches; }, activeMarks, LAND, SLOT, CAM,
   });
   const { pickOne, rnd, rint, fuelPool, ANY, ZONES, ERR_RESP, DC_RESP, REPAIR_STEP, DEGRADED, zoneAt, zoneHeat } = B.voice;
@@ -105,6 +106,8 @@
     "bnote-land": "mainland", "bnote-rex": "rex", "bnote-root": "root",
     "bnote-watcher": "watcher", "bnote-bridge": "bridge", "bnote-future": "future",
     "bnote-void": "void",
+    "bnote-planet-zero": "zero", "bnote-planet-voidscape": "voidscape",
+    "bnote-planet-heavylight": "heavylight", "bnote-planet-conclusus": "conclusus",
   };
 
   B.lastRegion = ""; B.nearest = null;
@@ -180,6 +183,7 @@
   /* canvas-only half of the HUD: runs after the frame's DOM writes, so the
      font sets inside don't force a second style recalculation */
   function drawInstruments(dt) {
+    if (B.stepEnv) B.stepEnv(dt);
     if (window.Instruments) {
       const st = B.ship ? Voidship.stats(B.ship) : null;
       Instruments.draw(dt, {
@@ -187,6 +191,7 @@
         speedN: st ? st.speedN : Math.min(1, Math.abs(B.vel) / CAM.maxFling),
         chaos: B.chaosNow,
         future: B.futureNow,
+        env: B.env,
         spanPct: (CAM.max - B.camX) / (CAM.max - CAM.min) * 100,
         travelled: B.travelled,
         region: B.lastRegion,
