@@ -244,32 +244,30 @@ window.World = (function () {
     F.dtNow = v.dt != null ? v.dt : 1 / 60;
     if (v.maxFling) F.V.maxFling = v.maxFling;
     const mode = v.mode || "void";
+    // the Game Dev sector is its own world (js/gdworld/); only the ship is shared
+    if (mode === "gamedev" && window.GdWorld) { GdWorld.draw(context, v); return; }
     const { ctx, W, H } = F;
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
-    ctx.fillStyle = mode === "gamedev" ? "#070910" : "#0d1114";
+    ctx.fillStyle = "#0d1114";
     ctx.fillRect(0, 0, W, H);
 
     P.drawVoid();
 
-    if (mode === "gamedev") {
-      P.drawSectorGlow();
-    } else {
-      P.drawChaos();
-      P.drawPresences();
-      P.drawTendrils();
-      P.drawFuture();
-      P.drawWatcher();
-      faded("bnote-watcher-redstar", P.drawRedStar);
-      faded("bnote-bridge-nephilim", P.drawNephilim); faded("bnote-bridge-admin", P.drawAdminTear); faded("bnote-bridge-vikings", P.drawVikings);
-      P.drawRex();
-      P.drawBand(city.far, 0.30, "#161d21", 0.5);
-      P.drawBand(city.mid, 0.46, "#182025", 0.78);
-      P.drawCityNear();
-      P.drawLandPlace("bnote-land-shattered", "shattered", SHATTERED); P.drawLandPlace("bnote-land-libertech", "libertech", LIBERTECH); P.drawLandPlace("bnote-land-dawn", "dawn", FIRST_DAWN); P.drawLandPlace("bnote-land-accord", "accord", DIVINE_ACCORD); P.drawLandPlace("bnote-land-gore", "gore", GORE_LEGION);
-      P.drawRoot();
-      P.drawFragments();
-    }
+    P.drawChaos();
+    P.drawPresences();
+    P.drawTendrils();
+    P.drawFuture();
+    P.drawWatcher();
+    faded("bnote-watcher-redstar", P.drawRedStar);
+    faded("bnote-bridge-nephilim", P.drawNephilim); faded("bnote-bridge-admin", P.drawAdminTear); faded("bnote-bridge-vikings", P.drawVikings);
+    P.drawRex();
+    P.drawBand(city.far, 0.30, "#161d21", 0.5);
+    P.drawBand(city.mid, 0.46, "#182025", 0.78);
+    P.drawCityNear();
+    P.drawLandPlace("bnote-land-shattered", "shattered", SHATTERED); P.drawLandPlace("bnote-land-libertech", "libertech", LIBERTECH); P.drawLandPlace("bnote-land-dawn", "dawn", FIRST_DAWN); P.drawLandPlace("bnote-land-accord", "accord", DIVINE_ACCORD); P.drawLandPlace("bnote-land-gore", "gore", GORE_LEGION);
+    P.drawRoot();
+    P.drawFragments();
 
     P.drawBridge();
   }

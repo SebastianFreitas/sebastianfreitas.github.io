@@ -161,6 +161,21 @@
         }
       }
 
+      // a second contact: our own echo, a few px behind us on the sweep (Conclusus)
+      const tw = e.twin || 0;
+      if (tw > 0.02) {
+        const beat = Math.floor((e.t || 0) / 1.2) % 2;   // the 1.2 s switch
+        const gx = cx - 7 - beat * 2, gy = cy + 4;
+        ctx.save();
+        ctx.globalAlpha = tw * (beat ? 0.85 : 0.55);
+        ctx.drawImage(blipGlowBitmap(COLD), gx - 10, gy - 10, 20, 20);
+        ctx.fillStyle = `rgba(${COLD},0.9)`;
+        ctx.beginPath(); ctx.arc(gx, gy, 2.4, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = `rgba(${COLD},0.6)`;
+        ctx.beginPath(); ctx.arc(gx, gy, 5.5, 0, 6.283); ctx.stroke();
+        ctx.restore();
+      }
+
       // ship heading pip
       const head = (r.ship && r.ship.angle != null) ? r.ship.angle : 0;
       ctx.strokeStyle = `rgba(${COLD},0.7)`;
@@ -234,7 +249,8 @@
       const frozen = e.frozen || 0;
       const sway = e.sway || 0;
 
-      chaosNeedle = approach(chaosNeedle, r.chaos || 0, 4, dt);
+      // the world curve, or a site that bends chaos (the alarm rule in instruments.js reads the same)
+      chaosNeedle = approach(chaosNeedle, Math.max(r.chaos || 0, e.chaos || 0), 4, dt);
       futureNeedle = approach(futureNeedle, r.future || 0, 4, dt);
       nomicNeedle = approach(nomicNeedle, nomic, 4, dt);
 

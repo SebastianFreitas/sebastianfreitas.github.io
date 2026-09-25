@@ -184,34 +184,10 @@
     }
   }
 
-  /* ---- Game Dev sector: same bridge, everything else swapped
-     for a drifting nebula haze + whatever bodies bridge.js is
-     currently flying past. No lore geography involved. ---- */
-  function drawSectorGlow() {
-    const { ctx, W, H, camX } = F;
-    const s = scale();
-    const hues = ["132,96,176", "92,150,178", "182,132,90"];
-    for (let i = 0; i < 3; i++) {
-      const par = 0.045 + i * 0.05;
-      const off = camX * par * s;
-      const span = 5400;
-      const cx = ((i * 2100 - off) % span + span) % span - span * 0.18;
-      const cy = H * (0.2 + i * 0.26);
-      const r = Math.min(W, H) * (0.52 + i * 0.1);
-      if (!onScreen(cx, r)) continue;
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, `rgba(${hues[i]},0.055)`);
-      g.addColorStop(1, `rgba(${hues[i]},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    }
-  }
-
   P.drawVoid = drawVoid;
   P.drawChaos = drawChaos;
   P.drawTendrils = drawTendrils;
   P.drawPresences = drawPresences;
   P.drawFragments = drawFragments;
   P.drawFuture = drawFuture;
-  P.drawSectorGlow = drawSectorGlow;
 })();
