@@ -121,7 +121,7 @@ owner and no code.
 |---|---|---|---|
 | 1 | Style research and rules proposal | research, doc | done 2026-09-25 |
 | 2 | Discussion: the rules and the open questions | owner talk | done 2026-09-25 |
-| 3 | Eldritch lore bible (tiers 1–3) | doc | todo |
+| 3 | Eldritch lore bible (tiers 1–3) | doc | done 2026-09-25 |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
 | 5 | Wardrobe casting sheet | design doc | todo |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
@@ -191,7 +191,15 @@ Must carry the owner's Phase 2 lore (see **Decisions** D9–D11): tier 2
 is the bridge, tier 1 lies under the sea the elements make, tier 3 was
 born first, the soul kind (Rex, the mainland) reaches up with tier 3's
 potential in it, nothing born of the womb is eldritch.
-Notes:
+Notes: done 2026-09-25. Digest (Lovecraft, Ligotti, Blackwood, Roadside
+Picnic, Control, Dishonored, Bloodborne, Planescape, the Warp, Flatland,
+Star Maker, Blindsight, antimemetics, Victorian rag trade, perquisites,
+mourning, Veblen) in `research/03-lore.md`. Bible in
+`.claude/lore/eldritch.md`: the record is tier 1 and blind; tier 3 born
+first at the breaking; blindness by scale, forgetting and cost; the
+indirect chain; every old one is the only one of its kind; three reasons
+to dress; the road of a coat; the headless gentleman. Three open
+questions at its end (who tailors, west-goers, the site's "Outsiders").
 
 ### 4 · Baseline frames and the eldritch palette
 Capture `snap.py` "before" for the whole cutscene and `gframes.py`
@@ -402,3 +410,11 @@ Notes:
   palette covers cloth, leather, fur, metal and the tier-3 steps only.
 - (Phase 2) The colossus goes (D2); Phase 5 casts 24 with the headless
   gentleman in its slot, and Phase 6 does not reshape the colossus.
+- (Phase 3) The captions are a tier-1 record, blind to tier 3: "first
+  born" (`birth`) means first of the womb, "cannot name" (`break`) means
+  the chaos. Any new copy speaks from the same blindness.
+- (Phase 3) Lore hooks for later phases: a habit of looking up / holding
+  still in the silences (Phase 14), relics where tier 3 shifted and an
+  old-clothes dealer on the span (Phase 19), dust falling sideways and
+  motes turning at once as the chain's first link (Phases 16–18), the
+  headless gentleman's warmth is fit, not bulk (Phase 8).
