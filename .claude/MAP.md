@@ -156,7 +156,7 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 | `watcher.js` | 220 | `WATCHER_SHARDS`/`WATCHER_CRACKS`, `drawWatcher` (calls `P.serusPhase`/`P.drawSerus`), `RED_STAR`, `drawRedStar` |
 | `serus.js` | 154 | `serusPhase`, `drawSerus` (the alien coiled in the Watcher) |
 | `nephilim.js` | 194 | `NEPHILIM` anchor, `nephRng`, `NEPH_*`, `nephWalk`, `nephRibbon`, `flatVolume`, `drawNephilim` |
-| `admin-tear.js` | 75 | `ADMIN_TEAR`, `TEAR_JAG`, `drawAdminTear` |
+| `admin-tear.js` | 75 | `ADMIN_TEAR`, `TEAR_JAG`, `TEAR_MOTES`/`SPECKS`/`STITCH`, `tearLine`/`tearHalf`/`tearPath`, `drawAdminTear` (a cut in reality: warped lattice sheared into the wound, lit lip, void with specks, infall motes, gold sutures at the tips) |
 | `vikings.js` | 47 | `VIKINGS`, `VIKING_STARS`/`LINES`/`MAG`, `drawVikings` |
 | `rex.js` | 166 | `fillRidge` wrapper, `drawRex`, `drawHell`, `rexInterior`, `drawRexPlaces` (reads `window.RexArt`) |
 | `city.js` | 169 | `drawBand`, `drawCityNear`, `drawLandPlace` (reads `window.LandArt`), `drawRoot`, `drawBridge` |
