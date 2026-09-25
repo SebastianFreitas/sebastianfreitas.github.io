@@ -55,3 +55,92 @@ backdrop never competes with them.
 
 - The implementer never sees this file: copy the rules that apply into
   the spec's Style section.
+
+## Eldritch (the genesis cutscene)
+
+Owner's calls, 2026-09-25 (plan: `.claude/plans/genesis-eldritch.md`,
+reasons in `.claude/plans/research/01-style.md`). The rules above still
+hold except where a line here says otherwise.
+
+**Scope.** The old ones, what lives on the bridge, the sky shadows.
+Nothing born of the Primordisentia's womb is eldritch: souls, Rex,
+Obrokxus and his brothers, the gods, the mainland and the city keep the
+rules above only.
+
+**Three tiers.** Tier 1, the mortal realm, lies under a sea at the
+bottom of the frame. Tier 2 is the bridge and everything living on it:
+the bridge is so big that its thickness alone spans galaxies. Tier 3 is
+things bigger than the void, glimpsed in the sky. Tiers 1 and 2 never
+know tier 3 exists. At the elements beat the particles split three ways:
+a third sinks into that sea, a third settles on the bridge, a third rises
+into the air. The mainland and Rex stand above the sea: the soul kind
+reaching up, with tier 3's potential in it.
+
+### Figures and clothes
+
+- **Outline first.** Filled flat in one colour, every figure still shows
+  its kind and its garment.
+- **Holes, not lines.** Interior detail (a monocle, lace, the gap between
+  cape and body, buttonholes) is cut through the shape to the backdrop.
+- **One trait, pushed.** A dressed old one wears one or two pieces, one
+  exaggerated past sense: hats 3–6× head height, brims 2–3× body width,
+  shoes 2–3× long. Any garment on anyone, women's dress included
+  (bonnets, bustles, muffs, veiled hats): clothing is loot.
+- **Nothing fits.** Found clothes show it: hat perched with a gap or
+  tipped, hems dragging, a coat off one shoulder, scale that ignores the
+  wearer, a piece on the wrong end. Only the tailored one is symmetric,
+  snug and complete.
+- **Two suits.** One tailored (high society), one found. The tailored one
+  is tall, thin and immaculate, no skin showing, and has no head: a very
+  tall hat sits where the head would be. He replaces the colossus.
+- **Crisp cloth, rough body.** Cloth edges are clean polygons and gentle
+  curves; the body under them stays jagged and lumpy.
+- **Winter reads as mass.** Scalloped fur edges, collars turned up,
+  capes and mufflers doubling the shoulder line, snow as flat pale caps
+  on top edges. No fur texture, no hair strokes.
+- **Wardrobe palette.** Cloth is darker and less saturated than its
+  wearer: coal, slate, bottle green, oxblood, camel; spats or a collar as
+  the one pale note. Metal is dull ochre and never glows.
+- **Third tone band (change).** Cloth and tier-3 shapes may carry a mid
+  band between lit and shade: one more flat shape, never a gradient, and
+  still no second `litShade`. No painted patches or noise.
+- **Spot-black nicks.** The shadow edge of a garment may carry 1–3 small
+  notches, still following the light from the left.
+- **Eyes are rare.** Most old ones have no eyes. The few that do each
+  have their own eye, drawn for that being alone.
+- **Nothing repeats.** No two old ones share a body, a garment, an eye or
+  any other asset; no stamped copies.
+- **Stillness is the uncanny.** Hold still where a body should move, then
+  snap to the next pose with no in-betweens.
+
+### Tier 3 (the sky shadows)
+
+- **First and rare.** They are the first thing born: plainest in the
+  opening beats, then fast becoming a rare sighting behind everything,
+  mostly in the void beats, sometimes in a corner.
+- **Never whole.** Never even half in frame: an edge, a curve, a limb or
+  a brim cut by the screen edge. Hard to see.
+- **Farthest value step.** 1–2 flat steps off the backdrop (#0d1114), in
+  3–4 stepped fog layers at most; behind a caption, within one step.
+- **Absence as presence.** A tier-3 being may be a region where the far
+  lights and motes are missing.
+- **Wrong parallax.** It ignores the camera's pan and zoom, or moves
+  against it.
+- **Geometry against flesh.** Simple, large, near-perfect forms (arcs,
+  straight edges, a brim, a lidless curve), our own shapes.
+- **Ignores the light (change).** No left-lit split: one flat value, or
+  its shade falls straight down or toward the light.
+- **Only effects reach below.** What it does shows only as effects in
+  tiers 2 and 1 (the chaos lurching, motes turning at once, blobs knocked
+  aside); never a beam, a line or contact.
+- **Slow and wrong.** Very slow drift against the wind, or one stepwise
+  lurch; nothing bobs. Reduced motion: still and visible.
+
+### Tier 2 (the bridge)
+
+- **Scale through life.** The bridge's size shows through what lives on
+  it: nests on the piers like birds' nests, eldritch cities grown round
+  the span, all tiny against it.
+- **Cold rift light (change).** Only at `break` and `walk`, a rift in the
+  chaos may light the facing side of the nearest silhouette with one flat
+  cool band: the only second light.

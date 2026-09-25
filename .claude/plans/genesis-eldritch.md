@@ -120,7 +120,7 @@ owner and no code.
 | # | Phase | Kind | Status |
 |---|---|---|---|
 | 1 | Style research and rules proposal | research, doc | done 2026-09-25 |
-| 2 | Discussion: the rules and the open questions | owner talk | todo |
+| 2 | Discussion: the rules and the open questions | owner talk | done 2026-09-25 |
 | 3 | Eldritch lore bible (tiers 1–3) | doc | todo |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
 | 5 | Wardrobe casting sheet | design doc | todo |
@@ -137,10 +137,10 @@ owner and no code.
 | 16 | Tier 3: the sky layer and the shadows | code | todo |
 | 17 | Tier 3: acting across the beats | code | todo |
 | 18 | Tier 3 → tier 2 → tier 1: the indirect chain | code | todo |
-| 19 | Tier 2: the far realms re-imagined | code | todo |
+| 19 | Tier 2: life on the bridge (nests, cities) | code | todo |
 | 20 | The emergence: climbing out of the mass | code | todo |
-| 21 | The brothers in the depths (if D5 says yes) | code | todo |
-| 22 | Captions and titles for the eldritch beats (if D6 says yes) | copy | todo |
+| 21 | The elements split: the sea, the bridge, the air | code | todo |
+| 22 | Captions (D6 said no) | copy | dropped |
 | 23 | Performance pass | code | todo |
 | 24 | Full review, reduced motion, rules final | review | todo |
 
@@ -170,7 +170,12 @@ agreed section to `.claude/rules/art-style.md`; record answers in
 second, cold rim light for the chaos (breaks "light from the left"
 only for eldritch?); outlines on cloth; a palette shift toward
 Dishonored's teal/ochre within "backdrops stay dark".
-Notes:
+Notes: done 2026-09-25, no web research (a talk phase; the new tier ideas
+get researched in Phases 3, 19 and 21). Applied to `art-style.md` as the
+"Eldritch" section: figure and tier-3 adds, rule 8 as a mid band (no
+patches), 18 yes, 22 only at break/walk, rule 11 replaced by "eyes are
+rare, each unique" and "nothing repeats"; tier-2 accent rules 21 and 23
+replaced by the owner's bridge idea. Answers in **Decisions**.
 
 ### 3 · Eldritch lore bible
 Research: Lovecraft's Great Old Ones vs Outer Gods (Azathoth, the
@@ -182,6 +187,10 @@ and 2 never know tier 3), why old ones dress (warmth against chaos, the
 taste for status, trophies of tier 1), where clothes come from (taken,
 found, gifted; tailoring as the mark of high society), how tier 3 acts
 ("something else", never direct). Add a `.claude/MAP.md` pointer.
+Must carry the owner's Phase 2 lore (see **Decisions** D9–D11): tier 2
+is the bridge, tier 1 lies under the sea the elements make, tier 3 was
+born first, the soul kind (Rex, the mainland) reaches up with tier 3's
+potential in it, nothing born of the womb is eldritch.
 Notes:
 
 ### 4 · Baseline frames and the eldritch palette
@@ -227,10 +236,11 @@ Notes:
 
 ### 8 · The tailored one
 Research: bespoke Gilded Age evening and winter dress, Savile Row cut,
-the Outsider's and Dishonored aristocrats' bearing. Dress the most
-intelligent old one (the colossus, or whoever Phase 5 chose) head to
-toe: top hat, fur-collared greatcoat, gloves, cane, tailored boots that
-fit *its* feet. It should be the most striking figure of `trade`–`womb`.
+the Outsider's and Dishonored aristocrats' bearing, headless-figure
+illustration. A new kind that replaces the colossus (D2): tall, thin,
+super elegant, no skin showing, no head, a very tall hat where the head
+would be; fur-collared greatcoat, gloves, cane, tailored boots. Walks
+east. It should be the most striking figure of `trade`–`womb`.
 Notes:
 
 ### 9 · The second suit
@@ -284,9 +294,10 @@ beat. Cached. Snap every beat before and after.
 Notes:
 
 ### 17 · Tier 3: acting across the beats
-Motion from the Phase 15 script: slow, huge, rare. Present from `break`
-(or earlier: before the point broke?) through the eldritch beats;
-decide with the owner whether any trace stays after `land`.
+Motion from the Phase 15 script: slow, huge, rare. Timing is D4: the
+first thing born, plainest in `point`/`drawn`, then a rare sighting
+behind everything, mostly in the void beats, sometimes a corner; never
+even half seen.
 Notes:
 
 ### 18 · The indirect chain
@@ -297,11 +308,14 @@ consequences only through shared systems (no mainland art changes).
 Research: butterfly-effect storytelling, Control's Altered World Events.
 Notes:
 
-### 19 · Tier 2: the far realms re-imagined
-Research: Dishonored's Void (floating islands of houses, whale bones,
-debris in grey haze), Control's shifting brutalist rooms, the Astral
-Plane. Redesign `drawChaos` from blobs into tier-2 scenery with this
-language, dark and low-contrast, so tier 3 above reads as bigger still.
+### 19 · Tier 2: life on the bridge
+Re-scoped in Phase 2: tier 2 *is* the bridge (`drawSpan` in
+`genesis-void.js`). Research: megastructure scale (BLAME!, Kowloon Walled
+City, Anor Londo, Dishonored's Void islands, cliff-nesting birds,
+barnacles and coral on piers). Show the bridge's size (its thickness
+spans galaxies) through what lives on it: nests on the piers, eldritch
+cities grown round the span, tiny against it. `drawChaos` may lose its
+blobs if they fight this.
 Notes:
 
 ### 20 · The emergence
@@ -311,16 +325,19 @@ mass with them (found in there?), the tailored one emerges last or
 first with ceremony.
 Notes:
 
-### 21 · The brothers (D5)
-If in scope: a few of the 70 red brothers in `genesis-depths.js` carry
-a single piece (a hat) so they read as the same society. Tiny sizes:
-only shapes that survive at 0.32 scale.
+### 21 · The elements split: the sea, the bridge, the air
+Replaces the brothers (D5: out, born of the womb). The owner's idea
+(D10): the `elements` particles (`genesis-elements.js`) are the first,
+smallest old ones. A third sink and pool at the bottom into a sea (not
+water); under it is tier 1. A third settle on the bridge. A third rise
+into the air. The mainland and Rex stand above the sea. Research: sea
+of souls / sea of bodies imagery, particle settling, sediment. Check
+`drawResidue` and the mainland beats: the sea must not touch
+`genesis-mainland.js` art (a layer under it).
 Notes:
 
 ### 22 · Captions (D6)
-If in scope: research Control's bureau voice and Dishonored's journals;
-propose new or amended lines for `trade`–`womb` that hint at the
-dressing and at "something above" without naming tier 3. Owner picks.
+Dropped: the owner keeps every caption as it is.
 Notes:
 
 ### 23 · Performance
@@ -336,26 +353,37 @@ Full `gframes` sheets of every eldritch beat, reduced motion check, full
 Eldritch section matches what shipped), MAP rows, list of loose ends.
 Notes:
 
-## Decisions (owner answers; Phase 2 fills most)
+## Decisions (owner answers, Phase 2, 2026-09-25)
 
-- **D1 · Suits.** The brief says "maybe 2 with full suits" and "only one
-  has the full thing". Working assumption: **two full suits, one
-  tailored** (high society) and **one found** (nothing fits). Confirm.
-- **D2 · Who is the tailored one?** The colossus is the only biped
-  (0.27 H, west-goer, leaves early). Keep it, move it east, or promote
-  another?
-- **D3 · Rule changes.** Which Phase 1 proposals change existing rules.
-  The five *change* rules in `research/01-style.md`: 8 (third tone band),
-  9 (painted patches), 11 (black eyes on all 24), 18 (tier 3 ignores the
-  light), 22 (cold rift light). The 18 *add* rules go in on a yes.
-- **D4 · Tier 3 visibility.** Always there, or only in some beats; any
-  trace after `land`; present before `break`?
-- **D5 · Brothers.** Are Obrokxus's brothers in scope (Phase 21)?
-- **D6 · Captions.** May the eldritch beats' lines change (Phase 22)?
-- **D7 · The Primordisentia.** Is the flesh body eldritch (in scope for
-  tier 3 interplay) or soul-kind (hands off)? Default: hands off.
-- **D8 · Women's dress.** Do old ones take women's Gilded Age dress
-  (bonnets, bustles, muffs) too? Default: yes, clothing is loot.
+- **D1 · Suits.** Yes: two full suits, one tailored (high society), one
+  found (nothing fits).
+- **D2 · The tailored one.** Not the colossus (the owner dislikes it): a
+  new being replaces it. Tall, thin, super elegant, no skin shows, no
+  head; a very tall hat sits where the head would be. East-goer
+  (assumed, so the camera keeps it).
+- **D3 · Rule changes.** 8: yes as a mid flat band, 9 (patches): no.
+  18: yes. 22: only at `break` and `walk`. 11: replaced; eyes are rare
+  on old ones, and each that has one has its own. All figure and tier-3
+  adds: yes. Tier-2 adds 21 and 23: replaced by D11. Plus: no repeated
+  assets anywhere in the roster.
+- **D4 · Tier 3 timing.** The first born, the first to appear, in the
+  opening beats; fast becoming a rare sight behind everything, mostly at
+  the start and in the void beats, sometimes in a corner. Very hard to
+  see; never even half of one.
+- **D5 · Brothers.** Out: they are born of the womb.
+- **D6 · Captions.** No: keep every line. Phase 22 dropped.
+- **D7 · The Primordisentia.** Out, and so is everything born of it
+  (Rex, Obrokxus, souls, the mainland).
+- **D8 · Women's dress.** Yes, any garment on anyone.
+- **D9 · Tier 1.** Lies under a sea at the bottom of the frame; the
+  mainland and Rex stand above it: the soul kind reaching up, with the
+  potential for tier 3 in it.
+- **D10 · The sea.** The `elements` particles are the smallest old ones:
+  a third sink into the sea, a third settle on the bridge, a third rise
+  into the air (Phase 21).
+- **D11 · Tier 2 is the bridge.** Its thickness alone spans galaxies;
+  its scale shows through what lives on it: nests like birds', cities of
+  eldritch beings round it (Phase 19).
 
 ## Carry forward
 
@@ -369,3 +397,8 @@ Notes:
 - (Phase 1) Garment readability ranking (top hat, wide brim, bustle,
   Inverness cape, huge shoes first) is in `research/01-style.md`; Phase 5
   casts from it.
+- (Phase 2) The Phase 1 corruption-hue note (neither red nor the
+  Primordisentia's field) is moot: rule 21 was not adopted. Phase 4's
+  palette covers cloth, leather, fur, metal and the tier-3 steps only.
+- (Phase 2) The colossus goes (D2); Phase 5 casts 24 with the headless
+  gentleman in its slot, and Phase 6 does not reshape the colossus.
