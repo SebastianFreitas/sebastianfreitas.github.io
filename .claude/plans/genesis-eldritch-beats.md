@@ -2,8 +2,8 @@
 
 Design for phases 26–29 of `.claude/plans/genesis-eldritch.md`. Research
 in `.claude/plans/research/25-inspired.md`; lore in
-`.claude/lore/eldritch.md`. Status: **proposal, waiting on the owner's
-answers (Q1–Q7 at the end)**. Anything marked *(rec.)* is my recommendation.
+`.claude/lore/eldritch.md`. Status: **settled** (phase 25a, 2026-09-25;
+the owner's answers are D17–D24 in the plan, summed up at the end).
 
 ## The idea in one paragraph
 
@@ -13,7 +13,8 @@ magica est is exactly what these worlds lack), pull the devouring souls
 apart, remake them from the pieces that hold, and send them through life
 after life. After enough lives, two souls remember what nobody taught
 them. Those two are the lights that tear out of the womb at `birth`:
-Rex and Obrokxus. The old ones, their work done, have already gone.
+Rex and Obrokxus. The old ones, their work done, have mostly gone; a
+few powerful ones stay, having chosen to care for the soul kind forever.
 This joins D16 to the existing story without changing a caption: the
 womb caption becomes the question the new beats answer, and "first born"
 stays true (the first *born*; everything before was made).
@@ -21,18 +22,18 @@ stays true (the first *born*; everything before was made).
 ## Where they sit
 
 Five beats between `womb` (X) and `birth`, about 38 s, taking the
-cutscene from 225 s to about 264 s. A 3-beat version is in Q2.
+cutscene from 225 s to about 264 s (D18).
 
 | # | id | dur | tag | one idea on screen |
 |---|---|---|---|---|
-| XI | `dress` | 7.0 | XI · Borrowed shape | bodies snap into new shapes; the first garments |
+| XI | `dress` | 7.0 | XI · Borrowed shape | bodies snap to their evolved assets; the first clothes, self-made |
 | XII | `worlds` | 8.5 | XII · The made worlds | the body opens; rows of tiny hand-cranked worlds inside |
 | XIII | `remake` | 7.5 | XIII · Taken apart | a devouring clot pulled into threads; a soul rebuilt heart first |
 | XIV | `lives` | 9.0 | XIV · Again | spin, measure, cut: lives dropped into the worlds; two souls change colour |
-| XV | `leave` | 6.5 | XV · The hands | the lamps go out; the old ones scatter across the void |
+| XV | `leave` | 6.5 | XV · The hands | most lamps go out; the old ones scatter; a few stay lit |
 
 `birth` and every later tag get renumbered: XI→XVI through
-XXVIII→XXXIII (Q3).
+XXVIII→XXXIII (D19).
 
 ## Camera
 
@@ -48,11 +49,14 @@ existing ZOOM table gets five rows).
 ### XI · `dress` (Phase 26)
 
 - **Shown.** The east-goers still kneel round the rim, still (womb's
-  stillness carries over). One at a time, never two together, a body
-  **snaps** to a new outline (no morph: a hold, a one-frame change, a
-  hold, per "stillness is the uncanny"). Then a first garment arrives on
-  it, lowered from above by a thin line or handed on by the one beside:
-  hung, not conjured. By the end about half are changed; the rest change
+  stillness carries over). One at a time, never two together, a bare
+  body **snaps** to its evolved asset (no morph: a hold, a one-frame
+  change, a hold, per "stillness is the uncanny"). The evolved asset is
+  drawn on its own (D22): the inspired body and the clothes it made,
+  not the bare sprite with cloth laid on. Between snaps a few are seen
+  making: a length of cloth pulled taut, cut, wrapped against the cold
+  of the void (D23): made by hand, not conjured, not copied from
+  anyone. By the end about half are changed; the rest change
   off-screen (they come back dressed in `worlds`).
 - **Body change rule.** The inspired body is the bare body pulled toward
   the soul kind's *upright*: it gains a vertical axis, a top a hat can
@@ -63,9 +67,9 @@ existing ZOOM table gets five rows).
   the roller rises onto one peg foot (one huge boot); the veil's hem
   lifts into a shoulder line (a cape); the mass grows a single ledge
   (a muffler slung on it).
-- **Headless gentleman.** Arrives here, not before *(rec.)*: he walks in
-  from the east already tailored, the only one who did not need to
-  change. Everyone else is still becoming what he already is (Q5).
+- **Headless gentleman.** Bare among the east-goers from the emergence
+  (D21), like everyone else. He changes here with the rest; his evolved
+  asset is the tall, thin, fully tailored one with the very tall hat.
 - **Flesh.** The gold seal holds; the eyes stay shut; souls keep their
   slow ring.
 
@@ -116,18 +120,24 @@ existing ZOOM table gets five rows).
 
 ### XV · `leave` (Phase 29)
 
-- **Shown.** The old ones fold their tools; the cutaway closes; the
+- **Shown.** The old ones fold their tools; the cutaway closes; most of the
   work lamps along the rim go out one by one, left to right. Each old
   one's accent becomes one small pin of light; the pins run once back
   along the rim, then scatter outward across the void in every
   direction like ships' lamps leaving harbour, and fade. The last thing
   moving is the Primordisentia, turning, full of worlds, unwatched.
   The camera pulls back to `birth`'s framing.
-- **Consequence.** Nobody watches `birth` and `fight`: the 55 % watch
-  and the fade across `land` go (Q4). The old ones next appear only as
-  the civilizations of Phase 19.
+- **Who stays (D20).** Not every pin leaves. A very small share, few
+  but among the most powerful, keep their lamps lit and stay on the
+  rim: the ones who decided to care for the soul kind forever.
+- **Consequence.** Only those carers watch `birth` and `fight`: the
+  55 % watch stays, thinned to them (the `land` fade as today). The
+  rest next appear only as the civilizations of Phase 19.
 
 ## Draft captions (the record's voice)
+
+Placeholders for the whole plan (D24): the owner will replace the text
+and how captions work later. Use these as they are; do not polish.
 
 The record is written by the soul kind, and the soul kind lived these
 beats from inside, so for the first time it can say "we". It sees hands
@@ -159,36 +169,28 @@ Then `birth` as it stands: "Two lights tore out of the womb."
   env chain (pain, cry, patches, souls, cling/still/watch) extended so
   `womb`'s end state holds through the new beats.
 - `genesis-oldones.js` `place()`: the new poses (crank, pull, line,
-  leave); watch and the `land` fade removed.
+  leave); the watch thinned to the carers who stay (D20). Each
+  east-goer needs a second painter for its evolved asset (D22).
 - `genesis-flesh.js`: the cutaway, the clots, the souls' new motion.
 - A new painter file for the works (worlds, cards, counter, threads)
-  *(rec.)*: `js/genesis/genesis-works.js`, loaded after `genesis-flesh`.
+  *(proposed)*: `js/genesis/genesis-works.js`, loaded after `genesis-flesh`.
 - `snap.py` picks new scenes up by itself (`genesis-dress` …); old
   baselines have no match for them, and every later beat's scene shifts
   in time, so the first capture after the insert is the new baseline.
 
-## Questions for the owner (asked through the AskUserQuestion UI in phase 25a)
+## The owner's answers (phase 25a, D17–D24)
 
-- **Q1 · The story tie.** Rex and Obrokxus are the two souls that
-  remembered first, so the new beats end where `birth` begins. Yes?
-- **Q2 · How many beats.** Five (above, ~38 s) *(rec.)*, or three
-  (~23 s): `dress` folded into the end of `womb`, `worlds`, and one
-  `lives` beat that holds both the remaking and the lives, with `leave`
-  at its tail.
-- **Q3 · Numbering.** Renumber every later tag (XI → XVI …) *(rec.)*, or
-  give the new beats sub-numbers (X·i … X·v) and leave the old tags?
-- **Q4 · After the leaving.** Gone before `birth` *(rec.; D16 says they
-  do not stand watching)*, or leave after `fight` as today?
-- **Q5 · The headless gentleman.** Walks in at `dress` already
-  tailored *(rec.)*, or is among the east-goers from the emergence,
-  bare, and gets tailored at `dress` like the rest change?
-- **Q6 · The first clothes.** Before any mortal existed to lose a coat,
-  where did the first ones come from? My proposal: the first world they
-  built was a cold one, the first lives lived in it wore coats, and the
-  old ones copied what they saw. That is why they wear *winter* clothes,
-  and it makes the first tailors copyists of the lives inside. It means
-  `dress` shows only the body change (the gentleman the one dressed
-  figure), and the garments arrive one by one across `worlds` and
-  `lives`, handed up out of the cutaway.
-  Or: clothes arrive whole at `dress`, as the plan has it now.
-- **Q7 · The captions.** Keep, change or rewrite any of the five.
+- **Q1 · Story tie.** Yes: Rex and Obrokxus remembered first (D17).
+- **Q2 · Beats.** Five, ~38 s (D18).
+- **Q3 · Numbering.** Renumber: XI–XV new, `birth` XVI (D19).
+- **Q4 · After the leaving.** Most gone before `birth`; a very small,
+  powerful share stay to care for the soul kind forever and watch
+  `birth` and `fight` (D20).
+- **Q5 · Gentleman.** Bare from the emergence, changed at `dress` with
+  the rest (D21). Every east-goer gets its own evolved asset: the
+  roster's east-goer drawings double (D22).
+- **Q6 · First clothes.** Inspired, they make their own at `dress`;
+  winter clothes because the void is cold (D23). The copied-from-the-
+  cold-world idea is dropped.
+- **Q7 · Captions.** Kept as drafted, as placeholders for the whole
+  plan (D24).

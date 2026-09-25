@@ -82,10 +82,14 @@ reaching up, with tier 3's potential in it.
   its kind and its garment.
 - **Holes, not lines.** Interior detail (a monocle, lace, the gap between
   cape and body, buttonholes) is cut through the shape to the backdrop.
-- **Who dresses, and when.** Only the east-goers, and only from `womb`
-  on: reshaping the womb inspired them to change their bodies and wear
-  clothes. Before `womb` every old one is bare, and the west-goers stay
-  bare for good.
+- **Who dresses, and when.** Only the east-goers, and only from `dress`
+  (the beat after `womb`): reshaping the womb inspired them to change
+  their bodies and make their own winter clothes. Before `dress` every
+  old one is bare, the headless gentleman included, and the west-goers
+  stay bare for good.
+- **Two assets per east-goer.** The evolved (inspired, dressed) state is
+  drawn as its own asset, not the bare one with clothes laid on; the
+  change between them is a stepwise snap, never a morph.
 - **One trait, pushed.** A dressed old one wears one or two pieces, one
   exaggerated past sense: hats 3–6× head height, brims 2–3× body width,
   shoes 2–3× long. Any garment on anyone, women's dress included

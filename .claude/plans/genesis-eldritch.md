@@ -133,7 +133,7 @@ session.
 | 2 | Discussion: the rules and the open questions | owner talk | done 2026-09-25 |
 | 3 | Eldritch lore bible (tiers 1–3) | doc | done 2026-09-25 |
 | 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | done 2026-09-25 |
-| 25a | The owner's answers to Q1–Q7 (beats doc) | owner talk, doc | todo |
+| 25a | The owner's answers to Q1–Q7 (beats doc) | owner talk, doc | done 2026-09-25 |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
 | 5 | Wardrobe casting sheet | design doc | todo |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
@@ -432,31 +432,42 @@ owner flagged and confirm the new wording in one more
 `AskUserQuestion` if needed); update the lore bible's proposed lines
 and open questions; adjust phases 26–29 and Phase 5's two-states note
 (Q6 decides whether `dress` carries garments); commit, report.
+Notes: done 2026-09-25. D17–D24. The owner took the recommendation on
+Q1–Q3; changed Q4 (a few powerful carers stay and watch, D20), Q5 (the
+gentleman is bare from the emergence, D21, and every east-goer gets a
+second, evolved asset, D22) and Q6 (they make their own clothes at
+`dress`, winter because the void is cold, D23); captions are
+placeholders for the whole plan (D24). Beats doc and lore bible updated.
+
+### 26 · The inspiration (`dress`, XI)
+After time with the womb the east-goers change, one at a time: each bare
+asset snaps to its evolved asset (D22: inspired body and its own
+clothes, drawn separately), and the old ones are seen making their first
+clothes themselves (D23). The headless gentleman is among them (D21).
+Before `dress` every old one is bare. Needs Phases 5–11's evolved assets;
+this phase builds the beat and the stepwise snap between the two assets
+(per "stillness is the uncanny"). Design in the beats doc.
 Notes:
 
-### 26 · The inspiration
-At `womb` the east-goers change: bodies reshaped by what they learned,
-and the first clothes. Before `womb` every old one is bare. Needs Phases
-5–11's dressed states; this phase builds the change between the bare
-and the dressed body (a stepwise snap, per "stillness is the uncanny").
-Notes:
-
-### 27 · The worlds inside
+### 27 · The worlds inside (`worlds`, XII)
 The old ones build simulated universes inside the Primordisentia, with
-no magic: made, not conjured. Design from Phase 25.
+no magic: made, not conjured. Design in the beats doc.
 Notes:
 
-### 28 · The remaking
+### 28 · The remaking (`remake` XIII, `lives` XIV)
 The souls, which devour each other, are forced apart; the old ones take
 pieces and remake souls, and send them through life after life until
-they rediscover magic, the soul kind's power. Design from Phase 25.
+two (Rex and Obrokxus, D17) rediscover magic, the soul kind's power.
+Design in the beats doc.
 Notes:
 
-### 29 · The leaving
-Once the cycle runs, the old ones leave to live their own lives and rule
-their own alien civilizations all over the void. They no longer stand
-and watch `birth` and `fight` at 55 % (Phase 25 decides). Pairs with
-Phase 19's cities.
+### 29 · The leaving (`leave`, XV)
+Once the cycle runs, most old ones leave to live their own lives and
+rule their own alien civilizations all over the void. A very small,
+powerful share stay to care for the soul kind forever (D20): only they
+still watch `birth` and `fight` at 55 %. This phase stages the split
+(which lamps go out, which stay lit) and thins the watch to the
+carers. Pairs with Phase 19's cities.
 Notes:
 
 ## Decisions (owner answers, Phase 2, 2026-09-25)
@@ -508,7 +519,35 @@ Owner answers after Phase 3 (2026-09-25):
   them through enough lives to rediscover magic, the soul kind's power.
   Once that cycle runs they do not stand watching: they leave, live their
   own lives and rule their own alien civilizations all over the void.
-  Phases 25–29.
+  Phases 25–29. (Amended by D20: a few stay.)
+
+## Decisions (owner answers, Phase 25a, 2026-09-25)
+
+- **D17 · The story tie.** Rex and Obrokxus are the two souls who
+  remembered first: the new beats end where `birth` begins.
+- **D18 · Five beats.** `dress`, `worlds`, `remake`, `lives`, `leave`
+  after `womb`, about 38 s (the cutscene goes from ~225 s to ~264 s).
+- **D19 · Numbering.** The new beats are XI–XV; `birth` becomes XVI and
+  every later tag shifts by five (to XXXIII).
+- **D20 · Who stays (amends D16).** Most old ones are gone before
+  `birth`. A very small share stay: the ones who decided to care for the
+  soul kind forever, few but among the most powerful. They, and only
+  they, still watch `birth` and `fight` (the 55 % watch stays for them).
+  Which ones and how many: Phase 5 casts, Phase 29 stages.
+- **D21 · The headless gentleman.** Bare from the emergence, among the
+  east-goers like the rest. Nobody has clothes until they have spent
+  time with the womb; he is tailored at `dress` with everyone else.
+- **D22 · Two assets per east-goer.** Each east-goer gets a separately
+  drawn evolved asset (the inspired body plus its own clothes), not the
+  bare one with clothes laid on: the east-goer roster doubles. The
+  change between the two is a stepwise snap.
+- **D23 · The first clothes.** Inspired, the old ones start making their
+  own clothes, at `dress`. They are winter clothes because the void is
+  cold. Not copied from the lives in the worlds.
+- **D24 · Captions are placeholders for this whole plan.** The five
+  drafts stand; no phase of this plan polishes caption copy. The owner
+  will replace the caption text and how captions work after the plan,
+  in separate work.
 
 ## Carry forward
 
@@ -541,8 +580,14 @@ Owner answers after Phase 3 (2026-09-25):
   the headless gentleman as an east-goer whose body appears at `womb`
   (or earlier bare; Phase 25 decides). Phase 13's winter only touches
   the dressed.
-- (Phase 25) Rex and Obrokxus are proposed as the two souls who
-  remembered first, so the new beats end where `birth` begins. Inserting
+- (Phase 25a) Settled: the gentleman is bare from the emergence (D21);
+  each east-goer's evolved state is its own drawn asset, not an overlay
+  (D22), and appears at `dress`; the clothes are self-made winter
+  clothes (D23), so Phase 5's "where it came from" is "made" for every
+  first garment (taken / found / gifted / tailored apply to later ones).
+  Phase 5 also marks the few carers who stay (D20).
+- (Phase 25) Rex and Obrokxus are the two souls who remembered first
+  (D17), so the new beats end where `birth` begins. Inserting
   beats shifts every later beat's snap scene in time: the first capture
   after the insert is the new baseline for every `genesis-*` scene after
   `womb`. Beat-insert touch list is in the beats doc.

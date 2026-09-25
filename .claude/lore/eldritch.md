@@ -59,17 +59,19 @@ the same blindness.
    made and not conjured, force the souls apart, take pieces and remake
    souls, and send them through life after life until they rediscover
    magic, the soul kind's own power (D16).
-   *Proposed (Phase 25, pending the owner):* the worlds are made the way
+   Settled (phase 25a, D17–D24): the worlds are made the way
    a tailor or a clockmaker works, by crank, card and rod, law by law,
    so nothing in them answers to belief; the souls are remade heart
    first, like a garment on a form; lives are spun, measured and cut.
    The first two souls to remember are Rex and Obrokxus, and they are
    the lights that tear out at `birth`. Beats and captions in
    `.claude/plans/genesis-eldritch-beats.md`.
-10. **The leaving.** Once the cycle runs, the old ones go. They live
+10. **The leaving.** Once the cycle runs, most old ones go. They live
     their own lives and rule their own civilizations all over the void.
-    From here on the story belongs to the soul kind, and the eldritch
-    become the weather it lives in.
+    A very small share stay: few, but among the most powerful, the ones
+    who decided to care for the soul kind forever (D20). They alone
+    watch `birth` and `fight`. From here on the story belongs to the
+    soul kind, and the eldritch become the weather it lives in.
 
 ## The three tiers
 
@@ -237,7 +239,12 @@ it carries, a bonnet is a nest, a muff is a room.
 
 ## Where clothes come from
 
-**99 % never owned their clothes.** Every garment has a road:
+**The first clothes were made.** Inspired by the womb, the east-goers
+changed their bodies and began making their own clothes (D23). They are
+winter clothes because the void is cold. Nobody copied them from
+anyone: there was no one yet to copy. Every garment since is younger.
+
+**99 % never owned their clothes.** Every later garment has a road:
 
 - **Taken.** From a mortal, from another old one, from a nest. Taken
   clothes are the most common and fit worst.
@@ -279,7 +286,9 @@ the rest of the bridge can tell at a glance.
 
 The one full tailored suit (D1, D2): tall, thin, immaculate, no skin
 showing, and no head. A very tall hat sits where a head would be. He
-replaces the colossus and walks east.
+replaces the colossus and walks east. Like every old one he is bare
+until the womb (D21); his tailored self is the evolved form he takes at
+`dress`, the finished version of what the others only begin.
 
 What is true of him:
 
@@ -310,7 +319,7 @@ inside it. From the eldritch side:
 - The old ones remade the soul kind, but not its magic: the souls had to
   rediscover that themselves, over many lives, in universes the old ones
   built without any. Rex and the mainland reach *upward*, which nothing
-  from matter does, and the old ones copied their clothes, not that.
+  from matter does, and the old ones borrowed their upright shape, not that.
 - The tier-3 potential in the soul kind (D9) is felt by old ones as
   something wrong and attractive, the way a draught near a door is. It
   is why eldritch beings haunt the mainland's edges.
@@ -343,18 +352,12 @@ cities that anyone has written of.
 
 Answered 2026-09-25: the site says "Old Ones" where it said
 "Outsiders" (D12); there are many tailors (D13); the west-goers never
-dress (D14). Still open, for Phase 25:
+dress (D14). Answered in phase 25a (D17–D24): the worlds are built by
+crank, card and rod; five beats (XI–XV) between `womb` and `birth`;
+Rex and Obrokxus are the two who remembered first; most old ones are
+gone by `birth` but a few powerful carers stay and watch; the first
+clothes were self-made, winter because the void is cold; captions are
+placeholders for the whole plan.
 
-1. What the universes inside look like in flat art, and how the old ones
-   build them "without magic" (machines, looms, law, patience?).
-2. How many new beats, where they sit before `birth`, and their captions
-   (D6 kept every line; new beats need new ones).
-3. Whether the old ones are gone by `birth` or leave after `fight`.
-4. Where the first clothes came from, before any mortal lived to lose
-   them: copied by the first tailors from the lives inside the womb?
-
-Phase 25 proposes answers to all four (the owner decides, as Q1–Q7 in
-`.claude/plans/genesis-eldritch-beats.md`): crank-and-card worlds;
-five beats between `womb` and `birth`; gone before `birth`; and the
-first clothes copied from the lives in the first world they built, a
-cold one, which is why they are winter clothes.
+Still open: which old ones are the carers who stay, and how many
+(Phase 5 casts, Phase 29 stages).
