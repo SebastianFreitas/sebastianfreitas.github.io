@@ -258,7 +258,7 @@
         <p class="tag">Runaways · The western fringe</p>
         <h3>The Shattered</h3>
         <p class="body">They were the Mainland's scholars, until one of them reached too deep into the chaos and something reached back. The affliction took the whole circle. Now the Mainland's forces hunt them as runaways.</p>
-        <p class="body">They travel in stolen ships, on captured eldritch mounts and through portals torn open by ritual. The Abyssal Scholars still take notes. The Void Cultists pray to the dark. The Fragmented Minds came back remade, and they hear the Outsiders.</p>
+        <p class="body">They travel in stolen ships, on captured eldritch mounts and through portals torn open by ritual. The Abyssal Scholars still take notes. The Void Cultists pray to the dark. The Fragmented Minds came back remade, and they hear the Old Ones.</p>
       `
       },
       {

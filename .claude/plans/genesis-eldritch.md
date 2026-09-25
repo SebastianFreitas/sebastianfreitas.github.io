@@ -2,7 +2,8 @@
 
 A many-phase plan. Each phase is one owner prompt ("go"), one session,
 one finished and committed result. **Scope: eldritch beings only**:
-the old ones, the far realms, and a new tier-3 layer. Souls, the gods,
+the old ones, the far realms, and a new tier-3 layer; since D16 also the
+old ones' work inside the Primordisentia (phases 25–29). Souls, the gods,
 angels, devils, vorgath, Rex, Obrokxus, the mainland and the city stay
 exactly as they are.
 
@@ -122,6 +123,7 @@ owner and no code.
 | 1 | Style research and rules proposal | research, doc | done 2026-09-25 |
 | 2 | Discussion: the rules and the open questions | owner talk | done 2026-09-25 |
 | 3 | Eldritch lore bible (tiers 1–3) | doc | done 2026-09-25 |
+| 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | todo |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
 | 5 | Wardrobe casting sheet | design doc | todo |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
@@ -130,9 +132,13 @@ owner and no code.
 | 9 | The second suit (found, nothing fits) | code | todo |
 | 10 | Wardrobe batch: the east-goers A | code | todo |
 | 11 | Wardrobe batch: the east-goers B | code | todo |
-| 12 | Wardrobe batch: the west-goers | code | todo |
+| 12 | Wardrobe batch: the west-goers (D14: they never dress) | code | dropped |
 | 13 | Winter against the chaos: weather on the cloth | code | todo |
 | 14 | Acting: manners, gait and the uncanny | code | todo |
+| 26 | The inspiration: bodies change and dress at the womb | code | todo |
+| 27 | The worlds inside: universes built in the flesh | code | todo |
+| 28 | The remaking: souls pulled apart, remade, sent through lives | code | todo |
+| 29 | The leaving: off to their own civilizations | code | todo |
 | 15 | Tier 3: concept and choreography doc | design doc | todo |
 | 16 | Tier 3: the sky layer and the shadows | code | todo |
 | 17 | Tier 3: acting across the beats | code | todo |
@@ -258,6 +264,8 @@ mudlarks, pawnshops, dead men's clothes in Victorian London.
 Notes:
 
 ### 10–12 · Wardrobe batches
+(12 dropped by D14: the west-goers never meet the soul kind and never
+dress. They keep only Phase 6's proportion pass.)
 One phase per batch from the casting sheet (east A, east B, west). Each
 starts by researching the specific garments in its batch. One or two
 pieces per being, exaggerated; several stay bare.
@@ -361,6 +369,49 @@ Full `gframes` sheets of every eldritch beat, reduced motion check, full
 Eldritch section matches what shipped), MAP rows, list of loose ends.
 Notes:
 
+### 25 · The inspired ones: story, new beats, owner talk
+Runs right after Phase 3: it decides *when* clothes exist, which every
+wardrobe phase needs. Research: Lem's "Non Serviam" (beings raised
+inside a simulation), Egan's Permutation City and Diaspora, the
+simulation argument, Plato's myth of Er (souls choosing lives, Lethe),
+samsara and rebirth, the Kabbalist shattering of vessels and gathering
+of sparks, the gnostic demiurge, Borges; how films and games stage a
+"world inside a thing" in flat 2D. Deliverables: a beat plan (where the
+new beats sit, ids, durations, what each shows in flat art, what the old
+ones do in each), the before/after of the east-goers' bodies at `womb`,
+how the worlds inside look without magic, the leaving; draft captions
+for the new beats in the record's voice; the lore bible updated. Ends
+with questions to the owner (captions: D6 kept every line, new beats
+need new ones; how many beats; whether the old ones stay at `birth` or
+are already gone). Constraint change: phases 26–29 may touch
+`genesis-flesh.js` (souls, the body) and `G.BEATS` for these beats only.
+Notes:
+
+### 26 · The inspiration
+At `womb` the east-goers change: bodies reshaped by what they learned,
+and the first clothes. Before `womb` every old one is bare. Needs Phases
+5–11's dressed states; this phase builds the change between the bare
+and the dressed body (a stepwise snap, per "stillness is the uncanny").
+Notes:
+
+### 27 · The worlds inside
+The old ones build simulated universes inside the Primordisentia, with
+no magic: made, not conjured. Design from Phase 25.
+Notes:
+
+### 28 · The remaking
+The souls, which devour each other, are forced apart; the old ones take
+pieces and remake souls, and send them through life after life until
+they rediscover magic, the soul kind's power. Design from Phase 25.
+Notes:
+
+### 29 · The leaving
+Once the cycle runs, the old ones leave to live their own lives and rule
+their own alien civilizations all over the void. They no longer stand
+and watch `birth` and `fight` at 55 % (Phase 25 decides). Pairs with
+Phase 19's cities.
+Notes:
+
 ## Decisions (owner answers, Phase 2, 2026-09-25)
 
 - **D1 · Suits.** Yes: two full suits, one tailored (high society), one
@@ -393,6 +444,25 @@ Notes:
   its scale shows through what lives on it: nests like birds', cities of
   eldritch beings round it (Phase 19).
 
+Owner answers after Phase 3 (2026-09-25):
+
+- **D12 · Names.** The site's "Outsiders" (`js/depths/lore.js`, the
+  Fragmented Minds) became "Old Ones".
+- **D13 · Tailors.** There are many tailors on the bridge.
+- **D14 · West-goers.** They never dress. Phase 12 dropped.
+- **D15 · Who dresses, and why.** Only the east-goers, the ones who met
+  the soul kind. While they reshaped the womb they learned from it, were
+  inspired, changed their own bodies and began wearing clothes. Before
+  `womb`, every old one is bare.
+- **D16 · New beats (amends D7).** The cutscene skips what the old ones
+  did next. The Primordisentia is infinite souls devouring each other.
+  The old ones help it: they build simulated universes inside it, with
+  no magic, force the souls apart, take pieces and remake souls, and send
+  them through enough lives to rediscover magic, the soul kind's power.
+  Once that cycle runs they do not stand watching: they leave, live their
+  own lives and rule their own alien civilizations all over the void.
+  Phases 25–29.
+
 ## Carry forward
 
 - (Phase 1) The sequel is **Control Resonant** (launched 2026-09-24): an
@@ -418,3 +488,9 @@ Notes:
   old-clothes dealer on the span (Phase 19), dust falling sideways and
   motes turning at once as the chain's first link (Phases 16–18), the
   headless gentleman's warmth is fit, not bulk (Phase 8).
+- (after Phase 3) D15 moves every garment to `womb` and later: the
+  emergence, the walk, root and swarm show bare bodies. Phase 5 casts
+  two states per east-goer (bare, inspired), eight bare west-goers, and
+  the headless gentleman as an east-goer whose body appears at `womb`
+  (or earlier bare; Phase 25 decides). Phase 13's winter only touches
+  the dressed.

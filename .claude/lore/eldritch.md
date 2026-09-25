@@ -51,9 +51,18 @@ the same blindness.
    what wakes climbs out one by one. These are the old ones of the
    cutscene: tier-2 beings, the first with bodies that hold.
 7. **One side.** They split west and east. The record follows the east.
-8. **The Primordisentia**, the hunger, the guilt, the womb. From here on
-   the story belongs to the soul kind, and the eldritch become the
-   weather it lives in.
+8. **The Primordisentia**, the hunger, the guilt, the womb. Reshaping
+   the womb, the east-goers learn from what they hold: they are
+   inspired, change their own bodies and begin to wear clothes (D15).
+9. **The work inside.** The Primordisentia is infinite souls devouring
+   each other. The old ones help it: they build universes inside it,
+   made and not conjured, force the souls apart, take pieces and remake
+   souls, and send them through life after life until they rediscover
+   magic, the soul kind's own power (D16).
+10. **The leaving.** Once the cycle runs, the old ones go. They live
+    their own lives and rule their own civilizations all over the void.
+    From here on the story belongs to the soul kind, and the eldritch
+    become the weather it lives in.
 
 ## The three tiers
 
@@ -189,7 +198,15 @@ not breed, they persist.
 
 ## Why old ones dress
 
-Three reasons, in the order they matter.
+**It started at the womb.** Only the east-goers dress: the old ones who
+met the soul kind. While they reshaped the Primordisentia into a womb
+they learned from it, and what they learned inspired them: they changed
+their own bodies and began to wear clothes. The west-goers never met the
+soul kind and never dress; they keep the bodies they climbed out of the
+stone with. So clothing on the bridge is a mark of that meeting, a taste
+caught from the soul kind like an accent.
+
+Once begun, three things keep them dressed, in the order they matter.
 
 1. **Warmth against the chaos.** The chaos is cold the way deep water is
    cold: it takes shape away. A body in it slowly forgets its outline.
@@ -223,6 +240,9 @@ it carries, a bonnet is a nest, a muff is a room.
 - **Gifted.** Passed down from high society as a favour or a leash, the
   way a great house passed its cast-offs to servants. A gifted coat is
   finer than its wearer and says whose they are.
+- **Made.** There are many tailors: in the eldritch cities, on the
+  span, some high, some back-street. Most make for high society; a few
+  cut down old things for whoever pays.
 - **Traded.** The eldritch cities keep something like a rag fair: piles
   of cloth sold by weight, hats by height, and an old-clothes dealer who
   walks the span buying from anyone.
@@ -266,8 +286,8 @@ What is true of him:
 - His warmth is fit, not bulk. Where the found coats of the lower bridge
   pile fur on fur, his is close and thin: proof that he has never had to
   make do.
-- His suit fits because it was made for him. Who made it is the most
-  interesting unanswered question on the bridge (see Open questions).
+- His suit fits because it was made for him. One of the many tailors
+  made it; which one, he has never said, and nobody asks.
 - He is the stillest of the old ones. When the silences come, he is
   already still.
 
@@ -277,15 +297,28 @@ from a different owner, none of them his size.
 ## The soul kind and the eldritch
 
 Not eldritch, and the eldritch know it. Born of the womb, bound in gold
-by the old ones' first guilt. From the eldritch side:
+by the old ones' first guilt, and raised through the old ones' work
+inside it. From the eldritch side:
 
-- The old ones made the womb and do not understand what came out. Rex
-  and the mainland reach *upward*, which nothing from matter does.
+- The old ones remade the soul kind, but not its magic: the souls had to
+  rediscover that themselves, over many lives, in universes the old ones
+  built without any. Rex and the mainland reach *upward*, which nothing
+  from matter does, and the old ones copied their clothes, not that.
 - The tier-3 potential in the soul kind (D9) is felt by old ones as
   something wrong and attractive, the way a draught near a door is. It
   is why eldritch beings haunt the mainland's edges.
 - Obrokxus's brothers are red because they are of the womb, not of the
   matter; they are out of this bible's scope (D5).
+
+## Civilizations across the void
+
+After the leaving, the old ones who met the soul kind found their own
+civilizations all over the void: on the bridge, round its piers, far out
+in the realms. Each is alien to the others, since every old one is the
+only one of its kind; what they share is the habit of dress and the
+tailors that serve it. The Administration is one such order; the eldritch
+cities of Phase 19 are others. The west-goers' side of the span has no
+cities that anyone has written of.
 
 ## Writing rules
 
@@ -299,14 +332,16 @@ by the old ones' first guilt. From the eldritch side:
 - Every old one is unique: never write "an old one of the X kind" as if
   kinds were species.
 
-## Open questions (for the owner, no phase blocked)
+## Open questions (for the owner)
 
-1. **Who tailors?** A maker in an eldritch city, a tier-1 tailor taken
-   below, or the Administration's own? The lore works with any; the
-   answer could become a being on the bridge (Phase 19).
-2. **Do the west-goers dress?** The record is silent; the art can dress
-   them (Phase 12) and the lore allows it.
-3. **The site's "Outsiders"** (`js/depths/lore.js`, the Fragmented Minds
-   "hear the Outsiders"): could they be the mainland's word for tier-3
-   effects, the one crack in the record's blindness? The name also echoes
-   another game's god; worth renaming either way.
+Answered 2026-09-25: the site says "Old Ones" where it said
+"Outsiders" (D12); there are many tailors (D13); the west-goers never
+dress (D14). Still open, for Phase 25:
+
+1. What the universes inside look like in flat art, and how the old ones
+   build them "without magic" (machines, looms, law, patience?).
+2. How many new beats, where they sit before `birth`, and their captions
+   (D6 kept every line; new beats need new ones).
+3. Whether the old ones are gone by `birth` or leave after `fight`.
+4. Where the first clothes came from, before any mortal lived to lose
+   them: copied by the first tailors from the lives inside the womb?
