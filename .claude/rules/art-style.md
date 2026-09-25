@@ -16,7 +16,10 @@ Titans cave in `js/world/art/titans.js`.
 - Stylised 2D silhouettes, flat palette fills.
 - Light from the left. Shadows are hard-edged flat shapes (a `litShade`
   split, roughly the right 70% of each volume), never gradients.
-- No rim lines, outlines or brick lines on buildings.
+- No rim lines, outlines or brick lines on buildings. Exception, owner's
+  call (2026-09-25): HeavyLight's Game Dev tiles (`gd-heavylight.js`) keep
+  the game's light rim on every exposed side; dark fill never touches empty
+  space, and the sky outside the tile band is black.
 - Soft glow only for things that emit light (lanterns, portals, flames).
 - Places are proper buildings, not symbols or sigils.
 - The primitives are in `js/lib/paint.js`; never add another `litShade`.
