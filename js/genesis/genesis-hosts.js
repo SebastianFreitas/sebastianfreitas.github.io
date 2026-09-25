@@ -174,7 +174,7 @@ window.GenHosts = (function () {
     const lunge = o.lunge || 0, cast = o.cast || 0;
     const pose = o.pose || "march";
     const down = o.down ?? 1;
-    const variant = ((o.variant | 0) % 3 + 3) % 3;
+    const variant = o.variant | 0;
     if (pose === "dead") a *= 0.55;
     else if (pose === "fight") x += f * 0.22 * s * lunge;
     if (a < 0.01) return;
@@ -182,9 +182,8 @@ window.GenHosts = (function () {
     ctx.save();
     ctx.globalAlpha = a;
     withTilt(ctx, x, y, pose === "dead" ? f * (Math.PI / 2) * down : 0, () => {
-      if (variant === 0) drawBrute(ctx, x, y, s, f, walk, lunge, pose);
-      else if (variant === 1) drawCrawler(ctx, x, y, s, f, walk, pose);
-      else drawStalker(ctx, x, y, s, f, lunge, pose);
+      const n = ABOM.length;
+      ABOM[((variant % n) + n) % n](ctx, x, y, s, f, walk, lunge, pose);
 
       if (cast > 0.01 && pose !== "dead") {
         const cShX = x + f * 0.08 * s, cShY = y - 0.50 * s;
@@ -268,7 +267,7 @@ window.GenHosts = (function () {
     }
   }
 
-  function drawCrawler(ctx, x, y, s, f, walk, pose) {
+  function drawCrawler(ctx, x, y, s, f, walk, lunge, pose) {
     const by = y - 0.22 * s;
     const body = [
       [x - f * 0.42 * s, by],
@@ -317,7 +316,7 @@ window.GenHosts = (function () {
     ], B_SHADE);
   }
 
-  function drawStalker(ctx, x, y, s, f, lunge, pose) {
+  function drawStalker(ctx, x, y, s, f, walk, lunge, pose) {
     // two long bone legs, backward knee
     [-1, 1].forEach((side) => {
       const hipX = x + 0.06 * s * side, hipY = y - 0.42 * s;
@@ -381,5 +380,8 @@ window.GenHosts = (function () {
     }
   }
 
-  return { drawDevil, drawAbom, HAND };
+  const ABOM = [drawBrute, drawCrawler, drawStalker];
+  const ABOM_PAL = { B_LIT, B_SHADE, FL_LIT, FL_SHADE, EYE_SOCK, EYE };
+
+  return { drawDevil, drawAbom, HAND, ABOM, ABOM_PAL };
 })();

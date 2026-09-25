@@ -68,7 +68,7 @@
     }
 
     // legs: hip -> knee (fwd) -> hock (back) -> clawed foot, alternate swing
-    const swAmt = pose === "march" ? 0.16 * s * walk * Math.sin(G.t * 5 + ph) : 0;
+    const swAmt = pose === "march" ? 0.16 * s * Math.sin(walk + ph) : 0;
     const armSwAmt = -swAmt;
     [-1, 1].forEach((side) => {
       const near = side > 0;
@@ -266,7 +266,7 @@
     // tail trailing back
     ctx.save();
     ctx.strokeStyle = M_SKIN_SHADE; ctx.lineWidth = lw(0.02 * s);
-    ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(x - 0.40 * s, y - 0.34 * s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(x - 0.40 * s * f, y - 0.34 * s); ctx.stroke();
     ctx.restore();
 
     // torso

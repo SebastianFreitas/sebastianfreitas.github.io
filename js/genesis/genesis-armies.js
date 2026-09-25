@@ -32,7 +32,7 @@ window.GenArmies = (function () {
           s: 0.9 + 0.25 * r(),
           gait: 0.8 + 0.5 * r(),
           ph: r() * 6.28,
-          variant: i % 3,
+          variant: Math.floor(hash1(i * 7.31 + 3) * 6),
           caster: fac === "vorgath" ? r() < 0.15 : r() < 0.45,
           cd: 1 + 3 * r(),
           cast: 0,

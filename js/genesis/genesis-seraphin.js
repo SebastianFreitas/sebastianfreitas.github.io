@@ -130,7 +130,7 @@
     // legs: one far (flat), one near (lit/shade), each a single bent shape
     const legTop = [cx - f * 0.02 * s, cy + bH * 0.35];
     function leg(near, extra) {
-      const swing = pose === "march" ? Math.sin(G.t * 6 + ph + (near ? 0 : Math.PI)) * 0.08 * s * walk : 0;
+      const swing = pose === "march" ? Math.sin((walk || 0) + ph + (near ? 0 : Math.PI)) * 0.08 * s : 0;
       const hip = [legTop[0] - f * extra, legTop[1]];
       const ankle = [hip[0] - f * 0.07 * s, y - 0.24 * s];
       const foot = fly ? [x - f * 0.62 * s, y - 0.50 * s] : [x + swing - f * extra, y];
@@ -229,8 +229,8 @@
       legPair(x + f * 0.18 * s, y - 0.50 * s + dy, [x + f * 0.40 * s, y - 0.42 * s], [x + f * 0.38 * s, y - 0.40 * s]);
       legPair(x - f * 0.22 * s, y - 0.46 * s + dy, [x - f * 0.52 * s, y - 0.44 * s], [x - f * 0.50 * s, y - 0.42 * s]);
     } else {
-      const gaitF = pose === "march" ? Math.sin(G.t * 7 + ph) * 0.10 * s * walk : 0;
-      const gaitH = pose === "march" ? Math.sin(G.t * 7 + ph + Math.PI) * 0.10 * s * walk : 0;
+      const gaitF = pose === "march" ? Math.sin((walk || 0) + ph) * 0.10 * s : 0;
+      const gaitH = pose === "march" ? Math.sin((walk || 0) + ph + Math.PI) * 0.10 * s : 0;
       legPair(x + f * 0.18 * s, y - 0.58 * s, [x + f * 0.18 * s + gaitF, y], [x + f * 0.16 * s + gaitF, y]);
       legPair(x - f * 0.24 * s, y - 0.54 * s, [x - f * 0.24 * s + gaitH, y], [x - f * 0.26 * s + gaitH, y]);
     }
@@ -321,8 +321,8 @@
       leg(x + f * 0.16 * s, y - 0.48 * s + dy, [x + f * 0.38 * s, y - 0.40 * s], [x + f * 0.36 * s, y - 0.38 * s]);
       leg(x - f * 0.20 * s, y - 0.44 * s + dy, [x - f * 0.50 * s, y - 0.42 * s], [x - f * 0.48 * s, y - 0.40 * s]);
     } else {
-      const gaitF = pose === "march" ? Math.sin(G.t * 5 + ph) * 0.09 * s * walk : 0;
-      const gaitH = pose === "march" ? Math.sin(G.t * 5 + ph + Math.PI) * 0.09 * s * walk : 0;
+      const gaitF = pose === "march" ? Math.sin((walk || 0) + ph) * 0.09 * s : 0;
+      const gaitH = pose === "march" ? Math.sin((walk || 0) + ph + Math.PI) * 0.09 * s : 0;
       leg(x + f * 0.16 * s, y - 0.56 * s, [x + f * 0.16 * s + gaitF, y], [x + f * 0.14 * s + gaitF, y]);
       leg(x - f * 0.20 * s, y - 0.52 * s, [x - f * 0.20 * s + gaitH, y], [x - f * 0.22 * s + gaitH, y]);
     }
