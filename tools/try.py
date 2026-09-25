@@ -1,15 +1,15 @@
 """Try a session's branch locally, without touching the main checkout.
 
     py -3 tools/try.py claude/adoring-fermi-87uf0y --path "/?genesis=1"
-    py -3 tools/try.py claude/adoring-fermi-87uf0y --ship
+    py -3 tools/try.py claude/adoring-fermi-87uf0y --commit
 
 Checks the branch out into a reusable sibling worktree and serves it with
 serve.py on a free port, opening it in the browser.
 
-Ship merges the branch into main inside the side worktree, bumps ?v=, pushes,
-and deletes the branch unless a worktree still has it checked out; on a
-conflict it pushes nothing. The branch may live only locally (a worktree
-session) or on origin (a cloud session).
+Commit squashes the branch into ONE commit on main in the main checkout (the
+one GitHub Desktop shows), bumps ?v= in that same commit, merges main back
+into the session's worktree branch so follow-up rounds stay clean, and never
+pushes or deletes anything: the owner pushes with GitHub Desktop.
 """
 
 from __future__ import annotations
@@ -123,62 +123,88 @@ def worktree_of(branch: str) -> Path | None:
     return None
 
 
-def ship(branch: str, ref: str, subject: str) -> None:
+def commit(branch: str, ref: str, subject: str) -> None:
     wt = worktree_of(branch)
     if wt and git("status", "--porcelain", cwd=wt, check=False):
-        print(f"Note: {wt} has uncommitted files; only commits ship.")
+        print(f"Note: {wt} has uncommitted files; only its commits go in.")
 
-    git("fetch", "origin", "main")
-    ensure_tree("origin/main")
+    current = git("rev-parse", "--abbrev-ref", "HEAD", check=False)
+    if current != "main":
+        print(f"The main checkout ({ROOT}) is on {current}, not main. Switch to main in GitHub Desktop and run this again. Nothing changed.")
+        sys.exit(1)
 
-    r = subprocess.run(
-        ["git", "merge", "--no-ff", "-m", f"Merge {branch}: {subject}", ref],
-        cwd=TRY_DIR, capture_output=True, text=True,
-    )
+    dirty = git("status", "--porcelain", "--untracked-files=no")
+    if dirty:
+        print("The main checkout has uncommitted changes; commit or discard them in GitHub Desktop first. Nothing changed:")
+        for line in dirty.splitlines():
+            print(f"  {line}")
+        sys.exit(1)
+
+    subprocess.run(["git", "fetch", "origin", "main"], cwd=ROOT, capture_output=True, text=True)
+    if git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main", check=False):
+        behind = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", "origin/main", "main"], cwd=ROOT,
+        ).returncode != 0
+        if behind:
+            print("origin/main has commits your main lacks. Pull (Fetch origin, then Pull) in GitHub Desktop first, then run this again. Nothing changed.")
+            sys.exit(1)
+
+    n = git("rev-list", "--count", "--no-merges", f"main..{ref}")
+    if n == "0":
+        print(f"{branch} has nothing that main lacks. Nothing to commit.")
+        return
+
+    titles = git("log", "--reverse", "--no-merges", "--format=- %s", f"main..{ref}")
+    trailer_lines = git("log", "--format=%(trailers:key=Co-Authored-By,valueonly)", f"main..{ref}").splitlines()
+    trailers = []
+    for t in trailer_lines:
+        if t and t not in trailers:
+            trailers.append(t)
+
+    r = subprocess.run(["git", "merge", "--squash", ref], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
-        files = git("diff", "--name-only", "--diff-filter=U", cwd=TRY_DIR, check=False)
-        git("merge", "--abort", cwd=TRY_DIR, check=False)
-        print("Conflicts with main, nothing was pushed:")
+        files = git("diff", "--name-only", "--diff-filter=U", check=False)
+        git("reset", "--merge", check=False)
+        print("Conflicts with main, nothing changed:")
         if files:
             for f in files.splitlines():
                 print(f"  {f}")
         else:
             print(r.stderr or r.stdout)
-        print("Ask Claude to merge it.")
+        print("In that session, ask Claude to merge main into its branch and resolve, then run this again.")
         sys.exit(1)
 
-    bump = subprocess.run([sys.executable, str(TRY_DIR / "tools" / "bump.py")], cwd=TRY_DIR, capture_output=True, text=True)
+    bump = subprocess.run([sys.executable, str(ROOT / "tools" / "bump.py")], cwd=ROOT, capture_output=True, text=True)
     if bump.returncode != 0:
         print(bump.stderr)
-        git("reset", "--hard", "origin/main", cwd=TRY_DIR)
-        print("bump.py failed, nothing was pushed.")
+        git("reset", "--hard", "HEAD", check=False)
+        print("bump.py failed; nothing changed.")
         sys.exit(1)
 
-    if git("status", "--porcelain", cwd=TRY_DIR):
-        git("commit", "-q", "-am", f"Bump ?v= after merging {branch}", cwd=TRY_DIR)
-
-    p = subprocess.run(["git", "push", "origin", "HEAD:main"], cwd=TRY_DIR, capture_output=True, text=True)
-    if p.returncode != 0:
-        print(p.stderr)
-        print("main moved while shipping; nothing was pushed. Run the same command again.")
+    git("add", "-u")
+    msg = subject + "\n\n" + f"Squashed from {branch}:\n" + titles
+    if trailers:
+        msg += "\n\n" + "\n".join("Co-Authored-By: " + t for t in trailers)
+    c = subprocess.run(["git", "commit", "-q", "-F", "-"], input=msg, cwd=ROOT, text=True, capture_output=True)
+    if c.returncode != 0:
+        print(c.stderr)
         sys.exit(1)
 
-    if git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}", check=False):
-        git("push", "origin", "--delete", branch, check=False)
-    sha = git("rev-parse", "--short", "HEAD", cwd=TRY_DIR)
-
-    if git("rev-parse", "--abbrev-ref", "HEAD", check=False) == "main" and git("status", "--porcelain", check=False) == "":
-        git("pull", "-q", "--ff-only", "origin", "main", check=False)
-        print("Your checkout is up to date.")
-    else:
-        print("Your checkout has local changes or is not on main; run  git pull  when ready.")
+    sha = git("rev-parse", "--short", "HEAD")
 
     if wt:
-        print(f"Branch {branch} stays checked out in {wt}; archive its session to remove it, or ship again after more commits.")
-    elif git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False):
-        git("branch", "-d", branch, check=False)
+        if git("status", "--porcelain", cwd=wt, check=False) == "":
+            m = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=wt, capture_output=True, text=True)
+            if m.returncode != 0:
+                subprocess.run(["git", "merge", "--abort"], cwd=wt, capture_output=True, text=True)
+                print(f"Could not merge main back into {branch} ({wt}); ask Claude in that session to merge main before its next round.")
+            else:
+                print(f"Merged main back into {branch}, so the next round there starts from this commit.")
+        else:
+            print(f"{branch} was not synced (uncommitted files there); ask Claude to merge main before its next round.")
 
-    print(f"Shipped {branch} to main at {sha}. GitHub Pages goes live in a minute or two.")
+    print(f"Committed {sha} on main: {subject}")
+    print("Nothing was pushed. Review it in GitHub Desktop (History), then Push origin. To take it back before pushing: History, right-click it, Undo commit.")
 
 
 def main() -> None:
@@ -187,15 +213,15 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--path", default="/")
     parser.add_argument("--no-open", action="store_true")
-    parser.add_argument("--ship", action="store_true")
+    parser.add_argument("--commit", action="store_true")
     args = parser.parse_args()
 
     branch, ref = resolve(args.branch)
     sha = git("rev-parse", "--short", ref)
     subject = git("log", "-1", "--format=%s", ref)
 
-    if args.ship:
-        ship(branch, ref, subject)
+    if args.commit:
+        commit(branch, ref, subject)
         return
 
     ensure_tree(ref)
@@ -220,16 +246,16 @@ def main() -> None:
         webbrowser.open(url)
 
     if sys.stdin.isatty():
-        print("Enter = stop.  Type ship + Enter = merge into main and push.")
+        print("Enter = stop.  Type commit + Enter = squash it into main as one commit (nothing is pushed).")
         while True:
             try:
                 ans = input("> ").strip().lower()
             except (EOFError, KeyboardInterrupt):
                 ans = ""
-            if ans == "ship":
+            if ans == "commit":
                 proc.terminate()
                 proc.wait(timeout=5)
-                ship(branch, ref, subject)
+                commit(branch, ref, subject)
                 return
             elif ans == "":
                 proc.terminate()
@@ -237,7 +263,7 @@ def main() -> None:
                 print("Stopped.")
                 break
             else:
-                print("Type ship or press Enter.")
+                print("Type commit or press Enter.")
     else:
         try:
             proc.wait()

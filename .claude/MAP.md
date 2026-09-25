@@ -242,8 +242,8 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `tools/bump.py` | 36 | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/gframes.py` | 63 | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | 49 | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
-| `tools/try.py` | 194 | Preview or ship a cloud branch in the reusable worktree `../Portfolio-try`: `py -3 tools/try.py <branch> [--path /url] [--port N]` serves it on 8766+ and opens the browser (typing `ship` at its prompt ships); `--ship` merges it into `main` there, runs `bump.py`, pushes, deletes the branch, fast-forwards a clean main checkout; on a conflict pushes nothing. Never touches the main checkout's tree |
-| `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) |
+| `tools/try.py` | 277 | Preview or commit a branch: `py -3 tools/try.py <branch> [--path /url] [--port N]` checks it out into the reusable worktree `../Portfolio-try`, serves it on 8766+ and opens the browser (typing `commit` at its prompt does the same as `--commit`); `--commit` squashes the branch into ONE commit on `main` in the main checkout, bumps `?v=` in that commit, merges `main` back into the branch, and pushes or deletes nothing — the owner pushes with GitHub Desktop; on a conflict it changes nothing and says so |
+| `serve.py` / `serve.bat` | 67 | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
 
 ### Load order
 

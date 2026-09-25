@@ -1,8 +1,16 @@
-"""Session start: prints what a new chat must know before its first move.
+"""Session start: prints what a new context must know before its first move.
 
-1. The branch, whether it is ahead/behind its remote, and whether the session sits in a git worktree or the shared main checkout.
-2. Edits already in the tree: made by another session, never by this one.
-3. The handoff left by the previous chat (.claude/handoff.md), if any.
+1. The mode (cloud / worktree / shared) and that mode's rules from
+   .claude/modes/<mode>.md. CLAUDE.md keeps only the rules every mode
+   shares, so each session loads one mode's rules instead of all three.
+2. On a fresh start or /clear: the branch, and the paths already
+   uncommitted (made by another session, never by this one).
+3. On a fresh start or /clear: the handoff left by the previous context
+   (.claude/handoff.md), if any.
+
+SessionStart also fires after compaction ("compact") and on resume; the
+mode rules are printed again then (compaction drops them), but not the
+dirty-path list, which by then holds this session's own edits.
 
 Plain stdout on SessionStart is added to the session's context.
 Never fails the hook: any error exits 0.
@@ -11,6 +19,8 @@ import json
 import os
 import subprocess
 import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def git(*args):
@@ -22,41 +32,80 @@ def git(*args):
         return ""
 
 
-def main():
-    d = json.load(sys.stdin)
-    root = d.get("cwd") or os.getcwd()
-    os.chdir(root)
-    lines = []
-    head = git("status", "-sb").splitlines()
-    if head:
-        lines.append(f"SESSION START: {head[0]}")
+def same(a, b):
+    return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def detect(root):
+    if os.environ.get("CLAUDE_CODE_REMOTE") == "true":
+        return "cloud", ""
     common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     main_root = os.path.dirname(common) if common else ""
-    branch = git("rev-parse", "--abbrev-ref", "HEAD")
-    if main_root and os.path.normcase(os.path.abspath(main_root)) != os.path.normcase(os.path.abspath(root)):
-        lines.append(f"WORKTREE: branch {branch} at {root}; main checkout {main_root}. "
-                     "Follow CLAUDE.md 'Worktree sessions': commit on this branch, "
-                     "never push, never run bump.py, end with the Try and Ship commands.")
-    else:
-        lines.append("SHARED TREE: this is the main checkout. Follow CLAUDE.md "
-                     "'Parallel sessions': other sessions edit here too; stage by path.")
-    dirty = git("status", "--short")
-    if dirty:
-        lines.append("Edits already in the tree at session start. Another "
-                     "session made them, not you: never stage, revert, stash "
-                     "or 'clean up' these paths. Stage your own files by path.")
-        lines.extend("  " + l for l in dirty.splitlines())
-    else:
-        lines.append("Tree clean at session start.")
-    hand = os.path.join(root, ".claude", "handoff.md")
-    if os.path.exists(hand):
-        with open(hand, encoding="utf-8", errors="ignore") as f:
-            body = f.read().strip()[:8000]
-        lines.append("")
-        lines.append("HANDOFF from the previous chat (.claude/handoff.md). "
-                     "Read it, restate the plan in two lines, continue from "
-                     "'Next', and delete the file once absorbed:")
-        lines.append(body)
+    top = git("rev-parse", "--show-toplevel") or root
+    if main_root and not same(main_root, top):
+        return "worktree", main_root
+    return "shared", main_root
+
+
+def mode_rules(root, mode):
+    for base in (os.path.join(root, ".claude", "modes"),
+                 os.path.join(HERE, "..", "modes")):
+        p = os.path.join(base, mode + ".md")
+        if os.path.exists(p):
+            with open(p, encoding="utf-8", errors="ignore") as f:
+                return f.read().strip()
+    return (f"(.claude/modes/{mode}.md not found: follow CLAUDE.md and say "
+            "in the report that the mode file is missing.)")
+
+
+def main():
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+    d = json.load(sys.stdin)
+    source = d.get("source") or "startup"
+    root = d.get("cwd") or os.getcwd()
+    os.chdir(root)
+    mode, main_root = detect(root)
+    branch = git("branch", "--show-current") or "(detached)"
+    lines = []
+
+    head = git("status", "-sb").splitlines()
+    where = f"branch {branch} at {root}"
+    if mode == "worktree":
+        where += f"; main checkout {main_root}"
+    lines.append(f"MODE: {mode} ({where}). "
+                 + (head[0] if head else ""))
+    lines.append(mode_rules(root, mode))
+    lines.append("")
+
+    if source in ("startup", "clear"):
+        dirty = git("status", "--short")
+        if dirty and mode == "shared":
+            lines.append("Edits already in the tree at session start. "
+                         "Another session made them, not you: never stage, "
+                         "revert, stash or 'clean up' these paths. Stage "
+                         "your own files by path.")
+            lines.extend("  " + l for l in dirty.splitlines())
+        elif dirty:
+            lines.append("Uncommitted edits in this checkout at session "
+                         "start (left by the previous context on this "
+                         "branch; check the handoff before touching them):")
+            lines.extend("  " + l for l in dirty.splitlines())
+        else:
+            lines.append("Tree clean at session start.")
+
+        hand = os.path.join(root, ".claude", "handoff.md")
+        if os.path.exists(hand):
+            with open(hand, encoding="utf-8", errors="ignore") as f:
+                body = f.read().strip()[:8000]
+            lines.append("")
+            lines.append("HANDOFF from the previous context "
+                         "(.claude/handoff.md). Restate the plan in two "
+                         "lines, continue from 'Next', never redo 'Done', "
+                         "and delete the file once absorbed:")
+            lines.append(body)
     print("\n".join(lines))
 
 

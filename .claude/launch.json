@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "portfolio",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["serve.py"],
-      "port": 8765
+      "runtimeExecutable": "py",
+      "runtimeArgs": ["-3", "serve.py"],
+      "port": 8765,
+      "autoPort": true
     }
   ]
 }
