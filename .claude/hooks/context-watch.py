@@ -1,10 +1,11 @@
 """Context watch: tells the session when its context has grown past the
 handoff line, so it can finish the current step, write .claude/handoff.md
 and stop instead of degrading into compaction. Also watches subagents
-(Explore, implementer): while they run, PostToolUse warns them directly if
-they read past a lower line; when one finishes, SubagentStop measures its
-peak context and logs it to a per-session ledger, which the main session's
-next UserPromptSubmit or PostToolUse call reads and reports.
+(Explore, implementer): while they run, PostToolUse warns Explore, Plan and
+the implementer directly if they read past their own line (SUB_LIMITS);
+other subagent types are only measured. When one finishes, SubagentStop
+measures its peak context and logs it to a per-session ledger, which the
+main session's next UserPromptSubmit or PostToolUse call reads and reports.
 
 Runs on UserPromptSubmit (plain text goes into the context), after every
 tool call in the main session and in subagents (PostToolUse, JSON
@@ -20,7 +21,12 @@ import sys
 
 LIMIT = 140_000     # tokens in context that trigger the handoff
 SOFT = 0.8          # warn from this fraction of LIMIT
-SUB_LIMIT = 60_000  # tokens in context that trigger the subagent line
+
+# Context line per subagent type. Explore and Plan carry a ~33k baseline
+# (system prompt and tools) before reading anything, so their line is
+# higher. Types not listed (built-in agents such as the docs guide) are
+# measured on SubagentStop but never warned or judged.
+SUB_LIMITS = {"Explore": 100_000, "Plan": 100_000, "implementer": 60_000}
 
 
 def context_tokens(path):
@@ -129,24 +135,35 @@ def main():
         else:
             return
         peak = peak_tokens(sub_path)
+        limit = SUB_LIMITS.get(agent_type)
         try:
             with open(ledger_path(path), "a", encoding="utf-8") as f:
                 f.write(json.dumps({
                     "agent_id": agent_id,
                     "agent_type": agent_type,
                     "peak": peak,
+                    "limit": limit,
                     "reported": False,
                 }) + "\n")
         except OSError:
             pass
-        over = " - OVER THE LINE" if peak >= SUB_LIMIT else ""
-        print(json.dumps({"systemMessage": (
-            f"SUBAGENT CONTEXT: {agent_type} {agent_id} peaked at "
-            f"{peak:,} tokens (line {SUB_LIMIT:,})" + over)}))
+        if limit is None:
+            systemMessage = (
+                f"SUBAGENT CONTEXT: built-in {agent_id} peaked at "
+                f"{peak:,} tokens")
+        else:
+            over = " - OVER THE LINE" if peak >= limit else ""
+            systemMessage = (
+                f"SUBAGENT CONTEXT: {agent_type} {agent_id} peaked at "
+                f"{peak:,} tokens (line {limit:,})" + over)
+        print(json.dumps({"systemMessage": systemMessage}))
         return
 
     if agent_id:
         if ev != "PostToolUse":
+            return
+        limit = SUB_LIMITS.get(agent_type)
+        if limit is None:
             return
         own = own_transcript(path, agent_id)
         if own is None:
@@ -154,7 +171,7 @@ def main():
         used = context_tokens(own)
         if used is None:
             return
-        msg = report_line(used, SUB_LIMIT, f"{agent_type} subagent")
+        msg = report_line(used, limit, f"{agent_type} subagent")
         if msg:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PostToolUse", "additionalContext": msg}}))
@@ -189,13 +206,20 @@ def main():
             for e in entries:
                 if e.get("reported") is False:
                     peak = e.get("peak", 0)
-                    msg = (f"SUBAGENT CONTEXT: {e.get('agent_type')} "
-                           f"{e.get('agent_id')} peaked at {peak:,} tokens")
-                    if peak >= SUB_LIMIT:
-                        msg += (f" - over the {SUB_LIMIT:,} line: its "
-                                "prompt let it read too much; make the next "
-                                "spec or Explore prompt narrower (name the "
-                                "file, function and line range).")
+                    limit = e.get("limit")
+                    if limit is None:
+                        msg = (f"SUBAGENT CONTEXT: built-in "
+                               f"{e.get('agent_id')} peaked at {peak:,} "
+                               "tokens")
+                    else:
+                        msg = (f"SUBAGENT CONTEXT: {e.get('agent_type')} "
+                               f"{e.get('agent_id')} peaked at {peak:,} tokens")
+                        if peak >= limit:
+                            msg += (f" - over the {limit:,} line: its "
+                                    "prompt let it read too much; make the "
+                                    "next spec or Explore prompt narrower "
+                                    "(name the file, function and line "
+                                    "range).")
                     parts.append(msg)
                     e["reported"] = True
                     changed = True

@@ -104,11 +104,14 @@ hands over to a fresh one.
   transcript) and prints a CONTEXT WATCH line once it passes `LIMIT`
   (140k tokens; tune it there). Its 80% warning means: finish, do not
   start.
-- The same hook runs inside subagents (every tool call, `SUB_LIMIT` 60k)
-  and on SubagentStop writes each subagent's peak to a ledger; the next
-  hook run prints `SUBAGENT CONTEXT: <type> <id> peaked at N tokens` in the
-  main session. An "over the line" entry means the spec or Explore prompt
-  was too wide: name the file, function and line range next time.
+- The same hook runs inside subagents (every tool call; the line is per
+  type in `SUB_LIMITS`: 100k for Explore and Plan, whose fixed baseline is
+  about 33k, 60k for the implementer; other built-in agents are measured,
+  never warned) and on SubagentStop writes each subagent's peak to a
+  ledger; the next hook run prints `SUBAGENT CONTEXT: <type> <id> peaked at
+  N tokens` in the main session. An "over the line" entry means the spec or
+  Explore prompt was too wide: name the file, function and line range next
+  time.
 - When it fires: finish only the current atomic step (an implementer
   already running may finish; never start a new one), verify, `bump.py` if
   a script or stylesheet changed, commit by path, then write
@@ -128,6 +131,13 @@ hands over to a fresh one.
 - Write a handoff unasked whenever a turn has to end with a task half done
   for any other reason (an error you cannot get past, a question only the
   user can answer).
+- In a worktree session there is no handoff. The handoff file and the
+  branch live in that worktree, and a new chat gets a fresh worktree cut
+  from `main`, so it would see neither. When the context line fires in a
+  worktree, finish the atomic step, commit on the branch, and end the turn
+  with the normal Try and Ship report; the owner ships, then starts the
+  next session from `main`. If work must continue unshipped, the report
+  names the branch and the next session begins with `git merge <branch>`.
 
 ## Parallel sessions
 
@@ -187,6 +197,8 @@ foreign edits cannot appear and nothing here fights over `?v=`.
   worktrees can test at once. Only `serve.py` is fixed on 8765.
 - The rest of this file applies unchanged, including `py -3` (not
   `python3`, that is the cloud container).
+- Context full in a worktree: no `handoff.md`; end with the Try and Ship
+  report instead (see Context handoff).
 
 ## Delegation
 

@@ -1,7 +1,8 @@
 """Git guard (PreToolUse on Bash / PowerShell): other sessions edit this
 tree at the same time, so blanket git commands are blocked (exit 2, the
-reason goes back to the session). A plain `git commit` is allowed and gets
-a note listing the unstaged files that are staying out of it.
+reason goes back to the session). A plain `git commit` passes through (the
+normal permission prompt still applies) and gets a note listing the
+unstaged files that are staying out of it.
 
 Never blocks on its own failure: any error exits 0.
 """
@@ -58,7 +59,7 @@ def main():
                     "edits unless you made them; if yours, stage them by "
                     "path first): " + ", ".join(left))
             print(json.dumps({"hookSpecificOutput": {
-                "hookEventName": "PreToolUse", "permissionDecision": "allow",
+                "hookEventName": "PreToolUse",
                 "additionalContext": note}}))
 
 
