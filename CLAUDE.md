@@ -32,7 +32,7 @@ apply to the main session, Explore and the implementer alike.
   `css/bridge.css` (726), `js/hud/instruments.js` (652),
   `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (642),
   `js/gamedev/storm.js` (585),
-  `js/genesis/genesis-matter.js` (620), `js/ship/voidship-art.js` (566),
+  `js/genesis/genesis-matter.js` (620), `js/ship/voidship-art.js` (536),
   `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
   `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (501),
   `js/genesis/genesis-oldones.js` (555),
@@ -82,7 +82,7 @@ js/site/                      xp, entry, intro, surge, embed, lazy-video
 js/hud/                       instruments, tiles-nav, tiles-sys
 js/bridge/                    bridge core + 8 parts, bridge-sites, bridge-voice, bridge-log, marks, lamp, planet
 js/depths/                    depths core + zero, voidscape, heavylight, conclusus, lore
-js/ship/                      voidship, voidship-art
+js/ship/                      voidship, voidship-art, voidship-prow
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
 js/genesis/                   genesis-state, -paint, -void, -flesh, -elements, -matter, -trade, -oldones, -oldkin, -figures, -titans, -hosts, -mainland, -armies, -orb, -rex, -depths, -saga-state, -ritual, -saga, genesis
@@ -175,7 +175,8 @@ does not — it is pure data, no dependency on `B`.
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
 | `voidship.js` | 553 | `BASE` tunables, `create`, `setThrusting` (release rule), `step` (hold boost → wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw` | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
-| `voidship-art.js` | 566 | `block`, `drawHull`, `drawFront`, `drawFumes`, `EMIT`, `COLORS`; local frame +x nose, +y down, units of hull length L | `window.VoidshipArt` |
+| `voidship-art.js` | 536 | `block`, `drawHull`, `drawFront`, `drawFumes`, `EMIT`, `COLORS`; local frame +x nose, +y down, units of hull length L; the prow is delegated to `voidship-prow.js` (calls `drawProwBack` before the hull polygon, `drawProw` after the superstructure, `drawProwFront` at the end of `drawFront`); exports `block` | `window.VoidshipArt` |
+| `voidship-prow.js` | 224 | The red prow, the artifact the ship was built around, all fat rectangular bars: two thick strips feed a big rust block that swallows the hull's nose (dark seam where it enters, dark face plate, ember seam); a dark vertical bar and a red bar swept up-forward rise from its top (`bar()` helper, `BAR_DEFS`, painted before the block so their bases are buried), straight barbs off the rear bar, a straight fat leg below; head-on version too. Tables `MASS STRIPS BARS LEG BARBS`, palette `RUST_* OBS_*`; reads `ship.face`, `ship.strain`; `Util.reduced()` freezes the sway/pulse | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwFront, PROW}` |
 
 ### js/gamedev
 
@@ -253,7 +254,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `css/gate.css` | 126 | The entry gate: boot log, then the two paths. index only |
 | `css/bridge.css` | 744 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | 159 | Level chip, claim ceremony, surge |
-| `index.html` | 460 | Homepage. Inline head script is only the service-worker purge |
+| `index.html` | 476 | Homepage. Inline head script is only the service-worker purge |
 | `projects/*.html` | 110–253 | Four case-study pages, same shell |
 | `404.html` | 54 | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
 | `tools/nav-flows.test.py` | 890 | Playwright flows; starts its own server on a free port; `ROOT` is the repo root |
@@ -275,9 +276,9 @@ hud/tiles-sys → lib/paint → world/art/rex-kit → world/art/{firstlight,
 crimson, bonespire, titans, valkhar, law} → world/art/land-kit →
 world/art/{shattered, libertech, dawn, accord, gore} → world/world →
 world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
-ship/voidship-art → ship/voidship → gamedev/storm → gamedev/forge-guns →
-gamedev/forge-missions → gamedev/forge → gamedev/zones → site/embed →
-lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
+ship/voidship-art → ship/voidship-prow → ship/voidship → gamedev/storm →
+gamedev/forge-guns → gamedev/forge-missions → gamedev/forge → gamedev/zones →
+site/embed → lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
 bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
 bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
@@ -290,8 +291,10 @@ Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
 `instruments.js`, kits before places, `forge-guns` before `forge-missions`
-before `forge`); `bridge-sites` before `bridge-voice`; `bridge-env`
-after `bridge-depths` and before `bridge-readout`; `genesis-flesh` before
+before `forge`, `voidship-art` before `voidship-prow` before `voidship`
+(the prow extends `VoidshipArt` at parse time)); `bridge-sites` before
+`bridge-voice`; `bridge-env` after `bridge-depths` and before
+`bridge-readout`; `genesis-flesh` before
 `genesis-rex` (it destructures `fleshPath` at parse time);
 `genesis-figures`/`genesis-titans` before `genesis-rex`, `genesis-depths`
 and `genesis-saga` (used at call time, kept before for clarity);
@@ -322,7 +325,7 @@ and an inline `XP.award(...)`.
 | `litShade` | One copy, `js/lib/paint.js` |
 | Camera / pan / projection | `js/bridge/bridge.js` `B.camX`, `wx()`, `markScreen`; input in `js/bridge/bridge-input.js` |
 | Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
-| Ship art and fumes | `js/ship/voidship-art.js`; particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
+| Ship art and fumes | `js/ship/voidship-art.js` (grey hull) and `js/ship/voidship-prow.js` (the red prow); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero storm | `js/gamedev/storm.js`; anchored by `bridge-marks.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
 | VoidScape bench / console / floor plan | `js/gamedev/forge.js` (+ `forge-guns.js`, `forge-missions.js`); anchored by `bridge-marks.js` `forgeEnv`; hit-tested in `bridge-input.js` pointerdown |
 | Game-themed backdrops | `js/gamedev/zones.js`; anchored by `bridge-marks.js` `zonesEnv`; planet colours in `bridge/planet.js` `THEMES` |

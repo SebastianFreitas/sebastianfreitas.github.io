@@ -14,6 +14,8 @@
    drawFront's frame is unscaled (translate + rotate only), so there
    "screen-right" is simply +x.
 
+   The red prow (artifact, column, claw arm, leg) lives in voidship-prow.js and is painted from drawHull/drawFront via VoidshipArt.drawProwBack/drawProw/drawProwFront.
+
    Published as window.VoidshipArt. */
 window.VoidshipArt = (function () {
   const { clamp, mix, hash1 } = window.Util;
@@ -54,9 +56,9 @@ window.VoidshipArt = (function () {
   // sustainer nozzles at the aft spar tips (phase 2 onward)
   const SUST = [{ x: -0.52, y: 0.070 }, { x: -0.585, y: -0.076 }];
   // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent). Placed on free hull edge.
-  const JETS = { belly: [{ x: 0.42, y: 0.032 }, { x: -0.38, y: 0.064 }], top: [{ x: 0.34, y: -0.044 }, { x: -0.39, y: -0.049 }] };
-  // streamer roots: nose lamp, forward boom tip, tallest spire tip, keel probe tip
-  const TRAIL_SEATS = [{ x: 0.805, y: 0.0 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.339, y: 0.305 }];
+  const JETS = { belly: [{ x: 0.40, y: 0.105 }, { x: -0.38, y: 0.064 }], top: [{ x: 0.40, y: -0.135 }, { x: -0.39, y: -0.049 }] };
+  // streamer roots: front bar tip, forward boom tip, tallest spire tip, leg tip
+  const TRAIL_SEATS = [{ x: 0.91, y: -0.36 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.505, y: 0.375 }];
   const TRAIL_COL = [LAMP, COLD, DRIVE_A, DRIVE_A];
 
   const HULL = [
@@ -144,17 +146,6 @@ window.VoidshipArt = (function () {
     // keel spine
     block(g, rectL(-0.32, 0.088, 0.06, 0.118), -0.32 * L, 0.06 * L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
 
-    // front keel probe
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(0.335, 0.050, 0.343, 0.300)(); g.fill();
-    rectL(0.320, 0.220, 0.358, 0.226)(); g.fill();
-    {
-      const pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
-      const cx = 0.339 * L, cy = 0.305 * L;
-      Paint.circle(g, cx, cy, Math.max(0.014 * L, 2), rgba(DRIVE_A, 0.25 * pulse));
-      Paint.circle(g, cx, cy, Math.max(0.005 * L, 0.9), rgba(DRIVE_A, 0.5 + 0.5 * pulse));
-    }
-
     // short probe
     g.fillStyle = rgba(SHADE, 1);
     rectL(0.205, 0.078, 0.211, 0.160)(); g.fill();
@@ -181,6 +172,7 @@ window.VoidshipArt = (function () {
     }
 
     // 2. Main hull
+    if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
     block(g, () => Paint.poly(g, HULL.map(([x, y]) => [x * L, y * L])), -0.41 * L, 0.66 * L, rgba(LIT, 1), rgba(MID, 1), dir);
 
     // deckhouse: a long low spine along the flat deck
@@ -235,11 +227,6 @@ window.VoidshipArt = (function () {
       drawWindow(g, x, 0.062, L, wpx, i, t);
       i++;
     }
-    for (let x = 0.30; x <= 0.56 + 1e-9; x += 0.028) {
-      drawWindow(g, x, -0.012, L, wpx, i, t);
-      i++;
-    }
-
     // 6. Superstructure
     block(g, rectL(-0.17, -0.150, 0.10, -0.070), -0.17 * L, 0.10 * L, rgba(LIT, 1), rgba(MID, 1), dir); // C1
     block(g, rectL(-0.11, -0.205, 0.04, -0.150), -0.11 * L, 0.04 * L, rgba(LIT, 1), rgba(MID, 1), dir); // C2
@@ -332,14 +319,7 @@ window.VoidshipArt = (function () {
     // aft lower spar
     Paint.line(g, [[-0.40 * L, 0.040 * L], [-0.52 * L, 0.070 * L]], rgba(SHADE, 1), w1(0.004) * L);
 
-    // nose spar
-    Paint.line(g, [[0.66 * L, 0], [0.80 * L, 0]], rgba(MID, 1), w1(0.004) * L);
-    {
-      const p = 0.6 + 0.4 * Math.sin(t * 2.2);
-      const cx = 0.805 * L, cy = 0;
-      Paint.circle(g, cx, cy, Math.max(0.018 * L, 2), rgba(LAMP, 0.30 * p));
-      Paint.circle(g, cx, cy, Math.max(0.006 * L, 0.9), rgba(LAMP, 0.7 + 0.3 * p));
-    }
+    if (window.VoidshipArt && window.VoidshipArt.drawProw) window.VoidshipArt.drawProw(g, ship, L, t);
 
     // 7. Drive at the stern
     const flare = clamp(ship.flare || 0, 0, 1), strain = clamp(ship.strain || 0, 0, 1), tf = Math.min(1, th + 0.8 * flare);
@@ -465,18 +445,6 @@ window.VoidshipArt = (function () {
       rectL(0.040 - mw / 2, -0.180, 0.040 + mw / 2, -0.070)(); g.fill();
     }
 
-    // keel probe
-    g.fillStyle = rgba(SHADE, 1);
-    {
-      const kw = w1(0.008);
-      rectL(-kw / 2, 0.088, kw / 2, 0.300)(); g.fill();
-    }
-    {
-      const pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
-      Paint.circle(g, 0, 0.305 * L, Math.max(0.014 * L, 2), rgba(DRIVE_A, 0.25 * pulse));
-      Paint.circle(g, 0, 0.305 * L, Math.max(0.005 * L, 0.9), rgba(DRIVE_A, 0.5 + 0.5 * pulse));
-    }
-
     // hanging block
     {
       const trace = rectL(-0.030, 0.088, 0.030, 0.220);
@@ -488,6 +456,8 @@ window.VoidshipArt = (function () {
     for (const wx of [-0.030, 0, 0.030]) {
       g.fillRect(wx * L - 0.5, 0.010 * L - 0.5, 1, 1);
     }
+
+    if (window.VoidshipArt && window.VoidshipArt.drawProwFront) window.VoidshipArt.drawProwFront(g, ship, L, t);
 
     g.restore();
   }
@@ -562,5 +532,5 @@ window.VoidshipArt = (function () {
 
   const COLORS = { LIT, MID, SHADE, DEEP, LAMP, COLD, RED, DRIVE_A, DRIVE_B, DRIVE_C };
 
-  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS };
+  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS, block };
 })();
