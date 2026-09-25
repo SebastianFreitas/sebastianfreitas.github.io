@@ -233,9 +233,9 @@
       setFont(mono(7));
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${DIM},0.9)`;
-      ctx.fillText("CHAOS", 6, y1 - 2);
-      ctx.fillText("UNFORMED", 6, y2 - 2);
-      ctx.fillText("NOMIC", 6, y3 - 2);
+      ctx.fillText("CHAOS", 6, y1 + 5);
+      ctx.fillText("UNFORMED", 6, y2 + 5);
+      ctx.fillText("NOMIC", 6, y3 + 5);
     }
 
     function signal(ctx, p, r, dt) {
@@ -319,11 +319,11 @@
       setFont(mono(7));
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${chaosCol},0.85)`;
-      ctx.fillText(chaosNeedle.toFixed(2), p.w - 6, y1 - 2);
+      ctx.fillText(chaosNeedle.toFixed(2), p.w - 6, y1 + 5);
       ctx.fillStyle = `rgba(${COLD},0.9)`;
-      ctx.fillText(futureNeedle.toFixed(2), p.w - 6, y2 - 2);
+      ctx.fillText(futureNeedle.toFixed(2), p.w - 6, y2 + 5);
       ctx.fillStyle = `rgba(${nomicCol},0.9)`;
-      ctx.fillText(nomicNeedle.toFixed(2), p.w - 6, y3 - 2);
+      ctx.fillText(nomicNeedle.toFixed(2), p.w - 6, y3 + 5);
 
       setFont(mono(9));
       ctx.textAlign = "left";
@@ -358,7 +358,7 @@
       const pad = 6;
       const iconReserve = 14;          /* chrome expand glyph — keep text out of here */
       const headerY = 11;
-      const cruiseBlock = 32;          /* label + bar + mode line */
+      const cruiseBlock = 22;          /* label + bar + mode line */
 
       const tankW = Math.max(14, Math.round(p.w * 0.11));
       const tankX = pad;
@@ -371,14 +371,14 @@
       const zoneCx = zoneL + zoneW * 0.5;
       const zoneTop = tankTop;
       const zoneBot = inner - cruiseBlock;
-      const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.44;
-      const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.36);
+      const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.42;
+      const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.32);
 
       const statY = zoneCy + R + 6;
       const statValY = statY + 9;
 
       const bx = zoneL;
-      const by = inner - 17;
+      const by = inner - 9;
 
       return { inner, pad, headerY, tankX, tankTop, tankW, tankH, zoneL, zoneR, zoneW, zoneCx, zoneTop, zoneBot, zoneCy, R, statY, statValY, bx, by };
     }
@@ -493,12 +493,12 @@
       setFont(mono(9));
       if (infinite) {
         ctx.fillStyle = `rgba(${LAMP},0.9)`;
-        ctx.fillText("OPEN", zoneL, headerY);
+        ctx.fillText("OPEN", tankX, headerY);
       } else {
         ctx.fillStyle = low ? `rgba(${col},1)` : `rgba(${DIM},1)`;
-        ctx.fillText(low ? "LOW" : "FUEL", zoneL, headerY);
+        ctx.fillText(low ? "LOW" : "FUEL", tankX, headerY);
         ctx.fillStyle = `rgba(${col},0.95)`;
-        ctx.fillText(Math.round(fuelNeedle * 100) + "%", zoneL + 30, headerY);
+        ctx.fillText(Math.round(fuelNeedle * 100) + "%", tankX + 30, headerY);
       }
 
       const mode = s && s.burning ? "HARD BURN"
@@ -506,7 +506,7 @@
       ctx.textAlign = "right";
       setFont(mono(8));
       ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
-      ctx.fillText(fit(mode, zoneR - bx), zoneR, by + 13);
+      ctx.fillText(fit(mode, zoneR - (tankX + 70)), zoneR, headerY);
     }
 
     /* =========================================================

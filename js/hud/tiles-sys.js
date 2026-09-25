@@ -21,6 +21,9 @@
     const MAG_STEP = 1 / 60;
     const SAMPLE_SLACK = 0.002;
     let lastImpact = null;
+    const TRACE_N = 56;
+    const strikeTrace = new Float32Array(TRACE_N);   // newest sample last
+    let traceAcc = 0;
     const repairing = new Set();   // hull sectors the bridge log says are under patch
     let repairAge = 0;
     let impactCool = 2.4;
@@ -107,6 +110,18 @@
       sys.wear = e.wear || 0;
 
       if (lastImpact) lastImpact.age += dt;
+      traceAcc += dt;
+      while (traceAcc >= 1 / 12) {
+        traceAcc -= 1 / 12;
+        const wp2 = Math.max(0, sys.wear);
+        let v = (Math.random() - 0.5) * (0.05 + 0.3 * wp2);
+        if (lastImpact && lastImpact.age < 1.6) {
+          const a = lastImpact.age;
+          v += Math.min(1, lastImpact.g / 2.5) * (1 - a / 1.6) * Math.sin(a * 38);
+        }
+        strikeTrace.copyWithin(0, 1);
+        strikeTrace[TRACE_N - 1] = Math.max(-1, Math.min(1, v));
+      }
       impactCool -= dt;
       const pHit = dt * (0.008 + speedN * 0.09) * (0.03 + chaos * 0.4) * (1 + 2 * wp);
       if (impactCool <= 0 && Math.random() < pHit) {
@@ -278,69 +293,100 @@
       ctx.fillStyle = `rgba(${DIM},0.9)`;
       ctx.fillText(recent ? ("SEC " + lastImpact.sector) : "SKIN", p.w - 17, 12);
 
-      const cx = 36, cy = 48, R = 22;
-      for (let i = 0; i < 8; i++) {
-        const sctr = i + 1;
-        const a0 = -Math.PI / 2 + i * Math.PI / 4;
-        const a1 = a0 + Math.PI / 4;
-        const hot = lastImpact && lastImpact.sector === sctr && lastImpact.age < 4;
-        const fix = !hot && repairing.has(sctr);
-        /* a patch under way, or the skin under load, always wins over the ambient flicker below */
-        const stressed = !hot && !fix && wp > 0.05
-          && Util.hash1(sctr * 131 + Math.floor(F.now() * 3)) < wp * 0.6;
-        const regen = !hot && !fix && !stressed && wn > 0.05;
-        const fade = hot ? Math.max(0.25, 1 - lastImpact.age / 4) : 0;
-        /* a patched sector holds amber until the bridge log clears it */
-        const pulse = 0.55;
-        const stressCol = wp > 0.65 ? BAD : WARN;
-        const stressA = 0.35 + 0.25 * wp;
-        const regenA = 0.22 + 0.25 * wn * blink(0.7);
-        ctx.strokeStyle = hot ? `rgba(${BAD},${0.45 + 0.55 * fade})`
-          : fix ? `rgba(${WARN},${pulse})`
-          : stressed ? `rgba(${stressCol},${stressA})`
-          : regen ? `rgba(${GOOD},${regenA})`
-          : `rgba(${LAMP},0.22)`;
-        ctx.lineWidth = hot || fix ? 2 : 1;
-        ctx.beginPath();
-        ctx.arc(cx, cy, R, a0 + 0.06, a1 - 0.06);
-        ctx.stroke();
-        ctx.lineWidth = 1;
-        const mid = (a0 + a1) / 2;
-        const tick = R + 3;
-        ctx.strokeStyle = hot ? `rgba(${BAD},${0.8 * fade})`
-          : fix ? `rgba(${WARN},0.7)`
-          : stressed ? `rgba(${stressCol},${stressA})`
-          : regen ? `rgba(${GOOD},${regenA})`
-          : `rgba(${DIM},0.4)`;
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(mid) * (R - 2), cy + Math.sin(mid) * (R - 2));
-        ctx.lineTo(cx + Math.cos(mid) * tick, cy + Math.sin(mid) * tick);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = `rgba(${COLD},0.45)`;
-      ctx.strokeRect(cx - 7, cy - 4, 14, 8);
-      ctx.fillStyle = `rgba(${LAMP},0.8)`;
-      ctx.fillRect(cx + 7, cy - 1.5, 5, 3);
+      const intY = inner - 28;                 // the existing INT meter y — keep the existing meter line using it
+      const traceBot = intY - 9, traceTop = traceBot - 24;
+      const traceMid = (traceTop + traceBot) / 2, traceAmp = (traceBot - traceTop) / 2 - 1;
+      const traceX0 = 6, traceX1 = p.w - 6;
+      const labelY = traceTop - 4;             // baseline of the STRIKE row
+      const shipTop = 18, shipBot = labelY - 9;
+      const cy = (shipTop + shipBot) / 2;
+      const maxHalf = Math.min(11, (shipBot - shipTop) / 2);
+      const x0 = 14, x1 = p.w - 14;            // tail (left) .. nose (right)
+      const halfH = (x) => { const u = (x - x0) / (x1 - x0); return 2 + (maxHalf - 2) * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), 0.6); };
 
-      setFont(mono(11, "600"));
-      ctx.textAlign = "left";
-      if (lastImpact) {
-        ctx.fillStyle = live ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.9)`;
-        ctx.fillText(lastImpact.g.toFixed(2) + "g", 68, 40);
-        setFont(mono(8));
-        ctx.fillStyle = `rgba(${DIM},0.95)`;
-        ctx.fillText("SEC " + lastImpact.sector, 68, 52);
-        ctx.fillStyle = `rgba(${COLD},0.85)`;
-        ctx.fillText("T+" + lastImpact.age.toFixed(1) + "s", 68, 64);
-      } else {
-        ctx.fillStyle = `rgba(${DIM},0.7)`;
-        setFont(mono(8));
-        ctx.fillText("NO STRIKE", 68, 46);
-        ctx.fillText("LISTEN", 68, 58);
+      if (shipBot - shipTop >= 6) {
+        for (let i = 0; i < 8; i++) {
+          const sctr = i + 1;
+          const c = i % 4;
+          const top = i < 4;
+          const hot = lastImpact && lastImpact.sector === sctr && lastImpact.age < 4;
+          const fix = !hot && repairing.has(sctr);
+          /* a patch under way, or the skin under load, always wins over the ambient flicker below */
+          const stressed = !hot && !fix && wp > 0.05
+            && Util.hash1(sctr * 131 + Math.floor(F.now() * 3)) < wp * 0.6;
+          const regen = !hot && !fix && !stressed && wn > 0.05;
+          const fade = hot ? Math.max(0.25, 1 - lastImpact.age / 4) : 0;
+          const pulse = 0.35 + 0.3 * blink(0.7);
+          const stressCol = wp > 0.65 ? BAD : WARN;
+          const stressA = 0.35 + 0.25 * wp;
+          const regenA = 0.22 + 0.25 * wn * blink(0.7);
+
+          const xa = x1 - (c + 1) * (x1 - x0) / 4 + 1;
+          const xb = x1 - c * (x1 - x0) / 4 - 1;
+          ctx.beginPath();
+          ctx.moveTo(xa, cy);
+          for (let k = 0; k <= 5; k++) {
+            const x = xa + (xb - xa) * k / 5;
+            const h = halfH(x) - 1;
+            ctx.lineTo(x, top ? cy - h : cy + h);
+          }
+          ctx.lineTo(xb, cy);
+          ctx.closePath();
+          ctx.fillStyle = hot ? `rgba(${BAD},${0.35 + 0.55 * fade})`
+            : fix ? `rgba(${WARN},${pulse})`
+            : stressed ? `rgba(${stressCol},${stressA})`
+            : regen ? `rgba(${GOOD},${regenA})`
+            : `rgba(${COLD},0.16)`;
+          ctx.fill();
+          ctx.strokeStyle = hot ? `rgba(${BAD},0.9)`
+            : fix ? `rgba(${WARN},0.9)`
+            : `rgba(${DIM},0.4)`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          if (hot && lastImpact.age < 1.2) {
+            const bx = (xa + xb) / 2;
+            const by = top ? cy - halfH(bx) * 0.5 : cy + halfH(bx) * 0.5;
+            ctx.strokeStyle = `rgba(${BAD},${0.8 * (1 - lastImpact.age / 1.2)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(bx, by, 3 + lastImpact.age * 14, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.fillStyle = `rgba(${LAMP},0.8)`;
+        ctx.fillRect(x0 - 5, cy - 1.5, 5, 3);
       }
+
+      setFont(mono(7));
+      ctx.textAlign = "left";
+      ctx.fillStyle = lastImpact ? `rgba(${COLD},0.85)` : `rgba(${DIM},0.6)`;
+      ctx.fillText(lastImpact ? "T+" + lastImpact.age.toFixed(1) + "s" : "NONE", 6 + 34, labelY);
+      if (lastImpact) {
+        setFont(mono(9, "600"));
+        ctx.textAlign = "right";
+        ctx.fillStyle = live ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.9)`;
+        ctx.fillText(lastImpact.g.toFixed(2) + "g", p.w - 6, labelY);
+      }
+
+      ctx.fillStyle = `rgba(${DIM},0.08)`;
+      ctx.fillRect(traceX0, traceTop, traceX1 - traceX0, traceBot - traceTop);
+      ctx.strokeStyle = `rgba(${DIM},0.25)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(traceX0, traceMid);
+      ctx.lineTo(traceX1, traceMid);
+      ctx.stroke();
+      ctx.strokeStyle = live ? `rgba(${BAD},0.9)` : `rgba(${COLD},0.85)`;
+      ctx.beginPath();
+      for (let k = 0; k < TRACE_N; k++) {
+        const x = traceX0 + (traceX1 - traceX0) * k / (TRACE_N - 1);
+        const y = traceMid - strikeTrace[k] * traceAmp;
+        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
 
       const hullInt = sys.hullInt;
-      const intY = inner - 28;
       const intCol = hullInt < 0.6 ? BAD : hullInt < 0.85 ? WARN : LAMP;
       meter(30, intY, p.w - 40 - 30, 5, hullInt, intCol);
       setFont(mono(9, "600"));
@@ -370,6 +416,7 @@
       ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
       ctx.fillStyle = `rgba(${DIM},0.95)`;
       ctx.fillText("INT", 6, inner - 23);
+      ctx.fillText("STRIKE", 6, (inner - 28) - 9 - 24 - 4);
       ctx.fillText("HULL", 6, inner - 13);
       ctx.fillText("WEAR", 62, inner - 13);
       ctx.fillText("HX", 118, inner - 13);
