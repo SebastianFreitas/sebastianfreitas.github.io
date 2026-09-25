@@ -1,4 +1,4 @@
-/* HeavyLight's field: the game's own tiles. A band of tile grid (0.18–0.79 H) at the planet's parallax; floor and ceiling masses stepped in whole tiles, sparse floating platforms; every exposed side of a solid tile carries the light rim; empty cells show the dark back wall; black above and below. Lower near the planet and near every mark so the zone art and marks stay clear. Registers GdWorld.P.heavylight. */
+/* HeavyLight's field: the game's own tiles. A band of tile grid (0.18–0.79 H) at the planet's parallax; floor and ceiling masses stepped in whole tiles, sparse floating platforms; the ceiling mass runs up to the top screen edge and the floor mass down to the bottom screen edge, the open band between them unchanged; every exposed side of a solid tile carries the light rim; empty cells show the dark back wall; interior solid cells are batched through a pattern fill, not drawn tile by tile. Lower near the planet and near every mark so the zone art and marks stay clear. Pixel scale is capped at 3 to match the zone art (px(), read by zones.js). Registers GdWorld.P.heavylight. */
 (function () {
   const G = window.GdWorld; if (!G) return;
   const { F, sx, dens, GAMES, clearBox } = G;
@@ -12,8 +12,11 @@
   const tiles = new Map();      // key m*4+v → 16×16 canvas
   const backs = [];             // 4 back-wall 16×16 canvases
   const pats = new Map();       // p → back-wall CanvasPattern
+  const spats = new Map();      // p → interior CanvasPattern
   let cells = new Uint8Array(0);
   let alpha = new Float32Array(0);
+
+  function px() { return Math.min(3, Math.max(2, Math.round(3 * F.k))); }
 
   function tileCanvas(m, v) {
     const key = m * 4 + v;
@@ -104,19 +107,41 @@
     return pat;
   }
 
+  function solidPattern(p) {
+    if (spats.has(p)) return spats.get(p);
+    const cv = document.createElement("canvas");
+    cv.width = 64 * p; cv.height = 64 * p;
+    const cx = cv.getContext("2d");
+    cx.imageSmoothingEnabled = false;
+    for (let a = 0; a < 4; a++) {
+      for (let b = 0; b < 4; b++) {
+        const v = Math.floor(hash1(a * 17 + b * 5 + 11) * 3);
+        cx.drawImage(tileCanvas(0, v), a * 16 * p, b * 16 * p, 16 * p, 16 * p);
+      }
+    }
+    const pat = F.ctx.createPattern(cv, "repeat");
+    spats.set(p, pat);
+    return pat;
+  }
+
   function paint(w) {
     const { ctx, W, H, camX, sc, k } = F;
-    const p = Math.max(2, Math.round(3 * k));
+    const p = px();
     const T = 16 * p;
     const N = Math.floor((BAND1 - BAND0) * H / T);
     if (N < 6) return;
     const y0 = Math.round((BAND0 + BAND1) / 2 * H - N * T / 2);
 
+    const A = Math.ceil(y0 / T);                          // rows above the open band, up to the top edge
+    const B = Math.max(0, Math.ceil((H - (y0 + N * T)) / T)); // rows below, down to the bottom edge
+    const R = A + N + B;                                   // total grid rows
+    const top = y0 - A * T;                                // y of grid row 0
+
     const CU = T / (PAR * sc);
     const j0 = Math.floor((camX - (W / 2 + T) / (PAR * sc)) / CU);
     const cols = Math.ceil(W / T) + 3;
-    if (cells.length < cols * N) cells = new Uint8Array(cols * N);
-    else cells.fill(0, 0, cols * N);
+    if (cells.length < cols * R) cells = new Uint8Array(cols * R);
+    else cells.fill(0, 0, cols * R);
     if (alpha.length < cols) alpha = new Float32Array(cols);
 
     const psx = sx(GAMES[I].x, PAR);
@@ -139,8 +164,8 @@
       while (fh > 1 && clearBox(cx2, y0 + (N - fh) * T + T / 2, T / 2, T / 2) < 0.6) fh--;
       while (ch > 1 && clearBox(cx2, y0 + (ch - 1) * T + T / 2, T / 2, T / 2) < 0.6) ch--;
 
-      for (let r = 0; r < ch; r++) cells[n * N + r] = 1;
-      for (let r = N - fh; r < N; r++) cells[n * N + r] = 1;
+      for (let r = 0; r < A + ch; r++) cells[n * R + r] = 1;
+      for (let r = A + N - fh; r < R; r++) cells[n * R + r] = 1;
 
       const kk = Math.floor(j / 9);
       if (hash1(kk * 31 + SEED) < 0.6 && f > 0.9) {
@@ -149,16 +174,16 @@
         const row = 3 + Math.floor(hash1(kk * 43 + SEED) * (N - 7));
         if (j >= s && j < s + wd && row >= ch + 2 && row < N - fh - 2 &&
             clearBox(cx2, y0 + row * T + T / 2, T / 2, T / 2) > 0.95) {
-          cells[n * N + row] = 1;
+          cells[n * R + (A + row)] = 1;
         }
       }
     }
 
     function sol(n, r) {
-      if (r < 0 || r >= N) return false;
       if (n < 0) n = 0;
       if (n >= cols) n = cols - 1;
-      return cells[n * N + r] === 1 && alpha[n] > 0;
+      if (r < 0 || r >= R) return alpha[n] > 0;   // mass continues past the screen edge; no rim there
+      return cells[n * R + r] === 1 && alpha[n] > 0;
     }
 
     ctx.save();
@@ -173,38 +198,52 @@
       ctx.globalAlpha = alpha[n];
       ctx.fillStyle = pat;
       let r = 0;
-      while (r < N) {
+      while (r < R) {
         if (sol(n, r)) { r++; continue; }
         let r2 = r;
-        while (r2 < N && !sol(n, r2)) r2++;
+        while (r2 < R && !sol(n, r2)) r2++;
         ctx.beginPath();
-        ctx.rect(x, y0 + r * T, T, (r2 - r) * T);
+        ctx.rect(x, top + r * T, T, (r2 - r) * T);
         ctx.fill();
         r = r2;
       }
     }
 
+    const spat = solidPattern(p);
+    spat.setTransform(new DOMMatrix([1, 0, 0, 1, x0 - (((j0 % 4) + 4) % 4) * T, y0]));
     for (let n = 0; n < cols; n++) {
       if (alpha[n] <= 0) continue;
       const x = x0 + n * T;
-      for (let r = 0; r < N; r++) {
-        if (!sol(n, r)) continue;
+      ctx.globalAlpha = alpha[n];
+      let r0 = -1;                          // start of the current interior run, or -1
+      for (let r = 0; r <= R; r++) {
+        const s = r < R && sol(n, r);
         let m = 0;
-        if (!sol(n, r - 1)) m |= 1;
-        if (!sol(n + 1, r)) m |= 2;
-        if (!sol(n, r + 1)) m |= 4;
-        if (!sol(n - 1, r)) m |= 8;
-        if (!(m & 3) && !sol(n + 1, r - 1)) m |= 16;
-        if (!(m & 6) && !sol(n + 1, r + 1)) m |= 32;
-        if (!(m & 12) && !sol(n - 1, r + 1)) m |= 64;
-        if (!(m & 9) && !sol(n - 1, r - 1)) m |= 128;
-        const v = Math.floor(hash1((j0 + n) * 131 + r * 7 + 9) * 3);
-        const y = y0 + r * T;
-        if (m !== 0 && r > 0 && r < N - 1) {
-          ctx.globalAlpha = alpha[n];
-          ctx.drawImage(backCanvas(0), x, y, T, T);
+        if (s) {
+          if (!sol(n, r - 1)) m |= 1;
+          if (!sol(n + 1, r)) m |= 2;
+          if (!sol(n, r + 1)) m |= 4;
+          if (!sol(n - 1, r)) m |= 8;
+          if (!(m & 3) && !sol(n + 1, r - 1)) m |= 16;
+          if (!(m & 6) && !sol(n + 1, r + 1)) m |= 32;
+          if (!(m & 12) && !sol(n - 1, r + 1)) m |= 64;
+          if (!(m & 9) && !sol(n - 1, r - 1)) m |= 128;
         }
-        ctx.globalAlpha = alpha[n];
+        if (s && m === 0) {
+          if (r0 < 0) r0 = r;
+          continue;
+        }
+        if (r0 >= 0) {
+          ctx.fillStyle = spat;
+          ctx.beginPath();
+          ctx.rect(x, top + r0 * T, T, (r - r0) * T);
+          ctx.fill();
+          r0 = -1;
+        }
+        if (!s) continue;
+        const v = Math.floor(hash1((j0 + n) * 131 + (r - A) * 7 + 9) * 3);
+        const y = top + r * T;
+        ctx.drawImage(backCanvas(0), x, y, T, T);
         ctx.drawImage(tileCanvas(m, v), x, y, T, T);
       }
     }
@@ -213,5 +252,5 @@
     ctx.globalAlpha = 1;
   }
 
-  G.P.heavylight = { base: [0, 0, 0], layers: [{ par: PAR, paint }] };
+  G.P.heavylight = { base: [0, 0, 0], layers: [{ par: PAR, paint }], px };
 })();

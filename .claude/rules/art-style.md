@@ -19,7 +19,10 @@ Titans cave in `js/world/art/titans.js`.
 - No rim lines, outlines or brick lines on buildings. Exception, owner's
   call (2026-09-25): HeavyLight's Game Dev tiles (`gd-heavylight.js`) keep
   the game's light rim on every exposed side; dark fill never touches empty
-  space, and the sky outside the tile band is black.
+  space; the ceiling and floor masses run to the top and bottom screen
+  edges (no black sky), and the tiles and the zone art round the HeavyLight
+  planet share one pixel scale (`GdWorld.P.heavylight.px()`, 3 px per art
+  pixel on desktop).
 - Soft glow only for things that emit light (lanterns, portals, flames).
 - Places are proper buildings, not symbols or sigils.
 - The primitives are in `js/lib/paint.js`; never add another `litShade`.

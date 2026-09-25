@@ -210,9 +210,13 @@ window.Zones = (function () {
      glyph, the desk lamp and its beam, the red key, and the red player with
      his lantern. h_plat / h_wallDrip / h_pillarDrip are the game's tiles with
      airFloor1's dripping bottom four rows pasted on so the slabs can float.
-     Every static group is pre-rendered once (groupCanvas); per frame there
-     are four group blits, the player, the crate, two cached glows and the
-     beam. */
+     Every static group is pre-rendered once (groupCanvas) at 2x, then the
+     whole zone is drawn 1.5x bigger through one canvas transform (hlZoom,
+     which reads GdWorld.P.heavylight.px()) so it lands at 3 px per art
+     pixel, matching the Game Dev backdrop; the layout below is compacted so
+     it still fits between the ceiling and the deck line at that scale. Per
+     frame there are four group blits, the player, the crate, two cached
+     glows and the beam. */
   const HPAL = ["#04253c","#143f5e","#306082","#5a86a5","#2d546f","#961a1a","#ff0000","#b44545","#780b0b","#5a0e0e","#000000"];
   const HSPR = {
     h_floor1: { w:16, h:16, ox:0, oy:0, px:"cddddddddddddddccccccccccccccccdbbbbbbbbbbbbbbbbaabaaaaaaabaaaabbaabaaaaabbaaaaaaaaabaaaaaaaababaaabaaabaabaabaaaaaaaaabbaaaaaaaaaaaaaabbaaabaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaabaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
@@ -247,20 +251,20 @@ window.Zones = (function () {
   // bob phase shared by everything that rides on that group
   const HL_GROUPS = {
     slabL: { k: 0, tiles: [
-      ["h_floorL", -440, 40], ["h_floor1", -408, 40], ["h_floor1", -376, 40], ["h_floor1", -344, 40], ["h_floorR", -312, 40],
-      ["h_wallL", -440, 72], ["h_symbol1", -408, 72], ["h_wall", -376, 72], ["h_wall", -344, 72], ["h_wallR", -312, 72],
-      ["h_dripL", -440, 104], ["h_wallDrip", -408, 104], ["h_wallDrip", -376, 104], ["h_wallDrip", -344, 104], ["h_doubleFloor", -312, 104],
-      ["h_spike", -408, 8], ["h_spike", -376, 8], ["h_box", -320, 10],
+      ["h_floorL", -350, 16], ["h_floor1", -318, 16], ["h_floor1", -286, 16], ["h_floor1", -254, 16], ["h_floorR", -222, 16],
+      ["h_wallL", -350, 48], ["h_symbol1", -318, 48], ["h_wall", -286, 48], ["h_wall", -254, 48], ["h_wallR", -222, 48],
+      ["h_dripL", -350, 80], ["h_wallDrip", -318, 80], ["h_wallDrip", -286, 80], ["h_wallDrip", -254, 80], ["h_doubleFloor", -222, 80],
+      ["h_spike", -318, -16], ["h_spike", -286, -16], ["h_box", -230, -14],
     ] },
     platM: { k: 1, tiles: [
-      ["h_platL", -96, 110], ["h_plat", -64, 110], ["h_plat", -32, 110], ["h_plat", 0, 110], ["h_airFloor1", 32, 110],
-      ["h_lamp", 38, 78],
+      ["h_platL", -96, 80], ["h_plat", -64, 80], ["h_plat", -32, 80], ["h_plat", 0, 80], ["h_airFloor1", 32, 80],
+      ["h_lamp", 38, 48],
     ] },
     pillarR: { k: 2, tiles: [
-      ["h_pillarTop", 300, -60], ["h_pillarBody", 300, -28], ["h_pillarDrip", 300, 4],
+      ["h_pillarTop", 230, -40], ["h_pillarBody", 230, -8], ["h_pillarDrip", 230, 24],
     ] },
     platR: { k: 3, tiles: [
-      ["h_platL", 392, 70], ["h_airFloor1", 424, 70], ["h_spike", 424, 38],
+      ["h_platL", 312, 60], ["h_airFloor1", 344, 60], ["h_spike", 344, 28],
     ] },
   };
   const HL_ORDER = ["slabL", "pillarR", "platR", "platM"];
@@ -306,12 +310,12 @@ window.Zones = (function () {
   }
 
   const heavylightRnd = mulberry(11);
-  const hlDust = makeMotes(heavylightRnd, 10, 10, [-460, 440], [-220, 140], [6, 14], [5, 10], 120);
+  const hlDust = makeMotes(heavylightRnd, 10, 10, [-380, 380], [-100, 110], [6, 14], [5, 10], 120);
   const LANTERN = ["h_lan1", "h_lan2", "h_lan3", "h_lan2"];
   // the lamp's beam: source centred on the lamp head's lower-right face
   // (zone px before bob/lift), half the face width, aimed down-right, and it
   // runs past the deck line to just beyond the bottom of the screen
-  const BEAM = { x: 58, y: 88, half: 6, ang: 42 * Math.PI / 180, spread: 6 * Math.PI / 180, over: 24 };
+  const BEAM = { x: 58, y: 58, half: 6, ang: 42 * Math.PI / 180, spread: 6 * Math.PI / 180, over: 24 };
   // crates dropped in from above the screen when a HeavyLight beacon is
   // reached: they fall, the beam catches them and carries them down it
   const crates = [];
@@ -320,17 +324,27 @@ window.Zones = (function () {
     if (crates.length >= CRATE.max) crates.shift();
     crates.push({ x: 154 + Math.random() * 30, y: NaN, vx: 0, vy: 0, t: 0 });   // falls clear of the platform's right end (64) into the beam
   }
+  // the backdrop's px scale (GdWorld.P.heavylight.px(), 2 or 3) over 2, the
+  // zone units' own baseline scale, so the whole zone draws at the same
+  // px-per-art-pixel as the Game Dev tiles behind it
+  function hlZoom() {
+    const g = window.GdWorld, h = g && g.P && g.P.heavylight;
+    const p = h && typeof h.px === "function" ? h.px() : 3;
+    return p / 2;
+  }
+  const HL_LIFT = 120;   // lowest sprite bottom (112, zone units) + 8
   function stepCrates(dt, env) {
     if (!crates.length) return;
     const at = env && env.at && env.at.heavylight;
     if (!at || !isFinite(at.x)) { crates.length = 0; return; }
-    const room = roomBelow(env, at);
-    const lift = Math.max(0, 150 - room);
+    const z = hlZoom();
+    const room = roomBelow(env, at) / z;
+    const lift = Math.max(0, HL_LIFT - room);
     const apexX = BEAM.x, apexY = BEAM.y - lift;
     const cosA = Math.cos(BEAM.ang), sinA = Math.sin(BEAM.ang);
     for (let i = crates.length - 1; i >= 0; i--) {
       const c = crates[i];
-      if (!isFinite(c.y)) c.y = -at.y - 40;   // start just above the top edge of the screen
+      if (!isFinite(c.y)) c.y = -at.y / z - 40;   // start just above the top edge of the screen
       c.t += dt;
       // along-beam distance t and perpendicular distance pd from the beam's centreline
       const dx = c.x - apexX, dy = c.y - apexY;
@@ -347,13 +361,18 @@ window.Zones = (function () {
       c.x += c.vx * dt;
       c.y += c.vy * dt;
       // gone only once it has left the screen at the bottom or the right
-      if (at.y + c.y > env.H + 40 || c.t > CRATE.life || at.x + c.x > env.W + 80) crates.splice(i, 1);
+      if (at.y + c.y * z > env.H + 40 || c.t > CRATE.life || at.x + c.x * z > env.W + 80) crates.splice(i, 1);
     }
   }
 
   function drawHeavyLight(ctx, ax, ay, env, at) {
-    const room = roomBelow(env, at);
-    const lift = Math.max(0, 150 - room);   // lowest sprite bottom is 142 px below the centre
+    const z = hlZoom();
+    ctx.save();
+    ctx.translate(Math.round(ax), Math.round(ay));
+    ctx.scale(z, z);
+    ax = 0; ay = 0;
+    const room = roomBelow(env, at) / z;
+    const lift = Math.max(0, HL_LIFT - room);   // lowest sprite bottom is 112 zone px below the centre
     const oy = -lift;
     const bob = k => Math.sin(T * 0.4 + k * 2.1) * 2;
 
@@ -375,7 +394,7 @@ window.Zones = (function () {
     // on the middle platform: the player with his lantern
     const bM = bob(1);
     const frame = Math.floor(T / 0.45) % 4;
-    blitSprite(ctx, LANTERN[frame], ax - 84, ay + 78 + bM + oy);
+    blitSprite(ctx, LANTERN[frame], ax - 84, ay + 48 + bM + oy);
 
     // crates riding the light (drawn under the beam so the light lies on them)
     for (const c of crates) {
@@ -392,7 +411,7 @@ window.Zones = (function () {
     ctx.fillStyle = lampGlow(ctx);
     ctx.fillRect(-26, -26, 52, 52);
     ctx.restore();
-    const endY = env.H + BEAM.over;
+    const endY = (env.H - at.y) / z + BEAM.over;
     if (endY - cy0 > 12) {
       const ca = 0.20 + 0.03 * Math.sin(T * 3.1);
       const nx = -sinA * BEAM.half, ny = cosA * BEAM.half;   // half the face, perpendicular to the beam
@@ -411,13 +430,14 @@ window.Zones = (function () {
     }
 
     // the red key floats above the pillar
-    const ky = ay - 118 + Math.sin(T * 0.9) * 4 + oy;
+    const ky = ay - 94 + Math.sin(T * 0.9) * 4 + oy;
     ctx.save();
-    ctx.translate(ax + 317, ky + 17);
+    ctx.translate(ax + 247, ky + 17);
     ctx.fillStyle = keyGlow(ctx);
     ctx.fillRect(-22, -22, 44, 44);
     ctx.restore();
-    blitSprite(ctx, "h_key5", ax + 300, ky);
+    blitSprite(ctx, "h_key5", ax + 230, ky);
+    ctx.restore();
   }
 
   /* ================= VoidScape (seed 5) ================= */
