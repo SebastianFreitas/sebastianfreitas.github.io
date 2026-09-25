@@ -2,27 +2,30 @@
    door frames and blinds, fluorescent tubes on wires, floorboards and
    ceiling tiles, filing cabinets, office chairs adrift, clocks running
    ahead, an EXIT sign, a security camera; papers and cables nearest; a
-   green phosphor grade over it all. Registers GdWorld.P.zero. */
+   green phosphor grade over it all; quiet so the marks read: clocks
+   dimmed, everything thins round the marks (G.clearBox). Registers
+   GdWorld.P.zero. */
 (function () {
   const G = window.GdWorld; if (!G) return;
   const { F, sx, each, scatter, dens } = G;
   const { clamp, mix, smooth, hash1, TAU } = Util;
   const I = 0;
   const px = n => n * F.k;
+  const clearBox = (x, y, hw, hh) => G.clearBox ? G.clearBox(x, y, hw, hh) : 1;
   const C = {
     wall: "#0f2016", wallLit: "#1e3a2a", base: "#1a2e22", door: "#050a07", frame: "#213a2b", blind: "#17281d", night: "#0b1220",
     floorA: "#141f17", floorB: "#111a13", seam: "#0d150f", ceil: "#0d1912", tile: "#152418",
     tube: "#d6ffe4", tubeOff: "#2a4a36", wire: "#233a2c", glow: "150,255,180",
     cab: "#2b3a30", cabLit: "#3a4c40", drawer: "#22302a", drawerSide: "#1a2620", handle: "#8ea394",
     paper: "#aebfad", ink: "#4d6150", chair: "#1e2a22", chairLit: "#2c3a30", steel: "#3a4440",
-    clock: "#dfe8d8", hand: "#1c2a20", exit: "#ff5a48", exitBox: "#3a1410", cam: "#2a3430", lens: "#101614", led: "#ff3b2e", cable: "#1c2c22",
+    clock: "#6f7d72", hand: "#2a332c", exit: "#ff5a48", exitBox: "#3a1410", cam: "#2a3430", lens: "#101614", led: "#ff3b2e", cable: "#1c2c22",
   };
   // element lists (built at load; F is not needed for these)
   const PANELS = scatter(11, I, 44, 0.18, 0.30, 0.55);
   const TUBES_FAR = scatter(12, I, 60, 0.18, 0.15, 0.24);
   const PROPS = scatter(13, I, 120, 0.42, 0.22, 0.60);
-  const PAPERS = scatter(14, I, 160, 0.7, 0.14, 0.62);
-  const CABLES = scatter(15, I, 70, 0.7, 0.16, 0.34);
+  const PAPERS = scatter(14, I, 80, 0.7, 0.14, 0.62);
+  const CABLES = scatter(15, I, 35, 0.7, 0.16, 0.34);
   const TUBES_NEAR = scatter(16, I, 44, 0.7, 0.13, 0.21);
   let scanPat = null;
 
@@ -69,6 +72,8 @@
       const y0 = 0.09 * H, y1 = e.fy * H;
       const ex = s + px(30) * (e.r1 - 0.5) + (red ? 0 : Math.sin(t * 0.5 + e.r2 * TAU) * px(8));
       const cx = s + px(40) * (e.r3 - 0.5), cy = (y0 + y1) / 2;
+      const f = clearBox(ex, y1, px(3), px(3));
+      ctx.globalAlpha = f;
       ctx.strokeStyle = C.cable;
       ctx.lineWidth = px(2);
       ctx.beginPath();
@@ -80,23 +85,26 @@
       ctx.beginPath();
       ctx.arc(ex, y1, px(3), 0, TAU);
       ctx.fill();
+      ctx.globalAlpha = 1;
     });
 
     each(PAPERS, px(30), (e, s) => {
       const cx = s, cy = e.fy * H + (red ? 0 : Math.sin(t * 0.4 + e.r2 * TAU) * px(6));
       const ang = e.r1 * TAU + (red ? 0 : t * 0.06 * (e.r3 - 0.5));
+      const f = clearBox(cx, cy, px(11), px(15));
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(ang);
-      ctx.globalAlpha = 0.8;
+      ctx.globalAlpha = 0.8 * f;
       ctx.fillStyle = C.paper;
       ctx.fillRect(-px(11), -px(15), px(22), px(30));
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = f;
       ctx.fillStyle = C.ink;
       ctx.fillRect(-px(8), -px(8), px(14), px(2));
       ctx.fillRect(-px(8), -px(2), px(14), px(2));
       ctx.fillRect(-px(8), px(4), px(14), px(2));
       ctx.restore();
+      ctx.globalAlpha = 1;
     });
   }
 
@@ -143,11 +151,11 @@
     else on = false;
 
     if (on) {
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.85 * 0.55;
       ctx.fillStyle = C.tube;
       ctx.fillRect(s - len / 2, y - thick / 2, len, thick);
       const gr = ctx.createRadialGradient(s, y + thick, 0, s, y + thick, glowR);
-      gr.addColorStop(0, `rgba(${C.glow},0.14)`);
+      gr.addColorStop(0, `rgba(${C.glow},${0.14 * 0.5})`);
       gr.addColorStop(1, `rgba(${C.glow},0)`);
       ctx.fillStyle = gr;
       ctx.fillRect(s - glowR, y - glowR * 0.3, glowR * 2, glowR * 1.3);
@@ -163,6 +171,8 @@
     const { ctx, gy } = F;
     const wd = px(260 + 300 * e.r1), ht = px(200 + 200 * e.r2);
     const yb = gy + px(20 * e.r3), yt = yb - ht, xl = s - wd / 2;
+    const f = clearBox(s, yt + ht / 2, wd / 2, ht / 2);
+    ctx.globalAlpha = 0.4 + 0.6 * f;
 
     ctx.fillStyle = C.wall;
     ctx.fillRect(xl, yt, wd, ht);
@@ -196,6 +206,7 @@
       ctx.fillRect(wx - fr, wy, fr, wh);
       ctx.fillRect(wx + ww, wy, fr, wh);
     }
+    ctx.globalAlpha = 1;
   }
 
   function cabinet(e, s) {
@@ -204,10 +215,13 @@
     let cy, ang;
     if (e.r2 < 0.6) { cy = gy - h / 2; ang = 0; }
     else { cy = e.fy * H; ang = (e.r3 - 0.5) * 0.9; }
+    const f = clearBox(s, cy, w / 2, h / 2);
+    if (f < 0.03) return;
 
     ctx.save();
     ctx.translate(s, cy);
     ctx.rotate(ang);
+    ctx.globalAlpha = f;
 
     ctx.fillStyle = C.cab;
     ctx.fillRect(-w / 2, -h / 2, w, h);
@@ -241,16 +255,20 @@
       dy += dh + gap;
     }
     ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   function chair(e, s) {
     const { ctx, H, t, red } = F;
     const cy = e.fy * H;
     const ang = e.r1 * TAU + (red ? 0 : t * 0.06 * (e.r2 - 0.5));
+    const f = clearBox(s, cy, px(24), px(75));
+    if (f < 0.03) return;
 
     ctx.save();
     ctx.translate(s, cy);
     ctx.rotate(ang);
+    ctx.globalAlpha = f;
 
     const legLen = px(22);
     ctx.strokeStyle = C.steel;
@@ -281,18 +299,21 @@
     ctx.fillRect(px(12), -px(78), px(12), px(42));
 
     ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   function clock(e, s) {
     const { ctx, H, t, red } = F;
-    const cx = s, cy = e.fy * H, r = px(18);
+    const cx = s, cy = e.fy * H, r = px(18) * 0.7;
+    const f = clearBox(cx, cy, r, r);
+    if (f < 0.03) return;
 
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.9 * f;
     ctx.fillStyle = C.clock;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, TAU);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = f;
 
     ctx.strokeStyle = C.hand;
     ctx.lineWidth = 1;
@@ -311,11 +332,11 @@
     ctx.lineWidth = px(2);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(mAng) * px(14), cy + Math.sin(mAng) * px(14));
+    ctx.lineTo(cx + Math.cos(mAng) * px(14) * 0.7, cy + Math.sin(mAng) * px(14) * 0.7);
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(hAng) * px(9), cy + Math.sin(hAng) * px(9));
+    ctx.lineTo(cx + Math.cos(hAng) * px(9) * 0.7, cy + Math.sin(hAng) * px(9) * 0.7);
     ctx.stroke();
     ctx.lineWidth = 1;
 
@@ -323,14 +344,18 @@
     ctx.beginPath();
     ctx.arc(cx, cy, px(1.5), 0, TAU);
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   function exitSign(e, s) {
     const { ctx, H, t, red } = F;
     const cx = s, cy = e.fy * H;
+    const f = clearBox(cx, cy, px(34), px(34));
+    if (f < 0.03) return;
+    ctx.globalAlpha = f;
 
     const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, px(34));
-    gr.addColorStop(0, "rgba(255,80,60,0.25)");
+    gr.addColorStop(0, "rgba(255,80,60,0.125)");
     gr.addColorStop(1, "rgba(255,80,60,0)");
     ctx.fillStyle = gr;
     ctx.fillRect(cx - px(34), cy - px(34), px(68), px(68));
@@ -348,11 +373,15 @@
       ctx.fillRect(bx, cy - bhh / 2, b1, bhh);
       ctx.fillRect(bx + b1, cy - bhh / 2, b2, bhh);
     }
+    ctx.globalAlpha = 1;
   }
 
   function camera(e, s) {
     const { ctx, H, t, red } = F;
     const y = e.fy * H;
+    const f = clearBox(s + px(10), y - px(10), px(30), px(20));
+    if (f < 0.03) return;
+    ctx.globalAlpha = f;
 
     ctx.strokeStyle = C.cam;
     ctx.lineWidth = px(3);
@@ -385,6 +414,7 @@
       ctx.fillRect(-bw / 2 - px(8), -px(8), px(16), px(16));
     }
     ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   function band(y0, y1, par, fill, seamFill) {
@@ -419,5 +449,5 @@
     ctx.globalAlpha = 1;
   }
 
-  G.P.zero = { base: [6, 17, 11], wash, layers: [{ par: 0.18, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
+  G.P.zero = { base: [4, 12, 8], wash, layers: [{ par: 0.18, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
 })();

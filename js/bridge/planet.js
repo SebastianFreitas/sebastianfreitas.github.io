@@ -14,14 +14,14 @@
 window.Planet = (function () {
 
   const THEMES = {
-    zero:       { core: ["#173323", "#070d0a"], rim: "120,255,150", ring: "90,140,110", band: "40,70,50",  hasRing: false },
-    zeroDeep:   { core: ["#0f2418", "#05090a"], rim: "96,214,128", ring: "70,116,88", band: "32,58,42", hasRing: false },
+    zero:       { core: ["#5fd88a", "#123a22"], rim: "170,255,190", ring: "90,140,110", band: "40,70,50",  hasRing: false },
+    zeroDeep:   { core: ["#4cc078", "#0e2c1a"], rim: "150,245,175", ring: "70,116,88", band: "32,58,42", hasRing: false },
     voidscape:  { core: ["#c43a2e", "#3a0609"], rim: "255,132,104", ring: "104,170,32",  band: "104,170,32",  hasRing: true  },
     heavylight: { core: ["#6fa8cc", "#173f5e"], rim: "170,215,240", ring: "93,146,181",  band: "200,40,32",   hasRing: true  },
     conclusus:  { core: ["#b4c788", "#3c4a30"], rim: "247,255,197", ring: "138,137,105", band: "98,85,76",    hasRing: true  },
     voidscapeDeep:  { core: ["#e0553c", "#5a0c10"], rim: "255,170,140", ring: "80,130,26",   band: "80,130,26",   hasRing: false },
-    heavylightDeep: { core: ["#4b86aa", "#0e2a40"], rim: "150,195,225", ring: "70,120,150",  band: "160,36,30",   hasRing: false },
-    conclususDeep:  { core: ["#8fa06a", "#283220"], rim: "214,245,228", ring: "110,112,84",  band: "80,70,62",    hasRing: false },
+    heavylightDeep: { core: ["#7fb8dc", "#15405e"], rim: "190,230,250", ring: "70,120,150",  band: "160,36,30",   hasRing: false },
+    conclususDeep:  { core: ["#bfd392", "#3a4a2c"], rim: "240,255,215", ring: "110,112,84",  band: "80,70,62",    hasRing: false },
   };
 
   function draw(ctx, x, y, o) {

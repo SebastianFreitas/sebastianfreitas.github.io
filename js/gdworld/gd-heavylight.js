@@ -3,13 +3,16 @@
    rising with the field so the cave closes in around the planet; rooms cut
    into the rock; timed lamps on a 7.2 s cycle and slabs of solid light that
    exist only while their lamp is on; speckle drifting down; the wisps that
-   carry the clues, one in five red. Registers GdWorld.P.heavylight. */
+   carry the clues, one in five red. Registers GdWorld.P.heavylight.
+   Quiet so the marks read: edges and lamps dimmed, lights thin round the
+   marks (G.clearBox). */
 (function () {
   const G = window.GdWorld; if (!G) return;
   const { F, sx, each, scatter, dens, GAMES } = G;
   const { mix, smooth, ridge, TAU } = Util;
   const I = 2;
   const px = n => n * F.k;
+  const clearBox = (x, y, hw, hh) => G.clearBox ? G.clearBox(x, y, hw, hh) : 1;
   const C = {
     rockFar: "#0f2a3d", rockMid: "#0b2233", rockNear: "#08192a", edgeFar: "#4d7f9f", edgeMid: "#7fb0d0", edgeNear: "#8cc0dc", dot: "#143f5e",
     room: "#04101a", roomGlow: "110,160,240", lamp: "#dff3ff", lampGlow: "170,215,240", slab: "120,170,245", slabEdge: "200,230,255",
@@ -24,7 +27,7 @@
   const ROOMS_MID = scatter(42, I, 90, 0.42, 0, 1);
   const LAMPS = scatter(33, I, 80, 0.42, 0, 1);
   const SPECKS = scatter(35, I, 420, 0.7, 0.10, 0.64);
-  const WISPS = scatter(36, I, 44, 0.7, 0.14, 0.60);
+  const WISPS = scatter(36, I, 22, 0.7, 0.14, 0.60);
   const patterns = new Map();   // dot pattern canvases by pixel size
 
   // world units per chunk at this layer's parallax
@@ -117,13 +120,15 @@
       if (bandH > 0) ctx.rect(s, c.top, cw + 1, bandH);
       if (L.ceiling) ctx.rect(s, Math.max(0, c.bot - px(110)), cw + 1, Math.min(px(110), c.bot));
     }
-    ctx.globalAlpha = 0.6;
+    ctx.globalAlpha = 0.6 * 0.5;
     ctx.fillStyle = pat;
     ctx.fill();
     ctx.restore();
+    ctx.globalAlpha = 1;
 
     // lit edges: the step surfaces and the risers between them
     ctx.fillStyle = L.edge;
+    ctx.globalAlpha = 0.5;
     for (let n = 0; n < count; n++) {
       const c = ch[n];
       if (c.f < 0.01) continue;
@@ -142,6 +147,8 @@
     // the shared chamber: a dark cutout, an optional glow, a lamp dot at its top centre
     const paintRoom = (s, e, topY) => {
       const x0 = s - px(23);
+      const cb = L.par >= 0.4 ? clearBox(s, topY + px(19), px(23), px(19)) : 1;
+      if (cb < 0.03) return;
       ctx.fillStyle = C.room;
       ctx.fillRect(x0, topY, px(46), px(38));
       if (e.r3 < 0.6) {
@@ -152,7 +159,9 @@
         g.addColorStop(0, `rgba(${C.roomGlow},0.22)`);
         g.addColorStop(1, `rgba(${C.roomGlow},0)`);
         ctx.fillStyle = g;
+        ctx.globalAlpha = cb;
         ctx.fillRect(x0, topY, px(46), px(38));
+        ctx.globalAlpha = 1;
         ctx.restore();
       }
       ctx.fillStyle = C.lamp;
@@ -216,20 +225,30 @@
       const on = red ? e.r3 < 0.5 : ((t + e.r2 * 7.2) % 7.2) < 3.6;
       if (on) {
         const cx = s, cy = top - px(15);
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, px(26));
-        g.addColorStop(0, `rgba(${C.lampGlow},0.35)`);
-        g.addColorStop(1, `rgba(${C.lampGlow},0)`);
-        ctx.fillStyle = g;
-        ctx.fillRect(cx - px(26), cy - px(26), px(52), px(52));
+        const glowCb = clearBox(cx, cy, px(26), px(26));
+        if (glowCb >= 0.03) {
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, px(26));
+          g.addColorStop(0, `rgba(${C.lampGlow},0.35)`);
+          g.addColorStop(1, `rgba(${C.lampGlow},0)`);
+          ctx.fillStyle = g;
+          ctx.globalAlpha = 0.5 * glowCb;
+          ctx.fillRect(cx - px(26), cy - px(26), px(52), px(52));
+          ctx.globalAlpha = 1;
+        }
 
-        if (e.r4 < 0.45) {
+        if (e.r4 < 0.45 && f >= 0.03) {
           const sx0 = s + px(10), sy0 = top - px(46);
           const sw = px(120 + 100 * e.r1), sh = px(10);
-          ctx.fillStyle = `rgba(${C.slab},0.22)`;
-          ctx.fillRect(sx0, sy0, sw, sh);
-          ctx.fillStyle = `rgba(${C.slabEdge},0.45)`;
-          ctx.fillRect(sx0, sy0, sw, 1);
-          ctx.fillRect(sx0, sy0 + sh - 1, sw, 1);
+          const slabCb = clearBox(sx0 + sw / 2, sy0 + sh / 2, sw / 2, sh / 2);
+          if (slabCb >= 0.03) {
+            ctx.globalAlpha = 0.6 * slabCb;
+            ctx.fillStyle = `rgba(${C.slab},0.22)`;
+            ctx.fillRect(sx0, sy0, sw, sh);
+            ctx.fillStyle = `rgba(${C.slabEdge},0.45)`;
+            ctx.fillRect(sx0, sy0, sw, 1);
+            ctx.fillRect(sx0, sy0 + sh - 1, sw, 1);
+            ctx.globalAlpha = 1;
+          }
         }
       }
     });
@@ -242,7 +261,11 @@
     const { ctx, H, t, red } = F;
     each(SPECKS, px(4), (e, s) => {
       const y = 0.10 * H + ((e.fy * H - 0.10 * H + (red ? 0 : t * px(6) * (0.5 + e.r3))) % (0.54 * H));
+      const hw = px(1 + e.r1) / 2;
+      const cb = clearBox(s + hw, y + hw, hw, hw);
+      if (cb < 0.03) return;
       ctx.fillStyle = `rgba(${C.speck},${0.15 + 0.3 * e.r2})`;
+      ctx.globalAlpha = cb;
       ctx.fillRect(s, y, px(1 + e.r1), px(1 + e.r1));
     });
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
@@ -252,8 +275,11 @@
     const { ctx, H, t, red } = F;
     each(WISPS, px(20), (e, s) => {
       const y = e.fy * H + (red ? 0 : Math.sin(t * 0.8 + e.r4 * TAU) * px(4));
-      const a = red ? 0.8 : 0.5 + 0.5 * Math.sin(t * 1.3 + e.r1 * TAU);
+      const a = red ? 0.8 * 0.6 : 0.5 + 0.5 * Math.sin(t * 1.3 + e.r1 * TAU);
       const col = e.r2 < 0.2 ? C.wispRed : C.wisp;
+      const cb = clearBox(s, y, px(14), px(14));
+      if (cb < 0.03) return;
+      ctx.globalAlpha = cb;
 
       const g = ctx.createRadialGradient(s, y, 0, s, y, px(14));
       g.addColorStop(0, `rgba(${col},${0.5 * a})`);
@@ -276,5 +302,5 @@
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
-  G.P.heavylight = { base: [6, 18, 25], wash, layers: [{ par: 0.2, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
+  G.P.heavylight = { base: [5, 14, 19], wash, layers: [{ par: 0.2, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
 })();
