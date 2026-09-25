@@ -27,37 +27,23 @@ list are long: hook output over 10,000 characters is replaced by a
 
 ## Auto-continue
 
-For a context-full handoff the session clears itself and picks the work
-back up with no owner input. Each mode's "Context full" rule says when to
-run it. It is the same session afterwards, with the same folder, branch
-and PR. A local session stays in its worktree (or the shared checkout)
-and a cloud session stays in its container. So never open a new
-worktree, branch or PR for the same work. A handoff that waits on the
-owner (a question, a blocker) skips this. Once the file is written and
-everything is committed:
+For a context-full handoff the session keeps working with no owner
+input: auto-compaction, not a clear. `.claude/settings.json` sets
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` to 180000, so Claude Code compacts
+the conversation a little past the 140k handoff line, mid-turn, and
+goes on in the same turn. The SessionStart hook runs again with source
+`compact` and prints `.claude/handoff.md` into the compacted context.
+It is the same session, folder, branch and PR. So never open a new
+worktree, branch or PR for the same work.
 
-1. Load the tools: `ToolSearch` with
-   `select:mcp__ccd_session_mgmt__clear_session,CronCreate`.
-2. Call `mcp__ccd_session_mgmt__clear_session` with `session_id:
-   "self"`. It runs `/clear` when this turn ends. If the tool is missing
-   (a terminal session) or refuses, skip step 3 and end with the mode
-   file's manual line.
-3. In Bash, run `date -d '+3 min' '+%-M %-H %-d %-m'`. If the first
-   number is 0 or 30, run it with `+4 min` instead, because jobs set for
-   those minutes can fire up to 90 s early. Call `CronCreate` with
-   `cron: "<M> <H> <D> <Mo> *"`, `recurring: false` and the prompt below.
-   The job survives `/clear` (checked in the Claude Code 2.1.281 source)
-   and fires into the fresh context once it is idle. By then the
-   SessionStart hook has printed the handoff there.
-4. End the turn as the mode file's "Context full" rule says, with the
-   `<H>:<M>` in its line. The report is long enough that the turn ends
-   before the job's time.
+Once the handoff is written and everything is committed, keep going
+with Next in the same turn. Do not end the turn because context is
+full. A handoff that waits on the owner (a question, a blocker) ends
+the turn as usual.
 
-Clear first, then schedule: a refused clear then leaves no job behind.
-The prompt, verbatim:
-
-"Auto-continue: continue from the handoff. If .claude/handoff.md is
-gone, the work already continued: say so in one line and stop. If this
-conversation still holds the turn that wrote the handoff, the clear did
-not happen: say 'Auto-clear cancelled. Type /clear and say: continue
-from the handoff.' and stop."
+Never call `mcp__ccd_session_mgmt__clear_session` on "self" to continue
+work. In the desktop app a clear stops the session's Claude process,
+which drops every session-only job with it (`CronCreate`, background
+shells, monitors). Nothing is left running to start the next turn, so
+the session sits empty until the owner types. Seen 2026-09-25 in the
+desktop log as "Stopping session", then "Clearing session".

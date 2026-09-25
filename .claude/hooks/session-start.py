@@ -5,12 +5,13 @@
    shares, so each session loads one mode's rules instead of all three.
 2. On a fresh start or /clear: the branch, and the paths already
    uncommitted (made by another session, never by this one).
-3. On a fresh start or /clear: the handoff left by the previous context
-   (.claude/handoff.md), if any.
+3. On a fresh start, /clear or compaction: the handoff left by the
+   previous context (.claude/handoff.md), if any.
 
 SessionStart also fires after compaction ("compact") and on resume; the
-mode rules are printed again then (compaction drops them), but not the
-dirty-path list, which by then holds this session's own edits.
+mode rules and the handoff are printed again then (compaction drops
+them), but not the dirty-path list, which by then holds this session's
+own edits.
 
 Plain stdout on SessionStart is added to the session's context.
 Never fails the hook: any error exits 0.
@@ -110,6 +111,7 @@ def main():
         else:
             lines.append("Tree clean at session start.")
 
+    if source in ("startup", "clear", "compact"):
         hand = os.path.join(root, ".claude", "handoff.md")
         if os.path.exists(hand):
             with open(hand, encoding="utf-8", errors="ignore") as f:
