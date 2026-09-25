@@ -13,14 +13,15 @@
   let lastT = 0, lastBeat = -1;
   let lashLatch = false, darkLatch = false;
 
-  /* a reaching hand: shoulder is fixed to the body, the hand sits out
-     along the shoulder-to-target direction, `amt` of the way there */
-  function godHand(x, yFoot, h, face, tx, ty) {
-    const shx = x + face * 0.18 * h, shy = yFoot - 0.66 * h;
-    const dx = tx - shx, dy = ty - shy;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: shx + (dx / len) * 0.44 * h, y: shy + (dy / len) * 0.44 * h };
+  /* where a god's beam leaves it: its hand, snout or jaws at full reach
+     toward (tx, ty); each god's own geometry lives in genesis-gods.js */
+  function godHand(kind, x, yFoot, h, face, tx, ty) {
+    return window.GenFig.godHand(kind, x, yFoot, h, { face }, tx, ty);
   }
+
+  /* Obrokxus: each form is half the size of the one before it */
+  const O_SCALE = { obrokxus: 1, centihorse: 0.5, worm: 0.25 };
+  const hOf = (kind) => 0.26 * G.H * O_SCALE[kind];
 
   function drawSaga(ctx) {
     const S = sagaAt();
@@ -47,17 +48,18 @@
        for everyone. The three gods hover — their state y is the body
        CENTRE, so yFoot is that plus 0.45h; everyone else already has a
        ground-relative y from GenMain.surfYAt, used as-is. */
-    const hO = 0.26 * G.H, oxS = sx(S.ou);
+    const oxS = sx(S.ou);
     /* in the ground: the foot line drops below the surface so only his
        head and spine tips clear it; the rest is clipped at the surface */
     const oGround = GenMain.surfY(oxS) - 12;
-    const oyFootO = mix(S.oy + 0.45 * hO, oGround + 0.62 * hO, S.oHide);
+    const oFootOf = (h) => mix(S.oy + 0.45 * h, oGround + 0.62 * h, S.oHide);
     const oKind = S.oMorph >= 0.5 ? S.oForm : S.oFrom;
+    const hO = hOf(oKind), oyFootO = oFootOf(hO);
     const oSpeed = S.etBeat ? 1.6 : 1;
     const oEyeAt = (pose) => F.obrokEye(oKind, oxS, oyFootO, hO, { face: S.oFace, pose, speed: oSpeed });
 
-    const hM = 0.17 * G.H, mX = sx(S.mu), mYFoot = S.my + 0.45 * hM;
-    const hA = 0.17 * G.H, aX = sx(S.au), aYFoot = S.ay + 0.45 * hA;
+    const hM = G.GOD_H * G.H, mX = sx(S.mu), mYFoot = S.my + 0.45 * hM;
+    const hA = G.GOD_H * G.H, aX = sx(S.au), aYFoot = S.ay + 0.45 * hA;
 
     const hMd = 0.13 * G.H, mdX = sx(S.mdU), mdYFoot = S.mdY;
     const hC = 0.13 * G.H, cX = sx(S.cU), cYFoot = S.cY;
@@ -170,7 +172,7 @@
     if (S.war <= 0 && S.mAmt > 0.02) { pushTrail(G.trailM, mX, S.my); drawTrail(ctx, G.trailM, "210,70,48", S.mAmt); }
     if (S.mAmt > 0.01) {
       F.drawGod(ctx, mX, mYFoot, hM, ORB_STYLE.ormius, {
-        a: S.mAmt, face: S.mFace, crown: "bars",
+        a: S.mAmt, face: S.mFace, kind: "ormius", crown: "bars",
         reach: S.etBeat
           ? { x: oEyeX, y: oEyeY, amt: Math.max(S.etStrike, 0.35 * S.etSearch) }
           : { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeM : S.etStrike },
@@ -178,10 +180,10 @@
       });
     }
 
-    if (S.war <= 0 && S.aAmt > 0.02) { pushTrail(G.trailA, aX, S.ay); drawTrail(ctx, G.trailA, "120,214,96", S.aAmt); }
+    if (S.war <= 0 && S.aAmt > 0.02) { pushTrail(G.trailA, aX, S.ay); drawTrail(ctx, G.trailA, "255,206,80", S.aAmt); }
     if (S.aAmt > 0.01) {
       F.drawGod(ctx, aX, aYFoot, hA, ORB_STYLE.ava, {
-        a: S.aAmt, face: S.aFace, crown: "rings", wings: true,
+        a: S.aAmt, face: S.aFace, kind: "ava", crown: "rings", wings: true,
         reach: { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeA : 0 },
       });
     }
@@ -192,7 +194,7 @@
         : kind === "centihorse" ? (oPose === "flee" ? "run" : oPose) : oPose;
       const drawO = (kind, a) => {
         if (a < 0.01) return;
-        F.drawTitan(ctx, oxS, oyFootO, hO, kind, {
+        F.drawTitan(ctx, oxS, oFootOf(hOf(kind)), hOf(kind), kind, {
           a, face: S.oFace, pose: poseOf(kind), reach: oReach || look, look,
           air: S.oAir, speed: oSpeed,
         });
@@ -215,10 +217,10 @@
 
     /* ---- beams, from hands and staff-gems, not centres --------- */
     if (S.fightW > 0.05 && S.oAmt > 0.05) {
-      const mHand = godHand(mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
-      const aHand = godHand(aX, aYFoot, hA, S.aFace, oEyeX, oEyeY);
+      const mHand = godHand("ormius", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
+      const aHand = godHand("ava", aX, aYFoot, hA, S.aFace, oEyeX, oEyeY);
       drawBeam(ctx, mHand.x, mHand.y, oEyeX, oEyeY, S.strikeM * S.fightW * S.mAmt);
-      drawTintBeam(ctx, aHand.x, aHand.y, oEyeX, oEyeY, "120,214,96", S.strikeA * S.fightW * S.aAmt);
+      drawTintBeam(ctx, aHand.x, aHand.y, oEyeX, oEyeY, "255,206,80", S.strikeA * S.fightW * S.aAmt);
     }
 
     if (S.lock > 0.40 && S.lock < 0.82 && S.mAmt > 0.08 && S.aAmt > 0.08) {
@@ -226,13 +228,13 @@
       if (p > 0) {
         G.flash = Math.max(G.flash, p * 0.7);
         G.shake = Math.max(G.shake, 0.32 * p);
-        const mToA = godHand(mX, mYFoot, hM, S.mFace, aX, aYFoot);
-        const aToM = godHand(aX, aYFoot, hA, S.aFace, mX, mYFoot);
-        const mToMd = godHand(mX, mYFoot, hM, S.mFace, mdX, mdYFoot);
-        const aToMd = godHand(aX, aYFoot, hA, S.aFace, mdX, mdYFoot);
+        const mToA = godHand("ormius", mX, mYFoot, hM, S.mFace, aX, aYFoot);
+        const aToM = godHand("ava", aX, aYFoot, hA, S.aFace, mX, mYFoot);
+        const mToMd = godHand("ormius", mX, mYFoot, hM, S.mFace, mdX, mdYFoot);
+        const aToMd = godHand("ava", aX, aYFoot, hA, S.aFace, mdX, mdYFoot);
         drawTintBeam(ctx, mToA.x, mToA.y, aToM.x, aToM.y, "220,210,180", p);
         drawTintBeam(ctx, mToMd.x, mToMd.y, mdX, mdYFoot, "200,32,40", p * S.mdAmt);
-        drawTintBeam(ctx, aToMd.x, aToMd.y, mdX, mdYFoot, "120,214,96", p * S.mdAmt);
+        drawTintBeam(ctx, aToMd.x, aToMd.y, mdX, mdYFoot, "255,206,80", p * S.mdAmt);
       }
     }
 
@@ -260,7 +262,7 @@
     if (R) R.drawOver(ctx, S, { mdG, cG, aelG, vG });
 
     if (S.et > 0.12 && S.oAmt > 0.2 && S.mAmt > 0.2) {
-      const mHand = godHand(mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
+      const mHand = godHand("ormius", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
       drawBeam(ctx, mHand.x, mHand.y, oEyeX, oEyeY, S.etStrike * Math.min(S.oAmt, S.mAmt));
       const dx = mX - oEyeX, dy = S.my - oEyeY;
       if (Math.hypot(dx, dy) < 40 && G.clashCool <= 0) {

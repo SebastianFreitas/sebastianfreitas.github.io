@@ -57,25 +57,26 @@ window.GenFig = window.GenFig || {};
     o = o || {};
     const X = (lx) => x + f * lx * h, Y = (ly) => y - ly * h;
     const run = pose === "run", air = clamp(o.air || 0, 0, 1);
-    const gw = run ? 11 : 1.6, st = run ? 0.11 : 0.03, la = run ? 0.09 : 0.02;
+    // stroke rate (rad/s), half-sweep from straight down (rad), leg length (h)
+    const gw = run ? 10 : 2.4, swing = run ? 0.95 : 0.55, L = run ? 0.40 : 0.36;
     const sp = run ? 0.145 : 0.13, bh = run ? 0.42 : 0.46;
 
     const N = 9;
     const lxs = [], lys = [], rs = [];
     for (let i = 0; i < N; i++) {
       lxs[i] = 0.42 - i * sp;
-      lys[i] = bh + 0.03 * Math.sin(G.t * (run ? 9 : 2) - i * 0.8);
+      lys[i] = bh + (run ? 0.045 : 0.03) * Math.sin(G.t * (run ? 9 : 2) - i * 0.8);
       rs[i] = h * (0.13 - i * 0.008);
     }
 
     function leg(i, far) {
-      const phase = G.t * gw + i * 0.95 + (far ? Math.PI : 0) + ph;
-      let fx = Math.cos(phase) * st;
-      let lift = Math.max(0, Math.sin(phase)) * la;
-      if (air > 0) {
-        fx = mix(fx, -0.05 + 0.04 * Math.sin(G.t * 5 + i * 1.3), air);
-        lift = mix(lift, 0.10 + 0.06 * Math.sin(G.t * 6 + i), air);
-      }
+      // rowing stroke: sw is the sweep (+1 forward, toward the face; -1
+      // back), ext is 1 on the power stroke (forward -> back) and 0 on
+      // the folded recovery. The wave runs head to tail (-i).
+      const phase = G.t * gw - i * 0.95 + (far ? Math.PI : 0) + ph;
+      const sw = Math.sin(phase);
+      let ext = 0.5 - 0.5 * Math.cos(phase), amp = swing;
+      if (air > 0) { amp = mix(amp, 1.15, air); ext = mix(ext, 0.85, air); }   // lifted: spread wide
       const dx = far ? -0.03 : 0;
       const lx = lxs[i], ly = lys[i];
       const col = far ? FAR : OBR.shade;
@@ -92,13 +93,21 @@ window.GenFig = window.GenFig || {};
       }
 
       const hip = [lx + dx, ly - 0.05];
-      const knee = [lx + dx + fx * 0.5 + 0.04, 0.22 + lift * 0.6];
-      const hx = lx + dx + fx, hy = lift + 0.03;
+      const ang = sw * amp;                                   // from straight down, + = forward
+      const len = L * (0.55 + 0.45 * ext);
+      const tip = [hip[0] + Math.sin(ang) * len, hip[1] - Math.cos(ang) * len];
+      // knee off the hip->tip line, on the forward/up side, more when folded
+      const fold = 0.05 + 0.12 * (1 - ext);
+      const knee = [(hip[0] + tip[0]) / 2 + Math.cos(ang) * fold, (hip[1] + tip[1]) / 2 + Math.sin(ang) * fold];
       fillPoly(ctx, quad(X(hip[0]), Y(hip[1]), X(knee[0]), Y(knee[1]), 0.045 * h), col);
-      fillPoly(ctx, quad(X(knee[0]), Y(knee[1]), X(hx), Y(hy), 0.03 * h), col);
+      fillPoly(ctx, quad(X(knee[0]), Y(knee[1]), X(tip[0]), Y(tip[1]), 0.03 * h), col);
+      // claw: a short blade past the tip, along the shin
+      const sx = tip[0] - knee[0], sy = tip[1] - knee[1], sl = Math.hypot(sx, sy) || 1;
+      const ux = sx / sl, uy = sy / sl;
       fillPoly(ctx, [
-        [X(hx - 0.025), Y(lift + 0.035)], [X(hx + 0.025), Y(lift + 0.035)],
-        [X(hx + 0.03), Y(lift)], [X(hx - 0.03), Y(lift)],
+        [X(tip[0] - uy * 0.02), Y(tip[1] + ux * 0.02)],
+        [X(tip[0] + uy * 0.02), Y(tip[1] - ux * 0.02)],
+        [X(tip[0] + ux * 0.07), Y(tip[1] + uy * 0.07)],
       ], col);
     }
 

@@ -117,11 +117,15 @@ window.Gen = (function () {
   G.ET_CAM_RATE   = 2.60;
   G.SIEGE_GODS = [
     { kind: "ormius",     name: "ORMIUS",     rgb: "210,70,48",   ang: 3.40, ph: 0.0 },
-    { kind: "ava",        name: "AVA",        rgb: "120,214,96",  ang: 2.20, ph: 1.3 },
+    { kind: "ava",        name: "AVA",        rgb: "255,206,80",  ang: 2.20, ph: 1.3 },
     { kind: "kaeron",     name: "KAERON",     rgb: "70,130,255",  ang: 0.35, ph: 2.6 },
-    { kind: "kaelum",     name: "KAELUM",     rgb: "236,92,150",  ang: 4.60, ph: 3.9 },
+    { kind: "kaelum",     name: "KAELUM",     rgb: "255,240,220", ang: 4.60, ph: 3.9 },
     { kind: "orochronus", name: "OROCHRONUS", rgb: "196,206,226", ang: 5.70, ph: 5.2 },
   ];
+
+  /* the gods' height, a fraction of the screen's short side; small on
+     purpose so Rex (the land, the depths) stays massive next to them */
+  G.GOD_H = 0.11;
 
   G.YELLOW_KEYS = [
     { t: 0.00, x:  0.36, y: -0.10 },
@@ -169,9 +173,9 @@ window.Gen = (function () {
   G.ORB_STYLE = {
     rex: { lit: "#f58a34", shade: "#b4461e", glow: "245,138,52", core: "#ffe2be" },
     ormius: { lit: "#d24030", shade: "#8e1a1c", glow: "210,64,48", core: "#fff4dc" },
-    ava: { lit: "#78d660", shade: "#3f8a3a", glow: "120,214,96", core: "#eaffe2" },
-    kaelum: { lit: "#ec5c96", shade: "#9a2a60", glow: "236,92,150", core: "#ffecf4" },
-    orochronus: { lit: "#c4cee2", shade: "#7c869e", glow: "196,206,226", core: "#f8faff" },
+    ava: { lit: "#f6f2ea", shade: "#c9bfae", glow: "255,206,80", core: "#ffd64a" },
+    kaelum: { lit: "#fff6ea", shade: "#d8ccc0", glow: "255,240,220", core: "#ffffff" },
+    orochronus: { lit: "#5e6178", shade: "#262833", glow: "196,206,226", core: "#f0f4ff" },
     kaeron: { lit: "#4682ff", shade: "#2240a0", glow: "70,130,255", core: "#e8f2ff" },
     cadmus: { lit: "#c84a36", shade: "#7a2a1e", glow: "240,150,120", core: "#ffc8aa" },
     aelius: { lit: "#1ea064", shade: "#10603c", glow: "30,160,100", core: "#e6fff0" },

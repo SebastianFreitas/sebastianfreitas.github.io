@@ -137,7 +137,7 @@
 
     /* ---- blessing ground glow ---- */
     if (S.bless > 0.01) {
-      GenPaint.flatGlow(ctx, G.sx(S.aelU), S.aelY, 0.07 * G.H, "120,214,96", 0.35 * S.bless);
+      GenPaint.flatGlow(ctx, G.sx(S.aelU), S.aelY, 0.07 * G.H, "255,206,80", 0.35 * S.bless);
     }
 
     /* ---- mortal forms ---- */
@@ -275,8 +275,8 @@
     /* ---- blessing: light falls on Aelius ---- */
     if (S.bless > 0.01) {
       const x = G.sx(S.aelU);
-      GenVoid.drawTintBeam(ctx, x, -20, x, S.aelY - 0.03 * G.H, "120,214,96", S.bless);
-      GenPaint.flatGlow(ctx, x, S.aelY - 0.04 * G.H, 0.06 * G.H, "200,255,210", 0.5 * S.bless);
+      GenVoid.drawTintBeam(ctx, x, -20, x, S.aelY - 0.03 * G.H, "255,206,80", S.bless);
+      GenPaint.flatGlow(ctx, x, S.aelY - 0.04 * G.H, 0.06 * G.H, "255,240,200", 0.5 * S.bless);
     }
 
     /* ---- help: Cadmus's corrupting aid reaches Velindra ---- */

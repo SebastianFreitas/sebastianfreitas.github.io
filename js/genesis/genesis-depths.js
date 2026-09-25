@@ -187,7 +187,9 @@ window.GenDepths = (function () {
       const ga = g.ang + G.t * 0.22 + Math.sin(G.t * 0.4 + g.ph) * 0.3;
       const R = mix(span * (0.30 + 0.04 * Math.sin(G.t * 0.5 + g.ph)), span * 0.44, bind);
       const ringX = dx + Math.cos(ga) * R * 1.3, ringY = dy + Math.sin(ga) * R * 0.85;
-      const strike = Math.pow(Math.max(0, Math.sin(G.t * 1.7 + g.ph)), 6) * (1 - bind) * desc;
+      // Kaelum does not fight: she only orbits
+      const strike = g.kind === "kaelum" ? 0
+        : Math.pow(Math.max(0, Math.sin(G.t * 1.7 + g.ph)), 6) * (1 - bind) * desc;
       const gx = mix(ex, mix(ringX, ox, strike * 0.88), desc), gy = mix(ey, mix(ringY, oy, strike * 0.88), desc);
       gods.push({ g, gx, gy, amt: clamp(desc * 3, 0, 1), strike });
     }
@@ -220,18 +222,17 @@ window.GenDepths = (function () {
     for (const e of gods) {
       if (e.amt <= 0.02) continue;
       const g = e.g, x = e.gx, y = e.gy, a = e.amt, strike = e.strike;
-      const h = 0.15 * G.H;
+      const h = G.GOD_H * G.H;
       const face = ox > x ? 1 : -1;
       const yFoot = y + 0.45 * h;
-      // the facing arm's hand at full reach, so the beam starts from it
-      const shoulder = { x: x + face * 0.18 * h, y: yFoot - 0.66 * h };
-      const hdx = ox - shoulder.x, hdy = oy - shoulder.y;
-      const hlen = Math.hypot(hdx, hdy) || 1;
-      const hand = { x: shoulder.x + (hdx / hlen) * 0.44 * h, y: shoulder.y + (hdy / hlen) * 0.44 * h };
+      // where this god's beam leaves it: hand, snout or jaws at full reach
+      const hand = F.godHand(g.kind, x, yFoot, h, { face }, ox, oy);
       if (strike > 0.05) drawTintBeam(ctx, hand.x, hand.y, ox, oy, g.rgb, strike);
       F.drawGod(ctx, x, yFoot, h, ORB_STYLE[g.kind], {
-        a, face, crown: CROWN[g.kind], wings: g.kind === "ava",
+        a, face, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
         reach: { x: ox, y: oy, amt: strike }, ph: g.ph,
+        // her colour is her mood: settling in, then the siege angers her, then her brothers turn
+        mood: G.beat >= G.idxOf("slip") ? "sad" : G.linear("deep") > 0.5 ? "angry" : "ok",
       });
       if (strike > 0.8 && a > 0.3 && G.clashCool <= 0 && Math.hypot(x - ox, y - oy) < span * 0.12) {
         G.flash = Math.max(G.flash, 0.5);

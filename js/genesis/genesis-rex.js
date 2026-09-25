@@ -339,10 +339,10 @@ window.GenRex = (function () {
       y = mix(y, by + G.H * 0.08, dive * dive);
 
       const amt = clamp(out * 1.4, 0, 1) * (1 - smooth(clamp((dive - 0.85) / 0.15, 0, 1)));
-      const h = Math.min(G.W, G.H) * 0.16;
+      const h = Math.min(G.W, G.H) * G.GOD_H;
       F.drawGod(ctx, x, y + h * 0.45, h, ORB_STYLE[g.kind], {
-        a: amt, face: -1, crown: CROWN[g.kind], wings: g.kind === "ava",
-        tilt: -dive * 0.55 + 0.25 * (1 - out), ph: g.ph,
+        a: amt, face: -1, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
+        tilt: -dive * 0.55 + 0.25 * (1 - out), ph: g.ph, mood: "happy",
       });
       drawName(ctx, x, y + h * 0.45 + 14, amt, g.name, 0);
 

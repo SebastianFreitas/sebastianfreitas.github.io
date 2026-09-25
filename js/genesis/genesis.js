@@ -484,7 +484,8 @@ window.Genesis = (function () {
       const uF = linear("fight");
       const rexLunge = bump(DASH, uF), obLash = bump(LASH, uF);
       const emerge = clamp(uBirth * 1.35, 0, 1);
-      const hR = 0.26 * m * (0.4 + 0.6 * emerge), hO = 0.26 * m * (0.4 + 0.6 * emerge);
+      // Rex a head taller than Obrokxus: the stone titan, not an equal
+      const hR = 0.30 * m * (0.4 + 0.6 * emerge), hO = 0.26 * m * (0.4 + 0.6 * emerge);
       const fR = L.rx >= L.yx ? 1 : -1, fO = -fR;
       const yFootR = L.yy + 0.45 * hR, yFootO = L.ry + 0.45 * hO;
       const obEye = { x: L.rx + fO * 0.10 * hO, y: yFootO - 0.50 * hO };

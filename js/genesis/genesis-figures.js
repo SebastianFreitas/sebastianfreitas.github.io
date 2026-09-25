@@ -37,6 +37,10 @@ window.GenFig = window.GenFig || {};
      toward a target), head, optional crown ---- */
   F.drawGod = function drawGod(ctx, x, y, h, style, o) {
     o = o || {};
+    /* a named god has its own painter (genesis-gods.js); the robed
+       figure below is the fallback */
+    const own = o.kind && F.GOD_PAINT && F.GOD_PAINT[o.kind];
+    if (own) { own(ctx, x, y, h, style, o); return; }
     const a = o.a ?? 1, f = o.face || 1, ph = o.ph || 0, tilt = o.tilt || 0;
     if (a < 0.01) return;
     ctx.save();
