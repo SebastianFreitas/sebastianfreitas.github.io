@@ -1,7 +1,8 @@
 /* genesis-mainland.js — the mainland: the ridge bands, the surface cache
    every figure stands on, the red spires rooted in the ground, the city
-   with roofs and lamps, and the nest pit. Screen-space painters fed by the
-   saga state S (rise/scar/corrupt/civAmt/nestAmt...). */
+   with roofs and lamps, rising to towers after the war, and the nest pit.
+   Screen-space painters fed by the saga state S
+   (rise/scar/corrupt/civAmt/nestAmt...). */
 window.GenMain = (function () {
   const G = window.Gen;
   const { clamp, mix, hash1, mulberry, ridge, smooth } = Util;
@@ -113,9 +114,9 @@ window.GenMain = (function () {
     };
   })();
   const CITY_BANDS = [
-    { list: CITY.far,  lit: "#1f282d", shade: "#141a1e", alpha: 0.55, win: false, wall: false },
-    { list: CITY.mid,  lit: "#222c32", shade: "#161d21", alpha: 0.78, win: true,  wall: false },
-    { list: CITY.near, lit: "#26323a", shade: "#182025", alpha: 1,    win: true,  wall: true  },
+    { list: CITY.far,  lit: "#1f282d", shade: "#141a1e", alpha: 0.55, win: false, wall: false, tower: 0.35 },
+    { list: CITY.mid,  lit: "#222c32", shade: "#161d21", alpha: 0.78, win: true,  wall: false, tower: 0.50 },
+    { list: CITY.near, lit: "#26323a", shade: "#182025", alpha: 1,    win: true,  wall: true,  tower: 0.55 },
   ];
 
   function drawMainland(ctx, S) {
@@ -245,12 +246,31 @@ window.GenMain = (function () {
     }
   }
 
+  /* one building's geometry at this frame; towers are the buildings that
+     rise into skyscrapers as S.modern climbs, each on its own delay */
+  function cityGeom(tw, band, amt, modern) {
+    const grow = clamp((amt - tw.born) / 0.20, 0, 1);
+    const x = sx(MAIN_U + tw.u * MAIN_HALF);
+    const hScale = G.H / 900;
+    const isTower = hash1(tw.wseed + 77) < band.tower;
+    const kb = isTower ? smooth(clamp((modern - 0.55 * hash1(tw.wseed + 91)) / 0.45, 0, 1)) : 0;
+    const w = tw.w * hScale * mix(1, 0.82, kb);
+    const hOld = tw.h * G.H * grow * mix(0.38, 1.08, amt);
+    const hTower = (0.24 + 0.16 * hash1(tw.wseed + 5)) * G.H;
+    const h = mix(hOld, hTower, kb);
+    const yl = surfY(x - w / 2) + 6;
+    const yr = surfY(x + w / 2) + 6;
+    const yt = Math.min(yl, yr) - h;
+    return { x, w, h, yl, yr, yt, grow, kb };
+  }
+
   function drawCity(ctx, S) {
     const amt = (S && S.civAmt) || 0;
     if (amt < 0.01) return;
     const rise = (S && S.mainRise) || 0;
     const ret = (S && S.ret) || 0;
     const lock = (S && S.lock) || 0;
+    const modern = (S && S.modern) || 0;
     const vis = clamp(amt * 3, 0, 1);
     const winBoost = mix(0.35, 1, Math.max(ret, lock * 0.4));
     const lampA = clamp((ret - 0.25) / 0.3, 0, 1);
@@ -262,52 +282,72 @@ window.GenMain = (function () {
       ctx.globalAlpha = vis * rise * band.alpha;
 
       if (band.wall) {
-        const xWallL = sx(CITY_U - 0.30);
-        const xWallR = sx(CITY_U + 0.30);
-        const wallH = 0.045 * G.H * amt;
-        for (let x0 = xWallL; x0 < xWallR; x0 += 40) {
-          const x1 = Math.min(x0 + 40, xWallR);
-          const g0 = surfY(x0), g1 = surfY(x1);
-          const xSplit = x0 + 0.35 * (x1 - x0);
-          litShade(ctx, () => poly(ctx, [[x0, g0], [x0, g0 - wallH], [x1, g1 - wallH], [x1, g1]]),
-            xSplit, band.lit, band.shade);
+        const wallH = 0.045 * G.H * amt * (1 - modern);
+        if (wallH >= 1) {
+          const xWallL = sx(CITY_U - 0.30);
+          const xWallR = sx(CITY_U + 0.30);
+          for (let x0 = xWallL; x0 < xWallR; x0 += 40) {
+            const x1 = Math.min(x0 + 40, xWallR);
+            const g0 = surfY(x0), g1 = surfY(x1);
+            const xSplit = x0 + 0.35 * (x1 - x0);
+            litShade(ctx, () => poly(ctx, [[x0, g0], [x0, g0 - wallH], [x1, g1 - wallH], [x1, g1]]),
+              xSplit, band.lit, band.shade);
+          }
+          const wallTop = surfY((xWallL + xWallR) * 0.5) - wallH;
+          merlons(ctx, xWallL, xWallR, wallTop, 8, 6, 6, band.lit, band.shade, xWallL + 0.35 * (xWallR - xWallL));
         }
-        const wallTop = surfY((xWallL + xWallR) * 0.5) - wallH;
-        merlons(ctx, xWallL, xWallR, wallTop, 8, 6, 6, band.lit, band.shade, xWallL + 0.35 * (xWallR - xWallL));
       }
 
       for (const tw of band.list) {
         if (tw.born >= amt) continue;
-        const grow = clamp((amt - tw.born) / 0.20, 0, 1);
-        const x = sx(MAIN_U + tw.u * MAIN_HALF);
-        const w = tw.w * hScale;
-        const h = tw.h * G.H * grow * mix(0.38, 1.08, amt);
-        const yl = surfY(x - w / 2) + 6;
-        const yr = surfY(x + w / 2) + 6;
-        const yt = Math.min(yl, yr) - h;
+        const { x, w, h, yl, yr, yt, kb } = cityGeom(tw, band, amt, modern);
         const xSplit = x - 0.15 * w;
+        const litC = mixHex(band.lit, "#4a6070", 0.45 * kb);
+        const shadeC = mixHex(band.shade, "#26323c", 0.45 * kb);
 
         litShade(ctx, () => poly(ctx, [[x - w / 2, yl], [x - w / 2, yt], [x + w / 2, yt], [x + w / 2, yr]]),
-          xSplit, band.lit, band.shade);
+          xSplit, litC, shadeC);
 
-        let roofTop;
-        if (tw.roof === 1) {
-          roofTop = yt - 0.45 * w;
-          litShade(ctx, () => poly(ctx, [[x - w / 2 - 0.08 * w, yt], [x, roofTop], [x + w / 2 + 0.08 * w, yt]]),
-            xSplit, band.lit, band.shade);
-        } else if (tw.roof === 2) {
-          const rx = 0.5 * w, ry = 0.42 * w;
-          roofTop = yt - ry;
-          litShade(ctx, () => { ctx.beginPath(); ctx.ellipse(x, yt, rx, ry, 0, Math.PI, Math.PI * 2); ctx.closePath(); },
-            xSplit, band.lit, band.shade);
-        } else if (tw.roof === 3) {
-          roofTop = yt - 1.6 * w;
-          litShade(ctx, () => poly(ctx, [[x - 0.25 * w, yt], [x, roofTop], [x + 0.25 * w, yt]]),
-            xSplit, band.lit, band.shade);
-        } else {
-          roofTop = yt - 0.06 * w;
-          litShade(ctx, () => poly(ctx, [[x - 0.55 * w, yt], [x - 0.55 * w, roofTop], [x + 0.55 * w, roofTop], [x + 0.55 * w, yt]]),
-            xSplit, band.lit, band.shade);
+        const rs = kb < 0.5 ? 1 - 2 * kb : 0;
+        let roofTop = yt;
+        if (rs > 0.01) {
+          if (tw.roof === 1) {
+            roofTop = yt - 0.45 * w * rs;
+            litShade(ctx, () => poly(ctx, [[x - w / 2 - 0.08 * w, yt], [x, roofTop], [x + w / 2 + 0.08 * w, yt]]),
+              xSplit, litC, shadeC);
+          } else if (tw.roof === 2) {
+            const rx = 0.5 * w, ry = 0.42 * w * rs;
+            roofTop = yt - ry;
+            litShade(ctx, () => { ctx.beginPath(); ctx.ellipse(x, yt, rx, ry, 0, Math.PI, Math.PI * 2); ctx.closePath(); },
+              xSplit, litC, shadeC);
+          } else if (tw.roof === 3) {
+            roofTop = yt - 1.6 * w * rs;
+            litShade(ctx, () => poly(ctx, [[x - 0.25 * w, yt], [x, roofTop], [x + 0.25 * w, yt]]),
+              xSplit, litC, shadeC);
+          } else {
+            roofTop = yt - 0.06 * w * rs;
+            litShade(ctx, () => poly(ctx, [[x - 0.55 * w, yt], [x - 0.55 * w, roofTop], [x + 0.55 * w, roofTop], [x + 0.55 * w, yt]]),
+              xSplit, litC, shadeC);
+          }
+        }
+
+        if (kb > 0.5) {
+          const cs = 2 * kb - 1;
+          const cbH = 0.06 * h * cs;
+          const cbW = 0.62 * w;
+          const setbackTop = yt - cbH;
+          litShade(ctx, () => poly(ctx, [[x - cbW / 2, yt], [x - cbW / 2, setbackTop], [x + cbW / 2, setbackTop], [x + cbW / 2, yt]]),
+            xSplit, litC, shadeC);
+          const antW = Math.max(1, 1.5 * hScale);
+          const antTop = setbackTop - 0.07 * G.H * cs;
+          ctx.fillStyle = shadeC;
+          ctx.fillRect(x - antW / 2, antTop, antW, setbackTop - antTop);
+          roofTop = antTop;
+          if (band.win) {
+            ctx.globalAlpha = vis * rise * band.alpha * cs * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(G.t * 3 + tw.wseed)));
+            circle(ctx, x, roofTop, 1.8 * hScale, "#ff4a3a");
+            ctx.globalAlpha = vis * rise * band.alpha;
+          }
         }
 
         if (tw.lamp && ret > 0.25) {
@@ -325,13 +365,7 @@ window.GenMain = (function () {
       if (!band.win) continue;
       for (const tw of band.list) {
         if (tw.born >= amt) continue;
-        const grow = clamp((amt - tw.born) / 0.20, 0, 1);
-        const x = sx(MAIN_U + tw.u * MAIN_HALF);
-        const w = tw.w * hScale;
-        const h = tw.h * G.H * grow * mix(0.38, 1.08, amt);
-        const yl = surfY(x - w / 2) + 6;
-        const yr = surfY(x + w / 2) + 6;
-        const yt = Math.min(yl, yr) - h;
+        const { x, w, yl, yt, grow, kb } = cityGeom(tw, band, amt, modern);
         const rowStep = 11 * hScale, colStep = 9 * hScale;
         const yBot = yl - 10;
         const xL2 = x - w / 2 + 4, xR2 = x + w / 2 - 4;
@@ -341,7 +375,7 @@ window.GenMain = (function () {
           for (let wx = xL2; wx <= xR2; wx += colStep, col++) {
             const hkey = tw.wseed + row * 17 + col * 3;
             if (hash1(hkey) >= 0.30) continue;
-            const warm = hash1(hkey + 401) < 0.78;
+            const warm = hash1(hkey + 401) < mix(0.78, 0.35, kb);
             const flicker = 0.75 + 0.25 * Math.sin(G.t * 2.1 + tw.wseed);
             ctx.globalAlpha = flicker * band.alpha * grow * winBoost;
             ctx.fillStyle = warm ? "#f5d06b" : "#8fb0b8";
