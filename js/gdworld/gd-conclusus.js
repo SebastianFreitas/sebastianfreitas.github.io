@@ -1,252 +1,145 @@
-/* gd-conclusus.js — Conclusus's field: other selves. Giant faint
-   silhouettes that switch green and silver in step every 1.2 s, arrays and
-   rings of pins, spinning four-point pieces, dotted jump arcs from a planted
-   shadow, star sparkles drawn twice (every return doubled), the symbol in
-   three orbiting pieces, and rain through everything. Quiet so the marks
-   read: sparkles fewer and dimmer, everything thins round the marks
-   (G.clearBox). Registers GdWorld.P.conclusus. */
+/* Conclusus's field: the game's own slabs. Its 32 px platforms (floor1-4 under Grass1-5, colours from the Unity sprites) float in the game's flat #2f2427 void in staircases, pairs and runs of up to three, on a 32 px column / 8 px row grid inside the band 0.18-0.79 H at the planet's parallax; slow #afc084 motes drift over it (the game's rain). No pins, symbols, spike balls, doors or silhouettes. Dimmed near the planet and faded round every mark. Pixel scale capped at 3 (px(), read by zones.js). Registers GdWorld.P.conclusus. */
 (function () {
   const G = window.GdWorld; if (!G) return;
-  const { F, each, scatter } = G;
-  const { TAU, mulberry } = Util;
-  const I = 3;
-  const px = n => n * F.k;
-  const clearBox = (x, y, hw, hh) => G.clearBox ? G.clearBox(x, y, hw, hh) : 1;
-  const C = { cream: "247,255,197", pale: "214,245,228", green: "143,191,106", silver: "150,150,146", figGreen: "70,92,60", dark: "30,18,22", rain: "200,210,190", warm: "70,40,46" };
-  const FIGS = scatter(41, I, 30, 0.2, 0, 1);
-  const PINS = scatter(42, I, 96, 0.42, 0.14, 0.58);
-  const PIECES = scatter(43, I, 60, 0.42, 0.12, 0.60);
-  const ARCS = scatter(44, I, 40, 0.42, 0.20, 0.60);
-  const STARS = scatter(45, I, 105, 0.7, 0.10, 0.62);
-  const SYMS = scatter(46, I, 22, 0.7, 0.14, 0.58);
-  const RAIN = (() => { const rng = mulberry(47), a = []; for (let i = 0; i < 140; i++) a.push({ fx: rng(), fy: rng(), len: 10 + 8 * rng(), sp: 0.8 + 0.6 * rng() }); return a; })();
+  const { F, sx, dens, GAMES, clearBox } = G;
+  const { smooth, hash1, mulberry } = Util;
+  const I = 3, PAR = 0.7, SEED = 71, BAND0 = 0.18, BAND1 = 0.79, CH = 7, A0 = 0.62;
+  const COL = { a: "#b4c788", b: "#62554c", c: "#463c3c" };
+  const MOTE = "#afc084";
 
-  function wash(w) {
-    const { ctx, W, H } = F;
-    const cx = W / 2, cy = 0.45 * H, m = Math.max(W, H);
-    let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 0.75 * m);
-    g.addColorStop(0, `rgba(${C.warm},${0.35 * w})`);
-    g.addColorStop(1, `rgba(${C.warm},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    g = ctx.createRadialGradient(cx, cy, 0.45 * m, cx, cy, 0.95 * m);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, `rgba(0,0,0,${0.35 * w})`);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
-  }
+  const FL = [
+    ".aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaabbaabbbbaabaabbaababbbaaaaaaababbbbbabbbababbbbbabbbbabaabaacabbbbbbbbbabbbbbbbabbbbbbbabbbacbbcbbbbbbbbbbbbbbbbbbbbbbbbabbaccbcbbcbbbbbbbbbbbbbbbbbbbbbbbbaccbbcbbcbcbbbcbbbbbbbbbbbbbbbbbc.cccccbcccccbbcbbbbbbbbbbbbbbbc.c.ccccccccccccccbccccbcccbcbcc.c....c.c...cc...cc....cc..c.c.............c............c.........",
+    ".aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaabaaababbbbbaabaaababbbaabbaaaaababbabbbabbaabbbbaabbbabbbbabacabbabbbbabbbbbbbbbabbbbbabbbbaacbbbbbbbbbbbbbbbabbbabbbabbbbbbaccbbbccbbbbbbbbbbbbbbbbbbbbbbbbaccbbccbbcbbbcbbbbbbbbbbbbbbbbbbc.cccccbcbbcccbbbbbbbbbbbbbbbbbc.c.ccccccccccccccbccccbbccbcbcc.c....ccc..ccc..ccc.cc.cc..c.c..........c..c........c.............",
+    ".aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaabbaaabbbaabbbaaaabaabaabaaabaaaabbbabbabbabbabbabaababbbaacbbbabbbbbabbabbabbbabbbbbbbabaaccbbbbbbbbabbbbbbbbbbbbbbbbbbbbaccbcbbbbcbbbbbbbbbbbbbbbbbbbbbbaccccbbbbcbccbbbbbbbcbcbbbbbbbbbc.cccccbbbcccccbbbbccbcbbbbbbbbc.c.ccccccccccccccbccccbcccbcbcc.c....c.cc..cc...cc....cc..ccc...........c..c.....................",
+    ".aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aababaaaabaabaaabbaaabbbbaabaaaaababbbbababbbaabbbaabbbbababbbbacbbbbbabbbbbbbbbbaabbbbbbbbbbbaacbbbbbbbbbbbbbabbbbbbbbbbbbbbbbaccbbcbbcbbbbbbbcbbbbbbbbbbbbbbbaccbccbbcccbbbbbbcccbbbbbbbbbbbbc.cccccbbcccbbbbbbccbbbbbbbbbbbc.c.cccccccccccccccccccbbccbcbcc.c.cccc.c..ccc...ccc..ccc..c.c.....c.c..c...c......c..c...........",
+  ];
+  const GR = [
+    "...................a..................a.............a..a....a....aa..aa..a...aa..a..a.aaa.aa...a",
+    "......................................a................a.............aa..a.......a....aaa......a",
+    "...................a................................a.......a....aa......a...aa.....a.....aa....",
+    "a....a....a.....a..a.........a..a...a...a.a.a..aa...a..a....aa...a.aa.aa..a.a.aaaaa.aa..a.a.aa.a",
+    ".....a..............................a...a....a......a..a.....a..a..aa.a..a..a.....a.aa.aa.a.a...",
+  ];
 
-  // one silhouette path, filled
-  function figure(s, feet, hF, fill) {
-    const { ctx } = F;
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.arc(s, feet - hF + hF * 0.07, hF * 0.07, 0, TAU);
-    ctx.moveTo(s - hF * 0.11, feet - hF * 0.84);
-    ctx.lineTo(s + hF * 0.11, feet - hF * 0.84);
-    ctx.lineTo(s + hF * 0.08, feet - hF * 0.45);
-    ctx.lineTo(s - hF * 0.08, feet - hF * 0.45);
-    ctx.closePath();
-    ctx.rect(s - hF * 0.075, feet - hF * 0.45, hF * 0.06, hF * 0.45);
-    ctx.rect(s + hF * 0.015, feet - hF * 0.45, hF * 0.06, hF * 0.45);
-    ctx.rect(s - hF * 0.14, feet - hF * 0.84, hF * 0.04, hF * 0.42);
-    ctx.rect(s + hF * 0.10, feet - hF * 0.84, hF * 0.04, hF * 0.42);
-    ctx.fill();
-  }
+  const slabs = [];               // cache of 20 canvases, key f * 5 + g
 
-  function far(w) {
-    const { ctx, H, t, gy, red } = F;
-    each(FIGS, px(160), (e, s) => {
-      const hF = H * (0.26 + 0.2 * e.r1);
-      const feet = gy + px(10);
-      const beat = red ? (e.r3 < 0.5 ? 0 : 1) : Math.floor(t / 1.2) % 2;
-      const f = clearBox(s, feet - hF / 2, hF * 0.2, hF / 2);
-      const m = 0.5 + 0.5 * f;
-      figure(s + px(4), feet + px(4), hF, `rgba(${C.dark},${0.40 * m})`);
-      figure(s, feet, hF, beat === 0 ? `rgba(${C.figGreen},${0.20 * m})` : `rgba(${C.silver},${0.10 * m})`);
-    });
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
-  }
+  function px() { return Math.min(3, Math.max(2, Math.round(3 * F.k))); }
 
-  // dot + stem pointing along ang
-  function pin(x, y, ang) {
-    const { ctx } = F;
-    ctx.fillStyle = ctx.strokeStyle = `rgba(${C.cream},${0.7 * 0.7})`;
-    ctx.beginPath();
-    ctx.arc(x, y, px(2), 0, TAU);
-    ctx.fill();
-    ctx.lineWidth = px(1.5);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(ang) * px(6), y + Math.sin(ang) * px(6));
-    ctx.stroke();
-  }
-
-  function mid(w) {
-    const { ctx, H, t, red } = F;
-
-    // pins: rows, columns, rings
-    each(PINS, px(120), (e, s) => {
-      const y = e.fy * H;
-      if (e.r4 < 0.4) {
-        const n = 5 + Math.floor(e.r1 * 5);
-        const hw = px((n - 1) / 2 * 22 + 10), hh = px(10);
-        const f = clearBox(s, y, hw, hh);
-        if (f < 0.03) return;
-        ctx.globalAlpha = f;
-        for (let k = 0; k < n; k++) pin(s + (k - (n - 1) / 2) * px(22), y, -TAU / 4);
-        ctx.globalAlpha = 1;
-      } else if (e.r4 < 0.7) {
-        const n = 4 + Math.floor(e.r1 * 4);
-        const ang = e.r3 < 0.5 ? 0 : Math.PI;
-        const hw = px(10), hh = px((n - 1) / 2 * 22 + 10);
-        const f = clearBox(s, y, hw, hh);
-        if (f < 0.03) return;
-        ctx.globalAlpha = f;
-        for (let k = 0; k < n; k++) pin(s, y + (k - (n - 1) / 2) * px(22), ang);
-        ctx.globalAlpha = 1;
-      } else {
-        const rot = red ? e.r1 * TAU : t * 0.25 + e.r1 * TAU;
-        const hs = px(36);
-        const f = clearBox(s, y, hs, hs);
-        if (f < 0.03) return;
-        ctx.globalAlpha = f;
-        for (let k = 0; k < 6; k++) {
-          const a = rot + k * TAU / 6;
-          pin(s + Math.cos(a) * px(30), y + Math.sin(a) * px(30), a);
-        }
-        ctx.globalAlpha = 1;
+  function slabCanvas(f, g) {
+    const key = f * 5 + g;
+    if (slabs[key]) return slabs[key];
+    const c = document.createElement("canvas");
+    c.width = 32; c.height = 14;
+    const cx = c.getContext("2d");
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 32; x++) {
+        const ch = GR[g][y * 32 + x];
+        if (ch === ".") continue;
+        cx.fillStyle = COL[ch];
+        cx.fillRect(x, y, 1, 1);
       }
-    });
-
-    // pieces: spinning four-point (eight vertex) pieces
-    each(PIECES, px(30), (e, s) => {
-      const cy = e.fy * H + (red ? 0 : Math.sin(t * 0.9 + e.r3 * TAU) * px(3));
-      const pf = clearBox(s, cy, px(14), px(14));
-      if (pf < 0.03) return;
-      const g = ctx.createRadialGradient(s, cy, 0, s, cy, px(14));
-      g.addColorStop(0, `rgba(${C.cream},${0.15 * 0.5 * pf})`);
-      g.addColorStop(1, `rgba(${C.cream},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(s - px(14), cy - px(14), px(28), px(28));
-
-      const rot = red ? e.r1 * TAU : t * 1.2 * (e.r2 < 0.5 ? 1 : -1) + e.r1 * TAU;
-      ctx.fillStyle = `rgba(${C.cream},0.85)`;
-      ctx.globalAlpha = pf;
-      ctx.beginPath();
-      for (let k = 0; k < 8; k++) {
-        const a = rot + k * TAU / 8, r = k % 2 === 0 ? px(9) : px(3.5);
-        const x = s + Math.cos(a) * r, y = cy + Math.sin(a) * r;
-        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    for (let y = 0; y < 11; y++) {
+      for (let x = 0; x < 32; x++) {
+        const ch = FL[f][y * 32 + x];
+        if (ch === ".") continue;
+        cx.fillStyle = COL[ch];
+        cx.fillRect(x, 3 + y, 1, 1);
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-
-    // arcs: dotted jump arcs from a planted shadow
-    each(ARCS, px(260), (e, s) => {
-      const y = e.fy * H;
-      const dx = px(120 + 100 * e.r1) * (e.r2 < 0.5 ? -1 : 1);
-      const hA = px(60 + 60 * e.r3);
-      const f = clearBox(s + dx / 2, y - hA / 2, Math.abs(dx) / 2 + px(10), hA / 2 + px(15));
-      if (f < 0.03) return;
-      ctx.globalAlpha = f;
-      ctx.fillStyle = `rgba(${C.cream},0.4)`;
-      for (let k = 0; k <= 8; k++) {
-        const u = k / 8;
-        ctx.beginPath();
-        ctx.arc(s + dx * u, y - 4 * hA * u * (1 - u), px(1.6), 0, TAU);
-        ctx.fill();
-      }
-      ctx.fillStyle = `rgba(${C.green},0.65)`;
-      ctx.fillRect(s - px(2.5), y - px(9), px(5), px(9));
-      ctx.beginPath();
-      ctx.arc(s, y - px(11), px(2.5), 0, TAU);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
+    }
+    slabs[key] = c;
+    return c;
   }
 
-  function star(x, y, a) {
-    const { ctx } = F;
-    const rgba = `rgba(${C.cream},${a})`;
-    ctx.strokeStyle = rgba;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y - px(3.5)); ctx.lineTo(x, y + px(3.5));
-    ctx.moveTo(x - px(2.45), y); ctx.lineTo(x + px(2.45), y);
-    ctx.stroke();
-    ctx.fillStyle = rgba;
-    ctx.beginPath();
-    ctx.arc(x, y, px(1.12), 0, TAU);
-    ctx.fill();
+  function chunk(kk, NR) {
+    const out = [];
+    if (hash1(kk * 31 + SEED) >= 0.9) return out;
+    let c = kk * CH + Math.floor(hash1(kk * 37 + SEED) * 2);
+    let r = Math.floor(hash1(kk * 41 + SEED) * (NR - 1));
+    const n = 3 + Math.floor(hash1(kk * 43 + SEED) * 4);
+    let run = 0;
+    let dir = hash1(kk * 47 + SEED) < 0.5 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      if (c >= kk * CH + CH) break;
+      out.push({ c, r, f: Math.floor(hash1(c * 13 + SEED) * 4), g: Math.floor(hash1(c * 17 + SEED) * 5) });
+      const u = hash1(kk * 101 + i * 7 + SEED);
+      if (u < 0.25 && run < 2) {
+        c += 1; run += 1; continue;
+      }
+      run = 0;
+      c += (u > 0.55 ? 2 : 1);
+      if (hash1(kk * 109 + i * 17 + SEED) < 0.3) dir = -dir;
+      let dr = dir * (3 + Math.floor(hash1(kk * 107 + i * 13 + SEED) * 3));
+      if (r + dr < 0 || r + dr > NR - 1) { dir = -dir; dr = -dr; }
+      r += dr;
+    }
+    return out;
   }
 
-  function near(w) {
-    const { ctx, H, t, red } = F;
-
-    // stars: sparkles that come in echoed pairs
-    each(STARS, px(30), (e, s) => {
-      const y = e.fy * H;
-      const f = clearBox(s, y, px(3.5), px(3.5));
-      if (f < 0.03) return;
-      const a = (red ? 0.7 : 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * TAU / (1.6 + 1.4 * e.r3) + e.r2 * TAU))) * 0.6 * f;
-      star(s, y, a);
-      star(s + px(14), y + px(9), a * 0.4);
-    });
-
-    // symbols: the split piece, three wedges orbiting exploded apart
-    each(SYMS, px(40), (e, s) => {
-      const cy = e.fy * H;
-      const gf = clearBox(s, cy, px(18), px(18));
-      const g = ctx.createRadialGradient(s, cy, 0, s, cy, px(18));
-      g.addColorStop(0, `rgba(${C.pale},${0.14 * 0.5 * gf})`);
-      g.addColorStop(1, `rgba(${C.pale},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(s - px(18), cy - px(18), px(36), px(36));
-
-      const rot = red ? e.r1 * TAU : t * 0.5 + e.r1 * TAU;
-      ctx.fillStyle = `rgba(${C.pale},0.8)`;
-      for (let k = 0; k < 3; k++) {
-        const a0 = rot + k * TAU / 3, am = a0 + TAU / 6;
-        ctx.save();
-        ctx.translate(s + Math.cos(am) * px(4), cy + Math.sin(am) * px(4));
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, px(10), a0 + 0.17, a0 + TAU / 3 - 0.17);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+  function paint(w) {
+    const { ctx, W, H, camX, sc, k } = F;
+    const p = px();
+    const CW = 32 * p, RH = 8 * p, SH = 14 * p;
+    const NR = Math.floor((BAND1 - BAND0) * H / RH) - 1;
+    if (NR < 6) return;
+    const y0 = Math.round(BAND0 * H);
+    const CU = CW / (PAR * sc);                            // world units per column
+    const jA = Math.floor((camX - (W / 2 + CW) / (PAR * sc)) / CU);
+    const jB = jA + Math.ceil(W / CW) + 3;
+    const psx = sx(GAMES[I].x, PAR);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let kk = Math.floor(jA / CH) - 1; kk <= Math.floor(jB / CH); kk++) {
+      for (const s of chunk(kk, NR)) {
+        if (s.c < jA || s.c > jB) continue;
+        const d = dens(I, (s.c + 0.5) * CU);
+        if (d < 0.01) continue;
+        const x = Math.round(sx(s.c * CU, PAR));
+        const y = y0 + s.r * RH;
+        // wide screens: zones.js draws the game's own sprites round the planet at this scale, so leave its area empty; narrow screens have no zone art
+        const nearDx = Math.abs(x + CW / 2 - psx);
+        const near = W >= 900 ? smooth((nearDx - 170 * p) / (60 * p)) : 0.45 + 0.55 * smooth((nearDx - 380 * k) / (200 * k));
+        const a = A0 * Math.min(1, d / 0.3) * near * clearBox(x + CW / 2, y + SH / 2, CW / 2, SH / 2);
+        if (a < 0.02) continue;
+        ctx.globalAlpha = a;
+        ctx.drawImage(slabCanvas(s.f, s.g), x, y, CW, SH);
       }
-    });
-
+    }
+    ctx.restore();
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
   }
 
   function grade(w) {
-    if (w <= 0.05) return;
-    const { ctx, W, H, t, red } = F;
-    ctx.strokeStyle = `rgba(${C.rain},${0.12 * w})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (const d of RAIN) {
-      const x = ((d.fx * W - (red ? 0 : t * px(40) * d.sp)) % W + W) % W;
-      const y = ((d.fy * H + (red ? 0 : t * px(260) * d.sp)) % (H + px(20))) - px(20);
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - px(2), y + px(d.len));
+    const { ctx, W, H, camX, sc, k, t, red } = F;
+    const tt = red ? 0 : t;
+    const p = px();
+    const WW = W + 40, HH = H + 40;
+    ctx.save();
+    ctx.fillStyle = MOTE;
+    for (const m of MOTES) {
+      let x = m.fx * WW - camX * 0.8 * sc + 14 * k * Math.sin(tt * 0.31 * m.sp + m.ph);
+      x = ((x % WW) + WW) % WW - 20;
+      let y = m.fy * HH + tt * 5 * k * m.sp + 10 * k * Math.sin(tt * 0.23 + m.ph * 1.7);
+      y = ((y % HH) + HH) % HH - 20;
+      x = Math.round(x / p) * p;
+      y = Math.round(y / p) * p;
+      const a = w * 0.45 * clearBox(x, y, 0, 0);
+      if (a < 0.02) continue;
+      ctx.globalAlpha = a;
+      ctx.fillRect(x, y, m.sz * p, m.sz * p);
     }
-    ctx.stroke();
+    ctx.restore();
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
   }
 
-  G.P.conclusus = { base: [16, 9, 10], wash, layers: [{ par: 0.2, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
+  const MOTES = (() => {
+    const rng = mulberry(SEED);
+    const out = [];
+    for (let i = 0; i < 40; i++) {
+      out.push({ fx: rng(), fy: rng(), sz: rng() < 0.6 ? 1 : 2, ph: rng() * 6.283, sp: 0.6 + 0.8 * rng() });
+    }
+    return out;
+  })();
+
+  G.P.conclusus = { base: [47, 36, 39], layers: [{ par: PAR, paint }], grade, px };
 })();

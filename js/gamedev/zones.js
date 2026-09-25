@@ -112,12 +112,12 @@ window.Zones = (function () {
     const s = spriteOf(name).s;
     ctx.drawImage(cv, Math.round(gx + s.ox * S), Math.round(gy + s.oy * S));
   }
-  // platforms: grid origin (px from planet centre), row of tiles 64px wide each, bob by k
+  // platforms: grid origin (px from planet centre), row of tiles 64 zone units wide each, bob by k
   const CPLATS = [
-    { k: 0, gx: -330, gy: 126, tiles: ["tileA", "tileB"] },
-    { k: 1, gx: -70,  gy: 206, tiles: ["tileB"] },
-    { k: 2, gx: 140,  gy: 116, tiles: ["tileA"] },
-    { k: 3, gx: 280,  gy: -50, tiles: ["tileB", "tileA"] },
+    { k: 0, gx: -250, gy: 60,  tiles: ["tileA", "tileB"] },
+    { k: 1, gx: -40,  gy: 110, tiles: ["tileB"] },
+    { k: 2, gx: 90,   gy: 60,  tiles: ["tileA"] },
+    { k: 3, gx: 180,  gy: -40, tiles: ["tileB", "tileA"] },
   ];
 
   let portalGlowGrad = null, symbolGlowGrad = null;
@@ -140,11 +140,17 @@ window.Zones = (function () {
 
   const conclususRnd = mulberry(7);
   // 16 motes, 12 of size 2 and 4 of size 3, kept clear of the planet's own halo
-  const conclususMotes = makeMotes(conclususRnd, 16, 12, [-430, 430], [-210, 300], [8, 16], [6, 12], 120);
+  const conclususMotes = makeMotes(conclususRnd, 16, 12, [-290, 290], [-140, 200], [8, 16], [6, 12], 120);
+  const CC_LIFT = 172;   // lowest sprite bottom (k1 tile, 110 + 52) + bob 3 + 7, zone units
 
   function drawConclusus(ctx, ax, ay, env, at) {
-    const room = roomBelow(env, at);
-    const lift = Math.max(0, 248 - room);
+    const z = ccZoom();
+    ctx.save();
+    ctx.translate(Math.round(ax), Math.round(ay));
+    ctx.scale(z, z);
+    ax = 0; ay = 0;
+    const room = roomBelow(env, at) / z;
+    const lift = Math.max(0, CC_LIFT - room);
     const oy = -lift;
     // the arch's lit fill breathes in and out (~4 s) instead of snapping frames
     const lit = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(T * 1.6));
@@ -159,7 +165,7 @@ window.Zones = (function () {
     }
 
     ctx.save();
-    ctx.translate(ax + 344, ay - 52 + oy);
+    ctx.translate(ax + 244, ay - 42 + oy);
     ctx.globalAlpha = 0.6 + 0.4 * lit;
     ctx.fillStyle = portalGlow(ctx);
     ctx.fillRect(-70, -70, 140, 140);
@@ -175,18 +181,18 @@ window.Zones = (function () {
       }
       if (plat.k === 0) {
         const frame = Math.floor(T / 0.7) % 2;
-        blitSprite(ctx, frame === 0 ? "idle0" : "idle1", ax - 314, ay + 92 + bob + oy);
+        blitSprite(ctx, frame === 0 ? "idle0" : "idle1", ax - 234, ay + 26 + bob + oy);
       }
       if (plat.k === 2) {
         // the planted shadow: the game's flat-green twin, facing the player,
         // idling half a beat behind him
         const tframe = Math.floor(T / 0.7 + 0.5) % 2;
-        blitSprite(ctx, tframe === 0 ? "shade0" : "shade1", ax + 138, ay + 82 + bob + oy);
+        blitSprite(ctx, tframe === 0 ? "shade0" : "shade1", ax + 88, ay + 26 + bob + oy);
       }
       if (plat.k === 3) {
         // door0 is the bare arch, door1 the arch with its lit fill: draw the
         // arch, then fade the lit frame over it with the breath
-        const dx = ax + 312, dy = ay - 84 + bob + oy;
+        const dx = ax + 212, dy = ay - 74 + bob + oy;
         blitSprite(ctx, "door0", dx, dy);
         ctx.globalAlpha = lit;
         blitSprite(ctx, "door1", dx, dy);
@@ -195,7 +201,7 @@ window.Zones = (function () {
     }
 
     const symBob = Math.sin(T * 0.8) * 4;
-    const sx = ax - 150, sy = ay + 40 + symBob + oy;
+    const sx = ax - 96, sy = ay + 22 + symBob + oy;
     ctx.save();
     ctx.translate(sx + 16 * S, sy + 16 * S);
     ctx.fillStyle = symbolGlow(ctx);
@@ -203,6 +209,7 @@ window.Zones = (function () {
     ctx.restore();
     const sframe = Math.floor(T / 0.6) % 2;
     blitSprite(ctx, sframe === 0 ? "sym0" : "sym1", sx, sy);
+    ctx.restore();
   }
 
   /* ================= HeavyLight (seed 11) ================= */
@@ -329,6 +336,12 @@ window.Zones = (function () {
   // px-per-art-pixel as the Game Dev tiles behind it
   function hlZoom() {
     const g = window.GdWorld, h = g && g.P && g.P.heavylight;
+    const p = h && typeof h.px === "function" ? h.px() : 3;
+    return p / 2;
+  }
+  // Conclusus zone art shares the backdrop slabs' pixel scale (px()/2, since sprites are built at S = 2)
+  function ccZoom() {
+    const g = window.GdWorld, h = g && g.P && g.P.conclusus;
     const p = h && typeof h.px === "function" ? h.px() : 3;
     return p / 2;
   }

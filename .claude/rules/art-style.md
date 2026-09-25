@@ -22,7 +22,11 @@ Titans cave in `js/world/art/titans.js`.
   space; the ceiling and floor masses run to the top and bottom screen
   edges (no black sky), and the tiles and the zone art round the HeavyLight
   planet share one pixel scale (`GdWorld.P.heavylight.px()`, 3 px per art
-  pixel on desktop).
+  pixel on desktop). Same call for Conclusus (`gd-conclusus.js`): the
+  game's own slabs on its flat #2f2427 void, with the game's grass-top light;
+  no masses, since the game has none.
+  Same call for Sector Zero (`gd-zero.js`): the game's dark storeroom seen
+  only in wide #C0FFBA-hued lantern pools drawn as stepped rings (not a glow).
 - Soft glow only for things that emit light (lanterns, portals, flames).
 - Places are proper buildings, not symbols or sigils.
 - The primitives are in `js/lib/paint.js`; never add another `litShade`.
