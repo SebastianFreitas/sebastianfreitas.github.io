@@ -134,7 +134,7 @@ session.
 | 3 | Eldritch lore bible (tiers 1–3) | doc | done 2026-09-25 |
 | 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | done 2026-09-25 |
 | 25a | The owner's answers to Q1–Q7 (beats doc) | owner talk, doc | done 2026-09-25 |
-| 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
+| 4 | Baseline frames and the eldritch palette | tooling, doc | done 2026-09-25 |
 | 5 | Wardrobe casting sheet | design doc | todo |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
 | 7 | Attire kit (hats, coats, boots, trousers, items) | code | todo |
@@ -226,7 +226,13 @@ oxblood), Dishonored's palette. Deliverable: named palette tokens for
 cloth, leather, fur, metal and tier-3 shadow, in a small data module or
 in `genesis-paint.js` (spec decides), each tested against the chaos
 background for contrast.
-Notes:
+Notes: done 2026-09-25. Research (Victorian outerwear and winter colours,
+furs, mourning dyes, jewellery metals, Dishonored and Control art
+direction) in `research/04-palette.md`. `js/genesis/genesis-eldpal.js`
+(`GenEldPal`): 21 tokens with derived mid/shade, four tier-3 steps and
+`under`; `report()` gates contrast, `swatchSheet()` draws the review
+sheet. Baselines: snap run `eldritch-base`, frames
+`snapshots/frames/eldritch-base/`.
 
 ### 5 · Wardrobe casting sheet
 Research: Late Victorian / Gilded Age men's and women's winter dress
@@ -564,6 +570,16 @@ Owner answers after Phase 3 (2026-09-25):
 
 ## Carry forward
 
+- (Phase 4) Baselines: `py -3 tools/snap.py compare eldritch-base <run>`
+  (29 `genesis-*` scenes, captured before any eldritch code) and frame
+  sheets in `snapshots/frames/eldritch-base/` (break–fight, deep, slip).
+  Main checkout only; a worktree session captures its own. After the
+  beat insert (Phase 26) every scene after `womb` shifts: re-baseline.
+- (Phase 4) Colour every garment, fur, metal and tier-3 shape through
+  `GenEldPal.tone(name)` / `TIER3.steps`; a new token goes in `LIT` and
+  must pass `GenEldPal.report()` (check command in
+  `research/04-palette.md`). Dark cloth (coal, mourning, boot, seal) sits
+  at the 1.5:1 floor: it reads by its lit side and outline.
 - (Phase 1) The sequel is **Control Resonant** (launched 2026-09-24): an
   alien algorithm rewriting Manhattan, giant heads in the sky. Closest
   outside picture of tier 3 acting only through effects.

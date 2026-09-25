@@ -186,6 +186,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 |---|---|---|---|
 | `genesis-state.js` | 336 | `BEATS` (29 beats, Roman-numeral tags, biblical lines), world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`; `G.GOD_H` (0.11) is the gods' height as a fraction of the screen | `window.Gen` |
 | `genesis-paint.js` | 136 | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
+| `genesis-eldpal.js` | 174 | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, not drawn by the cutscene yet | `window.GenEldPal` |
 | `genesis-void.js` | 287 | `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks), `drawSpan` (the monumental bridge: slab, piers, arches, gold rail) | `window.GenVoid` |
 | `genesis-flesh.js` | 259 | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
 | `genesis-elements.js` | 400 | wave one after the break: dust, air, wind, sound, colour (oil/water flips), light; 460 particles, three forms each, rage events and slosh; `drawResidue` = the permanent void traces (dust, wind streaks, colour stains, lights, sound rings) drawn every frame after the far realms | `window.GenElem {draw, drawResidue, rage}` |
@@ -265,7 +266,7 @@ site/embed → lib/pacer → bridge/marks → gdworld/{gdworld, gd-zero, gd-void
 gd-heavylight, gd-conclusus} → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
 bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
-bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
+bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-eldpal, genesis-void,
 genesis-flesh, genesis-elements, genesis-matter, genesis-trade,
 genesis-oldones, genesis-oldkin, genesis-figures, genesis-titans, genesis-obrok, genesis-gods,
 genesis-hosts, genesis-seraphin, genesis-malgrur, genesis-vorgath, genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,

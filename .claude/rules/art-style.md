@@ -108,7 +108,10 @@ reaching up, with tier 3's potential in it.
   on top edges. No fur texture, no hair strokes.
 - **Wardrobe palette.** Cloth is darker and less saturated than its
   wearer: coal, slate, bottle green, oxblood, camel; spats or a collar as
-  the one pale note. Metal is dull ochre and never glows.
+  the one pale note. Metal is dull ochre and never glows. Take every
+  cloth, leather, fur, metal, snow and tier-3 colour from
+  `GenEldPal` (`js/genesis/genesis-eldpal.js`); a new token must pass
+  its `report()` contrast gates.
 - **Third tone band (change).** Cloth and tier-3 shapes may carry a mid
   band between lit and shade: one more flat shape, never a gradient, and
   still no second `litShade`. No painted patches or noise.
