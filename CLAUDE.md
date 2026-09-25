@@ -93,7 +93,7 @@ js/gdworld/                   gdworld core + gd-zero, gd-voidscape, gd-heavyligh
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
 js/genesis/                   genesis-state, -paint, -void, -flesh, -elements, -matter, -trade, -oldones, -oldkin, -figures, -titans, -obrok, -hosts, -mainland, -armies, -orb, -rex, -depths, -saga-state, -ritual, -saga, genesis
 js/pages/                     play (the case-page canvas layer) + one toy per case page: heavylight, conclusus, sector-zero (+ -records), voidscape (+ -boons)
-tools/                        nav-flows.test.py, snap.py, bump.py, gframes.py, jscheck.py
+tools/                        nav-flows.test.py, snap.py, bump.py, gframes.py, jscheck.py, try.py
 ```
 
 Every JS file is an IIFE that publishes or extends one global on `window`.
@@ -216,10 +216,10 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
-| `gdworld.js` | 136 | Core: `GAMES`, `R`, `GROUND` (0.64, the old deck line), `dens(i, x)`, the frame `F`, `sx(x, par)`, seeded `scatter(seed, i, n, par, fy0, fy1)`, `each(list, pad, fn)`, the sector dust, `draw` (sky blend of the games' `base` colours → dust → washes → every layer by `par` → grades) | `window.GdWorld` |
-| `gd-zero.js` | 412 | Sector Zero, "the room, unpicked": wall panels with door frames, blinds and baseboards, fluorescent tubes on wires (on / flicker / off), ceiling tiles and floorboards (`band`, fading with `dens`), filing cabinets, office chairs adrift, clocks running ahead, EXIT signs, security cameras; papers and cables nearest; grade = scanlines, grain, green tint | `GdWorld.P.zero` |
-| `gd-voidscape.js` | 362 | VoidScape, "the run, only up": concrete corridor `module`s tilted and chained by stairs, mouths lit white (unvisited) or red (done), pipes with valve wheels, rotating beacons, triangle portals, dice, canisters, medkits; red cloud banks and the ground's heat; grade = red vignette | `GdWorld.P.voidscape` |
-| `gd-heavylight.js` | 268 | HeavyLight, "stone stairs and hard light": stepped floor and ceiling masses at three depths (`mass`, quantised `ridge`, amplitude × `dens`, a clearing round the planet in the near layer), dot pattern that scrolls with each layer, rooms, timed lamps on a 7.2 s cycle with slabs of solid light, speckle, wisps (one in five red) | `GdWorld.P.heavylight` |
+| `gdworld.js` | 140 | Core: `GAMES`, `R`, `GROUND` (0.64, the old deck line), `dens(i, x)`, the frame `F`, `sx(x, par)`, seeded `scatter(seed, i, n, par, fy0, fy1)`, `each(list, pad, fn)`, the sector dust, `draw` (sky blend of the games' `base` colours → dust → washes → every layer by `par` → grades) | `window.GdWorld` |
+| `gd-zero.js` | 423 | Sector Zero, "the room, unpicked": wall panels with door frames, blinds and baseboards, fluorescent tubes on wires (on / flicker / off), ceiling tiles and floorboards (`band`, fading with `dens`), filing cabinets, office chairs adrift, clocks running ahead, EXIT signs, security cameras; papers and cables nearest; grade = scanlines, grain, green tint | `GdWorld.P.zero` |
+| `gd-voidscape.js` | 365 | VoidScape, "the run, only up": concrete corridor `module`s tilted and chained by stairs, mouths lit white (unvisited) or red (done), pipes with valve wheels, rotating beacons, triangle portals, dice, canisters, medkits; red cloud banks and the ground's heat; grade = red vignette | `GdWorld.P.voidscape` |
+| `gd-heavylight.js` | 280 | HeavyLight, "stone stairs and hard light": stepped floor and ceiling masses at three depths (`mass`, quantised `ridge`, amplitude × `dens`, a clearing round the planet in the near layer), dot pattern that scrolls with each layer, rooms, timed lamps on a 7.2 s cycle with slabs of solid light, speckle, wisps (one in five red) | `GdWorld.P.heavylight` |
 | `gd-conclusus.js` | 222 | Conclusus, "other selves": faint giant silhouettes switching green / silver every 1.2 s, pin rows, columns and rings, spinning pieces, dotted jump arcs from a planted shadow, star sparkles drawn twice (the echo), the symbol in three orbiting wedges; grade = rain | `GdWorld.P.conclusus` |
 
 ### js/world
@@ -308,7 +308,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `css/bridge.css` | 744 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | 205 | Level chip and pips, claim ceremony, surge burst, rank card |
 | `css/play.css` | 43 | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
-| `index.html` | 478 | Homepage. Inline head script is only the service-worker purge |
+| `index.html` | 485 | Homepage. Inline head script is only the service-worker purge |
 | `projects/*.html` | 110–253 | Four case-study pages, same shell |
 | `404.html` | 54 | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
 | `tools/nav-flows.test.py` | 890 | Playwright flows; starts its own server on a free port; `ROOT` is the repo root |
@@ -316,6 +316,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `tools/bump.py` | 36 | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/gframes.py` | 63 | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | 49 | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
+| `tools/try.py` | 110 | Preview a cloud branch: `py -3 tools/try.py <branch> [--path /url] [--port N]` fetches it into the reusable worktree `../Portfolio-try`, serves it with that tree's `serve.py` on 8766+ and opens the browser; never touches the main checkout |
 | `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) |
 
 ### Load order
@@ -542,6 +543,37 @@ nothing a cloud session pushes goes live until the owner merges it.
 - **Branch:** work, commit and push only on the branch the session was
   assigned. Never push to `main` and never merge into it; the owner merges.
   This overrides "commit straight to `main`" above.
+- **The loop is: build → show → try → iterate. No PR until the owner says
+  so.** Every time a round of work is done and verified, commit and push to
+  the branch (so it can be tried), then end the turn with this report and
+  nothing else:
+  1. **Name:** one line, the feature in plain words (the branch name is
+     random and means nothing to the owner), then the branch name.
+  2. **How it looks:** screenshots of exactly what changed, taken with
+     Playwright (`python3 tools/snap.py capture <run>` scenes,
+     `python3 tools/jscheck.py ... --shot out.png`, or
+     `python3 tools/gframes.py` for the cutscene), saved in the scratchpad
+     and sent to the owner (SendUserFile when the tool exists). Never commit
+     them. Add a before/after pair when something was replaced.
+  3. **Try it:** one `powershell` code block, one command, that the owner
+     runs on the desktop app's Run button:
+     `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --path "<url path>"`.
+     It fetches the branch into a separate worktree next to the repo,
+     serves it on its own port and opens the browser. Set `--path` to
+     where the change is seen (`/projects/voidscape.html`,
+     `/?genesis=1&gbeat=<beat>`, `/` for the bridge) and say in one line
+     what to do there to see it.
+  4. **What to look at:** two or three bullets at most, plus anything left
+     open.
+  The owner answers with changes (another round, same report) or says it
+  is good. Only then open a PR: the title is the feature name from step 1,
+  the body says what changed and what was verified.
+- **Branches never touch `?v=` and never re-count File-map lines.** Do not
+  run `tools/bump.py` and do not change the line count of an existing
+  File-map row; add rows for new files and update descriptions only. These
+  two are where every merge conflict between parallel branches came from.
+  The merge on `main` bumps and re-counts once. Previews are unaffected:
+  `serve.py` sends no-cache headers.
 - **Commands:** `py -3` does not exist in the container; run the same tools
   with `python3` (`python3 tools/nav-flows.test.py header`). Everything
   else in this file applies unchanged.
@@ -552,10 +584,13 @@ nothing a cloud session pushes goes live until the owner merges it.
   just installed", the pin and the Chromium build disagree: say so and stop.
 - If `python3 -c 'import playwright, PIL'` fails, the setup script did not
   run: `pip install playwright==1.56.0 pillow` (never `playwright install`).
-- **Parallel branches collide in two places:** the `?v=` numbers in every
-  HTML page (each branch bumps them) and the line counts in this file's
-  File map. When merging a branch whose only conflicts are those, take
-  either side, then re-run `python3 tools/bump.py` and re-count the lines
-  of the files that changed.
+- **Merging (a local session, when the owner says "merge the PRs"):**
+  merge the open PRs into `main` one at a time with `--no-ff`, oldest
+  first. Conflicts in `?v=` numbers: keep either side. Two branches adding
+  `<script>` lines at the same spot: keep both, in load order. File-map
+  rows: keep both sides' rows, then re-count the changed files. After the
+  last merge run `py -3 tools/bump.py` once, run the full
+  `py -3 tools/nav-flows.test.py`, commit, push, and delete the merged
+  `claude/*` branches on the remote.
 - **No scratch files in the repo.** GitHub Pages publishes every committed
   file; logs and notes go in the session's scratchpad, not the root.
