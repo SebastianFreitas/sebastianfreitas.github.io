@@ -126,9 +126,13 @@ hands over to a fresh one.
 
 ## Parallel sessions
 
+This section applies in the shared main checkout (the SessionStart hook
+prints `SHARED TREE:`). A worktree session (it prints `WORKTREE:`) has the
+tree to itself and skips it; see Worktree sessions below.
+
 Other sessions edit this tree at the same time: another local chat may be
-mid-task with uncommitted edits, and cloud branches land on `main` through
-`tools/try.py --ship`. The user will not say so every time.
+mid-task with uncommitted edits, and worktree or cloud branches land on
+`main` through `tools/try.py --ship`. The user will not say so every time.
 
 - The SessionStart hook lists every uncommitted path at start: those are
   foreign. `.claude/hooks/git-guard.py` blocks blanket git (`add -A`,
@@ -146,6 +150,38 @@ mid-task with uncommitted edits, and cloud branches land on `main` through
   origin/main`, resolve, re-run the flows you touched, then push.
 - Docs are shared too: `.claude/MAP.md` rows for a file another session is
   building belong to that session.
+
+## Worktree sessions
+
+The normal way to run a local session is in a git worktree. The desktop
+app makes one per session (the worktree option on a new session, or the
+`EnterWorktree` tool when the user says "worktree"): a second checkout
+under `.claude/worktrees/<name>` on its own `claude/<name>` branch, sharing
+only `.git` with the main checkout. Sessions then never share files, so
+foreign edits cannot appear and nothing here fights over `?v=`.
+
+- Same loop as a cloud session, on this machine: build, verify, commit on
+  the branch, then end the turn with the report under Cloud sessions
+  (Name, How it looks, Try, Ship, Look at). Two differences: never push
+  and open no PR. The branch stays local; `try.py` reads it from the
+  worktree. The Ship command is the owner's click-to-commit: it merges the
+  branch into `main`, bumps `?v=` once, pushes, and fast-forwards the main
+  checkout.
+- Never run `tools/bump.py` and never re-count `.claude/MAP.md` lines on
+  the branch, exactly as on a cloud branch. `--ship` bumps on merge, so
+  two sessions shipping the same afternoon never conflict on `?v=`.
+- Commit everything before the report. `--ship` merges commits only and
+  prints a note when the worktree still has uncommitted files.
+- After a ship the branch and the worktree stay. A follow-up round commits
+  on the same branch and ends with the same report; `--ship` merges the
+  new commits. Archiving the session in the app removes the worktree.
+- `snapshots/` is gitignored, so a fresh worktree has no screenshot
+  baseline: the "before" capture runs in the worktree before any code
+  changes, as always.
+- `nav-flows.test.py`, `snap.py` and `try.py` pick free ports, so two
+  worktrees can test at once. Only `serve.py` is fixed on 8765.
+- The rest of this file applies unchanged, including `py -3` (not
+  `python3`, that is the cloud container).
 
 ## Delegation
 
@@ -225,12 +261,16 @@ Titans cave in `js/world/art/titans.js`.
   tools/snap.py list` names the scenes.
 - **Cache-bust:** `py -3 tools/bump.py` rewrites every `?v=` in the HTML
   pages.
-- **Git:** on the local machine, commit straight to `main`, no branches.
-  In a cloud session, see Cloud sessions below. A `.gitignore` covers
-  `__pycache__/`, `*.pyc`, `snapshots/` and `Temporary VoidScape Media/`.
+- **Git:** in a worktree session, commit on the session's branch and never
+  push (see Worktree sessions). In the shared main checkout, commit
+  straight to `main`, no branches. In a cloud session, see Cloud sessions
+  below. A `.gitignore` covers `__pycache__/`, `*.pyc`, `snapshots/`,
+  `.claude/worktrees/` and `Temporary VoidScape Media/`.
 - **Every task ends with a commit, unasked.** Once the work is verified, run
   `py -3 tools/bump.py` if any script or stylesheet changed, then commit. Do
   not stop at "ready to commit" and do not hand the user a commit command.
+  In a worktree or cloud session the commit lands on the branch and the
+  turn ends with the Try and Ship commands instead of a push.
 - **Commands shown to the user run in Windows PowerShell 5.1.** Never print
   `&&`, `||`, `$(...)` or bash `if` for them; chain with `;` or give one
   command per block. The Bash tool is fine for Claude's own use.

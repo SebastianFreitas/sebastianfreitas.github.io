@@ -1,4 +1,4 @@
-"""Try a cloud session's branch locally, without touching the main checkout.
+"""Try a session's branch locally, without touching the main checkout.
 
     py -3 tools/try.py claude/adoring-fermi-87uf0y --path "/?genesis=1"
     py -3 tools/try.py claude/adoring-fermi-87uf0y --ship
@@ -7,7 +7,9 @@ Checks the branch out into a reusable sibling worktree and serves it with
 serve.py on a free port, opening it in the browser.
 
 Ship merges the branch into main inside the side worktree, bumps ?v=, pushes,
-deletes the branch; on a conflict it pushes nothing.
+and deletes the branch unless a worktree still has it checked out; on a
+conflict it pushes nothing. The branch may live only locally (a worktree
+session) or on origin (a cloud session).
 """
 
 from __future__ import annotations
@@ -20,7 +22,14 @@ import time
 import webbrowser
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+def _main_root() -> Path:
+    here = Path(__file__).resolve().parent.parent
+    r = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=here, capture_output=True, text=True)
+    if r.returncode != 0:
+        return here
+    return (here / r.stdout.strip()).resolve().parent
+
+ROOT = _main_root()
 TRY_DIR = ROOT.parent / (ROOT.name + "-try")
 
 
@@ -43,6 +52,51 @@ def free_port(start: int) -> int:
     return start
 
 
+def resolve(name: str) -> tuple[str, str]:
+    """Returns (branch, ref): ref is 'origin/<branch>' when the remote copy is
+    the newest, else the local branch name. Exits with a listing if neither exists."""
+    if name.startswith("origin/"):
+        name = name[len("origin/"):]
+    if name == "main":
+        print("Give a session branch, not main.")
+        sys.exit(1)
+
+    candidates = [name]
+    if "/" not in name:
+        candidates.append("claude/" + name)
+
+    for c in candidates:
+        local = git("rev-parse", "--verify", "--quiet", f"refs/heads/{c}", check=False) != ""
+        subprocess.run(["git", "fetch", "origin", c], cwd=ROOT, capture_output=True, text=True)
+        remote = git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{c}", check=False) != ""
+
+        if not local and not remote:
+            continue
+        if local and not remote:
+            return c, c
+        if remote and not local:
+            return c, f"origin/{c}"
+
+        ahead = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", f"origin/{c}", c], cwd=ROOT,
+        ).returncode == 0
+        if ahead:
+            return c, c
+        return c, f"origin/{c}"
+
+    print(f"No branch {name}, locally or on origin. Session branches:")
+    subprocess.run(["git", "fetch", "origin", "--prune"], cwd=ROOT, capture_output=True, text=True)
+    listing = git(
+        "for-each-ref",
+        "--sort=-committerdate",
+        "refs/heads/claude", "refs/remotes/origin/claude",
+        "--format=%(refname:short)  %(committerdate:relative)  %(subject)",
+        check=False,
+    )
+    print(listing)
+    sys.exit(1)
+
+
 def ensure_tree(ref: str) -> None:
     if not TRY_DIR.exists():
         git("worktree", "prune", check=False)
@@ -55,12 +109,30 @@ def ensure_tree(ref: str) -> None:
         sys.exit(1)
 
 
-def ship(branch: str, subject: str) -> None:
+def worktree_of(branch: str) -> Path | None:
+    """Path of the worktree that has `branch` checked out, else None."""
+    listing = git("worktree", "list", "--porcelain", check=False)
+    path = None
+    for entry in listing.split("\n\n"):
+        path = None
+        for line in entry.splitlines():
+            if line.startswith("worktree "):
+                path = line[len("worktree "):]
+            elif line == f"branch refs/heads/{branch}":
+                return Path(path)
+    return None
+
+
+def ship(branch: str, ref: str, subject: str) -> None:
+    wt = worktree_of(branch)
+    if wt and git("status", "--porcelain", cwd=wt, check=False):
+        print(f"Note: {wt} has uncommitted files; only commits ship.")
+
     git("fetch", "origin", "main")
     ensure_tree("origin/main")
 
     r = subprocess.run(
-        ["git", "merge", "--no-ff", "-m", f"Merge {branch}: {subject}", f"origin/{branch}"],
+        ["git", "merge", "--no-ff", "-m", f"Merge {branch}: {subject}", ref],
         cwd=TRY_DIR, capture_output=True, text=True,
     )
     if r.returncode != 0:
@@ -91,7 +163,8 @@ def ship(branch: str, subject: str) -> None:
         print("main moved while shipping; nothing was pushed. Run the same command again.")
         sys.exit(1)
 
-    git("push", "origin", "--delete", branch, check=False)
+    if git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}", check=False):
+        git("push", "origin", "--delete", branch, check=False)
     sha = git("rev-parse", "--short", "HEAD", cwd=TRY_DIR)
 
     if git("rev-parse", "--abbrev-ref", "HEAD", check=False) == "main" and git("status", "--porcelain", check=False) == "":
@@ -99,6 +172,11 @@ def ship(branch: str, subject: str) -> None:
         print("Your checkout is up to date.")
     else:
         print("Your checkout has local changes or is not on main; run  git pull  when ready.")
+
+    if wt:
+        print(f"Branch {branch} stays checked out in {wt}; archive its session to remove it, or ship again after more commits.")
+    elif git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False):
+        git("branch", "-d", branch, check=False)
 
     print(f"Shipped {branch} to main at {sha}. GitHub Pages goes live in a minute or two.")
 
@@ -112,36 +190,15 @@ def main() -> None:
     parser.add_argument("--ship", action="store_true")
     args = parser.parse_args()
 
-    branch = args.branch
-    if branch.startswith("origin/"):
-        branch = branch[len("origin/"):]
-    if branch == "main":
-        print("Give a cloud branch, not main.")
-        sys.exit(1)
-    if "/" not in branch:
-        branch = "claude/" + branch
-
-    fetch = subprocess.run(["git", "fetch", "origin", branch], cwd=ROOT, capture_output=True, text=True)
-    if fetch.returncode != 0:
-        print(f"No branch origin/{branch}. Open cloud branches:")
-        subprocess.run(["git", "fetch", "origin", "--prune"], cwd=ROOT, capture_output=True, text=True)
-        listing = git(
-            "for-each-ref",
-            "--sort=-committerdate",
-            "refs/remotes/origin/claude",
-            "--format=%(refname:short)  %(committerdate:relative)  %(subject)",
-        )
-        print(listing)
-        sys.exit(1)
-
-    sha = git("rev-parse", "--short", f"origin/{branch}")
-    subject = git("log", "-1", "--format=%s", f"origin/{branch}")
+    branch, ref = resolve(args.branch)
+    sha = git("rev-parse", "--short", ref)
+    subject = git("log", "-1", "--format=%s", ref)
 
     if args.ship:
-        ship(branch, subject)
+        ship(branch, ref, subject)
         return
 
-    ensure_tree(f"origin/{branch}")
+    ensure_tree(ref)
 
     if not (TRY_DIR / "serve.py").exists():
         print(f"{TRY_DIR / 'serve.py'} is missing.")
@@ -172,7 +229,7 @@ def main() -> None:
             if ans == "ship":
                 proc.terminate()
                 proc.wait(timeout=5)
-                ship(branch, subject)
+                ship(branch, ref, subject)
                 return
             elif ans == "":
                 proc.terminate()

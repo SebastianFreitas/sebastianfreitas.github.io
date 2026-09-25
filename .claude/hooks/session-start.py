@@ -1,6 +1,6 @@
 """Session start: prints what a new chat must know before its first move.
 
-1. The branch and whether it is ahead/behind its remote.
+1. The branch, whether it is ahead/behind its remote, and whether the session sits in a git worktree or the shared main checkout.
 2. Edits already in the tree: made by another session, never by this one.
 3. The handoff left by the previous chat (.claude/handoff.md), if any.
 
@@ -30,6 +30,16 @@ def main():
     head = git("status", "-sb").splitlines()
     if head:
         lines.append(f"SESSION START: {head[0]}")
+    common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    main_root = os.path.dirname(common) if common else ""
+    branch = git("rev-parse", "--abbrev-ref", "HEAD")
+    if main_root and os.path.normcase(os.path.abspath(main_root)) != os.path.normcase(os.path.abspath(root)):
+        lines.append(f"WORKTREE: branch {branch} at {root}; main checkout {main_root}. "
+                     "Follow CLAUDE.md 'Worktree sessions': commit on this branch, "
+                     "never push, never run bump.py, end with the Try and Ship commands.")
+    else:
+        lines.append("SHARED TREE: this is the main checkout. Follow CLAUDE.md "
+                     "'Parallel sessions': other sessions edit here too; stage by path.")
     dirty = git("status", "--short")
     if dirty:
         lines.append("Edits already in the tree at session start. Another "
