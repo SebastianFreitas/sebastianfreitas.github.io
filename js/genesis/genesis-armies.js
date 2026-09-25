@@ -16,6 +16,16 @@ window.GenArmies = (function () {
     function host(fac, side, n, homeOf) {
       for (let i = 0; i < n; i++) {
         const homeU = homeOf(r());
+        let form = null, fly = false;
+        if (fac === "seraphin") {
+          form = ["bird", "hound", "stag", "bird", "hound"][i % 5];
+          const chance = { bird: 0.75, hound: 0.3, stag: 0.2 }[form];
+          fly = hash1(i * 29 + 3) < chance;
+        } else if (fac === "malgrur") {
+          form = i % 10 === 4 ? "fiend" : (i % 4 === 1 ? "bat" : "gaunt");
+          fly = form === "bat";
+        }
+        const alt = fly ? 1.7 + 1.5 * hash1(i * 41 + 9) : 0;
         TROOPS.push({
           fac, side, homeU, u: homeU,
           lane: r() * 2 - 1,
@@ -28,6 +38,7 @@ window.GenArmies = (function () {
           cast: 0,
           rank: i,
           state: "home", walk: 0, lunge: 0, deadT: 0, goneT: 0, alive: true, a: 0,
+          form, alt,
         });
       }
     }
@@ -54,11 +65,41 @@ window.GenArmies = (function () {
   function sizeOf(lane, s) {
     return S0 * G.H * s * (1 - 0.12 * lane);
   }
+  function liftOf(T, s) {
+    if (!T.alt) return 0;
+    if (!T.alive) {
+      const k = clamp(T.deadT * 1.8, 0, 1);
+      return T.alt * s * (1 - k * k);
+    }
+    return T.alt * s * (T.state === "fight" ? 1 - 0.45 * T.lunge : 1) +
+      Math.sin(G.t * 2.3 + T.ph) * 0.10 * s;
+  }
   function paintOne(ctx, fac, x, y, s, o) {
     if (!window.GenHosts) return;
     if (fac === "seraphin") GenHosts.drawAngel(ctx, x, y, s, o);
     else if (fac === "malgrur") GenHosts.drawDevil(ctx, x, y, s, o);
     else GenHosts.drawAbom(ctx, x, y, s, o);
+  }
+  function drawTroop(ctx, T) {
+    if (T.a < 0.02) return;
+    if (!T.alive && T.deadT > 2.5) return;
+    const x = G.sx(T.u);
+    if (x < -60 || x > G.W + 60) return;
+    const sz = sizeOf(T.lane, T.s);
+    const y = footY(T.u, T.lane) - liftOf(T, sz);
+    paintOne(ctx, T.fac, x, y, sz, {
+      a: T.a,
+      face: -T.side,
+      walk: T.walk,
+      pose: T.alive ? T.state : "dead",
+      down: T.alive ? 0 : clamp(T.deadT * 3, 0, 1),
+      lunge: T.lunge,
+      cast: T.cast,
+      ph: T.ph,
+      variant: T.variant,
+      form: T.form,
+      fly: (T.alt && T.alive) ? 1 : 0,
+    });
   }
 
   function step(dt, S) {
@@ -100,7 +141,7 @@ window.GenArmies = (function () {
             if (rnd() < death * dt * 0.20) {
               T.alive = false;
               T.deadT = 0;
-              pushCap(CORPSES, { u: T.u, lane: T.lane, fac: T.fac, side: T.side, a: 1, variant: T.variant, s: T.s }, 140);
+              pushCap(CORPSES, { u: T.u, lane: T.lane, fac: T.fac, side: T.side, a: 1, variant: T.variant, s: T.s, form: T.form, hold: T.alt ? 0.56 : 0 }, 140);
             }
           }
 
@@ -126,10 +167,11 @@ window.GenArmies = (function () {
                   if (best) { u1 = best.u; lane1 = best.lane; }
                   else { u1 = T.u - T.side * (0.05 + 0.05 * rnd()); lane1 = rnd() * 2 - 1; }
                   const s = sizeOf(T.lane, T.s);
+                  const dy1 = best ? liftOf(best, sizeOf(best.lane, best.s)) : 0;
                   pushCap(BOLTS, {
                     fac: T.fac, side: T.side, u0: T.u, lane0: T.lane,
-                    hx: -T.side * GenHosts.HAND[0] * s, dy0: GenHosts.HAND[1] * s,
-                    u1, lane1, t: 0, dur: 0.40 + 0.25 * rnd(), h: 0.015 + 0.03 * rnd(),
+                    hx: -T.side * GenHosts.HAND[0] * s, dy0: GenHosts.HAND[1] * s + liftOf(T, s),
+                    u1, lane1, dy1, t: 0, dur: 0.40 + 0.25 * rnd(), h: 0.015 + 0.03 * rnd(),
                   }, 30);
                 }
               }
@@ -174,7 +216,7 @@ window.GenArmies = (function () {
           }
           if (best) {
             best.alive = false; best.deadT = 0;
-            pushCap(CORPSES, { u: best.u, lane: best.lane, fac: best.fac, side: best.side, a: 1, variant: best.variant, s: best.s }, 140);
+            pushCap(CORPSES, { u: best.u, lane: best.lane, fac: best.fac, side: best.side, a: 1, variant: best.variant, s: best.s, form: best.form, hold: best.alt ? 0.56 : 0 }, 140);
           }
         }
       }
@@ -193,6 +235,7 @@ window.GenArmies = (function () {
     }
     for (let j = CORPSES.length - 1; j >= 0; j--) {
       const c = CORPSES[j];
+      c.hold = Math.max(0, c.hold - dt);
       if (S.ret > 0) c.a -= dt * 0.5 * S.ret;
       if (c.a <= 0) CORPSES.splice(j, 1);
     }
@@ -204,28 +247,19 @@ window.GenArmies = (function () {
 
     /* 1. corpses first, insertion order */
     for (const c of CORPSES) {
+      if (c.hold > 0) continue;
       paintOne(ctx, c.fac, G.sx(c.u), footY(c.u, c.lane), sizeOf(c.lane, c.s || 1),
-        { pose: "dead", down: 1, face: -c.side, a: 0.45 * c.a, variant: c.variant });
+        { pose: "dead", down: 1, face: -c.side, a: 0.45 * c.a, variant: c.variant, form: c.form, fly: 0 });
     }
 
-    /* 2. troops, back-to-front by lane */
+    /* 2. troops, back-to-front by lane, grounded first, fliers overlap */
     for (const idx of DRAW_ORDER) {
       const T = TROOPS[idx];
-      if (T.a < 0.02) continue;
-      if (!T.alive && T.deadT > 2.5) continue;
-      const x = G.sx(T.u);
-      if (x < -60 || x > G.W + 60) continue;
-      paintOne(ctx, T.fac, x, footY(T.u, T.lane), sizeOf(T.lane, T.s), {
-        a: T.a,
-        face: -T.side,
-        walk: T.walk,
-        pose: T.alive ? T.state : "dead",
-        down: T.alive ? 0 : clamp(T.deadT * 3, 0, 1),
-        lunge: T.lunge,
-        cast: T.cast,
-        ph: T.ph,
-        variant: T.variant,
-      });
+      if (!T.alt) drawTroop(ctx, T);
+    }
+    for (const idx of DRAW_ORDER) {
+      const T = TROOPS[idx];
+      if (T.alt > 0) drawTroop(ctx, T);
     }
 
     const k = G.H / 900;
@@ -234,7 +268,7 @@ window.GenArmies = (function () {
     for (const B of BOLTS) {
       const q = B.t / B.dur;
       const x0 = G.sx(B.u0) + B.hx, y0 = footY(B.u0, B.lane0) - B.dy0;
-      const x1 = G.sx(B.u1), y1 = footY(B.u1, B.lane1) - 0.5 * S0 * G.H;
+      const x1 = G.sx(B.u1), y1 = footY(B.u1, B.lane1) - 0.5 * S0 * G.H - (B.dy1 || 0);
       const x = mix(x0, x1, q);
       const y = mix(y0, y1, q) - G.H * 4 * q * (1 - q) * B.h;
       const dx = x1 - x0, dy = y1 - y0;
