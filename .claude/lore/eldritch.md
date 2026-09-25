@@ -69,8 +69,9 @@ the same blindness.
 10. **The leaving.** Once the cycle runs, most old ones go. They live
     their own lives and rule their own civilizations all over the void.
     A very small share stay: few, but among the most powerful, the ones
-    who decided to care for the soul kind forever (D20). They alone
-    watch `birth` and `fight`. From here on the story belongs to the
+    who decided to care for the soul kind forever (D20). Five (D25):
+    three old ones of the bridge, who watch `birth` and `fight`, and
+    two beings of tier 3, who hold still over the womb. From here on the story belongs to the
     soul kind, and the eldritch become the weather it lives in.
 
 ## The three tiers
@@ -81,7 +82,7 @@ the same blindness.
 | **On screen** | Under the sea at the bottom of the frame; the mainland and Rex stand above it | The deck, the piers, the span; the old ones walk it | The top of the frame, behind the far realms; only edges |
 | **Who** | Mortals: the soul kind's lives | The old ones, nest-builders, eldritch cities, the elements that settled | Unnamed. Few; how few is unknown and does not matter |
 | **Scale** | Human | The bridge's thickness spans galaxies; the old ones are specks on it | Bigger than the void that holds the bridge |
-| **Knows of** | Itself; tier 2 as horror and weather | Itself and tier 1 (as prey, curiosity, a source of clothes) | Unknown. It may not "know" in any sense we use |
+| **Knows of** | Itself; tier 2 as horror and weather | Itself and tier 1 (as prey, curiosity, a source of clothes) | Mostly unknown. Two know the soul kind, and care (D25) |
 | **Never knows** | Tier 3 | Tier 3 | — |
 
 ### Tier 1: under the sea
@@ -142,6 +143,18 @@ Three things keep tiers 1 and 2 blind, and none of them is a guardian:
 - **Seeing more costs.** The rare old one who starts to notice the tides
   turns strange: it stares up, stops dressing, stops trading, and the
   bridge's society drops it. It is never believed and never sure.
+
+### The two who care
+
+Two tier-3 beings are the exception to "may not be aware" (D25). They
+know the soul kind, and at the leaving they chose to stay with it, with
+three old ones of the bridge. Why is not known, and nothing below could
+ask: the tier-3 potential in the soul kind (D9) is the likeliest reason,
+like calling to like. They still act only through the chain below:
+their care arrives as weather that spares, a lurch that does not come,
+a dark that holds still over the womb. Nobody in tiers 1 and 2 knows
+they are there; the three old carers feel them only as a reason to
+stay still.
 
 ## How tier 3 acts: the indirect chain
 
@@ -359,5 +372,5 @@ gone by `birth` but a few powerful carers stay and watch; the first
 clothes were self-made, winter because the void is cold; captions are
 placeholders for the whole plan.
 
-Still open: which old ones are the carers who stay, and how many
-(Phase 5 casts, Phase 29 stages).
+Settled after 25a: five carers stay, three tier-2 old ones and two
+tier-3 beings (D25). Still open: which three old ones (Phase 5 casts).

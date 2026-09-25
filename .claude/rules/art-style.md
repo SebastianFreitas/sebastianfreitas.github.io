@@ -143,6 +143,9 @@ reaching up, with tier 3's potential in it.
   aside); never a beam, a line or contact.
 - **Slow and wrong.** Very slow drift against the wind, or one stepwise
   lurch; nothing bobs. Reduced motion: still and visible.
+- **The two who care.** From `leave` through `birth`, two tier-3 edges
+  stop drifting and hold over the womb, a pocket of far lights kept dark
+  round them. Every rule above still holds; stillness is their care.
 
 ### Tier 2 (the bridge)
 

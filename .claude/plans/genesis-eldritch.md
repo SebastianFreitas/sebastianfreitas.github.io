@@ -464,10 +464,13 @@ Notes:
 ### 29 · The leaving (`leave`, XV)
 Once the cycle runs, most old ones leave to live their own lives and
 rule their own alien civilizations all over the void. A very small,
-powerful share stay to care for the soul kind forever (D20): only they
-still watch `birth` and `fight` at 55 %. This phase stages the split
-(which lamps go out, which stay lit) and thins the watch to the
-carers. Pairs with Phase 19's cities.
+powerful share stay to care for the soul kind forever (D20, D25:
+three tier-2 old ones and two tier-3 beings). Only the three still
+watch `birth` and `fight` at 55 %; the two tier-3 carers hold still
+over the womb at the top of the frame. This phase stages the split
+(which lamps go out, which three stay lit), thins the watch to the
+three and adds the two tier-3 edges (built with Phases 16–18's tier-3
+painter). Pairs with Phase 19's cities.
 Notes:
 
 ## Decisions (owner answers, Phase 2, 2026-09-25)
@@ -533,7 +536,7 @@ Owner answers after Phase 3 (2026-09-25):
   `birth`. A very small share stay: the ones who decided to care for the
   soul kind forever, few but among the most powerful. They, and only
   they, still watch `birth` and `fight` (the 55 % watch stays for them).
-  Which ones and how many: Phase 5 casts, Phase 29 stages.
+  Which ones and how many: D25.
 - **D21 · The headless gentleman.** Bare from the emergence, among the
   east-goers like the rest. Nobody has clothes until they have spent
   time with the womb; he is tailored at `dress` with everyone else.
@@ -548,6 +551,16 @@ Owner answers after Phase 3 (2026-09-25):
   drafts stand; no phase of this plan polishes caption copy. The owner
   will replace the caption text and how captions work after the plan,
   in separate work.
+- **D25 · The carers (settles D20).** Five stay: three tier-2 old ones
+  and two tier-3 beings of the sky. The three are old ones on the rim
+  (Phase 5 picks which, east-goers assumed); they keep their lamps lit
+  at `leave` and are the whole 55 % watch at `birth` and `fight`. The
+  two tier-3 carers are the first sign that some of tier 3 knows the
+  soul kind and cares. They obey every tier-3 rule: never half in
+  frame, flat, wrong parallax, only effects reach below. On screen
+  their care is a stillness that holds over the womb (two edges at the
+  top of the frame that stop drifting while the lights are born, a
+  region of far lights kept dark round them), never contact or light.
 
 ## Carry forward
 
@@ -585,7 +598,7 @@ Owner answers after Phase 3 (2026-09-25):
   (D22), and appears at `dress`; the clothes are self-made winter
   clothes (D23), so Phase 5's "where it came from" is "made" for every
   first garment (taken / found / gifted / tailored apply to later ones).
-  Phase 5 also marks the few carers who stay (D20).
+  Phase 5 also marks the three tier-2 carers who stay (D25).
 - (Phase 25) Rex and Obrokxus are the two souls who remembered first
   (D17), so the new beats end where `birth` begins. Inserting
   beats shifts every later beat's snap scene in time: the first capture

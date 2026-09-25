@@ -127,11 +127,15 @@ existing ZOOM table gets five rows).
   direction like ships' lamps leaving harbour, and fade. The last thing
   moving is the Primordisentia, turning, full of worlds, unwatched.
   The camera pulls back to `birth`'s framing.
-- **Who stays (D20).** Not every pin leaves. A very small share, few
-  but among the most powerful, keep their lamps lit and stay on the
-  rim: the ones who decided to care for the soul kind forever.
-- **Consequence.** Only those carers watch `birth` and `fight`: the
-  55 % watch stays, thinned to them (the `land` fade as today). The
+- **Who stays (D20, D25).** Not every pin leaves. Three tier-2 old
+  ones keep their lamps lit and stay on the rim: the ones who decided
+  to care for the soul kind forever. Above them, two tier-3 beings of
+  the sky do the same: two edges at the top of the frame stop drifting
+  and hold over the womb, a pocket of far lights kept dark round them.
+  Never half in frame, never light or contact (the tier-3 rules).
+- **Consequence.** Only the three watch `birth` and `fight`: the 55 %
+  watch stays, thinned to them (the `land` fade as today); the two
+  tier-3 edges hold still through `birth`. The
   rest next appear only as the civilizations of Phase 19.
 
 ## Draft captions (the record's voice)
