@@ -195,8 +195,9 @@
         spanPct: (CAM.max - B.camX) / (CAM.max - CAM.min) * 100,
         travelled: B.travelled,
         region: B.lastRegion,
-        voice: B.nearest ? (VOICE_OF[B.nearest.id] || "void")
-                       : (B.futureNow > 0.45 ? "future" : "void"),
+        voice: (B.sceneMode === "gamedev" && B.env && B.env.site && B.env.w >= 0.5) ? B.env.site
+             : B.nearest ? (VOICE_OF[B.nearest.id] || "void")
+                         : (B.futureNow > 0.45 ? "future" : "void"),
         marks: activeMarks().map(m => ({
           id: m.id, cam: m.cam, oy: m.oy, name: m.name,
           claimed: !!(window.XP && XP.has("beacon-" + m.id)),

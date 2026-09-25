@@ -19,11 +19,12 @@
        site, siteName, w,                  dominant site id ("" if none), its name, its weight 0..1
        n1, n2, n3,                         smoothed noise channels in -1..1, shared by the tiles
        t,                                  env clock, seconds
+       twin,                               a second contact on the sweep, our own echo, 0..1
      }
      chaos = incoherent deviation (noise), nomic = coherent deviation (constants displaced, in step).
      The readout never says "chaos" or "magic" for the second one; it says coherent / nomic. */
 
-  const FIELDS = ["chaos", "future", "nomic", "wear", "jitter", "sway", "glare", "rad", "heat", "contained", "link", "frozen", "echo", "g", "rho"];
+  const FIELDS = ["chaos", "future", "nomic", "wear", "jitter", "sway", "glare", "rad", "heat", "contained", "link", "frozen", "echo", "g", "rho", "twin"];
 
   B.env = {};
   for (const k of FIELDS) B.env[k] = 0;
@@ -42,10 +43,10 @@
   }
 
   function shapeOf(osc, t) {
-    const u = (t / osc.period) % 1;
+    const u = (t / osc.period + (osc.phase || 0)) % 1;
     if (osc.shape === "sine") return mix(osc.lo, osc.hi, 0.5 + 0.5 * Math.sin(u * TAU));
     if (osc.shape === "square") return u < 0.5 ? osc.hi : osc.lo;
-    return u < 0.18 ? osc.hi : osc.lo; // burst
+    return u < (osc.duty || 0.18) ? osc.hi : osc.lo; // burst / pulse: hi for the first `duty` of the period
   }
 
   B.stepEnv = function stepEnv(dt) {
@@ -76,7 +77,7 @@
         if (w <= 0.001) continue;
         for (const k in site.f) tg[k] = mix(tg[k], site.f[k], w);
         if (site.f.g !== undefined) gRefT = mix(gRefT, site.f.g, w);
-        if (site.osc) tg[site.osc.field] = mix(tg[site.osc.field], shapeOf(site.osc, e.t), w);
+        if (site.osc) for (const o of (Array.isArray(site.osc) ? site.osc : [site.osc])) tg[o.field] = mix(tg[o.field], shapeOf(o, e.t), w);
         if (w >= 0.5) { dom = site; domW = w; }
         if (w > bestW) { best = site; bestW = w; }
       }

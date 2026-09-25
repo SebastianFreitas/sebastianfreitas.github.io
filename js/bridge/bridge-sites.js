@@ -48,17 +48,41 @@
       f: { chaos: 0, nomic: 1, wear: 0.9, jitter: 0, sway: 1, rad: 0.8, heat: 0.5, glare: 0.2, frozen: 0, contained: 0 }, tag: "SATURATED" },
   ];
 
+  /* the four games. r 33000 so neighbouring fields meet halfway (planets are 66000 apart);
+     each osc list is the game's own rhythm, timed so the lamps actually light
+     (a warn needs 2.2 s, an err 0.9 s of dwell in instruments.js) */
   const GD_SITES = [
-    { id: "zero", name: "Sector Zero", gate: "", x: 60000, r: 30000,
-      f: { chaos: 0.35, jitter: 0.5, rad: 0.25, glare: 0.3, sway: 0.2 }, tag: "STORM CELL" },
-    { id: "voidscape", name: "VoidScape", gate: "", x: 126000, r: 30000,
-      f: { heat: 0.9, wear: 0.35, nomic: 0.5, rad: 0.3, jitter: 0.2 }, tag: "FURNACE" },
-    { id: "heavylight", name: "HeavyLight", gate: "", x: 192000, r: 30000,
-      f: { glare: 0.35, nomic: 0.4, contained: 1, g: 1 }, tag: "LAMP CYCLE",
-      osc: { field: "g", period: 2.4, lo: 1, hi: 1.6, shape: "square" } },
-    { id: "conclusus", name: "Conclusus", gate: "", x: 258000, r: 30000,
-      f: { g: 0.85, jitter: 0, echo: 1 }, tag: "ECHO ×2",
-      osc: { field: "sway", period: 1.2, lo: 0, hi: 0.45, shape: "square" } },
+    { id: "zero", name: "Sector Zero", gate: "", x: 60000, r: 33000,
+      f: { chaos: 0.55, jitter: 0.6, rad: 0.2, glare: 0.25, sway: 0.15, link: 1, g: 1, rho: 1 },
+      tags: ["STORM CELL", "G RELEASED", "CLOCK +14 Y", "REALITY.TXT"], tagPeriod: 4,
+      osc: [
+        { field: "chaos", period: 14, lo: 0.45, hi: 0.95, shape: "pulse", duty: 0.22 },              // thunder rolls a strength: the signal tile goes red for 3 s
+        { field: "g", period: 14, lo: 1, hi: 0, shape: "pulse", duty: 0.12, phase: 0.88 },          // the losers drop their gravity: G reads 0, NAV lights
+        { field: "glare", period: 14, lo: 0.25, hi: 0.9, shape: "pulse", duty: 0.05, phase: 0.97 }, // lightning washes the radar
+      ] },
+    { id: "voidscape", name: "VoidScape", gate: "", x: 126000, r: 33000,
+      f: { heat: 1, wear: 0.45, nomic: 0.62, rad: 0.32, jitter: 0.25, sway: 0.2, g: 1.05, rho: 1.3 },
+      tags: ["FURNACE", "ONLY UP", "DEPTH +1", "REROLL ×3"], tagPeriod: 3.4,
+      osc: [
+        { field: "heat", period: 9, lo: 0.7, hi: 1, shape: "sine" },                                // heat waves off the ground
+        { field: "wear", period: 13, lo: 0.3, hi: 0.72, shape: "pulse", duty: 0.3 },                // the run ages the hull: STRESS goes red for 4 s
+        { field: "nomic", period: 6.5, lo: 0.5, hi: 0.75, shape: "square" },                        // the table rerolls: comb lines step
+      ] },
+    { id: "heavylight", name: "HeavyLight", gate: "", x: 192000, r: 33000,
+      f: { glare: 0.3, nomic: 0.42, contained: 1, g: 1, rho: 0.9, frozen: 0.35 },
+      tags: ["LAMP CYCLE", "G 1.60 ON BEAT", "PUSHES · NO PULL", "ROOM 20/20"], tagPeriod: 3.6,
+      osc: [
+        { field: "g", period: 7.2, lo: 1, hi: 1.6, shape: "square" },                                // the beam is on: light has weight
+        { field: "glare", period: 7.2, lo: 0.15, hi: 0.62, shape: "square" },                        // the lamp washes the sweep while on
+        { field: "rho", period: 7.2, lo: 0.9, hi: 1.4, shape: "square" },                            // light pressure: the medium reads denser
+      ] },
+    { id: "conclusus", name: "Conclusus", gate: "", x: 258000, r: 33000,
+      f: { g: 0.85, rho: 0.75, jitter: 0, echo: 1, twin: 1, frozen: 0.5, nomic: 0.3, contained: 1 },
+      tags: ["ECHO ×2", "SHADOW 1.20 S", "88 PINS", "SECOND HULL"], tagPeriod: 3.6,
+      osc: [
+        { field: "sway", period: 2.4, lo: 0, hi: 0.5, shape: "square" },                              // the silhouettes switch: the bus sags on the beat
+        { field: "twin", period: 2.4, lo: 1, hi: 0.35, shape: "square", phase: 0.5 },                 // the second contact blinks in antiphase
+      ] },
   ];
 
   function lines(S, h) {
@@ -388,66 +412,109 @@
         crit: [],
       },
       zero: {
-        p: { warn: 0.3, err: 0.1, crit: 0 },
+        p: { warn: 0.32, err: 0.14, crit: 0.03 },
         read: [
           () => `storm cell ranged · ${fmt(rint(20, 90))} km · rotating · ${rint(40, 140)} m/s at the wall`,
           () => `static -${rint(40, 90)} dbm across every band · one voice under it`,
+          () => `terminal handshake ${rint(60, 99)}% · a station is answering · login off a note`,
+          () => `${rint(12, 60)} objects ranged · ${rint(1, 11)} registered · the rest drift when the thunder rolls`,
+          () => `thunder rolled ${rint(1, 6)} · ${rint(2, 9)} objects lost · ${rint(0, 2)} came back changed`,
+          () => `chair · unregistered · ${f1(0.4, 2.6)} m/s · sliding · nobody in it`,
+          () => `lantern ranged · condition poor · held ${rint(3, 11)} s · dark again`,
+          () => `a record for us in the filesystem · brian.txt · weight ${rint(70, 140)} kg · we did not write it`,
           () => `dose ${f2(0.2, 0.5)} µsv/h · lightning ${rint(2, 20)}/min · charting the strikes`,
-          () => `terminal handshake ${rint(60, 99)}% · a station is answering`,
         ],
         warn: [
           () => `gust ${rint(80, 200)} m/s · hull ringing ${f1(2, 9)} hz`,
           () => `lightning ${fmt(rint(400, 2000))} m · optics ${rint(30, 70)}% washed`,
+          () => `gravity released · ${f1(1.2, 2.4)} s · every loose mass drifting · the ship among them`,
+          () => `blackout ${rint(80, 400)} ms · every object home · one moved · not ranged which`,
+          () => `mail · ${rint(1, 4)} unread · sender not in the crew list`,
         ],
         err: [
           () => `the station's clock is ahead of ours · by ${rint(2, 40)} years`,
+          () => `our record edited · height ${f2(2.5, 2.9)} m · reverted · budget -1`,
+          () => `something shares the sweep · ${rint(1, 3)} contacts · none when the sweep returns`,
+          () => `progress deleted at the terminal · ${rint(2, 14)} files · we were not typing`,
         ],
-        crit: [],
+        crit: [
+          { t: () => `thrown mass · ${rint(2, 20)} kg at ${rint(8, 30)} m/s · no thrower ranged`,
+            label: "plating breach", sev: 0.4 },
+        ],
       },
       voidscape: {
-        p: { warn: 0.3, err: 0.12, crit: 0 },
+        p: { warn: 0.34, err: 0.14, crit: 0.04 },
         read: [
           () => `hull ${f0(120, 300)}°c · sunward · no sun · the ground is the source`,
-          () => `coherent ${f2(0.4, 0.55)} · sign negative · a run in progress below`,
-          () => `dose ${f1(1, 4)} µsv/h · ${rint(3, 40)} boons ranged · unclaimed`,
-          () => `${rint(2, 9)} exits ranged · ${rint(1, 3)} open · all lead down`,
+          () => `coherent ${f2(0.5, 0.75)} · a table rolled below · every row raises the payout`,
+          () => `dose ${f1(1, 4)} µsv/h · ${rint(3, 40)} boons ranged · unclaimed · each one costs something`,
+          () => `${rint(2, 9)} exits ranged · ${rint(1, 3)} open · all lead up · up is forward`,
+          () => `rooms lit white ${rint(4, 18)} · red ${rint(0, 9)} · the red ones are done`,
+          () => `air ${f1(1.2, 1.6)}x · pressure unchanged · the heat has mass`,
+          () => `${rint(20, 90)} objects adrift in the room below · ${rint(1, 6)} canisters · ${rint(0, 2)} medkits`,
+          () => `mission board · ${rint(1, 4)} of ${rint(3, 6)} modifiers unknown · danger · error · unknown x`,
+          () => `depth ${rint(1, 12)} · the path out is bridge pieces · ${rint(0, 3)} missing`,
         ],
         warn: [
           () => `heat ${f0(300, 700)}°c at ${fmt(rint(200, 900))} m · a wave · passing`,
           () => `fatigue ${fmt(rint(900, 4000))} cycles/min · the run ages the hull`,
+          () => `ricochet ranged · ${rint(3, 10)} bounces · force doubling · not slowing`,
+          () => `lava rising in the room below · ${f1(0.2, 2)} m/min · the fight has not moved`,
+          () => `board rerolled · price ${rint(2, 40)} parts · climbing`,
         ],
         err: [
           () => `floor plan changed since the last sweep · same coordinates`,
+          () => `a whole damage type immune · ${pickOne(["fire", "cold", "poison", "physical"])} · nothing we carry`,
+          () => `elite ranged · ${rint(2, 6)} · turning as we near the end`,
         ],
-        crit: [],
+        crit: [
+          { t: () => `blast plate · ${fmt(rint(400, 2000))} kpa · under the hull`,
+            label: "shielding burn-through", sev: 0.5 },
+        ],
       },
       heavylight: {
-        p: { warn: 0.15, err: 0, crit: 0 },
+        p: { warn: 0.2, err: 0.05, crit: 0 },
         read: [
-          () => `lamp cycle 2.4s · gravity ${f2(1, 1.6)}g on the beat · 1.00g between`,
+          () => `lamp cycle 7.2 s · gravity ${f2(1.4, 1.6)}g on the beat · 1.00g between`,
           () => `light pressure ${f1(2, 9)} n/m² · ${rint(2, 20)} lamps ranged · timed`,
-          () => `${rint(20, 23)} rooms charted · ${rint(0, 3)} unlit · crates ${rint(2, 40)}`,
+          () => `${rint(18, 20)} rooms charted · ${rint(0, 3)} unlit · crates ${rint(2, 40)}`,
           () => `coherent ${f2(0.35, 0.45)} · bounded · pushes · does not pull`,
+          () => `a beam across the sweep · ${f1(0.4, 3)} m/s along it · step out and it stops dead`,
+          () => `crate ranged · falling ${pickOne(["sideways", "up", "down"])} · the beam is its floor`,
+          () => `wisps ${rint(1, 6)} · ${rint(0, 2)} red · a different voice on the red ones`,
+          () => `air ${f1(1.1, 1.5)}x on the beat · the light has mass · nothing else does`,
         ],
         warn: [
           () => `lamp out of phase ${rint(20, 400)} ms · beat missed · resumed`,
+          () => `beam on the hull · ${f1(0.4, 2.2)} m/s sideways · course holding · position not`,
+          () => `a lamp aimed down · ${f2(1.6, 2.4)}g in the beam · under it`,
         ],
-        err: [],
+        err: [
+          () => `a door barred · something behind it made an offer · leave · fight · sign`,
+        ],
         crit: [],
       },
       conclusus: {
-        p: { warn: 0.2, err: 0.06, crit: 0 },
+        p: { warn: 0.24, err: 0.08, crit: 0 },
         read: [
           () => `every return doubled · ${rint(2, 40)} pins · ${rint(4, 80)} returns`,
-          () => `shadow cycle 1.20s · silhouettes ${rint(2, 9)} · in step`,
+          () => `switch 1.20 s · silhouettes ${rint(2, 9)} · in step · ${pickOne(["green", "silver"])} now`,
           () => `gravity ${f2(0.82, 0.88)}g · light platforms only · the rest is not ranged`,
           () => `a second hull on the sweep · this bearing · this heading · ${fmt(rint(4, 40))} m behind`,
+          () => `pin ranged · ${rint(1, 88)} of 88 · pointing ${pickOne(["up", "up-left", "up-right", "down"])} · fall held ${f1(0.8, 1.2)} s after`,
+          () => `platforms lit ${rint(1, 9)} of ${rint(9, 14)} · the first goes dark in ${f1(1, 5)} s`,
+          () => `symbol ranged · ${rint(1, 3)} of 3 pieces · each a note · in order`,
+          () => `rain ${f1(0.4, 2)} mm/h · through every level · ${rint(2, 20)}x at the chapter's end`,
+          () => `a shadow planted · ${fmt(rint(4, 120))} m back · one at a time · walking into it uses it`,
         ],
         warn: [
           () => `the second hull moved first · ${rint(20, 300)} ms`,
+          () => `silhouette silver · ${f1(0.2, 1.1)} s to the switch · not touching it`,
+          () => `bloom ${f1(1.5, 50)} · half a second · a level ended below`,
         ],
         err: [
           () => `pin count ${rint(2, 40)} · twice · both correct`,
+          () => `we are the second hull · the first is ${fmt(rint(4, 40))} m ahead · this heading`,
         ],
         crit: [],
       },

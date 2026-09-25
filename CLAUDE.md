@@ -30,7 +30,8 @@ apply to the main session, Explore and the implementer alike.
 
 - **Never read a whole file over 300 lines.** Files still over 500 lines:
   `css/bridge.css` (726), `js/hud/instruments.js` (652),
-  `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (642),
+  `js/hud/tiles-nav.js` (641), `js/bridge/bridge-sites.js` (525),
+  `js/genesis/genesis.js` (642),
   `js/gamedev/storm.js` (585),
   `js/genesis/genesis-matter.js` (620), `js/genesis/genesis-gods.js` (516),
   `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
@@ -88,6 +89,7 @@ js/bridge/                    bridge core + 8 parts, bridge-sites, bridge-voice,
 js/depths/                    depths core + zero, voidscape, heavylight, conclusus, lore
 js/ship/                      voidship, voidship-art, voidship-prow
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
+js/gdworld/                   gdworld core + gd-zero, gd-voidscape, gd-heavylight, gd-conclusus (the Game Dev sector's world)
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
 js/genesis/                   genesis-state, -paint, -void, -flesh, -elements, -matter, -trade, -oldones, -oldkin, -figures, -titans, -obrok, -hosts, -mainland, -armies, -orb, -rex, -depths, -saga-state, -ritual, -saga, genesis
 js/pages/                     play (the case-page canvas layer) + one toy per case page: heavylight, conclusus, sector-zero (+ -records), voidscape (+ -boons)
@@ -112,6 +114,15 @@ shares `Gen`:
   starts every painter with `const { ctx, W, H, t } = F;` (only the fields
   it reads), and ends with `P.drawX = drawX`. `draw` in the core sets `F`
   and calls `P.*` in a fixed order.
+- **`js/gdworld/`**: `gdworld.js` publishes `GdWorld` with the frame `F`
+  (`ctx, W, H, camX, t, dt, vel, sc, k, gy, red, w[4], wsum`), the registry
+  `P`, `GAMES`, `dens`, `sx`, `scatter`, `each` and `draw`. Each painter
+  file starts `const G = window.GdWorld; if (!G) return;`, builds its
+  element lists at load with `scatter`, reads `F` only inside its paint
+  functions (it is empty until the first draw) and registers `G.P.<id> =
+  { base, wash, layers: [{ par, paint }], grade }`. `World.draw` hands the
+  whole gamedev frame to `GdWorld.draw`; only the ship is shared with the
+  Void.
 
 ## File map
 
@@ -141,7 +152,7 @@ Sizes are line counts after the split.
 | File | Lines | Purpose | Publishes / uses |
 |---|---|---|---|
 | `instruments.js` | 652 | HUD framework: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once, one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object) | `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}` |
-| `tiles-nav.js` | 625 | The nav bank: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, glow bitmaps cached per colour; `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`; `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus` | registers `{paint, paintStatic}` |
+| `tiles-nav.js` | 641 | The nav bank: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, a second contact (our echo) from `env.twin`, glow bitmaps cached per colour; `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS (`max(r.chaos, env.chaos)`)/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`; `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus` | registers `{paint, paintStatic}` |
 | `tiles-sys.js` | 495 | The sys bank and its shared state: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt` (integrity, cosmetic) and `sys.wear`; `eclss` rows are bars with nominal bands; `hull` has a STRESS/REGEN header, sector stress flicker, an INT bar and WEAR ×n; `bus` sags with `sway`, shows UPLINK on `link`; static layers `eclssStatic`/`radStatic`/`hullStatic`/`busStatic` | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
 
 ### js/bridge
@@ -157,10 +168,10 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-marks.js` | 176 | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
 | `bridge-panel.js` | 352 | `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins; setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX` | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit` |
 | `bridge-depths.js` | 99 | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
-| `bridge-env.js` | 105 | The environment model: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, gAnom, tag, site, siteName, w, n1, n2, n3, t}`; `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases; debug `window.envReport` | `B.env stepEnv`; `window.envReport` |
-| `bridge-readout.js` | 210 | `B.voice = BridgeVoice.create` (voice state carries `env`), hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` (calls `B.stepEnv(dt)`, passes `env` to `Instruments.draw`); `VOICE_OF` maps the four planet marks to per-game voices | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
-| `bridge-loop.js` | 167 | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
-| `bridge-sites.js` | 458 | The places that bend the instruments: `SITES` (void setting, 18 entries, order matters — later entries override earlier ones) and `GD_SITES` (one per game), each `{id, name, gate, x, r \| ramp, f:{fields}, tag, osc?, tags?}`; `lines(S, h)` returns one readout zone per site (same shape as `bridge-voice.js` `ZONES`) | `window.BridgeSites {SITES, GD_SITES, lines}` |
+| `bridge-env.js` | 106 | The environment model: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t}`; `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases; a site's `osc` may be one object or an array, each `{field, period, lo, hi, shape: "sine" | "square" | "pulse", duty?, phase?}`; debug `window.envReport` | `B.env stepEnv`; `window.envReport` |
+| `bridge-readout.js` | 211 | `B.voice = BridgeVoice.create` (voice state carries `env`), hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` (calls `B.stepEnv(dt)`, passes `env` to `Instruments.draw`); `VOICE_OF` maps the marks to voices; in gamedev the dominant site's id is the voice | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
+| `bridge-loop.js` | 168 | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
+| `bridge-sites.js` | 525 | The places that bend the instruments: `SITES` (void setting, 18 entries, order matters — later entries override earlier ones) and `GD_SITES` (one per game, `r` 33000 so neighbours meet halfway, `tags` rotating and an `osc` list per game), each `{id, name, gate, x, r \| ramp, f:{fields}, tag, osc?, tags?}`; `lines(S, h)` returns one readout zone per site (same shape as `bridge-voice.js` `ZONES`) | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | 382 | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds; `zoneAt` returns the dominant site (`env.w >= 0.5`) before the x-range checks; extra optics/coherent lines in the void, watcher, root and unnamed zones | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | 68 | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
 | `marks.js` | 78 | Landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS`/`GD_SPAWN` | `window.Marks`; uses `World` |
@@ -193,12 +204,30 @@ does not — it is pure data, no dependency on `B`.
 | `forge.js` | 549 | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock` | `window.Forge`; fed by `bridge-marks.js` `forgeEnv`, hit-tested in `bridge-input.js` pointerdown |
 | `zones.js` | 509 | Backdrop art around Conclusus / HeavyLight / VoidScape: sprite pipeline `CPAL`/`CSPR`/`HPAL`/`HSPR` → `spriteCanvas` → `blitSprite`, `HL_GROUPS`, `LANTERN`, `BEAM`, `dropCrate`/`stepCrates` | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
 
+### js/gdworld
+
+The Game Dev sector's world: four backgrounds, one per game, that meld by
+distance. Each game's field is centred on its planet (`Marks.PLANETS[i].x`),
+full within 17 100 units, half at about 27 500 and empty at `R` = 38 000, so
+the screen empties between planets before the next game's outriders appear.
+Sizes are "px at a 1440-wide hero" × `F.k`; layers are painted far → near
+across all four games at once; `wash`/`grade` are screen-space and weighted
+by the game's weight at the camera. Nothing here reads `Bridge`.
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `gdworld.js` | 136 | Core: `GAMES`, `R`, `GROUND` (0.64, the old deck line), `dens(i, x)`, the frame `F`, `sx(x, par)`, seeded `scatter(seed, i, n, par, fy0, fy1)`, `each(list, pad, fn)`, the sector dust, `draw` (sky blend of the games' `base` colours → dust → washes → every layer by `par` → grades) | `window.GdWorld` |
+| `gd-zero.js` | 412 | Sector Zero, "the room, unpicked": wall panels with door frames, blinds and baseboards, fluorescent tubes on wires (on / flicker / off), ceiling tiles and floorboards (`band`, fading with `dens`), filing cabinets, office chairs adrift, clocks running ahead, EXIT signs, security cameras; papers and cables nearest; grade = scanlines, grain, green tint | `GdWorld.P.zero` |
+| `gd-voidscape.js` | 362 | VoidScape, "the run, only up": concrete corridor `module`s tilted and chained by stairs, mouths lit white (unvisited) or red (done), pipes with valve wheels, rotating beacons, triangle portals, dice, canisters, medkits; red cloud banks and the ground's heat; grade = red vignette | `GdWorld.P.voidscape` |
+| `gd-heavylight.js` | 268 | HeavyLight, "stone stairs and hard light": stepped floor and ceiling masses at three depths (`mass`, quantised `ridge`, amplitude × `dens`, a clearing round the planet in the near layer), dot pattern that scrolls with each layer, rooms, timed lamps on a 7.2 s cycle with slabs of solid light, speckle, wisps (one in five red) | `GdWorld.P.heavylight` |
+| `gd-conclusus.js` | 222 | Conclusus, "other selves": faint giant silhouettes switching green / silver every 1.2 s, pin rows, columns and rings, spinning pieces, dotted jump arcs from a planted shadow, star sparkles drawn twice (the echo), the symbol in three orbiting wedges; grade = rain | `GdWorld.P.conclusus` |
+
 ### js/world
 
 | File | Lines | Purpose |
 |---|---|---|
-| `world.js` | 285 | Core: `VIEW_UNITS`, `SLOT`, `LAND`, `BOUNDS`, `DECK`, `FLOOR`, `BAY`, `chaosAt`, `futureAt`, seeded `city` and particle arrays, Rex consts `REX_BANDS`/`REX_FROM`/`REX_END`/`HELL_AT`/`rexHeight`/`REX_PLACES`, `rexSprite` cache, `depthAlpha`/`setA`/`faded`, `MAIN_PAR` + faction anchors, `F`, `P`, `scale`/`wx`/`onScreen`, `draw` (paint order lives here) | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw, F, P, …}` |
-| `void.js` | 217 | `drawVoid`, `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture`, `drawSectorGlow` |
+| `world.js` | 283 | Core: `VIEW_UNITS`, `SLOT`, `LAND`, `BOUNDS`, `DECK`, `FLOOR`, `BAY`, `chaosAt`, `futureAt`, seeded `city` and particle arrays, Rex consts `REX_BANDS`/`REX_FROM`/`REX_END`/`HELL_AT`/`rexHeight`/`REX_PLACES`, `rexSprite` cache, `depthAlpha`/`setA`/`faded`, `MAIN_PAR` + faction anchors, `F`, `P`, `scale`/`wx`/`onScreen`, `draw` (paint order lives here; a gamedev frame is handed to `GdWorld.draw`) | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw, F, P, …}` |
+| `void.js` | 193 | `drawVoid`, `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture` |
 | `watcher.js` | 220 | `WATCHER_SHARDS`/`WATCHER_CRACKS`, `drawWatcher` (calls `P.serusPhase`/`P.drawSerus`), `RED_STAR`, `drawRedStar` |
 | `serus.js` | 154 | `serusPhase`, `drawSerus` (the alien coiled in the Watcher) |
 | `nephilim.js` | 194 | `NEPHILIM` anchor, `nephRng`, `NEPH_*`, `nephWalk`, `nephRibbon`, `flatVolume`, `drawNephilim` |
@@ -303,7 +332,8 @@ world/art/{shattered, libertech, dawn, accord, gore} → world/world →
 world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
 ship/voidship-art → ship/voidship-prow → ship/voidship → gamedev/storm →
 gamedev/forge-guns → gamedev/forge-missions → gamedev/forge → gamedev/zones →
-site/embed → lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
+site/embed → lib/pacer → bridge/marks → gdworld/{gdworld, gd-zero, gd-voidscape,
+gd-heavylight, gd-conclusus} → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
 bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
 bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
@@ -317,7 +347,9 @@ Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
 `instruments.js`, kits before places, `forge-guns` before `forge-missions`
 before `forge`, `voidship-art` before `voidship-prow` before `voidship`
-(the prow extends `VoidshipArt` at parse time)); `bridge-sites` before
+(the prow extends `VoidshipArt` at parse time)); `gdworld` after
+`bridge/marks` (it reads `Marks.PLANETS` at parse time) and its four
+painters after it; `bridge-sites` before
 `bridge-voice`; `bridge-env` after `bridge-depths` and before
 `bridge-readout`; `genesis-flesh` before
 `genesis-rex` (it destructures `fleshPath` at parse time);
@@ -362,11 +394,12 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | Sector Zero storm | `js/gamedev/storm.js`; anchored by `bridge-marks.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
 | VoidScape bench / console / floor plan | `js/gamedev/forge.js` (+ `forge-guns.js`, `forge-missions.js`); anchored by `bridge-marks.js` `forgeEnv`; hit-tested in `bridge-input.js` pointerdown |
 | Game-themed backdrops | `js/gamedev/zones.js`; anchored by `bridge-marks.js` `zonesEnv`; planet colours in `bridge/planet.js` `THEMES` |
+| Game Dev background (the four melding worlds) | `js/gdworld/gdworld.js` core (`dens`, `scatter`, paint order); one painter per game `js/gdworld/gd-{zero,voidscape,heavylight,conclusus}.js`; wired from `js/world/world.js` `draw` |
 | Landmarks / beacons | `js/bridge/marks.js` `MARKS`/`PLANETS`; gated extras `js/depths/*` |
 | Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
 | Notes and hints | `js/bridge/bridge-notes.js` |
 | Setting switch (void ↔ gamedev), iris FX, view persistence | `js/bridge/bridge-panel.js` |
-| Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`); one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate` |
+| Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`); one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate`; the four Game Dev sites' physics and their `lines()` live in `bridge-sites.js` `GD_SITES` |
 | Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
