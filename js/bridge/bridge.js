@@ -207,8 +207,8 @@
   document.addEventListener("xp:freeze", e => {
     B.frozen = !!e.detail.on;
     clearTimeout(freezeGuard);
-    // nothing is allowed to stop the world indefinitely: if a claim
-    // never reports back, the scene starts itself again
+    // only the rank card holds the world now; nothing is allowed to stop it
+    // indefinitely: if the card never reports back, the scene starts itself again
     if (B.frozen) freezeGuard = setTimeout(() => {
       if (B.frozen) { B.frozen = false; host.classList.remove("held"); console.warn("scene un-held by guard"); }
     }, 5000);
@@ -216,6 +216,9 @@
     if (B.frozen) {
       B.vel = 0;
       if (B.ship) Voidship.setThrusting(B.ship, false);
+      // drop the held pointer too, or a press that outlived the hold stays dead
+      if (B.endBurn) B.endBurn();
+      if (B.stopSteering) B.stopSteering();
     }
   });
 

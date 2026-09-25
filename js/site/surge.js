@@ -1,132 +1,289 @@
 /* ===========================================================
    SURGE — what a level looks like.
 
-   Light leaves the level number, runs both ways along the top,
-   turns the corners, comes down the sides and closes at the
-   bottom. How far it gets is how far you've got: the first one
-   dies before the corners, the last one goes all the way round
-   and takes the screen with it.
+   A short burst at the chip on every level, its size tracking
+   how full the row of pips is. Every tenth level earns a badge,
+   and that gets a card of its own: it draws the new mark, holds
+   the world still for a moment, then lets go.
 
-   One animation, played to a fraction of itself.
-   Listens for xp:surge. Needs nothing else.
+   Listens for xp:surge and xp:rankup. Needs nothing else.
    =========================================================== */
 
 (function () {
   /* This page's claim language IS the motion. Honouring OS
      "reduce motion" here was blanking the surge in Firefox on
-     http:// (file:// often reports no preference), so the span
+     http:// (file:// often reports no preference), so the chip
      looked dead next to the same files opened as a document. */
-  const RAIL = ["topL", "topR", "sideL", "sideR", "botL", "botR"];
 
-  let root, rails = {}, flash, built = false;
+  let layer = null;
+  function ensureLayer() {
+    if (layer) return layer;
+    layer = document.createElement("div");
+    layer.className = "surge-layer";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+    return layer;
+  }
 
-  function build() {
-    if (built) return;
-    built = true;
+  function chipCentre() {
+    const el = document.querySelector(".xp-chip .xp-badge") || document.querySelector(".xp-chip");
+    if (!el) return { x: innerWidth / 2, y: 28 };
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
 
-    root = document.createElement("div");
-    root.className = "surge";
-    root.setAttribute("aria-hidden", "true");
+  function ring(parent, x, y, size, delay, dur) {
+    const el = document.createElement("i");
+    el.className = "surge-ring";
+    el.style.left = (x - size / 2) + "px";
+    el.style.top = (y - size / 2) + "px";
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    parent.appendChild(el);
+    el.animate(
+      [{ transform: "scale(0.15)", opacity: 1 }, { transform: "scale(1)", opacity: 0 }],
+      { duration: dur, delay, easing: "cubic-bezier(.15,.7,.3,1)", fill: "backwards" }
+    ).onfinish = () => el.remove();
+  }
 
-    for (const k of RAIL) {
+  function sparks(parent, x, y, count, reach, seed) {
+    const rnd = Util.mulberry(seed);
+    for (let i = 0; i < count; i++) {
       const el = document.createElement("i");
-      el.className = "surge-rail " + k;
-      root.appendChild(el);
-      rails[k] = el;
+      el.className = "surge-spark" + (rnd() < 0.35 ? " hot" : "");
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      parent.appendChild(el);
+
+      const a = i / count * Math.PI * 2 + (rnd() - 0.5) * 0.5;
+      const d = reach * (0.45 + 0.55 * rnd());
+      const dx = Math.sin(a) * d;
+      const dy = -Math.cos(a) * d;
+      const drop = 18 + 22 * rnd();
+      const dur = 520 + 320 * rnd();
+
+      el.animate(
+        [
+          { transform: "translate(0,0)", opacity: 1 },
+          { transform: `translate(${dx * 0.7}px,${dy * 0.7}px)`, opacity: 1, offset: 0.45 },
+          { transform: `translate(${dx}px,${dy + drop}px) scale(0.4)`, opacity: 0 },
+        ],
+        { duration: dur, easing: "cubic-bezier(.2,.8,.4,1)" }
+      ).onfinish = () => el.remove();
     }
-    flash = document.createElement("b");
-    flash.className = "surge-flash";
-    root.appendChild(flash);
-
-    document.body.appendChild(root);
   }
 
-  const easeOut = Util.easeOut;
-  const easeIn  = u => u * u * u;
-
-  /* how much of the loop this level is worth */
-  function reachFor(level, total, milestone) {
-    const p = Math.min(1, Math.max(0, level / Math.max(1, total)));
-    let r = 0.12 + 0.88 * p;
-    if (milestone) r = Math.min(1, r + 0.14);   // a new rank pushes further
-    return r;
+  let labelEl = null, labelAnim = null;
+  function label(x, y, text) {
+    const parent = ensureLayer();
+    if (!labelEl) {
+      labelEl = document.createElement("div");
+      labelEl.className = "surge-label";
+      parent.appendChild(labelEl);
+    }
+    if (labelAnim) labelAnim.cancel();
+    labelEl.textContent = text;
+    labelEl.style.left = x + "px";
+    labelEl.style.top = y + "px";
+    labelAnim = labelEl.animate(
+      [
+        { opacity: 0, letterSpacing: "0.1em", transform: "translate(-50%, 4px)" },
+        { opacity: 1, letterSpacing: "0.34em", transform: "translate(-50%, 0)", offset: 0.3 },
+        { opacity: 0, letterSpacing: "0.42em", transform: "translate(-50%, -6px)" },
+      ],
+      { duration: 1100, easing: "ease-out" }
+    );
   }
 
-  let running = false;
+  let glowEl = null;
+  function glow(strength) {
+    const parent = ensureLayer();
+    if (!glowEl) {
+      glowEl = document.createElement("div");
+      glowEl.className = "surge-glow";
+      parent.appendChild(glowEl);
+    }
+    glowEl.style.setProperty("--g", strength.toFixed(2));
+    glowEl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: 620, easing: "ease-out" });
+  }
 
   function play(detail) {
-    build();
-    if (running) return;
-    running = true;
-
+    ensureLayer();
     const level = detail.level || 0;
-    const total = detail.total || 1;
-    const milestone = !!detail.milestone;
-    const complete = level >= total;
-    const reachMax = complete ? 1 : reachFor(level, total, milestone);
-    const p = Math.min(1, level / Math.max(1, total));
+    const pip = detail.pip != null ? detail.pip : level % 10;
+    const { x, y } = chipCentre();
 
-    // start the light under the level number, not at the middle of nowhere
-    const chip = document.querySelector(".xp-chip");
-    const cx = chip ? chip.getBoundingClientRect().left + chip.getBoundingClientRect().width / 2
-                    : innerWidth / 2;
-    root.style.setProperty("--surge-x", Math.round(cx) + "px");
-    root.classList.add("on");
-    if (milestone) root.classList.add("rank");
+    if (detail.rankUp) {
+      ring(layer, x, y, 150, 0, 760);
+      ring(layer, x, y, 200, 80, 760);
+      ring(layer, x, y, 260, 170, 820);
+      sparks(layer, x, y, 30, 150, level * 7919 + 1);
+      glow(1);
+      label(x, y + 24, "Rank up");
+    } else {
+      const p = Math.max(1, pip) / 10;
+      ring(layer, x, y, 90 + 60 * p, 0, 600);
+      if (pip >= 5) ring(layer, x, y, 120 + 80 * p, 90, 680);
+      sparks(layer, x, y, Math.round(8 + 14 * p), 60 + 50 * p, level * 7919 + 1);
+      glow(0.25 + 0.45 * p);
+      label(x, y + 24, "Level " + level);
+    }
+  }
 
-    const W = innerWidth, H = innerHeight;
-    const halfTop = W / 2, side = H, halfBot = W / 2;
-    const path = halfTop + side + halfBot;
+  const ROMAN = [
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  function roman(n) {
+    let out = "";
+    for (const [v, s] of ROMAN) {
+      while (n >= v) { out += s; n -= v; }
+    }
+    return out;
+  }
 
-    const OUT  = 340 + 700 * p;        // travel out
-    const HOLD = 70  + 220 * p;        // sit at full reach
-    const BACK = 260 + 420 * p;        // and retreat
-    let t0 = null;
+  let card = null;
+  function rankUp(detail) {
+    if (card) card.close(true);
 
-    function frame(now) {
-      if (t0 === null) t0 = now;
-      const e = now - t0;
-      let reach;
+    const to = detail.to || {}, from = detail.from || {};
+    if (!to.name) return;
 
-      if (e < OUT)              reach = reachMax * easeOut(e / OUT);
-      else if (e < OUT + HOLD)  reach = reachMax;
-      else {
-        const u = (e - OUT - HOLD) / BACK;
-        if (u >= 1) return finish();
-        reach = reachMax * (1 - easeIn(u));
+    const veil = document.createElement("div");
+    veil.className = "rank-veil";
+    veil.setAttribute("role", "dialog");
+    veil.setAttribute("aria-modal", "true");
+    veil.setAttribute("aria-label", "Rank up: you are now " + to.name);
+
+    const cardEl = document.createElement("div");
+    cardEl.className = "rank-card";
+    veil.appendChild(cardEl);
+
+    const kicker = document.createElement("p");
+    kicker.className = "rank-kicker";
+    kicker.textContent = "Rank up";
+    cardEl.appendChild(kicker);
+
+    const badge = document.createElement("div");
+    badge.className = "rank-badge";
+    cardEl.appendChild(badge);
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    badge.appendChild(svg);
+
+    if (from.d) {
+      const oldPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      oldPath.setAttribute("class", "rank-old");
+      oldPath.setAttribute("d", from.d);
+      svg.appendChild(oldPath);
+    }
+    const newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    newPath.setAttribute("class", "rank-new");
+    newPath.setAttribute("d", to.d);
+    newPath.setAttribute("pathLength", "1");
+    svg.appendChild(newPath);
+
+    const now = document.createElement("p");
+    now.className = "rank-now";
+    now.textContent = "You are now";
+    cardEl.appendChild(now);
+
+    const name = document.createElement("h2");
+    name.className = "rank-name";
+    // letters animate one by one, but a word never breaks in the middle
+    let k = 0;
+    to.name.split(" ").forEach((word, w) => {
+      if (w > 0) name.appendChild(document.createTextNode(" "));
+      const wordEl = document.createElement("span");
+      wordEl.className = "rank-word";
+      for (const ch of word) {
+        const span = document.createElement("span");
+        span.style.setProperty("--i", k++);
+        span.textContent = ch;
+        wordEl.appendChild(span);
       }
+      name.appendChild(wordEl);
+    });
+    cardEl.appendChild(name);
 
-      const d = reach * path;
-      const top  = Math.min(d, halfTop);
-      const down = Math.min(Math.max(0, d - halfTop), side);
-      const bot  = Math.min(Math.max(0, d - halfTop - side), halfBot);
+    const meta = document.createElement("p");
+    meta.className = "rank-meta";
+    meta.appendChild(document.createTextNode("Level "));
+    const b = document.createElement("b");
+    b.textContent = detail.level;
+    meta.appendChild(b);
+    meta.appendChild(document.createTextNode(" · Rank " + roman(to.index + 1) + " of " + roman(detail.count || 11)));
+    cardEl.appendChild(meta);
 
-      rails.topL.style.width  = rails.topR.style.width  = top.toFixed(1) + "px";
-      rails.sideL.style.height = rails.sideR.style.height = down.toFixed(1) + "px";
-      rails.botL.style.width  = rails.botR.style.width  = bot.toFixed(1) + "px";
+    const next = document.createElement("p");
+    next.className = "rank-next";
+    next.textContent = to.next ? "Next · " + to.nextName + " at level " + to.next : "The last rank there is";
+    cardEl.appendChild(next);
 
-      // the closer it gets to closing the loop, the hotter it burns
-      root.style.setProperty("--surge-heat", (0.35 + 0.65 * reach).toFixed(3));
+    const hint = document.createElement("p");
+    hint.className = "rank-hint";
+    hint.textContent = Util.coarse() ? "Tap to continue" : "Click to continue";
+    cardEl.appendChild(hint);
 
-      // the loop actually closing is the only thing that takes the screen
-      if (complete && bot >= halfBot - 1 && !flash.dataset.spent) {
-        flash.dataset.spent = "1";
-        flash.classList.add("go");
-        setTimeout(() => flash.classList.remove("go"), 220);
+    document.body.appendChild(veil);
+    requestAnimationFrame(() => veil.classList.add("open"));
+
+    document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: true } }));
+
+    const r = badge.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    ring(veil, cx, cy, 170, 120, 800);
+    ring(veil, cx, cy, 250, 220, 900);
+    sparks(veil, cx, cy, 34, 190, (detail.level || 0) * 131 + 7);
+
+    const openedAt = performance.now();
+    let closed = false;
+    let autoTimer = null;
+
+    function close(instant) {
+      if (closed) return;
+      closed = true;
+      clearTimeout(autoTimer);
+      document.removeEventListener("keydown", onKey);
+      card = null;
+      document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: false } }));
+      if (instant) {
+        veil.remove();
+      } else {
+        veil.classList.add("closing");
+        setTimeout(() => veil.remove(), 200);
       }
-      requestAnimationFrame(frame);
     }
 
-    function finish() {
-      for (const k of RAIL) { rails[k].style.width = ""; rails[k].style.height = ""; }
-      root.classList.remove("on", "rank");
-      delete flash.dataset.spent;
-      running = false;
+    function onKey(e) {
+      if (performance.now() - openedAt <= 450) return;
+      if (e.key === " " || e.key === "Spacebar" || e.key === "Enter" || e.key === "Escape") e.preventDefault();
+      close(false);
     }
 
-    requestAnimationFrame(frame);
+    veil.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (performance.now() - openedAt > 450) close(false);
+    });
+    document.addEventListener("keydown", onKey);
+
+    autoTimer = setTimeout(() => close(false), 3800);
+
+    try {
+      veil.tabIndex = -1;
+      veil.focus({ preventScroll: true });
+    } catch (e) {}
+
+    card = { close };
   }
 
   document.addEventListener("xp:surge", e => play(e.detail || {}));
-  window.Surge = { play, reachFor };
+  document.addEventListener("xp:rankup", e => {
+    const d = e.detail || {};
+    setTimeout(() => rankUp(d), 380);
+  });
+
+  window.Surge = { play, rankUp };
 })();
