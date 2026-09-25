@@ -1,6 +1,6 @@
 /* conclusus.js — the Conclusus case page becomes a vertical platformer level in
    the free space beside the text: grass platforms with planted shadow twins,
-   silhouette enemies on a green/silver cycle, spinning pins, a turning key
+   silhouette enemies on a green/silver cycle, a turning key
    symbol and an exit arch. The player teleports between shadows; when his
    platform scrolls out of view he teleports into whichever shadow sits
    nearest the middle of the screen, following the reader down the page. */
@@ -18,7 +18,6 @@
   const GRAV = 1400;
   const CPAL = ["#b4c788", "#62554c", "#463c3c", "#f7ffc5", "#8b6a44", "#312629", "#d6f5e4", "#8a8969"];
   const MODES = [{ spin: 60, dur: 3 }, { spin: 120, dur: 1.5 }, { spin: 240, dur: 0.5 }, { spin: 300, dur: 0.8 }];
-  const PIN_FRAMES = [6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5];
 
   const DEFS = {
     cc_idle1: {w:8, h:26, ox:11, oy:6, px:'...b.......bbbb...bbbd.....dfd......dd.....gff...hhhgfg..hhhheg..hhhheh.hh.hheh.hh.hhbh.hh.hhbh.hhhhhbhhgghhhehg.dhhheed..hhhee...hhhee..hhhh.e..hhhh.e..hhhh.e..hhh..e...e...e...e...e...e...e...b...b...b...b.'},
@@ -32,13 +31,6 @@
     cc_plat_f1g5: {w:32, h:14, ox:0, oy:12, px:'.....a..............................a...a....a......a..a.....a..a..aa.a..a..a.....a.aa.aa.a.a....aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaabbaabbbbaabaabbaababbbaaaaaaababbbbbabbbababbbbbabbbbabaabaacabbbbbbbbbabbbbbbbabbbbbbbabbbacbbcbbbbbbbbbbbbbbbbbbbbbbbbabbaccbcbbcbbbbbbbbbbbbbbbbbbbbbbbbaccbbcbbcbcbbbcbbbbbbbbbbbbbbbbbc.cccccbcccccbbcbbbbbbbbbbbbbbbc.c.ccccccccccccccbccccbcccbcbcc.c....c.c...cc...cc....cc..c.c.............c............c.........'},
     cc_plat_f3g5: {w:32, h:14, ox:0, oy:12, px:'.....a..............................a...a....a......a..a.....a..a..aa.a..a..a.....a.aa.aa.a.a....aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaabbaaabbbaabbbaaaabaabaabaaabaaaabbbabbabbabbabbabaababbbaacbbbabbbbbabbabbabbbabbbbbbbabaaccbbbbbbbbabbbbbbbbbbbbbbbbbbbbaccbcbbbbcbbbbbbbbbbbbbbbbbbbbbbaccccbbbbcbccbbbbbbbcbcbbbbbbbbbc.cccccbbbcccccbbbbccbcbbbbbbbbc.c.ccccccccccccccbccccbcccbcbcc.c....c.cc..cc...cc....cc..ccc...........c..c.....................'},
     cc_plat_f2g2: {w:32, h:13, ox:0, oy:13, px:'......a................a.............aa..a.......a....aaa......a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaabaaababbbbbaabaaababbbaabbaaaaababbabbbabbaabbbbaabbbabbbbabacabbabbbbabbbbbbbbbabbbbbabbbbaacbbbbbbbbbbbbbbbabbbabbbabbbbbbaccbbbccbbbbbbbbbbbbbbbbbbbbbbbbaccbbccbbcbbbcbbbbbbbbbbbbbbbbbbc.cccccbcbbcccbbbbbbbbbbbbbbbbbc.c.ccccccccccccccbccccbbccbcbcc.c....ccc..ccc..ccc.cc.cc..c.c..........c..c........c.............'},
-    cc_pin: {w:8, h:8, ox:12, oy:12, px:'a..aa..a...........aa...a.aaaa.aa.aaaa.a...aa...........a..aa..a'},
-    cc_pin2: {w:10, h:10, ox:11, oy:11, px:'....aa.....a......a...............aa....a..aaaa..aa..aaaa..a....aa...............a......a.....aa....'},
-    cc_pin3: {w:10, h:10, ox:11, oy:11, px:'....aa................a....a......aa....a..aaaa..aa..aaaa..a....aa......a....a................aa....'},
-    cc_pin4: {w:8, h:8, ox:12, oy:12, px:'...aa.............aaaa..a.aaaa.aa.aaaa.a..aaaa.............aa...'},
-    cc_pin5: {w:6, h:6, ox:13, oy:13, px:'..aa...aaaa.aaaaaaaaaaaa.aaaa...aa..'},
-    cc_pin6: {w:8, h:8, ox:12, oy:11, px:'...aa..............aa.....aaaa..aaaaaaaaaaaaaaaa..aaaa.....aa...'},
-    cc_pin7: {w:10, h:11, ox:11, oy:8, px:'....aa..................aa.......a..a.................aa.......aaaa...a.aaaaaa.aa.aaaaaa.a...aaaa.......aa....'},
     cc_symbol3: {w:16, h:16, ox:8, oy:8, px:'.......dd..............dd..................................................d...........................dd.......dd....dddd....dddd....dddd....dd.......dd...........................d..................................................dd..............dd.......'},
     cc_door_new: {w:28, h:31, ox:2, oy:1, px:'............dddd......................ddaaaadd..................ddaa.a..aadd..............ddaa.......aaadd............aaa.........a.aa...........ddaa........a..add...........da............ad..........ddda............addd.........aa.............aaa.........dd.a..............dd.........a...............aa..........da...............d..........aa..............aa.........dda...............dd.........a................a.........dda.............aadd.......d.da............a.ad.d........da............a.ad........d.aa..............aa.d.......dda..............add.........da..............ad........dddaa............aaddd........da.a............ad.........dda..............add.......dada..............adad....dd.ada..............ada.dd....dada......a.......adad.....aaada.....a.......aadaaa...dadddaa..a..a...a...adddad...aaada..a...aa...a.aadaaaa.aaddddaaaaaaaaaaaaaaaaddddaa'},
     cc_door_new2: {w:30, h:32, ox:1, oy:0, px:'..............dd...........................dddd........................ddaaaadd..................d.ddaa.a..aadd.d..............ddaa.......aaadd..............aaa.........a.aa............dddaa........a..addd............da............ad............ddda............addd...........aa.............aaa...........dd.a..............dd...........a...............aa...........eea...............e............ea..............aae..........dda...............dd.........e.a................aaa.......e.eea.............aaeea.a....a.ddd.............a..ddda......aaaea............a.aee........addd................dd........aeeea..............ae...........eaa..............aeaa.......aeeeaa............aaeee......a.aaaa.a............aaea........aeea..............aeeaa........aaa..............aaae........aaea..............aeaa........eaaa......a.......aaeee......aaaea.....a.......aaeaa......eaeeeaa..a..a...a...aeee.....eaaaaaa..a...aa...a.aaaaaaea.eeaeeaeaaaaaaaaaaaaaaaaeaeeaee'},
@@ -47,7 +39,7 @@
 
   let V;                       // the shared frame-state object, captured once in setup
   let SPR = {};                 // cached sprites, built in setup
-  let plats = [], sils = [], pins = [], spikes = [], rain = [], bursts = [];
+  let plats = [], sils = [], spikes = [], rain = [], rrnd = null, bursts = [];
   let sym = null, door = null;
   let player = { plat: -1, x: 0, y: 0, face: 1, air: null, first: false };
   let placed = false, cool = 0, hover = null, sig = "", hintEl = null;
@@ -87,18 +79,11 @@
     return ((Math.floor(t / period) % 2) + 2) % 2;
   }
 
-  // a pin's current sprite index: -1 flash is the resting frame (6)
-  function pinFrame(p) {
-    if (p.flash < 0) return 6;
-    const idx = Math.floor(p.flash / 0.02);
-    return idx < PIN_FRAMES.length ? PIN_FRAMES[idx] : 6;
-  }
-
   function sigOf(V) {
     return V.blocks.length + "/" + Math.round(V.docH) + "/" + Math.round(V.main.w) + "/" + V.W;
   }
 
-  // (re)build every platform, silhouette, pin, the symbol, the door and the spikes from
+  // (re)build every platform, silhouette, the symbol, the door and the spikes from
   // V.blocks; called from setup, resize, and from step whenever the page signature changes
   function layout(V) {
     const rnd = U.mulberry(23);           // local: layouts are identical on every run
@@ -145,14 +130,10 @@
 
     sils = [];
     for (let i = 3; i < plats.length && sils.length < 5; i += 4) {
-      const x = plats[i].x + 96, y = plats[i].y - 6;
-      if (x + 16 < V.W - 8 && !rectHitsBlocks(x, y, MAN_W, MAN_H, V.blocks)) sils.push({ x, y, gone: false, fade: 1, shake: 0 });
-    }
-
-    pins = [];
-    for (let i = 2; i < plats.length && pins.length < 4; i += 5) {
-      const x = plats[i].x + 80, y = plats[i].y - 34;
-      if (!pointHitsBlocks(x, y, V.blocks)) pins.push({ x, y, ang: 0, flash: -1, plat: i });
+      const x = plats[i].x + PLAT_W - MAN_W - 4, y = plats[i].y + 2 - MAN_H;
+      if (rectHitsBlocks(x, y, MAN_W, MAN_H, V.blocks)) continue;
+      plats[i].twin = false;
+      sils.push({ x, y, gone: false, fade: 1, shake: 0 });
     }
 
     sym = { x: V.band.w > 80 ? V.band.x0 + 40 : V.W - 100, y: V.main.y + 60, ang: 0, mode: 0, left: 3 };
@@ -197,7 +178,7 @@
     cool = COOL;
   }
 
-  // jump to an arbitrary point (a silhouette or a pin's pop) and fall from there
+  // jump to an arbitrary point (a silhouette) and fall from there
   function warp(x, y) {
     burst(player.x, player.y - 26);
     if (!player.air) plats[player.plat].twin = true;
@@ -223,6 +204,17 @@
     return best >= 0 ? best : 0;
   }
 
+  // one mote of the corner light: born just outside the top-right corner, drifting down-left
+  // on a straight line (110-160 deg), like the game's RainEffect cone
+  function ray(r, rnd, V, age) {
+    const a = (110 + rnd() * 50) * Math.PI / 180, sp = 24 + rnd() * 24;
+    r.vx = Math.cos(a) * sp; r.vy = Math.sin(a) * sp;
+    r.x = V.W + rnd() * 40 + r.vx * age;
+    r.y = -rnd() * 40 + r.vy * age;
+    r.a = 0.2 + rnd() * 0.3;
+    return r;
+  }
+
   function setup(v) {
     V = v;
     SPR = {
@@ -230,18 +222,15 @@
       green: [P.sprite(CPAL, DEFS.cc_greenA), P.sprite(CPAL, DEFS.cc_greenB)],
       silver: [P.sprite(CPAL, DEFS.cc_silverA), P.sprite(CPAL, DEFS.cc_silverB)],
       plats: [DEFS.cc_plat_f3g2, DEFS.cc_plat_f4g4, DEFS.cc_plat_f1g5, DEFS.cc_plat_f3g5, DEFS.cc_plat_f2g2].map(d => P.sprite(CPAL, d)),
-      pins: [DEFS.cc_pin, DEFS.cc_pin2, DEFS.cc_pin3, DEFS.cc_pin4, DEFS.cc_pin5, DEFS.cc_pin6, DEFS.cc_pin7].map(d => P.sprite(CPAL, d)),
       sym: P.sprite(CPAL, DEFS.cc_symbol3),
       door: P.sprite(CPAL, DEFS.cc_door_new),
       doorLit: P.sprite(CPAL, DEFS.cc_door_new2),
       spike: P.sprite(CPAL, DEFS.cc_spikeball),
     };
     layout(v);
-    const rrnd = U.mulberry(5);
+    rrnd = U.mulberry(5);
     rain = [];
-    for (let i = 0; i < 24; i++) {
-      rain.push({ x: v.W * 0.55 + rrnd() * (v.W * 0.45), y: rrnd() * v.H, vy: 24 + rrnd() * 24, vx: -4 + rrnd() * 8 });
-    }
+    for (let i = 0; i < 32; i++) rain.push(ray({}, rrnd, v, rrnd() * 40));
     hintEl = document.createElement("p");
     hintEl.className = "play-hint";
     hintEl.textContent = "shadows · click one";
@@ -276,25 +265,39 @@
       }
     }
 
+    // camera follow: he stays inside the band where the eye rests (30-62 % of the viewport);
+    // when the page scrolls him out of it he teleports to the platform nearest the band's centre
     if (player.plat >= 0 && cool <= 0) {
+      const span = vb - vt;
+      const bt = vt + span * 0.30, bb = vt + span * 0.62, mid = vt + span * 0.46;
       const py = plats[player.plat].y;
-      const visible = py - MAN_H > vt - 30 && py < vb + 30;
-      if (!visible) {
-        const mid = vt + (vb - vt) * 0.5;
+      if (py < bt || py > bb) {
         let best = -1, bd = Infinity;
         for (let i = 0; i < plats.length; i++) {
           const p = plats[i];
-          if (p.y - MAN_H >= vt + 40 && p.y <= vb - 30) {
+          if (i === player.plat) continue;
+          if (p.y >= bt && p.y <= bb) {
             const d = Math.abs(p.y - mid);
             if (d < bd) { bd = d; best = i; }
           }
         }
-        if (best < 0) {
+        if (best < 0 && !(py - MAN_H > vt - 30 && py < vb + 30)) {
           for (let i = 0; i < plats.length; i++) {
             const p = plats[i];
-            if (p.y - MAN_H >= vt + 10 && p.y <= vb - 10) {
+            if (i === player.plat) continue;
+            if (p.y - MAN_H >= vt + 40 && p.y <= vb - 30) {
               const d = Math.abs(p.y - mid);
               if (d < bd) { bd = d; best = i; }
+            }
+          }
+          if (best < 0) {
+            for (let i = 0; i < plats.length; i++) {
+              const p = plats[i];
+              if (i === player.plat) continue;
+              if (p.y - MAN_H >= vt + 10 && p.y <= vb - 10) {
+                const d = Math.abs(p.y - mid);
+                if (d < bd) { bd = d; best = i; }
+              }
             }
           }
         }
@@ -314,15 +317,6 @@
       if (sl.shake > 0) sl.shake = Math.max(0, sl.shake - dt);
     }
 
-    for (let i = 0; i < pins.length; i++) {
-      const p = pins[i];
-      p.ang += dt * 60;
-      if (p.flash >= 0) {
-        p.flash += dt;
-        if (p.flash >= 0.24) p.flash = -1;
-      }
-    }
-
     const mode = MODES[sym.mode];
     sym.ang += mode.spin * dt;
     sym.left -= dt;
@@ -333,11 +327,8 @@
 
     for (let i = 0; i < rain.length; i++) {
       const r = rain[i];
-      r.y += r.vy * dt;
-      r.x += r.vx * dt;
-      if (r.y > V.H) r.y = 0;
-      if (r.x < V.W * 0.5) r.x = V.W;
-      else if (r.x > V.W) r.x = V.W * 0.5;
+      r.x += r.vx * dt; r.y += r.vy * dt;
+      if (r.x < -4 || r.y > V.H + 4) ray(r, rrnd, V, 0);
     }
 
     if (door) {
@@ -363,10 +354,6 @@
         const sl = sils[i];
         if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
       }
-      for (let i = 0; i < pins.length && !hover; i++) {
-        const p = pins[i];
-        if (inBox(px, py, p.x - 6, p.y - 6, 32, 34)) hover = { kind: "pin", i };
-      }
     }
   }
 
@@ -381,10 +368,6 @@
     for (let i = 0; i < sils.length && !hover; i++) {
       const sl = sils[i];
       if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
-    }
-    for (let i = 0; i < pins.length && !hover; i++) {
-      const p = pins[i];
-      if (inBox(px, py, p.x - 6, p.y - 6, 32, 34)) hover = { kind: "pin", i };
     }
     V.cursor && V.cursor(!!hover);
   }
@@ -408,16 +391,6 @@
         return true;
       }
     }
-    for (let i = 0; i < pins.length; i++) {
-      const p = pins[i];
-      if (inBox(px, py, p.x - 6, p.y - 6, 32, 34)) {
-        p.flash = 0;
-        warp(p.x + 10, p.y + 12);
-        player.air.vy = -620;
-        hit(x, y);
-        return true;
-      }
-    }
     return false;
   }
 
@@ -434,8 +407,8 @@
   function draw(ctx, V) {
     const oy = -V.sy;
 
-    ctx.fillStyle = "rgba(" + RAIN + ",0.35)";
     for (let i = 0; i < rain.length; i++) {
+      ctx.fillStyle = "rgba(" + RAIN + "," + rain[i].a.toFixed(2) + ")";
       ctx.fillRect(Math.round(rain[i].x), Math.round(rain[i].y), 2, 2);
     }
 
@@ -480,19 +453,6 @@
       ctx.globalAlpha = 1;
     }
 
-    for (let i = 0; i < pins.length; i++) {
-      const p = pins[i];
-      if (culled(p.y, V)) continue;
-      const cx = p.x + 10, cy = p.y + 11 + oy;
-      P.glow(ctx, cx, cy, 18, GREEN, 0.14);
-      const spr = SPR.pins[pinFrame(p)];
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(p.ang * Math.PI / 180);
-      P.blit(ctx, spr, -spr.w / 2, -spr.h / 2);
-      ctx.restore();
-    }
-
     for (let i = 0; i < spikes.length; i++) {
       const sp = spikes[i];
       if (culled(sp.y, V)) continue;
@@ -531,7 +491,7 @@
   }
 
   function report() {
-    return { plats, sils, pins, player: { plat: player.plat, x: player.x, y: player.y }, bursts };
+    return { plats, sils, player: { plat: player.plat, x: player.x, y: player.y }, bursts };
   }
 
   const H = P.start({ name: "conclusus", seed: 17, setup, step, draw, atRest, press, move, resize: layout });
