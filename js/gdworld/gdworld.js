@@ -13,8 +13,9 @@
    0..1 (for `wash` and `grade` it is ramped by `washW`, so both are skipped
    between planets). Only the ship is shared with the Void sector. Painters
    read the frame `F` at paint time (never at load: it is empty until the
-   first draw) and use sx / each / scatter. Sizes are "px at a 1440-wide
-   hero" times F.k, so the art scales with the viewport like the ship does. */
+   first draw) and use sx / each / scatter / clear / clearBox. Sizes are
+   "px at a 1440-wide hero" times F.k, so the art scales with the viewport
+   like the ship does. */
 window.GdWorld = (function () {
   const { mix, smooth, mulberry, reduced } = Util;
   const PL = Marks.PLANETS;                 // west → east: zero, voidscape, heavylight, conclusus
@@ -23,13 +24,15 @@ window.GdWorld = (function () {
   const RAMP = 0.55;      // the outer 55% of R thins out; inside that the field is full
   const GROUND = 0.64;    // the floor line as a fraction of H (where the Void's deck used to run)
   const BASE0 = [7, 9, 16];   // the sector's own black between fields, #070910
+  const CLEAR_IN = 70;    // px at a 1440 hero: inside this distance from a mark, nothing
+  const CLEAR_FADE = 110; // then the art fades back in over this far
 
   /* how full game i's field is at world x: 1 within R*(1-RAMP), 0 at R */
   const dens = (i, x) => smooth((R - Math.abs(x - GAMES[i].x)) / (R * RAMP));
 
   /* the frame, set by draw() once per paint; painters read it and never write it */
   const F = { ctx: null, W: 0, H: 0, camX: 0, t: 0, dt: 1 / 60, vel: 0,
-              sc: 1, k: 1, gy: 0, red: false, w: [0, 0, 0, 0], wsum: 0 };
+              sc: 1, k: 1, gy: 0, red: false, w: [0, 0, 0, 0], wsum: 0, marks: [] };
   const P = {};   // painter registry, one entry per game id
 
   /* world x → screen x at parallax par (1 = locked to the camera, smaller = further away) */
@@ -97,6 +100,23 @@ window.GdWorld = (function () {
   // the weight the screen-space passes see: gone below w 0.10, full from w 0.35 (the midpoints between planets sit at 0.13–0.16)
   const washW = w => w * smooth((w - 0.10) / 0.25);
 
+  /* clearBox(cx, cy, hw, hh): 0..1, how much of a box (centre, half sizes, screen px) may be
+     drawn: 0 inside CLEAR_IN of a visible mark, back to 1 over CLEAR_FADE. Every painter fades
+     its busy or bright elements by this so the marks stay findable. */
+  function clearBox(cx, cy, hw, hh) {
+    let f = 1;
+    const r0 = CLEAR_IN * F.k, r1 = CLEAR_FADE * F.k;
+    for (const mk of F.marks) {
+      const dx = Math.max(0, Math.abs(mk.x - cx) - hw);
+      const dy = Math.max(0, Math.abs(mk.y - cy) - hh);
+      const d = Math.hypot(dx, dy);
+      const g = 1 - mk.a * (1 - smooth((d - r0) / r1));
+      if (g < f) f = g;
+    }
+    return f;
+  }
+  const clear = (x, y) => clearBox(x, y, 0, 0);
+
   function draw(context, v) {
     F.ctx = context; F.W = v.W; F.H = v.H; F.camX = v.camX; F.t = v.t || 0; F.vel = v.vel || 0;
     F.dt = Math.min(v.dt != null ? v.dt : 1 / 60, 0.1);
@@ -104,6 +124,14 @@ window.GdWorld = (function () {
     F.k = F.sc / (1440 / 2100);
     F.gy = GROUND * F.H;
     F.red = reduced();
+    F.marks.length = 0;
+    for (const m of PL) {
+      const a = m.vis || 0;
+      if (a < 0.02) continue;
+      const x = sx(m.x, m.par != null ? m.par : 0.7), y = (m.oy != null ? m.oy : 0.5) * F.H;
+      if (x < -300 || x > F.W + 300) continue;
+      F.marks.push({ x, y, a });
+    }
     let wsum = 0;
     for (let i = 0; i < 4; i++) { F.w[i] = dens(i, F.camX); wsum += F.w[i]; }
     F.wsum = wsum;
@@ -136,5 +164,5 @@ window.GdWorld = (function () {
     ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.globalCompositeOperation = "source-over";
   }
 
-  return { GAMES, R, GROUND, dens, F, P, sx, scatter, each, draw };
+  return { GAMES, R, GROUND, dens, F, P, sx, scatter, each, clear, clearBox, draw };
 })();

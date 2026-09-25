@@ -1,28 +1,28 @@
-/* gd-voidscape.js — VoidScape's field: the run, only up. Concrete corridor
-   modules tilted and chained by stairs, rooms lit white until done and red
-   after, pipes with valve wheels, rotating red beacons, triangular portals,
-   and the things that float about: dice, canisters, medkits. Red cloud
-   banks behind, the heat of the ground below. Registers GdWorld.P.voidscape. */
+/* gd-voidscape.js — VoidScape's field: the run, only up. Dark concrete
+   corridor modules tilted and chained by stairs, quiet so the marks read;
+   a few small portals high and low, dice/canisters/medkits on the floor;
+   everything thins round the marks (G.clearBox). Registers GdWorld.P.voidscape. */
 (function () {
   const G = window.GdWorld; if (!G) return;
   const { F, sx, each, scatter } = G;
   const { mix, TAU, mulberry } = Util;
+  const clearBox = (x, y, hw, hh) => G.clearBox ? G.clearBox(x, y, hw, hh) : 1;
   const I = 1;
   const px = n => n * F.k;
   const C = {
     cloud: "110,16,22", cloud2: "60,8,14", ground: "200,40,20",
-    body: "#1e1e21", lit: "#2d2d30", seam: "#2c2c2e", mouth: "#111113", white: "240,235,220", red: "255,60,40", strip: "#ff3a2a",
-    grate: "#141416", pipe: "#2a2224", valve: "#7a1a1a", spoke: "#b23a2a", beacon: "#ff2a1a",
+    body: "#141317", lit: "#1d1b20", seam: "#1a191d", mouth: "#0b0a0c", white: "240,235,220", red: "255,60,40", strip: "#ff3a2a",
+    grate: "#0f0e11", pipe: "#1c1719", valve: "#4a1414", spoke: "#6a2620",
     portalOuter: "#ff6a1a", portalMid: "#ffa02a", portalInner: "#ffd23a", core: "255,240,180",
     die: "#d92b2b", dieTop: "#f04a3a", dieSide: "#a01e1e", pip: "#ffe9e0",
     can: "#b8251c", canLit: "#d0352a", cap: "#e8e6e0", hazard: "#1a1a1a", med: "#e8e6e0", cross: "#d92b2b",
   };
-  const FAR = scatter(21, I, 52, 0.2, 0.14, 0.58);
-  const MID = scatter(22, I, 96, 0.42, 0.16, 0.60);
-  const PORTALS = scatter(23, I, 28, 0.7, 0.16, 0.58);
-  const DICE = scatter(24, I, 60, 0.7, 0.15, 0.60);
-  const CANS = scatter(25, I, 56, 0.7, 0.14, 0.62);
-  const MEDS = scatter(26, I, 30, 0.7, 0.16, 0.60);
+  const FAR = scatter(21, I, 30, 0.2, 0.14, 0.58);
+  const MID = scatter(22, I, 34, 0.42, 0.16, 0.60);
+  const PORTALS = scatter(23, I, 8, 0.7, 0.16, 0.58);
+  const DICE = scatter(24, I, 24, 0.7, 0.70, 0.94);
+  const CANS = scatter(25, I, 20, 0.7, 0.70, 0.94);
+  const MEDS = scatter(26, I, 12, 0.7, 0.70, 0.94);
   const CLOUDS = (() => { const rng = mulberry(27), a = []; for (let i = 0; i < 5; i++) a.push({ fx: rng(), fy: 0.1 + 0.7 * rng(), r: 0.16 + 0.16 * rng(), c: rng() < 0.5 ? C.cloud : C.cloud2, ph: rng() * TAU }); return a; })();
   // die pip layouts, in units of d/3 from the die's centre
   const PIPS = {
@@ -45,7 +45,7 @@
       const x1 = Math.min(W, x + r), y1 = Math.min(H, y + r);
       if (x1 <= x0 || y1 <= y0) continue;
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, `rgba(${c.c},${0.30 * w})`);
+      g.addColorStop(0, `rgba(${c.c},${0.16 * w})`);
       g.addColorStop(1, `rgba(${c.c},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -53,7 +53,7 @@
 
     const gg = ctx.createLinearGradient(0, 0.62 * H, 0, H);
     gg.addColorStop(0, `rgba(${C.ground},0)`);
-    gg.addColorStop(1, `rgba(${C.ground},${0.30 * w})`);
+    gg.addColorStop(1, `rgba(${C.ground},${0.22 * w})`);
     ctx.fillStyle = gg;
     ctx.fillRect(0, 0.62 * H, W, H - 0.62 * H);
   }
@@ -92,21 +92,21 @@
     ctx.rect(mx, mTop, mw, mh);
     ctx.clip();
     const mg = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, ht * 0.5);
-    mg.addColorStop(0, `rgba(${col},0.35)`);
+    mg.addColorStop(0, `rgba(${col},0.14)`);
     mg.addColorStop(1, `rgba(${col},0)`);
     ctx.fillStyle = mg;
     ctx.fillRect(mx, mTop, mw, mh);
     ctx.restore();
-    ctx.fillStyle = `rgba(${col},0.7)`;
+    ctx.fillStyle = `rgba(${col},0.35)`;
     ctx.fillRect(mx, mBot - px(2), mw, px(2));
 
     const stX = -wd / 2 + px(8), stY = -ht / 2 + px(3), stW = wd - px(16);
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.4;
     ctx.fillStyle = C.strip;
     ctx.fillRect(stX, stY, stW, px(2));
     ctx.globalAlpha = 1;
     const sg = ctx.createLinearGradient(0, stY + px(2), 0, stY + px(2) + px(18));
-    sg.addColorStop(0, `rgba(${C.red},0.18)`);
+    sg.addColorStop(0, `rgba(${C.red},0.06)`);
     sg.addColorStop(1, `rgba(${C.red},0)`);
     ctx.fillStyle = sg;
     ctx.fillRect(stX, stY + px(2), stW, px(18));
@@ -148,17 +148,19 @@
     for (let j = 0; j < FAR.length; j++) {
       const e = FAR[j];
       const s = sx(e.x, 0.2);
-      const wd = px(220 + 140 * e.r1), ht = px(90 + 50 * e.r2);
+      const wd = px(140 + 80 * e.r1), ht = px(50 + 30 * e.r2);
       const rot = (e.r3 - 0.5) * 0.24, y = e.fy * H;
+      const f = clearBox(s, y, wd / 2, ht / 2);
+      ctx.globalAlpha = 0.35 + 0.65 * f;
       if (s > -pad && s < W + pad) module(s, y, wd, ht, rot, e, false);
 
       const e2 = FAR[j + 1];
       if (e2) {
-        const s2 = sx(e2.x, 0.2), y2 = e2.fy * H, wd2 = px(220 + 140 * e2.r1);
+        const s2 = sx(e2.x, 0.2), y2 = e2.fy * H, wd2 = px(140 + 80 * e2.r1);
         const inView1 = s > -padStep && s < W + padStep;
         const inView2 = s2 > -padStep && s2 < W + padStep;
         if ((s2 - s) < px(520) && y2 < y && (inView1 || inView2)) {
-          const sw = px(16), sh = px(6);
+          const sw = px(12), sh = px(5);
           ctx.fillStyle = C.lit;
           for (let k = 0; k < 5; k++) {
             const u = (k + 0.5) / 5;
@@ -167,23 +169,27 @@
           }
         }
       }
+      ctx.globalAlpha = 1;
     }
   }
 
-  /* par 0.42: detailed modules, pipes with valve wheels between them, and the odd rotating beacon */
+  /* par 0.42: detailed modules, pipes with valve wheels between them */
   function mid(w) {
     const { ctx, W, H, t, red } = F;
     const pad = px(400), padPipe = px(800);
     for (let j = 0; j < MID.length; j++) {
       const e = MID[j];
       const s = sx(e.x, 0.42);
-      const wd = px(260 + 160 * e.r1), ht = px(110 + 60 * e.r2);
+      const wd = px(150 + 90 * e.r1), ht = px(56 + 34 * e.r2);
       const rot = (e.r3 - 0.5) * 0.2, y = e.fy * H;
+      const f = clearBox(s, y, wd / 2, ht / 2);
+      if (f < 0.03) continue;
+      ctx.globalAlpha = 0.85 * f;
       if (s > -pad && s < W + pad) module(s, y, wd, ht, rot, e, true);
 
       const e2 = MID[j + 1];
       if (e2) {
-        const s2 = sx(e2.x, 0.42), y2 = e2.fy * H, wd2 = px(260 + 160 * e2.r1);
+        const s2 = sx(e2.x, 0.42), y2 = e2.fy * H, wd2 = px(150 + 90 * e2.r1);
         const inView1 = s > -padPipe && s < W + padPipe;
         const inView2 = s2 > -padPipe && s2 < W + padPipe;
         if ((s2 - s) < px(700) && (inView1 || inView2)) {
@@ -212,31 +218,10 @@
           ctx.stroke();
         }
       }
-
-      if (e.r4 < 0.35) {
-        const bx = s, by = y - ht / 2 - px(4);
-        ctx.fillStyle = "rgba(255,42,26,0.25)";
-        ctx.beginPath(); ctx.arc(bx, by, px(14), 0, TAU); ctx.fill();
-
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = C.beacon;
-        ctx.beginPath(); ctx.arc(bx, by, px(5), 0, TAU); ctx.fill();
-        ctx.globalAlpha = 1;
-
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.rotate(red ? e.r1 * TAU : t * 1.4 + e.r1 * TAU);
-        ctx.fillStyle = "rgba(255,42,26,0.12)";
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(px(150), -px(14));
-        ctx.lineTo(px(150), px(14));
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
+      ctx.globalAlpha = 1;
     }
     ctx.lineWidth = 1;
+    ctx.globalAlpha = 1;
   }
 
   /* par 0.7: the things up close — glowing portals, and dice, canisters, medkits adrift */
@@ -244,13 +229,17 @@
     const { ctx, H, t, red } = F;
 
     each(PORTALS, px(200), (e, s) => {
-      const sz = px(90 + 50 * e.r1);
-      const cy = e.fy * H;
+      const sz = px(50 + 30 * e.r1);
+      const t0 = (e.fy - 0.16) / (0.58 - 0.16);
+      const fy = e.r4 < 0.5 ? mix(0.08, 0.30, t0) : mix(0.70, 0.90, t0);
+      const cy = fy * H;
+      const f = clearBox(s, cy, sz / 2, sz / 2);
+      if (f < 0.03) return;
       const rot = red ? 0 : t * 0.15 * (e.r2 < 0.5 ? 1 : -1);
-      const a = red ? 0.9 : 0.75 + 0.25 * Math.sin(t * 1.7 + e.r3 * TAU);
+      const a = (red ? 0.9 : 0.75 + 0.25 * Math.sin(t * 1.7 + e.r3 * TAU)) * f;
 
       const gr = ctx.createRadialGradient(s, cy, 0, s, cy, 1.4 * sz);
-      gr.addColorStop(0, `rgba(255,140,40,${0.22 * a})`);
+      gr.addColorStop(0, `rgba(255,140,40,${0.10 * a})`);
       gr.addColorStop(1, "rgba(255,140,40,0)");
       ctx.fillStyle = gr;
       ctx.fillRect(s - 1.4 * sz, cy - 1.4 * sz, 2.8 * sz, 2.8 * sz);
@@ -258,7 +247,7 @@
       ctx.save();
       ctx.translate(s, cy);
       ctx.rotate(rot);
-      ctx.lineWidth = px(3);
+      ctx.lineWidth = px(2);
       const tri = r => {
         ctx.beginPath();
         for (let k = 0; k < 3; k++) {
@@ -268,10 +257,12 @@
         }
         ctx.closePath();
       };
+      ctx.globalAlpha = a * 0.55;
       ctx.strokeStyle = C.portalOuter; tri(sz * 0.58); ctx.stroke();
       ctx.strokeStyle = C.portalMid;   tri(sz * 0.38); ctx.stroke();
       ctx.strokeStyle = C.portalInner; tri(sz * 0.19); ctx.stroke();
-      ctx.fillStyle = `rgba(${C.core},${0.35 * a})`;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = `rgba(${C.core},${0.18 * a})`;
       tri(sz * 0.19); ctx.fill();
       ctx.restore();
     });
@@ -279,8 +270,11 @@
     each(DICE, px(30), (e, s) => {
       const d = px(18);
       const cy = e.fy * H + (red ? 0 : Math.sin(t * 0.9 + e.r1 * TAU) * px(4));
+      const f = clearBox(s, cy, d / 2, d / 2);
+      if (f < 0.03) return;
       ctx.save();
       ctx.translate(s, cy);
+      ctx.globalAlpha *= f;
 
       ctx.fillStyle = C.die;
       ctx.fillRect(-d / 2, -d / 2, d, d);
@@ -317,11 +311,15 @@
 
     each(CANS, px(30), (e, s) => {
       const cy = e.fy * H + (red ? 0 : Math.sin(t * 0.7 + e.r3 * TAU) * px(5));
+      const ch = px(26);
+      const f = clearBox(s, cy, ch / 2, ch / 2);
+      if (f < 0.03) return;
       const rot = e.r1 * TAU + (red ? 0 : t * 0.25 * (e.r2 - 0.5));
       ctx.save();
       ctx.translate(s, cy);
       ctx.rotate(rot);
-      const cw = px(12), ch = px(26);
+      ctx.globalAlpha *= f;
+      const cw = px(12);
       ctx.fillStyle = C.can;
       ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
       ctx.fillStyle = C.canLit;
@@ -335,11 +333,14 @@
 
     each(MEDS, px(30), (e, s) => {
       const cy = e.fy * H + (red ? 0 : Math.sin(t * 0.6 + e.r2 * TAU) * px(4));
+      const bw = px(16), bh = px(12);
+      const f = clearBox(s, cy, bw / 2, bw / 2);
+      if (f < 0.03) return;
       const rot = (e.r1 - 0.5) * 0.6;
       ctx.save();
       ctx.translate(s, cy);
       ctx.rotate(rot);
-      const bw = px(16), bh = px(12);
+      ctx.globalAlpha *= f;
       ctx.fillStyle = C.med;
       ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
       ctx.fillStyle = C.cross;
@@ -361,5 +362,5 @@
     ctx.fillRect(0, 0, W, H);
   }
 
-  G.P.voidscape = { base: [23, 5, 7], wash, layers: [{ par: 0.2, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
+  G.P.voidscape = { base: [12, 4, 6], wash, layers: [{ par: 0.2, paint: far }, { par: 0.42, paint: mid }, { par: 0.7, paint: near }], grade };
 })();

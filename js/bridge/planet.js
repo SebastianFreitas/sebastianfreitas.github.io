@@ -19,7 +19,7 @@ window.Planet = (function () {
     voidscape:  { core: ["#c43a2e", "#3a0609"], rim: "255,132,104", ring: "104,170,32",  band: "104,170,32",  hasRing: true  },
     heavylight: { core: ["#6fa8cc", "#173f5e"], rim: "170,215,240", ring: "93,146,181",  band: "200,40,32",   hasRing: true  },
     conclusus:  { core: ["#b4c788", "#3c4a30"], rim: "247,255,197", ring: "138,137,105", band: "98,85,76",    hasRing: true  },
-    voidscapeDeep:  { core: ["#8c2620", "#24040a"], rim: "230,110,90",  ring: "80,130,26",   band: "80,130,26",   hasRing: false },
+    voidscapeDeep:  { core: ["#e0553c", "#5a0c10"], rim: "255,170,140", ring: "80,130,26",   band: "80,130,26",   hasRing: false },
     heavylightDeep: { core: ["#4b86aa", "#0e2a40"], rim: "150,195,225", ring: "70,120,150",  band: "160,36,30",   hasRing: false },
     conclususDeep:  { core: ["#8fa06a", "#283220"], rim: "214,245,228", ring: "110,112,84",  band: "80,70,62",    hasRing: false },
   };
@@ -42,6 +42,14 @@ window.Planet = (function () {
     /* once it has been filed there is nothing left to take from it —
        same read as a claimed lamp, dimmer body, no pull ring */
     const claimed = !!o.claimed;
+
+    // backing: a dark pool behind every mark so it reads over any background
+    const plate = ctx.createRadialGradient(x, yy, 0, x, yy, R * 3.0);
+    plate.addColorStop(0, `rgba(4,3,6,${0.62 * A})`);
+    plate.addColorStop(0.55, `rgba(4,3,6,${0.45 * A})`);
+    plate.addColorStop(1, `rgba(4,3,6,0)`);
+    ctx.fillStyle = plate;
+    ctx.beginPath(); ctx.arc(x, yy, R * 3.0, 0, 6.283); ctx.fill();
 
     // halo, so it separates from the starfield behind it
     const glow = ctx.createRadialGradient(x, yy, 0, x, yy, R * 3.4);
