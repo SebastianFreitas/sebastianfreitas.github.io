@@ -36,25 +36,25 @@
     const { ctx, W, H, t } = F;
     const x = wx(LAND.watcher, 0.24);
     const R = Math.min(W, H) * 0.26;
-    if (!onScreen(x, R * 3.2)) return;
+    if (!onScreen(x, R * 4.8)) return;
     const y = H * 0.21;
     const ph = P.serusPhase(); const dim = 1 - 0.5 * ph.closure * ph.season;
     const step = Util.reduced() ? 0 : Math.floor(t * 1.3);
 
     // Glow
     const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 3.1);
-    g.addColorStop(0, "rgba(226,226,218,0.08)");
+    g.addColorStop(0, "rgba(226,226,218,0.06)");
     g.addColorStop(0.35, "rgba(170,170,166,0.03)");
     g.addColorStop(1, "rgba(226,226,218,0)");
     ctx.fillStyle = g; setA(dim); ctx.fillRect(x - R * 3.2, y - R * 3.2, R * 6.4, R * 6.4); setA(1);
 
     // Cracks, behind the disc -- reality splitting at the rim
     for (let i = 0; i < WATCHER_CRACKS.length; i++) {
-      const on = wh(i * 7 + step * 13) > 0.25;
+      const on = wh(i * 7 + step * 13) > 0.5;
       if (!on) continue;
       const c = WATCHER_CRACKS[i];
       ctx.lineWidth = Math.max(1, R * 0.006);
-      ctx.strokeStyle = "rgba(232,232,224,0.28)"; setA(dim);
+      ctx.strokeStyle = "rgba(232,232,224,0.2)"; setA(dim);
       ctx.beginPath();
       for (let k = 0; k < c.pts.length; k++) {
         const [a2, rf] = c.pts[k];
@@ -62,7 +62,7 @@
         if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.stroke();
-      ctx.strokeStyle = "rgba(200,60,70,0.18)"; setA(dim);
+      ctx.strokeStyle = "rgba(200,60,70,0.12)"; setA(dim);
       ctx.beginPath();
       for (let k = 0; k < c.pts.length; k++) {
         const [a2, rf] = c.pts[k];
@@ -111,7 +111,7 @@
     // Floating shards -- broken-off pieces of the disc
     for (let i = 0; i < WATCHER_SHARDS.length; i++) {
       const sh = WATCHER_SHARDS[i];
-      const jit = wh(i * 3 + step * 7) > 0.8 ? R * 0.03 * (wh(i + step) - 0.5) : 0;
+      const jit = wh(i * 3 + step * 7) > 0.9 ? R * 0.03 * (wh(i + step) - 0.5) : 0;
       const a2 = sh.a + t * 0.004;
       const cx = x + Math.cos(a2) * R * sh.d + jit, cy = y + Math.sin(a2) * R * sh.d;
       const rot = sh.rot + t * sh.spin;
@@ -143,13 +143,16 @@
     }
     ctx.lineCap = "butt"; setA(1); ctx.lineWidth = 1;
 
+    // The cloud mass around the Watcher, a swirled hole cut out for the eye; its tongues bite over the rim and rings
+    P.drawVortex(x, y, R, { seed: 7, outer: 4.6, alpha: dim });
+
     // Tear strips -- horizontal slices of the canvas copied back offset, like reality slipping
-    for (let k = 0; k < 3; k++) {
-      const on = !Util.reduced() && wh(k * 11 + step * 17) > 0.45;
+    for (let k = 0; k < 2; k++) {
+      const on = !Util.reduced() && wh(k * 11 + step * 17) > 0.7;
       if (!on) continue;
       const sy = y + (wh(k * 5 + step * 3) - 0.5) * 2.2 * R;
       const sh = R * (0.025 + 0.05 * wh(k + step * 19));
-      const off = (wh(k * 9 + step * 23) - 0.5) * 0.35 * R;
+      const off = (wh(k * 9 + step * 23) - 0.5) * 0.15 * R;
       const m = ctx.getTransform();
       let dx0 = (x - 1.6 * R) * m.a + m.e;
       let dy0 = sy * m.d + m.f;
