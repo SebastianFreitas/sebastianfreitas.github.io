@@ -119,7 +119,7 @@ owner and no code.
 
 | # | Phase | Kind | Status |
 |---|---|---|---|
-| 1 | Style research and rules proposal | research, doc | todo |
+| 1 | Style research and rules proposal | research, doc | done 2026-09-25 |
 | 2 | Discussion: the rules and the open questions | owner talk | todo |
 | 3 | Eldritch lore bible (tiers 1–3) | doc | todo |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
@@ -158,7 +158,8 @@ painterly moods (Inside, Limbo, Gris, Darkest Dungeon, Hollow Knight).
 Deliverable: `research/01-style.md` and a **proposed** "Eldritch" section
 for `art-style.md` (not applied), each rule marked *add* or *change*
 with the reason. Carry every tension with the current rules to Phase 2.
-Notes:
+Notes: done 2026-09-25. Digest, garment ranking, 23 proposed rules (18 add,
+5 change) and 6 tensions in `research/01-style.md`.
 
 ### 2 · Discussion: the rules and the open questions
 No code. Present to the owner: the proposed rules (adds applied directly
@@ -344,6 +345,9 @@ Notes:
   (0.27 H, west-goer, leaves early). Keep it, move it east, or promote
   another?
 - **D3 · Rule changes.** Which Phase 1 proposals change existing rules.
+  The five *change* rules in `research/01-style.md`: 8 (third tone band),
+  9 (painted patches), 11 (black eyes on all 24), 18 (tier 3 ignores the
+  light), 22 (cold rift light). The 18 *add* rules go in on a yes.
 - **D4 · Tier 3 visibility.** Always there, or only in some beats; any
   trace after `land`; present before `break`?
 - **D5 · Brothers.** Are Obrokxus's brothers in scope (Phase 21)?
@@ -355,3 +359,13 @@ Notes:
 
 ## Carry forward
 
+- (Phase 1) The sequel is **Control Resonant** (launched 2026-09-24): an
+  alien algorithm rewriting Manhattan, giant heads in the sky. Closest
+  outside picture of tier 3 acting only through effects.
+- (Phase 1) The beat captions live in the top band, the same band tier 3
+  wants: keep tier-3 values within one step of #0d1114 behind text.
+- (Phase 1) The `walk` frame ends with the Primordisentia's red field, and
+  the brothers are red: the tier-2 corruption hue must be neither (Phase 4).
+- (Phase 1) Garment readability ranking (top hat, wide brim, bustle,
+  Inverness cape, huge shoes first) is in `research/01-style.md`; Phase 5
+  casts from it.
