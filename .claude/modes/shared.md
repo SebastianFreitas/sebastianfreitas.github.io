@@ -51,7 +51,9 @@ owner does.
 ### Context full
 
 Finish the atomic step, commit, write `.claude/handoff.md` (format: the
-`handoff` skill), and end the
-turn with exactly: "Context is full. Type /clear and say: continue from
-the handoff." (A new chat works too; the hook prints the handoff either
-way.)
+`handoff` skill), run the skill's "Auto-continue" steps, and end the
+turn with exactly: "Context is full: this session clears itself and
+continues from the handoff at <H>:<M>." If the auto-continue could not
+be set up, end instead with: "Context is full. Type /clear and say:
+continue from the handoff." (A new chat works too; the hook prints the
+handoff either way.)

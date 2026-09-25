@@ -42,11 +42,16 @@ report. Archiving the session in the app removes the worktree.
 
 Finish the atomic step, commit on the branch, write `.claude/handoff.md`
 (format: the `handoff` skill)
-in this worktree (gitignored, it stays here), then end the turn with the
-normal report followed by this one line:
+in this worktree (gitignored, it stays here), run the skill's
+"Auto-continue" steps, then end the turn with the normal report followed
+by this one line:
+"Context is full: this session clears itself and continues from the
+handoff at <H>:<M>."
+If the auto-continue could not be set up, the line is instead:
 "Context is full. Type /clear here and say: continue from the handoff."
-`/clear` keeps the worktree and branch; the SessionStart hook prints the
-handoff into the fresh context. If the owner starts a new session
+`/clear` keeps the session's folder, so the same work goes on in this
+worktree on this branch: never open a new worktree or branch for it.
+The SessionStart hook prints the handoff into the fresh context. If the owner starts a new session
 instead, it gets a fresh worktree from `main`: it runs `git merge
 <branch>` first and has no handoff, so put the Next list in the report's
 "Look at" too.

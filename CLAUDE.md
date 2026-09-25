@@ -147,8 +147,10 @@ times its line has every further tool call denied.
 - Main session past its line: finish only the current atomic step (an
   implementer already running may finish; start nothing new), verify,
   commit, then follow your mode file's "Context full" rule. The `handoff`
-  skill has the handoff format; use it too whenever a turn must end with
-  work half done.
+  skill has the handoff format and the "Auto-continue" steps: in the
+  desktop app the session clears itself and a one-shot job sends
+  "continue from the handoff", so the owner types nothing. Use the skill
+  too whenever a turn must end with work half done.
 - `SUBAGENT CONTEXT ... over the line` means the spec or Explore prompt
   was too wide: next time name the file, function and line range, or
   split the task.

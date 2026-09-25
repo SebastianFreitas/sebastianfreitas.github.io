@@ -43,10 +43,17 @@ bump.
 
 ### Context full
 
-There is no `/clear` in the cloud. Finish the atomic step, commit, push,
-and put the handoff (the `handoff` skill's headings) in the
-PR body under `## Handoff`. End with the normal report followed by:
+Finish the atomic step, commit, push, and put the handoff (the `handoff`
+skill's headings) in the PR body under `## Handoff`. Also write it to
+`.claude/handoff.md` and run the skill's "Auto-continue" steps. If the
+clear works here, this same session goes on in this container, on this
+branch and PR. Then end with the normal report followed by:
+"Context is full: this session clears itself and continues from the
+handoff at <H>:<M>."
+If the tool is missing or refuses, end instead with:
 "Context is full. Start a new cloud session and say: continue PR #<n>."
-That session runs `gh pr view <n>`, merges the old branch into its own
-(`git fetch origin <old>` then `git merge origin/<old>`), continues from
-Next, and its PR replaces the old one (close the old PR with a link).
+That session runs `gh pr view <n>` and stays on the same branch: it runs
+`git fetch origin <old>`, then `git checkout <old>`, continues from Next
+and pushes to `<old>`, so the PR is the same one. Only if that push is
+refused does it merge `origin/<old>` into its own branch and open a PR
+that replaces the old one (close the old PR with a link).
