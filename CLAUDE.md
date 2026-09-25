@@ -32,7 +32,7 @@ apply to the main session, Explore and the implementer alike.
   `css/bridge.css` (726), `js/hud/instruments.js` (652),
   `js/hud/tiles-nav.js` (625), `js/genesis/genesis.js` (642),
   `js/gamedev/storm.js` (585),
-  `js/genesis/genesis-matter.js` (620), `js/genesis/genesis-gods.js` (516), `js/ship/voidship-art.js` (536),
+  `js/genesis/genesis-matter.js` (620), `js/genesis/genesis-gods.js` (516),
   `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
   `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (511),
   `js/genesis/genesis-oldones.js` (555), `js/pages/voidscape.js` (849),
@@ -180,8 +180,8 @@ does not — it is pure data, no dependency on `B`.
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
 | `voidship.js` | 553 | `BASE` tunables, `create`, `setThrusting` (release rule), `step` (hold boost → wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw` | `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}` |
-| `voidship-art.js` | 536 | `block`, `drawHull`, `drawFront`, `drawFumes`, `EMIT`, `COLORS`; local frame +x nose, +y down, units of hull length L; the prow is delegated to `voidship-prow.js` (calls `drawProwBack` before the hull polygon, `drawProw` after the superstructure, `drawProwFront` at the end of `drawFront`); exports `block` | `window.VoidshipArt` |
-| `voidship-prow.js` | 224 | The red prow, the artifact the ship was built around, all fat rectangular bars: two thick strips feed a big rust block that swallows the hull's nose (dark seam where it enters, dark face plate, ember seam); a dark vertical bar and a red bar swept up-forward rise from its top (`bar()` helper, `BAR_DEFS`, painted before the block so their bases are buried), straight barbs off the rear bar, a straight fat leg below; head-on version too. Tables `MASS STRIPS BARS LEG BARBS`, palette `RUST_* OBS_*`; reads `ship.face`, `ship.strain`; `Util.reduced()` freezes the sway/pulse | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwFront, PROW}` |
+| `voidship-art.js` | 331 | `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), geometry tables (`W_FAR ENGINE HULL BELLY OPANEL W_NEAR OWING POD BRIDGE T1 T2`, `FV_*` for head-on), `drawHull` (far wing, engine block, wedge fuselage with ember conduit, near wing, belly pod, bridge block + mast, deck turrets, then the shard, drive glow, sustainers, RCS, bow chevrons), `drawFront`, `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS`; local frame +x nose, +y down, units of hull length L; the shard is delegated to `voidship-prow.js` (`drawProwBack` first, `drawProw` after the turrets, `drawProwFront` at the end of `drawFront`) | `window.VoidshipArt` |
+| `voidship-prow.js` | 111 | The shard: a broken-off chunk of the giant energy-giving metal Libertech built the ship around, doubling as ram and power core. Flat facets: slab faces `SLAB_TOP SLAB_SIDE SLAB_BOTTOM`, fracture facets `FR1 FR2 FR3` converging on the ram tip, notches, `CRACKS`, ember cracks `EMBER_PTS EMBER_LOW EMBER_TAP` (alpha = `emberOf(ship, t)`: pulse + strain, fixed pulse under `Util.reduced()`), the hull's jaws `JAW_T JAW_B` painted over the slab; `drawProwBack` is the red glow behind it; head-on `FV_*`. Palette `RUST_* EMBER` | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwFront, emberOf, PROW}` |
 
 ### js/gamedev
 
@@ -358,7 +358,7 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | `litShade` | One copy, `js/lib/paint.js` |
 | Camera / pan / projection | `js/bridge/bridge.js` `B.camX`, `wx()`, `markScreen`; input in `js/bridge/bridge-input.js` |
 | Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
-| Ship art and fumes | `js/ship/voidship-art.js` (grey hull) and `js/ship/voidship-prow.js` (the red prow); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
+| Ship art and fumes | `js/ship/voidship-art.js` (the dark wedge hull, wings, engine) and `js/ship/voidship-prow.js` (the red shard and the jaws that grip it); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero storm | `js/gamedev/storm.js`; anchored by `bridge-marks.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
 | VoidScape bench / console / floor plan | `js/gamedev/forge.js` (+ `forge-guns.js`, `forge-missions.js`); anchored by `bridge-marks.js` `forgeEnv`; hit-tested in `bridge-input.js` pointerdown |
 | Game-themed backdrops | `js/gamedev/zones.js`; anchored by `bridge-marks.js` `zonesEnv`; planet colours in `bridge/planet.js` `THEMES` |

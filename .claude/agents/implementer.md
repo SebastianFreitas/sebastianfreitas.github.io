@@ -30,7 +30,7 @@ exactly as written.
   process.
 - Read only the region you are changing. No JS file is over 620 lines any
   more; the largest are `css/bridge.css`, `js/hud/instruments.js`,
-  `js/gamedev/storm.js`, `js/ship/voidship-art.js`, `js/ship/voidship.js`,
+  `js/gamedev/storm.js`, `js/ship/voidship.js`,
   `js/gamedev/forge.js`, `js/genesis/genesis.js` and `js/gamedev/zones.js`
   (500–730 lines). Still never read one of those top to bottom.
   Grep for the function names the spec gives you, then Read with

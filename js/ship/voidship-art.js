@@ -1,7 +1,11 @@
-/* voidship-art.js — paints the player's craft: a kilometres-long city-ship
-   seen from the side, its front-on silhouette (used mid-turn), and the
-   alien fumes its drive sheds. Flat 2D silhouettes only, light from
-   screen-left; every hull volume is split lit/shade with Paint.litShade.
+/* voidship-art.js — paints the player's craft: a long dark wedge built
+   around a rust-red shard — an indestructible chunk of energy-giving metal
+   Libertech found adrift. The hull was clamped around the shard, which now
+   doubles as both the ship's ram and its power core. Side view has the near
+   wing swept down and the far wing swept up, a bridge block and mast aft of
+   midships, and an engine block at the stern. Flat 2D silhouettes only,
+   light from screen-left; every hull volume is split lit/shade with
+   Paint.litShade.
 
    drawHull's local frame: the caller has already applied
    translate(shipScreenX, shipScreenY), rotate(pitch) and scale(sx, 1)
@@ -14,17 +18,21 @@
    drawFront's frame is unscaled (translate + rotate only), so there
    "screen-right" is simply +x.
 
-   The red prow (artifact, column, claw arm, leg) lives in voidship-prow.js and is painted from drawHull/drawFront via VoidshipArt.drawProwBack/drawProw/drawProwFront.
+   The shard lives in voidship-prow.js and is painted from drawHull/drawFront
+   via VoidshipArt.drawProwBack/drawProw/drawProwFront.
 
    Published as window.VoidshipArt. */
 window.VoidshipArt = (function () {
   const { clamp, mix, hash1 } = window.Util;
   const Paint = window.Paint;
 
-  const LIT = [200, 216, 224];
-  const MID = [138, 162, 174];
-  const SHADE = [78, 100, 112];
-  const DEEP = [40, 54, 62];
+  const LIT = [150, 164, 176];
+  const MID = [100, 112, 122];
+  const SHADE = [62, 72, 80];
+  const DEEP = [30, 36, 42];
+  const EDGE = [190, 202, 212];
+  const ORANGE = [240, 124, 32];
+  const ORANGE_D = [168, 74, 18];
   const LAMP = [245, 208, 107];
   const COLD = [143, 176, 184];
   const RED = [255, 84, 70];
@@ -47,312 +55,148 @@ window.VoidshipArt = (function () {
     else Paint.litShade(g, trace, b - 0.3 * (b - a), shade, lit);
   }
 
-  const EMIT = [
-    { x: -0.455, y: -0.032 },
-    { x: -0.455, y: 0.008 },
-    { x: -0.455, y: 0.048 }
-  ];
+  // trace pts (units of L) as a closed path
+  function tracePts(g, pts, L) { Paint.poly(g, pts.map(p => [p[0] * L, p[1] * L])); }
+  function fillPoly(g, pts, L, color) { tracePts(g, pts, L); g.fillStyle = color; g.fill(); }
+  // a lit/shade volume: split by block() over the polygon's own x-extent
+  function vol(g, pts, L, lit, shade, dir) {
+    let a = Infinity, b = -Infinity;
+    for (const p of pts) { if (p[0] < a) a = p[0]; if (p[0] > b) b = p[0]; }
+    block(g, () => tracePts(g, pts, L), a * L, b * L, lit, shade, dir);
+  }
+  function seg(g, pts, L, color, w) { Paint.line(g, pts.map(p => [p[0] * L, p[1] * L]), color, w); }
+  function box(g, x0, y0, x1, y1, L, color) { Paint.rect(g, x0 * L, y0 * L, x1 * L, y1 * L, color); }
 
-  // sustainer nozzles at the aft spar tips (phase 2 onward)
-  const SUST = [{ x: -0.52, y: 0.070 }, { x: -0.585, y: -0.076 }];
-  // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent). Placed on free hull edge.
-  const JETS = { belly: [{ x: 0.40, y: 0.105 }, { x: -0.38, y: 0.064 }], top: [{ x: 0.40, y: -0.135 }, { x: -0.39, y: -0.049 }] };
-  // streamer roots: front bar tip, forward boom tip, tallest spire tip, leg tip
-  const TRAIL_SEATS = [{ x: 0.91, y: -0.36 }, { x: 0.41, y: -0.232 }, { x: -0.05, y: -0.349 }, { x: 0.505, y: 0.375 }];
+  const EMIT = [{ x: -0.615, y: -0.065 }, { x: -0.615, y: 0 }, { x: -0.615, y: 0.065 }];
+  // sustainer nozzles: the engine block's rear chamfer corners (phase 2 onward)
+  const SUST = [{ x: -0.585, y: 0.15 }, { x: -0.585, y: -0.15 }];
+  // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent)
+  const JETS = { belly: [{ x: 0.32, y: 0.083 }, { x: -0.30, y: 0.115 }], top: [{ x: 0.32, y: -0.101 }, { x: -0.34, y: -0.125 }] };
+  // streamer roots: shard top-front corner, far wing tip, mast tip, near wing tip
+  const TRAIL_SEATS = [{ x: 0.74, y: -0.19 }, { x: -0.36, y: -0.28 }, { x: -0.239, y: -0.27 }, { x: -0.30, y: 0.37 }];
   const TRAIL_COL = [LAMP, COLD, DRIVE_A, DRIVE_A];
 
-  const HULL = [
-    [0.66, 0.000],
-    [0.44, -0.030],
-    [0.16, -0.070],
-    [-0.34, -0.070],
-    [-0.41, -0.040],
-    [-0.41, 0.050],
-    [-0.34, 0.082],
-    [0.02, 0.082],
-    [0.30, 0.048],
-    [0.52, 0.018]
-  ];
+  const W_FAR = [[0.10, -0.10], [-0.16, -0.28], [-0.36, -0.28], [-0.36, -0.10]];
+  const ENGINE = [[-0.34, -0.13], [-0.38, -0.17], [-0.55, -0.17], [-0.58, -0.13], [-0.58, 0.13], [-0.55, 0.17], [-0.38, 0.17], [-0.34, 0.13]];
+  const HULL = [[0.46, -0.04], [0.46, -0.08], [0.26, -0.11], [-0.04, -0.125], [-0.36, -0.125], [-0.36, 0.115], [-0.04, 0.115], [0.26, 0.09], [0.46, 0.05]];
+  const BELLY = [[0.46, 0.05], [0.26, 0.09], [-0.04, 0.115], [-0.36, 0.115], [-0.36, 0.075], [-0.04, 0.08], [0.26, 0.055], [0.46, 0.02]];
+  const TOP_EDGE = [[0.46, -0.08], [0.26, -0.11], [-0.04, -0.125], [-0.36, -0.125]];
+  const OPANEL = [[0.06, -0.065], [0.20, -0.085], [0.17, 0.03], [0.03, 0.03]];
+  const W_NEAR = [[0.16, 0.08], [-0.14, 0.35], [-0.30, 0.37], [-0.38, 0.31], [-0.38, 0.10]];
+  const OWING = [[0.00, 0.12], [0.10, 0.12], [-0.03, 0.24], [-0.13, 0.24]];
+  const POD = [[0.44, 0.05], [0.44, 0.12], [0.36, 0.135], [0.20, 0.135], [0.20, 0.09]];
+  const BRIDGE = [[-0.02, -0.125], [-0.08, -0.205], [-0.28, -0.205], [-0.32, -0.125]];
+  const T1 = [[0.30, -0.13], [0.36, -0.13], [0.36, -0.095], [0.30, -0.104]];
+  const T2 = [[0.10, -0.15], [0.16, -0.15], [0.16, -0.115], [0.10, -0.118]];
 
-  const BELLY = [
-    [-0.34, 0.082], [0.02, 0.082], [0.30, 0.048], [0.52, 0.018],
-    [0.52, 0.006], [0.30, 0.032], [0.02, 0.062], [-0.34, 0.062]
-  ];
-
-  const UNDER_TOWERS = [
-    // x0, x1, yTop, yBottom
-    [-0.30, -0.27, 0.09, 0.17],
-    [-0.26, -0.21, 0.09, 0.22],
-    [-0.20, -0.18, 0.09, 0.14],
-    [-0.16, -0.11, 0.09, 0.26],
-    [-0.10, -0.07, 0.09, 0.19],
-    [-0.05, -0.02, 0.09, 0.15],
-    [0.00, 0.03, 0.09, 0.13]
-  ];
-
-  const PLATES = [
-    [-0.34, -0.20, -0.05, -0.01],
-    [-0.12, 0.06, 0.01, 0.05],
-    [0.10, 0.26, -0.04, 0.00],
-    [0.28, 0.40, 0.00, 0.03]
-  ];
-
-  const AFT_TOWERS = [
-    // x0, x1, top; base is fixed at -0.078
-    [-0.360, -0.340, -0.125],
-    [-0.335, -0.300, -0.160],
-    [-0.295, -0.280, -0.110],
-    [-0.270, -0.240, -0.190],
-    [-0.235, -0.215, -0.140],
-    [-0.205, -0.180, -0.105]
-  ];
-
-  const FWD_TOWERS = [
-    [0.13, 0.16, -0.110, -0.070],
-    [0.17, 0.19, -0.090, -0.066],
-    [0.21, 0.24, -0.078, -0.060]
-  ];
-
-  const SPIRES = [
-    // x, base, top, w
-    [-0.150, -0.150, -0.235, 0.004],
-    [0.070, -0.150, -0.215, 0.004],
-    [0.085, -0.150, -0.185, 0.003],
-    [-0.095, -0.205, -0.265, 0.004],
-    [0.025, -0.205, -0.250, 0.003],
-    [-0.050, -0.290, -0.345, 0.003],
-    [0.000, -0.290, -0.330, 0.003],
-    [-0.348, -0.125, -0.170, 0.003],
-    [-0.318, -0.160, -0.215, 0.004],
-    [-0.225, -0.140, -0.185, 0.003],
-    [-0.192, -0.105, -0.150, 0.003],
-    [0.145, -0.110, -0.150, 0.003],
-    [0.180, -0.090, -0.125, 0.003]
-  ];
+  const FV_WING = [[-0.46, 0.09], [-0.14, 0.02], [0.14, 0.02], [0.46, 0.09], [0.46, 0.135], [0.14, 0.075], [-0.14, 0.075], [-0.46, 0.135]];
+  const FV_BODY = [[0, -0.135], [0.13, -0.08], [0.13, 0.06], [0, 0.12], [-0.13, 0.06], [-0.13, -0.08]];
+  const FV_BELLY = [[0, 0.12], [0.13, 0.06], [-0.13, 0.06]];
+  const FV_BRIDGE = [[-0.07, -0.205], [0.07, -0.205], [0.07, -0.125], [-0.07, -0.125]];
+  const FV_POD = [[-0.05, 0.115], [0.05, 0.115], [0.05, 0.16], [-0.05, 0.16]];
 
   function drawHull(g, ship, L, t) {
-    const dir = ship.face >= 0 ? 1 : -1;
+    const dir = (ship.face || 1) >= 0 ? 1 : -1;
+    const px = Math.max(1, 0.012 * L);
     const th = clamp(ship.thrustAmt || 0, 0, 1);
+    const flare = clamp(ship.flare || 0, 0, 1), strain = clamp(ship.strain || 0, 0, 1);
+    const tf = Math.min(1, th + 0.8 * flare);
 
-    // pixel floors: nothing below 1px, whatever L shrinks to
-    const P = 1 / L;
-    const w1 = v => Math.max(v, P);
-    const rectL = (x0, y0, x1, y1) => () => { g.beginPath(); g.rect(x0 * L, y0 * L, Math.max((x1 - x0) * L, 1), Math.max((y1 - y0) * L, 1)); };
-
-    // 1. Underside (hanging city), painted first so the hull's belly tucks over their tops.
-    for (const [x0, x1, y0, y1] of UNDER_TOWERS) {
-      block(g, rectL(x0, y0, x1, y1), x0 * L, x1 * L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
-    }
-    // keel spine
-    block(g, rectL(-0.32, 0.088, 0.06, 0.118), -0.32 * L, 0.06 * L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
-
-    // short probe
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(0.205, 0.078, 0.211, 0.160)(); g.fill();
-    Paint.circle(g, 0.208 * L, 0.163 * L, Math.max(0.004 * L, 0.9), rgba(COLD, 0.6));
-
-    // hanging antennae
-    g.fillStyle = rgba(SHADE, 1);
-    {
-      const w = w1(0.003);
-      rectL(-0.235 - w / 2, 0.22, -0.235 + w / 2, 0.30)(); g.fill();
-    }
-    {
-      const w = w1(0.004);
-      rectL(-0.135 - w / 2, 0.26, -0.135 + w / 2, 0.33)(); g.fill();
-    }
-    Paint.circle(g, -0.135 * L, 0.334 * L, Math.max(0.003 * L, 0.9), rgba(COLD, 0.7));
-    {
-      const w = w1(0.003);
-      rectL(-0.060 - w / 2, 0.15, -0.060 + w / 2, 0.20)(); g.fill();
-    }
-    {
-      const w = w1(0.003);
-      rectL(-0.285 - w / 2, 0.17, -0.285 + w / 2, 0.21)(); g.fill();
-    }
-
-    // 2. Main hull
+    // 1. shard glow, behind everything
     if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
-    block(g, () => Paint.poly(g, HULL.map(([x, y]) => [x * L, y * L])), -0.41 * L, 0.66 * L, rgba(LIT, 1), rgba(MID, 1), dir);
 
-    // deckhouse: a long low spine along the flat deck
-    block(g, rectL(-0.30, -0.084, 0.10, -0.070), -0.30 * L, 0.10 * L, rgba(LIT, 1), rgba(MID, 1), dir);
+    // 2. far wing
+    vol(g, W_FAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[0.10, -0.10], [-0.16, -0.28]], L, rgba(EDGE, 0.7), px);
+    fillPoly(g, [[-0.36, -0.28], [-0.29, -0.28], [-0.29, -0.25], [-0.36, -0.25]], L, rgba(ORANGE, 1));
 
-    // 3. Belly band, flat shade
-    Paint.poly(g, BELLY.map(([x, y]) => [x * L, y * L]));
-    g.fillStyle = rgba(SHADE, 1);
-    g.fill();
-
-    // 4. Plating panels
-    g.fillStyle = rgba(SHADE, 0.18);
-    for (const [x0, x1, y0, y1] of PLATES) {
-      rectL(x0, y0, x1, y1)(); g.fill();
+    // 3. engine block
+    vol(g, ENGINE, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[-0.38, -0.17], [-0.55, -0.17]], L, rgba(EDGE, 0.8), px);
+    box(g, -0.53, -0.17, -0.45, -0.14, L, rgba(ORANGE, 1));
+    for (const y of [-0.07, -0.01, 0.05]) seg(g, [[-0.54, y], [-0.40, y]], L, rgba(DEEP, 0.5), px);
+    for (const cy of [-0.065, 0, 0.065]) {
+      box(g, -0.615, cy - 0.02, -0.575, cy + 0.02, L, rgba(DEEP, 1));
+      box(g, -0.61, cy - 0.011, -0.588, cy + 0.011, L, rgba(DRIVE_A, 0.25 + 0.75 * tf));
     }
 
-    // hull surface detail
-    g.fillStyle = rgba(LIT, 0.25);
-    rectL(-0.30, -0.062, -0.14, -0.040)(); g.fill();
-    rectL(0.14, 0.010, 0.30, 0.030)(); g.fill();
-
-    g.fillStyle = rgba(DEEP, 0.6);
-    for (let vi = 0; vi < 6; vi++) {
-      const vx0 = -0.22 + vi * 0.03;
-      rectL(vx0, 0.054, vx0 + 0.012, 0.062)(); g.fill();
-    }
-
-    g.fillStyle = rgba(DEEP, 1);
-    rectL(0.06, 0.030, 0.14, 0.062)(); g.fill();
-    g.fillStyle = rgba(LAMP, 0.5);
-    rectL(0.065, 0.034, 0.135, 0.038)(); g.fill();
-
-    g.fillStyle = rgba(LAMP, 0.45);
-    rectL(-0.30, -0.086, -0.02, -0.084)(); g.fill();
-    g.fillStyle = rgba(LAMP, 0.35);
-    rectL(0.02, -0.072, 0.30, -0.070)(); g.fill();
-    g.fillStyle = rgba(COLD, 0.5);
-    rectL(-0.20, 0.084, 0.10, 0.086)(); g.fill();
-
-    // 5. Windows
-    const wpx = Math.max(1, L * 0.010);
-    let i = 0;
-    for (let x = -0.36; x <= 0.30 + 1e-9; x += 0.032) {
-      drawWindow(g, x, -0.036, L, wpx, i, t);
-      i++;
-    }
-    for (let x = -0.34; x <= 0.40 + 1e-9; x += 0.032) {
-      drawWindow(g, x, 0.030, L, wpx, i, t);
-      i++;
-    }
-    for (let x = -0.30; x <= 0.20 + 1e-9; x += 0.032) {
-      drawWindow(g, x, 0.062, L, wpx, i, t);
-      i++;
-    }
-    // 6. Superstructure
-    block(g, rectL(-0.17, -0.150, 0.10, -0.070), -0.17 * L, 0.10 * L, rgba(LIT, 1), rgba(MID, 1), dir); // C1
-    block(g, rectL(-0.11, -0.205, 0.04, -0.150), -0.11 * L, 0.04 * L, rgba(LIT, 1), rgba(MID, 1), dir); // C2
-    block(g, rectL(-0.06, -0.290, 0.01, -0.205), -0.06 * L, 0.01 * L, rgba(MID, 1), rgba(SHADE, 1), dir); // C3
-    // C4 spire, flat shade
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(-0.030, -0.400, -0.018, -0.290)(); g.fill();
-    {
-      const on = ((t % 1.3) < 0.12);
-      if (on) {
-        const cx = -0.024 * L, cy = -0.405 * L;
-        Paint.circle(g, cx, cy, Math.max(0.016 * L, 2), rgba(RED, 0.35));
-        Paint.circle(g, cx, cy, Math.max(0.007 * L, 0.9), rgba(RED, 1));
+    // 4. fuselage
+    vol(g, HULL, L, rgba(LIT, 1), rgba(MID, 1), dir);
+    fillPoly(g, BELLY, L, rgba(SHADE, 1));
+    seg(g, TOP_EDGE, L, rgba(EDGE, 0.9), px);
+    seg(g, [[0.20, -0.105], [0.20, 0.095]], L, rgba(DEEP, 0.35), px);
+    seg(g, [[-0.14, -0.125], [-0.14, 0.115]], L, rgba(DEEP, 0.35), px);
+    seg(g, [[-0.36, -0.02], [0.30, -0.02]], L, rgba(DEEP, 0.35), px);
+    vol(g, OPANEL, L, rgba(ORANGE, 1), rgba(ORANGE_D, 1), dir);
+    box(g, 0.30, -0.05, 0.315, -0.01, L, rgba(WHITE, 0.85));
+    box(g, 0.335, -0.05, 0.35, -0.01, L, rgba(WHITE, 0.85));
+    for (let i = 0; i < 6; i++) {
+      if (hash1(i * 7 + 3) > 0.25) {
+        const s = Math.max(1, 0.01 * L);
+        const cx = (-0.30 + 0.08 * i) * L, cy = 0.015 * L;
+        g.fillStyle = rgba(LAMP, 0.7);
+        g.fillRect(cx - s / 2, cy - s / 2, s, s);
       }
     }
+    seg(g, [[0.42, 0.04], [-0.34, 0.04]], L, rgba(ORANGE_D, 0.9), px);
+    const ember = window.VoidshipArt.emberOf ? window.VoidshipArt.emberOf(ship, t) : 0.5;
+    seg(g, [[0.42, 0.04], [-0.34, 0.04]], L, rgba(RED, 0.6 * ember), px);
 
-    // aft towers (base y = -0.078)
-    for (let ti = 0; ti < AFT_TOWERS.length; ti++) {
-      const [x0, x1, top] = AFT_TOWERS[ti];
-      const lit = ti === 3 ? MID : LIT;
-      const shade = SHADE;
-      block(g, rectL(x0, top, x1, -0.078), x0 * L, x1 * L, rgba(lit, 1), rgba(shade, 1), dir);
-    }
+    // 5. near wing
+    vol(g, W_NEAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[0.15, 0.095], [-0.145, 0.36]], L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
+    vol(g, OWING, L, rgba(ORANGE, 1), rgba(ORANGE_D, 1), dir);
+    seg(g, [[-0.27, 0.11], [-0.27, 0.34]], L, rgba(DEEP, 0.4), px);
+    seg(g, [[-0.30, 0.37], [-0.38, 0.31]], L, rgba(EDGE, 0.5), px);
 
-    // mast M1
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(-0.258, -0.330, -0.252, -0.190)(); g.fill();
-    rectL(-0.275, -0.300, -0.235, -0.294)(); g.fill();
-    rectL(-0.270, -0.260, -0.240, -0.254)(); g.fill();
-    {
-      const on = ((t % 2.1) < 0.06);
-      if (on) {
-        const cx = -0.255 * L, cy = -0.335 * L;
-        Paint.circle(g, cx, cy, Math.max(0.014 * L, 2), rgba(WHITE, 0.4));
-        Paint.circle(g, cx, cy, Math.max(0.006 * L, 0.9), rgba(WHITE, 1));
-      }
-    }
+    // 6. belly pod
+    vol(g, POD, L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
+    box(g, 0.24, 0.10, 0.34, 0.115, L, rgba(DEEP, 1));
 
-    // forward towers
-    for (const [x0, x1, y0, y1] of FWD_TOWERS) {
-      block(g, rectL(x0, y0, x1, y1), x0 * L, x1 * L, rgba(LIT, 1), rgba(MID, 1), dir);
-    }
+    // 7. bridge block
+    vol(g, BRIDGE, L, rgba(LIT, 1), rgba(MID, 1), dir);
+    seg(g, [[-0.08, -0.205], [-0.28, -0.205]], L, rgba(EDGE, 0.9), px);
+    seg(g, [[-0.035, -0.14], [-0.075, -0.195]], L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
+    box(g, -0.26, -0.195, -0.20, -0.17, L, rgba(ORANGE, 1));
+    box(g, -0.245, -0.27, -0.233, -0.205, L, rgba(SHADE, 1));
+    if ((t % 1.3) < 0.12) Paint.circle(g, -0.239 * L, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
 
-    // angular sensor array (was: dish)
-    block(g, rectL(-0.16, -0.166, -0.10, -0.158), -0.16 * L, -0.10 * L, rgba(MID, 1), rgba(SHADE, 1), dir);
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(-0.132, -0.158, -0.128, -0.150)(); g.fill();
+    // 8. deck turrets
+    vol(g, T1, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[0.30, -0.13], [0.36, -0.13]], L, rgba(EDGE, 0.7), px);
+    seg(g, [[0.36, -0.118], [0.42, -0.122]], L, rgba(SHADE, 1), px);
+    vol(g, T2, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[0.10, -0.15], [0.16, -0.15]], L, rgba(EDGE, 0.7), px);
+    seg(g, [[0.16, -0.138], [0.23, -0.142]], L, rgba(SHADE, 1), px);
 
-    // spire field
-    g.fillStyle = rgba(SHADE, 1);
-    for (const [x, base, top, w] of SPIRES) {
-      const ww = w1(w);
-      rectL(x - ww / 2, top, x + ww / 2, base)(); g.fill();
-    }
-    for (const [x, , top, w] of SPIRES) {
-      if (w !== 0.004) continue;
-      if (x === -0.318) {
-        const on = ((t % 1.7) < 0.10);
-        if (on) {
-          const cx = x * L, cy = (top - 0.004) * L;
-          Paint.circle(g, cx, cy, Math.max(0.012 * L, 2), rgba(RED, 0.35));
-          Paint.circle(g, cx, cy, Math.max(0.005 * L, 0.9), rgba(RED, 1));
-        }
-      } else if (x === 0.070) {
-        const on = ((t % 2.9) < 0.05);
-        if (on) {
-          const cx = x * L, cy = (top - 0.004) * L;
-          Paint.circle(g, cx, cy, Math.max(0.012 * L, 2), rgba(WHITE, 0.4));
-          Paint.circle(g, cx, cy, Math.max(0.005 * L, 0.9), rgba(WHITE, 1));
-        }
-      } else {
-        Paint.circle(g, x * L, (top - 0.004) * L, Math.max(0.003 * L, 0.9), rgba(COLD, 0.7));
-      }
-    }
-    // lattice bridge: mast M1 to citadel's second tier
-    g.fillStyle = rgba(SHADE, 1);
-    rectL(-0.252, -0.212, -0.110, -0.208)(); g.fill();
-    // second forward antenna
-    Paint.line(g, [[0.10 * L, -0.120 * L], [0.30 * L, -0.150 * L]], rgba(SHADE, 1), w1(0.004) * L);
-
-    // forward sensor boom
-    Paint.line(g, [[0.06 * L, -0.165 * L], [0.40 * L, -0.230 * L]], rgba(SHADE, 1), w1(0.005) * L);
-    block(g, rectL(0.389, -0.241, 0.411, -0.219), 0.389 * L, 0.411 * L, rgba(MID, 1), rgba(SHADE, 1), dir);
-    Paint.circle(g, 0.41 * L, -0.232 * L, Math.max(0.004 * L, 0.9), rgba(COLD, 0.9));
-
-    // aft boom
-    Paint.line(g, [[-0.40 * L, -0.040 * L], [-0.58 * L, -0.075 * L]], rgba(SHADE, 1), w1(0.005) * L);
-    Paint.circle(g, -0.585 * L, -0.076 * L, Math.max(0.004 * L, 0.9), rgba(RED, 0.6));
-
-    // aft lower spar
-    Paint.line(g, [[-0.40 * L, 0.040 * L], [-0.52 * L, 0.070 * L]], rgba(SHADE, 1), w1(0.004) * L);
-
+    // 9. shard
     if (window.VoidshipArt && window.VoidshipArt.drawProw) window.VoidshipArt.drawProw(g, ship, L, t);
 
-    // 7. Drive at the stern
-    const flare = clamp(ship.flare || 0, 0, 1), strain = clamp(ship.strain || 0, 0, 1), tf = Math.min(1, th + 0.8 * flare);
-    for (const cy of [-0.032, 0.008, 0.048]) {
-      g.fillStyle = rgba(SHADE, 1);
-      rectL(-0.455, cy - 0.013, -0.405, cy + 0.013)(); g.fill();
-      g.fillStyle = rgba(DRIVE_A, 0.25 + 0.75 * tf);
-      rectL(-0.452, cy - 0.006, -0.430, cy + 0.006)(); g.fill();
-    }
-    {
-      const shim = 0.85 + 0.15 * Math.sin(t * 9);
-      if (tf > 0.05) {
-        const k = 1 + 1.1 * flare;
-        Paint.poly(g, [[-0.462, -0.082], [-0.440, 0.008], [-0.462, 0.098], [-0.484, 0.008]]
-          .map(([x, y]) => [-0.462 + (x + 0.462) * k, 0.008 + (y - 0.008) * k])
-          .map(([x, y]) => [x * L, y * L]));
-        g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * tf);
-        g.fill();
-      }
-      Paint.poly(g, [[-0.462, -0.058], [-0.448, 0.008], [-0.462, 0.074], [-0.476, 0.008]].map(([x, y]) => [x * L, y * L]));
-      g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * tf);
+    // 10. drive glow
+    const shim = 0.85 + 0.15 * Math.sin(t * 9);
+    if (tf > 0.05) {
+      const k = 1 + 1.1 * flare;
+      Paint.poly(g, [[-0.625, -0.11], [-0.595, 0], [-0.625, 0.11], [-0.67, 0]]
+        .map(([x, y]) => [-0.625 + (x + 0.625) * k, y * k])
+        .map(([x, y]) => [x * L, y * L]));
+      g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * tf);
       g.fill();
-      g.lineWidth = 1;
-      g.strokeStyle = rgba(DRIVE_A, Math.min(1, (0.25 + 0.65 * th) * shim + 0.35 * strain));
-      g.stroke();
     }
+    Paint.poly(g, [[-0.625, -0.075], [-0.605, 0], [-0.625, 0.075], [-0.655, 0]].map(([x, y]) => [x * L, y * L]));
+    g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * tf);
+    g.fill();
+    g.lineWidth = 1;
+    g.strokeStyle = rgba(DRIVE_A, Math.min(1, (0.25 + 0.65 * th) * shim + 0.35 * strain));
+    g.stroke();
 
-    // 8. Sustainers, RCS jets, bow strain
+    // 11. sustainers
     const su = clamp(ship.sustain || 0, 0, 1);
     if (su > 0.02) for (const s of SUST) {
       Paint.circle(g, s.x * L, s.y * L, Math.max(0.016 * L, 2) * (0.6 + 0.4 * su), rgba(DRIVE_B, 0.35 * su));
       Paint.circle(g, s.x * L, s.y * L, Math.max(0.006 * L, 1), rgba(DRIVE_A, 0.9 * su));
     }
+
+    // 12. RCS jets
     const jet = ship.jet || 0, ja = Math.abs(jet);
     if (ja > 0.03) {
       const seats = jet < 0 ? JETS.belly : JETS.top, sgn = jet < 0 ? 1 : -1, hw = 0.012;
@@ -365,98 +209,49 @@ window.VoidshipArt = (function () {
         g.fillStyle = rgba(WHITE, 0.7 * ja); g.fill();
       }
     }
+
+    // 13. bow strain chevrons
     if (strain > 0.02) {
       // the void pushing back on the prow: two flat chevrons ahead of the nose
       const fl = 0.8 + 0.2 * Math.sin(t * 41);
       g.lineWidth = 1;
       g.strokeStyle = rgba(DRIVE_A, 0.45 * strain * fl);
-      g.beginPath(); g.moveTo(0.60 * L, -0.24 * L); g.lineTo(0.84 * L, 0); g.lineTo(0.60 * L, 0.24 * L); g.stroke();
+      g.beginPath(); g.moveTo(0.68 * L, -0.24 * L); g.lineTo(0.94 * L, -0.02 * L); g.lineTo(0.68 * L, 0.20 * L); g.stroke();
       g.strokeStyle = rgba(WHITE, 0.22 * strain * fl);
-      g.beginPath(); g.moveTo(0.66 * L, -0.19 * L); g.lineTo(0.88 * L, 0); g.lineTo(0.66 * L, 0.19 * L); g.stroke();
+      g.beginPath(); g.moveTo(0.74 * L, -0.19 * L); g.lineTo(0.98 * L, -0.02 * L); g.lineTo(0.74 * L, 0.15 * L); g.stroke();
     }
-  }
-
-  function drawWindow(g, x, y, L, wpx, i, t) {
-    const h1 = hash1(i * 7 + 1), h2 = hash1(i * 13 + 5), h3 = hash1(i * 29 + 9), h4 = hash1(i * 3 + 2);
-    let on = h2 >= 0.18;
-    if (h3 < 0.10) on = ((t * 0.4 + h4 * 7) % 1) < 0.55;
-    if (!on) return;
-    g.fillStyle = rgba(h1 < 0.7 ? LAMP : COLD, 0.85);
-    g.fillRect(x * L - wpx / 2, y * L - wpx / 2, wpx, wpx);
   }
 
   function drawFront(g, ship, L, t, k) {
     if (k < 0.01) return;
-
-    // pixel floors: nothing below 1px, whatever L shrinks to
-    const P = 1 / L;
-    const w1 = v => Math.max(v, P);
-    const rectL = (x0, y0, x1, y1) => () => { g.beginPath(); g.rect(x0 * L, y0 * L, Math.max((x1 - x0) * L, 1), Math.max((y1 - y0) * L, 1)); };
-
     g.save();
     g.globalAlpha *= k;
+    const px = Math.max(1, 0.012 * L);
 
-    // hull cross-section, hexagonal prism
-    {
-      const pts = [[0, -0.070], [0.060, -0.040], [0.060, 0.050], [0, 0.088], [-0.060, 0.050], [-0.060, -0.040]];
-      const trace = () => Paint.poly(g, pts.map(([x, y]) => [x * L, y * L]));
-      Paint.litShade(g, trace, (-0.060 + 0.3 * 0.120) * L, rgba(LIT, 1), rgba(MID, 1));
-    }
+    // 1. wings
+    Paint.litShade(g, () => tracePts(g, FV_WING, L), 0, rgba(SHADE, 1), rgba(DEEP, 1));
+    seg(g, [[-0.45, 0.095], [-0.14, 0.025]], L, rgba(COLD, 0.85), px);
+    seg(g, [[0.14, 0.025], [0.45, 0.095]], L, rgba(COLD, 0.85), px);
+    box(g, -0.46, 0.09, -0.40, 0.135, L, rgba(ORANGE, 1));
+    box(g, 0.40, 0.09, 0.46, 0.135, L, rgba(ORANGE, 1));
 
-    // belly facet
-    Paint.poly(g, [[0.060, 0.050], [0, 0.088], [-0.060, 0.050], [0, 0.062]].map(([x, y]) => [x * L, y * L]));
-    g.fillStyle = rgba(SHADE, 1);
-    g.fill();
+    // 2. body
+    Paint.litShade(g, () => tracePts(g, FV_BODY, L), 0, rgba(LIT, 1), rgba(MID, 1));
+    fillPoly(g, FV_BELLY, L, rgba(SHADE, 1));
+    seg(g, [[-0.13, -0.08], [0, -0.135], [0.13, -0.08]], L, rgba(EDGE, 0.8), px);
+    box(g, -0.13, -0.03, -0.10, 0.03, L, rgba(ORANGE, 1));
+    box(g, 0.10, -0.03, 0.13, 0.03, L, rgba(ORANGE_D, 1));
 
-    // deckhouse
-    {
-      const trace = rectL(-0.040, -0.084, 0.040, -0.070);
-      Paint.litShade(g, trace, (-0.040 + 0.3 * 0.080) * L, rgba(LIT, 1), rgba(MID, 1));
-    }
+    // 3. bridge
+    Paint.litShade(g, () => tracePts(g, FV_BRIDGE, L), 0, rgba(LIT, 1), rgba(MID, 1));
+    box(g, -0.055, -0.175, 0.055, -0.16, L, rgba(COLD, 0.9));
+    box(g, -0.006, -0.27, 0.006, -0.205, L, rgba(SHADE, 1));
+    if ((t % 1.3) < 0.12) Paint.circle(g, 0, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
 
-    // tower stack
-    {
-      const trace = rectL(-0.024, -0.205, 0.024, -0.070);
-      Paint.litShade(g, trace, (-0.024 + 0.3 * 0.048) * L, rgba(LIT, 1), rgba(MID, 1));
-    }
-    {
-      const trace = rectL(-0.014, -0.290, 0.014, -0.205);
-      Paint.litShade(g, trace, (-0.014 + 0.3 * 0.028) * L, rgba(MID, 1), rgba(SHADE, 1));
-    }
-    // spire
-    g.fillStyle = rgba(SHADE, 1);
-    {
-      const sw = w1(0.008);
-      rectL(-sw / 2, -0.400, sw / 2, -0.290)(); g.fill();
-    }
-    {
-      const on = ((t % 1.3) < 0.12);
-      if (on) {
-        Paint.circle(g, 0, -0.405 * L, Math.max(0.016 * L, 2), rgba(RED, 0.35));
-        Paint.circle(g, 0, -0.405 * L, Math.max(0.007 * L, 0.9), rgba(RED, 1));
-      }
-    }
+    // 4. pod
+    Paint.litShade(g, () => tracePts(g, FV_POD, L), 0, rgba(SHADE, 1), rgba(DEEP, 1));
 
-    // two side masts
-    g.fillStyle = rgba(SHADE, 1);
-    {
-      const mw = w1(0.004);
-      rectL(-0.040 - mw / 2, -0.180, -0.040 + mw / 2, -0.070)(); g.fill();
-      rectL(0.040 - mw / 2, -0.180, 0.040 + mw / 2, -0.070)(); g.fill();
-    }
-
-    // hanging block
-    {
-      const trace = rectL(-0.030, 0.088, 0.030, 0.220);
-      Paint.litShade(g, trace, (-0.030 + 0.3 * 0.060) * L, rgba(SHADE, 1), rgba(DEEP, 1));
-    }
-
-    // three windows
-    g.fillStyle = rgba(LAMP, 0.85);
-    for (const wx of [-0.030, 0, 0.030]) {
-      g.fillRect(wx * L - 0.5, 0.010 * L - 0.5, 1, 1);
-    }
-
+    // 5. shard
     if (window.VoidshipArt && window.VoidshipArt.drawProwFront) window.VoidshipArt.drawProwFront(g, ship, L, t);
 
     g.restore();
@@ -530,7 +325,7 @@ window.VoidshipArt = (function () {
     }
   }
 
-  const COLORS = { LIT, MID, SHADE, DEEP, LAMP, COLD, RED, DRIVE_A, DRIVE_B, DRIVE_C };
+  const COLORS = { LIT, MID, SHADE, DEEP, EDGE, ORANGE, ORANGE_D, LAMP, COLD, RED, WHITE, DRIVE_A, DRIVE_B, DRIVE_C };
 
-  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS, block };
+  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
 })();
