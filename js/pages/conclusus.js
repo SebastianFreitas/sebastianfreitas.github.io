@@ -40,7 +40,7 @@
   let V;                       // the shared frame-state object, captured once in setup
   let SPR = {};                 // cached sprites, built in setup
   let plats = [], sils = [], spikes = [], rain = [], rrnd = null, bursts = [];
-  let sym = null, door = null;
+  let keys = [], door = null, winT = 0, rainBoost = 0, bcTimed = -1;
   let player = { plat: -1, x: 0, y: 0, face: 1, air: null, first: false };
   let placed = false, cool = 0, hover = null, sig = "", hintEl = null;
 
@@ -107,10 +107,13 @@
           rect.x = x;
           if (V.blocks.some(h => rect.x < h.x + h.w && rect.x + rect.w > h.x && rect.y < h.y + h.h && rect.y + rect.h > h.y)) continue;
         }
-        arr.push({ x, y, spr: Math.floor(rnd() * 5), twin: true, lit: 0, left: 0 });
+        arr.push({ x, y, spr: Math.floor(rnd() * 5), twin: true, tf: -1, lit: 0, left: 0, timed: false });
       }
     }
     plats = arr;
+    for (let i = 0; i < plats.length; i++) {
+      if (i % 3 === 2 && i >= 5 && i < plats.length - 1) plats[i].timed = true;
+    }
 
     if (!plats.length) {
       player.plat = -1;
@@ -133,15 +136,39 @@
       const x = plats[i].x + PLAT_W - MAN_W - 4, y = plats[i].y + 2 - MAN_H;
       if (rectHitsBlocks(x, y, MAN_W, MAN_H, V.blocks)) continue;
       plats[i].twin = false;
-      sils.push({ x, y, gone: false, fade: 1, shake: 0 });
+      sils.push({ x, y, gone: false, fade: 1, shake: 0, plat: i });
     }
 
-    sym = { x: V.band.w > 80 ? V.band.x0 + 40 : V.W - 100, y: V.main.y + 60, ang: 0, mode: 0, left: 3 };
+    const k0 = plats.length > 8 ? 8 : 2;
+    if (plats.length >= 4) {
+      keys = [];
+      const x0 = plats[k0].x + 16, y0 = plats[k0].y - 72;
+      keys.push({ x: x0, y: y0, hx: x0, hy: y0, plat: k0, ang: 0, mode: 0, left: MODES[0].dur, got: false, fly: null });
+      [0.45, 0.78].forEach(q => {
+        const idx = Math.min(plats.length - 2, Math.floor(plats.length * q));
+        const y = plats[idx].y - 150;
+        let x = V.W - 100;
+        if (pointHitsBlocks(x + 16, y + 16, V.blocks)) x = V.band.w > 80 ? V.band.x0 + 40 : V.W - 100;
+        keys.push({ x, y, hx: x, hy: y, plat: -1, ang: 0, mode: 0, left: MODES[0].dur, got: false, fly: null });
+      });
+    } else {
+      keys = [];
+    }
 
     if (plats.length) {
       const last = plats.length - 1;
       door = { x: plats[last].x + PLAT_W - 60, y: plats[last].y - 62, lit: 0 };
     } else door = null;
+
+    bcTimed = -1;
+    for (let i = 0; i < plats.length; i++) {
+      if (plats[i].timed && i !== k0 && plats[i].y > V.main.y + V.H * 0.9) { bcTimed = i; break; }
+    }
+    if (bcTimed < 0) {
+      for (let i = plats.length - 1; i >= 0; i--) {
+        if (plats[i].timed && i !== k0) { bcTimed = i; break; }
+      }
+    }
 
     spikes = [];
     for (let i = 0; i < 2; i++) {
@@ -167,13 +194,15 @@
   function teleportTo(i) {
     if (i === player.plat) return;
     burst(player.x, player.y - 26);
-    if (!player.air) plats[player.plat].twin = true;
+    if (!player.air) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
     player.plat = i;
     player.air = null;
+    if (plats[i].twin) player.face = plats[i].tf;
     player.x = plats[i].x + 24 + (V.rnd() * 16 - 8);
     player.y = plats[i].y + 2;
     plats[i].twin = false;
     plats[i].lit = Math.max(plats[i].lit, 0.001);
+    timedTouched(plats[i]);
     burst(player.x, player.y - 26);
     cool = COOL;
   }
@@ -181,13 +210,101 @@
   // jump to an arbitrary point (a silhouette) and fall from there
   function warp(x, y) {
     burst(player.x, player.y - 26);
-    if (!player.air) plats[player.plat].twin = true;
+    if (!player.air && player.plat >= 0) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
     player.plat = -1;
     player.x = x;
     player.y = y;
     player.air = { vy: 0 };
     burst(x, y - 26);
     cool = COOL;
+  }
+
+  // light every timed platform strictly between a and b (a fast full-length scroll passes through them)
+  function passThrough(a, b) {
+    if (a < 0) return;
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    for (let i = lo + 1; i < hi; i++) {
+      if (plats[i].timed) {
+        plats[i].lit = 1;
+        burst(plats[i].x + 32, plats[i].y - 20);
+        timedTouched(plats[i]);
+      }
+    }
+  }
+
+  function timedTouched(p) {
+    if (p.timed && V.scrolled) P.award("play-cc-timed", "Conclusus timed platform", p.x + 32, p.y - 70 - V.sy);
+  }
+
+  function grabKey(k, sx, sy) {
+    const key = keys[k];
+    if (key.got) return;
+    key.got = true;
+    key.fly = { t: 0, x0: key.x, y0: key.y };
+    burst(key.x + 16, key.y + 16);
+    P.award("play-cc-key" + (k + 1), "Conclusus key", sx, sy);
+  }
+
+  function doorSlot(k) {
+    return { x: door.x + 4 + k * 20 - 16, y: door.y - 26 - 16 };
+  }
+
+  function doorOpen() {
+    return !!door && keys.length === 3 && keys.every(k => k.got) && plats.every(p => !p.timed || p.lit > 0);
+  }
+
+  function win(sx, sy) {
+    if (winT > 0) return;
+    winT = 1.5;
+    rainBoost = 1.7;
+    burst(door.x + 28, door.y + 30);
+    burst(door.x + 28, door.y + 30);
+    burst(door.x + 28, door.y + 30);
+    P.award("play-cc-win", "Conclusus door", sx, sy);
+    player.plat = -1;
+    player.air = null;
+  }
+
+  function restart() {
+    for (let i = 0; i < plats.length; i++) {
+      plats[i].twin = true;
+      plats[i].lit = 0;
+      plats[i].tf = -1;
+    }
+    if (plats.length) plats[0].twin = false;
+    player.plat = 0;
+    player.x = plats[0].x + 24;
+    player.y = plats[0].y + 2;
+    player.face = 1;
+    player.air = null;
+    for (let i = 0; i < sils.length; i++) {
+      const sl = sils[i];
+      sl.gone = false; sl.fade = 1; sl.shake = 0;
+      if (sl.plat != null && plats[sl.plat]) plats[sl.plat].twin = false;
+    }
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      key.got = false; key.fly = null;
+      key.x = key.hx; key.y = key.hy;
+    }
+    if (door) { door.lit = 0; }
+    cool = COOL;
+  }
+
+  function drawBeacon(ctx, id, x, y, V) {
+    if (window.XP && XP.has && XP.has(id)) return;
+    const pu = 0.5 + 0.5 * Math.sin(V.t * 3);
+    P.glow(ctx, x, y, 18 + 6 * pu, PALE, 0.22);
+    ctx.strokeStyle = "#f7ffc5";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 7 + 2 * pu, 0, U.TAU);
+    ctx.stroke();
+    ctx.fillStyle = "#f7ffc5";
+    ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(Math.round(x), Math.round(y) - 24, 1, 14);
+    ctx.globalAlpha = 1;
   }
 
   // where to land when he falls past the bottom of the page: the visible twin nearest mid-screen
@@ -233,7 +350,7 @@
     for (let i = 0; i < 32; i++) rain.push(ray({}, rrnd, v, rrnd() * 40));
     hintEl = document.createElement("p");
     hintEl.className = "play-hint";
-    hintEl.textContent = "shadows · click one";
+    hintEl.textContent = "click a shadow · 3 keys · light the timed platforms · the door";
     document.body.appendChild(hintEl);
   }
 
@@ -242,6 +359,8 @@
     if (s !== sig) layout(V);
 
     cool -= dt;
+    if (winT > 0) { winT -= dt; if (winT <= 0) { winT = 0; restart(); } }
+    if (rainBoost > 0) rainBoost = Math.max(0, rainBoost - dt);
     const vt = V.sy + V.top, vb = V.sy + V.H;
 
     if (player.air) {
@@ -259,6 +378,7 @@
         player.air = null;
         plats[landed].twin = false;
         plats[landed].lit = Math.max(plats[landed].lit, 0.001);
+        timedTouched(plats[landed]);
         burst(player.x, player.y - 26);
       } else if (player.y > V.docH + 100) {
         teleportTo(nearestVisibleTwin());
@@ -267,20 +387,22 @@
 
     // camera follow: he stays inside the band where the eye rests (30-62 % of the viewport);
     // when the page scrolls him out of it he teleports to the platform nearest the band's centre
-    if (player.plat >= 0 && cool <= 0) {
+    if (player.plat >= 0 && cool <= 0 && winT <= 0) {
       const span = vb - vt;
       const bt = vt + span * 0.30, bb = vt + span * 0.62, mid = vt + span * 0.46;
       const py = plats[player.plat].y;
       if (py < bt || py > bb) {
-        let best = -1, bd = Infinity;
+        let best = -1, bd = Infinity, bestT = -1, bdT = Infinity;
         for (let i = 0; i < plats.length; i++) {
           const p = plats[i];
           if (i === player.plat) continue;
           if (p.y >= bt && p.y <= bb) {
             const d = Math.abs(p.y - mid);
             if (d < bd) { bd = d; best = i; }
+            if (p.timed && d < bdT) { bdT = d; bestT = i; }
           }
         }
+        if (bestT >= 0) best = bestT;
         if (best < 0 && !(py - MAN_H > vt - 30 && py < vb + 30)) {
           for (let i = 0; i < plats.length; i++) {
             const p = plats[i];
@@ -301,15 +423,17 @@
             }
           }
         }
-        if (best >= 0) teleportTo(best);
+        if (best >= 0) { const from = player.plat; passThrough(from, best); teleportTo(best); }
       }
     }
 
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
       if (player.plat === i) p.lit = Math.min(1, p.lit + dt * 5);
-      else if (p.lit > 0) p.lit = Math.max(0, p.lit - dt / 5);
+      else if (p.lit > 0) p.lit = Math.max(0, p.lit - dt / 12);
     }
+
+    if (keys[0] && !keys[0].got && player.plat === keys[0].plat) grabKey(0, keys[0].x + 16, keys[0].y + 16 - V.sy);
 
     for (let i = 0; i < sils.length; i++) {
       const sl = sils[i];
@@ -317,24 +441,41 @@
       if (sl.shake > 0) sl.shake = Math.max(0, sl.shake - dt);
     }
 
-    const mode = MODES[sym.mode];
-    sym.ang += mode.spin * dt;
-    sym.left -= dt;
-    if (sym.left <= 0) {
-      sym.mode = (sym.mode + 1) % MODES.length;
-      sym.left = MODES[sym.mode].dur;
+    for (let k = 0; k < keys.length; k++) {
+      const key = keys[k];
+      const mode = MODES[key.mode];
+      key.ang += mode.spin * dt;
+      key.left -= dt;
+      if (key.left <= 0) {
+        key.mode = (key.mode + 1) % MODES.length;
+        key.left = MODES[key.mode].dur;
+      }
+      if (key.fly) {
+        key.fly.t = Math.min(1, key.fly.t + dt);
+        const e = 1 - Math.pow(1 - key.fly.t, 3);
+        const slot = doorSlot(k);
+        key.x = U.mix(key.fly.x0, slot.x, e);
+        key.y = U.mix(key.fly.y0, slot.y, e);
+      }
     }
 
     for (let i = 0; i < rain.length; i++) {
       const r = rain[i];
-      r.x += r.vx * dt; r.y += r.vy * dt;
+      const sp = rainBoost > 0 ? 2 : 1;
+      r.x += r.vx * dt * sp; r.y += r.vy * dt * sp;
       if (r.x < -4 || r.y > V.H + 4) ray(r, rrnd, V, 0);
     }
 
     if (door) {
       const last = plats.length - 1;
-      if (player.plat === last) door.lit = U.approach(door.lit, 1, 3, dt);
+      const open = doorOpen();
+      if (open || winT > 0) door.lit = U.approach(door.lit, 1, 3, dt);
+      else if (player.plat === last) door.lit = U.approach(door.lit, 0.7, 3, dt);
       else door.lit = U.approach(door.lit, 0.35 + 0.35 * Math.sin(V.t * 1.5), 2, dt);
+      if (open && winT <= 0 && player.plat >= 0 && V.sy + V.H >= V.docH - 4) {
+        teleportTo(last);
+        win(door.x + 28, door.y + 30 - V.sy);
+      }
     }
 
     for (let i = bursts.length - 1; i >= 0; i--) {
@@ -354,6 +495,11 @@
         const sl = sils[i];
         if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
       }
+      for (let k = 0; k < keys.length && !hover; k++) {
+        const key = keys[k];
+        if (!key.got && k > 0 && inBox(px, py, key.x - 4, key.y - 4, 40, 40)) hover = { kind: "key", i: k };
+      }
+      if (!hover && door && doorOpen() && inBox(px, py, door.x, door.y, 56, 64)) hover = { kind: "door" };
     }
   }
 
@@ -369,6 +515,11 @@
       const sl = sils[i];
       if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
     }
+    for (let k = 0; k < keys.length && !hover; k++) {
+      const key = keys[k];
+      if (!key.got && k > 0 && inBox(px, py, key.x - 4, key.y - 4, 40, 40)) hover = { kind: "key", i: k };
+    }
+    if (!hover && door && doorOpen() && inBox(px, py, door.x, door.y, 56, 64)) hover = { kind: "door" };
     V.cursor && V.cursor(!!hover);
   }
 
@@ -390,6 +541,20 @@
         hit(x, y);
         return true;
       }
+    }
+    for (let k = 1; k <= 2; k++) {
+      if (keys[k] && !keys[k].got && inBox(px, py, keys[k].x - 4, keys[k].y - 4, 40, 40)) {
+        const key = keys[k];
+        warp(key.x + 16, key.y + 40);
+        grabKey(k, x, y);
+        if (hintEl) hintEl.hidden = true;
+        return true;
+      }
+    }
+    if (door && doorOpen() && winT <= 0 && inBox(px, py, door.x, door.y, 56, 64)) {
+      if (player.plat !== plats.length - 1) teleportTo(plats.length - 1);
+      win(x, y);
+      return true;
     }
     return false;
   }
@@ -416,11 +581,17 @@
       const p = plats[i];
       if (culled(p.y, V)) continue;
       P.blit(ctx, SPR.plats[p.spr], p.x, p.y + oy);
-      if (p.lit > 0) {
-        P.glow(ctx, p.x + 32, p.y + PLAT_H + 7 + oy, 30, PALE, 0.18 * p.lit);
+      if (p.timed) {
+        const lineY = p.y + PLAT_H + 6 + oy;
         ctx.fillStyle = "#f7ffc5";
-        const lineY = p.y + PLAT_H + 6 + oy, w = 56 * p.lit, x0 = p.x + 32 - w / 2;
-        for (let dx = 0; dx < w; dx += 10) ctx.fillRect(Math.round(x0 + dx), Math.round(lineY), Math.min(8, w - dx), 2);
+        ctx.globalAlpha = 0.25;
+        for (let dx = 0; dx < 56; dx += 10) ctx.fillRect(Math.round(p.x + 4 + dx), Math.round(lineY), Math.min(8, 56 - dx), 2);
+        ctx.globalAlpha = 1;
+        if (p.lit > 0) {
+          P.glow(ctx, p.x + 32, p.y + PLAT_H + 7 + oy, 30, PALE, 0.18 * p.lit);
+          const w = 56 * p.lit, x0 = p.x + 32 - w / 2;
+          for (let dx = 0; dx < w; dx += 10) ctx.fillRect(Math.round(x0 + dx), Math.round(lineY), Math.min(8, w - dx), 2);
+        }
       }
     }
 
@@ -430,6 +601,17 @@
       ctx.globalAlpha = door.lit;
       P.blit(ctx, SPR.doorLit, door.x - 2, door.y - 2 + oy);
       ctx.globalAlpha = 1;
+      if (doorOpen()) P.glow(ctx, door.x + 28, door.y + 40 + oy, 90, PALE, 0.15 + 0.15 * Math.sin(V.t * 4));
+      for (let k = 0; k < keys.length; k++) {
+        const key = keys[k];
+        if (key.got && key.fly && key.fly.t >= 1) {
+          P.glow(ctx, key.x + 16, key.y + 16 + oy, 14, PALE, 0.3);
+          ctx.fillStyle = "#f7ffc5";
+          ctx.beginPath();
+          ctx.arc(key.x + 16, key.y + 16 + oy, 5, 0, U.TAU);
+          ctx.fill();
+        }
+      }
     }
 
     const sf = frame01(V.t, SWAP);
@@ -439,7 +621,7 @@
       const spr = SPR.green[sf];
       const hovered = hover && hover.kind === "twin" && hover.i === i;
       P.glow(ctx, p.x + 24 + MAN_W / 2, p.y + 2 + oy, 22, GREEN, hovered ? 0.22 : 0.10);
-      P.blit(ctx, spr, p.x + 24, p.y + 2 - spr.h + oy, true);
+      P.blit(ctx, spr, p.x + 24, p.y + 2 - spr.h + oy, p.tf < 0);
     }
 
     for (let i = 0; i < sils.length; i++) {
@@ -464,15 +646,24 @@
       ctx.restore();
     }
 
-    if (sym && !culled(sym.y, V)) {
-      const cx = sym.x + 16, cy = sym.y + 16 + oy;
-      P.glow(ctx, cx, cy, 40, PALE, 0.22);
+    for (let k = 0; k < keys.length; k++) {
+      const key = keys[k];
+      if (key.got && key.fly && key.fly.t >= 1) continue;
+      if (culled(key.y, V)) continue;
+      const cx = key.x + 16, cy = key.y + 16 + oy;
+      const hovered = hover && hover.kind === "key" && hover.i === k;
+      P.glow(ctx, cx, cy, 40, PALE, hovered ? 0.35 : 0.22);
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.rotate(sym.ang * Math.PI / 180);
+      ctx.rotate(key.ang * Math.PI / 180);
       P.blit(ctx, SPR.sym, -16, -16);
       ctx.restore();
+      if (!key.got) drawBeacon(ctx, "play-cc-key" + (k + 1), cx, cy - 34, V);
     }
+
+    if (plats[1] && plats[1].twin && !culled(plats[1].y, V)) drawBeacon(ctx, "play-conclusus", plats[1].x + 32, plats[1].y - 72 + oy, V);
+    if (bcTimed >= 0 && plats[bcTimed] && !culled(plats[bcTimed].y, V)) drawBeacon(ctx, "play-cc-timed", plats[bcTimed].x + 32, plats[bcTimed].y - 72 + oy, V);
+    if (door && !culled(door.y, V)) drawBeacon(ctx, "play-cc-win", door.x + 28, door.y - 52 + oy, V);
 
     if ((player.plat >= 0 || player.air) && !culled(player.y, V)) {
       const spr = player.air ? SPR.idle[0] : SPR.idle[frame01(V.t, 0.5)];
@@ -491,7 +682,15 @@
   }
 
   function report() {
-    return { plats, sils, player: { plat: player.plat, x: player.x, y: player.y }, bursts };
+    return {
+      plats, sils, player: { plat: player.plat, x: player.x, y: player.y }, bursts,
+      keys: keys.map(k => ({ x: k.x, y: k.y, got: k.got, plat: k.plat })),
+      timed: plats.map((p, i) => p.timed ? i : -1).filter(i => i >= 0),
+      lit: plats.map(p => +p.lit.toFixed(2)),
+      open: doorOpen(), winT, face: player.face,
+      door: door ? { x: door.x, y: door.y } : null,
+      bcTimed,
+    };
   }
 
   const H = P.start({ name: "conclusus", seed: 17, setup, step, draw, atRest, press, move, resize: layout });
