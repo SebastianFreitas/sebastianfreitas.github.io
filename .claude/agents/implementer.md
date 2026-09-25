@@ -36,6 +36,10 @@ exactly as written.
   Grep for the function names the spec gives you, then Read with
   `offset`/`limit` around the hit. Never open
   `cv.pdf`, `media/`, `Temporary VoidScape Media/` or `__pycache__/`.
+- Context budget: you have about 60k tokens of room. If the task needs more
+  than three whole-file reads, or a hook prints CONTEXT WATCH, stop reading,
+  do what the spec allows from what you have, and say in the report that the
+  spec needs narrower anchors (file, function, line range).
 - The hero (`js/bridge/`) and the world (`js/world/`) are each split across
   files that share one state object (`window.Bridge` as `B`, `window.World`
   with `F` for per-frame values and `P` for painters). Cross-file state is

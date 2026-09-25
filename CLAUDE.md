@@ -104,6 +104,11 @@ hands over to a fresh one.
   transcript) and prints a CONTEXT WATCH line once it passes `LIMIT`
   (140k tokens; tune it there). Its 80% warning means: finish, do not
   start.
+- The same hook runs inside subagents (every tool call, `SUB_LIMIT` 60k)
+  and on SubagentStop writes each subagent's peak to a ledger; the next
+  hook run prints `SUBAGENT CONTEXT: <type> <id> peaked at N tokens` in the
+  main session. An "over the line" entry means the spec or Explore prompt
+  was too wide: name the file, function and line range next time.
 - When it fires: finish only the current atomic step (an implementer
   already running may finish; never start a new one), verify, `bump.py` if
   a script or stylesheet changed, commit by path, then write
