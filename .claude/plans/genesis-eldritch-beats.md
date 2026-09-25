@@ -62,7 +62,7 @@ existing ZOOM table gets five rows).
   the soul kind's *upright*: it gains a vertical axis, a top a hat can
   sit on, a shoulder line cloth can hang from, and something that reads
   as a foot. It keeps its own kind (a roller is still round, a comb
-  still toothed). Phase 5 casts each of the 16; four examples: the
+  still toothed). Phase 5 casts each of the 17 (`research/05-wardrobe.md`); four examples: the
   tower grows a narrower "neck" band under its top (the hat's seat);
   the roller rises onto one peg foot (one huge boot); the veil's hem
   lifts into a shoulder line (a cape); the mass grows a single ledge

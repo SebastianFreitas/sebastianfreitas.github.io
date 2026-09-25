@@ -135,7 +135,7 @@ session.
 | 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | done 2026-09-25 |
 | 25a | The owner's answers to Q1–Q7 (beats doc) | owner talk, doc | done 2026-09-25 |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | done 2026-09-25 |
-| 5 | Wardrobe casting sheet | design doc | todo |
+| 5 | Wardrobe casting sheet | design doc | done 2026-09-25 |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
 | 7 | Attire kit (hats, coats, boots, trousers, items) | code | todo |
 | 8 | The tailored one (full suit, high society) | code | todo |
@@ -245,7 +245,13 @@ exaggeration (height, width, size). Target mix: 1 tailored full suit,
 1 found full suit (D1), most one piece, several none. Intelligence
 decides dress: the dumb ones wear nothing or wear it wrong. Deliverable:
 a table in `research/05-wardrobe.md`, shown to the owner in the report.
-Notes:
+Notes: done 2026-09-25. Research (overcoats, hats, women's winter
+dress, mufflers, accessories, tailoring, the second-hand trade,
+Grandville and Gorey's dressed creatures, Dishonored's silhouettes) and
+the casting in `research/05-wardrobe.md`: 17 east-goers (gentleman
+tailored, slab found, three with two pieces, twelve with one, 27
+garment kinds each used once), 7 bare west-goers, carers D26, batches
+A/B for Phases 10–11, eye cull for Phase 6.
 
 ### 6 · Silhouettes: proportion pass
 Research: Dishonored character exaggeration, shape language, how to read
@@ -568,6 +574,13 @@ Owner answers after Phase 3 (2026-09-25):
   top of the frame that stop drifting while the lights are born, a
   region of far lights kept dark round them), never contact or light.
 
+Owner answers in Phase 5 (2026-09-25):
+
+- **D26 · The carers.** The three tier-2 carers are the mound, the eye
+  and the chime. The headless gentleman leaves at `leave` to rule.
+- **D27 · The found suit.** The slab wears it (wide and short, the
+  opposite of the gentleman).
+
 ## Carry forward
 
 - (Phase 4) Baselines: `py -3 tools/snap.py compare eldritch-base <run>`
@@ -620,3 +633,9 @@ Owner answers after Phase 3 (2026-09-25):
   beats shifts every later beat's snap scene in time: the first capture
   after the insert is the new baseline for every `genesis-*` scene after
   `womb`. Beat-insert touch list is in the beats doc.
+- (Phase 5) The roster is 17 east-goers (the gentleman takes the
+  colossus's slot and goes east) and 7 west-goers; the colossus's cling
+  branch in `genesis-oldones.js` is dead code (side -1). 15 of 24 carry
+  an `eyeDot` against the "eyes are rare" rule: Phase 6 keeps six (list
+  in `research/05-wardrobe.md`). Phases 8–11 and 26 draw from the
+  casting table there; no garment kind repeats.
