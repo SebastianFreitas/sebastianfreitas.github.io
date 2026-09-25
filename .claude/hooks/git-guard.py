@@ -47,7 +47,9 @@ def main():
                 "the user explicitly asked for this command, ask them to run "
                 "it themselves.\n")
             sys.exit(2)
-    if re.search(r"\bgit\s+commit\b", cmd):
+    # The note is computed before the command runs, so skip it when the
+    # command stages files itself (the list would be stale).
+    if re.search(r"\bgit\s+commit\b", cmd) and not re.search(r"\bgit\s+add\b", cmd):
         unstaged = git("diff", "--name-only")
         untracked = git("ls-files", "--others", "--exclude-standard")
         left = [l for l in (unstaged + "\n" + untracked).splitlines() if l]
