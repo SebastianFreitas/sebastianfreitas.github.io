@@ -12,113 +12,6 @@ window.GenHosts = (function () {
 
   function lw(v) { return Math.max(1, v); }
 
-  // ---- ANGEL: tall, pale, winged, haloed, sword ----
-  const A_ROBE_LIT = "#e9e4d2", A_ROBE_SHADE = "#a9a28e";
-  const A_SKIN = "#f1e6cf";
-  const A_WING_LIT = "#d8d2bd", A_WING_SHADE = "#8f8872";
-  const A_HALO = "#f3d27a";
-  const A_BLADE = "#fff4d0", A_HILT = "#c9a24a";
-
-  function drawAngel(ctx, x, y, s, o) {
-    o = o || {};
-    let a = o.a ?? 1;
-    const f = o.face < 0 ? -1 : 1;
-    const walk = o.walk || 0, ph = o.ph || 0;
-    const lunge = o.lunge || 0, cast = o.cast || 0;
-    const pose = o.pose || "march";
-    const down = o.down ?? 1;
-    if (pose === "dead") a *= 0.55;
-    else if (pose === "fight") x += f * 0.22 * s * lunge;
-    if (a < 0.01) return;
-
-    ctx.save();
-    ctx.globalAlpha = a;
-    withTilt(ctx, x, y, pose === "dead" ? f * (Math.PI / 2) * down : 0, () => {
-      // wings, behind the body, anchored at the upper back
-      const wax = x - f * 0.04 * s, way = y - 0.66 * s;
-      const flap = 0.18 * Math.sin(G.t * 5 + ph);
-      withTilt(ctx, wax, way, flap, () => {
-        fillPoly(ctx, [
-          [wax, way],
-          [x - f * 0.62 * s, y - 1.30 * s],
-          [x - f * 0.48 * s, y - 0.95 * s],
-          [x - f * 0.40 * s, y - 0.30 * s],
-        ], A_WING_SHADE);
-      });
-      withTilt(ctx, wax, way, flap * 0.85, () => {
-        const near = [
-          [wax, way],
-          [x - f * 0.46 * s, y - 1.10 * s],
-          [x - f * 0.34 * s, y - 0.80 * s],
-          [x - f * 0.28 * s, y - 0.28 * s],
-        ];
-        const xs = wax - f * 0.10 * s;
-        if (f > 0) litShade(ctx, () => poly(ctx, near), xs, A_WING_LIT, A_WING_SHADE);
-        else litShade(ctx, () => poly(ctx, near), xs, A_WING_SHADE, A_WING_LIT);
-      });
-
-      // legs (below hem)
-      const hemY = y - 0.10 * s, footSwing = 0.16 * s * Math.sin(walk);
-      if (pose === "march") {
-        fillPoly(ctx, quad(x, hemY, x + footSwing, y, 0.10 * s), A_ROBE_SHADE);
-        fillPoly(ctx, quad(x, hemY, x - footSwing, y, 0.10 * s), A_ROBE_LIT);
-      } else {
-        fillPoly(ctx, quad(x, hemY, x + 0.10 * s, y, 0.10 * s), A_ROBE_SHADE);
-        fillPoly(ctx, quad(x, hemY, x - 0.10 * s, y, 0.10 * s), A_ROBE_LIT);
-      }
-
-      // robe: trapezoid shoulders to hem
-      const robe = [
-        [x - f * 0.13 * s, y - 0.72 * s],
-        [x + f * 0.13 * s, y - 0.72 * s],
-        [x + f * 0.21 * s, hemY],
-        [x - f * 0.21 * s, hemY],
-      ];
-      const robeXs = (x - 0.21 * s) + 0.3 * (0.42 * s);
-      litShade(ctx, () => poly(ctx, robe), robeXs, A_ROBE_LIT, A_ROBE_SHADE);
-
-      // head
-      circle(ctx, x, y - 0.84 * s, 0.10 * s, A_SKIN);
-
-      // halo
-      if (pose !== "dead") {
-        ctx.save();
-        ctx.strokeStyle = A_HALO; ctx.lineWidth = lw(0.03 * s);
-        ctx.beginPath();
-        ctx.ellipse(x, y - 1.00 * s, 0.12 * s, 0.04 * s, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-        flatGlow(ctx, x, y - 1.00 * s, 0.22 * s, "255,222,140", 0.35);
-      }
-
-      // sword arm + blade
-      const shX = x + f * 0.06 * s, shY = y - 0.66 * s;
-      const handX = x + f * 0.24 * s, handY = y - 0.46 * s;
-      fillPoly(ctx, quad(shX, shY, handX, handY, 0.06 * s), A_SKIN);
-      const angBlade = mix(-1.15, -0.05, lunge);
-      const bx = handX + f * Math.cos(angBlade) * 0.62 * s;
-      const by = handY + Math.sin(angBlade) * 0.62 * s;
-      const dxb = bx - handX, dyb = by - handY, lenb = Math.hypot(dxb, dyb) || 1;
-      const nxb = -dyb / lenb, nyb = dxb / lenb;
-      fillPoly(ctx, [
-        [handX - nxb * 0.06 * s, handY - nyb * 0.06 * s],
-        [handX + nxb * 0.06 * s, handY + nyb * 0.06 * s],
-        [bx, by],
-      ], A_BLADE);
-      fillPoly(ctx, quad(handX - nxb * 0.08 * s, handY - nyb * 0.08 * s, handX + nxb * 0.08 * s, handY + nyb * 0.08 * s, 0.03 * s), A_HILT);
-
-      // cast
-      if (cast > 0.01 && pose !== "dead") {
-        const cShX = x + f * 0.05 * s, cShY = y - 0.68 * s;
-        const hx = x + f * HAND[0] * s, hy = y - HAND[1] * s;
-        fillPoly(ctx, quad(cShX, cShY, hx, hy, 0.05 * s), A_SKIN);
-        flatGlow(ctx, hx, hy, 0.28 * s * cast, "255,226,150", 0.8 * cast);
-        circle(ctx, hx, hy, 0.05 * s * cast, "#fff6d8");
-      }
-    });
-    ctx.restore();
-  }
-
   // ---- DEVIL: broad, horned, hoofed, tail, bat wings, trident ----
   const D_SKIN_LIT = "#c0452c", D_SKIN_SHADE = "#6e1f16";
   const D_HORN_LIT = "#e8d8b0", D_HORN_SHADE = "#a8946a";
@@ -488,5 +381,5 @@ window.GenHosts = (function () {
     }
   }
 
-  return { drawAngel, drawDevil, drawAbom, HAND };
+  return { drawDevil, drawAbom, HAND };
 })();

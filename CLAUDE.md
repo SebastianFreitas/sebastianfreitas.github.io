@@ -235,9 +235,11 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-oldkin.js` | 362 | painters for the fourteen new old ones (tower pearl bundle needle slab bloom comb veil knot husk chime prism swarmling mound), registered into `GenOld.PAINT` | extends `window.GenOld` |
 | `genesis-figures.js` | 313 | flat silhouette cast: `drawGod` (crowns: bars/rings/orbit/clock/petals/spikes), `drawWarlock` (returns the staff gem), `drawTroop`, `drawMortal` + shared `fillPoly shadedPoly quad withTilt` | `window.GenFig` |
 | `genesis-titans.js` | 237 | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"`: stand/lunge/climb/flee) and `drawHound` | extends `window.GenFig` |
-| `genesis-hosts.js` | 492 | the war's figures, flat and lit from the left: `drawAngel` (wings, halo, sword), `drawDevil` (horns, tail, hooves, trident), `drawAbom` (bone and flesh, `variant` 0 brute / 1 crawler / 2 stalker); all `(ctx, x, y, s, o)` with y the foot line, `o = {a, face, walk, pose, down, lunge, cast, ph, variant}`; `HAND` = casting-hand offset | `window.GenHosts` |
+| `genesis-hosts.js` | 385 | the war's figures, flat and lit from the left: `drawDevil` (the humanoid devil: horns, tail, hooves, trident; kept as the rare `"fiend"` form), `drawAbom` (bone and flesh, `variant` 0 brute / 1 crawler / 2 stalker); all `(ctx, x, y, s, o)` with y the foot line, `o = {a, face, walk, pose, down, lunge, cast, ph, variant, form, fly}`; `HAND` = casting-hand offset | `window.GenHosts` |
+| `genesis-seraphin.js` | 427 | the angels as winged beasts of light, no halos: `o.form` `"bird"` (crane) / `"hound"` (sighthound) / `"stag"` (gold antlers), big feathered `wing()`s (far wing a V behind), `o.fly` = flight pose (body around `y - 0.55s`), cast glow at `HAND` | sets `GenHosts.drawAngel` |
+| `genesis-malgrur.js` | 339 | the devils: `o.form` `"gaunt"` (tall, thin, crooked, two horns; most of them) / `"bat"` (membrane wings, always flies) / `"fiend"` (delegates to the old `drawDevil`, captured at parse time); cast flame at `HAND` | replaces `GenHosts.drawDevil` |
 | `genesis-mainland.js` | 436 | mainland bands, the surface cache `surfY(px)`/`surfYAt(wu, rise, scar)` every figure stands on, rooted red spires (`SPIRES`, `spireGeom(k, S)`; spires near the nest shrink to stumps as `S.drain` pulls them into the Hound), the city (roofs, walls, windows, lamps), the nest pit; `cityGeom` — after the war (`S.modern`) a share of each band rises into skyscrapers one by one (glassier walls, setback crown, antenna with a red light), the rampart sinks | `window.GenMain` |
-| `genesis-armies.js` | 315 | the war simulation: angels (`seraphin`) and devils (`malgrur`) against abominations of bone and flesh (`vorgath`); `step(dt, S)`, `draw(ctx, S)`, `reset()` (march, front tide, melee lunges and sparks, casters loosing `BOLTS` that land as `BURSTS`, deaths, corpses, reinforcements); seeded `rnd` (mulberry 9011), no Math.random; painters from `GenHosts` | `window.GenArmies` |
+| `genesis-armies.js` | 349 | the war simulation: angels (`seraphin`) and devils (`malgrur`) against abominations of bone and flesh (`vorgath`); `step(dt, S)`, `draw(ctx, S)`, `reset()` (march, front tide, melee lunges and sparks, casters loosing `BOLTS` that land as `BURSTS`, deaths, corpses, reinforcements); each troop has a `form` and `alt` (flight height in sizes, 0 = grounded; set once in `host()` from `hash1`), `liftOf(T, s)` = bob, swoop in a fight, fall on death; fliers paint after the ground troops, their corpse waits out the fall (`hold`); bolts leave from and aim at the lifted height (`dy0`, `dy1`); seeded `rnd` (mulberry 9011), no Math.random; painters from `GenHosts` | `window.GenArmies` |
 | `genesis-orb.js` | 281 | `drawRip lightsAt` (titan keyframe paths) `pushTrail drawTrail drawOrb drawRings drawBeam drawTintBeam yWob drawName` | extends `window.GenVoid` |
 | `genesis-rex.js` | 501 | `chaseAt chaseFightAt duelAt ringFightAt`, `drawRexLand` (hot rock cooling to slate, fissures), `drawRexHole`, `drawRexGrip`, `drawBuried` (the eye in the ground), `drawGodsBirth` (five gods as figures) | `window.GenRex` |
 | `genesis-depths.js` | 280 | `drawDepths`: rock, ribs, stalactites, the pocket, Obrokxus in Rex's grip, the five gods circling, 70 brothers (old-one kinds in red), the year counter | `window.GenDepths` |
@@ -284,7 +286,7 @@ bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
 bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-void,
 genesis-flesh, genesis-elements, genesis-matter, genesis-trade,
 genesis-oldones, genesis-oldkin, genesis-figures, genesis-titans,
-genesis-hosts, genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,
+genesis-hosts, genesis-seraphin, genesis-malgrur, genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,
 genesis-saga-state, genesis-ritual, genesis-saga, genesis} → site/intro`.
 
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
@@ -300,6 +302,9 @@ before `forge`, `voidship-art` before `voidship-prow` before `voidship`
 and `genesis-saga` (used at call time, kept before for clarity);
 `genesis-hosts` after `genesis-figures` (destructures `fillPoly quad
 withTilt` at parse time) and before `genesis-armies`/`genesis-ritual`;
+`genesis-seraphin` and `genesis-malgrur` right after `genesis-hosts`
+(they read `GenHosts` at parse time; malgrur captures the old
+`drawDevil` before replacing it);
 `genesis-mainland` and `genesis-armies` before `genesis-saga-state`/
 `genesis-saga`; `genesis-saga-state` before `genesis-saga`;
 `genesis-trade` before `genesis-oldones` (SPOTS, read at call time);
