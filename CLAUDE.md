@@ -35,7 +35,8 @@ apply to the main session, Explore and the implementer alike.
   `js/genesis/genesis-matter.js` (620), `js/genesis/genesis-gods.js` (516), `js/ship/voidship-art.js` (536),
   `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
   `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (511),
-  `js/genesis/genesis-oldones.js` (555),
+  `js/genesis/genesis-oldones.js` (555), `js/pages/voidscape.js` (849),
+  `js/pages/sector-zero.js` (575), `js/pages/conclusus.js` (539),
   `tools/snap.py` (531), `tools/nav-flows.test.py` (890). Use the File map
   below to pick the file and function, then `Grep -n` for the name and
   `Read` with `offset`/`limit` around the hit. Function names do not drift;
@@ -58,7 +59,10 @@ apply to the main session, Explore and the implementer alike.
   touches navigation, the gate or storage. Three checks fail on `main`
   before this refactor and still do (`gate-exits` / `worklink` "lands on
   Work": the scroll lands 72 px above the section); they are not a
-  regression signal.
+  regression signal. The case pages' toys are covered by `links`, `header`,
+  `shell`, `worklink` and `twotabs`; `py -3 tools/snap.py capture <name>`
+  fails a `page-*` scene on any console error, which is the toys' error check
+  (its clock is frozen, so only the first synchronous frame paints).
 - **Screenshot regression is mandatory for any change that paints or
   styles.** `py -3 tools/snap.py capture <name>` (about 3.5 min, 50 scenes)
   then `py -3 tools/snap.py compare <before> <after>`. Capture once before
@@ -76,7 +80,7 @@ site assets stay at the root; everything else lives in a folder.
 ```
 index.html 404.html projects/ media/ cv.pdf robots.txt sitemap.xml .nojekyll
 serve.py serve.bat            local no-cache server on 8765
-css/                          style, gate, beacon, bridge
+css/                          style, gate, beacon, bridge, play
 js/lib/                       util, paint, pacer
 js/site/                      xp, entry, intro, surge, embed, lazy-video
 js/hud/                       instruments, tiles-nav, tiles-sys
@@ -86,6 +90,7 @@ js/ship/                      voidship, voidship-art, voidship-prow
 js/gamedev/                   storm, forge, forge-guns, forge-missions, zones
 js/world/                     world core + 8 painters; art/ = one file per place + rex-kit, land-kit
 js/genesis/                   genesis-state, -paint, -void, -flesh, -elements, -matter, -trade, -oldones, -oldkin, -figures, -titans, -obrok, -hosts, -mainland, -armies, -orb, -rex, -depths, -saga-state, -ritual, -saga, genesis
+js/pages/                     play (the case-page canvas layer) + one toy per case page: heavylight, conclusus, sector-zero (+ -records), voidscape (+ -boons)
 tools/                        nav-flows.test.py, snap.py, bump.py, gframes.py, jscheck.py
 ```
 
@@ -248,14 +253,30 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga.js` | 359 | `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`; `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre | extends `window.GenSaga` |
 | `genesis.js` | 643 | DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash, titans in the fight, the depths, the saga, the now-fade), the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input | `window.Genesis` |
 
+### js/pages
+
+The case pages' play layer. Every file is an IIFE on one global; the toys
+only ever read `V` from `Play` and never reach into the bridge.
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `play.js` | 233 | `Play.start(spec)` mounts one fixed canvas behind the page (`.play`, z -1, pointer-events none; input is read on `window`, only presses on `body`/`html`/`main.case` count, panels are `.play-ui`), builds the view `V` (`W H top sy t dt pointer rnd blocks vis band main gutter free blockAt cursor wake`; `blocks` = document-space rects of every child of `main.case` plus the footer, `vis` the visible ones in viewport space, `band` the free strip right of the text column), runs a `Pacer` loop, re-measures on load/resize; `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow`, `award` (one XP point, once). Desktop only (`min-width: 900px`); a still frame under reduced motion | `window.Play` |
+| `heavylight.js` | 326 | Viewport space: four wall lamps in the screen corners; click = on for 8 s (click again = off); each lights a wedge along its edge and carries whatever is inside it (six crates and the red investigator) round the screen, floor → right edge → ceiling → left edge; gravity and friction otherwise; sprites at 3x from the game's PNGs (`HPAL`) | `window.PlayHeavyLight {report}` |
+| `conclusus.js` | 539 | Document space: up to 40 grass platforms beside the page blocks, each with a planted green twin; when the player's platform scrolls out he teleports (30-particle burst) into the twin nearest the screen centre and plants one where he stood; click a twin, a green silhouette (silver = the 1.2 s cycle's deadly half) or a pin; lit dashed line under the landed platform, spinning symbol, exit arch that blooms on the last platform, spike balls, rain motes; sprites 2x (`CPAL`) | `window.PlayConclusus {report}` |
+| `sector-zero.js` | 575 | Viewport space: the room's objects float in the strip right of the text (terminal, chair, bucket, screwdriver, lantern, four crates, light switch; flat lit/shade boxes, scale 1.3); click = the record types out in a `.play-ui.record` card at 0.03 s/char; the thunder loop (lower of two d100, losers drift, one turns red and creeps to the pointer, spring home, 0.5 s blackout; stronger comes back sooner); lantern flicker layers, screwdriver charge/throw/return, chair spin, the switch dims the room | `window.PlayZero {report, thunder}` |
+| `sector-zero-records.js` | 145 | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
+| `voidscape-boons.js` | 104 | 34 boons from the game's list `{id, w, name, desc, fx}`; `build(gun, boons)` → the effective build from a `ForgeGuns` gun, its mods and the boons; weighted `offer(pool, rnd)` | `window.RangeBoons` |
+| `voidscape.js` | 849 | The range, viewport space: a gun mount bottom-left aims at the pointer, hold on empty page to fire a `ForgeGuns.randomGun()`; bullets ricochet off the screen edges only (page blocks are not walls), fire explodes on every bounce, cold chills/freezes, poison and bleed tick, headshots crit, damage pops; skulls hop, cones hover and shoot back, triangles lunge and self-destruct; enemies are pushed out of page blocks; every 6 kills one boon is offered (take / reroll x2 / refuse for 10 health) in `.play-ui.offer`, the build card is `.play-ui.range`; 0 health = run lost, new gun, boons gone; the range goes quiet 40 s after the last shot | `window.PlayRange {report}` |
+
 ### css, pages, tools
 
 | File | Lines | Purpose |
 |---|---|---|
-| `css/style.css` | 431 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
+| `css/style.css` | 441 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | 126 | The entry gate: boot log, then the two paths. index only |
 | `css/bridge.css` | 744 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | 159 | Level chip, claim ceremony, surge |
+| `css/play.css` | 43 | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
 | `index.html` | 478 | Homepage. Inline head script is only the service-worker purge |
 | `projects/*.html` | 110–253 | Four case-study pages, same shell |
 | `404.html` | 54 | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
@@ -314,10 +335,13 @@ multiply at draw time. `Util.clamp` has no default bounds: always pass
 `0, 1`. Scripts carry `?v=N` cache-busters; bump them with
 `py -3 tools/bump.py`.
 
-Project pages load only `css/style.css`, `css/beacon.css`, then
-`js/lib/util.js → js/site/xp.js → js/site/surge.js` plus `js/site/embed.js`
-(conclusus, heavylight) or `js/site/lazy-video.js` (sector-zero, voidscape),
-and an inline `XP.award(...)`.
+Project pages load `css/style.css`, `css/beacon.css`, `css/play.css`, then
+`js/lib/util.js → js/site/xp.js → js/site/surge.js`, `js/site/embed.js`
+(conclusus, heavylight) and `js/site/lazy-video.js` (all four), then the play
+layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
+`js/gamedev/forge-guns.js` before `play.js` and `voidscape-boons.js` before
+`voidscape.js`; sector-zero: `sector-zero-records.js` before
+`sector-zero.js`), and the inline `XP.award(...)` last.
 
 ### Where things live
 
@@ -347,6 +371,7 @@ and an inline `XP.award(...)`.
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
+| Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js`; shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px); XP ids `play-*` |
 
 ### Storage keys
 
