@@ -5,7 +5,7 @@
    plays the record from the point: the span comes out of the
    left of the frame, the old ones walk the deck, Primordisentia
    is found and warped then bound, two lights tear out and fight
-   in the void. Obrokxus wins. Rex becomes Rex the Surface.
+   in the void. Obrokxus escapes into the void; Ormius follows. Rex becomes Rex the Surface.
    Then the chase, the children's war, the warlocks born one by one
    (Cadmus, Aelius, Velindra) and bound fifth in a ritual of all four,
    the Hound, Mordrial's fall, and the duel that has not ended. Skip /
@@ -23,7 +23,7 @@ window.Genesis = (function () {
           only, sx } = G;
   const { fillBg, drawMotes, drawChaos, drawPoint, drawRip, lightsAt, pushTrail, drawTrail,
           drawOrb, drawRings, drawBeam, drawName } = GenVoid;
-  const { chaseAt, chaseCamLead, duelDrift, duelCamLead, drawRexLand, drawRexHole,
+  const { chaseAt, chaseCamLead, escapeCam, escapeCamLead, drawRexLand, drawRexHole,
           drawBuried, drawGodsBirth } = GenRex;
   const { drawSaga, drawLiveWorld } = GenSaga;
 
@@ -270,12 +270,12 @@ window.Genesis = (function () {
     const uEt    = since("eternity");
     let camRateOverride = null;
     if (uEt > 0) {
-      /* ride the duel itself instead of a canned sweep, and lead it
-         by exactly the smoothing lag, so the pair stays centred all
-         the way out rather than trailing a third of a screen */
+      /* ride Ormius west, a little ahead of him, and lead by exactly
+         the smoothing lag so he holds his place in frame all the way
+         out */
       const etP = linear("eternity");
       camRateOverride = mix(1.20, ET_CAM_RATE, smooth(clamp(etP / 0.22, 0, 1)));
-      target = duelDrift(etP) + duelCamLead(etP, camRateOverride);
+      target = escapeCam(etP) + escapeCamLead(etP, camRateOverride);
     }
     else if (uRet > 0.02)
       target = mix(MAIN_U - 0.04, CITY_U - 0.06, smooth(uRet));

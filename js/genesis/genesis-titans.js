@@ -1,5 +1,6 @@
 /* genesis-titans.js — the two titans (Rex, Obrokxus) and the Hound, added
-   to GenFig. `y` is the foot line, `h` the height in px; light from the left. */
+   to GenFig (Obrokxus's later forms live in genesis-obrok.js). `y` is the foot
+   line, `h` the height in px; light from the left. */
 window.GenFig = window.GenFig || {};
 (function (F) {
   const G = window.Gen;
@@ -160,10 +161,13 @@ window.GenFig = window.GenFig || {};
     let tilt = o.tilt || 0;
     if (kind === "rex" && pose === "lunge") tilt += 0.32;
     if (kind === "rex" && pose === "grapple") tilt += 0.18;
+    if (kind === "centihorse" && pose === "lunge") tilt -= 0.22;
     ctx.save();
     ctx.globalAlpha = a;
     withTilt(ctx, x, y, tilt * f, () => {
       if (kind === "rex") drawRex(ctx, x, y, h, f, pose, o);
+      else if (kind === "centihorse" && F.drawCentihorse) F.drawCentihorse(ctx, x, y, h, f, ph, pose, o);
+      else if (kind === "worm" && F.drawWorm) F.drawWorm(ctx, x, y, h, f, ph, pose, o);
       else drawObrokxus(ctx, x, y, h, f, ph, pose, o);
     });
     ctx.restore();

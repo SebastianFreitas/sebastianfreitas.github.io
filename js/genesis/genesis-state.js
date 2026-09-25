@@ -74,8 +74,8 @@ window.Gen = (function () {
       line: "They met Obrokxus, and the fight outlasted counting. Mordrial fell. The rest called it victory, and went home." },
     { id: "return", dur: 7.6, tag: "XXVII · The mainland",
       line: "They returned to the living and to the void. Only Ormius believed that Obrokxus had survived." },
-    { id: "eternity", dur: 8.8, tag: "XXVIII · Still fighting",
-      line: "No one has gone far enough to see it. Past the edge of every record, they fight there still." },
+    { id: "eternity", dur: 8.8, tag: "XXVIII · Still searching",
+      line: "Obrokxus slipped past the edge of every record. Ormius went after him, and he is searching still." },
     { id: "now",   dur: 2.6, tag: "", line: "" },
   ];
 

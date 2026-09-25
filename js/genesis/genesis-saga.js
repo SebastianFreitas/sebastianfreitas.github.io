@@ -5,7 +5,7 @@
    warlocks' births and the Hound's ritual are painted by GenRitual. */
 (function () {
   const G = window.Gen;
-  const { clamp } = Util;
+  const { clamp, mix } = Util;
   const { ORB_STYLE, sx } = G;
   const { pushTrail, drawTrail, drawRings, drawBeam, drawTintBeam, drawName } = GenVoid;
   const { sagaAt } = window.GenSaga;
@@ -47,8 +47,14 @@
        for everyone. The three gods hover — their state y is the body
        CENTRE, so yFoot is that plus 0.45h; everyone else already has a
        ground-relative y from GenMain.surfYAt, used as-is. */
-    const hO = 0.26 * G.H, oxS = sx(S.ou), oyFootO = S.oy + 0.45 * hO;
-    const oEyeX = oxS + S.oFace * 0.10 * hO, oEyeY = oyFootO - 0.50 * hO;
+    const hO = 0.26 * G.H, oxS = sx(S.ou);
+    /* in the ground: the foot line drops below the surface so only his
+       head and spine tips clear it; the rest is clipped at the surface */
+    const oGround = GenMain.surfY(oxS) - 12;
+    const oyFootO = mix(S.oy + 0.45 * hO, oGround + 0.62 * hO, S.oHide);
+    const oKind = S.oMorph >= 0.5 ? S.oForm : S.oFrom;
+    const oSpeed = S.etBeat ? 1.6 : 1;
+    const oEyeAt = (pose) => F.obrokEye(oKind, oxS, oyFootO, hO, { face: S.oFace, pose, speed: oSpeed });
 
     const hM = 0.17 * G.H, mX = sx(S.mu), mYFoot = S.my + 0.45 * hM;
     const hA = 0.17 * G.H, aX = sx(S.au), aYFoot = S.ay + 0.45 * hA;
@@ -59,6 +65,47 @@
     const hV = 0.13 * G.H, vX = sx(S.vU), vYFoot = S.vY;
 
     const hH = 0.085 * G.H, hX = sx(S.hU), hYFoot = S.hY;
+
+    /* Obrokxus: looks toward whoever he's nearest (excluding Eldrin,
+       who isn't a combatant) */
+    const foes = [
+      { u: S.mu, amt: S.mAmt, x: mX, y: mYFoot },
+      { u: S.au, amt: S.aAmt, x: aX, y: aYFoot },
+      { u: S.mdU, amt: S.mdAmt, x: mdX, y: mdYFoot },
+      { u: S.cU, amt: S.cAmt, x: cX, y: cYFoot },
+      { u: S.aelU, amt: S.aelAmt, x: aelX, y: aelYFoot },
+      { u: S.vU, amt: S.vAmt, x: vX, y: vYFoot },
+      { u: S.hU, amt: S.hAmt, x: hX, y: hYFoot },
+    ];
+    let nearFoe = null, nearD = Infinity;
+    for (const f of foes) {
+      if (f.amt < 0.02) continue;
+      const d = Math.abs(f.u - S.ou);
+      if (d < nearD) { nearD = d; nearFoe = f; }
+    }
+    const oEye0 = oEyeAt("stand");
+    const look = nearFoe || { x: oEye0.x, y: oEye0.y };
+
+    let oPose = "stand", oReach = null;
+    if (S.war <= 0) {
+      oPose = "flee";
+    } else if (S.fallBeat) {
+      const fallFigs = [
+        { x: mdX, y: mdYFoot, s: S.fallStrikes[0] },
+        { x: cX, y: cYFoot, s: S.fallStrikes[1] },
+        { x: aelX, y: aelYFoot, s: S.fallStrikes[2] },
+        { x: vX, y: vYFoot, s: S.fallStrikes[3] },
+        { x: hX, y: hYFoot, s: S.fallStrikes[4] },
+      ];
+      let top = fallFigs[0];
+      for (const f of fallFigs) if (f.s > top.s) top = f;
+      if (top.s > 0.3 || S.lashM > 0) {
+        oPose = "lunge";
+        oReach = S.lashM > 0 ? { x: mdX, y: mdYFoot } : { x: top.x, y: top.y };
+      }
+    }
+    const oEye = oEyeAt(oKind === "centihorse" ? oPose : "stand");
+    const oEyeX = oEye.x, oEyeY = oEye.y;
 
     /* ---- the cast, back to front: Eldrin, the Hound, the warlocks,
        Ormius, Ava, Obrokxus */
@@ -124,7 +171,9 @@
     if (S.mAmt > 0.01) {
       F.drawGod(ctx, mX, mYFoot, hM, ORB_STYLE.ormius, {
         a: S.mAmt, face: S.mFace, crown: "bars",
-        reach: { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeM : S.etStrike },
+        reach: S.etBeat
+          ? { x: oEyeX, y: oEyeY, amt: Math.max(S.etStrike, 0.35 * S.etSearch) }
+          : { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeM : S.etStrike },
         tilt: inWarArc ? -0.3 * S.mFace : 0,
       });
     }
@@ -137,52 +186,31 @@
       });
     }
 
-    /* Obrokxus: looks toward whoever he's nearest (excluding Eldrin,
-       who isn't a combatant) */
-    const foes = [
-      { u: S.mu, amt: S.mAmt, x: mX, y: mYFoot },
-      { u: S.au, amt: S.aAmt, x: aX, y: aYFoot },
-      { u: S.mdU, amt: S.mdAmt, x: mdX, y: mdYFoot },
-      { u: S.cU, amt: S.cAmt, x: cX, y: cYFoot },
-      { u: S.aelU, amt: S.aelAmt, x: aelX, y: aelYFoot },
-      { u: S.vU, amt: S.vAmt, x: vX, y: vYFoot },
-      { u: S.hU, amt: S.hAmt, x: hX, y: hYFoot },
-    ];
-    let nearFoe = null, nearD = Infinity;
-    for (const f of foes) {
-      if (f.amt < 0.02) continue;
-      const d = Math.abs(f.u - S.ou);
-      if (d < nearD) { nearD = d; nearFoe = f; }
-    }
-    const look = nearFoe || { x: oEyeX, y: oEyeY };
-
-    let oPose = "stand", oReach = null;
-    if (S.war <= 0) {
-      oPose = "flee";
-    } else if (S.fallBeat) {
-      const fallFigs = [
-        { x: mdX, y: mdYFoot, s: S.fallStrikes[0] },
-        { x: cX, y: cYFoot, s: S.fallStrikes[1] },
-        { x: aelX, y: aelYFoot, s: S.fallStrikes[2] },
-        { x: vX, y: vYFoot, s: S.fallStrikes[3] },
-        { x: hX, y: hYFoot, s: S.fallStrikes[4] },
-      ];
-      let top = fallFigs[0];
-      for (const f of fallFigs) if (f.s > top.s) top = f;
-      if (top.s > 0.3 || S.lashM > 0) {
-        oPose = "lunge";
-        oReach = S.lashM > 0 ? { x: mdX, y: mdYFoot } : { x: top.x, y: top.y };
-      }
-    } else if (S.etBeat) {
-      const oStrike = Math.pow(Math.max(0, Math.sin(19.2 * S.etLin + Math.PI)), 5);
-      if (oStrike > 0) { oPose = "lunge"; oReach = { x: mX, y: mYFoot }; }
-    }
-
     if (S.war <= 0 && S.oAmt > 0.02) { pushTrail(G.trailR, oxS, S.oy); drawTrail(ctx, G.trailR, "90,12,18", S.oAmt, true); }
     if (S.oAmt > 0.01) {
-      F.drawTitan(ctx, oxS, oyFootO, hO, "obrokxus", {
-        a: S.oAmt, face: S.oFace, pose: oPose, reach: oReach || look, look,
-      });
+      const poseOf = (kind) => kind === "worm" ? "swim"
+        : kind === "centihorse" ? (oPose === "flee" ? "run" : oPose) : oPose;
+      const drawO = (kind, a) => {
+        if (a < 0.01) return;
+        F.drawTitan(ctx, oxS, oyFootO, hO, kind, {
+          a, face: S.oFace, pose: poseOf(kind), reach: oReach || look, look,
+          air: S.oAir, speed: oSpeed,
+        });
+      };
+      const clip = S.oHide > 0.01;
+      if (clip) {
+        /* everything below the drawn ground stays buried */
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(-10, -10);
+        for (let px = -10; px <= G.W + 10; px += 8) ctx.lineTo(px, GenMain.surfY(px) - 12);
+        ctx.lineTo(G.W + 10, -10);
+        ctx.closePath();
+        ctx.clip();
+      }
+      drawO(S.oFrom, S.oAmt * (1 - S.oMorph));
+      drawO(S.oForm, S.oAmt * S.oMorph);
+      if (clip) ctx.restore();
     }
 
     /* ---- beams, from hands and staff-gems, not centres --------- */
@@ -302,7 +330,7 @@
     drawName(ctx, aelX, aelYFoot + 12, Math.max(S.aelAmt, S.aelChild || 0) * nameUp, "AELIUS", 0);
     drawName(ctx, vX, vYFoot + 12, Math.max(S.vAmt, S.vTaint || 0) * nameUp, "VELINDRA", 0);
     drawName(ctx, hX, hYFoot + 12, S.hAmt * nameUp, "THE HOUND", 0);
-    drawName(ctx, oxS, oyFootO + 12, S.oAmt, "OBROKXUS", 0);
+    drawName(ctx, oxS, mix(oyFootO, oGround, S.oHide) + 12, S.oAmt, "OBROKXUS", 0);
     drawName(ctx, mX, mYFoot + 12, S.mAmt, "ORMIUS", 0);
     drawName(ctx, aX, aYFoot + 12, S.aAmt, "AVA", 0);
 

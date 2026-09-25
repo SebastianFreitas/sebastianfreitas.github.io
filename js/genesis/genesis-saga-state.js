@@ -5,7 +5,7 @@
   const { MAIN_U, EAST_U, WEST_U, CITY_U, NEST_U, BURY_U, idxOf, since, linear } = G;
   const { mainSurfY, rexSurfY } = GenPaint;
   const { yWob } = GenVoid;
-  const { chaseAt, chaseFightAt, duelAt, ringFightAt } = GenRex;
+  const { chaseAt, chaseFightAt, escapeAt, ringFightAt } = GenRex;
 
   function sagaAt() {
     if (G.beat < idxOf("flee")) return null;
@@ -88,17 +88,17 @@
     const F = chaseFightAt(fleeLin);
     let ou = C.ou, oy = mix(G.H * 0.36, yWob(0.2, 0.026), settle), oAmt = 0;
     if (et > 0) {
-      const D = duelAt(etLin);
-      ou = D.ou;
-      oy = D.oy;
-      oAmt = mix(0, 0.84, smooth(clamp(etLin / 0.18, 0, 1)));
+      const E = escapeAt(etLin);
+      ou = E.ou;
+      oy = E.oy;
+      oAmt = E.oAmt;
     } else if (ret > 0) {
       oAmt = 0;
     } else if (fall > 0) {
       ou = mix(EAST_U, DUEL_U, fallIn) + Math.sin(fall * 14) * 0.04 * up;
-      oy = mix(yWob(0.2, 0.026), G.H * 0.30 + Math.sin(fall * 11 + 1) * span * 0.05, up);
+      oy = mix(yWob(0.2, 0.026), G.H * 0.40 + Math.sin(fall * 11 + 1) * span * 0.05, up);
       oy += 0.14 * G.H * smooth(clamp((fall - 0.78) / 0.22, 0, 1));
-      oAmt = mix(1, 0, clamp((fall - 0.78) / 0.22, 0, 1));
+      oAmt = mix(1, 0, clamp((fall - 0.86) / 0.14, 0, 1));
     } else {
       oAmt = mix(0.88, 1, settle);
       if (war <= 0) {
@@ -112,15 +112,35 @@
       oy = mix(rexSurfY(BURY_U) + G.H * 0.03, oy, outO);
     }
 
+    /* his forms: the blob climbs out of Rex and becomes the centipede
+       horse on the run; on the mainland he lies in the ground (oHide)
+       with only his head and spines out; he comes up for the fight and
+       leaves it as the floating worm. The painter draws oFrom at
+       oAmt*(1-oMorph) and oForm at oAmt*oMorph. */
+    let oFrom = "centihorse", oForm = "centihorse", oMorph = 1, oHide = 0, oAir = 0;
+    if (et > 0) {
+      oFrom = oForm = "worm";
+    } else if (fall > 0) {
+      oForm = "worm";
+      oMorph = smooth(clamp((fall - 0.80) / 0.12, 0, 1));
+      oHide = 1 - up;
+      oAir = air;
+    } else if (war > 0) {
+      oHide = smooth(clamp(war / 0.35, 0, 1));
+    } else {
+      oFrom = "obrokxus";
+      oMorph = smooth(clamp((fleeLin - 0.03) / 0.12, 0, 1));
+    }
+
     let mu = C.mu;
     let my = yWob(1.1, 0.02) - G.H * 0.03, mAmt = 0;
     if (et > 0) {
       /* cross-faded out of the pose the return beat left him in, so
-         the duel opens from where he already was instead of cutting */
-      const D = duelAt(etLin);
+         the chase opens from where he already was instead of cutting */
+      const E = escapeAt(etLin);
       const hand = smooth(clamp(etLin / 0.10, 0, 1));
-      mu = mix(MAIN_U - 0.58, D.mu, hand);
-      my = mix(yWob(1.4, 0.02), D.my, hand);
+      mu = mix(MAIN_U - 0.58, E.mu, hand);
+      my = mix(yWob(1.4, 0.02), E.my, hand);
       mAmt = mix(0.48, 0.92, smooth(clamp(etLin / 0.30, 0, 1)));
     } else if (ret > 0) {
       mAmt = mix(0, 0.48, clamp((ret - 0.35) / 0.65, 0, 1));
@@ -316,7 +336,8 @@
       }
       oFace = nearU == null ? 1 : sgn(nearU - ou);
     }
-    const mFace = lock > 0 ? 1 : -1;
+    if (et > 0) oFace = -1;   /* the worm runs west, away from him */
+    const mFace = (ret > 0 || et > 0) ? -1 : lock > 0 ? 1 : -1;   /* he walks west in the return and flies west after it */
     const aFace = lock > 0 ? 1 : -1;
 
     const ringMd = fall > 0;
@@ -348,7 +369,7 @@
     if (et > 0) army = 0;
 
     if (et > 0) {
-      /* the duel leaves. The land does not: it keeps its city and
+      /* the chase leaves. The land does not: it keeps its city and
          slides out of frame behind the camera. Everyone still on it
          fades over the first second instead of blinking off on the
          beat change. */
@@ -362,14 +383,14 @@
     }
 
     return {
-      ou, oy, oAmt, mu, my, mAmt, au, ay, aAmt,
+      ou, oy, oAmt, oFrom, oForm, oMorph, oHide, oAir, mu, my, mAmt, au, ay, aAmt,
       mdU, mdY, mdAmt, mdFall, mdDark, cU, cY, cAmt, aelU, aelY, aelAmt, vU, vY, vAmt,
       nestU, nestAmt, hU, hY, hAmt, army, civAmt, modern, corrupt, scar, mainRise,
       flee, fleeLin, war, stall, lock, four, fifth, fall, ret, et, etLin, born, dieM, godsOut,
       cad, ael, vel, mid, cadL, aelL, velL, fifthL, cMortal, teach, pact, pactHit,
       aelChild, bless, vTaint, vHelp, vForge, ritual, drain, hBorn: houndBorn,
       fightW: war > 0 ? 0 : F.w, strikeM: F.strikeM, strikeA: F.strikeA,
-      fallStrikes, etStrike: et > 0 ? duelAt(etLin).strike : 0,
+      fallStrikes, etStrike: et > 0 ? escapeAt(etLin).strike : 0, etSearch: et > 0 ? escapeAt(etLin).search : 0,
       fallBeat, etBeat, lashM, elU, elDrop, elAmt, elY,
       oFace, mFace, aFace, mdFace, cFace, aelFace, vFace, hFace,
       mdWalk, cWalk, aelWalk, vWalk, hRun,

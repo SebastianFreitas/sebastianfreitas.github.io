@@ -63,24 +63,34 @@ window.GenRex = (function () {
     };
   }
 
-  /* The duel that has not ended. Sines, not a key table: nothing to
-     snap between. `half` never reaches zero, so the two of them
-     never trade places — Obrokxus is cu - half (west, still running)
-     and Ormius is cu + half (east, still behind him). */
-  function duelDrift(p) { return mix(ET_START_U, ET_END_U, ease(p, 0.55)); }
-  function duelCamLead(p, rate) {
-    return (ET_END_U - ET_START_U) * easeV(p, 0.55)
-         / beatDur("eternity") / rate;
+  /* The escape that has not ended. Obrokxus, a worm now, is in front
+     and faster: he opens a gap, leaves the frame and does not come
+     back. Ormius keeps going west after him and never slows — the
+     position curve only speeds up, so there is no end to settle on.
+     escapeG/escapeGV are the curve and its exact derivative, for the
+     camera lead, as with the chase. */
+  function escapeG(p) { return 0.5 * p + 0.5 * p * p; }
+  function escapeGV(p) { return 0.5 + p; }
+  function escapeDrift(p) { return mix(ET_START_U, ET_END_U, escapeG(p)); }
+  /* the camera sits a little ahead of him, so the empty void he is
+     flying into is what fills the frame */
+  function escapeCam(p) { return escapeDrift(p) - 0.15; }
+  function escapeCamLead(p, rate) {
+    return (ET_END_U - ET_START_U) * escapeGV(p) / beatDur("eternity") / rate;
   }
-  function duelAt(p) {
+  function escapeAt(p) {
     const span = Math.min(G.W, G.H);
-    const ph = p * 12.0;
-    const cu = duelDrift(p) + Math.sin(ph * 0.41) * 0.030;
-    const cy = G.H * 0.36 + Math.sin(ph * 0.29) * span * 0.060;
-    const strike = Math.pow(Math.max(0, Math.sin(ph * 1.6)), 5);
-    const half = mix(0.13 + Math.sin(ph * 0.53) * 0.05, 0.008, strike);
-    const swing = Math.sin(ph * 0.8 + 0.6) * span * 0.09 * (1 - strike * 0.85);
-    return { ou: cu - half, oy: cy - swing, mu: cu + half, my: cy + swing, strike };
+    const mu = escapeDrift(p);
+    const my = G.H * 0.38 + Math.sin(p * 7.0) * span * 0.03;
+    const q = clamp(p / 0.60, 0, 1);
+    const ou = mu - 0.30 - 1.0 * q * q;
+    const oy = G.H * 0.33 + Math.sin(p * 8.0 + 0.6) * span * 0.04 - G.H * 0.06 * smooth(q);
+    const oAmt = mix(0, 0.9, smooth(clamp(p / 0.12, 0, 1)))
+               * (1 - smooth(clamp((p - 0.50) / 0.10, 0, 1)));
+    const strike = Math.pow(Math.max(0, Math.sin(p * 34)), 5)
+                 * (1 - smooth(clamp((p - 0.18) / 0.14, 0, 1)));
+    const search = smooth(clamp((p - 0.38) / 0.20, 0, 1));
+    return { ou, oy, oAmt, mu, my, strike, search };
   }
 
   /* one of the five warlocks circling Obrokxus in the air, diving in
@@ -495,7 +505,7 @@ window.GenRex = (function () {
   }
 
   return {
-    chaseAt, chaseCamLead, chaseFightAt, duelDrift, duelCamLead, duelAt, ringFightAt,
+    chaseAt, chaseCamLead, chaseFightAt, escapeDrift, escapeCam, escapeCamLead, escapeAt, ringFightAt,
     drawRexLand, drawRexHole, drawRexGrip, drawBuried, drawGodsBirth, drawDepths,
   };
 })();
