@@ -21,13 +21,13 @@ session touches these files and there are no foreign edits.
 
 Replace `<branch>` with `git branch --show-current`.
 
-- **Try:** `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --path "<url path>"`
+- **Try:** `py -3 C:/Users/Traff/Desktop/sebas/Portfolio/tools/try.py <branch> --path "<url path>"`
   serves the branch on its own port and opens the browser; typing `commit`
   at its prompt does the Commit step. `--path` is where the change is seen
   (`/projects/voidscape.html`, `/?genesis=1&gbeat=<beat>`, `/` for the
   bridge). The owner can also press Preview in the desktop app, which
   serves this worktree from `.claude/launch.json`.
-- **Commit:** `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --commit`
+- **Commit:** `py -3 C:/Users/Traff/Desktop/sebas/Portfolio/tools/try.py <branch> --commit`
   squashes the branch into one commit on `main` in the main checkout,
   bumps `?v=` in it, merges `main` back into this branch, and pushes
   nothing; the owner reviews in GitHub Desktop and pushes there. On a

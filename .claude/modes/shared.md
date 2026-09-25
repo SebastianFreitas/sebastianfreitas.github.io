@@ -39,8 +39,9 @@ for any task longer than a quick fix; this mode is for small changes.
 ### Merging by hand
 
 Only when the owner asks you to merge branches. Merge the open branches
-into `main` one at a time with `--no-ff`, oldest first. `?v=` conflicts:
-keep either side. Two branches adding `<script>` lines at the same spot:
+into `main` one at a time with `--no-ff`, oldest first. `?v=` numbers no
+longer conflict (the `cachebust` merge driver that `try.py` installs
+ignores them); if one still does, keep either side. Two branches adding `<script>` lines at the same spot:
 keep both, in load order. `.claude/MAP.md` rows: keep both sides' rows,
 then re-count the changed files. After the last merge run `py -3
 tools/bump.py` once and the full `py -3 tools/nav-flows.test.py`, commit,

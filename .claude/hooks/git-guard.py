@@ -45,6 +45,41 @@ MERGE_RE = re.compile(r"\bgit\b[^|;&\n]*\smerge\b")
 MERGE_BASE_RE = re.compile(r"\bmerge-base\b")
 
 
+PATH_RE = r'"([^"]+)"|\'([^\']+)\'|([^\s;&|]+)'
+
+
+def resolve_path(path, cwd):
+    # normalize a path pulled out of a command: expand ~, convert git-bash
+    # style /c/Users/... to C:/Users/... on Windows, resolve relative to cwd
+    path = os.path.expanduser(path)
+    if os.name == "nt":
+        m = re.match(r'^/([A-Za-z])(/.*)?$', path)
+        if m:
+            path = m.group(1).upper() + ":" + (m.group(2) or "/")
+    if not os.path.isabs(path):
+        path = os.path.join(cwd, path)
+    return path
+
+
+def merge_cwd(cmd, cwd):
+    # directory a `git ... merge ...` in cmd actually runs in: its own
+    # `-C <path>`, else the last `cd <path>` before it, else cwd
+    m = MERGE_RE.search(cmd)
+    if not m:
+        return cwd
+    seg = cmd[m.start():m.end()]
+    c_match = re.search(r'-C\s+(?:' + PATH_RE + r')', seg)
+    if c_match:
+        path = c_match.group(1) or c_match.group(2) or c_match.group(3)
+        return resolve_path(path, cwd)
+    cd_matches = list(re.finditer(r'\bcd\s+(?:' + PATH_RE + r')', cmd[:m.start()]))
+    if cd_matches:
+        cm = cd_matches[-1]
+        path = cm.group(1) or cm.group(2) or cm.group(3)
+        return resolve_path(path, cwd)
+    return cwd
+
+
 def git(*args, cwd=None):
     try:
         return subprocess.run(["git", *args], capture_output=True, text=True,
@@ -92,7 +127,10 @@ def main():
     if (MERGE_RE.search(cmd) and not MERGE_BASE_RE.search(cmd)
             and "--abort" not in cmd):
         cwd = d.get("cwd") or os.getcwd()
-        if git("branch", "--show-current", cwd=cwd) == "main":
+        mcwd = merge_cwd(cmd, cwd)
+        if not os.path.isdir(mcwd):
+            mcwd = cwd
+        if git("branch", "--show-current", cwd=mcwd) == "main":
             deny("never merge into main; the owner's try.py --commit does that")
 
     # The note is computed before the command runs, so skip it when the

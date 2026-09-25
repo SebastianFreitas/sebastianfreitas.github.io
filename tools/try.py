@@ -10,6 +10,9 @@ Commit squashes the branch into ONE commit on main in the main checkout (the
 one GitHub Desktop shows), bumps ?v= in that same commit, merges main back
 into the session's worktree branch so follow-up rounds stay clean, and never
 pushes or deletes anything: the owner pushes with GitHub Desktop.
+
+It also installs the ?v= merge driver (tools/merge-cachebust.py) so
+cache-bust numbers never conflict.
 """
 
 from __future__ import annotations
@@ -50,6 +53,30 @@ def free_port(start: int) -> int:
             except OSError:
                 continue
     return start
+
+
+def install_merge_driver() -> None:
+    script = ROOT / "tools" / "merge-cachebust.py"
+    if not script.exists():
+        return
+    cmd = f'"{Path(sys.executable).as_posix()}" "{script.as_posix()}" %O %A %B %L'
+    if git("config", "--get", "merge.cachebust.driver", check=False) != cmd:
+        git("config", "merge.cachebust.name", "HTML pages, ignoring ?v= cache-bust numbers")
+        git("config", "merge.cachebust.driver", cmd)
+
+    common_dir = git("rev-parse", "--git-common-dir")
+    attrs = (ROOT / common_dir).resolve() / "info" / "attributes"
+    attrs.parent.mkdir(parents=True, exist_ok=True)
+    line = "*.html merge=cachebust"
+    if attrs.exists():
+        existing = attrs.read_text(encoding="utf-8")
+        lines = existing.splitlines()
+    else:
+        existing = ""
+        lines = []
+    if line not in lines:
+        prefix = existing if (not existing or existing.endswith("\n")) else existing + "\n"
+        attrs.write_text(prefix + line + "\n", encoding="utf-8", newline="\n")
 
 
 def resolve(name: str) -> tuple[str, str]:
@@ -208,6 +235,8 @@ def commit(branch: str, ref: str, subject: str) -> None:
 
 
 def main() -> None:
+    install_merge_driver()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("branch")
     parser.add_argument("--port", type=int, default=8766)

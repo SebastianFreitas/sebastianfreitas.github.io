@@ -28,11 +28,11 @@ deploys from `main`; nothing you push goes live until the owner ships it.
 
 ### Report commands
 
-- **Try:** `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --path "<url path>"`
+- **Try:** `py -3 C:/Users/Traff/Desktop/sebas/Portfolio/tools/try.py <branch> --path "<url path>"`
   checks the branch out into `../Portfolio-try`, serves it on its own port
   and opens the browser; typing `commit` at its prompt does the Commit
   step.
-- **Commit:** `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --commit`
+- **Commit:** `py -3 C:/Users/Traff/Desktop/sebas/Portfolio/tools/try.py <branch> --commit`
   (the same command as Try's prompt): fetches the branch from origin and
   squashes it into local `main` in the main checkout, bumps `?v=` in that
   commit, and pushes nothing. On a conflict it pushes nothing and says so.

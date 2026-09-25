@@ -53,9 +53,10 @@ Desktop; you never push to or merge into `main`. A reply that only says
    2. **How it looks:** one or two screenshots of what changed (a `snap.py`
       scene, `jscheck.py ... --shot`, or `gframes.py` for the cutscene),
       saved outside the repo and sent to the owner. Never commit them.
-   3. **Try:** one `powershell` block, one command, from your mode file,
+   3. **Try:** one `bash` block (the app gives it a Run button), one
+      command, from your mode file,
       plus one line saying where to look and what to do there.
-   4. **Commit:** one `powershell` block, one command, from your mode file
+   4. **Commit:** one `bash` block, one command, from your mode file
       (shared mode: the one line it gives).
    5. **Look at:** at most three bullets, plus anything left open.
 
@@ -258,8 +259,11 @@ Local commands use `py -3`; the cloud container has only `python3` (see
   blanket git (`add -A`/`.`, `commit -a`, `stash`, `checkout --`,
   `restore`, `reset --hard`, `clean`, `rebase`, force push). Do not work
   around it; if the owner wants one, they run it themselves.
-- **Commands shown to the owner run in Windows PowerShell 5.1:** never
-  `&&`, `||`, `$(...)` or bash `if`; one command per block, or chain with
-  `;`. The Bash tool is fine for your own use.
+- **Commands shown to the owner** go in fenced blocks tagged `bash`, so
+  the desktop app shows a Run button; the owner may also paste them into
+  Windows PowerShell 5.1, so they must work in both: forward-slash paths
+  (`C:/Users/...`, never backslashes, which bash eats), never `&&`, `||`,
+  `$(...)` or bash `if`; one command per block. The Bash tool is fine for
+  your own use.
 - **No scratch files in the repo.** GitHub Pages publishes every committed
   file; logs, notes and screenshots go in the session's scratchpad.
