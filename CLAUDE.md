@@ -316,7 +316,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `tools/bump.py` | 36 | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/gframes.py` | 63 | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | 49 | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
-| `tools/try.py` | 110 | Preview a cloud branch: `py -3 tools/try.py <branch> [--path /url] [--port N]` fetches it into the reusable worktree `../Portfolio-try`, serves it with that tree's `serve.py` on 8766+ and opens the browser; never touches the main checkout |
+| `tools/try.py` | 194 | Preview or ship a cloud branch in the reusable worktree `../Portfolio-try`: `py -3 tools/try.py <branch> [--path /url] [--port N]` serves it on 8766+ and opens the browser (typing `ship` at its prompt ships); `--ship` merges it into `main` there, runs `bump.py`, pushes, deletes the branch, fast-forwards a clean main checkout; on a conflict pushes nothing. Never touches the main checkout's tree |
 | `serve.py` / `serve.bat` | 67 | No-cache static server on 8765 (8000 avoided: stale SW) |
 
 ### Load order
@@ -543,37 +543,43 @@ nothing a cloud session pushes goes live until the owner merges it.
 - **Branch:** work, commit and push only on the branch the session was
   assigned. Never push to `main` and never merge into it; the owner merges.
   This overrides "commit straight to `main`" above.
-- **The loop is: build → show → try → iterate. No PR until the owner says
-  so.** Every time a round of work is done and verified, commit and push to
-  the branch (so it can be tried), then end the turn with this report and
+- **One prompt, one finished feature.** The owner ships from a command, not
+  from a second prompt: a reply that only says "good, go" would cost a
+  whole extra turn. So in the same turn: build, verify, commit, push, open
+  a PR (title = the feature in plain words; body = what changed and what
+  was verified; skip if `gh` is missing), then end with this report and
   nothing else:
-  1. **Name:** one line, the feature in plain words (the branch name is
-     random and means nothing to the owner), then the branch name.
-  2. **How it looks:** screenshots of exactly what changed, taken with
-     Playwright (`python3 tools/snap.py capture <run>` scenes,
+  1. **Name:** the feature in plain words (the branch name is random and
+     means nothing to the owner), then the branch and PR.
+  2. **How it looks:** one or two screenshots of exactly what changed,
+     taken with Playwright (a `python3 tools/snap.py capture` scene,
      `python3 tools/jscheck.py ... --shot out.png`, or
      `python3 tools/gframes.py` for the cutscene), saved in the scratchpad
-     and sent to the owner (SendUserFile when the tool exists). Never commit
-     them. Add a before/after pair when something was replaced.
-  3. **Try it:** one `powershell` code block, one command, that the owner
-     runs on the desktop app's Run button:
+     and sent to the owner (SendUserFile when the tool exists). Never
+     commit them.
+  3. **Try:** one `powershell` block, one command:
      `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --path "<url path>"`.
-     It fetches the branch into a separate worktree next to the repo,
-     serves it on its own port and opens the browser. Set `--path` to
-     where the change is seen (`/projects/voidscape.html`,
+     It checks the branch out into `../Portfolio-try`, serves it on its own
+     port and opens the browser; typing `ship` at its prompt ships it. Set
+     `--path` to where the change is seen (`/projects/voidscape.html`,
      `/?genesis=1&gbeat=<beat>`, `/` for the bridge) and say in one line
      what to do there to see it.
-  4. **What to look at:** two or three bullets at most, plus anything left
-     open.
-  The owner answers with changes (another round, same report) or says it
-  is good. Only then open a PR: the title is the feature name from step 1,
-  the body says what changed and what was verified.
+  4. **Ship:** one `powershell` block:
+     `py -3 C:\Users\Traff\Desktop\sebas\Portfolio\tools\try.py <branch> --ship`.
+     It merges the branch into `main` inside `../Portfolio-try`, runs
+     `bump.py`, pushes, deletes the branch (the PR closes as merged) and
+     fast-forwards the owner's checkout when it is clean. On a conflict it
+     pushes nothing and says so.
+  5. **Look at:** two or three bullets at most, plus anything left open.
+  If the owner replies with changes instead, do another round on the same
+  branch (the PR updates itself) and end with the same report. The session
+  itself never merges into `main`.
 - **Branches never touch `?v=` and never re-count File-map lines.** Do not
   run `tools/bump.py` and do not change the line count of an existing
   File-map row; add rows for new files and update descriptions only. These
-  two are where every merge conflict between parallel branches came from.
-  The merge on `main` bumps and re-counts once. Previews are unaffected:
-  `serve.py` sends no-cache headers.
+  two are where every merge conflict between parallel branches came from;
+  `--ship` bumps on merge. Previews are unaffected: `serve.py` sends
+  no-cache headers.
 - **Commands:** `py -3` does not exist in the container; run the same tools
   with `python3` (`python3 tools/nav-flows.test.py header`). Everything
   else in this file applies unchanged.
@@ -584,9 +590,9 @@ nothing a cloud session pushes goes live until the owner merges it.
   just installed", the pin and the Chromium build disagree: say so and stop.
 - If `python3 -c 'import playwright, PIL'` fails, the setup script did not
   run: `pip install playwright==1.56.0 pillow` (never `playwright install`).
-- **Merging (a local session, when the owner says "merge the PRs"):**
-  merge the open PRs into `main` one at a time with `--no-ff`, oldest
-  first. Conflicts in `?v=` numbers: keep either side. Two branches adding
+- **Merging by hand (a local session, only when `--ship` hit a conflict or
+  the owner says "merge the PRs"):** merge the open PRs into `main` one at
+  a time with `--no-ff`, oldest first. Conflicts in `?v=` numbers: keep either side. Two branches adding
   `<script>` lines at the same spot: keep both, in load order. File-map
   rows: keep both sides' rows, then re-count the changed files. After the
   last merge run `py -3 tools/bump.py` once, run the full
