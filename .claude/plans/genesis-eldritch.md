@@ -123,7 +123,8 @@ owner and no code.
 | 1 | Style research and rules proposal | research, doc | done 2026-09-25 |
 | 2 | Discussion: the rules and the open questions | owner talk | done 2026-09-25 |
 | 3 | Eldritch lore bible (tiers 1–3) | doc | done 2026-09-25 |
-| 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | todo |
+| 25 | The inspired ones: story, new beats, owner talk | research, design, owner talk | done 2026-09-25 |
+| 25a | The owner's answers to Q1–Q7 (beats doc) | owner talk, doc | todo |
 | 4 | Baseline frames and the eldritch palette | tooling, doc | todo |
 | 5 | Wardrobe casting sheet | design doc | todo |
 | 6 | Silhouettes: proportion pass on the roster | code | todo |
@@ -385,6 +386,21 @@ with questions to the owner (captions: D6 kept every line, new beats
 need new ones; how many beats; whether the old ones stay at `birth` or
 are already gone). Constraint change: phases 26–29 may touch
 `genesis-flesh.js` (souls, the body) and `G.BEATS` for these beats only.
+Notes: done 2026-09-25. Research (42 sources: Lem, Egan, Er and the
+Fates, Luria, the demiurge, Borges, Stapledon, Chiang, Dark City,
+orreries, Jacquard, ships in bottles, the Quays, Kentridge, Gris,
+Journey) in `research/25-inspired.md`. Design in
+`.claude/plans/genesis-eldritch-beats.md`: five beats after `womb`
+(`dress`, `worlds`, `remake`, `lives`, `leave`, ~38 s), camera into the
+body, the works drawn as crank-and-card machinery, Rex and Obrokxus as
+the two souls who remember first, draft captions in a "we" voice,
+questions Q1–Q7 for the owner.
+
+### 25a · The owner's answers
+Present `genesis-eldritch-beats.md` Q1–Q7, record the answers as D17+
+in **Decisions**, update the beats doc (drop "proposal"), the lore
+bible and phases 26–29, and resolve Phase 5's two-states note (Q6
+decides whether `dress` carries garments).
 Notes:
 
 ### 26 · The inspiration
@@ -494,3 +510,8 @@ Owner answers after Phase 3 (2026-09-25):
   the headless gentleman as an east-goer whose body appears at `womb`
   (or earlier bare; Phase 25 decides). Phase 13's winter only touches
   the dressed.
+- (Phase 25) Rex and Obrokxus are proposed as the two souls who
+  remembered first, so the new beats end where `birth` begins. Inserting
+  beats shifts every later beat's snap scene in time: the first capture
+  after the insert is the new baseline for every `genesis-*` scene after
+  `womb`. Beat-insert touch list is in the beats doc.

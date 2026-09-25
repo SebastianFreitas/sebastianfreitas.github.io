@@ -59,6 +59,13 @@ the same blindness.
    made and not conjured, force the souls apart, take pieces and remake
    souls, and send them through life after life until they rediscover
    magic, the soul kind's own power (D16).
+   *Proposed (Phase 25, pending the owner):* the worlds are made the way
+   a tailor or a clockmaker works, by crank, card and rod, law by law,
+   so nothing in them answers to belief; the souls are remade heart
+   first, like a garment on a form; lives are spun, measured and cut.
+   The first two souls to remember are Rex and Obrokxus, and they are
+   the lights that tear out at `birth`. Beats and captions in
+   `.claude/plans/genesis-eldritch-beats.md`.
 10. **The leaving.** Once the cycle runs, the old ones go. They live
     their own lives and rule their own civilizations all over the void.
     From here on the story belongs to the soul kind, and the eldritch
@@ -345,3 +352,9 @@ dress (D14). Still open, for Phase 25:
 3. Whether the old ones are gone by `birth` or leave after `fight`.
 4. Where the first clothes came from, before any mortal lived to lose
    them: copied by the first tailors from the lives inside the womb?
+
+Phase 25 proposes answers to all four (the owner decides, as Q1–Q7 in
+`.claude/plans/genesis-eldritch-beats.md`): crank-and-card worlds;
+five beats between `womb` and `birth`; gone before `birth`; and the
+first clothes copied from the lives in the first world they built, a
+cold one, which is why they are winter clothes.
