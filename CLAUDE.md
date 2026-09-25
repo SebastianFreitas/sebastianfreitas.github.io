@@ -129,10 +129,10 @@ Sizes are line counts after the split.
 
 | File | Lines | Purpose | Publishes / uses |
 |---|---|---|---|
-| `xp.js` | 379 | Site-wide progression, level chip, cross-tab sync, `?reset=1` | `window.XP {award, has, total, mount, reset, …}`; fires `xp:surge` |
+| `xp.js` | 426 | Site-wide progression, level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1` | `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` per level, `xp:rankup` once per rank crossed |
 | `entry.js` | 48 | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
 | `intro.js` | 206 | Entry gate UI: boot log, the two paths, exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
-| `surge.js` | 132 | Level-up light animation, listens for `xp:surge` | `window.Surge {play, reachFor}` |
+| `surge.js` | 289 | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | 30 | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `lazy-video.js` | 137 | Swaps in `media/**/sd/` encodes on slow connections | none |
 
@@ -151,7 +151,7 @@ does not — it is pure data, no dependency on `B`.
 
 | File | Lines | Purpose | Publishes on `B` / `window` |
 |---|---|---|---|
-| `bridge.js` | 301 | Core: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state, scene-mode consts (`ZERO_MARK VS_MARK HL_MARK CONC_MARK XSTAGE`), `B.ship = Voidship.create`, `xp:freeze`, cursor, sheet, projection `viewUnitsNow`/`scale`/`wx`/`onScreen`/`flyK`/`markScreen`, `begin` | `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin` |
+| `bridge.js` | 305 | Core: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state, scene-mode consts (`ZERO_MARK VS_MARK HL_MARK CONC_MARK XSTAGE`), `B.ship = Voidship.create`, `xp:freeze`, cursor, sheet, projection `viewUnitsNow`/`scale`/`wx`/`onScreen`/`flyK`/`markScreen`, `begin` | `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin` |
 | `bridge-notes.js` | 157 | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | 244 | Pointer/burn input: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels` | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
 | `bridge-marks.js` | 176 | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
@@ -275,7 +275,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `css/style.css` | 441 | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | 126 | The entry gate: boot log, then the two paths. index only |
 | `css/bridge.css` | 744 | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
-| `css/beacon.css` | 159 | Level chip, claim ceremony, surge |
+| `css/beacon.css` | 205 | Level chip and pips, claim ceremony, surge burst, rank card |
 | `css/play.css` | 43 | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
 | `index.html` | 478 | Homepage. Inline head script is only the service-worker purge |
 | `projects/*.html` | 110–253 | Four case-study pages, same shell |
@@ -370,6 +370,7 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | Cutscene | `js/genesis/` (see table); cast painters `genesis-figures.js` + `genesis-titans.js`, the five gods `genesis-gods.js`, Obrokxus's later forms `genesis-obrok.js`; the old ones `genesis-oldones.js`; the birth waves `genesis-elements.js` (wave one + permanent residue), `genesis-matter.js` (matter, insects, storms), `genesis-trade.js` (the travelling stream); the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`; the war `genesis-armies.js`, the war's figures `genesis-hosts.js`; the warlock births and the Hound's ritual `genesis-ritual.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`; zoom/captions/letterbox `genesis.js` + `css/bridge.css` genesis block |
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
+| Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap below |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
 | Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js`; shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px); XP ids `play-*` |
 
@@ -440,6 +441,30 @@ Titans cave in `js/world/art/titans.js`.
   dry.
 - Tiles read `r.env` only; they never reach into `Bridge`. Anything that
   does not change per paint goes in the tile's `paintStatic`.
+
+## Roadmap: rank boons (not built yet)
+
+Ranks are every 10 levels (`xp.js` `RANK_STEP`, names in `RANKS`). The
+site gives about 52 levels today (41 beacons at 1 each, 2 path awards, 9
+from the project pages) against `TOTAL = 100`, so the highest reachable
+rank is Starwright (level 50). Plan: each rank unlocks a ship or HUD
+system, announced on the rank card.
+
+- Lamplighter (10): radar range up; beacons show on the radar tile from
+  further away.
+- Wayfinder (20): minimap labels for unvisited beacons.
+- Voidrunner (30): ship cruise speed up (`voidship.js` `BASE`).
+- Beaconwarden (40): signal tile resolves one more site line; hull
+  regenerates faster.
+- Starwright (50): fuel tank larger, burn boost stronger.
+- Higher ranks, once the site has the levels: Farseer sees gated depth
+  nodes before they are revealed; Arcanist (max rank) can teleport to any
+  claimed beacon.
+
+Rules when building it: a boon reads `XP.rankOf(XP.level).index` at call
+time (never cache it at load), lives with the system it changes, and the
+rank card gains one line naming the boon. Readings stay visual first (see
+Instrument readings). Raise `TOTAL` when new levels are added.
 
 ## Commands
 

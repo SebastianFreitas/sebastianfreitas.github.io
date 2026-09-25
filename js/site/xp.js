@@ -88,7 +88,7 @@ window.XP = (function () {
   }
 
   /* ---- rank: the badge changes shape as the level climbs ---- */
-  const RANK_STEP = 10;   // levels per badge shape; tune once the site's final level total is known
+  const RANK_STEP = 10;   // levels per badge: every ten levels is a new rank
 
   // all shapes live in a 24x24 viewBox centred on 12,12; angle 0 points straight up
   function ptAt(r, a) { return [12 + r * Math.sin(a), 12 - r * Math.cos(a)]; }
@@ -120,35 +120,43 @@ window.XP = (function () {
   }
 
   const RANKS = [
-    { key: "circle",   d: ring(8) },
-    { key: "triangle", d: poly(3, 10.4) },
-    { key: "square",   d: poly(4, 10.6, Math.PI / 4) },
-    { key: "pentagon", d: poly(5, 10) },
-    { key: "hexagon",  d: poly(6, 10) },
-    { key: "star",     d: star(5, 10.8, 4.4) },
-    { key: "megastar", d: star(8, 11, 5) },
-    { key: "sealed",   d: ring(11) + " " + star(8, 8.6, 3.9) },
-    { key: "compass",  d: ring(7.2) + " " + star(4, 11.5, 2.6) + " " + star(4, 7.4, 2.2, Math.PI / 4) },
-    { key: "sun",      d: star(12, 11.4, 7.6) + " " + poly(6, 5) + " " + ring(1.6) },
-    { key: "crest",    d: ring(11.2) + " " + star(16, 10, 7.2) + " " + star(5, 5.6, 2.3) + " " + ring(0.9) },
+    { key: "circle",   name: "Drifter",         d: ring(8) },
+    { key: "triangle", name: "Lamplighter",     d: poly(3, 10.4) },
+    { key: "square",   name: "Wayfinder",       d: poly(4, 10.6, Math.PI / 4) },
+    { key: "pentagon", name: "Voidrunner",      d: poly(5, 10) },
+    { key: "hexagon",  name: "Beaconwarden",    d: poly(6, 10) },
+    { key: "star",     name: "Starwright",      d: star(5, 10.8, 4.4) },
+    { key: "megastar", name: "Farseer",         d: star(8, 11, 5) },
+    { key: "sealed",   name: "Sealbreaker",     d: ring(11) + " " + star(8, 8.6, 3.9) },
+    { key: "compass",  name: "Deep Cartographer", d: ring(7.2) + " " + star(4, 11.5, 2.6) + " " + star(4, 7.4, 2.2, Math.PI / 4) },
+    { key: "sun",      name: "Sunforger",       d: star(12, 11.4, 7.6) + " " + poly(6, 5) + " " + ring(1.6) },
+    { key: "crest",    name: "Arcanist",        d: ring(11.2) + " " + star(16, 10, 7.2) + " " + star(5, 5.6, 2.3) + " " + ring(0.9) },
   ];
   const rankIndex = lv => Math.max(0, Math.min(RANKS.length - 1, Math.floor(lv / RANK_STEP)));
   const rankFor = lv => RANKS[rankIndex(lv)];
+  function rankOf(lv) {
+    const index = rankIndex(lv), r = RANKS[index], last = index === RANKS.length - 1;
+    return { index, key: r.key, name: r.name, d: r.d, at: index * RANK_STEP,
+             next: last ? null : (index + 1) * RANK_STEP,
+             nextName: last ? null : RANKS[index + 1].name };
+  }
 
   /* ---- the chip ---- */
-  let chip, chipLevel, chipName, chipFill, chipBadge, chipPath;
+  let chip, chipLevel, chipName, chipPips, chipBadge, chipPath;
   let rankKey = "";
   let swapOut = 0, swapIn = 0;
   function buildChip() {
     if (chip) return;
     chip = document.createElement("div");
     chip.className = "xp-chip";
+    let pips = "";
+    for (let k = 0; k < RANK_STEP; k++) pips += '<i style="--k:' + k + '"></i>';
     chip.innerHTML =
       '<span class="xp-badge">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d=""/></svg>' +
       '</span>' +
       '<span class="xp-lv">LEVEL <b>0</b></span>' +
-      '<span class="xp-track"><i></i></span>' +
+      '<span class="xp-track">' + pips + '</span>' +
       '<span class="xp-ref"></span>';
     // the level belongs to the whole site, so it lives in the top bar
     const slot = document.getElementById("xp-slot");
@@ -157,15 +165,15 @@ window.XP = (function () {
 
     chipName  = chip.querySelector(".xp-ref");
     chipLevel = chip.querySelector(".xp-lv b");
-    chipFill  = chip.querySelector(".xp-track i");
+    chipPips  = Array.from(chip.querySelectorAll(".xp-track i"));
     chipBadge = chip.querySelector(".xp-badge");
     chipPath  = chip.querySelector(".xp-badge path");
-    if (!chipName || !chipLevel || !chipFill) return;   // markup changed under us
+    if (!chipName || !chipLevel || !chipPips.length) return;   // markup changed under us
     paint();
   }
 
   function paint(levelOverride, fillOverride) {
-    if (!chip || !chipName || !chipLevel || !chipFill) return;
+    if (!chip || !chipName || !chipLevel || !chipPips.length) return;
     const lv = levelOverride == null ? state.level : levelOverride;
     chipName.textContent = state.name + " · " + state.ref;
     chipLevel.textContent = lv;
@@ -194,8 +202,14 @@ window.XP = (function () {
         }, 200);
       }
     }
-    // the chip bar is the level being earned right now, nothing more
-    chipFill.style.width = ((fillOverride == null ? 0 : fillOverride) * 100) + "%";
+    // the chip bar is the road to the next badge: one pip per level, the one
+    // being earned right now charges from the left
+    const lit = rankIndex(lv) === RANKS.length - 1 ? RANK_STEP : lv % RANK_STEP;
+    const f = fillOverride == null ? 0 : fillOverride;
+    chipPips.forEach((p, k) => {
+      p.classList.toggle("on", k < lit);
+      p.style.setProperty("--f", k === lit ? f.toFixed(3) : "0");
+    });
 
     // everything earned so far rides quietly as the top bar's underline
     document.documentElement.style.setProperty("--xp-progress",
@@ -205,37 +219,41 @@ window.XP = (function () {
   /* =========================================================
      THE CLAIM
 
-     Everything holds still, the level flies from wherever it was
-     taken up to the chip, and the track fills — slow at first,
-     then snapping shut. Crossing into a new rank gets a longer
-     version and the badge changes shape.
+     The world keeps moving; the level flies from wherever it was
+     taken up to the chip, and the pip being earned fills — slow at
+     first, then snapping shut. Crossing into a new rank also opens
+     the rank card (surge.js), which is the only thing that holds
+     the world still.
      ========================================================= */
-
-  const freeze = on =>
-    document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on } }));
 
   const easeIn  = u => u * u * u * u;                    // slow, then sharp
   const easeOut = Util.easeOut;
 
   let ceremonyBusy = false;
+  const queue = [];   // claims that landed while another was still playing
+  let rowTimer = 0;
 
   function ceremony(n, label, x, y, fromLevel) {
     if (!chip) { paint(); return; }
+    // one claim at a time: a second beacon taken mid-flight waits its turn
+    if (ceremonyBusy) { queue.push([n, label, x, y, fromLevel]); return; }
     const toLevel = fromLevel + n;
     const milestone = rankIndex(fromLevel) !== rankIndex(toLevel);
 
     ceremonyBusy = true;
-    freeze(true);
 
-    // whatever happens next, the world starts again
+    // whatever happens next, the claim ends
     let released = false;
     const release = () => {
       if (released) return;
       released = true;
       ceremonyBusy = false;
-      freeze(false);
+      const next = queue.shift();
+      if (next) setTimeout(() => ceremony(...next), 120);
     };
-    setTimeout(release, (milestone ? 1250 : 820) + (milestone ? 1150 : 780) + 1500);
+    const FLY = milestone ? 1150 : 780;
+    const FILL = milestone ? 1250 : 820;
+    setTimeout(release, FLY + Math.max(240, FILL / n) * n + 1500);
     paint(fromLevel, 0);          // the run-up always starts empty
 
     const target = chip.getBoundingClientRect();
@@ -257,8 +275,6 @@ window.XP = (function () {
     if (label) document.body.appendChild(tag);
     requestAnimationFrame(() => tag.classList.add("go"));
 
-    const FLY = milestone ? 1150 : 780;
-    const FILL = milestone ? 1250 : 820;
     const arcX = (sx + tx) / 2;
     const arcY = Math.min(sy, ty) - 130;      // lifts before it lands
 
@@ -295,11 +311,15 @@ window.XP = (function () {
         if (u < 1) return requestAnimationFrame(run);
 
         step++;
-        paint(fromLevel + step, 0);
+        const lvNow = fromLevel + step;
+        const rowDone = rankIndex(lvNow) !== rankIndex(lvNow - 1);
+        paint(lvNow, 0);
         tick();
+        if (rowDone) flashRow(); else lightPip((lvNow % RANK_STEP) - 1);
         try {
           document.dispatchEvent(new CustomEvent("xp:surge", {
-            detail: { level: fromLevel + step, total: TOTAL, milestone },
+            detail: { level: lvNow, total: TOTAL, milestone, rank: rankIndex(lvNow),
+                      pip: lvNow % RANK_STEP, rankUp: rowDone },
           }));
         } catch (e) { console.warn("surge:", e); }
         if (step < n) { f0 = null; return requestAnimationFrame(run); }
@@ -308,6 +328,13 @@ window.XP = (function () {
         paint();
         bump();
         setTimeout(() => chip.classList.remove("rankup"), 1400);
+        if (milestone) {
+          try {
+            document.dispatchEvent(new CustomEvent("xp:rankup", {
+              detail: { level: toLevel, count: RANKS.length, from: rankOf(fromLevel), to: rankOf(toLevel) },
+            }));
+          } catch (e) { console.warn("rankup:", e); }
+        }
         release();
       }
       requestAnimationFrame(now2 => { try { run(now2); } catch (e) { console.warn("claim:", e); release(); } });
@@ -317,6 +344,23 @@ window.XP = (function () {
       chip.classList.remove("tick");
       void chip.offsetWidth;
       chip.classList.add("tick");
+    }
+
+    function lightPip(k) {
+      if (k < 0 || k >= chipPips.length) return;
+      const p = chipPips[k];
+      p.classList.remove("fresh");
+      void p.offsetWidth;
+      p.classList.add("fresh");
+      setTimeout(() => p.classList.remove("fresh"), 520);
+    }
+
+    function flashRow() {
+      chip.classList.remove("row-done");
+      void chip.offsetWidth;
+      chip.classList.add("row-done");
+      clearTimeout(rowTimer);
+      rowTimer = setTimeout(() => chip.classList.remove("row-done"), 900);
     }
   }
 
@@ -361,6 +405,9 @@ window.XP = (function () {
       return true;
     },
     get total() { return TOTAL; },
+    rankOf,
+    get rankStep() { return RANK_STEP; },
+    get ranks() { return RANKS.map(r => ({ key: r.key, name: r.name })); },
     mount: buildChip,
 
     reset() { Util.remove(localStorage, KEY); location.reload(); },

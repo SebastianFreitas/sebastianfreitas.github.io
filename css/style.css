@@ -19,7 +19,7 @@
                  site gate 100 · topbar above the gate 101
      bridge.css  canvas 0 · panel buttons and genesis skip 2 · HUD 10 · log 11 ·
                  scroll cue 12 · note 14 · rotate notice 45 · cursor 60 · genesis 90
-     beacon.css  xp chip 55 · xp pop 70 · xp tag 89 · xp mote 90 · surge 96 */
+     beacon.css  xp chip 55 · xp pop 70 · xp tag 89 · xp mote 90 · surge 96 · rank card 98 */
 
 :root {
   --petrol:    #141a1d;   /* page background — deep blue-grey, not black */
