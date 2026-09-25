@@ -41,6 +41,7 @@ report. Archiving the session in the app removes the worktree.
 ### Context full
 
 Finish the atomic step, commit on the branch, write `.claude/handoff.md`
+(format: the `handoff` skill)
 in this worktree (gitignored, it stays here), then end the turn with the
 normal report followed by this one line:
 "Context is full. Type /clear here and say: continue from the handoff."

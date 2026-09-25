@@ -50,7 +50,8 @@ owner does.
 
 ### Context full
 
-Finish the atomic step, commit, write `.claude/handoff.md`, and end the
+Finish the atomic step, commit, write `.claude/handoff.md` (format: the
+`handoff` skill), and end the
 turn with exactly: "Context is full. Type /clear and say: continue from
 the handoff." (A new chat works too; the hook prints the handoff either
 way.)

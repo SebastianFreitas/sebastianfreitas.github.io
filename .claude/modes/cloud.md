@@ -44,7 +44,7 @@ bump.
 ### Context full
 
 There is no `/clear` in the cloud. Finish the atomic step, commit, push,
-and put the handoff (the headings from CLAUDE.md "Context budget") in the
+and put the handoff (the `handoff` skill's headings) in the
 PR body under `## Handoff`. End with the normal report followed by:
 "Context is full. Start a new cloud session and say: continue PR #<n>."
 That session runs `gh pr view <n>`, merges the old branch into its own

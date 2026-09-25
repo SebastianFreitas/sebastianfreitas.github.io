@@ -2,7 +2,8 @@
 context grows, long before the window is full.
 
 Main session (UserPromptSubmit, PostToolUse): warns from SOFT x LIMIT and
-says to finish and hand off past LIMIT (CLAUDE.md "Context budget").
+says to finish and hand off past LIMIT (CLAUDE.md "Context budget";
+format in .claude/skills/handoff).
 
 Subagents (Explore, Plan, implementer, implementer-wt):
 - PostToolUse: warns at SOFT x its line, says to stop reading past it.

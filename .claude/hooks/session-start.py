@@ -22,6 +22,12 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+LIMIT = 9500          # hook output over 10,000 chars becomes a 2,000-char preview
+HANDOFF_MAX = 6000
+DIRTY_MAX = 40
+CUT = ("\n[handoff cut to fit the hook output limit; read "
+       ".claude/handoff.md for the rest]")
+
 
 def git(*args):
     try:
@@ -71,6 +77,13 @@ def main():
     branch = git("branch", "--show-current") or "(detached)"
     lines = []
 
+    def add_dirty(dirty):
+        rows = dirty.splitlines()
+        lines.extend("  " + l for l in rows[:DIRTY_MAX])
+        if len(rows) > DIRTY_MAX:
+            lines.append(f"  ... and {len(rows) - DIRTY_MAX} more "
+                         "(git status --short)")
+
     head = git("status", "-sb").splitlines()
     where = f"branch {branch} at {root}"
     if mode == "worktree":
@@ -80,6 +93,7 @@ def main():
     lines.append(mode_rules(root, mode))
     lines.append("")
 
+    hand_at = None
     if source in ("startup", "clear"):
         dirty = git("status", "--short")
         if dirty and mode == "shared":
@@ -87,26 +101,39 @@ def main():
                          "Another session made them, not you: never stage, "
                          "revert, stash or 'clean up' these paths. Stage "
                          "your own files by path.")
-            lines.extend("  " + l for l in dirty.splitlines())
+            add_dirty(dirty)
         elif dirty:
             lines.append("Uncommitted edits in this checkout at session "
                          "start (left by the previous context on this "
                          "branch; check the handoff before touching them):")
-            lines.extend("  " + l for l in dirty.splitlines())
+            add_dirty(dirty)
         else:
             lines.append("Tree clean at session start.")
 
         hand = os.path.join(root, ".claude", "handoff.md")
         if os.path.exists(hand):
             with open(hand, encoding="utf-8", errors="ignore") as f:
-                body = f.read().strip()[:8000]
+                body = f.read().strip()
+            raw = body[:HANDOFF_MAX]
+            if len(body) > HANDOFF_MAX:
+                body = raw + CUT
             lines.append("")
             lines.append("HANDOFF from the previous context "
                          "(.claude/handoff.md). Restate the plan in two "
                          "lines, continue from 'Next', never redo 'Done', "
                          "and delete the file once absorbed:")
+            hand_at = len(lines)
             lines.append(body)
-    print("\n".join(lines))
+
+    out = "\n".join(lines)
+    if len(out) > LIMIT and hand_at is not None:
+        excess = len(out) - LIMIT
+        keep = max(0, len(raw) - excess - len(CUT))
+        lines[hand_at] = raw[:keep] + CUT
+        out = "\n".join(lines)
+    if len(out) > LIMIT:
+        out = out[:LIMIT]
+    print(out)
 
 
 try:
