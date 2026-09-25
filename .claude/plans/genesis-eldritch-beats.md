@@ -167,7 +167,7 @@ Then `birth` as it stands: "Two lights tore out of the womb."
   baselines have no match for them, and every later beat's scene shifts
   in time, so the first capture after the insert is the new baseline.
 
-## Questions for the owner
+## Questions for the owner (asked through the AskUserQuestion UI in phase 25a)
 
 - **Q1 · The story tie.** Rex and Obrokxus are the two souls that
   remembered first, so the new beats end where `birth` begins. Yes?

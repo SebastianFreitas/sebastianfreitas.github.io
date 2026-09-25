@@ -31,6 +31,15 @@ Prefer a worktree session for phases that touch code (long work; see
 `.claude/modes/worktree.md`). Discussion phases end with questions to the
 owner and no code.
 
+**Questions go through the `AskUserQuestion` UI, never as a list in the
+report.** At most 4 questions
+per call and 2–4 options each (the owner always gets "Other" for free
+text), the recommended option first with "(Recommended)" in its label,
+a `preview` when a caption or layout helps. Ask in the same turn the
+phase runs, apply the answers, then commit and report. A phase whose
+design raises questions asks them before building, not in the next
+session.
+
 ## Brief (the owner's words, condensed; all of it applies)
 
 - A giant pass on the genesis cutscene: keep the art style but make it
@@ -397,10 +406,32 @@ the two souls who remember first, draft captions in a "we" voice,
 questions Q1–Q7 for the owner.
 
 ### 25a · The owner's answers
-Present `genesis-eldritch-beats.md` Q1–Q7, record the answers as D17+
-in **Decisions**, update the beats doc (drop "proposal"), the lore
-bible and phases 26–29, and resolve Phase 5's two-states note (Q6
-decides whether `dress` carries garments).
+No research, no code. Read `.claude/plans/genesis-eldritch-beats.md`
+(the design; the owner has not read it, so each question's text must
+stand alone). Ask through `AskUserQuestion` in two calls:
+
+- Call 1 (4 questions): **Q1** story tie ("Rex and Obrokxus are the two
+  souls who remembered first": Yes (Recommended) / No, other souls).
+  **Q2** beat count (Five, ~38 s (Recommended) / Three, ~23 s: `dress`
+  folded into `womb`, `worlds`, one `lives` with the leaving at its
+  tail). **Q3** numbering (Renumber later tags XI→XVI… (Recommended) /
+  Sub-numbers X·i…X·v). **Q4** after the leaving (Gone before `birth`
+  (Recommended) / Leave after `fight`, watching at 55 % as today).
+- Call 2 (3 questions): **Q5** headless gentleman (Walks in at `dress`
+  already tailored (Recommended) / Bare among the east-goers from the
+  emergence, tailored at `dress`). **Q6** first clothes (Copied from the
+  lives in the first, cold world, arriving across `worlds` and `lives`
+  (Recommended) / Arrive whole at `dress`). **Q7** captions: one
+  question, `multiSelect: true`, options = "Keep all five as drafted"
+  plus the beats whose caption should be rewritten (put the five
+  drafts in `preview`s; at most 4 options, so group XIV and XV).
+
+Then: record the answers as D17+ in **Decisions**; update the beats
+doc (drop "proposal", apply every answer, rewrite any caption the
+owner flagged and confirm the new wording in one more
+`AskUserQuestion` if needed); update the lore bible's proposed lines
+and open questions; adjust phases 26–29 and Phase 5's two-states note
+(Q6 decides whether `dress` carries garments); commit, report.
 Notes:
 
 ### 26 · The inspiration
