@@ -1,6 +1,6 @@
 # Fix the mothering
 
-Stage: planning
+Stage: ready
 Started: 2026-09-26
 Procedure: `.claude/skills/plan/SKILL.md` (planning loop, then "go").
 
@@ -81,10 +81,8 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 
 ## Open items
 
-- Research round → option map per area above.
-- Round 2 questions from it (e.g. look of each role body, inside palette,
-  how "billions" reads, how the gods pass through Rex).
-- Then write the phases (outline below) and the ready gate.
+- None. Areas not asked (corruption, Rex's tear, the clash, performance)
+  follow the digest's first direction; each phase's research may refine it.
 
 ## Decisions (owner answers; `(auto)` = taken while running, review at the end)
 
@@ -97,6 +95,14 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 - D7 New captions and Roman numerals; deep and later beats renumber.
 - D8 The dust eye is tier 3: the one exception to tier-3 no-touch; art-style.md gets a matching line.
 - D9 (owner) "when the old ones start taking the roles of enforcers and what not, thats the moment they chaneg their bodies to become those things and adquire clothes as well. we need to make tons of pahse sfor this i imaigne" → the dress moment is the Roles beat; each old one becomes a whole new role body with its clothes (never bare + overlay); one phase per role group.
+- D10 Role bodies: reuse today's dress bodies, each assigned to the role it fits best (refines D9: no new role bodies drawn; the role phases become assignment + the snap).
+- D11 Inside palette: flat flesh reds (maroon → rose) lit from the left, blue as a few small cool spots that the red swallows in held steps.
+- D12 Billions: rings snap out linked like chain mail, then a stepped zoom-out of 3–4 held ~10× jumps, ending on one chain web stamped many times.
+- D13 (owner) "the  current ouline of rex is perfecdt i dont wanna change it, the one where he is land, since the camera is inside the womb, we should be able to see the ouside, we can even make a new like schene inside to make sure, that thw womb stuf fis its own thing, we just ned to make them travel trought it i think, unless oyu think yoiu can do better" → Rex's land outline stays exactly as drawn today; the womb scenes are their own new scenes.
+- D14 Gods staging: from inside, the wall where Rex died opens like a window onto today's land scene; the gods leave the womb into his body and travel along inside the land outline to the bridge; then the calm pull-out.
+- D15 Calm womb: slow pull back; the ball snaps to a smoother version, mouths shut, eyes closed; still hold; faint darker band at the top (the red sent up).
+- D16 The eye: only a lidless arc, cut by the frame edge; no beam; a stepped wave crosses the soup and turns it to dust.
+- D17 Role change: the old ones gather in four groups by task; each group snaps bare → dressed in held steps, one group after another; the caption names the four roles.
 
 ## Constraints (every phase)
 
@@ -104,36 +110,71 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 - Bridge loop cost: particles and strands stay cheap (memory: the rAF
   loop is the bill).
 
-## Phase outline (draft; becomes Phases after round 2)
-
-1. Beat table: new beats replace IX–XIX, renumber the later beats, and
-   add stub draws.
-2. Camera: enter the ball.
-3. Soup: red eats blue.
-4. Tier-3 eye: dust, dead dots, colour point, plus the rule line.
-5. Roles: the old ones arrive, watch, take notes and build walls.
-6. Enforcer bodies and clothes.
-7. Watcher bodies and clothes.
-8. Mother bodies and clothes.
-9. Messenger bodies and clothes.
-10. The transformation moment.
-11. The circle: dust pile, strands, colour thread, first universe.
-12. Chains: births, billions, magic.
-13. Corruption: cut, return, the red sent up.
-14. Rex: appears, tears, grows, rivers of chains.
-15. The red dot and the intercept.
-16. The clash at the womb walls.
-17. Rex dies with his fist over Obrokxus.
-18. The gods through Rex.
-19. Pull out to the calm floating womb, then deep.
-20. Review: full frame sheets, snap, flows.
-
 ## Progress
 
 | # | Phase | Kind | Rests on | Status |
 |---|---|---|---|---|
+| 1 | Beat table and stubs | code | D1 D3 D7 | todo |
+| 2 | Enter the ball | code | D1 Brief | todo |
+| 3 | Soup: red eats blue | code | D11 | todo |
+| 4 | Tier-3 eye and dust | code | D8 D16 | todo |
+| 5 | Roles: arrive, watch, walls | code | D2 D6 | todo |
+| 6 | Role map: dress bodies to roles | research+doc | D10 | todo |
+| 7 | Role change snap | code | D9 D10 D17 | todo |
+| 8 | Circle and first universe | code | Brief | todo |
+| 9 | Chains and billions | code | D12 | todo |
+| 10 | Corruption: cut, return, sent up | code | Brief | todo |
+| 11 | Rex: tear, growth, rivers | code | Brief D13 | todo |
+| 12 | Red dot and intercept | code | D4 | todo |
+| 13 | Clash at the womb walls | code | Brief | todo |
+| 14 | Rex dies, fist over Obrokxus | code | D4 Brief | todo |
+| 15 | Gods through Rex | code | D13 D14 | todo |
+| 16 | Calm womb, then deep | code | D5 D15 | todo |
+| 17 | Review | review | D1-D17 | todo |
 
 ## Phases
+
+Every code phase: research its topics first (digest `research/fixthemothering-NN.md`),
+verify with `py -3 tools/gframes.py <run> <its beats>` frame sheets read as PNGs,
+snap compare `same` outside its scenes, and the genesis nav-flows.
+
+1. **Beat table and stubs.** Replace swarm IX…gods XIX in `G.BEATS` with the new
+   beats (enter, soup, eye, roles, circle, chains, corrupt, rex, dot, clash, death,
+   gods, calm) totalling ~80–90 s; renumber deep XX onward; new captions; each new
+   beat draws a flat placeholder. Retire the draws only the old beats used; keep
+   dress assets, Rex's land draw and the ball.
+2. **Enter the ball.** The camera pushes from the outside find into the ball
+   (held zoom steps), cut to the inside scene frame.
+3. **Soup.** Flesh-red blob layers, blue spots swallowed in held steps (D11);
+   baked static layers, cheap particles.
+4. **Tier-3 eye.** Edge arc (D16), stepped wave, dots split into colour chip up and
+   grey dot down, colour pools to one point; add the D8 line to `.claude/rules/art-style.md`.
+5. **Roles arrive.** The same old ones (D2) enter, watch, take notes, raise walls.
+6. **Role map.** Read the dress bodies, assign each to enforcer / watcher / mother /
+   messenger (D10), write the table into Carry forward. No code.
+7. **Role change.** Four task groups, each snaps bare → dressed in held steps, one
+   group after another; caption names the four roles (D17).
+8. **Circle.** Dust creeps to a pile at the rim, baked grey strands spiral in, one
+   saturated thread from the colour point, snap to a dull disc: the first universe.
+9. **Chains.** Rings birth linked rings; 3–4 held ~10× zoom-outs to a stamped web;
+   magic rings carry a bright chip (D12).
+10. **Corruption.** Red spreads round a ring in steps, an enforcer cuts, mothers fold
+    it back to dust; unreturnable red rises into a layer at the roof.
+11. **Rex.** Tears one ring into two arcs, grows in held steps with the zoom, only
+    part in frame; chains settle round him as braided channels (D13: inside scene
+    is its own drawing; the land outline is untouched).
+12. **Red dot.** A red dot (Obrokxus, D4) leaves a corrupted ring; Rex moves to cut it off.
+13. **Clash.** Flat stepped polygon rings per blow, no glow; the womb wall bulges and
+    tears to show tier-1 strata.
+14. **Rex dies.** He dies before leaving the womb; his fist closes over the red dot
+    at the torn wall.
+15. **Gods through Rex.** The wall opens onto today's land scene, unchanged (D13,
+    D14); the gods travel through his body along the land outline to the bridge,
+    each taking a chip of his colour. Replaces the leave-then-travel route.
+16. **Calm womb.** Pull back; the smoother ball, mouths shut, eyes closed, still
+    hold, dark band on top (D15); hand to deep.
+17. **Review.** Full-run frame sheets, full snap capture vs the plan's start,
+    full nav-flows; fix gaps; list every `(auto)` D.
 
 ## Carry forward
 
