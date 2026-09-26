@@ -114,7 +114,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 
 | # | Phase | Kind | Rests on | Status |
 |---|---|---|---|---|
-| 1 | Beat table and stubs | code | D1 D3 D7 | todo |
+| 1 | Beat table and stubs | code | D1 D3 D7 | done 7ac76ed |
 | 2 | Enter the ball | code | D1 Brief | todo |
 | 3 | Soup: red eats blue | code | D11 | todo |
 | 4 | Tier-3 eye and dust | code | D8 D16 | todo |
@@ -178,4 +178,8 @@ snap compare `same` outside its scenes, and the genesis nav-flows.
 
 ## Carry forward
 
--
+- P1 remap: old swarm→enter, womb→soup, dress→roles, leave/land→gods (oldones, rex drawRexLand/drawBuried, orb, trade, elements, genesis.js camAim/sealAmt/shake/landRise). tier3 POSE has only gods + calm (= gods); no tier-3 draw on the inside beats yet.
+- `drawInsidePlaceholder` in genesis.js covers enter..death (flat flesh ellipses, stepped alpha in enter): each inside phase narrows or replaces it; delete it by phase 14.
+- Dormant, delete in their phases: GenWorks/GenRemake (phase 8); titan fight + drawRip behind `OLD_TITANS` const, watch pose and birth/fight shake entries (phase 13). uBirth/uFight = `pastBirth` (0/1 at gods) so lightsAt stays right in deep.
+- `G.idxOf` returns BEATS.length for a missing id. gods is currently a stub mix (land rising + old gods birth); phase 15 rebuilds it.
+- Snap baseline for the inside beats: `snapshots/mothering-p1` (genesis-gods DIFF vs before is expected).
