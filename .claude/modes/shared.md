@@ -50,6 +50,12 @@ owner does.
 
 ### Context full
 
+A running plan (a `PLAN:` line) is the exception to this whole section:
+a phase ends with the plan skill's Handoff protocol and hard stop
+(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue,
+and a phase that hits the line stops as `partial` (plan skill). The rule
+below is for ordinary, non-plan work only.
+
 Finish the atomic step, commit, write `.claude/handoff.md` (format: the
 `handoff` skill), then keep going with Next in the same turn. Auto-compaction (the
 `handoff` skill's "Auto-continue") summarizes the conversation a
