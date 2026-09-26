@@ -946,7 +946,7 @@
       const tipDx = windAt(totalLen);
       const flatEndX = tx + rear * flatLen;
       let fx = tx;
-      while (Math.abs(fx - tx) < flatLen) {
+      while (flatLen - Math.abs(fx - tx) > 1e-6) {   // not `< flatLen`: rounding can stall fx a hair short and hang the page
         const seg = Math.min(bandH, flatLen - Math.abs(fx - tx));
         const fx2 = fx + rear * seg;
         const dx = windAt(dropLen + Math.abs(fx - tx));
