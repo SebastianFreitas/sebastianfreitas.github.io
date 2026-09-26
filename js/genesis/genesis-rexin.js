@@ -46,10 +46,31 @@ window.GenRexIn = (function () {
     }
   }
 
+  // right shoulder/hand geometry, shared by the drawn arm and rexGeom
+  function rightArmHand(cx, footY, h, reach, W, H) {
+    const sx = cx + 0.22 * h, sy = footY - 0.78 * h;
+    const hx0 = cx + 0.42 * h, hy0 = footY - 0.8 * h;
+    if (!reach) return { sx, sy, hx: hx0, hy: hy0 };
+    const dx0 = hx0 - sx, dy0 = hy0 - sy;
+    const len0 = Math.sqrt(dx0 * dx0 + dy0 * dy0) || 1;
+    const ang0 = Math.atan2(dy0, dx0);
+    const tx = 0.93 * W - sx, ty = 0.50 * H - sy;
+    const angT = Math.atan2(ty, tx);
+    const ang = ang0 + (angT - ang0) * reach;
+    const len = len0 * (1 + 0.4 * reach);
+    return { sx, sy, hx: sx + Math.cos(ang) * len, hy: sy + Math.sin(ang) * len };
+  }
+
   // one plain, soul-born giant: head, trapezoid torso, two leg rects, two arm quads
-  function addArm(ctx, cx, footY, h, side) {
-    const sx = cx + side * 0.22 * h, sy = footY - 0.78 * h;
-    const hx = cx + side * 0.42 * h, hy = footY - 0.8 * h;
+  function addArm(ctx, cx, footY, h, side, reach, W, H) {
+    let sx, sy, hx, hy;
+    if (side === 1) {
+      const a = rightArmHand(cx, footY, h, reach, W, H);
+      sx = a.sx; sy = a.sy; hx = a.hx; hy = a.hy;
+    } else {
+      sx = cx + side * 0.22 * h; sy = footY - 0.78 * h;
+      hx = cx + side * 0.42 * h; hy = footY - 0.8 * h;
+    }
     const dx = hx - sx, dy = hy - sy;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     const px = (-dy / len) * 0.04 * h, py = (dx / len) * 0.04 * h;
@@ -60,7 +81,7 @@ window.GenRexIn = (function () {
     ctx.closePath();
   }
 
-  function buildRexPath(ctx, cx, footY, h) {
+  function buildRexPath(ctx, cx, footY, h, reach, W, H) {
     ctx.beginPath();
     // head
     ctx.moveTo(cx + 0.09 * h, footY - 0.9 * h);
@@ -76,16 +97,16 @@ window.GenRexIn = (function () {
     ctx.rect(cx + 0.08 * h - 0.055 * h, footY - 0.42 * h, 0.11 * h, 0.42 * h);
     // arms
     addArm(ctx, cx, footY, h, -1);
-    addArm(ctx, cx, footY, h, 1);
+    addArm(ctx, cx, footY, h, 1, reach, W, H);
   }
 
-  function drawRex(ctx, cx, footY, h) {
-    buildRexPath(ctx, cx, footY, h);
+  function drawRex(ctx, cx, footY, h, reach, W, H) {
+    buildRexPath(ctx, cx, footY, h, reach, W, H);
     ctx.fillStyle = "#c8b49a";
     ctx.fill();
 
     ctx.save();
-    buildRexPath(ctx, cx, footY, h);
+    buildRexPath(ctx, cx, footY, h, reach, W, H);
     ctx.clip();
     ctx.fillStyle = "#8a7560";
     ctx.fillRect(cx - 0.12 * h, footY - 1.2 * h, 2 * h, 1.4 * h);
@@ -159,10 +180,11 @@ window.GenRexIn = (function () {
     }
   }
 
-  function draw(ctx, W, H, t, reduced) {
+  function draw(ctx, W, H, t, reduced, reach) {
     if (!W || !H) return;
     if (reduced) t = 99;
     if (t < 0) t = 0;
+    if (!reach) reach = 0;
 
     const m = Math.min(W, H);
 
@@ -237,8 +259,18 @@ window.GenRexIn = (function () {
     // rivers, braided round him once he holds at z4
     if (t >= 5.4) drawRivers(ctx, W, H, m, cx, h, t);
 
-    if (hasRex) drawRex(ctx, cx, footY, h);
+    if (hasRex) drawRex(ctx, cx, footY, h, reach, W, H);
   }
 
-  return { draw };
+  // where the reached right hand ends up at the final held zoom (z=4, t=99)
+  function rexGeom(W, H, reach) {
+    const m = Math.min(W, H);
+    const cx = 0.5 * W;
+    const h = 1.35 * m;
+    const footY = 0.58 * H + h * 0.5;
+    const a = rightArmHand(cx, footY, h, reach || 0, W, H);
+    return { hand: { x: a.hx, y: a.hy } };
+  }
+
+  return { draw, rexGeom };
 })();

@@ -585,6 +585,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("chains") && window.GenChains) GenChains.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("corrupt") && window.GenCorrupt) GenCorrupt.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("rex") && window.GenRexIn) GenRexIn.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("dot") && window.GenDot) GenDot.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;

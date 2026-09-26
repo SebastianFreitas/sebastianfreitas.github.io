@@ -125,7 +125,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 9 | Chains and billions | code | D12 | done |
 | 10 | Corruption: cut, return, sent up | code | Brief | done |
 | 11 | Rex: tear, growth, rivers | code | Brief D13 | done |
-| 12 | Red dot and intercept | code | D4 | todo |
+| 12 | Red dot and intercept | code | D4 | done |
 | 13 | Clash at the womb walls | code | Brief | todo |
 | 14 | Rex dies, fist over Obrokxus | code | D4 Brief | todo |
 | 15 | Gods through Rex | code | D13 D14 | todo |
@@ -199,4 +199,5 @@ snap compare `same` outside its scenes, and the genesis nav-flows.
 P9 (genesis-chains.js): 0-3 s disc -> ring at C, ~6 rings snap along a chain heading right, thread kept; 3.0/4.6/6.2 s snap to hex ring fields r 0.035m/0.012m/0.005m, magic chip #e8c9a0 on hash<0.08/0.15/0.25. Ends as a fine pink web over the whole screen: Corruption (P10) can start from the level-3 field (reds = some rings turned red).
 - P10 (genesis-corrupt.js): snaps back in to the level-1 field (r 0.035m); 3 cut gaps near (0.35W,.55H),(0.58W,.62H),(0.78W,.50H) with small grey piles; ends with a red roof layer (#7a1c22, lumpy edge, about 0.1H) across the top: Rex (P11) tears this field. Polish in 17: the roof reads thin, and the grey piles are faint.
 - P11 (genesis-rexin.js): tear at C (0.5W,0.58H) 1.0-2.6 s; zoom steps 2.6/3.3/4.0/4.7 s (S=1.9^z); Rex height m*[.22,.42,.75,1.35], feet at 0.58H+h/2; from 5.4 s three braided river channels per side (bed #4a141c, bank #6b2029). Ends with Rex filling the frame on a dark field: the red dot (P12) leaves a corrupted ring near his side. Polish in 17: Rex reads as a blocky T-pose (no hands/feet), the tear at 1.5 s is too small, the caption overlaps his arms.
+- P12 (genesis-dot.js): corrupted ring at (0.84W,0.70H); dot r 0.012m (#e04848, shade #a02a2e, core #f6c2b8) in 12 held steps to (0.955W,0.44H) by 5.4 s; Rex's right arm reaches (GenRexIn.draw reach arg, GenRexIn.rexGeom(W,H,reach).hand) in 4 steps 2.0-4.1 s; caught ring round the dot from 4.1 s. The clash (P13) starts with the dot at the right edge and Rex's hand beside it. Polish: the core shows before the ring (0.1 s); the arm reaches up-right, not down.
   West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.
