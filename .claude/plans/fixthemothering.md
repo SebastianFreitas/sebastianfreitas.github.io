@@ -116,7 +116,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 |---|---|---|---|---|
 | 1 | Beat table and stubs | code | D1 D3 D7 | done 7ac76ed |
 | 2 | Enter the ball | code | D1 Brief | done d60af1e |
-| 3 | Soup: red eats blue | code | D11 | todo |
+| 3 | Soup: red eats blue | code | D11 | done a60a975 |
 | 4 | Tier-3 eye and dust | code | D8 D16 | todo |
 | 5 | Roles: arrive, watch, walls | code | D2 D6 | todo |
 | 6 | Role map: dress bodies to roles | research+doc | D10 | todo |
