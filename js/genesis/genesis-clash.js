@@ -225,7 +225,7 @@ window.GenClash = (function () {
     }
   }
 
-  function draw(ctx, W, H, t, reduced) {
+  function draw(ctx, W, H, t, reduced, noActors) {
     if (!W || !H) return;
     if (reduced) t = 99;
     if (t < 0) t = 0;
@@ -246,12 +246,28 @@ window.GenClash = (function () {
     const cx = edgeXAt(cy, W, H, nb) + 0.02 * W;
     if (ts > 0) drawTear(ctx, W, H, ts, cx, cy);
 
-    const fist = drawArm(ctx, W, H, m, nb, ts, t);
-    const dx = drawDot(ctx, W, H, m, nb, ts, cx, fist.fx, fist.fy);
-    drawBlowRings(ctx, m, t, fist.fx, fist.fy, dx, fist.fy - 0.01 * m);
+    if (!noActors) {
+      const fist = drawArm(ctx, W, H, m, nb, ts, t);
+      const dx = drawDot(ctx, W, H, m, nb, ts, cx, fist.fx, fist.fy);
+      drawBlowRings(ctx, m, t, fist.fx, fist.fy, dx, fist.fy - 0.01 * m);
+    }
 
     ctx.restore();
   }
 
-  return { draw };
+  // the fist/dot/tear geometry at the final (t = 99) clash frame, for the
+  // "death" beat to pick up where this one leaves off
+  function geom(W, H) {
+    const nb = BLOWS.length;
+    const ts = TEAR.length;
+    const cy = 0.48 * H;
+    const cx = edgeXAt(cy, W, H, nb) + 0.02 * W;
+    const hw = TEAR_HW[ts - 1] * W, hh = TEAR_HH[ts - 1] * H;
+    const fx = 0.52 * W + Math.min(nb, 4) * 0.02 * W;
+    const fy = 0.49 * H;
+    const edgeX = edgeXAt(cy, W, H, nb);
+    return { cx, cy, hw, hh, fx, fy, edgeX };
+  }
+
+  return { draw, geom };
 })();

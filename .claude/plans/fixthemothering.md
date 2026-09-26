@@ -127,7 +127,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 11 | Rex: tear, growth, rivers | code | Brief D13 | done |
 | 12 | Red dot and intercept | code | D4 | done |
 | 13 | Clash at the womb walls | code | Brief | done |
-| 14 | Rex dies, fist over Obrokxus | code | D4 Brief | todo |
+| 14 | Rex dies, fist over Obrokxus | code | D4 Brief | done |
 | 15 | Gods through Rex | code | D13 D14 | todo |
 | 16 | Calm womb, then deep | code | D5 D15 | todo |
 | 17 | Review | review | D1-D17 | todo |
@@ -201,4 +201,5 @@ P9 (genesis-chains.js): 0-3 s disc -> ring at C, ~6 rings snap along a chain hea
 - P11 (genesis-rexin.js): tear at C (0.5W,0.58H) 1.0-2.6 s; zoom steps 2.6/3.3/4.0/4.7 s (S=1.9^z); Rex height m*[.22,.42,.75,1.35], feet at 0.58H+h/2; from 5.4 s three braided river channels per side (bed #4a141c, bank #6b2029). Ends with Rex filling the frame on a dark field: the red dot (P12) leaves a corrupted ring near his side. Polish in 17: Rex reads as a blocky T-pose (no hands/feet), the tear at 1.5 s is too small, the caption overlaps his arms.
 - P12 (genesis-dot.js): corrupted ring at (0.84W,0.70H); dot r 0.012m (#e04848, shade #a02a2e, core #f6c2b8) in 12 held steps to (0.955W,0.44H) by 5.4 s; Rex's right arm reaches (GenRexIn.draw reach arg, GenRexIn.rexGeom(W,H,reach).hand) in 4 steps 2.0-4.1 s; caught ring round the dot from 4.1 s. The clash (P13) starts with the dot at the right edge and Rex's hand beside it. Polish: the core shows before the ring (0.1 s); the arm reaches up-right, not down.
 - P13 (genesis-clash.js): close view; womb wall from 0.74W (lit strip, hard shade), Rex arm from lower-left, fist ~0.52-0.62W at 0.49H, dot pressed ahead; blows 0.8/1.9/3.0/4.1 s each a rose octagon annulus in 3 held steps, wall bulges per blow; tear 4.1-5.6 s in 4 steps showing tier-1 strata. Dead titan fight (OLD_TITANS, DASH/LASH) deleted from genesis.js. Polish: the dot never enters the tear; fist stays short of the wall.
+- P14 (genesis-death.js): backdrop `GenClash.draw(...,99,true,true)` (6th arg noActors = wall+tear only) + `GenClash.geom(W,H)`; fist steps into the tear (0.6/1.4/2.2 s), fingers curl over the dot (2.2 half, 3.0 full + thumb), arm tan > cool > dead grey (3.8/4.6 s). Fixes P13's dot-never-enters polish. `drawInsidePlaceholder` kept: `enter` has no module hook.
   West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.
