@@ -2,7 +2,8 @@
 
 Stage: planning
 Started: <YYYY-MM-DD>
-Procedure: `.claude/skills/plan/SKILL.md` (planning loop, then "go").
+Procedure: `.claude/skills/plan/SKILL.md` (the interview, then "go").
+Interview: A open · 0 asked   <- A/B/C open or done, running total; missed: lines while running
 
 ## Brief (owner's words, verbatim)
 
@@ -33,7 +34,21 @@ Procedure: `.claude/skills/plan/SKILL.md` (planning loop, then "go").
 
 ## Decisions (owner answers; `(auto)` = taken while running, review at the end)
 
-- **D1 · <topic>.** <the answer, owner's words when written by them>. Settles: <option-map lines>.
+- **D1 · <topic>.** <the answer, owner's words when written by them>. Settles: <option-map lines / piece n / phase n>.
+
+## Initial idea (Part B; prose, beginning to end, as the owner experiences it)
+
+<one to three pages; every sentence rests on a D or the Brief; guesses carry [?] until asked>
+
+### Piece 1 · <name>
+<5 to 15 lines: what is on screen, what moves, what is read, in order>
+
+### Piece 2 · <name>
+...
+
+## Walk-through (one line per piece; the check is asked for every piece)
+
+- Piece 1 · <That is it / changed: ...> · D<n>, D<m>
 
 ## Constraints (every phase)
 
@@ -52,6 +67,7 @@ Procedure: `.claude/skills/plan/SKILL.md` (planning loop, then "go").
 Research: <topics, then "go past the list">.
 Deliverable: <exact files / functions / docs>.
 Verification: <exact command, or the snap scenes that must be `same` / must change>.
+Reviewed: <Part C answers: delivers right / out list and verification agreed / splits, D<n>>
 Notes: <filled when done: research digest path, what changed>
 
 ### 2 · <name>

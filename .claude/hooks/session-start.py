@@ -123,7 +123,7 @@ def plan_lines(root):
         stage = dict(active)[bound]
         rel = f".claude/plans/{bound}.md"
         lines = [f"PLAN: {bound} · {stage}",
-                 f"Read .claude/skills/plan/SKILL.md, then {rel}: Brief, "
+                 f"Read .claude/skills/plan/SKILL.md, then {rel}: Interview, Brief, "
                  "Decisions, Open items, Progress. A bare 'go' continues it."]
         others = [(n, s) for n, s in active if n != bound]
         if others:
