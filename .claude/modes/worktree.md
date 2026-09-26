@@ -31,8 +31,12 @@ Replace `<branch>` with `git branch --show-current`.
   squashes the branch into one commit on `main` in the main checkout,
   bumps `?v=` in it, merges `main` back into this branch, and pushes
   nothing; the owner reviews in GitHub Desktop and pushes there. On a
-  conflict it changes nothing and says so; then the owner asks you to
-  `git merge main` here, resolve, commit, and re-report.
+  conflict it changes nothing and says so; then run `git merge main`
+  here, resolve, commit, and run it again.
+  **You run it yourself** (owner's call, 2026-09-26) once the work is
+  verified and committed, then keep going; the report names the commit
+  now on `main` instead of handing over the command. Make the branch
+  tip's message describe the work first: the squash takes its message.
 
 After a Commit, the command already merged `main` back into this branch, so
 a follow-up round just commits on the same branch and ends with the same

@@ -165,9 +165,11 @@ reaching up, with tier 3's potential in it.
 - **Scale through life.** The bridge's size shows through what lives on
   it: nests on the piers like birds' nests, eldritch cities grown round
   the span, all tiny against it.
-- **Cold rift light (change; planned, not shipped).** Only at `break` and
+- **Cold rift light (change; shipped).** Only at `break` and
   `walk`, a rift in the chaos may light the facing side of the nearest
-  silhouette with one flat cool band: the only second light.
+  on-screen silhouette (an old one in `walk`, a shard in `break`) with one
+  flat cool band (`GenEldPal` `light.rift`, `riftBand` in
+  `genesis-oldones.js`), off on one held step in seven: the only second light.
 
 ### Also shipped (plan phases 5-23)
 

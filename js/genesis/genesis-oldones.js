@@ -1090,7 +1090,21 @@ window.GenOld = (function () {
   function drawOldOnes(ctx, env) {
     const W = G.W, H = G.H;
     const inside = env.layer === "inside";
+    function paintOne(c, o, p) {
+      c.save();
+      if (p.clipY != null) { c.beginPath(); c.rect(-W, -H, 3 * W, p.clipY + H); c.clip(); }
+      c.translate(p.x, p.y);
+      c.rotate(p.rot);
+      c.scale(p.scale, p.scale * p.sy);
+      c.translate(-p.x, -p.y);
+      PAINT[o.kind](c, o, p.x, p.y, o.hf * H, p);
+      drawMaking(c, o, p, o.hf * H);
+      c.restore();
+    }
     windAt(G.t || 0);
+    const wantRift = !inside && G.BEATS[G.beat].id === "walk" && riftOn();
+    const R = wantRift ? riftAnchor() : null;
+    let nearest = null;
     ctx.save();
     for (const idx of ORDER) {
       const o = ROSTER[idx];
@@ -1099,20 +1113,83 @@ window.GenOld = (function () {
       if (inside ? !(p.e > 0 && p.e < 0.85) : p.e < 0.85) continue;
       if (p.a < 0.04 || p.x < -0.35 * H || p.x > W + 0.35 * H) continue;
       ctx.globalAlpha = p.a;
-      ctx.save();
-      if (p.clipY != null) { ctx.beginPath(); ctx.rect(-W, -H, 3 * W, p.clipY + H); ctx.clip(); }
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.scale(p.scale, p.scale * p.sy);
-      ctx.translate(-p.x, -p.y);
-      PAINT[o.kind](ctx, o, p.x, p.y, o.hf * H, p);
-      drawMaking(ctx, o, p, o.hf * H);
-      ctx.restore();
+      paintOne(ctx, o, p);
       if (p.clipY != null || (p.e >= 1 && env.emerge - VENT_T0[idx] - ventDur(idx) < 0.5)) drawFlakes(ctx, o, p, env.emerge);
+      if (wantRift && p.e > 0 && p.x >= 0 && p.x <= W) {
+        const ncx = p.x, ncy = p.y - 0.5 * o.hf * H;
+        const dd = (ncx - R.x) * (ncx - R.x) + (ncy - R.y) * (ncy - R.y);
+        if (!nearest || dd < nearest.dd) nearest = { o, p, dd };
+      }
+    }
+    if (nearest) {
+      ctx.globalAlpha = nearest.p.a;
+      riftBand(ctx, nearest.p.x, nearest.p.y - 0.5 * nearest.o.hf * H, nearest.o.hf * H,
+        (c) => paintOne(c, nearest.o, nearest.p));
     }
     ctx.restore();
     const WX = window.GenAttire && window.GenAttire.weather;
     if (WX) { WX.w = 0; WX.g = 0; WX.frost = 0; }
+  }
+
+  /* ---- rift light (break, walk only): a cold flat band on the side of
+     the nearest silhouette that faces the rift where the point broke.
+     Flat colour, held steps, no gradient — the cutscene's only second
+     light. */
+
+  const RIFT_OFF = document.createElement("canvas");
+  let riftCtx = null;
+
+  function riftAnchor() {
+    return { x: Math.max(0, Math.min(G.W, sx(0))), y: 0.46 * G.H };
+  }
+
+  function riftOn() {
+    const id = G.BEATS[G.beat].id;
+    if (id !== "break" && id !== "walk") return false;
+    if (id === "break" && G.linear("break") <= 0.20) return false;
+    if (G.reduced) return true;
+    return Math.floor(G.local * 3) % 7 !== 3;
+  }
+
+  function riftBand(ctx, cx, cy, h, paintFn) {
+    if (!window.GenEldPal) return;
+    const t = GenEldPal.tone("rift");
+    if (!t) return;
+    if (!ctx.getTransform) return;
+    const w = ctx.canvas.width, hh = ctx.canvas.height;
+    if (RIFT_OFF.width !== w || RIFT_OFF.height !== hh) { RIFT_OFF.width = w; RIFT_OFF.height = hh; }
+    if (!riftCtx) riftCtx = RIFT_OFF.getContext("2d");
+    riftCtx.setTransform(1, 0, 0, 1, 0, 0);
+    riftCtx.globalCompositeOperation = "source-over";
+    riftCtx.globalAlpha = 1;
+    riftCtx.clearRect(0, 0, w, hh);
+
+    riftCtx.setTransform(ctx.getTransform());
+    riftCtx.globalAlpha = ctx.globalAlpha;
+    paintFn(riftCtx);
+
+    const R = riftAnchor();
+    const dir = R.x >= cx ? 1 : -1;
+    const d = Math.max(4, Math.round(h * 0.06));
+
+    riftCtx.globalCompositeOperation = "destination-out";
+    riftCtx.save();
+    riftCtx.translate(-dir * d, 0);
+    paintFn(riftCtx);
+    riftCtx.restore();
+
+    riftCtx.globalCompositeOperation = "source-in";
+    riftCtx.setTransform(1, 0, 0, 1, 0, 0);
+    riftCtx.globalAlpha = 1;
+    riftCtx.fillStyle = t.lit;
+    riftCtx.fillRect(0, 0, w, hh);
+
+    riftCtx.globalCompositeOperation = "source-over";
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(RIFT_OFF, 0, 0);
+    ctx.restore();
   }
 
   /* ---- shards --------------------------------------------------------
@@ -1133,25 +1210,42 @@ window.GenOld = (function () {
     return list;
   })();
 
+  function paintShard(c, qx, qy, ang, sz) {
+    c.save();
+    c.translate(qx, qy);
+    c.rotate(ang);
+    litSplit(c, [[0, -sz * 0.6], [sz * 0.5, sz * 0.4], [-sz * 0.5, sz * 0.4]],
+      "rgb(150,156,150)", "rgb(70,74,70)");
+    c.restore();
+  }
+
   function drawShards(ctx, burst, kick = 0) {
     if (burst <= 0.001 || burst >= 0.999) return;
     const W = G.W, H = G.H;
     const sb = smooth(burst);
     const ox = sx(0), oy = 0.46 * H;
     const a = (1 - burst) * 0.95;
+    const wantRift = G.BEATS[G.beat].id === "break" && riftOn();
+    const R = wantRift ? riftAnchor() : null;
+    const dmin = 0.03 * H;
+    let nearest = null;
     ctx.save();
     ctx.globalAlpha = a;
     for (const s of SHARDS) {
       const d = (0.04 + 0.90 * sb) * s.spd * (1 + kick);
       const qx = ox + Math.cos(s.ang) * d * W * 0.55;
       const qy = oy + Math.sin(s.ang) * d * H * 0.35 + burst * burst * 0.35 * H;
-      ctx.save();
-      ctx.translate(qx, qy);
-      ctx.rotate(s.ang + burst * s.spin * 3);
+      const ang = s.ang + burst * s.spin * 3;
       const sz = s.size;
-      litSplit(ctx, [[0, -sz * 0.6], [sz * 0.5, sz * 0.4], [-sz * 0.5, sz * 0.4]],
-        "rgb(150,156,150)", "rgb(70,74,70)");
-      ctx.restore();
+      paintShard(ctx, qx, qy, ang, sz);
+      if (wantRift) {
+        const dd = (qx - R.x) * (qx - R.x) + (qy - R.y) * (qy - R.y);
+        if (dd >= dmin * dmin && (!nearest || dd < nearest.dd)) nearest = { qx, qy, ang, sz, dd };
+      }
+    }
+    if (nearest) {
+      riftBand(ctx, nearest.qx, nearest.qy, nearest.sz,
+        (c) => paintShard(c, nearest.qx, nearest.qy, nearest.ang, nearest.sz));
     }
     ctx.restore();
   }

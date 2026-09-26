@@ -42,7 +42,10 @@ commit": a reply that only says "go" costs a whole extra turn.
 5. **Review:** over about 150 lines or more than three files, a fresh
    subagent checks `git diff` against the spec and reports only gaps that
    break the spec or a flow, not style.
-6. **Commit** by path, as your mode says.
+6. **Commit** by path, as your mode says. In worktree mode, once the work
+   is verified, run the mode's Commit command (`try.py --commit`)
+   yourself and keep going; the owner only pushes. Give the branch tip a
+   commit message that describes the work: the squash takes its message.
 7. **Report:** end the turn with exactly this and nothing after it:
    1. **Name:** the feature in plain words, then the branch (and PR in
       cloud).
@@ -52,7 +55,8 @@ commit": a reply that only says "go" costs a whole extra turn.
    3. **Try:** one `bash` block, one command, from your mode file, plus
       one line saying where to look and what to do there.
    4. **Commit:** one `bash` block, one command, from your mode file
-      (shared mode: the one line it gives).
+      (shared mode: the one line it gives). Worktree mode: say which
+      commit already landed on local `main` instead.
    5. **Look at:** at most three bullets, plus anything left open.
 
 If the owner replies with changes, do another round on the same branch
@@ -189,8 +193,9 @@ Local tools run with `py -3`; the cloud container has only `python3`.
 
 - Stage by path, always. Never push (cloud mode: only your own `claude/`
   branch), never merge or commit onto `main` except a shared-mode commit,
-  never delete branches, never `gh pr merge`. Only the owner's `try.py
-  --commit` and GitHub Desktop reach `main` and origin.
+  never delete branches, never `gh pr merge`. Only `try.py --commit`
+  (run by you in worktree mode, owner's call 2026-09-26) reaches local
+  `main`; only the owner's GitHub Desktop reaches origin.
 - `.claude/hooks/git-guard.py` enforces this and blocks blanket git
   (`add -A`/`.`, `commit -a`, `stash`, `checkout --`, `restore`, `reset
   --hard`, `clean`, `rebase`, force push). Do not work around it; if the

@@ -949,4 +949,4 @@ Owner, 2026-09-26:
 - (Phase 24) The plan is done. `art-style.md` Eldritch now describes what
   shipped. After the review: the `dressNow` comment now tells the truth, and
   `FALL` in genesis-attire.js is kept as a commented safety net (every tone
-  it is asked for exists in `GenEldPal`). Still open: the cold rift light.
+  it is asked for exists in `GenEldPal`). The cold rift light shipped 2026-09-26 (`riftBand` in genesis-oldones.js, token `light.rift`).

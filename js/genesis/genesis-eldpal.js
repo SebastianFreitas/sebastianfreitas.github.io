@@ -22,6 +22,8 @@ window.GenEldPal = (() => {
     metal: { brass: "#8a7240", gunmetal: "#4a4e52", pewter: "#7c7f80" },
     // flat pale caps on top edges
     snow: { snow: "#c9d0d4" },
+    // the rift's cold band, the cutscene's only second light
+    light: { rift: "#8fb3c6" },
   };
 
   // nearest to farthest-from-backdrop fog steps; caption is the index of the
