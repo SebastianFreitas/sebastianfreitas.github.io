@@ -325,14 +325,15 @@ window.GenRex = (function () {
       const q = clamp((p - pe) / (pa - pe), 0, 1);
       if (p < pe) continue;
       const qs = Math.floor(q * 8) / 8;
-      const u = u0 + (u1 - u0) * qs;
+      const u1i = u1 + i * 0.035;
+      const u = u0 + (u1i - u0) * qs;
 
       let x, footY;
       if (p < pa) {
         x = G.sx(u);
         footY = rexSurfY(u) + 0.07 * G.H;
       } else {
-        x = G.sx(u1);
+        x = G.sx(u1i);
         footY = G.H * G.DECK;
       }
 

@@ -173,9 +173,9 @@ window.GenCorrupt = (function () {
         dy = dy * (1 - (s + 1) / (arrival + 1));
       }
 
-      ctx.fillStyle = isGrey ? "#8a8280" : "#e04848";
+      ctx.fillStyle = isGrey ? "#b3aaa6" : "#e04848";
       ctx.beginPath();
-      ctx.arc(dx, dy, isGrey ? 0.18 * r : 0.22 * r, 0, Math.PI * 2);
+      ctx.arc(dx, dy, isGrey ? 0.24 * r : 0.22 * r, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -188,7 +188,7 @@ window.GenCorrupt = (function () {
       for (let k = 0; k < n; k++) if (s >= (2 + k)) count++;
     }
     if (count <= 0) return;
-    const h = 0.035 * H * count;
+    const h = 0.06 * H * count;
 
     ctx.fillStyle = "#7a1c22";
     ctx.beginPath();

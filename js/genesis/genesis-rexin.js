@@ -49,7 +49,7 @@ window.GenRexIn = (function () {
   // right shoulder/hand geometry, shared by the drawn arm and rexGeom
   function rightArmHand(cx, footY, h, reach, W, H) {
     const sx = cx + 0.22 * h, sy = footY - 0.78 * h;
-    const hx0 = cx + 0.42 * h, hy0 = footY - 0.8 * h;
+    const hx0 = cx + 0.34 * h, hy0 = footY - 0.52 * h;
     if (!reach) return { sx, sy, hx: hx0, hy: hy0 };
     const dx0 = hx0 - sx, dy0 = hy0 - sy;
     const len0 = Math.sqrt(dx0 * dx0 + dy0 * dy0) || 1;
@@ -69,11 +69,11 @@ window.GenRexIn = (function () {
       sx = a.sx; sy = a.sy; hx = a.hx; hy = a.hy;
     } else {
       sx = cx + side * 0.22 * h; sy = footY - 0.78 * h;
-      hx = cx + side * 0.42 * h; hy = footY - 0.8 * h;
+      hx = cx + side * 0.34 * h; hy = footY - 0.52 * h;
     }
     const dx = hx - sx, dy = hy - sy;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const px = (-dy / len) * 0.04 * h, py = (dx / len) * 0.04 * h;
+    const px = (-dy / len) * 0.06 * h, py = (dx / len) * 0.06 * h;
     ctx.moveTo(sx + px, sy + py);
     ctx.lineTo(hx + px, hy + py);
     ctx.lineTo(hx - px, hy - py);
@@ -222,6 +222,7 @@ window.GenRexIn = (function () {
 
     // the tear: the birth ring pulled into two arcs (z0 only)
     if (z === 0 && t >= 1.0 && t < 2.6) {
+      const R0 = m * 0.07; // tear-only radius; Rex's height keeps the outer R0
       ctx.fillStyle = "#2a0a10";
       ctx.beginPath();
       ctx.arc(cx, cy, R0 * 1.2, 0, Math.PI * 2);

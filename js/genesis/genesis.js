@@ -476,7 +476,7 @@ window.Genesis = (function () {
     const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
     const fleshVis = approaching * (1 - uLand * 0.28);
     const geom = GenFlesh.fleshGeom(uWomb);
-    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (1 - since("gods"));
+    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("gods") ? 1 : 0);
     if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
     const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
     const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
@@ -507,7 +507,6 @@ window.Genesis = (function () {
     const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
     drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
     drawGodsBirth(ctx, flesh);
-    drawBuried(ctx);
     if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
     drawRexHole(ctx);
     drawSaga(ctx);

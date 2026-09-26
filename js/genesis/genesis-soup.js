@@ -97,7 +97,9 @@ window.GenSoup = (function () {
     ctx.ellipse(midCx, midCy, midRx, midRy, 0, 0, Math.PI * 2);
     ctx.clip();
     ctx.fillStyle = PAL.lit;
-    ctx.fillRect(midCx - midRx, midCy - midRy, midRx * 0.30, midRy * 2);
+    ctx.beginPath();
+    ctx.ellipse(midCx - midRx * 0.62, midCy, midRx * 0.50, midRy * 1.05, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 

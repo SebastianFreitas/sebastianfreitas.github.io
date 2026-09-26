@@ -46,10 +46,12 @@ window.GenDot = (function () {
 
     if (t < 1.2) {
       // Obrokxus still inside the ring
-      ctx.fillStyle = "#f6c2b8";
-      ctx.beginPath();
-      ctx.arc(S0x, S0y, 0.4 * 0.03 * m, 0, Math.PI * 2);
-      ctx.fill();
+      if (t >= 0.6) {
+        ctx.fillStyle = "#f6c2b8";
+        ctx.beginPath();
+        ctx.arc(S0x, S0y, 0.4 * 0.03 * m, 0, Math.PI * 2);
+        ctx.fill();
+      }
       return;
     }
 
