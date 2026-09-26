@@ -7,8 +7,10 @@
    uncommitted (made by another session, never by this one).
 3. On a fresh start, /clear or compaction: the handoff left by the
    previous context (.claude/handoff.md), if any.
-4. Every time: the active plan (.claude/plans/ACTIVE → `PLAN: <name> ·
-   <stage>`), if any.
+4. Every time: the active plans (Stage planning/ready/running in
+   .claude/plans/*.md). The one bound to this checkout (.claude/plans/HERE,
+   or the only active plan) prints as `PLAN: <name> · <stage>`; the others
+   are listed.
 
 SessionStart also fires after compaction ("compact") and on resume; the
 mode rules and the handoff are printed again then (compaction drops
@@ -69,26 +71,76 @@ def mode_rules(root, mode):
 
 
 def plan_lines(root):
-    """PLAN: <name> · <stage> from .claude/plans/ACTIVE; [] when no plan."""
+    """Active plans in .claude/plans/*.md, and the one bound to this checkout."""
     plans = os.path.join(root, ".claude", "plans")
-    active = os.path.join(plans, "ACTIVE")
-    if not os.path.isfile(active):
+    if not os.path.isdir(plans):
         return []
-    with open(active, encoding="utf-8", errors="ignore") as f:
-        name = f.read().strip()
-    if not name:
-        return []
-    rel = f".claude/plans/{name}.md"
-    stage = "unknown"
-    path = os.path.join(plans, name + ".md")
-    if os.path.isfile(path):
-        with open(path, encoding="utf-8", errors="ignore") as f:
-            m = re.search(r"^Stage:\s*(\w+)", f.read(), re.M)
+
+    active = []
+    for fname in os.listdir(plans):
+        if not fname.endswith(".md") or fname == "TEMPLATE.md":
+            continue
+        path = os.path.join(plans, fname)
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+        except OSError:
+            continue
+        m = re.search(r"^Stage:\s*(planning|ready|running)", text, re.M)
         if m:
-            stage = m.group(1)
-    return [f"PLAN: {name} · {stage}",
-            f"Read .claude/skills/plan/SKILL.md, then {rel}: Brief, "
-            "Decisions, Open items, Progress. A bare 'go' continues it."]
+            active.append((fname[:-3], m.group(1)))
+    active.sort()
+
+    here_path = os.path.join(plans, "HERE")
+    here = ""
+    if os.path.isfile(here_path):
+        try:
+            with open(here_path, encoding="utf-8", errors="ignore") as f:
+                here = f.read().strip()
+        except OSError:
+            here = ""
+
+    active_names = [n for n, _ in active]
+    if here and here in active_names:
+        bound = here
+    elif len(active) == 1:
+        bound = active[0][0]
+    else:
+        bound = None
+
+    if not active:
+        if here:
+            return [f"(.claude/plans/HERE names '{here}', which is not an "
+                     "active plan: delete HERE.)"]
+        return []
+
+    here_note = None
+    if here and here != bound:
+        here_note = (f"(.claude/plans/HERE names '{here}', which is not "
+                      "active: rewrite HERE.)")
+
+    if bound:
+        stage = dict(active)[bound]
+        rel = f".claude/plans/{bound}.md"
+        lines = [f"PLAN: {bound} · {stage}",
+                 f"Read .claude/skills/plan/SKILL.md, then {rel}: Brief, "
+                 "Decisions, Open items, Progress. A bare 'go' continues it."]
+        others = [(n, s) for n, s in active if n != bound]
+        if others:
+            lines.append("Other active plans (run in their own checkouts, "
+                          "do not touch their files): " +
+                          ", ".join(f"{n} · {s}" for n, s in others))
+        if here_note:
+            lines.append(here_note)
+        return lines
+
+    lines = ["PLANS: " + ", ".join(f"{n} · {s}" for n, s in active),
+             "No plan is bound to this checkout. 'go <name>' binds one "
+             "(write the name to .claude/plans/HERE) and continues it; a "
+             "bare 'go' asks which. See .claude/skills/plan/SKILL.md."]
+    if here_note:
+        lines.append(here_note)
+    return lines
 
 
 def main():
