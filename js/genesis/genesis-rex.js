@@ -307,50 +307,47 @@ window.GenRex = (function () {
   /* which crown each god wears, by kind */
   const CROWN = { ormius: "bars", ava: "rings", kaeron: "orbit", kaelum: "petals", orochronus: "clock" };
 
-  /* the womb tears again, and the five gods come out over the buried
-     ground, then dive down into it to join the war */
+  /* the five gods travel through Rex's own body, westward from the womb
+     wall to the bridge, each carrying a chip of his colour. Held steps
+     only: no dive, no hover, no glow — they walk inside his land. */
   function drawGodsBirth(ctx, flesh) {
     const F = window.GenFig;
     if (!F) return;
     if (G.beat !== idxOf("gods")) return;
     const p = linear("gods"), span = Math.min(G.W, G.H);
-    const exitX = flesh ? flesh.cx - flesh.rx * 0.92 : sx(ROOT_U) - span * 0.28;
-    const exitY = flesh ? flesh.cy + flesh.ry * 0.04 : G.H * 0.5;
 
-    const rip = smooth(clamp(p / 0.08, 0, 1)) * (1 - smooth(clamp((p - 0.50) / 0.15, 0, 1)));
-    drawRip(ctx, flesh, rip);
-    if (rip > 0.1) G.shake = Math.max(G.shake, 0.32 * rip);
-
-    const bx = sx(BURY_U), by = rexSurfY(BURY_U);
+    const u0 = G.REX_EAST - 0.02, u1 = G.REX_WEST + 0.08;
+    const h = span * G.GOD_H;
 
     for (let i = 0; i < SIEGE_GODS.length; i++) {
       const g = SIEGE_GODS[i];
-      const out = smooth(clamp((p - 0.06 - i * 0.08) / 0.20, 0, 1));
-      if (out <= 0) continue;
-      const hoverX = exitX - span * (0.22 + i * 0.11);
-      const hoverY = [0.18, 0.42, 0.26, 0.46, 0.34][i] * G.H + Math.sin(G.t * 1.3 + g.ph) * span * 0.02;
-      let x = mix(exitX, hoverX, out), y = mix(exitY, hoverY, out);
+      const pe = 0.18 + i * 0.05, pa = 0.72 + i * 0.03;
+      const q = clamp((p - pe) / (pa - pe), 0, 1);
+      if (p < pe) continue;
+      const qs = Math.floor(q * 8) / 8;
+      const u = u0 + (u1 - u0) * qs;
 
-      const dive = clamp((p - 0.60 - i * 0.05) / 0.25, 0, 1);
-      const landX = bx + (i - 2) * span * 0.02;
-      x = mix(x, landX, smooth(dive));
-      y = mix(y, by + G.H * 0.08, dive * dive);
+      let x, footY;
+      if (p < pa) {
+        x = G.sx(u);
+        footY = rexSurfY(u) + 0.07 * G.H;
+      } else {
+        x = G.sx(u1);
+        footY = G.H * G.DECK;
+      }
 
-      const amt = clamp(out * 1.4, 0, 1) * (1 - smooth(clamp((dive - 0.85) / 0.15, 0, 1)));
-      const h = Math.min(G.W, G.H) * G.GOD_H;
-      F.drawGod(ctx, x, y + h * 0.45, h, ORB_STYLE[g.kind], {
-        a: amt, face: -1, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
-        tilt: -dive * 0.55 + 0.25 * (1 - out), ph: g.ph, mood: "happy",
+      F.drawGod(ctx, x, footY, h, ORB_STYLE[g.kind], {
+        a: 1, face: -1, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
+        tilt: 0, ph: g.ph, mood: "happy",
       });
-      drawName(ctx, x, y + h * 0.45 + 14, amt, g.name, 0);
+      drawName(ctx, x, footY + 14, 1, g.name, 0);
 
-      const fl = Math.sin(Math.PI * clamp((dive - 0.75) / 0.25, 0, 1));
-      if (fl > 0.02) {
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        flatGlow(ctx, landX, by, span * 0.08, g.rgb, 0.5 * fl);
-        ctx.restore();
-        G.shake = Math.max(G.shake, 0.25 * fl);
+      if (qs >= 0.5 || p >= pa) {
+        const s = 0.16 * h;
+        ctx.fillStyle = "#c8b49a";
+        ctx.fillRect(x - s / 2, footY - 0.62 * h - s / 2, s, s);
+        ctx.fillStyle = "#8a7560";
+        ctx.fillRect(x - s / 2 + 0.35 * s, footY - 0.62 * h - s / 2, 0.65 * s, s);
       }
     }
   }

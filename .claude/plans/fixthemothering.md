@@ -128,7 +128,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 12 | Red dot and intercept | code | D4 | done |
 | 13 | Clash at the womb walls | code | Brief | done |
 | 14 | Rex dies, fist over Obrokxus | code | D4 Brief | done |
-| 15 | Gods through Rex | code | D13 D14 | todo |
+| 15 | Gods through Rex | code | D13 D14 | done |
 | 16 | Calm womb, then deep | code | D5 D15 | todo |
 | 17 | Review | review | D1-D17 | todo |
 
@@ -202,4 +202,5 @@ P9 (genesis-chains.js): 0-3 s disc -> ring at C, ~6 rings snap along a chain hea
 - P12 (genesis-dot.js): corrupted ring at (0.84W,0.70H); dot r 0.012m (#e04848, shade #a02a2e, core #f6c2b8) in 12 held steps to (0.955W,0.44H) by 5.4 s; Rex's right arm reaches (GenRexIn.draw reach arg, GenRexIn.rexGeom(W,H,reach).hand) in 4 steps 2.0-4.1 s; caught ring round the dot from 4.1 s. The clash (P13) starts with the dot at the right edge and Rex's hand beside it. Polish: the core shows before the ring (0.1 s); the arm reaches up-right, not down.
 - P13 (genesis-clash.js): close view; womb wall from 0.74W (lit strip, hard shade), Rex arm from lower-left, fist ~0.52-0.62W at 0.49H, dot pressed ahead; blows 0.8/1.9/3.0/4.1 s each a rose octagon annulus in 3 held steps, wall bulges per blow; tear 4.1-5.6 s in 4 steps showing tier-1 strata. Dead titan fight (OLD_TITANS, DASH/LASH) deleted from genesis.js. Polish: the dot never enters the tear; fist stays short of the wall.
 - P14 (genesis-death.js): backdrop `GenClash.draw(...,99,true,true)` (6th arg noActors = wall+tear only) + `GenClash.geom(W,H)`; fist steps into the tear (0.6/1.4/2.2 s), fingers curl over the dot (2.2 half, 3.0 full + thumb), arm tan > cool > dead grey (3.8/4.6 s). Fixes P13's dot-never-enters polish. `drawInsidePlaceholder` kept: `enter` has no module hook.
+- P15 (genesis-gods-beat.js `GenGodsBeat.draw`; genesis-gods.js is the god painters, name taken): the death frame is cut by a stepped octagon (0.2/0.5/0.8/1.1 s) onto the live land; `drawGodsBirth` now draws after `drawRexLand`, the five gods walk west inside the land in 8 held steps (foot = rexSurfY+0.07H) and snap onto the deck, each with a tan chip from halfway. Polish for 17: old gods-beat props still show (red figure, gold arc at 1.7 s); gods bunch at the west edge at the end.
   West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.

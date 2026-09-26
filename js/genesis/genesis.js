@@ -494,7 +494,6 @@ window.Genesis = (function () {
     GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
-    drawGodsBirth(ctx, flesh);
 
     if (uFight > 0.08 && uLand < 0.2) G.shake = Math.max(G.shake, 0.22 + uFight * 0.2);
     if (uFight > 0.82 && uLand < 0.2) G.shake = Math.max(G.shake, 0.55 + (1 - L.yAmt) * 0.45);
@@ -506,6 +505,7 @@ window.Genesis = (function () {
        1.69 screen heights, so the land fill can stop just under that */
     const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
     drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
+    drawGodsBirth(ctx, flesh);
     drawBuried(ctx);
     if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
     drawRexHole(ctx);
@@ -523,6 +523,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("dot") && window.GenDot) GenDot.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("gods") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
