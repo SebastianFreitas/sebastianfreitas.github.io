@@ -119,7 +119,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 3 | Soup: red eats blue | code | D11 | done a60a975 |
 | 4 | Tier-3 eye and dust | code | D8 D16 | done 62d13da |
 | 5 | Roles: arrive, watch, walls | code | D2 D6 | done |
-| 6 | Role map: dress bodies to roles | research+doc | D10 | todo |
+| 6 | Role map: dress bodies to roles | research+doc | D10 | done |
 | 7 | Role change snap | code | D9 D10 D17 | todo |
 | 8 | Circle and first universe | code | Brief | todo |
 | 9 | Chains and billions | code | D12 | todo |
@@ -187,3 +187,11 @@ snap compare `same` outside its scenes, and the genesis nav-flows.
 - P3: `js/genesis/genesis-soup.js` = `GenSoup.draw(ctx,W,H,t,reduced)`, called in soup only; PAL flesh reds + blue, hashed dots (90 red, 14 blue) cached per W×H, held drift every 0.5 s, all blue eaten by 5.8 s, frozen after 6 s. Phase 4 starts from that final soup (expose the dot list if the dust needs it). Polish for phase 17: lit sliver is a hard rectangle at the left edge; red dots read as thin crescents (shade circle too big). MAP.md row for genesis-soup.js still to add.
 - P4: `js/genesis/genesis-eye.js` = `GenEye.draw` in `eye`; GenSoup now exports `drawBackdrop finalReds shaded PAL`. End state (t≥6): grey dust dots on/near the floor (≤0.84 H), one rose pool dot at (0.30 W, 0.24 H), eye arc top-right. Phase 5 and the circle (8) start from that: dust = finalReds positions fallen, pool = the colour point. Polish for 17: the pool point sits under the caption; move it (e.g. 0.30 W, 0.40 H). Snap compare vs mothering-p1 still not run: do it in 17.
 - P5: `js/genesis/genesis-roles.js` = `GenRoles.draw` in `roles` (after GenEye in genesis.js). East-goers from `GenOld.ROSTER` (side 1) as shallow copies with `dressed:false`, slots across 0.10-0.90 W, two rows at 0.90/0.97 H; walk in 8 held steps from 0.15 i s; notes from 2.8 s; wall stacks at 0.02-0.12 W and 0.88-0.98 W snap up from 3.6 s. drawKind pose: phase in radians, gest 0..1, make -1 = not making. Phase 7 snaps these same copies to `dressed:true` per group. Polish for 17: figures read small and grey against the flesh; consider larger h or a lighter tint.
+- P6 role map (17 east-goers, roster idx; groups snap in caption order, one after another; within a group in this order; the gentleman goes last of all watchers):
+  | role | task in `roles` | kinds (idx) | why |
+  |---|---|---|---|
+  | enforcers | raise the walls | tower 10, slab 14, roller 7, comb 16 | heavy columns and found suits, the mass that holds a wall |
+  | watchers | watch, take notes | blinker 6, needle 13, prism 21, gentleman 0 | deerstalker, veil, the watch and the headless stare |
+  | mothers | carry rings (the carers stay) | eye 8, chime 20, mound 23, bundle 12, bloom 15 | CARERS plus the muff and the bonnet |
+  | messengers | run strands | mass 9, veil 17, knot 18, swarmling 22 | trailing muffler, cape, wheel, umbrella: things that travel |
+  West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.
