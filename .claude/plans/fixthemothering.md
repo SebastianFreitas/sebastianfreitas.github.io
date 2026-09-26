@@ -120,7 +120,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 4 | Tier-3 eye and dust | code | D8 D16 | done 62d13da |
 | 5 | Roles: arrive, watch, walls | code | D2 D6 | done |
 | 6 | Role map: dress bodies to roles | research+doc | D10 | done |
-| 7 | Role change snap | code | D9 D10 D17 | todo |
+| 7 | Role change snap | code | D9 D10 D17 | done |
 | 8 | Circle and first universe | code | Brief | todo |
 | 9 | Chains and billions | code | D12 | todo |
 | 10 | Corruption: cut, return, sent up | code | Brief | todo |
@@ -194,4 +194,5 @@ snap compare `same` outside its scenes, and the genesis nav-flows.
   | watchers | watch, take notes | blinker 6, needle 13, prism 21, gentleman 0 | deerstalker, veil, the watch and the headless stare |
   | mothers | carry rings (the carers stay) | eye 8, chime 20, mound 23, bundle 12, bloom 15 | CARERS plus the muff and the bonnet |
   | messengers | run strands | mass 9, veil 17, knot 18, swarmling 22 | trailing muffler, cape, wheel, umbrella: things that travel |
+- P7 (genesis-roles.js): GROUPS = the P6 idx lists; snapAt(idx) = 4.6 + 0.8·group + 0.15·k; each figure goes bare → empty 0.2 s → dressed copy (obD). Figures ×1.35 taller. Dressed figures stop taking notes. Reduced motion: all dressed. Later beats that show these old ones inside must draw them dressed (dressed:true copies).
   West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.

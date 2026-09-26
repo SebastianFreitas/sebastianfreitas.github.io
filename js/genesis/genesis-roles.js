@@ -4,6 +4,17 @@ window.GenRoles = (function () {
   const STEP = 0.25;
   let figs = null, figKey = "";
 
+  const GROUPS = [[10, 14, 7, 16], [6, 13, 21, 0], [8, 20, 23, 12, 15], [9, 17, 18, 22]];
+  const SNAP_T0 = 4.6, GROUP_GAP = 0.8, ONE_GAP = 0.15, BLINK = 0.2;
+
+  function snapAt(idx) {
+    for (let g = 0; g < GROUPS.length; g++) {
+      const k = GROUPS[g].indexOf(idx);
+      if (k !== -1) return SNAP_T0 + g * GROUP_GAP + k * ONE_GAP;
+    }
+    return Infinity;
+  }
+
   function hash(i) {
     const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
     return s - Math.floor(s);
@@ -24,11 +35,13 @@ window.GenRoles = (function () {
       const back = (i % 2 === 0);
       const footY = back ? 0.90 * H : 0.97 * H;
       const rowScale = back ? 0.85 : 1;
-      const h = Math.max(H * 0.08, H * 0.20 * o.hf / maxHf) * rowScale;
+      const h = Math.max(H * 0.08, H * 0.20 * o.hf / maxHf) * rowScale * 1.35;
       const startX = sx < W / 2 ? -0.1 * W : 1.1 * W;
       const t0 = 0.15 * i;
       return {
         ob: Object.assign({}, o, { dressed: false }),
+        obD: Object.assign({}, o, { dressed: true }),
+        snap: snapAt(o.idx),
         i, sx, y: footY, h, startX, t0, back,
       };
     });
@@ -82,32 +95,45 @@ window.GenRoles = (function () {
       if (reduced) {
         x = f.sx;
         look = poolX;
-      } else {
-        if (t < f.t0) return;
-        const u = clamp((t - f.t0) / 1.6, 0, 1);
-        const uq = Math.floor(u * 8) / 8;
-        x = lerp(f.startX, f.sx, uq);
-        if (u > 0 && u < 1) {
-          phase = Math.floor(t / STEP) * Math.PI / 2;
-          look = f.sx;
-        } else {
-          phase = 0;
-          look = poolX;
-        }
-        if (inWindow && (f.i + k) % 3 === 0) {
-          const win = t - (2.8 + k * 1.2);
-          gest = win < 0.4 ? 1 : 0;
-        }
+        const pose = { phase, look, sy: 1, kneel: 0, gest: 0, make: -1 };
+        ctx.save();
+        try {
+          GenOld.drawKind(ctx, f.obD.kind, f.obD, x, y, h, pose);
+        } catch (e) { /* skip a figure whose painter throws */ }
+        ctx.restore();
+        return;
       }
 
+      if (t < f.t0) return;
+      const u = clamp((t - f.t0) / 1.6, 0, 1);
+      const uq = Math.floor(u * 8) / 8;
+      x = lerp(f.startX, f.sx, uq);
+      if (u > 0 && u < 1) {
+        phase = Math.floor(t / STEP) * Math.PI / 2;
+        look = f.sx;
+      } else {
+        phase = 0;
+        look = poolX;
+      }
+
+      const dressed = t >= f.snap + BLINK;
+      const blinking = t >= f.snap && t < f.snap + BLINK;
+      if (blinking) return;
+
+      if (!dressed && inWindow && (f.i + k) % 3 === 0) {
+        const win = t - (2.8 + k * 1.2);
+        gest = win < 0.4 ? 1 : 0;
+      }
+
+      const ob = dressed ? f.obD : f.ob;
       const pose = { phase, look, sy: 1, kneel: 0, gest, make: -1 };
       ctx.save();
       try {
-        GenOld.drawKind(ctx, f.ob.kind, f.ob, x, y, h, pose);
+        GenOld.drawKind(ctx, ob.kind, ob, x, y, h, pose);
       } catch (e) { /* skip a figure whose painter throws */ }
       ctx.restore();
 
-      if (gest > 0 && !reduced) {
+      if (gest > 0) {
         const tw = h * 0.14, th = h * 0.18;
         const tx = x + h * 0.12, ty = y - h * 0.62;
         ctx.fillStyle = "#5c4a44";
