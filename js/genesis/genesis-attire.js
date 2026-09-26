@@ -8,6 +8,7 @@ window.GenAttire = (() => {
   const { poly, rect, litShade } = window.Paint;
   const P = window.GenEldPal;
 
+  // safety net only: a missing GenEldPal token shows as flat grey, never throws
   const FALL = { lit: "#555a5e", mid: "#3c3f42", shade: "#26292b" };
   function T(name) { return (name && P && P.tone(name)) || FALL; }
 

@@ -382,8 +382,8 @@ window.GenOld = (function () {
      from the left; thin-line limbs (too narrow to split) take a flat lit
      or shade colour from which side of the body they fall on. */
 
-  // true only once a real "dress" beat exists and it has begun; today there
-  // is no such beat, so the gentleman stays bare through the whole cutscene
+  // true once the `dress` beat has begun: before it every old one is bare;
+  // each east-goer's own moment inside the beat is set below
   function dressNow() {
     return G.BEATS.some((b) => b.id === "dress") && G.since("dress") > 0;
   }

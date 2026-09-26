@@ -946,6 +946,7 @@ Owner, 2026-09-26:
 - (Phase 23) `drawSpan` works in a device-pixel box: anything new drawn into
   the span canvas must stay within x0-3..x1+3 and below deckY - 0.06 H, or
   widen that box. Frame-time margin: within 10% of the Phase 4 baseline.
-- (Phase 24) The plan is done. Open for a later pass: the stale `dressNow`
-  comment, the grey `FALL` fallback in genesis-attire.js, the unbuilt cold
-  rift light. `art-style.md` Eldritch now describes what shipped.
+- (Phase 24) The plan is done. `art-style.md` Eldritch now describes what
+  shipped. After the review: the `dressNow` comment now tells the truth, and
+  `FALL` in genesis-attire.js is kept as a commented safety net (every tone
+  it is asked for exists in `GenEldPal`). Still open: the cold rift light.
