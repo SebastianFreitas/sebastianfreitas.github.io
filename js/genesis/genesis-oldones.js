@@ -259,12 +259,12 @@ window.GenOld = (function () {
     if (isFlyer) y = mix(y, deckY - 0.05 * H, still * 0.8);
 
     /* 6. alpha */
-    let a = (e > 0 ? 1 : 0) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("land"));
+    let a = (e > 0 ? 1 : 0) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("gods"));
     if (watch > 0.5) a *= 0.55;
 
     let pinU = -1;
     if (hasLeaveBeat() && !o.bro && !CARERS[o.kind]) {
-      const ls = G.secs("leave");
+      const ls = G.secs("gods");
       const at = LEAVE_T0 + (LEAVE_T1 - LEAVE_T0) * clamp(x / W, 0, 1);
       const u = (ls - at) / PIN_DUR;
       if (u >= 0 && u < 1 && a >= 0.04) pinU = Math.floor(u * 8) / 8;
@@ -385,7 +385,7 @@ window.GenOld = (function () {
   // true once the `dress` beat has begun: before it every old one is bare;
   // each east-goer's own moment inside the beat is set below
   function dressNow() {
-    return G.BEATS.some((b) => b.id === "dress") && G.since("dress") > 0;
+    return G.BEATS.some((b) => b.id === "roles") && G.since("roles") > 0;
   }
 
   // one at a time: each east-goer gets its own moment inside the dress beat,
@@ -393,7 +393,7 @@ window.GenOld = (function () {
   var DRESS_T0 = 0.4, DRESS_T1 = 6.2, HOLD = 0.35, MAKE = 1.8;
   var _hasDressBeat = null;
   function hasDressBeat() {
-    if (_hasDressBeat === null) _hasDressBeat = G.BEATS.some((b) => b.id === "dress");
+    if (_hasDressBeat === null) _hasDressBeat = G.BEATS.some((b) => b.id === "roles");
     return _hasDressBeat;
   }
 
@@ -403,7 +403,7 @@ window.GenOld = (function () {
   const CARERS = { eye: 1, chime: 1, mound: 1 };
   var _hasLeaveBeat = null;
   function hasLeaveBeat() {
-    if (_hasLeaveBeat === null) _hasLeaveBeat = G.BEATS.some((b) => b.id === "leave");
+    if (_hasLeaveBeat === null) _hasLeaveBeat = G.BEATS.some((b) => b.id === "gods");
     return _hasLeaveBeat;
   }
   var _dressAt = null;
@@ -423,7 +423,7 @@ window.GenOld = (function () {
   }
   // seconds past this one's own snap (negative before, ~0 at the snap)
   function dressT(o) {
-    return hasDressBeat() ? G.secs("dress") - dressAt(o) : -Infinity;
+    return hasDressBeat() ? G.secs("roles") - dressAt(o) : -Infinity;
   }
 
   // the headless, tailored gentleman: replaces the colossus. Bare (rough,
@@ -944,8 +944,8 @@ window.GenOld = (function () {
   // weather: wind and frost, shared with GenAttire for the dressed old ones
   let _hasDress = null;
   function frostNow() {
-    if (_hasDress === null) _hasDress = G.BEATS.some(b => b.id === "dress");
-    return _hasDress ? G.since("dress") : 0;
+    if (_hasDress === null) _hasDress = G.BEATS.some(b => b.id === "roles");
+    return _hasDress ? G.since("roles") : 0;
   }
   function windAt(t) {
     const WX = window.GenAttire && window.GenAttire.weather;

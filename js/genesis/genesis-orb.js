@@ -62,7 +62,7 @@
     /* Rex's last act: he closes his whole body around Obrokxus, and
        the two of them go down together into what becomes the ground */
     const wrap = smooth(clamp((uFight - 0.80) / 0.10, 0, 1));
-    const landLin = linear("land");
+    const landLin = linear("gods");
     const dropP = clamp((uFight - 0.88) / 0.12, 0, 1) * 0.35 + clamp(landLin / 0.45, 0, 1) * 0.65;
     const bx = sx(BURY_U);
     const by = rexSurfY(BURY_U) + G.H * 0.10;

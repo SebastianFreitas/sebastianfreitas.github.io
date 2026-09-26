@@ -126,7 +126,7 @@ window.GenRex = (function () {
 
   function drawRexLand(ctx, rise, originX, originY, floorY) {
     if (rise < 0.02) return;
-    const cool = smooth(clamp((since("land") - 0.22) / 0.65, 0, 1));
+    const cool = smooth(clamp((since("gods") - 0.22) / 0.65, 0, 1));
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
     const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
     const yC = mix(originY, G.H * 1.16, rise);
@@ -283,11 +283,9 @@ window.GenRex = (function () {
 
   /* Obrokxus, held under the surface where Rex closed around him */
   function drawBuried(ctx) {
-    const iL = idxOf("land"), iG = idxOf("gods");
-    if (G.beat !== iL && G.beat !== iG) return;
-    const amt = G.beat === iL
-      ? smooth(clamp((linear("land") - 0.35) / 0.30, 0, 1))
-      : 1 - smooth(clamp((linear("gods") - 0.70) / 0.30, 0, 1));
+    const iG = idxOf("gods");
+    if (G.beat !== iG) return;
+    const amt = 1 - smooth(clamp((linear("gods") - 0.70) / 0.30, 0, 1));
     if (amt < 0.02) return;
     const x = sx(BURY_U), y = rexSurfY(BURY_U) + G.H * 0.10;
     const R = Math.min(G.W, G.H) * 0.16 * (1 + 0.12 * Math.sin(G.t * 3.2));

@@ -111,9 +111,9 @@ window.GenTrade = (function () {
     if (typeof G.secs !== "function") return;
     const base = G.secs("trade");
     if (base < 7.2) return;
-    const swarmSince = G.since ? G.since("swarm") : 0;
+    const swarmSince = G.since ? G.since("enter") : 0;
     if (swarmSince >= 1) return;
-    const landSince = G.since ? G.since("land") : 0;
+    const landSince = G.since ? G.since("gods") : 0;
     const rootSince = G.since ? G.since("root") : 0;
     const W = G.W, H = G.H;
     if (W === 0) return;

@@ -501,7 +501,7 @@
     const W = G.W, H = G.H;
     if (!W || !H) return;
     const grow = smooth(clamp((G.secs("break") - 3.5) / 16, 0, 1));
-    const keep = 1 - G.since("land") * 0.6;
+    const keep = 1 - G.since("gods") * 0.6;
     const k = grow * keep;
     if (k < 0.02) return;
 

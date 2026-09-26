@@ -27,6 +27,8 @@ window.Genesis = (function () {
           drawBuried, drawGodsBirth } = GenRex;
   const { drawSaga, drawLiveWorld } = GenSaga;
 
+  const OLD_TITANS = G.BEATS.some(b => b.id === "birth");
+
   const overlay = document.getElementById("genesis");
   const tagEl   = document.getElementById("genesis-tag");
   const lineEl  = document.getElementById("genesis-line");
@@ -244,8 +246,9 @@ window.Genesis = (function () {
   const ZOOM = {
     point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05],
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
-    root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], dress: [1.00, 1.00], worlds: [1.00, 1.00], remake: [1.00, 1.00], lives: [1.00, 1.00], leave: [1.00, 1.00], birth: [1.00, 1.06],
-    fight: [1.06, 1.06], land: [1.06, 1.00], gods: [1.00, 1.05], deep: [1.05, 1.00],
+    root: [1.02, 1.06], enter: [1.06, 1.09],
+    soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09], rex: [1.09, 1.09], dot: [1.09, 1.09], clash: [1.09, 1.09], death: [1.09, 1.09],
+    gods: [1.00, 1.05], calm: [1.05, 1.05], deep: [1.05, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
     four: [1.10, 1.02], fifth: [1.02, 1.10], fall: [1.10, 1.00],
@@ -315,7 +318,7 @@ window.Genesis = (function () {
          past the right edge; panning further east shows its ragged side.
          during the surface beat it eases onto where the chase camera
          starts, so the flee beat opens on a move and not a jerk */
-      target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0), since("land"));
+      target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0), since("gods"));
     else
       target = mix(0, ROOT_U - 0.50, clamp(uWalk, 0, 1));
     let camRate = 1.55;
@@ -403,11 +406,12 @@ window.Genesis = (function () {
     const uBreak = since("break");
     const uWalk  = since("walk");
     const uRoot  = since("root");
-    const uSwarm = since("swarm");
-    const uWomb  = since("womb");
-    const uBirth = since("birth");
-    const uFight = linear("fight");
-    const uLand  = since("land");
+    const uSwarm = since("enter");
+    const uWomb  = since("soup");
+    const pastBirth = G.beat >= G.idxOf("gods") ? 1 : 0;
+    const uBirth = pastBirth;
+    const uFight = pastBirth;
+    const uLand  = since("gods");
     const uFlee  = since("flee");
     const uNow   = only("now");
 
@@ -460,7 +464,7 @@ window.Genesis = (function () {
     const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
     const fleshVis = approaching * (1 - uLand * 0.28);
     const geom = GenFlesh.fleshGeom(uWomb);
-    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (1 - since("land"));
+    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (1 - since("gods"));
     if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
     const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb);
     const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1);
@@ -478,10 +482,10 @@ window.Genesis = (function () {
        down the span before it ends, so the procession never stops */
     GenTrade.drawStream(ctx);   // everything that travels with them
     GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
-    drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
+    if (OLD_TITANS) drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
-    if (uBirth > 0.04 && G.beat < idxOf("gods")) {
+    if (OLD_TITANS && uBirth > 0.04 && G.beat < idxOf("gods")) {
       pushTrail(G.trailY, L.yx, L.yy);
       pushTrail(G.trailR, L.rx, L.ry);
       drawTrail(ctx, G.trailY, "245,138,52", L.yAmt);
@@ -497,7 +501,7 @@ window.Genesis = (function () {
       const yFootR = L.yy + 0.45 * hR, yFootO = L.ry + 0.45 * hO;
       const obEye = { x: L.rx + fO * 0.10 * hO, y: yFootO - 0.50 * hO };
       const rexHead = { x: L.yx, y: yFootR - 0.86 * hR };
-      const landLin = linear("land");
+      const landLin = linear("gods");
       const cool = smooth(clamp((landLin - 0.2) / 0.6, 0, 1));
       let rexPose = "stand", rexTilt = 0;
       if (L.wrap > 0.02) rexPose = "grapple";
@@ -559,6 +563,8 @@ window.Genesis = (function () {
     drawSaga(ctx);
     ctx.restore();
 
+    drawInsidePlaceholder(ctx);
+
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
       if (p > 0) {
@@ -584,6 +590,26 @@ window.Genesis = (function () {
         ctx.fillRect(0, 0, G.W, G.H);
       }
     }
+  }
+
+  function drawInsidePlaceholder(ctx) {
+    const a = idxOf("enter"), b = idxOf("death");
+    if (!(a < BEATS.length && G.beat >= a && G.beat <= b)) return;
+    const cover = G.beat === a ? Math.floor(linear("enter") * 4) / 4 : 1;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = cover;
+    ctx.fillStyle = "#2a0a10";
+    ctx.fillRect(0, 0, G.W, G.H);
+    ctx.fillStyle = "#4a141c";
+    ctx.beginPath();
+    ctx.ellipse(G.W * 0.5, G.H * 0.5, G.W * 0.46, G.H * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#6b2029";
+    ctx.beginPath();
+    ctx.ellipse(G.W * 0.5 - G.W * 0.04, G.H * 0.5, G.W * 0.30, G.H * 0.27, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   /* ---- input --------------------------------------------- */

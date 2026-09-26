@@ -26,21 +26,8 @@ window.GenTier3 = (function () {
     },
     trade: { brim: { ...SLIVER_R(0), mv: { m: "fade", at: 1.0, gap: 2.0 } } },
     walk: { comb: { x: 0.35, dir: 1, n: 7, len: 0.22, s: 2, mv: { m: "pass", from: -0.2, to: 0.7 } } },
-    womb: { brim: SLIVER_L(0) }, dress: { brim: SLIVER_L(0) },
-    remake: { brim: SLIVER_L(0) }, lives: { brim: SLIVER_L(0) },
-    worlds: { brim: SLIVER_L(0), comb: { x: 0.975, dir: 1, n: 2, len: 0.24, s: 1 } },
-    leave: {
-      lintel: { ...LINTEL, mv: { m: "enter", at: 0.6, gap: 2.1, ox: 0, oy: -0.15 } },
-      arc: { ...ARC, mv: { m: "enter", at: 0.6, gap: 2.1, ox: 0, oy: -0.35 } },
-    },
-    birth: { lintel: LINTEL, arc: ARC },
-    fight: { lintel: { ...LINTEL, mv: { m: "level", at: 4.0 } }, arc: ARC },
-    land: {
-      brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } },
-      lintel: { ...LINTEL, mv: { m: "fade", at: 0.5, gap: 0.5 } },
-      arc: { ...ARC, mv: { m: "fade", at: 0.5, gap: 0.5 } },
-    },
     gods: { brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } } },
+    calm: { brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } } },
     flee: {
       brim: { ...CHORD, mv: { m: "drift", v: -1 } },
       comb: { x: 0.6, dir: 1, n: 6, len: 0.2, s: 1, mv: { m: "pass", from: 0.45, to: -0.95 } },
