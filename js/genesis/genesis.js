@@ -27,8 +27,6 @@ window.Genesis = (function () {
           drawBuried, drawGodsBirth } = GenRex;
   const { drawSaga, drawLiveWorld } = GenSaga;
 
-  const OLD_TITANS = G.BEATS.some(b => b.id === "birth");
-
   const overlay = document.getElementById("genesis");
   const tagEl   = document.getElementById("genesis-tag");
   const lineEl  = document.getElementById("genesis-line");
@@ -390,8 +388,6 @@ window.Genesis = (function () {
     return true;
   }
 
-  const DASH = [[0.10, 0.14], [0.23, 0.27], [0.42, 0.46], [0.84, 0.88]];   // Rex's lunges
-  const LASH = [[0.30, 0.36], [0.56, 0.62], [0.74, 0.80]];                 // Obrokxus's lunges
   function bump(windows, u) {   // 0..1 bump that rises over a window and settles 0.10 after it
     let v = 0;
     for (const [a, b] of windows) {
@@ -496,69 +492,8 @@ window.Genesis = (function () {
        down the span before it ends, so the procession never stops */
     GenTrade.drawStream(ctx);   // everything that travels with them
     GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
-    if (OLD_TITANS) drawRip(ctx, flesh, clamp(uBirth * 2.6, 0, 1) * (1 - clamp((uBirth - 0.42) / 0.45, 0, 1)) * (1 - uFight));
 
     const L = lightsAt(uBirth, uFight, uLand, flesh);
-    if (OLD_TITANS && uBirth > 0.04 && G.beat < idxOf("gods")) {
-      pushTrail(G.trailY, L.yx, L.yy);
-      pushTrail(G.trailR, L.rx, L.ry);
-      drawTrail(ctx, G.trailY, "245,138,52", L.yAmt);
-      drawTrail(ctx, G.trailR, "90,12,18", L.rAmt, true);
-
-      const m = Math.min(G.W, G.H);
-      const uF = linear("fight");
-      const rexLunge = bump(DASH, uF), obLash = bump(LASH, uF);
-      const emerge = clamp(uBirth * 1.35, 0, 1);
-      // Rex a head taller than Obrokxus: the stone titan, not an equal
-      const hR = 0.30 * m * (0.4 + 0.6 * emerge), hO = 0.26 * m * (0.4 + 0.6 * emerge);
-      const fR = L.rx >= L.yx ? 1 : -1, fO = -fR;
-      const yFootR = L.yy + 0.45 * hR, yFootO = L.ry + 0.45 * hO;
-      const obEye = { x: L.rx + fO * 0.10 * hO, y: yFootO - 0.50 * hO };
-      const rexHead = { x: L.yx, y: yFootR - 0.86 * hR };
-      const landLin = linear("gods");
-      const cool = smooth(clamp((landLin - 0.2) / 0.6, 0, 1));
-      let rexPose = "stand", rexTilt = 0;
-      if (L.wrap > 0.02) rexPose = "grapple";
-      else if (rexLunge > 0.05) rexPose = "lunge";
-      if (L.die > 0.02) { rexPose = "fall"; rexTilt = (Math.PI / 2) * smooth(L.die); }
-      const obPose = obLash > 0.05 && L.wrap < 0.02 ? "lunge" : "stand";
-
-      const near = Math.hypot(L.yx - L.rx, L.yy - L.ry) < 0.30 * m;
-      if (near && (rexLunge > 0.55 || obLash > 0.55) && G.clashCool <= 0) {
-        G.flash = 0.7;
-        G.shake = Math.max(G.shake, 0.95);
-        G.clashCool = 0.26;
-        G.zoomKick = Math.max(G.zoomKick, 0.035);
-        G.rings.push({ x: (L.yx + L.rx) * 0.5, y: (L.yy + L.ry) * 0.5, r: 10, a: 1 });
-        for (let i = 0; i < 10; i++) {
-          G.sparks.push({ x: obEye.x, y: obEye.y, vx: (Math.random() - 0.5) * 520, vy: -Math.random() * 420 - 80, t: 0 });
-        }
-      }
-      const beamU = (uFight > 0.66 && uFight < 0.78) ? 1 - Math.abs(uFight - 0.72) / 0.12 : 0;
-
-      const F = window.GenFig;
-      if (F) {
-        F.drawTitan(ctx, L.rx, yFootO, hO, "obrokxus", { a: L.rAmt, face: fO, pose: obPose, reach: rexHead, look: rexHead, ph: 0.4, tilt: -0.3 * smooth(L.die) });
-        F.drawTitan(ctx, L.yx, yFootR, hR, "rex", { a: L.yAmt, face: fR, pose: rexPose, reach: rexPose === "grapple" ? { x: L.rx, y: L.ry } : obEye, reachAmt: rexLunge, cool, tilt: rexTilt });
-      }
-
-      const shX = L.yx + fR * 0.26 * hR, shY = yFootR - 0.62 * hR;
-      const hdx = obEye.x - shX, hdy = obEye.y - shY;
-      const hdLen = Math.hypot(hdx, hdy) || 1;
-      const handX = shX + (hdx / hdLen) * 0.46 * hR, handY = shY + (hdy / hdLen) * 0.46 * hR;
-      drawBeam(ctx, handX, handY, obEye.x, obEye.y, beamU * Math.max(L.yAmt, L.rAmt));
-
-      for (const s of G.sparks) {
-        const a = 1 - s.t / 0.45;
-        if (a <= 0) continue;
-        ctx.fillStyle = `rgba(255,226,190,${a})`;
-        ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
-      }
-
-      drawName(ctx, L.rx, yFootO + 14, L.rAmt, "OBROKXUS", 0);
-      drawName(ctx, L.yx, yFootR + 14, L.yAmt, "REX", 0);
-      drawRings(ctx);
-    }
     drawGodsBirth(ctx, flesh);
 
     if (uFight > 0.08 && uLand < 0.2) G.shake = Math.max(G.shake, 0.22 + uFight * 0.2);
@@ -586,6 +521,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("corrupt") && window.GenCorrupt) GenCorrupt.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("rex") && window.GenRexIn) GenRexIn.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("dot") && window.GenDot) GenDot.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
