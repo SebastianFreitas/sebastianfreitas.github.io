@@ -16,6 +16,7 @@ window.GenSoup = (function () {
 
   const N_RED = 90;
   const N_BLUE = 14;
+  const N_EATEN = 10;
 
   function hash(i) {
     const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
@@ -48,7 +49,26 @@ window.GenSoup = (function () {
         const d = dx * dx + dy * dy;
         if (d < bestD) { bestD = d; best = k; }
       }
-      blues.push({ x, y, r, eater: best, te: 1.2 + j * (4.6 / N_BLUE) });
+      blues.push({ x, y, r, eater: best, nearRed: best, bestD, alive: false, te: 0 });
+    }
+    /* the 4 blues farthest from their nearest red survive the beat; ties
+       go to the lower index */
+    const order = blues.map((b, j) => j).sort((a, b) => blues[b].bestD - blues[a].bestD);
+    const survivors = order.slice(0, 4);
+    for (let s = 0; s < survivors.length; s++) {
+      const b = blues[survivors[s]];
+      b.alive = true;
+      b.eater = -1;
+      b.te = Infinity;
+    }
+    /* remaining blues are eaten in original index order, spread across
+       the beat */
+    let n = 0;
+    for (let j = 0; j < blues.length; j++) {
+      const b = blues[j];
+      if (b.alive) continue;
+      b.te = 1.2 + n * (4.6 / N_EATEN);
+      n++;
     }
   }
 
@@ -122,6 +142,28 @@ window.GenSoup = (function () {
     return out;
   }
 
+  function finalBlues(W, H) {
+    ensure(W, H);
+    const m = Math.min(W, H);
+    const k = 12;
+    const out = [];
+    for (let j = 0; j < blues.length; j++) {
+      const b = blues[j];
+      if (!b.alive) continue;
+      const i = reds.length + j;
+      let x = b.x + (hash(i * 7 + k) - 0.5) * m * 0.012;
+      let y = b.y + (hash(i * 7 + k + 1000) - 0.5) * m * 0.012;
+      const red = reds[b.nearRed];
+      let dx = b.x - red.x, dy = b.y - red.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      dx /= len; dy /= len;
+      x += dx * 0.02 * m * 2;
+      y += dy * 0.02 * m * 2;
+      out.push({ x, y, r: b.r });
+    }
+    return out;
+  }
+
   function draw(ctx, W, H, t, reduced) {
     if (!W || !H) return;
     if (t < 0) t = 0;
@@ -145,6 +187,7 @@ window.GenSoup = (function () {
 
     for (let j = 0; j < blues.length; j++) {
       const b = blues[j];
+      if (b.alive) continue;
       const e = reds[b.eater];
       if (t >= b.te) {
         blueGone[j] = true;
@@ -178,9 +221,23 @@ window.GenSoup = (function () {
       const i = reds.length + j;
       const ox = (hash(i * 7 + k) - 0.5) * m * 0.012;
       const oy = (hash(i * 7 + k + 1000) - 0.5) * m * 0.012;
-      drawShaded(ctx, b.x + ox, b.y + oy, b.r, PAL.blueLit, PAL.blue, m);
+      let x = b.x + ox, y = b.y + oy;
+      if (b.alive) {
+        /* cornered: two held steps push the survivor further from its
+           nearest red, away in a straight line */
+        const steps = reduced ? 2 : (t >= 5.5 ? 1 : 0) + (t >= 6.0 ? 1 : 0);
+        if (steps > 0) {
+          const red = reds[b.nearRed];
+          let dx = b.x - red.x, dy = b.y - red.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          dx /= len; dy /= len;
+          x += dx * 0.02 * m * steps;
+          y += dy * 0.02 * m * steps;
+        }
+      }
+      drawShaded(ctx, x, y, b.r, PAL.blueLit, PAL.blue, m);
     }
   }
 
-  return { draw, drawBackdrop, finalReds, shaded: drawShaded, PAL };
+  return { draw, drawBackdrop, finalReds, finalBlues, shaded: drawShaded, PAL };
 })();
