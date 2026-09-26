@@ -11,7 +11,7 @@ file.
 Files still over 500 lines (never read one top to bottom):
 `css/bridge.css` (726), `js/hud/instruments.js` (652),
 `js/hud/tiles-nav.js` (641), `js/bridge/bridge-sites.js` (525),
-`js/genesis/genesis.js` (642), `js/gamedev/storm.js` (585),
+`js/genesis/genesis.js` (637), `js/gamedev/storm.js` (585),
 `js/genesis/genesis-matter.js` (620), `js/genesis/genesis-gods.js` (516),
 `js/ship/voidship.js` (553), `js/gamedev/forge.js` (549),
 `js/gamedev/zones.js` (509), `js/genesis/genesis-rex.js` (506),
@@ -189,7 +189,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-eldpal.js` | 174 | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, read by the tier-3, old-one and kin painters | `window.GenEldPal` |
 | `genesis-tier3.js` | 236 | tier 3, the sky shadows (plan phase 16): the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset, `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg` | `window.GenTier3` |
 | `genesis-void.js` | 287 | `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks), `drawSpan` (the monumental bridge: slab, piers, arches, gold rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23) | `window.GenVoid` |
-| `genesis-flesh.js` | 259 | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
+| `genesis-flesh.js` | 279 | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
 | `genesis-soup.js` | ~185 | `soup` beat inside the womb: red dots eat the blue in held steps; `drawBackdrop`, `finalReds` (post-eat layout), `shaded`, `PAL` shared with later inside beats | `window.GenSoup` |
 | `genesis-eye.js` | ~150 | `eye` beat: tier-3 lidless arc cut by the frame; dots turn to dust (chip up, grey down), chips pool to one point | `window.GenEye` |
 | `genesis-roles.js` | ~125 | `roles` beat inside: eye end state as backdrop; bare east-goers (GenOld.drawKind, dressed:false) walk in held steps, watch the pool, take notes (tablets), flesh wall stacks snap up | `window.GenRoles` |

@@ -246,7 +246,7 @@ window.Genesis = (function () {
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
     root: [1.02, 1.06], enter: [1.06, 1.09],
     soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09], rex: [1.09, 1.09], dot: [1.09, 1.09], clash: [1.09, 1.09], death: [1.09, 1.09],
-    gods: [1.00, 1.05], calm: [1.05, 1.05], deep: [1.05, 1.00],
+    gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
     four: [1.10, 1.02], fifth: [1.02, 1.10], fall: [1.10, 1.00],
@@ -478,10 +478,11 @@ window.Genesis = (function () {
     const geom = GenFlesh.fleshGeom(uWomb);
     const sealAmt = clamp(uWomb * 1.2, 0, 1) * (1 - since("gods"));
     if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
-    const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb);
-    const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1);
+    const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
+    const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
+    const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1) * (1 - calmOn);
     GenFlesh.drawCry(ctx, flesh, cryAmt);
-    GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis, GenOld.ROSTER);
+    GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis * (1 - calmOn), GenOld.ROSTER);
     const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
     GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
 

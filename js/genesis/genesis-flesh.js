@@ -31,16 +31,17 @@ window.GenFlesh = (function () {
   }
 
   // the body's wobbling outline: an 81-point ellipse with four ripple terms
-  function fleshPath(ctx, cx, cy, rx, ry, pain, seed) {
+  function fleshPath(ctx, cx, cy, rx, ry, pain, seed, tt) {
+    tt = tt === undefined ? G.t : tt;
     ctx.beginPath();
     const n = 80;
     for (let i = 0; i <= n; i++) {
       const u = i / n, ang = u * 6.283;
       const wob = 1
-        + Math.sin(ang * 3 + G.t * 0.5 + seed) * 0.08 * pain
-        + Math.sin(ang * 7 - G.t * 0.35) * 0.05 * pain
-        + Math.sin(ang * 2 + G.t * 0.22) * 0.05
-        + Math.sin(ang * 11 + G.t * 1.1) * 0.03 * pain;
+        + Math.sin(ang * 3 + tt * 0.5 + seed) * 0.08 * pain
+        + Math.sin(ang * 7 - tt * 0.35) * 0.05 * pain
+        + Math.sin(ang * 2 + tt * 0.22) * 0.05
+        + Math.sin(ang * 11 + tt * 1.1) * 0.03 * pain;
       const x = cx + Math.cos(ang) * rx * wob;
       const y = cy + Math.sin(ang) * ry * wob;
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
@@ -51,10 +52,13 @@ window.GenFlesh = (function () {
   const EYES = [[200, 0.55], [160, 0.70], [235, 0.72], [120, 0.45], [260, 0.40], [185, 0.25]];
   const MOUTHS = [[215, 0.90], [145, 0.88], [180, 0.60]];
 
-  function drawFlesh(ctx, vis, pain, womb) {
+  function drawFlesh(ctx, vis, pain, womb, calm) {
     if (vis < 0.02) return null;
     pain = pain == null ? 0.4 : pain;
     womb = womb == null ? 0 : womb;
+    calm = calm ? 1 : 0;
+    const bodyPain = calm ? 0 : pain;
+    const bodyTt = calm ? 0 : G.t;
     const m = Math.min(G.W, G.H);
     const flesh = fleshGeom(womb);
     const { cx, cy, rx, ry } = flesh;
@@ -62,19 +66,19 @@ window.GenFlesh = (function () {
     // 1. two back lobes, unclipped so they peek out from behind the body
     ctx.globalAlpha = vis;
     ctx.fillStyle = "#2e080c";
-    fleshPath(ctx, cx - 0.30 * rx, cy - 0.35 * ry, rx * 0.55, ry * 0.45, pain * 0.6, 11);
+    fleshPath(ctx, cx - 0.30 * rx, cy - 0.35 * ry, rx * 0.55, ry * 0.45, bodyPain * 0.6, 11, bodyTt);
     ctx.fill();
-    fleshPath(ctx, cx - 0.22 * rx, cy + 0.42 * ry, rx * 0.48, ry * 0.40, pain * 0.6, 17);
+    fleshPath(ctx, cx - 0.22 * rx, cy + 0.42 * ry, rx * 0.48, ry * 0.40, bodyPain * 0.6, 17, bodyTt);
     ctx.fill();
 
     // 2. the body
     const LIT = mixHex("#5c1114", "#6a2418", clamp(womb * 1.5, 0, 1));
-    offsetShade(ctx, () => fleshPath(ctx, cx, cy, rx, ry, pain, 0), -0.26 * rx, -0.10 * ry, LIT, "#2e080c");
+    offsetShade(ctx, () => fleshPath(ctx, cx, cy, rx, ry, bodyPain, 0, bodyTt), -0.26 * rx, -0.10 * ry, LIT, "#2e080c");
     ctx.globalAlpha = 1;
 
     // 3-5. veins, eyes and mouths, all clipped to the body
     ctx.save();
-    fleshPath(ctx, cx, cy, rx, ry, pain, 0);
+    fleshPath(ctx, cx, cy, rx, ry, bodyPain, 0, bodyTt);
     ctx.clip();
     ctx.globalAlpha = vis;
 
@@ -87,64 +91,80 @@ window.GenFlesh = (function () {
       const a0 = (k * 60 + 20) * DEG, a1 = a0 + 25 * DEG;
       const x0 = cx + Math.cos(a0) * rx * 0.25, y0 = cy + Math.sin(a0) * ry * 0.25;
       const x1 = cx + Math.cos(a1) * rx, y1 = cy + Math.sin(a1) * ry;
-      const sway = 0.03 * rx * Math.sin(G.t * 0.6 + k);
+      const sway = calm ? 0 : 0.03 * rx * Math.sin(G.t * 0.6 + k);
       ctx.moveTo(x0, y0);
       ctx.quadraticCurveTo((x0 + x1) / 2 + sway, (y0 + y1) / 2, x1, y1);
     }
     ctx.stroke();
 
     // 4. eyes: mostly open, closing under pain or the womb, watching west
-    const look = sx(0);
-    for (let k = 0; k < EYES.length; k++) {
-      const ang = EYES[k][0] * DEG, rf = EYES[k][1];
-      const ex = cx + Math.cos(ang) * rx * rf, ey = cy + Math.sin(ang) * ry * rf;
-      const ew = m * (0.030 + 0.012 * hash1(k * 5 + 1));
-      const op = clamp(1.4 * Math.sin(G.t * 0.55 + k * 1.9) + 0.6, 0, 1)
-               * (1 - clamp((pain - 0.9) * 1.5, 0, 1))
-               * (1 - womb);
-      if (op < 0.02) continue;
-      ctx.beginPath();
-      ctx.moveTo(ex - ew, ey);
-      ctx.quadraticCurveTo(ex, ey - ew * 0.8 * op, ex + ew, ey);
-      ctx.quadraticCurveTo(ex, ey + ew * 0.8 * op, ex - ew, ey);
-      ctx.closePath();
-      ctx.fillStyle = "#d8cfc4";
-      ctx.fill();
-      ctx.save();
-      ctx.clip();
-      const lookDx = clamp((look - ex) / G.W, -1, 1) * 0.25 * ew;
-      const ix = ex + lookDx, ir = 0.55 * ew * op + 0.001;
-      ctx.fillStyle = "#1a0507";
-      ctx.beginPath(); ctx.arc(ix, ey, ir, 0, 6.283); ctx.fill();
-      ctx.fillStyle = "#000";
-      ctx.fillRect(ix - 0.06 * ew, ey - ir, 0.12 * ew, ir * 2);
-      ctx.restore();
+    if (!calm) {
+      const look = sx(0);
+      for (let k = 0; k < EYES.length; k++) {
+        const ang = EYES[k][0] * DEG, rf = EYES[k][1];
+        const ex = cx + Math.cos(ang) * rx * rf, ey = cy + Math.sin(ang) * ry * rf;
+        const ew = m * (0.030 + 0.012 * hash1(k * 5 + 1));
+        const op = clamp(1.4 * Math.sin(G.t * 0.55 + k * 1.9) + 0.6, 0, 1)
+                 * (1 - clamp((pain - 0.9) * 1.5, 0, 1))
+                 * (1 - womb);
+        if (op < 0.02) continue;
+        ctx.beginPath();
+        ctx.moveTo(ex - ew, ey);
+        ctx.quadraticCurveTo(ex, ey - ew * 0.8 * op, ex + ew, ey);
+        ctx.quadraticCurveTo(ex, ey + ew * 0.8 * op, ex - ew, ey);
+        ctx.closePath();
+        ctx.fillStyle = "#d8cfc4";
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        const lookDx = clamp((look - ex) / G.W, -1, 1) * 0.25 * ew;
+        const ix = ex + lookDx, ir = 0.55 * ew * op + 0.001;
+        ctx.fillStyle = "#1a0507";
+        ctx.beginPath(); ctx.arc(ix, ey, ir, 0, 6.283); ctx.fill();
+        ctx.fillStyle = "#000";
+        ctx.fillRect(ix - 0.06 * ew, ey - ir, 0.12 * ew, ir * 2);
+        ctx.restore();
+      }
     }
 
     // 5. mouths: dark holes with a lit upper lip, teeth when they gape wide
-    for (let k = 0; k < MOUTHS.length; k++) {
-      const ang = MOUTHS[k][0] * DEG, rf = MOUTHS[k][1];
-      const mx = cx + Math.cos(ang) * rx * rf, my = cy + Math.sin(ang) * ry * rf;
-      const gape = clamp(pain * 0.9, 0, 1) * (0.55 + 0.45 * Math.sin(G.t * 2.6 + k * 2.1));
-      const mrx = m * 0.045, mry = m * 0.012 + m * 0.05 * gape;
-      offsetShade(ctx, () => { ctx.beginPath(); ctx.ellipse(mx, my, mrx, mry, 0, 0, 6.283); },
-        0, -0.25 * mry, "rgba(90,20,24,1)", "rgba(14,2,4,1)");
-      if (gape > 0.5) {
-        ctx.fillStyle = "#c8bdb0";
-        const lipY = my - mry;
-        for (let ti = 0; ti < 4; ti++) {
-          const tx = mx + (ti - 1.5) * mrx * 0.4;
-          ctx.beginPath();
-          ctx.moveTo(tx - 0.09 * mrx, lipY);
-          ctx.lineTo(tx + 0.09 * mrx, lipY);
-          ctx.lineTo(tx, lipY + 0.4 * mry);
-          ctx.closePath();
-          ctx.fill();
+    if (!calm) {
+      for (let k = 0; k < MOUTHS.length; k++) {
+        const ang = MOUTHS[k][0] * DEG, rf = MOUTHS[k][1];
+        const mx = cx + Math.cos(ang) * rx * rf, my = cy + Math.sin(ang) * ry * rf;
+        const gape = clamp(pain * 0.9, 0, 1) * (0.55 + 0.45 * Math.sin(G.t * 2.6 + k * 2.1));
+        const mrx = m * 0.045, mry = m * 0.012 + m * 0.05 * gape;
+        offsetShade(ctx, () => { ctx.beginPath(); ctx.ellipse(mx, my, mrx, mry, 0, 0, 6.283); },
+          0, -0.25 * mry, "rgba(90,20,24,1)", "rgba(14,2,4,1)");
+        if (gape > 0.5) {
+          ctx.fillStyle = "#c8bdb0";
+          const lipY = my - mry;
+          for (let ti = 0; ti < 4; ti++) {
+            const tx = mx + (ti - 1.5) * mrx * 0.4;
+            ctx.beginPath();
+            ctx.moveTo(tx - 0.09 * mrx, lipY);
+            ctx.lineTo(tx + 0.09 * mrx, lipY);
+            ctx.lineTo(tx, lipY + 0.4 * mry);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       }
     }
 
     ctx.restore();
+
+    // the calm band: a faint darker shape across the top of the body
+    if (calm) {
+      ctx.save();
+      ctx.globalAlpha = vis;
+      fleshPath(ctx, cx, cy, rx, ry, 0, 0, 0);
+      ctx.clip();
+      ctx.fillStyle = "#1f0508";
+      ctx.fillRect(cx - rx * 1.2, cy - ry * 1.2, rx * 2.4, ry * 0.42);
+      ctx.restore();
+    }
+
     return flesh;
   }
 
