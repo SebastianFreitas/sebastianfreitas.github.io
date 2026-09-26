@@ -68,17 +68,15 @@ window.GenSoup = (function () {
     ctx.restore();
   }
 
-  function draw(ctx, W, H, t, reduced) {
-    if (!W || !H) return;
-    if (t < 0) t = 0;
-
-    const m = Math.min(W, H);
+  function ensure(W, H) {
     const key = W + "x" + H;
     if (key !== cacheKey) {
       cacheKey = key;
       build(W, H);
     }
+  }
 
+  function drawBackdrop(ctx, W, H) {
     /* backdrop: stacked flesh bands, lit from the left */
     ctx.fillStyle = PAL.deep;
     ctx.fillRect(0, 0, W, H);
@@ -101,6 +99,35 @@ window.GenSoup = (function () {
     ctx.fillStyle = PAL.lit;
     ctx.fillRect(midCx - midRx, midCy - midRy, midRx * 0.30, midRy * 2);
     ctx.restore();
+  }
+
+  function finalReds(W, H) {
+    ensure(W, H);
+    const m = Math.min(W, H);
+    const k = 12;
+    const out = [];
+    for (let i = 0; i < reds.length; i++) {
+      const d = reds[i];
+      const x = d.x + (hash(i * 7 + k) - 0.5) * m * 0.012;
+      const y = d.y + (hash(i * 7 + k + 1000) - 0.5) * m * 0.012;
+      let eats = 0;
+      for (let j = 0; j < blues.length; j++) {
+        if (blues[j].eater === i) eats++;
+      }
+      const r = d.r0 * Math.pow(1.25, eats);
+      out.push({ x, y, r });
+    }
+    return out;
+  }
+
+  function draw(ctx, W, H, t, reduced) {
+    if (!W || !H) return;
+    if (t < 0) t = 0;
+
+    const m = Math.min(W, H);
+    ensure(W, H);
+
+    drawBackdrop(ctx, W, H);
 
     /* drift: held steps, a new pose every 0.5 s (frozen past t=6 or reduced) */
     const tDrift = Math.min(t, 6.0);
@@ -153,5 +180,5 @@ window.GenSoup = (function () {
     }
   }
 
-  return { draw };
+  return { draw, drawBackdrop, finalReds, shaded: drawShaded, PAL };
 })();

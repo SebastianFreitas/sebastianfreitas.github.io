@@ -150,6 +150,12 @@ reaching up, with tier 3's potential in it.
 - **Only effects reach below.** What it does shows only as effects in
   tiers 2 and 1 (the chaos lurching, motes turning at once, blobs knocked
   aside); never a beam, a line or contact.
+- **The dust eye (the one exception).** In the `eye` beat
+  (plan fixthemothering, D8/D16) a tier-3 eye's effect touches what is
+  below: the soup's dots turn to dust in held steps, nearest first, each
+  one splitting into a colour chip that rises and a grey dot that falls.
+  The eye itself stays a flat lidless arc cut by the frame, never whole,
+  with nothing visible between it and the dots.
 - **Slow and wrong.** Only held steps: very slow drift against the wind,
   a stepwise lurch, a stepped enter or fade, a stepped pass (the Comb in
   `walk` and `flee`), or a snap level; nothing bobs. Reduced motion:

@@ -581,6 +581,7 @@ window.Genesis = (function () {
 
     drawInsidePlaceholder(ctx);
     if (G.beat === G.idxOf("soup") && window.GenSoup) GenSoup.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("eye") && window.GenEye) GenEye.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
