@@ -1,6 +1,6 @@
 # Fix the mothering
 
-Stage: ready
+Stage: running
 Started: 2026-09-26
 Procedure: `.claude/skills/plan/SKILL.md` (planning loop, then "go").
 
