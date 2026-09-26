@@ -25,6 +25,13 @@ worktree, anything else is shared. Read `.claude/modes/<mode>.md` and say
 in the report that the hook did not run. After `EnterWorktree`, read
 `.claude/modes/worktree.md` before the next edit.
 
+## Plans
+
+A `PLAN: <name> · <stage>` line from the hook means a many-phase plan is
+active (`.claude/plans/ACTIVE`): follow `.claude/skills/plan/SKILL.md`,
+where a bare "go" continues it. New plans start from
+`.claude/plans/TEMPLATE.md` via `/plan new <name>: <brief>`.
+
 ## One prompt, one finished result
 
 The owner sends one prompt and comes back to a finished, verified change

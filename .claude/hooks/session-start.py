@@ -7,6 +7,8 @@
    uncommitted (made by another session, never by this one).
 3. On a fresh start, /clear or compaction: the handoff left by the
    previous context (.claude/handoff.md), if any.
+4. Every time: the active plan (.claude/plans/ACTIVE → `PLAN: <name> ·
+   <stage>`), if any.
 
 SessionStart also fires after compaction ("compact") and on resume; the
 mode rules and the handoff are printed again then (compaction drops
@@ -18,6 +20,7 @@ Never fails the hook: any error exits 0.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -65,6 +68,29 @@ def mode_rules(root, mode):
             "in the report that the mode file is missing.)")
 
 
+def plan_lines(root):
+    """PLAN: <name> · <stage> from .claude/plans/ACTIVE; [] when no plan."""
+    plans = os.path.join(root, ".claude", "plans")
+    active = os.path.join(plans, "ACTIVE")
+    if not os.path.isfile(active):
+        return []
+    with open(active, encoding="utf-8", errors="ignore") as f:
+        name = f.read().strip()
+    if not name:
+        return []
+    rel = f".claude/plans/{name}.md"
+    stage = "unknown"
+    path = os.path.join(plans, name + ".md")
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            m = re.search(r"^Stage:\s*(\w+)", f.read(), re.M)
+        if m:
+            stage = m.group(1)
+    return [f"PLAN: {name} · {stage}",
+            f"Read .claude/skills/plan/SKILL.md, then {rel}: Brief, "
+            "Decisions, Open items, Progress. A bare 'go' continues it."]
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -92,6 +118,7 @@ def main():
     lines.append(f"MODE: {mode} ({where}). "
                  + (head[0] if head else ""))
     lines.append(mode_rules(root, mode))
+    lines.extend(plan_lines(root))
     lines.append("")
 
     hand_at = None
