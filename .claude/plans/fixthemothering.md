@@ -130,7 +130,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 14 | Rex dies, fist over Obrokxus | code | D4 Brief | done |
 | 15 | Gods through Rex | code | D13 D14 | done |
 | 16 | Calm womb, then deep | code | D5 D15 | done |
-| 17 | Review | review | D1-D17 | done |
+| 17 | Review | review | D1-D17 | done 863a374 |
 
 ## Phases
 
