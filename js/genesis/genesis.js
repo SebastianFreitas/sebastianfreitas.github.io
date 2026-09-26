@@ -486,10 +486,8 @@ window.Genesis = (function () {
     const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1);
     GenFlesh.drawCry(ctx, flesh, cryAmt);
     GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis, GenOld.ROSTER);
-    const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55) * (window.GenRemake ? GenRemake.soulMul() : 1);
+    const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
     GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
-    if (window.GenWorks) GenWorks.draw(ctx, G.W, G.H);
-    if (window.GenRemake) GenRemake.draw(ctx, G.W, G.H);
 
     const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
     const still = uWomb;
@@ -583,6 +581,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("soup") && window.GenSoup) GenSoup.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("eye") && window.GenEye) GenEye.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("roles") && window.GenRoles) GenRoles.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("circle") && window.GenCircle) GenCircle.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;

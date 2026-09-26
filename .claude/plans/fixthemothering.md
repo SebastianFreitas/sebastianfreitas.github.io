@@ -121,7 +121,7 @@ Digest of the first brief: `research/fixthemothering-00-intake.md`
 | 5 | Roles: arrive, watch, walls | code | D2 D6 | done |
 | 6 | Role map: dress bodies to roles | research+doc | D10 | done |
 | 7 | Role change snap | code | D9 D10 D17 | done |
-| 8 | Circle and first universe | code | Brief | todo |
+| 8 | Circle and first universe | code | Brief | done |
 | 9 | Chains and billions | code | D12 | todo |
 | 10 | Corruption: cut, return, sent up | code | Brief | todo |
 | 11 | Rex: tear, growth, rivers | code | Brief D13 | todo |
@@ -195,4 +195,5 @@ snap compare `same` outside its scenes, and the genesis nav-flows.
   | mothers | carry rings (the carers stay) | eye 8, chime 20, mound 23, bundle 12, bloom 15 | CARERS plus the muff and the bonnet |
   | messengers | run strands | mass 9, veil 17, knot 18, swarmling 22 | trailing muffler, cape, wheel, umbrella: things that travel |
 - P7 (genesis-roles.js): GROUPS = the P6 idx lists; snapAt(idx) = 4.6 + 0.8·group + 0.15·k; each figure goes bare → empty 0.2 s → dressed copy (obD). Figures ×1.35 taller. Dressed figures stop taking notes. Reduced motion: all dressed. Later beats that show these old ones inside must draw them dressed (dressed:true copies).
+- P8 (genesis-circle.js): circle centre (0.56W, 0.50H), R = 0.15·min(W,H); pool P (0.30W, 0.24H); from 5.6 s a dull flat disc #5a4c4e (lit left #6e5e60) plus the rose thread from P. Chains (P9) should start from this disc. GenWorks and GenRemake deleted (soulAmt no longer scaled).
   West-goers stay bare and are not drawn inside. Phase 7 uses this table for the snap order and for which figures gesture which task.
