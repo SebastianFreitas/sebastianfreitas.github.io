@@ -255,6 +255,10 @@ window.Genesis = (function () {
     return: [1.00, 1.05], eternity: [1.05, 1.00], now: [1.00, 1.00],
   };
 
+  /* enter: held-step push into the flesh ball, ending in a hard cut */
+  const ENTER_ZOOM = [1.06, 1.22, 1.45, 1.8];
+  function enterStep() { return Math.min(3, Math.floor(G.linear("enter") * 5)); }
+
   function camAim() {
     let target = 0;
     const uWalk  = since("walk");
@@ -313,6 +317,10 @@ window.Genesis = (function () {
       target = chaseAt(fP).cam + chaseCamLead(fP);
     }
     else if (uWalk < 0.001) target = 0;
+    else if (G.beat === G.idxOf("enter"))
+      target = ROOT_U - 0.50 + 0.50 * (enterStep() / 3);
+    else if (G.beat > G.idxOf("enter") && G.beat <= G.idxOf("death"))
+      target = ROOT_U;
     else if (uRoot > 0.02)
       /* root through rex the surface hold still with half the womb
          past the right edge; panning further east shows its ragged side.
@@ -327,7 +335,9 @@ window.Genesis = (function () {
     if (camRateOverride != null) camRate = camRateOverride;
     const cur = BEATS[G.beat];
     const zk = (cur && ZOOM[cur.id]) || [1, 1];
-    const zoom = G.reduced ? 1 : mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1)));
+    const zoom = G.reduced ? 1
+      : G.beat === G.idxOf("enter") ? ENTER_ZOOM[enterStep()]
+      : mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1)));
     return { target, rate: camRate, zoom };
   }
 
@@ -360,10 +370,16 @@ window.Genesis = (function () {
 
     const aim = camAim();
     G.camTarget = aim.target;
-    G.cam = approach(G.cam, G.camTarget, aim.rate, dt);
     G.zoomTarget = aim.zoom;
     G.zoomKick = Math.max(0, G.zoomKick - dt * 0.16);
-    G.zoom = approach(G.zoom, G.zoomTarget + G.zoomKick, 3.0, dt);
+    if (G.beat === G.idxOf("enter") && !G.reduced) {
+      /* held steps: snap, never morph */
+      G.cam = G.camTarget;
+      G.zoom = G.zoomTarget + G.zoomKick;
+    } else {
+      G.cam = approach(G.cam, G.camTarget, aim.rate, dt);
+      G.zoom = approach(G.zoom, G.zoomTarget + G.zoomKick, 3.0, dt);
+    }
     paintTicks();
 
     const b = BEATS[G.beat];
@@ -595,7 +611,7 @@ window.Genesis = (function () {
   function drawInsidePlaceholder(ctx) {
     const a = idxOf("enter"), b = idxOf("death");
     if (!(a < BEATS.length && G.beat >= a && G.beat <= b)) return;
-    const cover = G.beat === a ? Math.floor(linear("enter") * 4) / 4 : 1;
+    const cover = G.beat === a ? (linear("enter") >= 0.8 ? 1 : 0) : 1;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = cover;
