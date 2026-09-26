@@ -41,12 +41,25 @@ in the cutscene we need to take a good look at the whole old ones helps the gian
 
 ## Option map (planning only; struck lines are settled by a D)
 
-- <pending research>
+Digest: `research/fixthemothering-00-intake.md`.
+
+- **Metaphor of care:** Lilliput rigging (Gulliver) · hive court (bee
+  queen's retinue, Hollow Knight's Hive) · cathedral scaffold turning into
+  a flensing stage (Bruegel's Babel, whaling) · bosun-chair surgeons
+  (Rushmore, Tulp) · weavers' gold seal (Herrah, Nausicaä) · huddle fringe
+  (Inside).
+- **Framing:** keep half off screen · bring the ball on screen for the
+  care beats (the beats doc's 0.72W, 1.25) · push in per beat on the work.
+- **Arc of mood:** guilt → tenderness → exploitation → leaving, told by
+  posture (facing, spacing, hands, lamp colour).
+- **Scope of beats:** swarm to leave · womb to lives only · also birth.
+- **Tools:** held by an old one · rigged to scaffold/lines · keep floating.
+- **Forced areas:** captions stay or change · performance (bridge loop cost)
+  · tier 3 stays no-touch · snap scenes outside scope stay `same`.
 
 ## Open items
 
-- Research digest (running), then option map.
-- First question round.
+- First question round (metaphor, framing, beats, arc).
 
 ## Decisions (owner answers; `(auto)` = taken while running, review at the end)
 
