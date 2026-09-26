@@ -36,13 +36,48 @@ the mothering / semesis, the cutscene, the part where the old ones go to womb un
 ## Option map (planning only; struck lines are settled by a D)
 
 Digest of the first brief: `research/fixthemothering-00-intake.md`
-(mostly superseded). New areas to research (digest
-`research/fixthemothering-01-inside.md`): inside palette and soup · the
-eye and dust separation · role bodies and clothes (enforcers, watchers,
-mothers, messengers) · the circle, strands and colour thread · chains of
-rings and scale to billions · corruption cut/return/sent up · Rex's
-scale and the tear · womb-wall clash tier 0 → 1 · gods passing through
-Rex · the calm floating womb · performance of many particles.
+(mostly superseded). Digest of the new one:
+`research/fixthemothering-01-inside.md` (sources and precedents there).
+
+- Soup: flat maroon→rose blob layers, blue a small cool accent; a red blob
+  grows a held step per blue it swallows (Scavengers Reign, Spore cell stage).
+  Alt: dense dot field, red dots convert blue dots on contact (Life-like CA).
+- Eye: lidless tier-3 arc cut by the frame edge, never beams; a stepped wave
+  crosses the soup, each dot splits into a rising colour chip and a grey dot
+  that drops (Bloodborne + the Thanos-snap dust + chromatography).
+  Alt: the eye fills the frame and the dust happens under its gaze.
+- Roles: two snaps (bare → in-between → role body), no morph; silhouette +
+  one tool: enforcer oversized head/jaw + blade; watcher tall, hood with eye
+  holes; mother low and wide, bustle and ring cradle; messenger lean, long
+  shoes, spindle/reel (termite castes, the Moirai).
+  Alt: keep today's dress bodies and assign them to roles by closest fit.
+- Circle: dust pile creeps to the rim like a dune; pre-baked grey strands
+  spiral in; one saturated thread from the colour point; snaps to a dull disc
+  (accretion disk, Tyler Hobbs flow fields, Chiharu Shiota threads).
+- Chains / billions: rings snap out interlinked; 3–4 held 10× zoom-out jumps;
+  last shot one pre-rendered chain web stamped many times; magic rings carry
+  one bright chip (Powers of Ten, galaxy filaments).
+  Alt: no zoom, a counter-like caption carries "billions".
+- Corruption: red arc spreads round a ring in steps; an enforcer cuts the
+  links; mothers fold it back to grey dust; unreturnable red rises and
+  thickens a red layer at the womb roof (efferocytosis, Atropos).
+- Rex: pushes one ring apart into two arcs; grows in held steps matched to
+  the zoom-out; only part of him in frame; chains settle round him as braided
+  channels (Pangu, Shadow of the Colossus, braided rivers).
+- Clash: flat stepped polygon rings snap out per blow, no glow; the womb wall
+  bulges until a torn edge shows the tier-1 strata; fist closes over the red
+  dot (Evangelion AT fields).
+- Gods through Rex: his outline turns to terrain in steps (shoulder → ridge,
+  arm → bridge); small god silhouettes pass one per held step through a
+  channel inside him, each taking a chip of his colour (Ymir, Pangu).
+  Alt: cutaway, Rex's body as a translucent tunnel the gods walk through.
+- Calm womb: slow pull back to the ball; redrawn smoother, mouths shut, eyes
+  closed, snapped in at the cut; still hold; faint darker band at the top from
+  the red layer (2001 Star Child, Nilsson's womb photographs).
+  Alt: today's ball unchanged, only its motion stilled.
+- Performance: fixed typed arrays of ~800–1500 dots, one fill per group,
+  integer-pixel rects; positions update 6–12×/s; strands one path per bundle;
+  static layers baked offscreen once (MDN canvas optimisation).
 
 ## Open items
 
