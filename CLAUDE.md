@@ -140,9 +140,10 @@ designing in those areas.
 
 Quality drops as a context grows, long before the window is full.
 `.claude/hooks/context-watch.py` measures every context after every tool
-call and prints `CONTEXT WATCH` at 80% of its line and past it. Lines:
-main 140k, Explore and Plan 100k, implementer 60k; a subagent at 1.5
-times its line has every further tool call denied.
+call and prints `CONTEXT WATCH` at 80% of its line (main: 90%) and past
+it. Lines: main 90k, auto-compact at 100k (50% of the window), Explore and Plan 100k, implementer 60k; a subagent at 1.5
+times its line has every further tool call denied. Compaction is
+automatic: never ask the owner to run `/compact`, never stop for it.
 
 - Main session past its line: finish only the current atomic step (an
   implementer already running may finish; start nothing new), verify,

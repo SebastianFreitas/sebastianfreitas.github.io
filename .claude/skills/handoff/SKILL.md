@@ -29,8 +29,9 @@ list are long: hook output over 10,000 characters is replaced by a
 
 For a context-full handoff the session keeps working with no owner
 input: auto-compaction, not a clear. `.claude/settings.json` sets
-`CLAUDE_CODE_AUTO_COMPACT_WINDOW` to 180000, so Claude Code compacts
-the conversation a little past the 140k handoff line, mid-turn, and
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` to 200000 and
+`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` to 50, so Claude Code compacts at
+100k, a little past the 90k handoff line, mid-turn, and
 goes on in the same turn. The SessionStart hook runs again with source
 `compact` and prints `.claude/handoff.md` into the compacted context.
 It is the same session, folder, branch and PR. So never open a new

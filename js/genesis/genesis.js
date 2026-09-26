@@ -244,7 +244,7 @@ window.Genesis = (function () {
   const ZOOM = {
     point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05],
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
-    root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], birth: [1.00, 1.06],
+    root: [1.02, 1.06], swarm: [1.06, 1.09], womb: [1.09, 1.00], dress: [1.00, 1.00], worlds: [1.00, 1.00], remake: [1.00, 1.00], lives: [1.00, 1.00], leave: [1.00, 1.00], birth: [1.00, 1.06],
     fight: [1.06, 1.06], land: [1.06, 1.00], gods: [1.00, 1.05], deep: [1.05, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
@@ -412,7 +412,11 @@ window.Genesis = (function () {
     const uNow   = only("now");
 
     fillBg(ctx);
-    drawChaos(ctx, clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1));
+    if (window.GenTier3) GenTier3.draw(ctx, G.W, G.H, z, sxh, syh);
+    const bl = G.BEATS[G.beat].id === "break" && window.GenTier3 ? GenTier3.offset("brim") : null;
+    const lurched = !!(bl && bl.dx !== 0);
+    const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1);
+    drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
     const streak = uWalk * (1 - uRoot) * 52
       + uFlee * (1 - since("war")) * 70
       + since("eternity") * 84;
@@ -443,7 +447,8 @@ window.Genesis = (function () {
       G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
     }
     GenVoid.drawSpan(ctx, uDrawn);
-    GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1));
+    GenElem.drawSea(ctx);
+    GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
     GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light
     const tTrade = G.secs("trade");
     const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, uWalk);   // step off early, then keep pace with the camera
@@ -461,8 +466,10 @@ window.Genesis = (function () {
     const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1);
     GenFlesh.drawCry(ctx, flesh, cryAmt);
     GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis, GenOld.ROSTER);
-    const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
+    const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55) * (window.GenRemake ? GenRemake.soulMul() : 1);
     GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
+    if (window.GenWorks) GenWorks.draw(ctx, G.W, G.H);
+    if (window.GenRemake) GenRemake.draw(ctx, G.W, G.H);
 
     const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
     const still = uWomb;

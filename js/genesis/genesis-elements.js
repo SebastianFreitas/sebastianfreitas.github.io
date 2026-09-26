@@ -9,6 +9,23 @@
   const HUES = ["230,70,60", "70,130,255", "120,214,96", "236,92,150", "245,208,107", "140,70,210", "60,200,200", "240,140,40"];
   const HUE_FILL = HUES.map(h => "rgb(" + h + ")");
 
+  // the elements split: sink into the sea, settle on the bridge, or rise out of frame
+  const SEA_H = 0.12;
+  const GRAIN_FILL = HUES.map(h => {
+    const [r, g, b] = h.split(",").map(Number);
+    const m = (r + g + b) / 3;
+    return "rgb(" + Math.round(mix(m, r, 0.35) * 0.45) + "," + Math.round(mix(m, g, 0.35) * 0.45) + "," + Math.round(mix(m, b, 0.35) * 0.45) + ")";
+  });
+  const SEA_HUE_IDX = [1, 5, 6, 0];
+  const SEA_MULT = [0.34, 0.27, 0.21, 0.16];
+  const SEA_FILL = SEA_HUE_IDX.map((hi, idx) => {
+    const [r, g, b] = HUES[hi].split(",").map(Number);
+    const m = (r + g + b) / 3;
+    const mu = SEA_MULT[idx];
+    return "rgb(" + Math.round(mix(m, r, 0.25) * mu) + "," + Math.round(mix(m, g, 0.25) * mu) + "," + Math.round(mix(m, b, 0.25) * mu) + ")";
+  });
+  const POS = { x: 0, y: 0, angle: 0, rg: 0, a: 0, q: 0 };
+
   // rage events: the bottle being shaken, sparse bursts through wave 1
   const EVENTS = [];
   (function seedEvents() {
@@ -22,6 +39,15 @@
         R: 0.18 + r() * 0.25,
       });
     }
+  })();
+
+  // the comb's entrance at the left, matter local 4.0s: fixed, no RNG
+  (function seedCombRage() {
+    const amps = EVENTS.map(e => e.amp).sort((a, b) => a - b);
+    const Rs = EVENTS.map(e => e.R).sort((a, b) => a - b);
+    const maxAmp = amps[amps.length - 1];
+    const medR = Rs[(Rs.length - 1) >> 1];
+    EVENTS.push({ t: 16.9, x: 0.05, y: 0.12, amp: maxAmp * 1.1, R: medR });
   })();
 
   function attackDecay(d) {
@@ -90,6 +116,16 @@
       PARTS.push({ i, kind, birth, life, ang, spd, size, ph, hueA, hueB, flip, wgt, curl, settle });
     }
     PARTS.sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind));
+    for (const pt of PARTS) {
+      const h = pt.i * 7;
+      pt.fate = Math.min(2, Math.floor(hash1(h + 11) * 3));
+      pt.splitT = 9.5 + hash1(h + 12) * 3.0;
+      pt.hold = 0.25 + hash1(h + 13) * 0.35;
+      pt.steps = 3 + Math.min(2, Math.floor(hash1(h + 14) * 3));
+      pt.stepDur = 0.2 + hash1(h + 15) * 0.18;
+      pt.gy = hash1(h + 16);
+      pt.splits = pt.birth <= pt.splitT && pt.birth + pt.life > pt.splitT;
+    }
   })();
 
   function drawDust(ctx, pt, x, y, a, q, alpha, sizeMul, angle) {
@@ -252,39 +288,57 @@
     }
   }
 
+  // pure pose at time t: motion, wind wobble, slosh and rage push. Writes POS (no allocation)
+  function posAt(pt, t, originX, W, H, sl) {
+    const a = t - pt.birth;
+    const q = a / pt.life;
+    const originY = 0.46 * H;
+
+    let angle = pt.ang + pt.curl * q;
+    if (pt.kind === "wind") {
+      let windTerm = 0.9 * Math.sin(a * 1.7 + pt.ph);
+      const seg = Math.floor(a * 1.3);
+      if (hash1(pt.i * 31 + seg) > 0.5) windTerm = -windTerm;
+      angle += windTerm;
+    }
+    const d = Math.pow(q, 0.8) * pt.spd * 0.62 * Math.hypot(W, H) * 0.62;
+    let x = originX + Math.cos(angle) * d;
+    let y = originY + Math.sin(angle) * d;
+
+    const sfac = (pt.wgt - 0.5) * 2 * Math.min(1, q * 3);
+    const s0 = sl || slosh(t);
+    x += s0.x * sfac;
+    y += s0.y * sfac;
+
+    const rg = rageAt(t, x, y);
+    x += PUSH.x * 26;
+    y += PUSH.y * 26;
+
+    POS.x = x; POS.y = y; POS.angle = angle; POS.rg = rg; POS.a = a; POS.q = q;
+    return POS;
+  }
+
   function draw(ctx) {
     if (typeof G.secs !== "function") return;
     const W = G.W, H = G.H;
     if (!W || !H) return;
     const s = G.secs("break") - 2.1;
-    if (s < 0 || s > 21) return;
+    if (s < 0) return;
 
-    const originX = G.sx(0), originY = 0.46 * H;
+    const originX = G.sx(0);
     const sl = slosh(s);
 
     for (const pt of PARTS) {
+      if (pt.splits && s >= pt.splitT) {
+        drawSplit(ctx, pt, s, originX, W, H);
+        continue;
+      }
+
       const a = s - pt.birth;
       if (a < 0 || a > pt.life) continue;
-      const q = a / pt.life;
 
-      let angle = pt.ang + pt.curl * q;
-      if (pt.kind === "wind") {
-        let windTerm = 0.9 * Math.sin(a * 1.7 + pt.ph);
-        const seg = Math.floor(a * 1.3);
-        if (hash1(pt.i * 31 + seg) > 0.5) windTerm = -windTerm;
-        angle += windTerm;
-      }
-      const d = Math.pow(q, 0.8) * pt.spd * 0.62 * Math.hypot(W, H) * 0.62;
-      let x = originX + Math.cos(angle) * d;
-      let y = originY + Math.sin(angle) * d;
-
-      const sfac = (pt.wgt - 0.5) * 2 * Math.min(1, q * 3);
-      x += sl.x * sfac;
-      y += sl.y * sfac;
-
-      const rg = rageAt(s, x, y);
-      x += PUSH.x * 26;
-      y += PUSH.y * 26;
+      const P = posAt(pt, s, originX, W, H, sl);
+      const x = P.x, y = P.y, angle = P.angle, rg = P.rg, q = P.q;
 
       if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
 
@@ -307,6 +361,116 @@
       }
     }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
+
+  // frozen-then-snapping fate of a split particle: sink, settle or rise, in held steps
+  function drawSplit(ctx, pt, s, originX, W, H) {
+    const P0 = posAt(pt, pt.splitT, originX, W, H);
+    const x0 = P0.x, y0 = P0.y, angle0 = P0.angle, rg0 = P0.rg, a0 = P0.a, q0 = P0.q;
+    if (x0 < -40 || x0 > W + 40 || y0 < -40 || y0 > H + 40) return;
+
+    let fadeOut0;
+    if (q0 < 0.8) fadeOut0 = 1;
+    else fadeOut0 = pt.settle ? 1 : 1 - (q0 - 0.8) / 0.2;
+    const alpha0 = Math.min(1, a0 / 0.25) * fadeOut0 * 0.9;
+
+    let sizeMul0 = pt.size * (1 + 0.6 * rg0);
+    if (pt.settle && q0 >= 0.8) sizeMul0 *= (1 - (q0 - 0.8) / 0.2);
+
+    let fate = pt.fate;
+    if (fate === 1) {
+      const ux = G.cam + (x0 - W / 2) / W;
+      if (ux < G.SPAN_START_U + 0.02 || ux > G.ROOT_U + 0.2) fate = 0;
+    }
+
+    let tx, ty;
+    if (fate === 1) {
+      tx = x0;
+      ty = G.DECK * H - 0.012 * H - 1 - pt.gy * 1.5;
+    } else if (fate === 0) {
+      tx = x0;
+      ty = H * (1 - SEA_H * (0.2 + 0.7 * pt.gy));
+    } else {
+      tx = x0 + (hash1(pt.i * 7 + 17) - 0.5) * 0.04 * W;
+      ty = -30 - pt.gy * 40;
+    }
+
+    const u = s - pt.splitT;
+    const n = pt.steps;
+    const k = G.reduced ? n : (u < pt.hold ? 0 : Math.min(n, Math.floor((u - pt.hold) / pt.stepDur) + 1));
+
+    const f = k / n;
+    const x = mix(x0, tx, f);
+    const y = mix(y0, ty, f);
+
+    if (k < n) {
+      let alpha = alpha0, sizeMul = sizeMul0;
+      if (fate === 2) alpha *= (1 - f);
+      else sizeMul *= mix(1, 0.5, f);
+
+      switch (pt.kind) {
+        case "dust": drawDust(ctx, pt, x, y, a0, q0, alpha, sizeMul, angle0); break;
+        case "air": drawAir(ctx, pt, x, y, a0, q0, alpha, sizeMul, angle0); break;
+        case "wind": drawWind(ctx, pt, x, y, a0, q0, alpha, sizeMul, angle0); break;
+        case "colour": drawColour(ctx, pt, x, y, a0, q0, alpha, sizeMul, angle0, rg0); break;
+        case "light": drawLight(ctx, pt, x, y, a0, q0, alpha, sizeMul); break;
+        case "sound": drawSound(ctx, pt, x, y, a0, q0, alpha, sizeMul); break;
+      }
+      return;
+    }
+
+    if (fate === 2) return;
+
+    let alpha = 0.55 * Math.min(1, alpha0 / 0.9 + 0.3);
+    if (fate === 0) {
+      const tl = G.reduced ? pt.splitT : pt.splitT + pt.hold + (n - 1) * pt.stepDur;
+      alpha *= clamp(1 - (s - tl) / 2.5, 0, 1);
+      if (alpha <= 0) return;
+    }
+    const gs = pt.size > 2.2 ? 2 : 1;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = GRAIN_FILL[pt.hueA];
+    ctx.fillRect(Math.round(x), Math.round(y), gs, gs);
+  }
+
+  // landed fraction of sinkers, 0..1, a closed form of local time
+  function seaK(s) {
+    return smooth(clamp((s - 10.2) / 4.5, 0, 1));
+  }
+
+  // the sea at the frame bottom: flat, lumpy, dark strata rising as the sinkers land
+  function drawSea(ctx) {
+    if (typeof G.secs !== "function") return;
+    const W = G.W, H = G.H;
+    if (!W || !H) return;
+    const s = G.secs("break") - 2.1;
+    const k = seaK(s);
+    if (k < 0.01) return;
+
+    const lvl = SEA_H * k;
+    const camOff = G.cam * W;
+
+    for (let i = 0; i < 4; i++) {
+      const topY = H * (1 - lvl * (1 - i * 0.22));
+      ctx.beginPath();
+      let prevY = null;
+      for (let x = -4; x <= W + 4; x += 4) {
+        const col = Math.floor((camOff + x - W / 2) / 4);
+        const xs = col * 4 - camOff + W / 2;
+        const off = Math.round((hash1(col * 13 + i * 101) * 2 + hash1((col >> 2) * 7 + i * 57) * 2) * (0.5 + 0.5 * k));
+        const y = topY - off;
+        if (prevY === null) ctx.moveTo(xs, y);
+        else { ctx.lineTo(xs, prevY); ctx.lineTo(xs, y); }
+        prevY = y;
+      }
+      ctx.lineTo(W + 4, H + 2);
+      ctx.lineTo(-4, H + 2);
+      ctx.closePath();
+      ctx.fillStyle = SEA_FILL[i];
+      ctx.globalAlpha = 1;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // permanent residue: what the first wave left in the void background
@@ -396,5 +560,5 @@
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
-  window.GenElem = { draw, drawResidue, rage };
+  window.GenElem = { draw, drawResidue, drawSea, rage };
 })();

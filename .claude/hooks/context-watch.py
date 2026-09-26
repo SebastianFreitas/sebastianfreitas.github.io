@@ -23,7 +23,7 @@ import json
 import os
 import sys
 
-LIMIT = 140_000     # main session: tokens in context that trigger the handoff
+LIMIT = 90_000      # main session: handoff line, just under auto-compact at 100k (50%)
 SOFT = 0.8          # warn from this fraction of a line
 HARD = 1.5          # subagents: deny all tools from this multiple of the line
 
@@ -112,7 +112,7 @@ def report_line(used, limit, who):
                 f"{int(limit * HARD):,} every tool call will be refused, so "
                 "write your report soon and say in it that you hit the "
                 "context line.")
-    if used >= limit * SOFT:
+    if used >= limit * (SOFT if who else 0.9):
         if not who:
             return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of "
                     "the handoff line). Prefer finishing over starting new "

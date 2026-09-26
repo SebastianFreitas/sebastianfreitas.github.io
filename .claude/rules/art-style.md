@@ -71,9 +71,10 @@ rules above only.
 bottom of the frame. Tier 2 is the bridge and everything living on it:
 the bridge is so big that its thickness alone spans galaxies. Tier 3 is
 things bigger than the void, glimpsed in the sky. Tiers 1 and 2 never
-know tier 3 exists. At the elements beat the particles split three ways:
-a third sinks into that sea, a third settles on the bridge, a third rises
-into the air. The mainland and Rex stand above the sea: the soul kind
+know tier 3 exists. Late in the elements beat the particles split three
+ways: each living particle freezes, holds, then snaps in held steps to
+the sea, the rail top or the sky, roughly a third each; bridge-bound ones
+off the span sink. The mainland and Rex stand above the sea: the soul kind
 reaching up, with tier 3's potential in it.
 
 ### Figures and clothes
@@ -86,10 +87,13 @@ reaching up, with tier 3's potential in it.
   (the beat after `womb`): reshaping the womb inspired them to change
   their bodies and make their own winter clothes. Before `dress` every
   old one is bare, the headless gentleman included, and the west-goers
-  stay bare for good.
+  stay bare for good. Obrokxus's brothers borrow old-one bodies (tinted
+  red) but never dress.
 - **Two assets per east-goer.** The evolved (inspired, dressed) state is
   drawn as its own asset, not the bare one with clothes laid on; the
-  change between them is a stepwise snap, never a morph.
+  change between them is a stepwise snap, never a morph. In `dress` each
+  east-goer first makes its cloth in held steps (1.8 s), then snaps alone
+  at its own moment; the gentleman goes last.
 - **One trait, pushed.** A dressed old one wears one or two pieces, one
   exaggerated past sense: hats 3–6× head height, brims 2–3× body width,
   shoes 2–3× long. Any garment on anyone, women's dress included
@@ -119,16 +123,18 @@ reaching up, with tier 3's potential in it.
   notches, still following the light from the left.
 - **Eyes are rare.** Most old ones have no eyes. The few that do each
   have their own eye, drawn for that being alone.
-- **Nothing repeats.** No two old ones share a body, a garment, an eye or
-  any other asset; no stamped copies.
+- **Nothing repeats.** No two of the 24 rim old ones share a body, a
+  garment, an eye or any other asset; no stamped copies. (The brothers
+  reuse old-one bodies, tinted red: they are not old ones.)
 - **Stillness is the uncanny.** Hold still where a body should move, then
   snap to the next pose with no in-betweens.
 
 ### Tier 3 (the sky shadows)
 
-- **First and rare.** They are the first thing born: plainest in the
-  opening beats, then fast becoming a rare sighting behind everything,
-  mostly in the void beats, sometimes in a corner.
+- **First, then background.** They are the first thing born and plainest
+  in the opening beats; after that a sliver sits in almost every beat
+  (all but deep, slip, return, eternity and now), behind everything and
+  never the subject.
 - **Never whole.** Never even half in frame: an edge, a curve, a limb or
   a brim cut by the screen edge. Hard to see.
 - **Farthest value step.** 1–2 flat steps off the backdrop (#0d1114), in
@@ -144,17 +150,31 @@ reaching up, with tier 3's potential in it.
 - **Only effects reach below.** What it does shows only as effects in
   tiers 2 and 1 (the chaos lurching, motes turning at once, blobs knocked
   aside); never a beam, a line or contact.
-- **Slow and wrong.** Very slow drift against the wind, or one stepwise
-  lurch; nothing bobs. Reduced motion: still and visible.
-- **The two who care.** From `leave` through `birth`, two tier-3 edges
-  stop drifting and hold over the womb, a pocket of far lights kept dark
-  round them. Every rule above still holds; stillness is their care.
+- **Slow and wrong.** Only held steps: very slow drift against the wind,
+  a stepwise lurch, a stepped enter or fade, a stepped pass (the Comb in
+  `walk` and `flee`), or a snap level; nothing bobs. Reduced motion:
+  still and visible.
+- **The two who care.** The Lintel and the Arc enter in held steps in
+  `leave` and hold over the womb through `birth`, a pocket of far lights
+  kept dark round them; the Lintel snaps level in `fight` and both fade
+  in steps in `land`. Every rule above still holds; stillness is their
+  care.
 
 ### Tier 2 (the bridge)
 
 - **Scale through life.** The bridge's size shows through what lives on
   it: nests on the piers like birds' nests, eldritch cities grown round
   the span, all tiny against it.
-- **Cold rift light (change).** Only at `break` and `walk`, a rift in the
-  chaos may light the facing side of the nearest silhouette with one flat
-  cool band: the only second light.
+- **Cold rift light (change; planned, not shipped).** Only at `break` and
+  `walk`, a rift in the chaos may light the facing side of the nearest
+  silhouette with one flat cool band: the only second light.
+
+### Also shipped (plan phases 5-23)
+
+Tier-3 haze bands; the tier-1 sea strata and the void residue; the Brim
+lurch jolting the chaos in `break`; the Comb's tines tripping old ones in
+`walk`; climb-out in held steps in `trade`; hanging and deck cities and
+pier nests; garment weather (wind and frost); gestures after dressing;
+`worlds`, `remake` and `lives`; in `leave` the east-goers exit with pins
+while the carers (eye, chime, mound) and the brothers stay. `drawSpan`
+draws only a device-pixel box round the span (see the plan, phase 23).

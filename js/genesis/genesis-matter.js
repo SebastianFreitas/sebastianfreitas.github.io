@@ -119,6 +119,15 @@
     }
   })();
 
+  // the comb's entrance, right after it enters at matter local 4.2s: fixed, no RNG
+  (function seedCombStorm() {
+    const durs = STORMS.map(s => s.dur).sort((a, b) => a - b);
+    const Rfs = STORMS.map(s => s.Rf).sort((a, b) => a - b);
+    const medDur = durs[(durs.length - 1) >> 1];
+    const medRf = Rfs[(Rfs.length - 1) >> 1];
+    STORMS.push({ type: STORMS[0].type, t: 5.0, dur: medDur, xf: .82, yf: .22, Rf: medRf, tilt: 0 });
+  })();
+
   /* ---- scratch ---------------------------------------------------------
      preallocated, written by chunkAt and reused by the trade wave. */
   const scratch = { x: 0, y: 0, rot: 0, a: 0, alive: false };
