@@ -34,6 +34,18 @@ Several plans can run at once, one per checkout; `PLANS:` means none is
 bound here yet. New plans start from
 `.claude/plans/TEMPLATE.md` via `/plan new <name>: <brief>`.
 
+**One phase per prompt, then clear (owner's rule, 2026-09-26).** A
+running plan never does two phases in one turn and never rolls into the
+next phase after compaction. Each prompt executes the one active phase,
+verifies it, commits, writes `PLAN_STATE.md` at the repo root (the
+skill's format: architecture now, completed phase, next phase's exact
+start), and hard-stops with the skill's exact "Phase complete" message.
+The owner runs `/clear` and prompts "Read PLAN_STATE.md and execute the
+next phase." The same split applies outside plans: a prompt that
+contains two separable pieces of work gets the first one finished,
+committed and reported; the second waits for its own prompt, named
+under "Look at".
+
 ## One prompt, one finished result
 
 The owner sends one prompt and comes back to a finished, verified change
