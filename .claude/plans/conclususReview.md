@@ -1,6 +1,6 @@
 # conclususReview
 
-Stage: running
+Stage: done
 Started: 2026-09-28
 Procedure: `.claude/skills/plan/SKILL.md` (the interview, then "go").
 Interview: A done · B done · 86 asked · C done (fresh reviews 1-7 answered as D43-D82; fresh review 8 found nothing open, D83 records its wording notes)
@@ -255,7 +255,9 @@ A first phase scrolls the page by script and records frame times, then ranks the
 | 7 | Play beat | code | D16, D20, D27, D28 | done ef32185 |
 | 8 | Keys and tray | code | D12-D14, D22, D24, D29, D31, D34, D42 | done 9f1b34c |
 | 9 | Door, win, silhouettes | code | D15, D21, D25, D30, D32, D35 | done 90a74aa |
-| 10 | Final review | review | D11, D37 | todo |
+| 10 | Final review | review | D11, D37 | done 0130b4c |
+
+Phase 10 result: scrollperf `--bar` 4/4 PASS (frame p95 6.2 ms at 165 Hz, max 12.1, 0 layout reads in toy frames, toy p95 0.20 ms; the toy's rAF callback ran on 700 of 698 probe frames, so the phase 1 paint gaps of 12-30 ms are gone); `cc-before` vs `cc-after`: only `page-conclusus-desktop` (SIZE) and `-toy-*` differ; full nav-flows: only `worklink` "lands on Work" fails (3 checks, known). D48 leftover D37 FAILs: none. Review against the Ds found two twin gaps (D74: a returning silhouette beside a twin; D20: the door platform lost its twin after the win), fixed in 0130b4c.
 
 ## Phases
 
