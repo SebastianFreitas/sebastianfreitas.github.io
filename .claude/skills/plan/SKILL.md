@@ -210,13 +210,11 @@ first phase in the same turn, ending with the Handoff protocol and the
 hard stop below (one phase, never two). Change → record the change as a
 D, show the pieces and phases it touches again, and run the gate again.
 
-Context: the interview never runs into compaction (owner's rule,
-2026-09-28). At `CONTEXT WATCH`, ask no new question. Record the answer
+Context: auto-compact is off (owner's rule, 2026-09-29). At `CONTEXT WATCH`, ask no new question. Record the answer
 you already have as a D, make sure `Interview` names the open part and
 `Open items` lists every choice still to ask, and commit the plan by
 path. No `.claude/handoff.md`: the plan file *is* the handoff. Then
-hard-stop. The mode files' "Context full" rule (auto-continue) does not
-apply. The last line of the turn is this exact message, with nothing after it:
+hard-stop. The last line of the turn is this exact message, with nothing after it:
 
 > Interview paused (context full). Please run `/clear`, then prompt me
 > with `go` to continue the interview from the same part.
@@ -235,8 +233,7 @@ The owner's rule (2026-09-26): *"we never do 2 continues work, we must
 always separate stuff."* A running plan is a chain of short, isolated
 sessions. Each prompt executes **exactly one phase**, then the session
 halts and the owner clears the context. Never run two phases in one
-turn, never "keep going with Next", never let auto-compaction carry a
-plan across phases.
+turn, never "keep going with Next".
 
 1. **Enter.** If `PLAN_STATE.md` exists at the repo root, read it first:
    its "Next phase" section is the starting point and overrides
@@ -268,9 +265,7 @@ plan across phases.
    > Phase complete. Please run `/clear` to flush the context window,
    > then prompt me with: 'Read PLAN_STATE.md and execute the next phase.'
 
-   Do not start the next phase. Do not ask whether to continue. The
-   mode files' "Context full" rule (auto-continue, never clear) does
-   not apply at a phase boundary: the clear is the owner's, on purpose.
+   Do not start the next phase. Do not ask whether to continue.
 6. **The next prompt** ("Read PLAN_STATE.md and execute the next
    phase", or a bare "go") starts at step 1 in a fresh context.
 

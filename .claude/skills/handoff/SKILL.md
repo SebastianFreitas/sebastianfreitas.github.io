@@ -25,26 +25,11 @@ SessionStart hook prints the file into the next context (also after
 list are long: hook output over 10,000 characters is replaced by a
 2,000-character preview), so keep it short.
 
-## Auto-continue
+## Then stop
 
-For a context-full handoff the session keeps working with no owner
-input: auto-compaction, not a clear. `.claude/settings.json` sets
-`CLAUDE_CODE_AUTO_COMPACT_WINDOW` to 200000 and
-`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` to 50, so Claude Code compacts at
-100k, a little past the 90k handoff line, mid-turn, and
-goes on in the same turn. The SessionStart hook runs again with source
-`compact` and prints `.claude/handoff.md` into the compacted context.
-It is the same session, folder, branch and PR. So never open a new
-worktree, branch or PR for the same work.
-
-Once the handoff is written and everything is committed, keep going
-with Next in the same turn. Do not end the turn because context is
-full. A handoff that waits on the owner (a question, a blocker) ends
-the turn as usual.
-
-Never call `mcp__ccd_session_mgmt__clear_session` on "self" to continue
-work. In the desktop app a clear stops the session's Claude process,
-which drops every session-only job with it (`CronCreate`, background
-shells, monitors). Nothing is left running to start the next turn, so
-the session sits empty until the owner types. Seen 2026-09-25 in the
-desktop log as "Stopping session", then "Clearing session".
+Auto-compact is off (owner's rule, 2026-09-29): a handoff always ends
+the turn. The owner runs `/clear` (or opens a new chat) and says `go`;
+the SessionStart hook prints the handoff into the fresh context. It is
+the same folder, branch and PR, so never open a new worktree, branch or
+PR for the same work. Never compact and never call
+`mcp__ccd_session_mgmt__clear_session` on yourself.

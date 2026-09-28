@@ -1,7 +1,6 @@
 {
   "env": {
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65"
+    "DISABLE_AUTO_COMPACT": "1"
   },
   "worktree": {
     "baseRef": "head"

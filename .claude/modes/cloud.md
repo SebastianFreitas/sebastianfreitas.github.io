@@ -43,27 +43,6 @@ bump.
 
 ### Context full
 
-A running plan (a `PLAN:` line) is the exception to this whole section:
-a phase ends with the plan skill's Handoff protocol and hard stop
-(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue;
-a phase that hits the line stops as `partial`, and a planning interview
-that hits it pauses for `/clear` and `go` (plan skill). The rule
-below is for ordinary, non-plan work only.
-
-Finish the atomic step, commit, push, and put the handoff (the `handoff`
-skill's headings) in the PR body under `## Handoff`. Also write it to
-`.claude/handoff.md`, then keep going with Next in the same turn. Auto-compaction (the
-`handoff` skill's "Auto-continue") summarizes the conversation a
-little past the line, mid-turn, and the SessionStart hook prints the
-handoff back in, so the owner types nothing. Never clear this session
-to continue: in the desktop app a clear stops its process and nothing
-restarts it. A handoff that waits on the owner (a question, a blocker)
-ends the turn with the normal report as usual.
-It is the same session in this container, on this branch and PR. If the
-session ends anyway, the owner starts a new cloud session and says:
-"continue PR #<n>". That session runs `gh pr view <n>` and stays on the
-same branch: it runs `git fetch origin <old>`, then `git checkout <old>`,
-continues from Next and pushes to `<old>`, so the PR is the same one.
-Only if that push is refused does it merge `origin/<old>` into its own
-branch and open a PR that replaces the old one (close the old PR with a
-link).
+The rule is CLAUDE.md's "Context budget" (stop, handoff, owner clears).
+Commit and push first, and put the handoff in the PR body under
+`## Handoff` as well as in `.claude/handoff.md`.

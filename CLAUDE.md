@@ -29,29 +29,15 @@ the report that the hook did not run. After `EnterWorktree`, read
 
 ## Plans
 
-Big work runs as a plan: `.claude/plans/<name>.md`, started from
-`TEMPLATE.md` with `/plan new <name>: <brief>`, driven by
-`.claude/skills/plan/SKILL.md`. A `PLAN: <name> · <stage>` line from the
-hook means a plan is bound to this checkout (`.claude/plans/HERE`, or
-the only active one); `PLANS:` means none is bound here yet. Several
-plans can run at once, one per checkout.
-
-- **Planning happens in the app**: the interview, one step per prompt.
-- **Execution is one phase per fresh session** (owner's rule,
-  2026-09-26), because each phase deserves a clean context. A phase
-  ends by verifying, committing, and writing `PLAN_STATE.md` at the repo
-  root; nothing ever rolls into the next phase.
-- **Unattended:** `py -3 tools/autoplan.py <name>` runs the phases from
-  a terminal, one headless session each, in the worktree
-  `.claude/worktrees/plan-<name>` (branch `claude/plan-<name>`, made
-  from the main checkout; `--here` runs in place). Each prompt carries
-  a phase brief (PLAN_STATE, the phase section, cited D's, saved
-  specs). It watches context from outside, stops a session that
-  overflows, commits leftovers, and starts the next one. Inside such a
-  session `AUTOPLAN=1` is set: read `.claude/skills/plan/unattended.md`.
-- **By hand:** each prompt runs one phase and ends with the skill's
-  "Phase complete" message; the owner clears and says "Read
-  PLAN_STATE.md and execute the next phase" (or "go").
+Big work runs as a plan: `.claude/plans/<name>.md`, started with
+`/plan new <name>: <brief>` and driven by `.claude/skills/plan/SKILL.md`
+(read it before touching a plan). The hook prints `PLAN: <name> ·
+<stage>` when a plan is bound to this checkout, `PLANS:` when several
+are active and none is bound here. Planning is an interview in the app;
+execution is one phase per fresh session (owner's rule, 2026-09-26),
+by hand (`/clear`, then "go") or unattended with `py -3
+tools/autoplan.py <name>`, where `AUTOPLAN=1` is set: then read
+`.claude/skills/plan/unattended.md`.
 
 The same split applies outside plans: a prompt with two separable pieces
 of work gets the first finished, committed and reported, and the second
@@ -69,9 +55,10 @@ committed change. Stopping at "ready to commit" costs them a whole turn.
 3. **Implement** with the `implementer` subagent.
 4. **Verify**: the spec's command, then the flows and snapshots you
    touched (see Verify).
-5. **Review**: over about 150 lines or three files, a fresh subagent
-   checks `git diff` against the spec and reports only gaps that break
-   the spec or a flow.
+5. **Review**: over about 150 lines or three files, the `reviewer`
+   subagent (Sonnet, read-only, fresh context) gets the spec(s) and the
+   paths, checks `git diff` against them and reports only gaps that
+   break the spec or a flow.
 6. **Commit** by path, as your mode says, with a message that describes
    the work (a squash takes the branch tip's message). In worktree mode
    run the mode's `try.py --commit` yourself once verified.
@@ -105,15 +92,11 @@ because the main context is paid again on every turn.
 - Explore and Plan never load this file: name the file, function or
   concept, tell them to grep `.claude/MAP.md` first, and ask for
   `file:line` anchors and a summary, not code bodies.
-
-## Delegation
-
-Every code change goes to `implementer`, one spec per call, one file per
-call unless the change genuinely spans files. It runs with
-`omitClaudeMd: true` and sees only the spec, so the spec carries
-everything it needs. Read `.claude/playbook.md` before the first spec of
-a turn: parallel calls, big new files, blocked implementers, the Spec
-format and the tool commands.
+- Every code change goes to `implementer` (Sonnet), one spec per call,
+  one file per call unless the change genuinely spans files. It sees
+  only the spec, never this file. Read `.claude/playbook.md` before the
+  first spec of a turn: parallel calls, big new files, blocked
+  implementers, the Spec format and the tool commands.
 
 ## Domain rules
 
@@ -138,20 +121,20 @@ in those areas.
 
 ## Context budget
 
-`.claude/hooks/context-watch.py` prints `CONTEXT WATCH` near each line:
-main 120k (auto-compact at 130k: 65% of a 200k window, kept below the
-1M the model allows because quality drops past ~70% full), headless
-plan sessions 120k (runner kills at 140k), Explore and Plan 100k,
-implementer 60k.
-A subagent at 1.5 times its line is denied further tools, which means
-the prompt was too wide: next time name the file, function and range, or
-split the task. Never ask the owner to `/compact`.
+Auto-compact is off (`DISABLE_AUTO_COMPACT` in `.claude/settings.json`,
+owner's rule 2026-09-29): no session runs on past its line; it stops
+and the owner clears or opens a new chat. Never compact, never clear
+yourself. `.claude/hooks/context-watch.py` prints `CONTEXT WATCH` near
+each line: main and headless plan sessions 120k (the runner kills at
+140k), Explore and Plan 100k, implementer and reviewer 60k. A subagent
+at 1.5 times its line is denied further tools, which means the prompt
+was too wide: next time name the file, function and range, or split.
 
-- Main session past its line: finish the current atomic step, verify,
-  commit, then follow your mode file's "Context full" rule and the
-  `handoff` skill. A plan never compacts: a running phase stops as
-  `partial`, and a planning interview pauses for `/clear` and `go`
-  (plan skill).
+- Main session past its line: finish only the current atomic step,
+  verify, commit, write `.claude/handoff.md` (`handoff` skill) and end
+  the turn with the normal report plus your mode file's "Context full"
+  extras. Look at's first bullet: "Context full: run `/clear` (or open
+  a new chat) and say `go`." Plans stop their own way (plan skill).
 - A handoff printed at session start: restate the plan in two lines,
   continue from Next, never redo Done, delete the file once absorbed.
 

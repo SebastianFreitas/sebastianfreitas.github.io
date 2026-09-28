@@ -44,24 +44,10 @@ report. Archiving the session in the app removes the worktree.
 
 ### Context full
 
-A running plan (a `PLAN:` line) is the exception to this whole section:
-a phase ends with the plan skill's Handoff protocol and hard stop
-(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue;
-a phase that hits the line stops as `partial`, and a planning interview
-that hits it pauses for `/clear` and `go` (plan skill). The rule
-below is for ordinary, non-plan work only.
-
-Finish the atomic step, commit on the branch, write `.claude/handoff.md`
-(format: the `handoff` skill) in this worktree (gitignored, it stays
-here), then keep going with Next in the same turn. Auto-compaction (the
-`handoff` skill's "Auto-continue") summarizes the conversation a
-little past the line, mid-turn, and the SessionStart hook prints the
-handoff back in, so the owner types nothing. Never clear this session
-to continue: in the desktop app a clear stops its process and nothing
-restarts it. A handoff that waits on the owner (a question, a blocker)
-ends the turn with the normal report as usual.
-It is the same session in the same worktree on the same branch: never
-open a new worktree or branch for it. If the owner starts a new session
-instead, it gets a fresh worktree from `main`: it runs `git merge
-<branch>` first and has no handoff, so put the Next list in the report's
-"Look at" too.
+The rule is CLAUDE.md's "Context budget" (stop, handoff, owner clears).
+Commit on the branch first; `.claude/handoff.md` stays in this worktree
+(gitignored). After `/clear` it is the same worktree and branch: never
+open a new one for the same work. If the owner opens a new chat instead,
+that gets a fresh worktree from `main` with no handoff: it runs `git
+merge <branch>` first, so name the branch and put the Next list in the
+report's "Look at" too.

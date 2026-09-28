@@ -23,7 +23,7 @@ import json
 import os
 import sys
 
-LIMIT = int(os.environ.get("AUTOPLAN_LINE") or 120_000)  # main session: handoff line, under auto-compact at 130k (65%)
+LIMIT = int(os.environ.get("AUTOPLAN_LINE") or 120_000)  # main session: handoff line (auto-compact is off)
 SOFT = 0.8          # warn from this fraction of a line
 HARD = 1.5          # subagents: deny all tools from this multiple of the line
 
@@ -32,7 +32,8 @@ HARD = 1.5          # subagents: deny all tools from this multiple of the line
 # higher. Types not listed are measured on SubagentStop, never warned or
 # denied.
 SUB_LIMITS = {"Explore": 100_000, "Plan": 100_000,
-              "implementer": 60_000, "implementer-wt": 60_000}
+              "implementer": 60_000, "implementer-wt": 60_000,
+              "reviewer": 60_000}
 
 
 def usage_total(u):

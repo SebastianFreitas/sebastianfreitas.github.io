@@ -50,18 +50,5 @@ hand; `tools/cleanup.py` removes merged ones once idle 24 h.
 
 ### Context full
 
-A running plan (a `PLAN:` line) is the exception to this whole section:
-a phase ends with the plan skill's Handoff protocol and hard stop
-(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue;
-a phase that hits the line stops as `partial`, and a planning interview
-that hits it pauses for `/clear` and `go` (plan skill). The rule
-below is for ordinary, non-plan work only.
-
-Finish the atomic step, commit, write `.claude/handoff.md` (format: the
-`handoff` skill), then keep going with Next in the same turn. Auto-compaction (the
-`handoff` skill's "Auto-continue") summarizes the conversation a
-little past the line, mid-turn, and the SessionStart hook prints the
-handoff back in, so the owner types nothing. Never clear this session
-to continue: in the desktop app a clear stops its process and nothing
-restarts it. A handoff that waits on the owner (a question, a blocker)
-ends the turn with the normal report as usual.
+The rule is CLAUDE.md's "Context budget" (stop, handoff, owner clears).
+List foreign uncommitted paths under the handoff's "Foreign edits".
