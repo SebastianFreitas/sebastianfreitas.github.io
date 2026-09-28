@@ -10,14 +10,20 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" session-start.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" session-start.py"
+          }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py"
+          }
         ]
       }
     ],
@@ -25,35 +31,53 @@
       {
         "matcher": "Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" git-guard.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" git-guard.py"
+          }
         ]
       },
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py"
+          }
         ]
       }
     ],
     "PostToolUse": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py"
+          }
         ]
       }
     ],
     "SubagentStop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" context-watch.py"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" stop-guard.py" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" stop-guard.py"
+          }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "unity@unity-agent-plugin": false
   }
 }
