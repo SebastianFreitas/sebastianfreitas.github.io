@@ -42,10 +42,13 @@ plans can run at once, one per checkout.
   ends by verifying, committing, and writing `PLAN_STATE.md` at the repo
   root; nothing ever rolls into the next phase.
 - **Unattended:** `py -3 tools/autoplan.py <name>` runs the phases from
-  a terminal, one headless session each. It watches context from
-  outside, stops a session that overflows, commits leftovers, and
-  starts the next one. Inside such a session `AUTOPLAN=1` is set: follow
-  the skill's "Running unattended" section.
+  a terminal, one headless session each, in the worktree
+  `.claude/worktrees/plan-<name>` (branch `claude/plan-<name>`, made
+  from the main checkout; `--here` runs in place). Each prompt carries
+  a phase brief (PLAN_STATE, the phase section, cited D's, saved
+  specs). It watches context from outside, stops a session that
+  overflows, commits leftovers, and starts the next one. Inside such a
+  session `AUTOPLAN=1` is set: read `.claude/skills/plan/unattended.md`.
 - **By hand:** each prompt runs one phase and ends with the skill's
   "Phase complete" message; the owner clears and says "Read
   PLAN_STATE.md and execute the next phase" (or "go").
@@ -136,7 +139,10 @@ in those areas.
 ## Context budget
 
 `.claude/hooks/context-watch.py` prints `CONTEXT WATCH` near each line:
-main 90k (auto-compact at 100k), Explore and Plan 100k, implementer 60k.
+main 120k (auto-compact at 130k: 65% of a 200k window, kept below the
+1M the model allows because quality drops past ~70% full), headless
+plan sessions 120k (runner kills at 140k), Explore and Plan 100k,
+implementer 60k.
 A subagent at 1.5 times its line is denied further tools, which means
 the prompt was too wide: next time name the file, function and range, or
 split the task. Never ask the owner to `/compact`.

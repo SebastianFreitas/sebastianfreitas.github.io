@@ -181,7 +181,13 @@ So planning is a **long interview**, not a survey:
    (research/doc/code/review), the pieces it implements, research
    topics, deliverables, verification, the D numbers it rests on. **No
    phase may be of kind "owner talk"**: every question is asked here,
-   now. Fill Scope, Constraints, the Progress table. Commit.
+   now. **Size:** a code phase is at most two implementer specs and at
+   most two files it reads to design (name them); more than that is two
+   phases. A phase's section is self-contained (it names its D numbers
+   and pieces), because an unattended session sees only that section.
+   Verification names the check that actually sees the change: a toy
+   canvas needs `jscheck.py --shot` or a flow, since `snap.py` does not
+   paint it. Fill Scope, Constraints, the Progress table. Commit.
 2. **Review every phase with the owner**, one phase per pass, in order,
    with at least **two** `AskUserQuestion` questions per phase:
    - *"Phase <n>, <name>, delivers: <deliverables>. Right?"* with the
@@ -331,32 +337,22 @@ wrong. At `CONTEXT WATCH` finish the atomic step, commit, and write
 PLAN_STATE.md with `Status: partial`, "Completed phase" as `<n>
 (partial)` and "Next phase" as the rest of it; then hard-stop. Next
 session, split the phase in the Progress table before continuing.
+A session that stops after designing saves each finished spec as
+`.claude/plans/<name>.spec-<phase>-<k>.md` (playbook Spec format,
+ready to send) and names them in Next phase; the next session sends
+them to the implementer instead of exploring again, and deletes each in
+the commit that lands its work.
 
 ### Running unattended (`AUTOPLAN=1`)
 
-`tools/autoplan.py` runs the phases in a terminal: one fresh headless
-session per phase, so the clear and the "go" happen on their own. The
-session's prompt starts with `[autoplan · ...]` and the env has
-`AUTOPLAN=1`. Everything above still holds, with these differences:
-
-- Nobody answers. `AskUserQuestion` is disabled, so every phase question
-  is decided at once as `D<n> (auto)` with one line of reason, plus a
-  `missed:` line in the Interview section, exactly as if the owner were
-  away.
-- A blocker still stops: finish what can be finished, commit, write
-  PLAN_STATE.md with `Status: blocked` and the Blocker, end.
-- Commit before ending, always: the phase commit, then PLAN_STATE.md and
-  the Progress row. The runner commits anything left dirty as
-  "unverified work in progress", which is a fallback, not the plan.
-- Keep going until the Handoff protocol is complete. Do not end early
-  with a progress update; the only reasons to end are phase done,
-  partial (context line), blocked, or plan done.
-- The runner watches context from outside and stops the session at its
-  kill line (above the 90k `CONTEXT WATCH` line). If a prompt says the
-  previous session was stopped, its files were committed unverified:
-  check `git show --stat <sha>` and verify that work first.
-- The report and the hard-stop message are still written; nobody reads
-  them live, the runner logs them.
+`py -3 tools/autoplan.py <name>` runs the phases from a terminal, one
+fresh headless session per phase. Started from the main checkout, it
+makes (or reuses) the worktree `.claude/worktrees/plan-<name>` on
+branch `claude/plan-<name>` and runs there; the owner lands it with
+`py -3 tools/try.py claude/plan-<name> --commit`. A session it starts
+has `AUTOPLAN=1` and a prompt that begins `[autoplan | ...]` and carries
+the phase brief: read `.claude/skills/plan/unattended.md` (short) and
+not the rest of this file.
 
 ## Last phase done → Stage done
 

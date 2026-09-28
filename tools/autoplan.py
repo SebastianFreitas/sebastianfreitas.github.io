@@ -1,7 +1,9 @@
-﻿"""Run a multi-phase plan (.claude/plans/<name>.md) unattended.
+"""Run a multi-phase plan (.claude/plans/<name>.md) unattended.
 
-    py -3 tools/autoplan.py heavylight-page
-    py -3 tools/autoplan.py --dry-run --shared
+    py -3 tools/autoplan.py heavylight-page  (from main: makes the plan worktree)
+    py -3 tools/autoplan.py --dry-run
+    py -3 tools/autoplan.py heavylight-page --here  (run in this checkout)
+    py -3 tools/autoplan.py heavylight-page --force  (kill a leftover session)
 
 Each loop iteration launches a FRESH headless Claude Code process
 (`claude -p ... --output-format stream-json`), which executes exactly one
@@ -11,12 +13,13 @@ the plan state, and starts the next session. A fresh process means a
 cleared context, so nobody has to type /clear or "go" between phases.
 
 Meant to run in a worktree, not the main checkout other sessions are
-using (pass --shared to override that check).
+using (pass --here to override that check).
 """
 
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import os
 import re
@@ -30,6 +33,19 @@ ROOT = Path(__file__).resolve().parent.parent
 PLANS = ROOT / ".claude" / "plans"
 STATE = ROOT / "PLAN_STATE.md"
 LOGS = ROOT / ".claude" / "autoplan"
+LOCK = ROOT / ".claude" / "autoplan" / "run.lock"
+
+ALLOWED_TOOLS = [
+    "Read", "Glob", "Grep", "Edit", "Write", "Agent", "TodoWrite",
+    "Bash(git add *)", "Bash(git commit *)", "Bash(git status *)",
+    "Bash(git diff *)", "Bash(git log *)", "Bash(git show *)",
+    "Bash(git rev-parse *)", "Bash(py -3 tools/*)",
+    "Bash(py -3 -m py_compile *)", "Bash(ls *)", "Bash(wc *)",
+    "Bash(grep *)", "Bash(sed -n *)", "Bash(head *)", "Bash(tail *)",
+    "Bash(mkdir *)", "PowerShell(git add *)", "PowerShell(git commit *)",
+    "PowerShell(git status *)", "PowerShell(git diff *)",
+    "PowerShell(git log *)", "PowerShell(py -3 tools/*)",
+]
 
 _PLAN_NAME = "?"  # set by main() before the loop; safety_commit's message needs it
 
@@ -137,6 +153,118 @@ def head() -> str:
     return git("rev-parse", "HEAD")
 
 
+def ensure_plan_worktree(name: str) -> Path:
+    """Create (if needed) and return the plan-<name> worktree, branch claude/plan-<name>."""
+    wt = ROOT / ".claude" / "worktrees" / f"plan-{name}"
+    branch = f"claude/plan-{name}"
+    wt_norm = os.path.normcase(os.path.abspath(str(wt)))
+    for line in git("worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            existing = os.path.normcase(os.path.abspath(line[len("worktree "):]))
+            if existing == wt_norm:
+                return wt
+    branch_exists = bool(git("branch", "--list", branch).strip())
+    if branch_exists:
+        git("worktree", "add", str(wt), branch, check=True)
+    else:
+        git("worktree", "add", "-b", branch, str(wt), "HEAD", check=True)
+    print(f"Plan worktree: .claude/worktrees/plan-{name} (branch {branch})")
+    return wt
+
+
+def pid_alive(pid: int) -> bool:
+    """True if pid is a running process."""
+    if os.name == "nt":
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        return str(pid) in result.stdout
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def live_claude_here(name: str) -> list[int]:
+    """Pids of headless autoplan claude/node processes visible on this machine (Windows only)."""
+    if os.name != "nt":
+        return []
+    try:
+        result = subprocess.run(
+            [
+                "powershell", "-NoProfile", "-Command",
+                "Get-CimInstance Win32_Process -Filter \"Name='claude.exe' or Name='node.exe'\" "
+                "| Select-Object ProcessId,CommandLine | ConvertTo-Json",
+            ],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return []
+        data = json.loads(result.stdout)
+        if isinstance(data, dict):
+            data = [data]
+        pids = []
+        for entry in data:
+            cmdline = entry.get("CommandLine") or ""
+            if " -p " not in cmdline or "stream-json" not in cmdline:
+                continue
+            if f"[autoplan | plan {name} |" not in cmdline and f"[autoplan \u00b7 plan {name} \u00b7" not in cmdline:
+                continue
+            pid = entry.get("ProcessId")
+            if pid is not None:
+                pids.append(int(pid))
+        return pids
+    except Exception:
+        return []
+
+
+def acquire_lock(name: str, force: bool) -> None:
+    """Take LOCK for this run; refuse (or kill, with force) a live autoplan run in this checkout."""
+    if LOCK.exists():
+        try:
+            info = json.loads(LOCK.read_text(encoding="utf-8"))
+            pid = int(info.get("pid"))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pid = None
+        if pid is not None and pid_alive(pid):
+            print(
+                f"Another autoplan run (pid {pid}, plan {info.get('plan')}) is "
+                "running in this checkout; stop it first."
+            )
+            sys.exit(1)
+        LOCK.unlink()
+
+    pids = live_claude_here(name)
+    if pids:
+        if not force:
+            print(
+                f"A headless autoplan session is still running (pids {pids}). "
+                "Stop it, or re-run with --force to kill it."
+            )
+            sys.exit(1)
+        for pid in pids:
+            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    our_pid = os.getpid()
+    LOCK.write_text(
+        json.dumps({"pid": our_pid, "plan": name, "started": time.strftime("%Y-%m-%d %H:%M:%S")}),
+        encoding="utf-8",
+    )
+
+    def release():
+        try:
+            info = json.loads(LOCK.read_text(encoding="utf-8"))
+            if info.get("pid") == our_pid:
+                LOCK.unlink()
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+
+    atexit.register(release)
+
+
 def read_plan(name: str) -> dict:
     """Parse .claude/plans/<name>.md: stage, and todo/done counts from the Progress table."""
     text = (PLANS / f"{name}.md").read_text(encoding="utf-8")
@@ -165,10 +293,10 @@ def read_plan(name: str) -> dict:
         if not cells:
             continue
         last = cells[-1].lower()
-        if last.startswith("todo"):
-            todo += 1
-        elif last.startswith("done"):
+        if last.startswith("done"):
             done += 1
+        else:
+            todo += 1
     return {"stage": stage, "todo": todo, "done": done}
 
 
@@ -219,19 +347,116 @@ def resolve_plan(explicit: str | None) -> str:
     sys.exit(1)
 
 
-def session_prompt(name: str, k: int, rescue: dict | None) -> str:
-    """Build the -p prompt text for session k of plan name, with an optional rescue note."""
-    prompt = f"""[autoplan Â· plan {name} Â· session {k}]
-You are running unattended under tools/autoplan.py. Nobody is watching
-and nobody will answer: AskUserQuestion is disabled. Follow
-.claude/skills/plan/SKILL.md, section "Running unattended".
+def phase_brief(name: str) -> str:
+    """Build the phase brief for the prompt: PLAN_STATE.md, next phase section, cited decisions, carry-forward, specs."""
 
-Read PLAN_STATE.md and execute the next phase.
+    def cut(text: str, cap: int) -> str:
+        if len(text) > cap:
+            return text[:cap] + "[...cut]"
+        return text
 
-Work until that phase's Handoff protocol is complete (verified,
-committed, PLAN_STATE.md written with its Status line, committed), then
-stop. Do not stop early with a progress update. If something blocks
-you, write it as the Blocker in PLAN_STATE.md with Status: blocked."""
+    def extract_section(lines: list[str], start: int) -> str:
+        m = re.match(r"^(#{1,6})\s", lines[start])
+        level = len(m.group(1))
+        end = len(lines)
+        for j in range(start + 1, len(lines)):
+            m2 = re.match(r"^(#{1,6})\s", lines[j])
+            if m2 and len(m2.group(1)) <= level:
+                end = j
+                break
+        return "\n".join(lines[start:end])
+
+    parts = []
+
+    state_text = ""
+    if STATE.exists():
+        state_text = STATE.read_text(encoding="utf-8")
+        parts.append("## PLAN_STATE.md\n\n" + cut(state_text, 5000))
+
+    plan_path = PLANS / f"{name}.md"
+    plan_text = plan_path.read_text(encoding="utf-8")
+    plan_lines = plan_text.splitlines()
+
+    n = None
+    in_progress = False
+    for line in plan_lines:
+        if line.startswith("## Progress"):
+            in_progress = True
+            continue
+        if in_progress and line.startswith("## "):
+            break
+        if not in_progress:
+            continue
+        if not line.startswith("| "):
+            continue
+        rest = line[2:]
+        if not rest[:1].isdigit():
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not cells:
+            continue
+        if not cells[-1].lower().startswith("done"):
+            n = cells[0]
+            break
+
+    phase_section = ""
+    if n is not None:
+        heading_re = re.compile(rf"^#{{2,4}} .*Phase\s+{re.escape(n)}\b", re.I)
+        start = next((i for i, line in enumerate(plan_lines) if heading_re.match(line)), None)
+        if start is not None:
+            phase_section = extract_section(plan_lines, start)
+        else:
+            phase_section = f"Phase {n}: section not found; grep the plan for it."
+    parts.append(f"## Phase {n} (from .claude/plans/{name}.md)\n\n" + cut(phase_section, 6000))
+
+    tokens = sorted(set(re.findall(r"D\d+", state_text + "\n" + phase_section)))
+    decision_blocks = []
+    i = 0
+    while i < len(plan_lines):
+        line = plan_lines[i]
+        stripped = line.strip()
+        hit = any(
+            stripped.startswith(f"- **{tok}") or stripped.startswith(tok) or stripped.startswith(f"| {tok} ")
+            for tok in tokens
+        )
+        if hit:
+            block = [line]
+            j = i + 1
+            while j < len(plan_lines) and plan_lines[j] and plan_lines[j][0] in (" ", "\t"):
+                block.append(plan_lines[j])
+                j += 1
+            decision_blocks.append("\n".join(block))
+            i = j
+        else:
+            i += 1
+    parts.append("## Decisions cited\n\n" + cut("\n\n".join(decision_blocks), 4000))
+
+    carry_start = next(
+        (i for i, line in enumerate(plan_lines) if line.strip().lower().startswith("## carry forward")), None
+    )
+    if carry_start is not None:
+        parts.append("## Carry forward\n\n" + cut(extract_section(plan_lines, carry_start), 2000))
+
+    spec_files = sorted(PLANS.glob(f"{name}.spec-*.md"))
+    if spec_files:
+        listing = "\n".join(f"- {p.relative_to(ROOT)}" for p in spec_files)
+        parts.append("## Saved specs (send these to the implementer first)\n\n" + listing)
+
+    return "\n\n".join(parts)
+
+
+def session_prompt(name: str, k: int, rescue: dict | None, line: int, kill: int) -> str:
+    """Build the -p prompt text for session k of plan name, with an optional rescue note and phase brief."""
+    prompt = f"""[autoplan | plan {name} | session {k}]
+You are running unattended under tools/autoplan.py. Nobody answers:
+AskUserQuestion is disabled. Read .claude/skills/plan/unattended.md
+first; it replaces SKILL.md's unattended section. The phase brief below
+is already loaded: do not re-read PLAN_STATE.md or the plan for it.
+
+Context: CONTEXT WATCH warns at {line // 1000}k; the runner kills this
+session at {kill // 1000}k. Execute the next phase (below) and stop when
+its Handoff protocol is complete, or save your design as spec files
+(unattended.md) when it will not fit."""
     if rescue:
         tokens = rescue.get("tokens", 0)
         sha = rescue.get("sha")
@@ -248,7 +473,27 @@ you, write it as the Blocker in PLAN_STATE.md with Status: blocked."""
 The previous session was stopped by the runner at {tokens // 1000}k
 context tokens, mid-phase. {work_note}. PLAN_STATE.md may be one phase
 stale: trust git log over it, and treat the phase as partial."""
+    prompt += "\n\n# Phase brief\n\n" + phase_brief(name)
     return prompt
+
+
+def build_cmd(claude: str, prompt: str, args, budget: float | None) -> list[str]:
+    cmd = [
+        claude, "-p", prompt,
+        "--output-format", "stream-json", "--verbose",
+        "--model", args.model, "--effort", args.effort,
+        "--permission-mode", args.permission_mode,
+        "--permission-prompts", "none",
+        "--disallowedTools", "AskUserQuestion",
+        "--allowedTools", *ALLOWED_TOOLS,
+        "--settings", json.dumps({"env": {
+            "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
+            "AUTOPLAN_LINE": str(args.line),
+        }}),
+    ]
+    if budget is not None:
+        cmd += ["--max-budget-usd", f"{budget:.2f}"]
+    return cmd
 
 
 def kill_tree(proc: subprocess.Popen) -> None:
@@ -293,7 +538,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
 
     try:
         for raw in proc.stdout:
-            line = raw.decode("utf-8", errors="replace").lstrip("ï»¿")
+            line = raw.decode("utf-8", errors="replace").lstrip("\ufeff")
             if log_file:
                 log_file.write(line)
             stripped = line.strip()
@@ -332,11 +577,14 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                             or inp.get("command") or inp.get("pattern")
                             or inp.get("subagent_type") or ""
                         )
-                        arg = str(arg).replace("\n", " ")[:90]
+                        arg = str(arg).replace("\n", " ")
+                        for root_variant in (str(ROOT), str(ROOT).replace("\\", "/")):
+                            arg = re.sub(re.escape(root_variant), "", arg, flags=re.IGNORECASE)
+                        arg = arg.lstrip("/\\")[:90]
                         if is_sub:
-                            print(f"    Â· {name} {arg}")
+                            print(f"    | {name} {arg}")
                         else:
-                            print(f"{label} {ctx // 1000}k â†’ {name} {arg}")
+                            print(f"{label} {ctx // 1000}k -> {name} {arg}")
                     elif btype == "text" and not is_sub:
                         text = block.get("text", "") or ""
                         first_line = text.splitlines()[0] if text.splitlines() else ""
@@ -368,7 +616,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                 killed = True
 
             if killed and proc.poll() is None:
-                print(f"context {ctx // 1000}k â‰¥ kill line: stopping this session")
+                print(f"context {ctx // 1000}k >= kill line: stopping this session")
                 stop_child()
                 break
     except KeyboardInterrupt:
@@ -433,14 +681,14 @@ def safety_commit(pre_dirty: set[str], label: str, reason: str) -> str | None:
 def print_summary(sessions: list[dict], stop_reason: str) -> None:
     """Print the end-of-run table of sessions, total cost and the stop reason."""
     print()
-    print("session Â· exit Â· peak Â· cost Â· status Â· done Â· head")
+    print("session | exit | peak | cost | status | done | head")
     total_cost = 0.0
     for s in sessions:
         total_cost += s.get("cost", 0.0)
         cost_str = f"${s['cost']:.2f}" if s.get("cost_known", True) else "?"
         print(
-            f"{s['label']} Â· {s['exit']} Â· peak {s['peak'] // 1000}k Â· "
-            f"{cost_str} Â· status {s['status']} Â· done {s['done_str']} Â· "
+            f"{s['label']} | {s['exit']} | peak {s['peak'] // 1000}k | "
+            f"{cost_str} | status {s['status']} | done {s['done_str']} | "
             f"head {s['head']}"
         )
     print(f"total cost: ${total_cost:.2f}")
@@ -458,11 +706,14 @@ def main() -> None:
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", default="high")
     parser.add_argument("--permission-mode", default="auto")
-    parser.add_argument("--line", type=int, default=90000)
-    parser.add_argument("--kill", type=int, default=110000)
+    parser.add_argument("--line", type=int, default=120000)
+    parser.add_argument("--kill", type=int, default=140000)
     parser.add_argument("--claude", default=None)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--shared", action="store_true")
+    parser.add_argument("--here", "--shared", dest="here", action="store_true")
+    parser.add_argument(
+        "--force", action="store_true", help="kill a leftover headless autoplan session"
+    )
     args = parser.parse_args()
 
     if args.kill <= args.line:
@@ -472,14 +723,39 @@ def main() -> None:
     name = resolve_plan(args.plan)
     claude = find_claude(args.claude)
 
-    m = mode()
-    if m == "shared" and not args.shared:
-        print(
-            "This is the main checkout (shared mode). Plans should run in a "
-            "worktree: other sessions edit this tree. Re-run with --shared to "
-            "run here anyway."
-        )
+    plan = read_plan(name)
+    if plan["stage"] not in ("ready", "running"):
+        print(f"Plan {name} stage is '{plan['stage']}', not ready/running.")
         sys.exit(1)
+
+    m = mode()
+    if m == "shared" and not args.here:
+        plan_path = f".claude/plans/{name}.md"
+        if plan_path in dirty_paths():
+            print(f"Commit .claude/plans/{name}.md on main first; the worktree is cut from HEAD.")
+            sys.exit(1)
+        if args.dry_run:
+            print(f"would use .claude/worktrees/plan-{name}")
+        else:
+            guard_paths = ["tools/autoplan.py", ".claude/skills/plan/unattended.md"]
+            guard_result = subprocess.run(
+                ["git", "status", "--porcelain", "--", *guard_paths],
+                cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            )
+            for path in guard_paths:
+                if path in guard_result.stdout:
+                    print(f"Commit {path} on main first; the worktree is cut from HEAD.")
+                    sys.exit(1)
+            wt = ensure_plan_worktree(name)
+            argv = sys.argv[1:]
+            if not args.plan:
+                argv = [name, *argv]
+            result = subprocess.run(
+                [sys.executable, str(wt / "tools" / "autoplan.py"), *argv], cwd=wt,
+            )
+            sys.exit(result.returncode)
+    elif m == "worktree" and ROOT.name != f"plan-{name}":
+        print(f"Note: running in {ROOT.name}, not plan-{name}.")
 
     pre_dirty = dirty_paths()
     if m == "worktree" and pre_dirty:
@@ -488,25 +764,15 @@ def main() -> None:
             print(f"  {p}")
         sys.exit(1)
 
-    plan = read_plan(name)
-    if plan["stage"] not in ("ready", "running"):
-        print(f"Plan {name} stage is '{plan['stage']}', not ready/running.")
-        sys.exit(1)
+    if not args.dry_run:
+        acquire_lock(name, args.force)
 
     global _PLAN_NAME
     _PLAN_NAME = name
 
-    first_cmd = [
-        claude, "-p", session_prompt(name, 1, None),
-        "--output-format", "stream-json", "--verbose",
-        "--model", args.model, "--effort", args.effort,
-        "--permission-mode", args.permission_mode,
-        "--permission-prompts", "none",
-        "--disallowedTools", "AskUserQuestion",
-        "--settings", json.dumps({"env": {"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75"}}),
-    ]
-    if args.budget is not None:
-        first_cmd += ["--max-budget-usd", f"{args.budget:.2f}"]
+    first_cmd = build_cmd(
+        claude, session_prompt(name, 1, None, args.line, args.kill), args, args.budget
+    )
 
     if args.dry_run:
         print(f"plan: {name}")
@@ -541,22 +807,16 @@ def main() -> None:
 
             label = f"s{k}"
             remaining = None if args.budget is None else max(args.budget - spent, 0.0)
-            cmd = [
-                claude, "-p", session_prompt(name, k, rescue),
-                "--output-format", "stream-json", "--verbose",
-                "--model", args.model, "--effort", args.effort,
-                "--permission-mode", args.permission_mode,
-                "--permission-prompts", "none",
-                "--disallowedTools", "AskUserQuestion",
-                "--settings", json.dumps({"env": {"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75"}}),
-            ]
-            if remaining is not None:
-                cmd += ["--max-budget-usd", f"{remaining:.2f}"]
+            cmd = build_cmd(
+                claude, session_prompt(name, k, rescue, args.line, args.kill), args, remaining
+            )
 
             env = os.environ.copy()
             env["AUTOPLAN"] = "1"
             env["AUTOPLAN_SESSION"] = str(k)
             env["AUTOPLAN_PLAN"] = name
+            env["AUTOPLAN_LINE"] = str(args.line)
+            env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
 
             log_path = run_dir / f"{label}.jsonl"
 
@@ -584,6 +844,8 @@ def main() -> None:
             state = read_state()
             plan = read_plan(name)
             status = state.get("status")
+            if status is None and plan["stage"] == "done":
+                status = "plan-done"
 
             new_head = head()
 
@@ -599,9 +861,9 @@ def main() -> None:
             })
             cost_str = f"${res['cost']:.2f}" if res["cost_known"] else "?"
             print(
-                f"{label} Â· {res['exit']} Â· peak {res['peak'] // 1000}k Â· "
-                f"{cost_str} Â· status {status} Â· "
-                f"done {plan['done']}/{plan['done'] + plan['todo']} Â· head {new_head[:7]}"
+                f"{label} | {res['exit']} | peak {res['peak'] // 1000}k | "
+                f"{cost_str} | status {status} | "
+                f"done {plan['done']}/{plan['done'] + plan['todo']} | head {new_head[:7]}"
             )
 
             if plan["stage"] == "done" or status == "plan-done":
@@ -664,6 +926,9 @@ def main() -> None:
         sys.exit(130)
 
     print_summary(sessions, stop_reason)
+    if m == "worktree":
+        branch = git("rev-parse", "--abbrev-ref", "HEAD")
+        print(f"Land it: py -3 tools/try.py {branch} --commit")
     sys.exit(exit_code)
 
 
