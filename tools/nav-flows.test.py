@@ -848,13 +848,252 @@ def flow_links(browser, base):
     ctx.close()
 
 
+CC_OWNED = "() => !!(window.XP && XP.has('proj-conclusus'))"
+CC_PLAY_IDS = ("play-conclusus", "play-cc-key1", "play-cc-key2", "play-cc-key3", "play-cc-timed", "play-cc-win")
+CC_PLAY_OWNED = "ids => ids.filter(id => window.XP && XP.has(id))"
+CC_REPORT = "() => { const P = window.PlayConclusus; return P && P.report ? P.report() : null; }"
+CC_HEAD = "() => { const r = document.getElementById('cc-taught').getBoundingClientRect(); return { top: r.top, mid: innerHeight / 2, y: scrollY }; }"
+
+
+def flow_cc_read_xp(browser, base):
+    """Conclusus gives its reading XP at "What it taught me", not on load."""
+    for viewport, label in ((DESKTOP, "desktop"), (PHONE, "phone")):
+        ctx, page = new_page(browser, viewport)
+        page.goto(f"{base}/projects/conclusus.html")
+        page.wait_for_timeout(1500)
+        check(f"cc-read-xp: not owned after load ({label})", not page.evaluate(CC_OWNED))
+        page.mouse.move(viewport["width"] / 2, viewport["height"] / 2)
+        early = False
+        crossed = False
+        bottom = False
+        how = "none"
+        h = None
+        last_y = None
+        still = 0
+        for _ in range(200):
+            page.mouse.wheel(0, 120)
+            page.wait_for_timeout(80)
+            h = page.evaluate(CC_HEAD)
+            if h["top"] > h["mid"] + 10 and page.evaluate(CC_OWNED):
+                early = True
+            still = still + 1 if h["y"] == last_y else 0
+            last_y = h["y"]
+            if h["top"] < h["mid"]:
+                crossed = True
+                how = "mid"
+                break
+            if still >= 3:
+                bottom = True
+                how = "bottom"
+                break
+        print(f"    info  cc-read-xp ({label}): stopped at {how}, heading top {round(h['top'])}, mid {h['mid']}")
+        check(f"cc-read-xp: heading reached mid-screen or the page bottom ({label})", crossed or bottom, h)
+        check(f"cc-read-xp: not owned before the heading ({label})", not early)
+        page.wait_for_timeout(500)
+        check(f"cc-read-xp: owned after the heading ({label})", page.evaluate(CC_OWNED), h)
+        ctx.close()
+    ctx, page = new_page(browser, DESKTOP)
+    page.goto(f"{base}/projects/conclusus.html")
+    page.wait_for_timeout(1500)
+    check("cc-read-xp: not owned after load (jump)", not page.evaluate(CC_OWNED))
+    page.evaluate("window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })")
+    page.wait_for_timeout(600)
+    check("cc-read-xp: owned after jumping to the bottom", page.evaluate(CC_OWNED))
+    ctx.close()
+
+
+def flow_cc_scroll_pays_nothing(browser, base):
+    """Conclusus: scrolling the whole page and back owns no play-* XP and takes no key."""
+    ctx, page = new_page(browser, DESKTOP)
+    page.goto(f"{base}/projects/conclusus.html")
+    page.wait_for_timeout(1500)
+    r = page.evaluate(CC_REPORT)
+    check("cc-scroll-pays-nothing: report() present", r is not None)
+    check("cc-scroll-pays-nothing: not revealed on open", r and not r.get("revealed"), r and r.get("rev"))
+    page.mouse.move(DESKTOP["width"] - 60, DESKTOP["height"] / 2)
+    revealed_seen = False
+    last_y = None
+    still = 0
+    for i in range(200):
+        page.mouse.wheel(0, 240)
+        page.wait_for_timeout(120)
+        y = page.evaluate("() => scrollY")
+        if i % 5 == 0:
+            rr = page.evaluate(CC_REPORT)
+            if rr and rr.get("revealed"):
+                revealed_seen = True
+        still = still + 1 if y == last_y else 0
+        last_y = y
+        if still >= 3:
+            break
+    rr = page.evaluate(CC_REPORT)
+    if rr and rr.get("revealed"):
+        revealed_seen = True
+    page.wait_for_timeout(800)
+    last_y = None
+    still = 0
+    for _ in range(200):
+        page.mouse.wheel(0, -240)
+        page.wait_for_timeout(120)
+        y = page.evaluate("() => scrollY")
+        still = still + 1 if y == last_y else 0
+        last_y = y
+        if y == 0 or still >= 3:
+            break
+    page.wait_for_timeout(800)
+    check("cc-scroll-pays-nothing: revealed while scrolling", revealed_seen)
+    owned = page.evaluate(CC_PLAY_OWNED, list(CC_PLAY_IDS))
+    check("cc-scroll-pays-nothing: no play-* XP owned", owned == [], owned)
+    r = page.evaluate(CC_REPORT)
+    beats = r["beats"]
+    check("cc-scroll-pays-nothing: keys 1-3 not done",
+          all(k in beats and beats[k] and not beats[k]["done"] for k in ("key1", "key2", "key3")), beats)
+    check("cc-scroll-pays-nothing: still revealed after scrolling back", r["revealed"])
+    h2y = page.evaluate("() => document.getElementById('cc-taught').getBoundingClientRect().top + scrollY")
+    check("cc-scroll-pays-nothing: a platform at or below the 'What it taught me' h2",
+          any(p["y"] >= h2y for p in r["plats"]), {"h2y": h2y, "max_y": max((p["y"] for p in r["plats"]), default=None)})
+    ctx.close()
+
+
+def flow_cc_keys(browser, base):
+    """Conclusus: the play beat unlocks key 1; keys 1-3 fly to the tray in order; a locked key does nothing."""
+    ctx, page = new_page(browser, DESKTOP)
+    page.goto(f"{base}/projects/conclusus.html")
+    page.wait_for_timeout(1500)
+
+    def click_beat(kind):
+        r = page.evaluate(CC_REPORT)
+        b = r["beats"][kind]
+        if b is None:
+            check(f"cc-keys: {kind} beat present", False, r["beats"])
+            return None
+        page.evaluate("y => window.scrollTo(0, Math.max(0, y - innerHeight / 2))", b["y"])
+        page.wait_for_timeout(900)
+        r = page.evaluate(CC_REPORT)
+        b = r["beats"][kind]
+        sy = page.evaluate("() => scrollY")
+        page.mouse.click(b["x"], b["y"] - sy)
+        return b
+
+    r = page.evaluate(CC_REPORT)
+    check("cc-keys: tray empty before any click", r["tray"] == 0, r["tray"])
+    check("cc-keys: tray has 3 canvases",
+          page.evaluate("() => document.querySelectorAll('.cc-tray canvas').length") == 3)
+    check("cc-keys: fly overlay present", page.evaluate("() => !!document.querySelector('canvas.cc-fly')"))
+
+    click_beat("key2")
+    page.wait_for_timeout(1500)
+    owned = page.evaluate(CC_PLAY_OWNED, ["play-cc-key2"])
+    check("cc-keys: locked key 2 not owned", owned == [], owned)
+    r = page.evaluate(CC_REPORT)
+    check("cc-keys: locked key 2 leaves tray empty", r["tray"] == 0, r["tray"])
+    check("cc-keys: key 2 not done", not r["beats"]["key2"]["done"], r["beats"]["key2"])
+    check("cc-keys: key 1 locked before play", r["beats"]["key1"]["locked"], r["beats"]["key1"])
+    vis = page.evaluate("() => getComputedStyle(document.querySelector('.cc-tray')).visibility")
+    check("cc-keys: tray visible after reveal", vis == "visible", vis)
+
+    click_beat("play")
+    page.wait_for_timeout(1500)
+    owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus"])
+    check("cc-keys: play-conclusus owned", owned == ["play-conclusus"], owned)
+    r = page.evaluate(CC_REPORT)
+    check("cc-keys: play beat done", r["beats"]["play"]["done"], r["beats"]["play"])
+    check("cc-keys: key 1 unlocked", r["beats"]["key1"]["locked"] is False, r["beats"]["key1"])
+
+    for n in (1, 2, 3):
+        click_beat(f"key{n}")
+        page.wait_for_timeout(1500)
+        kid = f"play-cc-key{n}"
+        owned = page.evaluate(CC_PLAY_OWNED, [kid])
+        check(f"cc-keys: {kid} owned", owned == [kid], owned)
+        r = page.evaluate(CC_REPORT)
+        check(f"cc-keys: key {n} done", r["beats"][f"key{n}"]["done"], r["beats"][f"key{n}"])
+        check(f"cc-keys: tray == {n}", r["tray"] == n, r["tray"])
+        if n < 3:
+            nxt = r["beats"][f"key{n + 1}"]
+            check(f"cc-keys: key {n + 1} unlocked", nxt["locked"] is False, nxt)
+
+    hint = page.evaluate("() => document.querySelector('.play-hint').textContent")
+    check("cc-keys: hint after key 3", hint == "three keys: open the door", hint)
+    ctx.close()
+
+
+def flow_cc_win(browser, base):
+    """Conclusus: fresh storage, play beat, keys 1-3, then the door: all 5 play-* ids owned, the door stays open and won, he reappears."""
+    ctx, page = new_page(browser, DESKTOP)
+    page.goto(f"{base}/projects/conclusus.html")
+    page.wait_for_timeout(1500)
+
+    def click_beat(kind):
+        r = page.evaluate(CC_REPORT)
+        b = r["beats"][kind]
+        if b is None:
+            check(f"cc-win: {kind} beat present", False, r["beats"])
+            return None
+        page.evaluate("y => window.scrollTo(0, Math.max(0, y - innerHeight / 2))", b["y"])
+        page.wait_for_timeout(900)
+        r = page.evaluate(CC_REPORT)
+        b = r["beats"][kind]
+        sy = page.evaluate("() => scrollY")
+        page.mouse.click(b["x"], b["y"] - sy)
+        return b
+
+    r = page.evaluate(CC_REPORT)
+    check("cc-win: door beat present", r["beats"]["door"] is not None, r["beats"])
+    check("cc-win: door locked before keys", r["beats"]["door"]["locked"] is True, r["beats"]["door"])
+    check("cc-win: at most 5 silhouettes", len(r["sils"]) <= 5, len(r["sils"]))
+
+    click_beat("door")
+    page.wait_for_timeout(1500)
+    owned = page.evaluate(CC_PLAY_OWNED, ["play-cc-win"])
+    check("cc-win: play-cc-win not owned while locked", owned == [], owned)
+    r = page.evaluate(CC_REPORT)
+    check("cc-win: locked door starts nothing", r["win"] is None, r["win"])
+
+    click_beat("play")
+    page.wait_for_timeout(1500)
+    for n in (1, 2, 3):
+        click_beat(f"key{n}")
+        page.wait_for_timeout(1500)
+
+    r = page.evaluate(CC_REPORT)
+    check("cc-win: door open after key 3", r["door"]["open"], r["door"])
+    check("cc-win: door unlocked", r["beats"]["door"]["locked"] is False, r["beats"]["door"])
+    check("cc-win: tray full", r["tray"] == 3, r["tray"])
+
+    click_beat("door")
+    page.wait_for_timeout(300)
+    r = page.evaluate(CC_REPORT)
+    check("cc-win: win sequence running", r["win"] is not None, r["win"])
+    page.wait_for_timeout(3500)
+
+    r = page.evaluate(CC_REPORT)
+    check("cc-win: sequence finished", r["win"] is None, r["win"])
+    check("cc-win: door stays open", r["door"]["open"], r["door"])
+    check("cc-win: won", r["door"]["won"] and r["beats"]["door"]["done"], r["door"])
+    check("cc-win: tray emptied", r["tray"] == 0, r["tray"])
+
+    owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus", "play-cc-key1", "play-cc-key2", "play-cc-key3", "play-cc-win"])
+    check("cc-win: all 5 play-* ids owned", len(owned) == 5, owned)
+
+    vis = page.evaluate("() => [getComputedStyle(document.querySelector('.play-hint')).visibility, getComputedStyle(document.querySelector('.cc-tray')).visibility]")
+    check("cc-win: hint and tray hidden", vis == ["hidden", "hidden"], vis)
+
+    click_beat("door")
+    page.wait_for_timeout(300)
+    check("cc-win: second door click starts nothing", page.evaluate(CC_REPORT)["win"] is None)
+    ctx.close()
+
+
 FLOWS = {
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
-    "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links,
+    "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
+    "cc-keys": flow_cc_keys,
+    "cc-win": flow_cc_win,
 }
 
 

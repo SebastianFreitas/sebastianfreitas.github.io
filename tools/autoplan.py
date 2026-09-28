@@ -401,8 +401,9 @@ def phase_brief(name: str) -> str:
 
     phase_section = ""
     if n is not None:
-        heading_re = re.compile(rf"^#{{2,4}} .*Phase\s+{re.escape(n)}\b", re.I)
-        start = next((i for i, line in enumerate(plan_lines) if heading_re.match(line)), None)
+        heading_re = re.compile(rf"^#{{2,4}} (?:.*Phase\s+{re.escape(n)}\b|{re.escape(n)}\s*·)", re.I)
+        base = next((i for i, line in enumerate(plan_lines) if line.startswith("## Phases")), 0)
+        start = next((i for i, line in enumerate(plan_lines) if i >= base and heading_re.match(line)), None)
         if start is not None:
             phase_section = extract_section(plan_lines, start)
         else:

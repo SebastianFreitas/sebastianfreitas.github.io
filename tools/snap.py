@@ -198,16 +198,20 @@ def shot(page, out_dir, name, full_page=False):
                     caret="hide", full_page=full_page)
 
 
-# Inked (non-transparent) pixels on the case-page toy canvas, or null with no toy.
+# Inked (non-transparent) pixels on the case-page toy canvas plus its page tiles, or null with no toy.
 TOY_INK = """() => { const c = document.querySelector('canvas.play');
   if (!c || c.hidden) return null;
-  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-  let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++;
+  const count = k => { const d = k.getContext('2d').getImageData(0, 0, k.width, k.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; };
+  let n = count(c);
+  const layer = document.querySelector('.play-tiles');
+  if (layer && !layer.hidden) for (const t of layer.querySelectorAll('canvas'))
+    if (t.style.display !== 'none' && t.width > 0 && t.height > 0) n += count(t);
   return { w: c.width, h: c.height, ink: n }; }"""
 
 
 def toy_ink(page):
-    """The toy canvas's size and inked pixel count, or None when the page has no toy."""
+    """The toy canvas's size and inked pixel count (page tiles included), or None when the page has no toy."""
     return page.evaluate(TOY_INK)
 
 

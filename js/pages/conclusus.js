@@ -1,9 +1,11 @@
 /* conclusus.js — the Conclusus case page becomes a vertical platformer level in
    the free space beside the text: grass platforms with planted shadow twins,
-   silhouette enemies on a green/silver cycle, a turning key
-   symbol and an exit arch. The player teleports between shadows; when his
+   silhouette enemies beside "The silhouettes" on a green/silver cycle, three turning keys (one over each of their sections; taking one flies it into a tray), and an
+   exit arch beside "What it taught me". The player teleports between shadows; when his
    platform scrolls out of view he teleports into whichever shadow sits
-   nearest the middle of the screen, following the reader down the page. */
+   nearest the middle of the screen, following the reader down the page.
+   Platforms/twins/keys/door/player/bursts draw in page coords on the play-tiles
+   layer via drawDoc; the rain stays on the fixed canvas. */
 (function () {
   "use strict";
   const U = window.Util, P = window.Play;
@@ -19,6 +21,8 @@
   const GRAV = 1400;
   const CPAL = ["#b4c788", "#62554c", "#463c3c", "#f7ffc5", "#8b6a44", "#312629", "#d6f5e4", "#8a8969"];
   const MODES = [{ spin: 60, dur: 3 }, { spin: 120, dur: 1.5 }, { spin: 240, dur: 0.5 }, { spin: 300, dur: 0.8 }];
+  const KEY_HEADS = ["Key and door", "The shadow", "Thirty levels"];
+  const HINT_MORE = "another key waits further down", HINT_DOOR = "three keys: open the door";
 
   const DEFS = {
     cc_idle1: {w:8, h:26, ox:11, oy:6, px:'...b.......bbbb...bbbd.....dfd......dd.....gff...hhhgfg..hhhheg..hhhheh.hh.hheh.hh.hhbh.hh.hhbh.hhhhhbhhgghhhehg.dhhheed..hhhee...hhhee..hhhh.e..hhhh.e..hhhh.e..hhh..e...e...e...e...e...e...e...b...b...b...b.'},
@@ -41,12 +45,17 @@
   let V;                       // the shared frame-state object, captured once in setup
   let SPR = {};                 // cached sprites, built in setup
   let plats = [], sils = [], spikes = [], rain = [], rrnd = null, bursts = [];
-  let keys = [], door = null, winT = 0, rainBoost = 0, bcTimed = -1;
+  let keys = [], door = null, rainBoost = 0;
   let player = { plat: -1, x: 0, y: 0, face: 1, air: null, first: false, arrived: false };
   let placed = false, cool = 0, hover = null, sig = "", hintEl = null;
   let lastSnap = null;
-  let idleT = 0, clicked = false, fadeT = 0;
+  let idleT = 0, clicked = false;
+  let revealed = false, revT = 0, rev = 0, revealY = 0;
+  let playPlat = -1, playDone = false;
+  let won = false, winSeq = null;       // door flow state: { ph: fly|walk|fade|gone, t, paid }
+  let trayEl = null, slotEls = [], flyEl = null, flyG = null, flyDpr = 1, flyDirty = false, trayN = 0;
   let sigW = -1, sigDocH = -1;
+  let spec = null;
   const rainCol = [];           // "rgba(...)" cache keyed by rounded alpha bucket, filled lazily
   const burstCol = [];          // "rgba(...)" cache keyed by life-fraction bucket, filled lazily
 
@@ -54,9 +63,10 @@
     return px >= bx && px < bx + bw && py >= by && py < by + bh;
   }
 
-  // is a document y outside the drawable band around the viewport?
-  function culled(y, V) {
-    return y < V.sy - 120 || y > V.sy + V.H + 120;
+  // is a document y outside the tile drawDoc is painting (+ a margin for glows and sprite height)?
+  let tileY0 = 0, tileY1 = 0;
+  function offTile(y) {
+    return y < tileY0 - 160 || y > tileY1 + 160;
   }
 
   function rectHitsBlocks(x, y, w, h, blocks) {
@@ -92,20 +102,55 @@
     return V.blocks.length + "/" + Math.round(sigDocH) + "/" + Math.round(V.main.w) + "/" + sigW;
   }
 
+  // the first platform at or below y that is not held, else the last free one
+  function placeBeat(y, held) {
+    const s = plats.findIndex(p => p.y >= y);
+    if (s >= 0) {
+      for (let i = s; i < plats.length; i++) if (!held.includes(i)) return i;
+    }
+    for (let i = plats.length - 1; i >= 0; i--) if (!held.includes(i)) return i;
+    return -1;
+  }
+
+  function lockKeys() {
+    for (let k = 0; k < keys.length; k++) {
+      keys[k].locked = k === 0 ? !playDone : !keys[k - 1].done;
+      if (!keys[k].locked) keys[k].lit = 1;
+    }
+    trayN = won ? 0 : keys.filter(k => k.done).length;
+    for (let k = 0; k < 3; k++) paintSlot(k, !won && !!(keys[k] && keys[k].done));
+  }
+
+  function paintSlot(k, full) {
+    if (!slotEls[k]) return;
+    const c = slotEls[k], g = c.getContext("2d");
+    g.clearRect(0, 0, c.width, c.height);
+    g.imageSmoothingEnabled = false;
+    const s = full ? SPR.sym : SPR.symEmpty;
+    if (s) g.drawImage(s.cv, 0, 0, c.width, c.height);
+  }
+
+  function sizeFly() {
+    if (!flyEl) return;
+    flyDpr = Math.min(2, window.devicePixelRatio || 1);
+    flyEl.width = Math.round(V.W * flyDpr);
+    flyEl.height = Math.round(V.H * flyDpr);
+    flyDirty = true;
+  }
+
+  function easeIO(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
   // capture progress before a relayout wipes plats/sils/keys/door
   function snapshotProgress() {
     if (!plats.length) return lastSnap;
-    let keysGot = 0;
-    for (let i = 0; i < keys.length; i++) { if (keys[i].got) keysGot++; }
-    const timedLit = [];
-    for (let i = 0; i < plats.length; i++) { if (plats[i].timed) timedLit.push(plats[i].lit); }
-    const silsGone = sils.map(s => s.gone);
+    let keysGot = 0, keysDone = 0;
+    for (let i = 0; i < keys.length; i++) { if (keys[i].got) keysGot++; if (keys[i].done) keysDone++; }
     const twins = plats.map(p => p.twin);
     return lastSnap = {
-      keysGot, timedLit, silsGone,
+      keysGot, keysDone,
       playerOrd: player.plat,
-      winT: winT,
-      doorLit: door ? door.lit : 0,
       twins
     };
   }
@@ -113,31 +158,14 @@
   // restore progress into a freshly-built layout
   function restoreProgress(snap) {
     if (!snap || !plats.length) return;
-    let ti = 0;
-    for (let i = 0; i < plats.length; i++) {
-      if (!plats[i].timed) continue;
-      if (ti < snap.timedLit.length) plats[i].lit = snap.timedLit[ti];
-      ti++;
-    }
     for (let i = 0; i < plats.length && i < snap.twins.length; i++) {
       plats[i].twin = snap.twins[i];
     }
-    for (let i = 0; i < sils.length && i < snap.silsGone.length; i++) {
-      sils[i].gone = snap.silsGone[i];
-      if (sils[i].gone) sils[i].fade = 0;
-      plats[sils[i].plat].twin = false;
-    }
+    for (let i = 0; i < sils.length; i++) plats[sils[i].plat].twin = false;
     const gotN = Math.min(snap.keysGot, keys.length);
     for (let i = 0; i < gotN; i++) {
-      const key = keys[i];
-      if (door) {
-        const slot = doorSlot(i);
-        key.got = true;
-        key.x = slot.x; key.y = slot.y;
-        key.fly = { t: 1, x0: slot.x, y0: slot.y };
-      } else {
-        key.got = true; key.fly = null;
-      }
+      keys[i].got = true; keys[i].locked = false; keys[i].lit = 1;
+      if (i < snap.keysDone) keys[i].done = true; else landKey(i);
     }
     if (snap.playerOrd >= 0) {
       player.plat = Math.min(snap.playerOrd, plats.length - 1);
@@ -147,8 +175,6 @@
       player.arrived = true;
       plats[player.plat].twin = false;
     }
-    winT = snap.winT;
-    if (door) door.lit = snap.doorLit;
   }
 
   // (re)build every platform, silhouette, the symbol, the door and the spikes from
@@ -157,14 +183,14 @@
     const snap = snapshotProgress();
     const rnd = U.mulberry(23);           // local: layouts are identical on every run
     const arr = [];
-    for (let i = 0; i < V.blocks.length && arr.length < 40; i++) {
+    for (let i = 0; i < V.blocks.length && arr.length < 60; i++) {
       const b = V.blocks[i];
       const free = V.W - 24 - (b.x + b.w);
       if (free < 100) continue;
       const ys = (b.media && b.h > 300) ? [b.y + b.h * 0.3, b.y + b.h * 0.85] : [b.y + b.h - 4];
       const xmin = b.x + b.w + (b.media ? 24 : 40), xmax = V.W - 24 - PLAT_W;
       if (xmax < xmin) continue;
-      for (let j = 0; j < ys.length && arr.length < 40; j++) {
+      for (let j = 0; j < ys.length && arr.length < 60; j++) {
         const y = ys[j];
         if (arr.length && y - arr[arr.length - 1].y < 90) continue;
         let x = xmin + rnd() * (xmax - xmin);
@@ -176,13 +202,10 @@
           rect.x = x;
           if (V.blocks.some(h => rect.x < h.x + h.w && rect.x + rect.w > h.x && rect.y < h.y + h.h && rect.y + rect.h > h.y)) continue;
         }
-        arr.push({ x, y, spr: Math.floor(rnd() * 5), twin: true, tf: -1, lit: 0, left: 0, timed: false });
+        arr.push({ x, y, spr: Math.floor(rnd() * 5), twin: true, tf: -1, lit: 0, left: 0 });
       }
     }
     plats = arr;
-    for (let i = 0; i < plats.length; i++) {
-      if (i % 3 === 2 && i >= 5 && i < plats.length - 1) plats[i].timed = true;
-    }
 
     if (!plats.length) {
       player.plat = -1;
@@ -201,41 +224,46 @@
       plats[player.plat].twin = false;
     }
 
-    sils = [];
-    for (let i = 3; i < plats.length && sils.length < 5; i += 4) {
-      const x = plats[i].x + PLAT_W - MAN_W - 4, y = plats[i].y + 2 - MAN_H;
-      if (rectHitsBlocks(x, y, MAN_W, MAN_H, V.blocks)) continue;
-      plats[i].twin = false;
-      sils.push({ x, y, gone: false, fade: 1, shake: 0, plat: i });
-    }
+    const ph = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "The brief");
+    if (!plats.length) playPlat = -1;
+    else if (ph) {
+      playPlat = plats.findIndex(p => p.y >= ph.y);
+      if (playPlat < 0) playPlat = plats.length - 1;
+    } else playPlat = plats.length > 1 ? 1 : plats.length - 1;
 
-    const k0 = plats.length > 8 ? 8 : 2;
+    keys = [];
     if (plats.length >= 4) {
-      keys = [];
-      const x0 = plats[k0].x + 16, y0 = plats[k0].y - 72;
-      keys.push({ x: x0, y: y0, hx: x0, hy: y0, plat: k0, ang: 0, mode: 0, left: MODES[0].dur, got: false, fly: null });
-      [0.45, 0.78].forEach(q => {
-        let idx = Math.min(plats.length - 2, Math.floor(plats.length * q));
-        if (idx === k0) idx = Math.min(plats.length - 2, idx + 1);
-        const x = plats[idx].x + 16, y = plats[idx].y - 72;
-        keys.push({ x, y, hx: x, hy: y, plat: idx, ang: 0, mode: 0, left: MODES[0].dur, got: false, fly: null });
-      });
-    } else {
-      keys = [];
+      const held = [playPlat];
+      for (let n = 0; n < 3; n++) {
+        const h = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === KEY_HEADS[n]);
+        const y = h ? h.y : plats[Math.floor(plats.length * [0.3, 0.5, 0.75][n])].y;
+        const idx = placeBeat(y, held);
+        if (idx < 0) break;
+        held.push(idx);
+        const x = plats[idx].x + 16, ky = plats[idx].y - 72;
+        keys.push({ x, y: ky, hx: x, hy: ky, plat: idx, ang: 0, mode: 0, left: MODES[0].dur, got: false, done: false, lit: 0, fly: null, locked: true });
+      }
     }
 
+    door = null;
     if (plats.length) {
-      const last = plats.length - 1;
-      door = { x: plats[last].x + PLAT_W - 60, y: plats[last].y - 62, lit: 0 };
-    } else door = null;
-
-    bcTimed = -1;
-    for (let i = 0; i < plats.length; i++) {
-      if (plats[i].timed && i !== k0 && plats[i].y > V.main.y + V.H * 0.9) { bcTimed = i; break; }
+      const th = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "What it taught me");
+      const di = placeBeat(th ? th.y : plats[plats.length - 1].y, [playPlat, ...keys.map(k => k.plat)]);
+      if (di >= 0) door = { x: plats[di].x + PLAT_W - 60, y: plats[di].y - 62, plat: di, lit: 0 };
     }
-    if (bcTimed < 0) {
-      for (let i = plats.length - 1; i >= 0; i--) {
-        if (plats[i].timed && i !== k0) { bcTimed = i; break; }
+
+    sils = [];
+    const sh2 = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "The silhouettes");
+    if (sh2) {
+      let nextY = Infinity;
+      for (const b of V.blocks) if (b.el && b.el.matches && b.el.matches("main.case h2") && b.y > sh2.y && b.y < nextY) nextY = b.y;
+      const held = [playPlat, ...keys.map(k => k.plat), door ? door.plat : -1];
+      for (let i = 0; i < plats.length && sils.length < 5; i++) {
+        if (plats[i].y < sh2.y || plats[i].y >= nextY || held.includes(i)) continue;
+        const x = plats[i].x + PLAT_W - MAN_W - 4, y = plats[i].y + 2 - MAN_H;
+        if (rectHitsBlocks(x, y, MAN_W, MAN_H, V.blocks)) continue;
+        plats[i].twin = false;
+        sils.push({ x, y, gone: false, fade: 1, shake: 0, back: 0, plat: i });
       }
     }
 
@@ -249,12 +277,25 @@
     }
 
     restoreProgress(snap);
+    lockKeys();
+    if (door) door.lit = doorOpen() ? 1 : 0;
+    if (winSeq) finishWin();
+    sizeFly();
     sig = sigOf(V);
+    if (spec) {
+      let minX = Infinity;
+      for (let i = 0; i < plats.length; i++) minX = Math.min(minX, plats[i].x);
+      for (let i = 0; i < spikes.length; i++) minX = Math.min(minX, spikes[i].x);
+      spec.docX0 = plats.length ? Math.max(0, minX - 128) : undefined;
+    }
+    const sh = V.blocks.find(b => b.el && b.el.matches && b.el.matches(".embed-shell"));
+    revealY = sh ? sh.y + sh.h : 0;
   }
 
-  // the game's DestroyEffct: 30 short-lived particles, ambient (V.rnd(), not the layout rnd)
+  // the game's DestroyEffct: 16 short-lived particles, at most 120 live, ambient (V.rnd(), not the layout rnd)
   function burst(x, y) {
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 16; i++) {
+      if (bursts.length >= 120) break;
       const a = V.rnd() * U.TAU, sp = 30 + V.rnd() * 120;
       bursts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 2, max: 2, size: 2 + V.rnd() });
     }
@@ -262,7 +303,7 @@
 
   // jump into a known platform index, planting a shadow where he stood
   function teleportTo(i) {
-    if (winT > 0 || !plats[i]) return;
+    if (winSeq || !plats[i]) return;
     if (i === player.plat) return;
     burst(player.x, player.y - 26);
     if (player.plat >= 0 && !player.air) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
@@ -274,7 +315,6 @@
     player.y = plats[i].y + 2;
     plats[i].twin = false;
     plats[i].lit = Math.max(plats[i].lit, 0.001);
-    timedTouched(plats[i]);
     burst(player.x, player.y - 26);
     cool = COOL;
   }
@@ -291,31 +331,29 @@
     cool = COOL;
   }
 
-  // light every timed platform strictly between a and b (a fast full-length scroll passes through them)
-  function passThrough(a, b) {
-    if (a < 0) return;
-    const lo = Math.min(a, b), hi = Math.max(a, b);
-    for (let i = lo + 1; i < hi; i++) {
-      if (plats[i].timed) {
-        plats[i].lit = 1;
-        burst(plats[i].x + 32, plats[i].y - 20);
-        timedTouched(plats[i]);
-      }
-    }
-  }
-
-  function timedTouched(p) {
-    if (p.timed && V.scrolled) P.award("play-cc-timed", "Conclusus timed platform", p.x + 32, p.y - 70 - V.sy);
-  }
-
-  function grabKey(k, sx, sy) {
+  function takeKey(k, x, y) {
     const key = keys[k];
-    if (key.got) return;
+    if (!key || key.got || key.locked) return;
+    clicked = true;
+    if (player.plat !== key.plat) teleportTo(key.plat);
+    const cx = key.x + 16, cy = key.y + 16;
+    P.award("play-cc-key" + (k + 1), "Conclusus key", cx, cy - V.sy);
     key.got = true;
-    key.fly = { t: 0, x0: key.x, y0: key.y };
-    burst(key.x + 16, key.y + 16);
-    P.award("play-cc-key" + (k + 1), "Conclusus key", sx, sy);
-    if (hintEl && keys.every(q => q.got)) hintEl.hidden = true;
+    hover = null; V.cursor && V.cursor(false);
+    if (V.reduced || !slotEls[k]) { landKey(k); return; }
+    const r = slotEls[k].getBoundingClientRect();
+    key.fly = { t: 0, x0: cx, y0: cy, tx: r.left + r.width / 2, ty: r.top + r.height / 2, ang0: key.ang };
+  }
+
+  function landKey(k) {
+    const key = keys[k];
+    key.got = true; key.done = true; key.fly = null;
+    flyDirty = true;
+    paintSlot(k, true);
+    trayN = keys.filter(q => q.done).length;
+    const next = keys[k + 1];
+    if (next && next.locked) { next.locked = false; next.lit = 0; }
+    hintSet(k + 1 < keys.length ? HINT_MORE : HINT_DOOR);
   }
 
   function doorSlot(k) {
@@ -323,56 +361,88 @@
   }
 
   function doorOpen() {
-    return !!door && keys.length === 3 && keys.every(k => k.got) && plats.every(p => !p.timed || p.lit > 0);
+    return !!door && keys.length === 3 && keys.every(k => k.done);
   }
 
-  function win(sx, sy) {
-    if (winT > 0) return;
-    winT = 1.5;
-    fadeT = 0.6;
+  function doorReady() { return !!door && !won && doorOpen() && door.lit >= 1; }
+  function hideUi() { for (const el of [hintEl, trayEl]) if (el) { el.style.opacity = "0"; el.style.visibility = "hidden"; } }
+
+  // door click: the three tray keys fly to the arch, then he walks in
+  function startWin() {
+    won = true; winSeq = { ph: "fly", t: 0, paid: false };
+    clicked = true; hover = null; V.cursor && V.cursor(false);
+    for (let k = 0; k < 3; k++) {
+      if (!keys[k]) continue;
+      const r = slotEls[k] ? slotEls[k].getBoundingClientRect() : null;
+      const s = doorSlot(k);
+      keys[k].fly = { t: 0, toDoor: true, x0: r ? r.left + r.width / 2 : V.W - 60, y0: r ? r.top + r.height / 2 : V.H - 60, tx: s.x + 16, ty: s.y + 16, ang0: 0 };
+      paintSlot(k, false);
+    }
+    trayN = 0;
+    if (hintEl) hintEl.style.opacity = "0";
+    if (trayEl) trayEl.style.opacity = "0";
+  }
+
+  // he bursts out and appears 64 px left of the arch
+  function walkIn() {
+    const i = door.plat;
+    burst(player.x, player.y - 26);
+    if (player.plat >= 0 && player.plat !== i && !player.air) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
+    player.plat = i; player.air = null; player.face = 1;
+    player.x = door.x + 28 - 64;
+    player.y = plats[i].y + 2;
+    plats[i].twin = false;
+    plats[i].lit = Math.max(plats[i].lit, 0.001);
+    burst(player.x, player.y - 26);
+  }
+
+  function enterArch() {
+    if (winSeq) winSeq.paid = true;
+    P.award("play-cc-win", "Conclusus door", door.x + 28, door.y + 30 - V.sy);
     rainBoost = 1.7;
     burst(door.x + 28, door.y + 30);
     burst(door.x + 28, door.y + 30);
     burst(door.x + 28, door.y + 30);
-    P.award("play-cc-win", "Conclusus door", sx, sy);
-    player.air = null;
   }
 
-  function restart() {
-    if (!plats.length) return;
-    for (let i = 0; i < plats.length; i++) {
-      plats[i].twin = true;
-      plats[i].lit = 0;
-      plats[i].tf = -1;
+  // he comes back out of the arch onto the platform nearest mid-screen
+  function reappear() {
+    const vt = V.sy + V.top, vb = V.sy + V.H, mid = vt + (vb - vt) * 0.46;
+    let i = -1;
+    for (let j = 0; j < plats.length; j++) {
+      if (door && j === door.plat) continue;
+      if (i < 0 || Math.abs(plats[j].y - mid) < Math.abs(plats[i].y - mid)) i = j;
     }
-    if (plats.length) plats[0].twin = false;
-    player.plat = 0;
-    player.x = plats[0].x + MAN_CX;
-    player.y = plats[0].y + 2;
-    player.face = 1;
-    player.air = null;
-    for (let i = 0; i < sils.length; i++) {
-      const sl = sils[i];
-      sl.gone = false; sl.fade = 1; sl.shake = 0;
-      if (sl.plat != null && plats[sl.plat]) plats[sl.plat].twin = false;
-    }
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      key.got = false; key.fly = null;
-      key.x = key.hx; key.y = key.hy;
-    }
-    if (door) { door.lit = 0; }
+    if (i < 0) { if (!door) return; i = door.plat; }
+    player.plat = i; player.air = null; player.arrived = true;
+    if (plats[i].twin) player.face = plats[i].tf;
+    player.x = plats[i].x + MAN_CX;
+    player.y = plats[i].y + 2;
+    plats[i].twin = false;
+    plats[i].lit = Math.max(plats[i].lit, 0.001);
+    burst(player.x, player.y - 26);
     cool = COOL;
-    fadeT = 0;
-    idleT = 0;
+  }
+
+  // a relayout during the win snaps it to its end
+  function finishWin() {
+    for (const q of keys) q.fly = null;
+    flyDirty = true;
+    hideUi();
+    if (door && !winSeq.paid) enterArch();
+    player.plat = -1; player.air = null;
+    winSeq = null;
+    if (plats.length) reappear();
   }
 
   const hasXP = () => !!(window.XP && XP.has);
-  function drawBeacon(ctx, id, x, y, V, has) {
+  function drawBeacon(ctx, id, x, y, V, has, a) {
+    if (V.reduced) return;
+    if (a === undefined) a = 1;
     if (has === undefined) has = hasXP();
     if (has && XP.has(id)) return;
     const pu = 0.5 + 0.5 * Math.sin(V.t * 3);
-    P.glow(ctx, x, y, 18 + 6 * pu, PALE, 0.22);
+    P.glow(ctx, x, y, 18 + 6 * pu, PALE, 0.22 * a);
     ctx.strokeStyle = "#f7ffc5";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -380,9 +450,9 @@
     ctx.stroke();
     ctx.fillStyle = "#f7ffc5";
     ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
-    ctx.globalAlpha = 0.5;
+    ctx.globalAlpha = 0.5 * a;
     ctx.fillRect(Math.round(x), Math.round(y) - 24, 1, 14);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = a;
   }
 
   // where to land when he falls past the bottom of the page: the visible twin nearest mid-screen
@@ -422,6 +492,8 @@
       doorLit: P.sprite(CPAL, DEFS.cc_door_new2),
       spike: P.sprite(CPAL, DEFS.cc_spikeball),
     };
+    SPR.symGrey = P.sprite(["#6b6f73","#6b6f73","#6b6f73","#9a9ea2","#6b6f73","#6b6f73","#6b6f73","#6b6f73"], Object.assign({}, DEFS.cc_symbol3, { _s2: undefined }));
+    SPR.symEmpty = P.sprite(Array(8).fill("#3a3f44"), Object.assign({}, DEFS.cc_symbol3, { _s2: undefined }));
     layout(v);
     rrnd = U.mulberry(5);
     rain = [];
@@ -429,7 +501,38 @@
     hintEl = document.createElement("p");
     hintEl.className = "play-hint";
     hintEl.textContent = "click a green shadow to step into it";
+    hintEl.style.opacity = "0";
+    hintEl.style.visibility = "hidden";
+    hintEl.style.transition = "opacity 0.6s";
     document.body.appendChild(hintEl);
+    trayEl = document.createElement("div");
+    trayEl.className = "play-ui cc-tray";
+    trayEl.setAttribute("aria-hidden", "true");
+    trayEl.style.opacity = "0";
+    trayEl.style.visibility = "hidden";
+    trayEl.style.transition = "opacity 0.6s";
+    const d = Math.min(2, window.devicePixelRatio || 1);
+    slotEls = [];
+    for (let k = 0; k < 3; k++) {
+      const c = document.createElement("canvas");
+      c.width = c.height = Math.round(24 * d);
+      trayEl.appendChild(c);
+      slotEls.push(c);
+    }
+    document.body.appendChild(trayEl);
+    for (let k = 0; k < 3; k++) paintSlot(k, !!(keys[k] && keys[k].done));
+    flyEl = document.createElement("canvas");
+    flyEl.className = "cc-fly";
+    flyEl.setAttribute("aria-hidden", "true");
+    document.body.appendChild(flyEl);
+    flyG = flyEl.getContext("2d");
+    sizeFly();
+    if (V.reduced) { revealed = true; rev = 1; revT = 0.6; }
+  }
+
+  function showUi() {
+    if (hintEl) { hintEl.style.visibility = "visible"; hintEl.style.opacity = "1"; }
+    if (trayEl) { trayEl.style.visibility = "visible"; trayEl.style.opacity = "1"; }
   }
 
   function step(dt, V) {
@@ -439,19 +542,34 @@
     if (hover) {
       if (hover.kind === "twin" && (!plats[hover.i] || !plats[hover.i].twin || hover.i === player.plat)) { hover = null; V.cursor && V.cursor(false); }
       else if (hover.kind === "sil" && (!sils[hover.i] || sils[hover.i].gone)) { hover = null; V.cursor && V.cursor(false); }
-      else if (hover.kind === "door" && (!door || !doorOpen())) { hover = null; V.cursor && V.cursor(false); }
+      else if (hover.kind === "door" && !doorReady()) { hover = null; V.cursor && V.cursor(false); }
+      else if (hover.kind === "key" && (!keys[hover.i] || keys[hover.i].got || keys[hover.i].locked)) { hover = null; V.cursor && V.cursor(false); }
     }
 
     if (!clicked) idleT += dt;
     cool -= dt;
-    if (winT > 0) { winT -= dt; if (winT <= 0) { winT = 0; restart(); } }
-    if (winT > 0 && fadeT > 0 && door) {
-      fadeT -= dt;
-      player.face = door.x + 28 > player.x ? 1 : -1;
-      player.x = U.approach(player.x, door.x + 28, 120, dt);
+    if (winSeq && !door) finishWin();
+    if (winSeq) {
+      const W = winSeq;
+      W.t += dt;
+      if (W.ph === "fly") {
+        for (const q of keys) if (q.fly) q.fly.t = Math.min(1, W.t);
+        if (W.t >= 0.6) hideUi();
+        if (W.t >= 1) { for (const q of keys) q.fly = null; flyDirty = true; walkIn(); W.ph = "walk"; W.t = 0; }
+      } else if (W.ph === "walk") {
+        const ax = door.x + 28;
+        player.face = 1;
+        player.x = Math.min(ax, player.x + 120 * dt);
+        if (player.x >= ax) { enterArch(); W.ph = "fade"; W.t = 0; }
+      } else if (W.ph === "fade") {
+        if (W.t >= 0.6) { if (plats[player.plat]) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; } player.plat = -1; W.ph = "gone"; W.t = 0; }
+      } else if (W.t >= 0.6) { winSeq = null; reappear(); }
     }
     if (rainBoost > 0) rainBoost = Math.max(0, rainBoost - dt);
     const vt = V.sy + V.top, vb = V.sy + V.H;
+
+    if (!revealed && V.sy + V.H * 0.5 > revealY) { revealed = true; revT = 0; showUi(); }
+    if (revealed && rev < 1) { revT += dt; rev = Math.min(1, revT / 0.6); }
 
     if (player.air) {
       const oldY = player.y;
@@ -469,7 +587,6 @@
         player.air = null;
         plats[landed].twin = false;
         plats[landed].lit = Math.max(plats[landed].lit, 0.001);
-        timedTouched(plats[landed]);
         burst(player.x, player.y - 26);
       } else if (player.y > V.docH + 100) {
         teleportTo(nearestVisibleTwin());
@@ -478,22 +595,20 @@
 
     // camera follow: he stays inside the band where the eye rests (30-62 % of the viewport);
     // when the page scrolls him out of it he teleports to the platform nearest the band's centre
-    if (player.plat >= 0 && cool <= 0 && winT <= 0) {
+    if (revealed && player.plat >= 0 && cool <= 0 && !winSeq) {
       const span = vb - vt;
       const bt = vt + span * 0.30, bb = vt + span * 0.62, mid = vt + span * 0.46;
       const py = plats[player.plat].y;
       if (py < bt || py > bb) {
-        let best = -1, bd = Infinity, bestT = -1, bdT = Infinity;
+        let best = -1, bd = Infinity;
         for (let i = 0; i < plats.length; i++) {
           const p = plats[i];
           if (i === player.plat) continue;
           if (p.y >= bt && p.y <= bb) {
             const d = Math.abs(p.y - mid);
             if (d < bd) { bd = d; best = i; }
-            if (p.timed && d < bdT) { bdT = d; bestT = i; }
           }
         }
-        if (bestT >= 0) best = bestT;
         if (best < 0 && !(py - MAN_H > vt - 30 && py < vb + 30)) {
           for (let i = 0; i < plats.length; i++) {
             const p = plats[i];
@@ -514,45 +629,42 @@
             }
           }
         }
-        if (best >= 0) { const from = player.plat; passThrough(from, best); teleportTo(best); }
+        if (best >= 0) teleportTo(best);
       }
     }
 
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
       if (player.plat === i) p.lit = Math.min(1, p.lit + dt * 5);
-      else if (p.lit > 0) p.lit = Math.max(p.timed ? 0.3 : 0, p.lit - dt / 12);
+      else if (p.lit > 0) p.lit = Math.max(0, p.lit - dt / 12);
     }
 
     if (player.arrived) {
-      for (let k = 0; k < keys.length; k++) {
-        const key = keys[k];
-        if (!key.got && key.plat === player.plat) grabKey(k, key.x + 16, key.y + 16 - V.sy);
-      }
       player.arrived = false;
     }
 
     for (let i = 0; i < sils.length; i++) {
       const sl = sils[i];
-      if (sl.gone) sl.fade = Math.max(0, sl.fade - dt / 0.5);
+      if (sl.gone) { sl.fade = Math.max(0, sl.fade - dt / 0.5); sl.back -= dt; if (sl.back <= 0 && player.plat !== sl.plat) { sl.gone = false; if (plats[sl.plat]) plats[sl.plat].twin = false; } }
+      else if (sl.fade < 1) sl.fade = Math.min(1, sl.fade + dt / 0.6);
       if (sl.shake > 0) sl.shake = Math.max(0, sl.shake - dt);
     }
 
     for (let k = 0; k < keys.length; k++) {
       const key = keys[k];
-      const mode = MODES[key.mode];
-      key.ang += mode.spin * dt;
-      key.left -= dt;
-      if (key.left <= 0) {
-        key.mode = (key.mode + 1) % MODES.length;
-        key.left = MODES[key.mode].dur;
+      if (!key.locked && !key.got && key.lit < 1) key.lit = Math.min(1, key.lit + dt / 0.4);
+      if (!key.locked) {
+        const mode = MODES[key.mode];
+        key.ang += mode.spin * dt;
+        key.left -= dt;
+        if (key.left <= 0) {
+          key.mode = (key.mode + 1) % MODES.length;
+          key.left = MODES[key.mode].dur;
+        }
       }
-      if (key.fly) {
+      if (key.fly && !key.fly.toDoor) {
         key.fly.t = Math.min(1, key.fly.t + dt);
-        const e = 1 - Math.pow(1 - key.fly.t, 3);
-        const slot = doorSlot(k);
-        key.x = U.mix(key.fly.x0, slot.x, e);
-        key.y = U.mix(key.fly.y0, slot.y, e);
+        if (key.fly.t >= 1) landKey(k);
       }
     }
 
@@ -563,17 +675,7 @@
       if (r.x < -4 || r.y > V.H + 4) ray(r, rrnd, V, 0);
     }
 
-    if (door) {
-      const last = plats.length - 1;
-      const open = doorOpen();
-      if (open || winT > 0) door.lit = U.approach(door.lit, 1, 3, dt);
-      else if (player.plat === last) door.lit = U.approach(door.lit, 0.7, 3, dt);
-      else door.lit = U.approach(door.lit, 0.35 + 0.35 * Math.sin(V.t * 1.5), 2, dt);
-      if (open && winT <= 0 && player.plat >= 0 && V.sy + V.H >= V.docH - 4) {
-        teleportTo(last);
-        win(door.x + 28, door.y + 30 - V.sy);
-      }
-    }
+    if (door) door.lit = doorOpen() ? Math.min(1, door.lit + dt / 0.6) : 0;
 
     let i = 0;
     while (i < bursts.length) {
@@ -586,9 +688,21 @@
 
   // pointer moved: hover the same targets step() checks against V.pointer, for the cursor
   function move(x, y, V) {
+    if (rev < 1 || winSeq || V.reduced) {
+      if (hover) { hover = null; V.cursor && V.cursor(false); }
+      return;
+    }
     const px = x, py = y + V.sy;
     hover = null;
-    for (let i = 0; i < plats.length && !hover; i++) {
+    // keys first, as in press(); a locked key swallows the click, so it blocks the twin hover under it
+    let lockedHit = false;
+    for (let k = 0; k < keys.length && !hover; k++) {
+      const q = keys[k];
+      if (q.got || !inBox(px, py, q.x, q.y, 32, 32)) continue;
+      if (q.locked) lockedHit = true;
+      else hover = { kind: "key", i: k };
+    }
+    for (let i = 0; i < plats.length && !hover && !lockedHit; i++) {
       const p = plats[i];
       if (p.twin && i !== player.plat && inBox(px, py, p.x + 16, p.y - 54, 32, 56)) hover = { kind: "twin", i };
     }
@@ -596,33 +710,37 @@
       const sl = sils[i];
       if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
     }
-    if (!hover && door && doorOpen() && inBox(px, py, door.x, door.y, 56, 64)) hover = { kind: "door" };
+    if (!hover && doorReady() && inBox(px, py, door.x, door.y, 56, 64)) hover = { kind: "door" };
     V.cursor && V.cursor(!!hover);
   }
 
   function press(x, y, V) {
-    if (winT > 0) return false;
+    if (winSeq || V.reduced) return false;
+    if (rev < 1) return false;
     const px = x, py = y + V.sy;
+    for (let k = 0; k < keys.length; k++) {
+      const q = keys[k];
+      if (!q.got && inBox(px, py, q.x, q.y, 32, 32)) { if (q.locked) return true; takeKey(k, x, y); return true; }
+    }
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
       if (p.twin && i !== player.plat && inBox(px, py, p.x + 16, p.y - 54, 32, 56)) {
         teleportTo(i);
-        hit(x, y);
+        playBeat(x, y);
         return true;
       }
     }
     for (let i = 0; i < sils.length; i++) {
       const s = sils[i];
       if (!s.gone && inBox(px, py, s.x - 8, s.y - 4, 32, 60)) {
-        if (silGreen(V.t)) { s.gone = true; s.fade = 1; warp(s.x + 8, s.y + 52); }
+        if (silGreen(V.t)) { s.gone = true; s.fade = 1; s.back = 4; warp(s.x + 8, s.y + 52); }
         else s.shake = 0.3;
-        hit(x, y);
+        clicked = true;
         return true;
       }
     }
-    if (door && doorOpen() && winT <= 0 && inBox(px, py, door.x, door.y, 56, 64)) {
-      if (player.plat !== plats.length - 1) teleportTo(plats.length - 1);
-      win(x, y);
+    if (doorReady() && inBox(px, py, door.x, door.y, 56, 64)) {
+      startWin();
       return true;
     }
     return false;
@@ -631,106 +749,139 @@
   function hintSet(text) {
     if (!hintEl) return;
     hintEl.textContent = text;
-    hintEl.hidden = false;
   }
 
-  // the first successful click: award the XP tick and swap the hint to the next step
-  function hit(x, y) {
-    P.award("play-conclusus", "Conclusus shadow", x, y);
-    if (!clicked) {
-      clicked = true;
-      hintSet("land on a key to take it · light every dashed platform");
+  // the twin the play beacon points at: the play platform's, else the nearest other twin
+  function playTarget() {
+    if (playPlat < 0 || !plats[playPlat]) return -1;
+    const p = plats[playPlat];
+    if (p.twin && playPlat !== player.plat) return playPlat;
+    let best = -1, bd = Infinity;
+    for (let j = 0; j < plats.length; j++) {
+      if (!plats[j].twin || j === player.plat) continue;
+      const dx = plats[j].x - p.x, dy = plats[j].y - p.y;
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = j; }
     }
+    return best;
+  }
+
+  // the first twin/shadow click: award play-conclusus, swap the hint, unlock key 1
+  function playBeat(x, y) {
+    clicked = true;
+    if (playDone) return;
+    playDone = true;
+    P.award("play-conclusus", "Conclusus shadow", x, y);
+    hintSet("click the key to take it");
+    if (keys[0]) { keys[0].locked = false; keys[0].lit = 0; }
   }
 
   function atRest(V) {
-    if (bursts.length !== 0 || player.air || cool > 0 || winT > 0 || hover || V.pointer.down || rainBoost > 0) return false;
-    if (fadeT > 0 || !(clicked || idleT >= 6)) return false;
-    for (let k = 0; k < keys.length; k++) if (keys[k].fly) return false;
-    for (let i = 0; i < sils.length; i++) if (sils[i].gone && sils[i].fade > 0) return false;
-    for (let i = 0; i < plats.length; i++) if (plats[i].timed && plats[i].lit > 0.3) return false;
+    if (revealed && rev < 1) return false;
+    if (bursts.length !== 0 || player.air || cool > 0 || winSeq || hover || V.pointer.down || rainBoost > 0) return false;
+    if (!(clicked || idleT >= 6)) return false;
+    if (door && doorOpen() && door.lit < 1) return false;
+    if (flyDirty) return false;
+    for (let k = 0; k < keys.length; k++) if (keys[k].fly || (!keys[k].locked && !keys[k].got && keys[k].lit < 1)) return false;
+    for (let i = 0; i < sils.length; i++) if (sils[i].gone || sils[i].fade < 1) return false;
     return true;
   }
 
-  function draw(ctx, V) {
-    const oy = -V.sy;
-    const has = hasXP();
+  function paintFly(V) {
+    if (!flyG) return;
+    let any = false;
+    for (const q of keys) if (q.fly) { any = true; break; }
+    if (!any && !flyDirty) return;
+    flyG.setTransform(flyDpr, 0, 0, flyDpr, 0, 0);
+    flyG.clearRect(0, 0, V.W, V.H);
+    flyDirty = any;
+    if (!any) return;
+    flyG.imageSmoothingEnabled = false;
+    for (const key of keys) {
+      if (!key.fly) continue;
+      const f = key.fly, e = easeIO(f.t);
+      const sy = f.toDoor ? f.y0 : f.y0 - V.sy;
+      const ty = f.toDoor ? f.ty - V.sy : f.ty;
+      const x = U.mix(f.x0, f.tx, e), y = U.mix(sy, ty, e) - 90 * Math.sin(Math.PI * e);
+      const s = f.toDoor ? U.mix(0.75, 1, e) : U.mix(1, 0.75, e);
+      P.glow(flyG, x, y, 24 * s, PALE, 0.25);
+      flyG.save();
+      flyG.translate(x, y);
+      flyG.rotate((f.ang0 + 720 * e) * Math.PI / 180);
+      flyG.scale(s, s);
+      flyG.drawImage(SPR.sym.cv, -16, -16);
+      flyG.restore();
+    }
+  }
 
+  function draw(ctx, V) {
+    paintFly(V);
+    if (rev <= 0) return;
+    ctx.globalAlpha = rev;
     for (let i = 0; i < rain.length; i++) {
       const k = Math.round(rain[i].a * 8);
       ctx.fillStyle = rainCol[k] || (rainCol[k] = "rgba(" + RAIN + "," + (k / 8) + ")");
       ctx.fillRect(Math.round(rain[i].x), Math.round(rain[i].y), 2, 2);
     }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDoc(ctx, V) {
+    const m = ctx.getTransform();
+    tileY0 = -m.f / m.d; tileY1 = tileY0 + 1024;
+    const has = hasXP();
+    const a = rev;
 
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
-      if (culled(p.y, V)) continue;
-      P.blit(ctx, SPR.plats[p.spr], p.x, p.y + oy);
-      if (p.timed) {
-        const lineY = p.y + PLAT_H + 6 + oy;
-        ctx.fillStyle = "#f7ffc5";
-        ctx.globalAlpha = 0.25;
-        for (let dx = 0; dx < 56; dx += 10) ctx.fillRect(Math.round(p.x + 4 + dx), Math.round(lineY), Math.min(8, 56 - dx), 2);
+      if (offTile(p.y)) continue;
+      if (i === player.plat) P.blit(ctx, SPR.plats[p.spr], p.x, p.y);
+      else if (a > 0) {
+        ctx.globalAlpha = a;
+        P.blit(ctx, SPR.plats[p.spr], p.x, p.y);
         ctx.globalAlpha = 1;
-        if (p.lit > 0) {
-          P.glow(ctx, p.x + 32, p.y + PLAT_H + 7 + oy, 30, PALE, 0.18 * p.lit);
-          const w = 56 * p.lit, x0 = p.x + 32 - w / 2;
-          for (let dx = 0; dx < w; dx += 10) ctx.fillRect(Math.round(x0 + dx), Math.round(lineY), Math.min(8, w - dx), 2);
-        }
       }
     }
 
-    if (door && !culled(door.y, V)) {
-      P.glow(ctx, door.x + 28, door.y + 40 + oy, 60 + 60 * door.lit, PALE, 0.10 + 0.25 * door.lit);
-      P.blit(ctx, SPR.door, door.x, door.y + oy);
-      ctx.globalAlpha = door.lit;
-      P.blit(ctx, SPR.doorLit, door.x - 2, door.y - 2 + oy);
-      ctx.globalAlpha = 1;
-      if (doorOpen()) P.glow(ctx, door.x + 28, door.y + 40 + oy, 90, PALE, 0.28);
-      else if (keys.length === 3 && keys.every(k => k.got)) {
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "rgba(" + PALE + ",0.3)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(door.x - 4 + 0.5, door.y - 4 + oy + 0.5, 64, 72);
-        ctx.setLineDash([]);
+    if (a > 0) {
+    ctx.globalAlpha = a;
+    if (door && !offTile(door.y)) {
+      const L = door.lit;
+      if (L > 0) {
+        const g = 0.35 + 0.35 * Math.sin(V.t * 1.5);
+        P.glow(ctx, door.x + 28, door.y + 40, 60 + 60 * g, PALE, (0.10 + 0.25 * g) * L * a);
       }
-      for (let k = 0; k < keys.length; k++) {
-        const key = keys[k];
-        if (key.got && key.fly && key.fly.t >= 1) {
-          P.glow(ctx, key.x + 16, key.y + 16 + oy, 14, PALE, 0.3);
-          ctx.fillStyle = "#f7ffc5";
-          ctx.beginPath();
-          ctx.arc(key.x + 16, key.y + 16 + oy, 5, 0, U.TAU);
-          ctx.fill();
-        }
-      }
+      if (L < 1) { ctx.globalAlpha = 0.55 * (1 - L) * a; P.blit(ctx, SPR.door, door.x, door.y); }
+      if (L > 0) { ctx.globalAlpha = L * a; P.blit(ctx, SPR.doorLit, door.x - 2, door.y - 2); }
+      ctx.globalAlpha = a;
+      if (won && !(winSeq && winSeq.ph === "fly")) for (let k = 0; k < 3; k++) { const s = doorSlot(k); P.blit(ctx, SPR.sym, s.x, s.y); }
     }
 
     const sf = frame01(V.t, SWAP);
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
-      if (!p.twin || culled(p.y, V)) continue;
+      if (!p.twin || offTile(p.y)) continue;
       const spr = SPR.green[sf];
       const hovered = hover && hover.kind === "twin" && hover.i === i;
-      P.glow(ctx, p.x + 24 + MAN_W / 2, p.y + 2 + oy, 22, GREEN, hovered ? 0.22 : 0.10);
-      P.blit(ctx, spr, p.x + 24, p.y + 2 - spr.h + oy, p.tf < 0);
+      P.glow(ctx, p.x + 24 + MAN_W / 2, p.y + 2, 22, GREEN, (hovered ? 0.22 : 0.10) * a);
+      P.blit(ctx, spr, p.x + 24, p.y + 2 - spr.h, p.tf < 0);
     }
 
     for (let i = 0; i < sils.length; i++) {
       const s = sils[i];
-      if (s.fade <= 0 || culled(s.y, V)) continue;
+      if (s.fade <= 0 || offTile(s.y)) continue;
       const green = silGreen(V.t);
       const spr = green ? SPR.green[sf] : SPR.silver[sf];
-      P.glow(ctx, s.x + MAN_W / 2, s.y + MAN_H / 2 + oy, 22, green ? GREEN : "214,245,228", green ? 0.12 : 0.08);
-      ctx.globalAlpha = s.fade;
-      P.blit(ctx, spr, s.x + (s.shake ? Math.sin(V.t * 80) * 2 : 0), s.y + oy);
-      ctx.globalAlpha = 1;
+      P.glow(ctx, s.x + MAN_W / 2, s.y + MAN_H / 2, 22, green ? GREEN : "214,245,228", (green ? 0.12 : 0.08) * a);
+      ctx.globalAlpha = s.fade * a;
+      P.blit(ctx, spr, s.x + (s.shake ? Math.sin(V.t * 80) * 2 : 0), s.y);
+      ctx.globalAlpha = a;
     }
 
     for (let i = 0; i < spikes.length; i++) {
       const sp = spikes[i];
-      if (culled(sp.y, V)) continue;
-      const cx = sp.x + 17, cy = sp.y + 17 + Math.sin(V.t * 1.3 + sp.ph) * sp.amp + oy;
+      if (offTile(sp.y)) continue;
+      const cx = sp.x + 17, cy = sp.y + 17 + Math.sin(V.t * 1.3 + sp.ph) * sp.amp;
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(V.t * 90 * Math.PI / 180);
@@ -740,50 +891,64 @@
 
     for (let k = 0; k < keys.length; k++) {
       const key = keys[k];
-      if (key.got && key.fly && key.fly.t >= 1) continue;
-      if (culled(key.y, V)) continue;
-      const cx = key.x + 16, cy = key.y + 16 + oy;
-      if (!key.got && plats[key.plat]) {
-        ctx.strokeStyle = "rgba(" + PALE + ",0.25)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(key.x + 16, key.y + 32 + oy);
-        ctx.lineTo(key.x + 16, plats[key.plat].y + oy);
-        ctx.stroke();
+      if (key.got || offTile(key.y)) continue;
+      const cx = key.x + 16, cy = key.y + 16;
+      if (key.lit < 1) {
+        ctx.globalAlpha = 0.4 * (1 - key.lit) * a;
+        P.blit(ctx, SPR.symGrey, key.x, key.y);
+        ctx.globalAlpha = a;
       }
-      const hovered = hover && hover.kind === "key" && hover.i === k;
-      P.glow(ctx, cx, cy, 40, PALE, hovered ? 0.35 : 0.22);
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(key.ang * Math.PI / 180);
-      P.blit(ctx, SPR.sym, -16, -16);
-      ctx.restore();
-      if (!key.got) drawBeacon(ctx, "play-cc-key" + (k + 1), cx, cy - 34, V, has);
+      if (key.lit > 0) {
+        if (plats[key.plat]) {
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = "rgba(" + PALE + "," + (0.25 * key.lit).toFixed(2) + ")";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, key.y + 32);
+          ctx.lineTo(cx, plats[key.plat].y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        const hovered = hover && hover.kind === "key" && hover.i === k;
+        P.glow(ctx, cx, cy, 40, PALE, (hovered ? 0.35 : 0.22) * key.lit * a);
+        ctx.globalAlpha = key.lit * a;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(key.ang * Math.PI / 180);
+        P.blit(ctx, SPR.sym, -16, -16);
+        ctx.restore();
+        ctx.globalAlpha = a;
+        if (!key.locked) drawBeacon(ctx, "play-cc-key" + (k + 1), cx, cy - 34, V, has, a * key.lit);
+      }
     }
 
-    if (plats[1] && plats[1].twin && !culled(plats[1].y, V)) drawBeacon(ctx, "play-conclusus", plats[1].x + 32, plats[1].y - 72 + oy, V, has);
-    if (bcTimed >= 0 && plats[bcTimed] && !culled(plats[bcTimed].y, V)) drawBeacon(ctx, "play-cc-timed", plats[bcTimed].x + 32, plats[bcTimed].y - 72 + oy, V, has);
-    if (door && !culled(door.y, V)) drawBeacon(ctx, "play-cc-win", door.x + 28, door.y - 52 + oy, V, has);
+    if (!playDone) {
+      const t = playTarget();
+      if (t >= 0 && !offTile(plats[t].y)) drawBeacon(ctx, "play-conclusus", plats[t].x + 32, plats[t].y - 72, V, has, a);
+    }
+    if (door && !won && doorOpen() && !offTile(door.y)) drawBeacon(ctx, "play-cc-win", door.x + 28, door.y - 52, V, has, a * door.lit);
+    ctx.globalAlpha = 1;
+    }
 
-    if (!clicked && idleT < 6 && player.plat >= 0 && plats[player.plat] && !culled(player.y, V)) {
+    if (!clicked && idleT < 6 && player.plat >= 0 && plats[player.plat] && !offTile(player.y)) {
       const r = 18 + 4 * Math.sin(V.t * 3);
       ctx.strokeStyle = "rgba(" + GREEN + "," + (0.35 + 0.25 * Math.sin(V.t * 3)).toFixed(2) + ")";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(plats[player.plat].x + MAN_CX, player.y + 2 + oy, r, r * 0.35, 0, 0, U.TAU);
+      ctx.ellipse(plats[player.plat].x + MAN_CX, player.y + 2, r, r * 0.35, 0, 0, U.TAU);
       ctx.stroke();
     }
 
-    if ((player.plat >= 0 || player.air) && !culled(player.y, V)) {
+    if ((player.plat >= 0 || player.air) && !offTile(player.y)) {
       const spr = player.air ? SPR.idle[0] : SPR.idle[frame01(V.t, 0.5)];
-      ctx.globalAlpha = winT > 0 ? Math.max(0, fadeT / 0.6) : 1;
-      P.blit(ctx, spr, player.x - MAN_W / 2, player.y - spr.h + oy, player.face < 0);
+      ctx.globalAlpha = winSeq && winSeq.ph === "fade" ? Math.max(0, 1 - winSeq.t / 0.6) : 1;
+      P.blit(ctx, spr, player.x - MAN_W / 2, player.y - spr.h, player.face < 0);
       ctx.globalAlpha = 1;
     }
 
     for (let i = 0; i < bursts.length; i++) {
       const b = bursts[i];
-      if (culled(b.y, V)) continue;
+      if (offTile(b.y)) continue;
       const t = 1 - b.life / b.max;
       const k = Math.min(15, (t * 16) | 0);
       if (!burstCol[k]) {
@@ -793,22 +958,32 @@
         burstCol[k] = "rgba(" + (r | 0) + "," + (g | 0) + "," + (bl | 0) + "," + a + ")";
       }
       ctx.fillStyle = burstCol[k];
-      ctx.fillRect(Math.round(b.x), Math.round(b.y + oy), b.size, b.size);
+      ctx.fillRect(Math.round(b.x), Math.round(b.y), b.size, b.size);
     }
   }
 
   function report() {
+    const beat = (k) => ({ x: k.x + 16, y: k.y + 16, locked: !!k.locked, done: !!k.done });
     return {
-      plats, sils, player: { plat: player.plat, x: player.x, y: player.y, arrived: player.arrived }, bursts,
-      keys: keys.map(k => ({ x: k.x, y: k.y, got: k.got, plat: k.plat })),
-      timed: plats.map((p, i) => p.timed ? i : -1).filter(i => i >= 0),
-      lit: plats.map(p => +p.lit.toFixed(2)),
-      open: doorOpen(), winT, face: player.face,
-      door: door ? { x: door.x, y: door.y } : null,
-      bcTimed, clicked, fadeT,
+      player: { x: player.x, y: player.y },
+      twins: plats.filter((p, i) => p.twin && i !== player.plat).map(p => ({ x: p.x + 32, y: p.y - 26 })),
+      beats: {
+        play: (() => { const t = playTarget(); return t >= 0 ? { x: plats[t].x + 32, y: plats[t].y - 26, locked: false, done: playDone } : null; })(),
+        key1: keys[0] ? beat(keys[0]) : null,
+        key2: keys[1] ? beat(keys[1]) : null,
+        key3: keys[2] ? beat(keys[2]) : null,
+        door: door ? { x: door.x + 28, y: door.y + 32, locked: !doorOpen(), done: won } : null,
+      },
+      door: { open: doorOpen(), won },
+      win: winSeq ? winSeq.ph : null,
+      sils: sils.map(s => ({ x: s.x, y: s.y, plat: s.plat })),
+      tray: trayN,
+      revealed, rev: +rev.toFixed(2),
+      plats: plats.map(p => ({ x: p.x, y: p.y })),
     };
   }
 
-  const H = P.start({ name: "conclusus", seed: 17, setup, step, draw, atRest, press, move, resize: layout });
+  spec = { name: "conclusus", seed: 17, doc: true, docX0: undefined, setup, step, draw, drawDoc, atRest, press, move, resize: layout };
+  const H = P.start(spec);
   window.PlayConclusus = { report };
 })();

@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Writes and edits implementation code from a fully specified task. Use for every code change in this project. Caller provides exact file paths, names, and logic steps.
-model: sonnet
+model: claude-sonnet-5-5
 tools: Read, Write, Edit, Glob, Grep, Bash
 omitClaudeMd: true
 maxTurns: 60

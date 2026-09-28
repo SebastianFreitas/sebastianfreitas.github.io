@@ -1,9 +1,14 @@
 /* Case-page play layer: a fixed canvas behind the page (z -1, below the style.css ladder) with
    pointer-events off; input is read on window by js/pages/play.js. Panels (.play-ui) sit over the
-   text at z 2, under the topbar (3). Desktop only: everything hides under 900 px. */
+   text at z 2, under the topbar (3). `.play-tiles` (page-coordinate canvases, same z, later in the DOM) sits above it.
+   The Conclusus key tray (`.cc-tray`, above the hint) and the key-flight overlay (`canvas.cc-fly`, above everything, clicks pass through).
+   Desktop only: everything hides under 900 px. */
 
 .play { position: fixed; inset: 0; z-index: -1; display: block; pointer-events: none; }
 .play[hidden] { display: none; }
+.play-tiles { position: absolute; left: 0; top: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.play-tiles[hidden] { display: none; }
+.play-tiles canvas { position: absolute; left: 0; top: 0; display: block; will-change: transform; }
 .play-ui {
   position: fixed; right: 1rem; bottom: 1rem; z-index: 2;
   width: min(19rem, calc(100vw - 2rem));
@@ -40,4 +45,7 @@
   color: var(--sage-dim); pointer-events: none; opacity: 0.9;
 }
 .play-hint[hidden] { display: none; }
-@media (max-width: 899px) { .play, .play-ui, .play-hint { display: none !important; } }
+.play-ui.cc-tray { bottom: 2.6rem; right: 1rem; width: auto; display: flex; gap: 6px; padding: 0.35rem 0.45rem; pointer-events: none; }
+.cc-tray canvas { display: block; width: 24px; height: 24px; image-rendering: pixelated; }
+canvas.cc-fly { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 5; display: block; pointer-events: none; }
+@media (max-width: 899px) { .play, .play-tiles, .play-ui, .play-hint, .cc-fly { display: none !important; } }

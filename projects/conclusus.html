@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=160">
-<link rel="stylesheet" href="../css/beacon.css?v=160">
-<link rel="stylesheet" href="../css/play.css?v=160">
+<link rel="stylesheet" href="../css/style.css?v=161">
+<link rel="stylesheet" href="../css/beacon.css?v=161">
+<link rel="stylesheet" href="../css/play.css?v=161">
 </head>
-<body class="page-case">
+<body class="page-case page-conclusus">
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="topbar">
@@ -107,7 +107,7 @@
   <h2>Built on HeavyLight</h2>
   <p>I wrote HeavyLight as a base rather than a one off, and Conclusus was the proof. The controller, the level switching, the reset convention and the door logic came over as they were, and the pins, the shadow, the silhouettes and the lit platforms went on top without touching them. Thirty levels and four new mechanics took less time than the original twenty.</p>
 
-  <h2>What it taught me</h2>
+  <h2 id="cc-taught">What it taught me</h2>
   <p>Conclusus started from a base and a deadline rather than from a locked concept, and the shadow, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
 
   <nav class="case-nav" aria-label="More work">
@@ -123,14 +123,63 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="../js/lib/util.js?v=160"></script>
-<script src="../js/site/xp.js?v=160"></script>
-<script src="../js/site/surge.js?v=160"></script>
-<script src="../js/site/embed.js?v=160"></script>
-<script src="../js/site/lazy-video.js?v=160"></script>
-<script src="../js/lib/pacer.js?v=160"></script>
-<script src="../js/pages/play.js?v=160"></script>
-<script src="../js/pages/conclusus.js?v=160"></script>
-<script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-conclusus",1,"Conclusus");});</script>
+<script src="../js/lib/util.js?v=161"></script>
+<script src="../js/site/xp.js?v=161"></script>
+<script src="../js/site/surge.js?v=161"></script>
+<script src="../js/site/embed.js?v=161"></script>
+<script src="../js/site/lazy-video.js?v=161"></script>
+<script src="../js/lib/pacer.js?v=161"></script>
+<script src="../js/pages/play.js?v=161"></script>
+<script src="../js/pages/conclusus.js?v=161"></script>
+<script>
+/* reading XP: proj-conclusus fires once, when "What it taught me" reaches mid-screen */
+(function () {
+  var h = document.getElementById("cc-taught");
+  if (!h || !window.XP || XP.has("proj-conclusus")) return;
+  var done = false, headY = 0, docH = 0, io = null, ro = null, timer = 0;
+
+  function measure() {
+    headY = h.getBoundingClientRect().top + window.scrollY;
+    docH = document.documentElement.scrollHeight;
+  }
+
+  function give() {
+    if (done) return;
+    done = true;
+    if (io) io.disconnect();
+    if (ro) ro.disconnect();
+    removeEventListener("scroll", check);
+    clearTimeout(timer);
+    var r = h.getBoundingClientRect();
+    var x = r.left;
+    var y = Math.max(40, Math.min(innerHeight - 40, r.top + r.height / 2));
+    XP.award("proj-conclusus", 1, "Conclusus", x, y);
+  }
+
+  function check() {
+    if (scrollY + innerHeight / 2 >= headY || scrollY + innerHeight >= docH - 2) give();
+  }
+
+  measure();
+  if ("IntersectionObserver" in window) {
+    io = new IntersectionObserver(function (es) {
+      for (var i = 0; i < es.length; i++) {
+        if (es[i].isIntersecting) { give(); return; }
+      }
+    }, { rootMargin: "0px 0px -50% 0px" });
+    io.observe(h);
+  }
+  addEventListener("scroll", check, { passive: true });
+  if ("ResizeObserver" in window) {
+    ro = new ResizeObserver(function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { measure(); check(); }, 150);
+    });
+    ro.observe(document.getElementById("main"));
+  }
+  addEventListener("load", function () { if (!done) { measure(); check(); } });
+  check();
+})();
+</script>
 </body>
 </html>

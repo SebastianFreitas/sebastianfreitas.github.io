@@ -236,6 +236,11 @@ a:hover { color: #fff; }
 .case p, .case ul { max-width: var(--measure); }
 .case ul { padding-left: 1.1rem; }
 .case li { margin-bottom: 0.4rem; }
+/* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
+@media (min-width: 900px) {
+  .page-conclusus .case { padding-top: 18vh; }
+  .page-conclusus .case h2 { margin-top: 5rem; }
+}
 
 .clip {
   display: block;

@@ -8,6 +8,7 @@ window.Pacer = (function () {
     // opts.paint(dt)  — called on painted frames, dt in seconds (already clamped)
     // opts.atRest()   — true when nothing is moving (idle parking allowed)
     // opts.alive()    — false stops the chain (hidden tab, offscreen, portrait)
+    // opts.scrollWake — true: a page scroll wakes it like input (no idle park within 2 s of the last scroll)
     let running = false;
     let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
     let last = performance.now();
@@ -42,7 +43,9 @@ window.Pacer = (function () {
        costs as much as painting. Any input snaps straight back. */
     const IDLE_AFTER_MS = 5000;
     const IDLE_PARK_MS = 100;         // idle wake interval, ms — 10 fps
+    const SCROLL_HOLD_MS = 2000;   // scrollWake: never park this soon after a scroll
     let lastInput = performance.now();
+    let lastScroll = -Infinity;
     let idleNow = false;
     /* One pending callback at a time, whoever asks. Without this a wake that
        races the idle timer would leave two chains running side by side. */
@@ -109,7 +112,7 @@ window.Pacer = (function () {
       refreshCount += refreshes;
 
       if (!idleNow) {
-        if (now - lastInput > IDLE_AFTER_MS && opts.atRest()) idleNow = true;
+        if (now - lastInput > IDLE_AFTER_MS && now - lastScroll > SCROLL_HOLD_MS && opts.atRest()) idleNow = true;
       } else if (!opts.atRest()) {
         idleNow = false;
         refreshCount = 2 * refreshN;
@@ -144,6 +147,7 @@ window.Pacer = (function () {
     }
     ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(type =>
       addEventListener(type, wake, { passive: true, capture: true }));
+    if (opts.scrollWake) addEventListener("scroll", () => { lastScroll = performance.now(); wake(); }, { passive: true });
     function report() {
       const hz = 1000 / refreshMs;
       return {
