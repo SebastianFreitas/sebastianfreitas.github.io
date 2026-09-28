@@ -44,6 +44,12 @@ report. Archiving the session in the app removes the worktree.
 
 ### Context full
 
+A running plan (a `PLAN:` line) is the exception to this whole section:
+a phase ends with the plan skill's Handoff protocol and hard stop
+(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue,
+and a phase that hits the line stops as `partial` (plan skill). The rule
+below is for ordinary, non-plan work only.
+
 Finish the atomic step, commit on the branch, write `.claude/handoff.md`
 (format: the `handoff` skill) in this worktree (gitignored, it stays
 here), then keep going with Next in the same turn. Auto-compaction (the
