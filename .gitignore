@@ -6,3 +6,4 @@ snapshots/
 /temporary media
 .claude/worktrees/
 .claude/plans/HERE
+.claude/autoplan/

@@ -226,7 +226,12 @@ and the questions still to ask, and keep going. The plan file *is* the
 handoff for everything settled; the interview continues after
 compaction from the same part.
 
-## `go` while Stage is `running`: one phase per prompt
+## `go` while Stage is `running`: one phase per session
+
+Two ways to run it: the owner prompts each phase in the app (below), or
+`py -3 tools/autoplan.py <name>` runs every phase in a terminal, one
+fresh session each (see "Running unattended"). Planning always happens
+in the app.
 
 The owner's rule (2026-09-26): *"we never do 2 continues work, we must
 always separate stuff."* A running plan is a chain of short, isolated
@@ -273,7 +278,10 @@ plan across phases.
 
 ### PLAN_STATE.md (root; exists only while a plan is running)
 
-Under 80 lines, no code, these headings in this order:
+Under 80 lines, no code. The first line is `Status: <s>`, where `<s>`
+is `phase-done`, `partial`, `blocked` or `plan-done`
+(`tools/autoplan.py` reads it to decide what happens next). Then these
+headings in this order:
 
 - **Plan:** `<name>` and the plan file path; branch (cloud: PR link).
 - **Architecture now:** the files, globals and load order this plan
@@ -320,9 +328,35 @@ That is a phase question. Handle it in this order:
 
 Context inside one phase: a phase too big for one context was split
 wrong. At `CONTEXT WATCH` finish the atomic step, commit, and write
-PLAN_STATE.md with "Completed phase" as `<n> (partial)` and "Next
-phase" as the rest of it; then hard-stop. Next session, split the phase
-in the Progress table before continuing.
+PLAN_STATE.md with `Status: partial`, "Completed phase" as `<n>
+(partial)` and "Next phase" as the rest of it; then hard-stop. Next
+session, split the phase in the Progress table before continuing.
+
+### Running unattended (`AUTOPLAN=1`)
+
+`tools/autoplan.py` runs the phases in a terminal: one fresh headless
+session per phase, so the clear and the "go" happen on their own. The
+session's prompt starts with `[autoplan · ...]` and the env has
+`AUTOPLAN=1`. Everything above still holds, with these differences:
+
+- Nobody answers. `AskUserQuestion` is disabled, so every phase question
+  is decided at once as `D<n> (auto)` with one line of reason, plus a
+  `missed:` line in the Interview section, exactly as if the owner were
+  away.
+- A blocker still stops: finish what can be finished, commit, write
+  PLAN_STATE.md with `Status: blocked` and the Blocker, end.
+- Commit before ending, always: the phase commit, then PLAN_STATE.md and
+  the Progress row. The runner commits anything left dirty as
+  "unverified work in progress", which is a fallback, not the plan.
+- Keep going until the Handoff protocol is complete. Do not end early
+  with a progress update; the only reasons to end are phase done,
+  partial (context line), blocked, or plan done.
+- The runner watches context from outside and stops the session at its
+  kill line (above the 90k `CONTEXT WATCH` line). If a prompt says the
+  previous session was stopped, its files were committed unverified:
+  check `git show --stat <sha>` and verify that work first.
+- The report and the hard-stop message are still written; nobody reads
+  them live, the runner logs them.
 
 ## Last phase done → Stage done
 
