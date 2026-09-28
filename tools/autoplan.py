@@ -1,4 +1,4 @@
-"""Run a multi-phase plan (.claude/plans/<name>.md) unattended.
+﻿"""Run a multi-phase plan (.claude/plans/<name>.md) unattended.
 
     py -3 tools/autoplan.py heavylight-page
     py -3 tools/autoplan.py --dry-run --shared
@@ -221,7 +221,7 @@ def resolve_plan(explicit: str | None) -> str:
 
 def session_prompt(name: str, k: int, rescue: dict | None) -> str:
     """Build the -p prompt text for session k of plan name, with an optional rescue note."""
-    prompt = f"""[autoplan · plan {name} · session {k}]
+    prompt = f"""[autoplan Â· plan {name} Â· session {k}]
 You are running unattended under tools/autoplan.py. Nobody is watching
 and nobody will answer: AskUserQuestion is disabled. Follow
 .claude/skills/plan/SKILL.md, section "Running unattended".
@@ -263,7 +263,7 @@ def kill_tree(proc: subprocess.Popen) -> None:
         pass
 
 
-def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: str, line: int) -> dict:
+def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: str, warn_line: int) -> dict:
     """Stream a claude -p session, print progress, kill it past kill_at, return a summary dict."""
     try:
         proc = subprocess.Popen(
@@ -293,7 +293,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
 
     try:
         for raw in proc.stdout:
-            line = raw.decode("utf-8", errors="replace").lstrip("﻿")
+            line = raw.decode("utf-8", errors="replace").lstrip("ï»¿")
             if log_file:
                 log_file.write(line)
             stripped = line.strip()
@@ -334,9 +334,9 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                         )
                         arg = str(arg).replace("\n", " ")[:90]
                         if is_sub:
-                            print(f"    · {name} {arg}")
+                            print(f"    Â· {name} {arg}")
                         else:
-                            print(f"{label} {ctx // 1000}k → {name} {arg}")
+                            print(f"{label} {ctx // 1000}k â†’ {name} {arg}")
                     elif btype == "text" and not is_sub:
                         text = block.get("text", "") or ""
                         first_line = text.splitlines()[0] if text.splitlines() else ""
@@ -344,7 +344,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                 boundary = ctx // 10000
                 if boundary > last_boundary:
                     last_boundary = boundary
-                    print(f"context {ctx // 1000}k / line {line // 1000}k")
+                    print(f"context {ctx // 1000}k / line {warn_line // 1000}k")
 
             elif etype == "system":
                 subtype = event.get("subtype")
@@ -368,7 +368,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                 killed = True
 
             if killed and proc.poll() is None:
-                print(f"context {ctx // 1000}k ≥ kill line: stopping this session")
+                print(f"context {ctx // 1000}k â‰¥ kill line: stopping this session")
                 stop_child()
                 break
     except KeyboardInterrupt:
@@ -433,14 +433,14 @@ def safety_commit(pre_dirty: set[str], label: str, reason: str) -> str | None:
 def print_summary(sessions: list[dict], stop_reason: str) -> None:
     """Print the end-of-run table of sessions, total cost and the stop reason."""
     print()
-    print("session · exit · peak · cost · status · done · head")
+    print("session Â· exit Â· peak Â· cost Â· status Â· done Â· head")
     total_cost = 0.0
     for s in sessions:
         total_cost += s.get("cost", 0.0)
         cost_str = f"${s['cost']:.2f}" if s.get("cost_known", True) else "?"
         print(
-            f"{s['label']} · {s['exit']} · peak {s['peak'] // 1000}k · "
-            f"{cost_str} · status {s['status']} · done {s['done_str']} · "
+            f"{s['label']} Â· {s['exit']} Â· peak {s['peak'] // 1000}k Â· "
+            f"{cost_str} Â· status {s['status']} Â· done {s['done_str']} Â· "
             f"head {s['head']}"
         )
     print(f"total cost: ${total_cost:.2f}")
@@ -599,9 +599,9 @@ def main() -> None:
             })
             cost_str = f"${res['cost']:.2f}" if res["cost_known"] else "?"
             print(
-                f"{label} · {res['exit']} · peak {res['peak'] // 1000}k · "
-                f"{cost_str} · status {status} · "
-                f"done {plan['done']}/{plan['done'] + plan['todo']} · head {new_head[:7]}"
+                f"{label} Â· {res['exit']} Â· peak {res['peak'] // 1000}k Â· "
+                f"{cost_str} Â· status {status} Â· "
+                f"done {plan['done']}/{plan['done'] + plan['todo']} Â· head {new_head[:7]}"
             )
 
             if plan["stage"] == "done" or status == "plan-done":
@@ -669,3 +669,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

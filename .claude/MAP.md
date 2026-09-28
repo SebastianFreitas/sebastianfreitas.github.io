@@ -127,7 +127,7 @@ does not — it is pure data, no dependency on `B`.
 | `forge-guns.js` | 137 | The one seeded `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
 | `forge-missions.js` | 169 | `RUN_MODS`, `rollRunMod`, `regood`, `makeMission`, floor plan `genPlan` | `window.ForgeMissions`; uses `ForgeGuns` |
 | `forge.js` | 549 | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock` | `window.Forge`; fed by `bridge-marks.js` `forgeEnv`, hit-tested in `bridge-input.js` pointerdown |
-| `zones.js` | 509 | Backdrop art around Conclusus / HeavyLight / VoidScape: sprite pipeline `CPAL`/`CSPR`/`HPAL`/`HSPR` → `spriteCanvas` → `blitSprite`, `HL_GROUPS`, `LANTERN`, `BEAM`, `dropCrate`/`stepCrates`; HeavyLight drawn at `hlZoom()` (= backdrop `px()`/2) through one transform, layout compact enough to fit under the ceiling at 900 H; Conclusus likewise at `ccZoom()` (= `GdWorld.P.conclusus.px()`/2), `CPLATS` compacted, `CC_LIFT` lift threshold | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
+| `zones.js` | 509 | Backdrop art around Conclusus / HeavyLight / VoidScape: sprite pipeline `CPAL`/`CSPR` (local) and `HPAL`/`HSPR` (read from `HeavyLightSprites`, js/shared) → `spriteCanvas` → `blitSprite`, `HL_GROUPS`, `LANTERN`, `BEAM`, `dropCrate`/`stepCrates`; HeavyLight drawn at `hlZoom()` (= backdrop `px()`/2) through one transform, layout compact enough to fit under the ceiling at 900 H; Conclusus likewise at `ccZoom()` (= `GdWorld.P.conclusus.px()`/2), `CPLATS` compacted, `CC_LIFT` lift threshold | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
 
 ### js/gdworld
 
@@ -233,12 +233,20 @@ only ever read `V` from `Play` and never reach into the bridge.
 | File | Lines | Purpose | Publishes |
 |---|---|---|---|
 | `play.js` | 233 | `Play.start(spec)` mounts one fixed canvas behind the page (`.play`, z -1, pointer-events none; input is read on `window`, only presses on `body`/`html`/`main.case` count, panels are `.play-ui`), builds the view `V` (`W H top sy t dt pointer rnd blocks vis band main gutter free blockAt cursor wake`; `blocks` = document-space rects of every child of `main.case` plus the footer, `vis` the visible ones in viewport space, `band` the free strip right of the text column), runs a `Pacer` loop, re-measures on load/resize; `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow`, `award` (one XP point, once). Desktop only (`min-width: 900px`); a still frame under reduced motion | `window.Play` |
-| `heavylight.js` | 326 | HeavyLight case-page toy (plan heavylight-page): four viewport-fixed L-shaped tile masses in the screen corners (local copy of the gd-heavylight autotile recipe: `tileCanvas`, `backCanvas`, `maskOf`), three document-space tile shelves beside the hero embed, the Lamps clip and the journal image (`layout`, re-run on `sigOf` change), 1/2/3 crates on them, lamp sprites; lamp wedges run off-screen with crate shadows only while a lamp is on; `EVENTS` table = three scripted lamp/crate events triggered when a shelf reaches the middle third (not on the setup frame or reduced motion), click a lamp to replay; XP `play-heavylight` (first lamp) and `play-heavylight-tower` (event 3 end or relayout during it); atRest when no lamp is on and no event runs; `HPAL` sprites at 3x | `window.PlayHeavyLight {play, on, report}` |
+| `heavylight.js` | 326 | the case-page toy; a viewport-fixed cave ring pre-rendered from HeavyLightSprites HSPR once per resize (ceiling notches, floor mounds, right-wall ledges in the top/bottom 20%, a 3-spike floor row, inner-corner rim nubs), three built gutter chunks (`CHUNKS[k]`: cells, lamps right/up/wall/floor, a crate) each with a step list (`EVENTS[k].steps`: light/wait/slide/lift/drop/release/goal, run by `runSteps`); event 3 slides the crate, lifts it on a floor lamp and hands it off onto the symbol tile, which then glows faintly; an event plays once when its chunk enters the middle third, pauses off-screen, and a click on a lamp replays a settled chunk (0.3 s fade out/in); hover over a lamp gives a pointer and a .14 head glow; reduced motion is one still frame posed by `poseStill` (events frozen at 0.9/0.4/2.05 s); the toy fires only `play-heavylight`, never `play-heavylight-tower` (that id stays listed elsewhere, D64); `window.PlayHeavyLight {report, on, play}` | `window.PlayHeavyLight {play, on, report}` |
 | `conclusus.js` | 499 | Document space: up to 40 grass platforms beside the page blocks, each with a planted green twin; when the player's platform leaves the eye band (30-62 % of the viewport) he teleports (30-particle burst) to the platform nearest the band's centre (46 %) and plants a twin where he stood; click a twin or a green silhouette (silver = the 1.2 s cycle's deadly half; silhouettes stand on the right end of every 4th platform); lit dashed line under the landed platform, spinning symbol, exit arch that blooms on the last platform, spike balls, 32 light motes born at the top-right corner drifting down-left on straight rays (`ray`, the game's RainEffect cone); sprites 2x (`CPAL`) | `window.PlayConclusus {report}` |
 | `sector-zero.js` | 575 | Viewport space: the room's objects float in the strip right of the text (terminal, chair, bucket, screwdriver, lantern, four crates, light switch; flat lit/shade boxes, scale 1.3); click = the record types out in a `.play-ui.record` card at 0.03 s/char; the thunder loop (lower of two d100, losers drift, one turns red and creeps to the pointer, spring home, 0.5 s blackout; stronger comes back sooner); lantern flicker layers, screwdriver charge/throw/return, chair spin, the switch dims the room | `window.PlayZero {report, thunder}` |
 | `sector-zero-records.js` | 145 | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
 | `voidscape-boons.js` | 104 | 34 boons from the game's list `{id, w, name, desc, fx}`; `build(gun, boons)` → the effective build from a `ForgeGuns` gun, its mods and the boons; weighted `offer(pool, rnd)` | `window.RangeBoons` |
 | `voidscape.js` | 849 | The range, viewport space: a gun mount bottom-left aims at the pointer, hold on empty page to fire a `ForgeGuns.randomGun()`; bullets ricochet off the screen edges only (page blocks are not walls), fire explodes on every bounce, cold chills/freezes, poison and bleed tick, headshots crit, damage pops; skulls hop, cones hover and shoot back, triangles lunge and self-destruct; enemies are pushed out of page blocks; every 6 kills one boon is offered (take / reroll x2 / refuse for 10 health) in `.play-ui.offer`, the build card is `.play-ui.range`; 0 health = run lost, new gun, boons gone; the range goes quiet 40 s after the last shot | `window.PlayRange {report}` |
+
+### js/shared
+
+Data read by both the bridge and a case page. No drawing, no state.
+
+| File | Lines | Purpose | Publishes |
+|---|---|---|---|
+| `heavylight-sprites.js` | 36 | The HeavyLight game's palette `HPAL` (11 colours, letter `a` = index 0) and its 16 px sprites `HSPR` (floor/wall/drip/pillar/plat tiles, spike, symbol, box, lamp, key, lantern), `{w, h, ox, oy, px}` letter strings; moved verbatim out of zones.js (plan fixHeavyLightPage D35); loaded before `gamedev/zones.js` in `index.html` and before `pages/heavylight.js` in `projects/heavylight.html` | `window.HeavyLightSprites {HPAL, HSPR}` |
 
 ### css, pages, tools
 
@@ -275,7 +283,8 @@ crimson, bonespire, titans, valkhar, law} → world/art/land-kit →
 world/art/{shattered, libertech, dawn, accord, gore} → world/world →
 world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
 ship/voidship-art → ship/voidship-prow → ship/voidship → gamedev/storm →
-gamedev/forge-guns → gamedev/forge-missions → gamedev/forge → gamedev/zones →
+gamedev/forge-guns → gamedev/forge-missions → gamedev/forge →
+shared/heavylight-sprites → gamedev/zones →
 site/embed → lib/pacer → bridge/marks → gdworld/{gdworld, gd-zero, gd-voidscape,
 gd-heavylight, gd-conclusus} → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
@@ -323,7 +332,8 @@ Project pages load `css/style.css`, `css/beacon.css`, `css/play.css`, then
 layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 `js/gamedev/forge-guns.js` before `play.js` and `voidscape-boons.js` before
 `voidscape.js`; sector-zero: `sector-zero-records.js` before
-`sector-zero.js`), and the inline `XP.award(...)` last.
+`sector-zero.js`; heavylight: `js/shared/heavylight-sprites.js` before
+`heavylight.js`), and the inline `XP.award(...)` last.
 
 ### Where things live
 
