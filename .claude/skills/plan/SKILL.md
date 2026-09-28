@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Start, continue or run a many-phase plan in .claude/plans/. Planning is a long interview through AskUserQuestion (dozens of questions, an initial idea walked through piece by piece, every phase reviewed); running does one phase per prompt, then hard-stops for `/clear`. Owner-invoked only.
+description: Start, continue or run a many-phase plan in .claude/plans/. Planning is an interview through AskUserQuestion that loops ask → write → review until the plan leaves zero choices to the LLM (no question quota); running does one phase per prompt, then hard-stops for `/clear`. Owner-invoked only.
 disable-model-invocation: true
 argument-hint: "new <name>: <brief>  |  (nothing: continue the active plan)"
 ---
@@ -48,19 +48,19 @@ the plan itself into the repo. `/plan` is the plan mode.
 
 ## `/plan` or `go` while Stage is `planning`
 
-Read `Interview` (which part is open, the question count) and `Open
+Read `Interview` (which part is open) and `Open
 items`, and continue the interview from exactly there.
 
 ## The interview: how planning feels
 
-The owner's rule, in their words: *"it should ask 20 times the questions
-to start a plan in most cases, go detail by detail, formulate an initial
-idea, and then run with me step by step. Before finishing the planning we
-review every step with more than one question, so we get as specific as
-possible. Require a total of pages of text to actually make a plan, not
-tiny surveys. And with the UI, never stop."*
+The goal, in the owner's rule (2026-09-28): **the finished plan leaves
+zero choices to the LLM.** Questions are the tool, not the target. There
+is no minimum count: a plan is done when a review finds nothing left to
+choose, not when enough questions were asked. So planning is a loop:
 
-So planning is a **long interview**, not a survey:
+> ask what is open → write it into the plan → review the plan → every
+> uncertainty the review finds becomes a new question → repeat until a
+> review finds none.
 
 - **Every question goes through `AskUserQuestion`** (the UI), never as
   prose that ends the turn. Calls are consecutive in the **same turn**:
@@ -68,34 +68,31 @@ So planning is a **long interview**, not a survey:
   answer (the question stands, the handoff names it, the next "go" asks
   it again) or when the ready gate passes. A "you decide" answer is
   recorded as a D in Claude's words, marked `(owner: you decide)`.
-- **Minimums, not maximums.** Part A asks at least 20 questions before
-  the initial idea is written. A typical plan ends with 60 to 120
-  questions asked; a small one never under 40. Running out of questions
-  is a sign you have not gone into detail, not a sign you are done: go
-  one level smaller (a single beat, a single colour, a single caption
-  word, what happens in the first second, what happens when it fails)
-  and ask again.
-- **Detail by detail.** Planning decides specifics now: names, numbers,
-  colours, counts, order, timing, what the owner sees in the first
-  second and in the last. A phase's research while running only fills
-  what planning explicitly left it, marked `→ phase decides`, and the
-  owner agreed to leave.
-- **Never stop.** Never end a planning turn to "let the owner think";
-  never write "ready when you are"; never skip a question because the
-  answer seems obvious, because an earlier answer probably covers it, or
-  because the owner seems tired of questions. If the owner types "just
-  build it" or "stop asking", record that verbatim as a D, ask one
-  question ("Skip the rest of the interview and take Recommended
-  everywhere from here?" with "No, keep going (Recommended)" first) and
-  follow the answer.
-- **Pages of text.** The plan file grows to pages: Decisions in the
-  owner's words, the Initial idea in full prose, a Walk-through line per
-  piece, a Reviewed line per phase. The ready gate measures it.
+- **What counts as an open choice.** Any spot where the implementer
+  would have to pick: a name, number, colour, count, order, timing,
+  caption text, what the owner sees in the first and last second, what
+  happens when it fails, what stays exactly as is next to it. If two
+  reasonable implementers could build it two different ways, it is open.
+- **What is not asked.** A choice already fixed by the Brief, a D, the
+  existing code, a domain rule (`.claude/rules/*.md`) or a memory is
+  written into the plan as a D marked `(from <source>)`, not asked. Never
+  ask to fill a count, never ask twice what a D settles, never ask a
+  question whose every answer builds the same thing.
+- **Detail by detail.** Planning decides specifics now. A phase's
+  research while running only fills what planning explicitly left it,
+  marked `→ phase decides`, and only when the owner agreed to leave it.
+- **Never stop early.** Never end a planning turn to "let the owner
+  think"; never write "ready when you are"; never skip an open choice
+  because the answer seems obvious or the owner seems tired of questions.
+  If the owner types "just build it" or "stop asking", record that
+  verbatim as a D, ask one question ("Take Recommended for every open
+  choice left?" with "No, keep going (Recommended)" first) and follow the
+  answer.
 
 ### Question rules (every call)
 
-- 4 questions per call; consecutive calls until the part's question list
-  is empty. Never carry a known question into a later turn or a later
+- Up to 4 questions per call; consecutive calls until the open list is
+  empty. Never carry a known open choice into a later turn or a later
   phase.
 - 2 to 4 options each, the recommended one first with "(Recommended)".
   Options are concrete and different from each other, written as what
@@ -103,8 +100,7 @@ So planning is a **long interview**, not a survey:
   binary. `multiSelect: true` when several can be true; `preview` when a
   caption, palette, layout or table decides it.
 - The owner always has "Other" for free text. A free-text answer is
-  recorded verbatim, and its consequences open new questions (usually
-  3 to 5) in the same part.
+  recorded verbatim; if it opens new choices, they join the open list.
 - One question per decision. A question that needs research explained
   first puts the explanation in its own text: the owner has not read the
   research digest.
@@ -113,69 +109,62 @@ So planning is a **long interview**, not a survey:
 - After each call: write every answer into the plan as `D<n>`, bump the
   count under `Interview`, commit the plan by path. Then the next call.
 
-### Part A · Brief interview (at least 20 questions)
+### The review pass (used after every part)
+
+Read the plan section (or the whole plan) **as the implementer who must
+build it from that text alone**, and list every open choice (above) you
+would have to make, plus every place two lines could be read two ways or
+contradict a D. Each item is either fixed from a source (write the D,
+`(from <source>)`) or becomes a question. Ask them all, apply the
+answers, then review again. The part is done when a review returns an
+empty list.
+
+### Part A · Brief and direction
 
 1. **Intake.** Explore the current state through `Explore` (grep
    `.claude/MAP.md` first; `file:line` anchors, no code bodies). Write
    it under Current state.
-2. **Research wide.** Load `WebSearch`/`WebFetch`. Research every area
-   the brief touches and then go past it (other games, films, painters,
-   history, techniques). Digest into
+2. **Research** the areas the brief touches, as wide as the choices
+   need (other games, films, painters, techniques). Load
+   `WebSearch`/`WebFetch`. Digest into
    `.claude/plans/research/<name>-00-intake.md`: sources, what we take
    from each, in our own words. Never copy art or long text.
-3. **Option map.** For every area the brief touches, list the directions
-   the research found: 3 to 6 per area, each one line, each with one
-   real precedent and what it would look like in *our* result. Areas the
-   owner did not mention but the work will force (numbering, captions,
-   performance, what stays as is, phones, reduced motion) go here too.
-4. **Line by line.** Split the Brief into its sentences and clauses. For
-   each one list the questions it raises: every noun (what exactly is
-   it, how big, what colour, how many), every verb (how, how fast, in
-   how many steps, triggered by what), every "like" or "kind of" (which
-   precedent, which part of it), every "and then" (what is between).
-   Add the option-map questions. This is the Part A question list; it is
-   at least 20 long, or you have not read closely enough.
-5. **Ask the list** by the question rules. Record each answer as a D.
-   Contradictions with an earlier D are asked as their own question,
-   never resolved silently.
-6. Part A ends when its list is empty **and** the count is at least 20.
-   Write `Interview: A done · <count> asked` and go to Part B in the
-   same turn.
+3. **Option map.** For each area where the research found real
+   alternatives, list them: one line each, with one precedent and what
+   it would look like in *our* result. Include areas the brief did not
+   mention but the work forces (captions, performance, phones, reduced
+   motion, what stays as is) only where they are actually open.
+4. **Open list.** Read the Brief clause by clause and list the choices it
+   leaves open that shape the whole result (direction, scope, what it
+   is), plus the option-map areas. Details that only matter inside one
+   piece wait for Part B, where they have context.
+5. **Ask the list** by the question rules. Contradictions with an earlier
+   D are asked as their own question, never resolved silently. Write
+   `Interview: A done · <count> asked` and go to Part B in the same turn.
 
-### Part B · Initial idea, walked through piece by piece
+### Part B · Initial idea, reviewed piece by piece
 
 1. **Write the Initial idea** under its section: the whole result in
    prose, beginning to end, as the owner will experience it (what is on
-   screen, what moves, what is read, what it feels like, in order). One
-   to three pages. Every sentence rests on a D or the Brief; where it
-   does not, it is a guess and is marked `[?]`. Split it into numbered
-   **pieces** (a beat, a screen, a system, a rule), 6 to 15 of them,
-   each a heading with 5 to 15 lines under it. Commit.
-2. **Walk through every piece, in order**, with the owner:
-   - First an `AskUserQuestion` whose text says *"We start with piece
-     <n>, <name>: <the piece's lines, in full>. What do you think?"*
-     with the options "That is it (Recommended) / Close, but change
-     something (say what in Other) / Different direction / Explain the
-     choices first". This check is asked for **every** piece, even when
-     Claude has no open question about it: the owner asked for "we're
-     going to start with this, what do you think?" each time.
-   - Then that piece's detail questions: every `[?]`, plus at least two
-     more that go smaller than the prose (the first second, the exact
-     number, the caption text, what the failure case looks like, what
-     stays exactly as is next to it). Never fewer than 3 questions per
-     piece, counting the check.
-   - "Different direction" or a long free-text answer: rewrite the
-     piece, commit, and walk through it again from the check.
-   - "Explain the choices first": answer in the next call's question
-     text (which D or research line each choice came from), then ask
-     the check again.
-   - Record the check's answer under `Walk-through` (piece, answer, the
-     D numbers it produced) and rewrite the piece's prose so no `[?]`
-     remains.
-3. Part B ends when every piece is checked, no `[?]` remains and every
-   piece has its 3+ questions. Write `Interview: B done · <count> asked`.
+   screen, what moves, what is read, what it feels like, in order).
+   Every sentence rests on a D, the Brief or a `(from <source>)` fact;
+   anything else is a guess and is marked `[?]`. Split it into numbered
+   **pieces** (a beat, a screen, a system, a rule), as many as the work
+   has, each a heading with its lines under it. Commit.
+2. **Show every piece to the owner.** One question per piece, up to 4
+   pieces per call: *"Piece <n>, <name>: <the piece's lines, in full>.
+   Right?"* with "That is it (Recommended) / Close, but change something
+   (say what in Other) / Different direction / Explain the choices
+   first". A change or new direction rewrites the piece and it is shown
+   again; "Explain" is answered in the next call's question text, then
+   the piece is shown again. Record each under `Walk-through` (piece,
+   answer, D numbers).
+3. **Review pass** over the pieces: every `[?]` and every open choice the
+   review finds becomes a question. Rewrite the prose with the answers
+   and review again until the list is empty and no `[?]` remains. Write
+   `Interview: B done · <count> asked`.
 
-### Part C · Phases and their review (at least 2 questions per phase)
+### Part C · Phases and their review
 
 1. **Write the phases** from the Initial idea. Each phase: kind
    (research/doc/code/review), the pieces it implements, research
@@ -188,49 +177,43 @@ So planning is a **long interview**, not a survey:
    Verification names the check that actually sees the change: a toy
    canvas needs `jscheck.py --shot` or a flow, since `snap.py` does not
    paint it. Fill Scope, Constraints, the Progress table. Commit.
-2. **Review every phase with the owner**, one phase per pass, in order,
-   with at least **two** `AskUserQuestion` questions per phase:
-   - *"Phase <n>, <name>, delivers: <deliverables>. Right?"* with the
-     options "Right (Recommended) / Missing something (say what in
-     Other) / Too big, split it / Merge with the previous phase".
-   - *"Phase <n> must not touch: <its Out list>. It is verified by:
-     <command / scenes>. Agreed?"* with concrete alternatives.
-   - Plus any question the phase raised while being written (a number,
-     a name, an order). Splits and merges rewrite the Progress table,
-     and the review restarts at the changed phase.
-   - Record under each phase: `Reviewed: <the answers, D numbers>`.
-3. **Final sweep.** Read the whole plan top to bottom and list every
-   place where two lines could be read two ways, or a number, name or
-   order is still missing. Ask them all. A sweep that finds nothing is
-   rare; say so in the report if it happens.
-4. Write `Interview: C done · <count> asked`.
+2. **Show every phase to the owner.** One question per phase, up to 4
+   per call: *"Phase <n>, <name>, delivers <deliverables>, must not touch
+   <Out list>, verified by <command / scenes>. Right?"* with "Right
+   (Recommended) / Missing something (say what in Other) / Too big,
+   split it / Merge with the previous phase". Splits and merges rewrite
+   the Progress table and the changed phases are shown again. Record
+   under each phase: `Reviewed: <answer, D numbers>`.
+3. **Review pass** over each phase as the session that will run it,
+   seeing only that section: every choice it would still have to make
+   becomes a question. Repeat until empty. Write
+   `Interview: C done · <count> asked`.
 
-### Ready gate (all true, or keep interviewing)
+### Ready gate (all true, or keep going)
 
-- `Interview` shows A, B and C done and a total count of at least 40.
-- Open items: none. No `[?]` anywhere in the file. No `→ phase decides`
-  the owner did not agree to.
-- Every piece of the Initial idea has a Walk-through line; every phase
-  has a `Reviewed:` line with at least two answers.
-- Every phase cites at least one D or Brief line it implements; the
-  Progress table lists every phase as `todo`; Constraints and Scope are
-  filled.
-- The plan file is at least 2,500 words (`wc -w`; the Brief and the
-  Initial idea count, the Option map does not). Under that, the plan is
-  a survey: find where it is thin and go back to that part.
+- **Fresh-eyes review.** A `Plan` subagent that has not seen the
+  interview reads the plan file (give it the path; it does not load
+  CLAUDE.md) and lists, per phase, every choice it would have to make
+  to build it and every line it could read two ways, with the line
+  quoted. Each item is fixed from a source or asked; then a new fresh
+  review runs. The gate needs one review that returns nothing.
+- `Interview` shows A, B and C done. Open items: none. No `[?]` anywhere.
+  No `→ phase decides` the owner did not agree to.
+- Every piece has a Walk-through line; every phase has a `Reviewed:`
+  line, cites at least one D or Brief line, and is `todo` in the
+  Progress table. Constraints and Scope are filled.
 
 Then set `Stage: ready`, commit the plan and research by path, and ask
 one last `AskUserQuestion`: "Start running the plan? (Recommended) /
 Change something first / Hold". Start → `Stage: running` and run the
 first phase in the same turn, ending with the Handoff protocol and the
-hard stop below (one phase, never two). Change → record the change as a D, redo
-the walk-through of the pieces it touches, and run the gate again.
+hard stop below (one phase, never two). Change → record the change as a
+D, show the pieces and phases it touches again, and run the gate again.
 
-Context: planning is long, by design. At `CONTEXT WATCH` commit the plan
-file as it stands, write `.claude/handoff.md` with the part, the count
-and the questions still to ask, and keep going. The plan file *is* the
-handoff for everything settled; the interview continues after
-compaction from the same part.
+Context: at `CONTEXT WATCH` commit the plan file as it stands, write
+`.claude/handoff.md` with the part and the open list still to ask, and
+keep going. The plan file *is* the handoff for everything settled; the
+interview continues after compaction from the same part.
 
 ## `go` while Stage is `running`: one phase per session
 

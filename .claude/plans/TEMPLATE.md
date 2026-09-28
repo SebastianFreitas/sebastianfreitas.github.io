@@ -46,7 +46,7 @@ Interview: A open · 0 asked   <- A/B/C open or done, running total; missed: lin
 ### Piece 2 · <name>
 ...
 
-## Walk-through (one line per piece; the check is asked for every piece)
+## Walk-through (one line per piece; every piece is shown to the owner)
 
 - Piece 1 · <That is it / changed: ...> · D<n>, D<m>
 
