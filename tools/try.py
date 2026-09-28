@@ -9,7 +9,9 @@ serve.py on a free port, opening it in the browser.
 Commit squashes the branch into ONE commit on main in the main checkout (the
 one GitHub Desktop shows), bumps ?v= in that same commit, merges main back
 into the session's worktree branch so follow-up rounds stay clean, and never
-pushes or deletes anything: the owner pushes with GitHub Desktop.
+pushes: the owner pushes with GitHub Desktop. Afterwards it runs
+tools/cleanup.py, which deletes other session branches and worktrees that
+have landed on main and sat idle 24 h (never the branch just committed).
 
 It also installs the ?v= merge driver (tools/merge-cachebust.py) so
 cache-bust numbers never conflict.
@@ -232,6 +234,7 @@ def commit(branch: str, ref: str, subject: str) -> None:
 
     print(f"Committed {sha} on main: {subject}")
     print("Nothing was pushed. Review it in GitHub Desktop (History), then Push origin. To take it back before pushing: History, right-click it, Undo commit.")
+    subprocess.run([sys.executable, str(ROOT / "tools" / "cleanup.py"), "--quiet", "--keep", branch], cwd=ROOT)
 
 
 def main() -> None:

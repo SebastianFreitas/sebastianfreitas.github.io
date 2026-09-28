@@ -45,8 +45,8 @@ ignores them); if one still does, keep either side. Two branches adding `<script
 keep both, in load order. `.claude/MAP.md` rows: keep both sides' rows,
 then re-count the changed files. After the last merge run `py -3
 tools/bump.py` once and the full `py -3 tools/nav-flows.test.py`, commit,
-and end with the report (the owner pushes). Never delete branches; the
-owner does.
+and end with the report (the owner pushes). Never delete branches by
+hand; `tools/cleanup.py` removes merged ones once idle 24 h.
 
 ### Context full
 

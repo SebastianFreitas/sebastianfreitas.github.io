@@ -116,7 +116,7 @@ def main():
         deny("only the owner merges")
 
     if BRANCH_DELETE_RE.search(cmd):
-        deny("the owner deletes branches")
+        deny("branches are deleted only by tools/cleanup.py (landed on main and idle); run that instead")
 
     if PUSH_RE.search(cmd):
         remote_ok = (os.environ.get("CLAUDE_CODE_REMOTE") == "true"

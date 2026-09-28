@@ -172,7 +172,10 @@ split the task. Never ask the owner to `/compact`.
 
 - Stage by path. Never push (cloud: only your own `claude/` branch),
   never merge or commit onto `main` except a shared-mode commit, never
-  delete branches, never `gh pr merge`. Only `try.py --commit` (run by
+  delete branches by hand, never `gh pr merge`. `tools/cleanup.py`
+  deletes local session branches and their worktrees once they have
+  landed on `main` and sat idle 24 h; it runs at session start and after
+  `try.py --commit`. Only `try.py --commit` (run by
   you in worktree mode) reaches local `main` from a branch; only the owner's GitHub Desktop reaches origin.
 - `.claude/hooks/git-guard.py` blocks blanket git (`add -A`/`.`,
   `commit -a`, `stash`, `checkout --`, `restore`, `reset --hard`,

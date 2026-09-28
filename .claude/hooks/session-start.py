@@ -190,6 +190,17 @@ def main():
         else:
             lines.append("Tree clean at session start.")
 
+    if source == "startup" and main_root:
+        script = os.path.join(main_root, "tools", "cleanup.py")
+        if os.path.exists(script):
+            try:
+                r = subprocess.run([sys.executable, script, "--quiet",
+                                    "--keep", branch], cwd=main_root,
+                                   capture_output=True, text=True, timeout=30)
+                lines.extend(l for l in r.stdout.splitlines() if l.strip())
+            except Exception:
+                pass
+
     if source in ("startup", "clear", "compact"):
         hand = os.path.join(root, ".claude", "handoff.md")
         if os.path.exists(hand):
