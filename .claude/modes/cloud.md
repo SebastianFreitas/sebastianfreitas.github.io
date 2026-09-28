@@ -45,8 +45,9 @@ bump.
 
 A running plan (a `PLAN:` line) is the exception to this whole section:
 a phase ends with the plan skill's Handoff protocol and hard stop
-(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue,
-and a phase that hits the line stops as `partial` (plan skill). The rule
+(`PLAN_STATE.md`, then the owner's `/clear`), never with auto-continue;
+a phase that hits the line stops as `partial`, and a planning interview
+that hits it pauses for `/clear` and `go` (plan skill). The rule
 below is for ordinary, non-plan work only.
 
 Finish the atomic step, commit, push, and put the handoff (the `handoff`

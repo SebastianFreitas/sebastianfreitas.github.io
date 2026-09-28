@@ -149,7 +149,9 @@ split the task. Never ask the owner to `/compact`.
 
 - Main session past its line: finish the current atomic step, verify,
   commit, then follow your mode file's "Context full" rule and the
-  `handoff` skill. A running plan instead stops as `partial` (plan skill).
+  `handoff` skill. A plan never compacts: a running phase stops as
+  `partial`, and a planning interview pauses for `/clear` and `go`
+  (plan skill).
 - A handoff printed at session start: restate the plan in two lines,
   continue from Next, never redo Done, delete the file once absorbed.
 

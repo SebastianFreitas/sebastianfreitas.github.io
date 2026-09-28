@@ -210,10 +210,19 @@ first phase in the same turn, ending with the Handoff protocol and the
 hard stop below (one phase, never two). Change → record the change as a
 D, show the pieces and phases it touches again, and run the gate again.
 
-Context: at `CONTEXT WATCH` commit the plan file as it stands, write
-`.claude/handoff.md` with the part and the open list still to ask, and
-keep going. The plan file *is* the handoff for everything settled; the
-interview continues after compaction from the same part.
+Context: the interview never runs into compaction (owner's rule,
+2026-09-28). At `CONTEXT WATCH`, ask no new question. Record the answer
+you already have as a D, make sure `Interview` names the open part and
+`Open items` lists every choice still to ask, and commit the plan by
+path. No `.claude/handoff.md`: the plan file *is* the handoff. Then
+hard-stop. The mode files' "Context full" rule (auto-continue) does not
+apply. The last line of the turn is this exact message, with nothing after it:
+
+> Interview paused (context full). Please run `/clear`, then prompt me
+> with `go` to continue the interview from the same part.
+
+`go` then resumes through "`/plan` or `go` while Stage is `planning`"
+in a fresh context.
 
 ## `go` while Stage is `running`: one phase per session
 
