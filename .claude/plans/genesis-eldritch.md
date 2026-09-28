@@ -1,5 +1,7 @@
 # Genesis cutscene: the eldritch pass
 
+Stage: done
+
 A many-phase plan. One owner prompt ("go") runs every `todo` phase in
 order, each one finished, verified and committed on its own stacked
 branch (`eldritch-NN-<name>` cut from the last), with no owner input until
