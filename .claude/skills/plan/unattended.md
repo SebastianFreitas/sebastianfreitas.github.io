@@ -27,9 +27,10 @@ the runner's kill line above it. The phase has to fit between the
   messages, no ending the turn while one runs. Its commit must land
   before you write PLAN_STATE.md.
 - **Verify what you touched, once.** A change that only paints a toy
-  canvas is invisible to `snap.py` (it does not paint the play canvas):
-  check it with `py -3 tools/jscheck.py ... --shot` or the phase's
-  flows, and skip the snap capture. Run `snap.py` only when the phase
+  canvas: `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]` (seconds;
+  exits 1 on a blank toy or a console error; read the PNG it names),
+  or `snap.py capture <run> --only <page>-toy` for its three scroll
+  stops, plus the phase's flows. Run the full `snap.py` only when the phase
   changes page DOM or CSS, and capture "before" once per run, not per
   phase, if an earlier phase's capture is named in the brief.
 - Screenshots and scratch scripts go under `%TEMP%`, never the repo.

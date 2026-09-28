@@ -25,6 +25,10 @@ let run in real time for even a moment lands its frames elsewhere, so every
 wait on the site's own animation is a budget of frames, not a wait on the
 wall. The waits that are on the wall are for the things a stopped clock
 doesn't reach: observers, smooth scrolling and CSS transitions.
+
+The case-page toys get their own page-<name>-toy scenes: viewport shots at
+three scroll stops, since a full-page shot resizes the viewport and play.js
+clears the toy canvas on resize. tools/toyshot.py shoots one toy quickly.
 """
 
 from __future__ import annotations
@@ -54,6 +58,8 @@ GATE_BOOT = 4000                  # ms of frames: the gate types itself in under
 FRAME = 16                        # ms: the faked clock's own frame interval
 OPENING = 96                      # ms: the jump that opens a scene, past the site's dt clamp
 OBSERVE = 400                     # ms of real time: long enough for observers to land
+TOY_MS = 1200                     # ms of frames a toy runs at each scroll stop before its shot
+TOY_STOPS = (("top", 0.0), ("mid", 0.4), ("low", 0.75))   # fractions of the page's max scroll
 
 # Chromium doesn't raster the same picture into the same pixels twice on its
 # own: subpixel text is rendered against whatever layer its element sits on,
@@ -190,6 +196,30 @@ def shot(page, out_dir, name, full_page=False):
     still(page)
     page.screenshot(path=str(out_dir / f"{name}.png"), animations="disabled",
                     caret="hide", full_page=full_page)
+
+
+# Inked (non-transparent) pixels on the case-page toy canvas, or null with no toy.
+TOY_INK = """() => { const c = document.querySelector('canvas.play');
+  if (!c || c.hidden) return null;
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++;
+  return { w: c.width, h: c.height, ink: n }; }"""
+
+
+def toy_ink(page):
+    """The toy canvas's size and inked pixel count, or None when the page has no toy."""
+    return page.evaluate(TOY_INK)
+
+
+def toy_frame(page, y, ms=TOY_MS):
+    """Jump the page to scroll y (no smooth scroll), let the scroll and the
+    toy's observers land in real time, then run ms of frames on the stopped
+    clock so the toy repaints there. A viewport shot keeps what it painted; a
+    full-page shot resizes the viewport and play.js clears the canvas."""
+    page.evaluate(f"window.scrollTo({{top: {int(y)}, behavior: 'instant'}})")
+    rest(page)
+    page.wait_for_timeout(OBSERVE)
+    page.clock.run_for(ms)
 
 # ------------------------------------------------------------------ the map
 
@@ -381,6 +411,27 @@ def project_page(name, label, viewport):
     return fn
 
 
+def toy_page(name):
+    """The case-page toy, desktop only (play.js skips anything under 900 px):
+    viewport shots at each of TOY_STOPS. Fails when the toy is missing or blank."""
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, nav.DESKTOP, reduced_motion="no-preference")
+        page.goto(f"{base}/projects/{name}.html")
+        page.wait_for_load_state("load")
+        settle(page, 1000)
+        max_y = page.evaluate("Math.max(0, document.documentElement.scrollHeight - innerHeight)")
+        for label, frac in TOY_STOPS:
+            toy_frame(page, round(frac * max_y))
+            ink = toy_ink(page)
+            if ink is None:
+                raise RuntimeError(f"no toy canvas on {name}")
+            if not ink["ink"]:
+                raise RuntimeError(f"toy canvas blank on {name} at {label}")
+            shot(page, out_dir, f"page-{name}-toy-{label}")
+        ctx.close()
+    return fn
+
+
 def index_section(section, label, viewport):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
@@ -412,6 +463,7 @@ def scenes():
     for name in PROJECTS:
         out.append((f"page-{name}-desktop", project_page(name, "desktop", nav.DESKTOP)))
         out.append((f"page-{name}-phone", project_page(name, "phone", nav.PHONE)))
+        out.append((f"page-{name}-toy", toy_page(name)))
     for section in ("work", "experience"):
         out.append((f"index-{section}-desktop", index_section(section, "desktop", nav.DESKTOP)))
         out.append((f"index-{section}-phone", index_section(section, "phone", nav.PHONE)))
