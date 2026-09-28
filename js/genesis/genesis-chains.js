@@ -29,7 +29,11 @@ window.GenChains = (function () {
     ctx.fill();
   }
 
-  function drawP8Disc(ctx, C, R0) {
+  function drawP8Disc(ctx, W, H, C, R0) {
+    if (window.GenCircle) {
+      GenCircle.drawUniverse(ctx, W, H, 99, C, R0);
+      return;
+    }
     ctx.fillStyle = "#5a4c4e";
     ctx.beginPath();
     ctx.arc(C.x, C.y, R0, 0, Math.PI * 2);
@@ -121,9 +125,9 @@ window.GenChains = (function () {
     geo = { m, C, R0, P, ringPt, mid, chain0, tile2, tile3 };
   }
 
-  function drawLevel0(ctx, g, t) {
+  function drawLevel0(ctx, g, t, W, H) {
     if (t < 0.4) {
-      drawP8Disc(ctx, g.C, g.R0);
+      drawP8Disc(ctx, W, H, g.C, g.R0);
       return;
     }
     const count = Math.min(6, 1 + Math.floor((t - 0.4) / 0.4));
@@ -171,7 +175,7 @@ window.GenChains = (function () {
     if (key !== geoKey) { geoKey = key; build(W, H); }
     if (!geo) return;
 
-    if (t < 3.0) drawLevel0(ctx, geo, t);
+    if (t < 3.0) drawLevel0(ctx, geo, t, W, H);
     else if (t < 4.6) drawLevel1(ctx, geo, W, H);
     else if (t < 6.2) drawLevel2(ctx, geo, W, H);
     else drawLevel3(ctx, geo, W, H);

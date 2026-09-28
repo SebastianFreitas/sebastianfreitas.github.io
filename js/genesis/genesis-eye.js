@@ -26,6 +26,11 @@ window.GenEye = (function () {
     return s - Math.floor(s);
   }
 
+  /* pileCut: the top N rows of the mound are left undrawn (for the
+     genesis-circle beat, which grows a universe there instead) */
+  let pileCut = 0;
+  function setPileCut(k) { pileCut = Math.max(0, k | 0); }
+
   /* the grey pile: one squat mound centred at K = (0.5 W, 0.84 H), rows
      stacked bottom-up, row 0 (bottom, widest) holds the most dust, each
      row above tapers toward a point, floor of 1 per row; wider than tall */
@@ -65,6 +70,18 @@ window.GenEye = (function () {
     const x = K.x + (pos - (cnt - 1) / 2) * s;
     const y = K.y - row * s * 0.85;
     return { x, y };
+  }
+
+  /* which row a settled slot falls on, and how many rows the mound has;
+     row 0 is the bottom (widest), the highest row index is the top */
+  function pileRow(i, n, W, H) {
+    const { caps } = pileLayout(n, W, H);
+    let row = 0, before = 0;
+    while (row < caps.length - 1 && before + caps[row] <= i) {
+      before += caps[row];
+      row++;
+    }
+    return { row, rows: caps.length };
   }
 
   function pile(W, H) {
@@ -251,6 +268,10 @@ window.GenEye = (function () {
     for (let i = 0; i < n; i++) {
       const it = items[i];
       if (t >= 99) {
+        if (pileCut > 0) {
+          const pr = pileRow(rank[i], n, W, H);
+          if (pr.row >= pr.rows - pileCut) continue;
+        }
         const slot = pileSlot(rank[i], n, W, H);
         GenSoup.shaded(ctx, slot.x, slot.y, it.r * 0.8, PAL.dust, PAL.dustShade, m);
         continue;
@@ -260,7 +281,7 @@ window.GenEye = (function () {
         continue;
       }
 
-      let gx, gy;
+      let gx, gy, settled = false;
       if (t < it.tl) {
         const fs = Math.floor((t - it.td) / 0.3);
         gx = it.x;
@@ -270,8 +291,13 @@ window.GenEye = (function () {
         const ts = Math.max(it.tl, 5.2);
         const sstep = t < ts ? 0 : Math.min(4, Math.floor((t - ts) / 0.25) + 1);
         const frac = sstep / 4;
+        settled = frac === 1;
         gx = it.x + (slot.x - it.x) * frac;
         gy = floorY + (slot.y - floorY) * frac;
+      }
+      if (settled && pileCut > 0) {
+        const pr = pileRow(rank[i], n, W, H);
+        if (pr.row >= pr.rows - pileCut) continue;
       }
       GenSoup.shaded(ctx, gx, gy, it.r * 0.8, PAL.dust, PAL.dustShade, m);
     }
@@ -325,5 +351,5 @@ window.GenEye = (function () {
     drawPowerPoint(ctx, P.x, P.y, m, t);
   }
 
-  return { draw, drawPowerPoint, pile, pool };
+  return { draw, drawPowerPoint, pile, pool, setPileCut };
 })();
