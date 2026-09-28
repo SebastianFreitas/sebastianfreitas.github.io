@@ -29,6 +29,7 @@
     const ctx = canvas.getContext("2d");
 
     let cursorOn = false;
+    let topDirty = true;
     const V = {
       W: 0, H: 0, dpr: 1, top: 0, sy: 0, docH: 0, t: 0, dt: 0,
       main: { x: 0, y: 0, w: 0, h: 0 }, gutter: 0, band: { x0: 0, x1: 0, w: 0 },
@@ -96,7 +97,10 @@
       dt = Math.max(0, dt);
       V.dt = dt; V.t += dt;
       V.sy = window.scrollY;
-      V.top = topbar ? Math.max(0, topbar.getBoundingClientRect().bottom) : 0;
+      if (V.scrolled || topDirty) {
+        V.top = topbar ? Math.max(0, topbar.getBoundingClientRect().bottom) : 0;
+        topDirty = false;
+      }
       // rebuild the viewport-space visible list in place, reusing pooled objects
       let n = 0;
       for (let i = 0; i < V.blocks.length; i++) {
@@ -128,6 +132,7 @@
     else { canvas.hidden = true; }
 
     window.addEventListener("pointermove", e => {
+      if (!on) return;
       V.pointer.x = e.clientX; V.pointer.y = e.clientY; V.pointer.has = true;
       spec.move && spec.move(e.clientX, e.clientY, V);
     }, { passive: true });
@@ -154,10 +159,11 @@
 
     window.addEventListener("resize", () => {
       size(); measure();
+      topDirty = true;
       spec.resize && spec.resize(V);
       const want = mq.matches;
       if (want && !on) { on = true; canvas.hidden = false; if (pacer) pacer.start(); }
-      else if (!want && on) { on = false; canvas.hidden = true; }
+      else if (!want && on) { on = false; canvas.hidden = true; V.cursor(false); }
       if (pacer) pacer.wake();
     });
 
@@ -213,15 +219,31 @@
   }
 
   // a soft radial glow of radius r centred on (x, y); rgb is "r,g,b"
+  const glowCache = new Map();
   function glow(ctx, x, y, r, rgb, a) {
     if (a <= 0.003 || r <= 0) return;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, "rgba(" + rgb + "," + a + ")");
-    g.addColorStop(1, "rgba(" + rgb + ",0)");
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.fill();
+    const R = Math.max(1, Math.round(r));
+    const key = rgb + "|" + R;
+    let sprite = glowCache.get(key);
+    if (!sprite) {
+      const cv = document.createElement("canvas");
+      cv.width = R * 2; cv.height = R * 2;
+      const g2 = cv.getContext("2d");
+      const g = g2.createRadialGradient(R, R, 0, R, R, R);
+      g.addColorStop(0, "rgba(" + rgb + ",1)");
+      g.addColorStop(1, "rgba(" + rgb + ",0)");
+      g2.beginPath();
+      g2.arc(R, R, R, 0, Math.PI * 2);
+      g2.fillStyle = g;
+      g2.fill();
+      sprite = cv;
+      if (glowCache.size >= 64) glowCache.clear();
+      glowCache.set(key, sprite);
+    }
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.drawImage(sprite, x - R, y - R);
+    ctx.globalAlpha = prevAlpha;
   }
 
   // one XP point, once

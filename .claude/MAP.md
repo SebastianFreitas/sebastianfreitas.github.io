@@ -356,7 +356,7 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
-| Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js`; shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px); XP ids `play-*` |
+| Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js`; shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px); XP ids `play-*`. Conclusus: keys taken only by arriving on their platform (never by click), progress survives relayout, cached glow sprites in `play.js` |
 
 ### Storage keys
 
