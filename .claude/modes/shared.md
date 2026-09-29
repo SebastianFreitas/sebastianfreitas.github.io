@@ -13,10 +13,11 @@ for any task longer than a quick fix; this mode is for small changes.
   before every commit: anything else modified is someone else's.
 - A file you must change that already has foreign edits: say so in the
   spec. The implementer edits by exact string, touches only its own hunks
-  and never cleans up. If a foreign edit breaks a flow, report it; do not
+  and never cleans up. If a foreign edit breaks a check, report it; do not
   fix it.
-- Commit straight to `main`, no branches. Run `py -3 tools/bump.py` before
-  a commit that changes any script or stylesheet (only this mode bumps).
+- Commit straight to `main`, no branches. This mode runs the project's
+  landing steps itself before such a commit (the project's notes below
+  name them); worktree and cloud never do.
 - **Never push, never pull, never merge anything into `main`.** Commit
   straight to `main` by path; the commit stays local until the owner
   pushes it with GitHub Desktop (the owner can Undo commit there before
@@ -30,25 +31,23 @@ for any task longer than a quick fix; this mode is for small changes.
 
 ### Report commands
 
-- **Try:** `Set-Location C:\Users\Traff\Desktop\sebas\Portfolio; py -3 serve.py`
-  and the line under it gives `http://127.0.0.1:8765<url path>`. If 8765
-  is busy, the owner already has it running: give only the URL.
+- **Try:** the project's notes below give the command.
 - **Commit:** no command: say "Already committed as <sha> on `main`;
   review it in GitHub Desktop and push there."
 
 ### Merging by hand
 
 Only when the owner asks you to merge branches. Merge the open branches
-into `main` one at a time with `--no-ff`, oldest first. `?v=` numbers no
-longer conflict (the `cachebust` merge driver that `try.py` installs
-ignores them); if one still does, keep either side. Two branches adding `<script>` lines at the same spot:
-keep both, in load order. `.claude/MAP.md` rows: keep both sides' rows,
-then re-count the changed files. After the last merge run `py -3
-tools/bump.py` once and the full `py -3 tools/nav-flows.test.py`, commit,
-and end with the report (the owner pushes). Never delete branches by
-hand; `tools/cleanup.py` removes merged ones once idle 24 h.
+into `main` one at a time with `--no-ff`, oldest first. `.claude/MAP.md`
+rows: keep both sides' rows, then re-count the changed files. The
+project's notes below say how its own conflicts resolve. After the last
+merge run the landing steps once and the project's full check (`CLAUDE.md`
+§ Verify), commit, and end with the report (the owner pushes). Never
+delete branches by hand; `tools/cleanup.py` removes merged ones once
+idle 24 h.
 
 ### Context full
 
-The rule is CLAUDE.md's "Context budget" (stop, handoff, owner clears).
-List foreign uncommitted paths under the handoff's "Foreign edits".
+The rule is `workflow.md`'s "Context budget" (stop, handoff, owner
+clears). List foreign uncommitted paths under the handoff's "Foreign
+edits".

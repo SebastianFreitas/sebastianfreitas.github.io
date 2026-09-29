@@ -52,7 +52,7 @@ Interview: A open · 0 asked   <- A/B/C open or done, running total; missed: lin
 
 ## Constraints (every phase)
 
-- <rules that hold for the whole plan: art rules, perf, reduced motion, snapshot `same` outside the phase's scenes, research is for ideas never copying>
+- <rules that hold for the whole plan: art rules, perf, reduced motion, screenshots unchanged outside the phase's scope, research is for ideas never copying>
 
 ## Progress
 
@@ -66,7 +66,7 @@ Interview: A open · 0 asked   <- A/B/C open or done, running total; missed: lin
 ### 1 · <name>
 Research: <topics, then "go past the list">.
 Deliverable: <exact files / functions / docs>.
-Verification: <exact command, or the snap scenes that must be `same` / must change>.
+Verification: <exact command, or the screenshots that must stay the same / must change>.
 Reviewed: <Part C answers: delivers right / out list and verification agreed / splits, D<n>>
 Notes: <filled when done: research digest path, what changed>
 

@@ -11,6 +11,10 @@ You are the implementer for this project. Another agent has already done the
 design and written a spec for you. Your job is to turn that spec into code
 exactly as written.
 
+First, read `.claude/project/implementer.md` (short): this project's
+conventions, its test command, its largest files and the paths never to
+open. Where it and this file disagree, it wins.
+
 ## Rules
 
 - Implement only from the spec you were given. It is your only source of
@@ -29,7 +33,7 @@ exactly as written.
   idiom. If the spec has a Style section, follow it.
 - If the spec gives a verification command, run it and include the result.
   If it says none, skip it. Never start a server or any other long-running
-  process (never `serve.py`).
+  process (a dev server, an editor window).
 - The same command failing the same way three times: stop and report it
   with the last failure output. Do not keep trying variations.
 
@@ -41,31 +45,17 @@ reading.
 
 - Read only the region you are changing. Grep for the function names the
   spec gives you, then `Read` with `offset`/`limit` around the hit. Never
-  read a file over 300 lines top to bottom (the largest are
-  `css/bridge.css`, `js/hud/instruments.js`, `js/pages/voidscape.js`,
-  `js/gamedev/storm.js`, `js/ship/voidship.js`, `js/gamedev/forge.js`,
-  `js/genesis/genesis.js`, `js/gamedev/zones.js`, 500 to 850 lines).
-- Never open `cv.pdf`, `media/`, `Temporary VoidScape Media/`,
-  `snapshots/` or `__pycache__/`.
+  read a file over 300 lines top to bottom (the project file names the
+  largest).
+- Never open the paths the project file lists, or `__pycache__/`.
 - Keep command output short: pipe it through `tail -n 30`, or grep it for
   errors. Never print whole logs.
 - If the task needs more than three whole-file reads, or a hook prints
   CONTEXT WATCH, stop reading, do what the spec allows from what you have,
   and say in the report that the spec needs narrower anchors or a split.
 
-## Project conventions
+## Git
 
-- No framework, no bundler, no npm, no `node`. Test: `py -3
-  tools/nav-flows.test.py <flows>` (in the cloud: `python3`). A passing
-  flow is the syntax check.
-- The hero (`js/bridge/`) and the world (`js/world/`) are each split across
-  files that share one state object (`window.Bridge` as `B`, `window.World`
-  with `F` for per-frame values and `P` for painters). Cross-file state is
-  read as `B.x` / `F.x` at call time; grep the field name across the folder
-  to find every reader and writer.
-- Every JS file is an IIFE publishing one `window.X` global. Cross-file
-  references are by that global, so grep `X.` to find callers rather than
-  reading callers' files.
 - Never run `git` commands that change history or the index; the caller
   commits.
 

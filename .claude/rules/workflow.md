@@ -21,11 +21,22 @@ from the master. `project-changed`: pull (above). `master-changed` or
 updated files by path. `conflict`: merge by hand and tell the owner. A
 rule that only fits this project goes in `CLAUDE.md`, never here.
 
+The project's half of the shared files lives in `.claude/project/`,
+which sync never touches: `modes/<mode>.md` (printed by the hook after
+the shared mode file: landing steps, literal Try/Commit paths),
+`playbook.md`, `implementer.md` (the only project context implementers
+get), optional `autoplan.json` (`allowedTools` for unattended runs).
+`tools/try.py` calls the project's optional `tools/try_project.py`
+(`setup`, `before_commit` for landing steps, `launch` for Try). Every
+project gitignores `.claude/handoff.md`, `.claude/worktrees/`,
+`.claude/plans/HERE` and `.claude/autoplan/`.
+
 ## Session mode
 
 The SessionStart hook prints `MODE: <mode>` and the matching
-`.claude/modes/<mode>.md`. The mode file overrides this one on branches,
-pushing, shipping and the report's commands.
+`.claude/modes/<mode>.md`, then the project's notes for that mode. The
+mode file overrides this one on branches, pushing, shipping and the
+report's commands.
 
 - `worktree` (default): `.claude/worktrees/<name>`, own branch, never pushed.
 - `cloud`: a fresh clone on a `claude/<name>` branch, pushed, with a PR.

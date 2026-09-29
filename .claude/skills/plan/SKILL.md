@@ -174,9 +174,8 @@ empty list.
    most two files it reads to design (name them); more than that is two
    phases. A phase's section is self-contained (it names its D numbers
    and pieces), because an unattended session sees only that section.
-   Verification names the check that actually sees the change: a toy
-   canvas needs `jscheck.py --shot` or a flow, since `snap.py` does not
-   paint it. Fill Scope, Constraints, the Progress table. Commit.
+   Verification names the check that actually sees the change
+   (`CLAUDE.md` § Verify says which check sees what). Fill Scope, Constraints, the Progress table. Commit.
 2. **Show every phase to the owner.** One question per phase, up to 4
    per call: *"Phase <n>, <name>, delivers <deliverables>, must not touch
    <Out list>, verified by <command / scenes>. Right?"* with "Right
@@ -249,8 +248,8 @@ turn, never "keep going with Next".
    this session's work.
 4. **Handoff protocol** (every step, in this order, before anything
    else):
-   1. Verify: the phase's Verification line (flows, snapshots,
-      `jscheck.py`) passes; a `page-*` scene shows no console error. A
+   1. Verify: the phase's Verification line passes, with what
+      `CLAUDE.md` § Verify adds for the areas touched. A
       phase that does not verify is not complete: fix it, or stop with
       the blocker named in PLAN_STATE.md.
    2. Commit by path with a message that describes the phase, as the

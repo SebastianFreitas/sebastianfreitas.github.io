@@ -3,23 +3,25 @@
     py -3 tools/try.py claude/adoring-fermi-87uf0y --path "/?genesis=1"
     py -3 tools/try.py claude/adoring-fermi-87uf0y --commit
 
-Checks the branch out into a reusable sibling worktree and serves it with
-serve.py on a free port, opening it in the browser.
+Checks the branch out into a reusable sibling worktree and launches it.
 
 Commit squashes the branch into ONE commit on main in the main checkout (the
-one GitHub Desktop shows), bumps ?v= in that same commit, merges main back
-into the session's worktree branch so follow-up rounds stay clean, and never
-pushes: the owner pushes with GitHub Desktop. Afterwards it runs
-tools/cleanup.py, which deletes other session branches and worktrees that
-have landed on main and sat idle 24 h (never the branch just committed).
+one GitHub Desktop shows), merges main back into the session's worktree
+branch so follow-up rounds stay clean, and never pushes: the owner pushes
+with GitHub Desktop. Afterwards it runs tools/cleanup.py, which deletes other
+session branches and worktrees that have landed on main and sat idle 24 h
+(never the branch just committed).
 
-It also installs the ?v= merge driver (tools/merge-cachebust.py) so
-cache-bust numbers never conflict.
+Project-specific steps come from an optional tools/try_project.py in the main
+checkout, which may define setup(root), before_commit(root) -> bool and
+launch(tree, port, path) -> (Popen | None, url | None). Without it, try
+checks the branch out and commits with no extra steps.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import socket
 import subprocess
 import sys
@@ -36,6 +38,23 @@ def _main_root() -> Path:
 
 ROOT = _main_root()
 TRY_DIR = ROOT.parent / (ROOT.name + "-try")
+
+
+def load_project():
+    path = ROOT / "tools" / "try_project.py"
+    if not path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("try_project", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PROJECT = load_project()
+
+
+def hook(name: str):
+    return getattr(PROJECT, name, None) if PROJECT else None
 
 
 def git(*args: str, cwd: Path = ROOT, check: bool = True) -> str:
@@ -55,30 +74,6 @@ def free_port(start: int) -> int:
             except OSError:
                 continue
     return start
-
-
-def install_merge_driver() -> None:
-    script = ROOT / "tools" / "merge-cachebust.py"
-    if not script.exists():
-        return
-    cmd = f'"{Path(sys.executable).as_posix()}" "{script.as_posix()}" %O %A %B %L'
-    if git("config", "--get", "merge.cachebust.driver", check=False) != cmd:
-        git("config", "merge.cachebust.name", "HTML pages, ignoring ?v= cache-bust numbers")
-        git("config", "merge.cachebust.driver", cmd)
-
-    common_dir = git("rev-parse", "--git-common-dir")
-    attrs = (ROOT / common_dir).resolve() / "info" / "attributes"
-    attrs.parent.mkdir(parents=True, exist_ok=True)
-    line = "*.html merge=cachebust"
-    if attrs.exists():
-        existing = attrs.read_text(encoding="utf-8")
-        lines = existing.splitlines()
-    else:
-        existing = ""
-        lines = []
-    if line not in lines:
-        prefix = existing if (not existing or existing.endswith("\n")) else existing + "\n"
-        attrs.write_text(prefix + line + "\n", encoding="utf-8", newline="\n")
 
 
 def resolve(name: str) -> tuple[str, str]:
@@ -203,11 +198,10 @@ def commit(branch: str, ref: str, subject: str) -> None:
         print("In that session, ask Claude to merge main into its branch and resolve, then run this again.")
         sys.exit(1)
 
-    bump = subprocess.run([sys.executable, str(ROOT / "tools" / "bump.py")], cwd=ROOT, capture_output=True, text=True)
-    if bump.returncode != 0:
-        print(bump.stderr)
+    before = hook("before_commit")
+    if before and not before(ROOT):
         git("reset", "--hard", "HEAD", check=False)
-        print("bump.py failed; nothing changed.")
+        print("try_project.before_commit failed; nothing changed.")
         sys.exit(1)
 
     git("add", "-u")
@@ -238,7 +232,9 @@ def commit(branch: str, ref: str, subject: str) -> None:
 
 
 def main() -> None:
-    install_merge_driver()
+    setup = hook("setup")
+    if setup:
+        setup(ROOT)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("branch")
@@ -258,23 +254,21 @@ def main() -> None:
 
     ensure_tree(ref)
 
-    if not (TRY_DIR / "serve.py").exists():
-        print(f"{TRY_DIR / 'serve.py'} is missing.")
-        sys.exit(1)
-
     port = free_port(args.port)
-
-    proc = subprocess.Popen([sys.executable, str(TRY_DIR / "serve.py"), str(port)], cwd=TRY_DIR)
-
     path = args.path if args.path.startswith("/") else "/" + args.path
-    url = f"http://127.0.0.1:{port}{path}"
+    launch = hook("launch")
+    proc, url = launch(TRY_DIR, port, path) if launch else (None, None)
+
     print(f"Trying {branch} @ {sha}  {subject}")
     print(f"Tree:  {TRY_DIR}")
-    print(f"Open:  {url}")
-    print("Ctrl+C stops the server.")
+    if url:
+        print(f"Open:  {url}")
+        print("Ctrl+C stops the server.")
+    if proc is None and url is None:
+        print("No launcher (tools/try_project.py launch); open the tree yourself.")
 
-    time.sleep(0.8)
-    if not args.no_open:
+    if url and not args.no_open:
+        time.sleep(0.8)
         webbrowser.open(url)
 
     if sys.stdin.isatty():
@@ -285,23 +279,28 @@ def main() -> None:
             except (EOFError, KeyboardInterrupt):
                 ans = ""
             if ans == "commit":
-                proc.terminate()
-                proc.wait(timeout=5)
+                if proc:
+                    proc.terminate()
+                    proc.wait(timeout=5)
                 commit(branch, ref, subject)
                 return
             elif ans == "":
-                proc.terminate()
-                proc.wait(timeout=5)
+                if proc:
+                    proc.terminate()
+                    proc.wait(timeout=5)
                 print("Stopped.")
                 break
             else:
                 print("Type commit or press Enter.")
     else:
+        if proc is None:
+            return
         try:
             proc.wait()
         except KeyboardInterrupt:
-            proc.terminate()
-            proc.wait(timeout=5)
+            if proc:
+                proc.terminate()
+                proc.wait(timeout=5)
             print("Stopped.")
 
 

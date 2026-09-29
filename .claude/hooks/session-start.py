@@ -1,7 +1,8 @@
 """Session start: prints what a new context must know before its first move.
 
 1. The mode (cloud / worktree / shared) and that mode's rules from
-   .claude/modes/<mode>.md. CLAUDE.md keeps only the rules every mode
+   .claude/modes/<mode>.md plus the project's own additions from
+   .claude/project/modes/<mode>.md when present. CLAUDE.md keeps only the rules every mode
    shares, so each session loads one mode's rules instead of all three.
 2. On a fresh start or /clear: the branch, and the paths already
    uncommitted (made by another session, never by this one).
@@ -65,9 +66,18 @@ def mode_rules(root, mode):
         p = os.path.join(base, mode + ".md")
         if os.path.exists(p):
             with open(p, encoding="utf-8", errors="ignore") as f:
-                return f.read().strip()
-    return (f"(.claude/modes/{mode}.md not found: follow CLAUDE.md and say "
-            "in the report that the mode file is missing.)")
+                text = f.read().strip()
+            break
+    else:
+        text = (f"(.claude/modes/{mode}.md not found: follow CLAUDE.md and say "
+                "in the report that the mode file is missing.)")
+    p = os.path.join(root, ".claude", "project", "modes", mode + ".md")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8", errors="ignore") as f:
+            extra = f.read().strip()
+        if extra:
+            text = text + "\n\n" + extra
+    return text
 
 
 def plan_lines(root):

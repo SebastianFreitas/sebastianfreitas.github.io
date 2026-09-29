@@ -46,6 +46,11 @@ ALLOWED_TOOLS = [
     "PowerShell(git status *)", "PowerShell(git diff *)",
     "PowerShell(git log *)", "PowerShell(py -3 tools/*)",
 ]
+# Project-specific tools (e.g. an engine's CLI): .claude/project/autoplan.json {"allowedTools": [...]}
+try:
+    ALLOWED_TOOLS += json.loads((ROOT / ".claude" / "project" / "autoplan.json").read_text(encoding="utf-8")).get("allowedTools", [])
+except (OSError, ValueError, AttributeError):
+    pass
 
 _PLAN_NAME = "?"  # set by main() before the loop; safety_commit's message needs it
 

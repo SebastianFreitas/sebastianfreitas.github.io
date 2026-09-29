@@ -1,13 +1,27 @@
 {
   "master": "C:/Users/Traff/Desktop/sebas/claude-workflow",
-  "commit": "22b464317008ba0824ef8c02ab10391d2188a90a",
+  "commit": "6663be20dd92b82730fbeea6443f403cb900e051",
   "files": {
+    ".claude/agents/implementer-wt.md": "4cdcafb8bd0f204c8d5efdf02551d099e9eb5f57c85baa1726ffa3ca76e1f2ed",
+    ".claude/agents/implementer.md": "e5a30a7c011c935d6c0b81f3b8a236f9478227e73bc824a08bb2fafd22e179a7",
     ".claude/agents/reviewer.md": "056eb0de792d15a41e7e7864171e6ffa92f781a7553df8cb530a90d949736f49",
     ".claude/hooks/context-watch.py": "9203f4502faaa7ef432fc6894d13f187c94890e6745598ca6c0aefda9a24796f",
     ".claude/hooks/git-guard.py": "d1ee42ac3ee61c296d588cfc0f531a7b1fcc97ed19e5427a2bc4159c91ce1f0c",
     ".claude/hooks/run.sh": "c24f9c69af6cb369f81153d75aeb942fbb45a1ee8b0c066e74179ac17a594adf",
+    ".claude/hooks/session-start.py": "3286171ae2eddfebdca3e061145133033f3c6e94ee99e3ce80bc58d04c0bfc41",
     ".claude/hooks/stop-guard.py": "3e792803a5a10038557775a6e5c229e223ce0d31ba25d1f114b661e96b3d9eb0",
-    ".claude/rules/workflow.md": "c45c3cbc778123d5379964169c620157b332aa87de8d0559134f1305bea1889a",
-    ".claude/skills/handoff/SKILL.md": "c17ba2826e37fa927e8e8e4ce803f1beace2658dfdd395ca3274df0c721ecb58"
+    ".claude/modes/cloud.md": "56d77d3cfb0cc4191c3ff97c211318a0a16d9089c89b446c112775e64f34bfbd",
+    ".claude/modes/shared.md": "9af052523d39a2e52dff00575d7455cb2339e3a85e3f82b2f546356419c90f44",
+    ".claude/modes/worktree.md": "52aa638d0a95ae77b8e48da43e857055bd2e7da5df8174521cac41fd36ad3ee1",
+    ".claude/plans/TEMPLATE.md": "8fdb753a8f59fe387ce585a234fd06f1ffe4cf93cfb817c730171ab46d95c0c8",
+    ".claude/playbook.md": "c4a847a2b1f3452242d54a6216471cd61b4aa103c545245e03957ccd74bc62c9",
+    ".claude/rules/workflow.md": "1d5e4f96cd46519047243a14c28dcfc309d7b39ba89bbaecbfe59d3727ef8fb6",
+    ".claude/settings.json": "0199bc8f21be1f6f429c7258bf927780c0768618d70e65b5f2d4f19f96c86e57",
+    ".claude/skills/handoff/SKILL.md": "c17ba2826e37fa927e8e8e4ce803f1beace2658dfdd395ca3274df0c721ecb58",
+    ".claude/skills/plan/SKILL.md": "4c7a8e7223bde5c10ba4ad45a5d59c95aa3ab0a75e3ff3ee746ce960f6f44360",
+    ".claude/skills/plan/unattended.md": "960e7b0d00f04e417ea3e438ac9baed94bd826eecab391c3742d29803f6203b9",
+    "tools/autoplan.py": "77327800f4bdc61a926b41d19c870fc1c9f5cff01dd5daa50df1b2976a98389a",
+    "tools/cleanup.py": "71108a1cc531c1beaada08f99c5269024843b6f035c0d575a0ef2ed603401c25",
+    "tools/try.py": "7c3c3854a3708f5024a7070645b115996b12707013bf5b4b1232fcff3cb23f71"
   }
 }

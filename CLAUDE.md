@@ -16,7 +16,8 @@ portfolio, and wins where the two disagree.
 Facts live in `.claude/MAP.md` (file map, sizes, shared state, load
 order, storage keys, roadmap). Grep it; it is too long to read whole.
 `.claude/` also holds `modes/`, `rules/`, `skills/`, `hooks/`, `agents/`
-and `playbook.md`.
+and `playbook.md` (shared), and `project/` (the portfolio's half of the
+modes, playbook and implementer brief; never synced).
 
 ## Screenshots for the report
 
@@ -43,6 +44,12 @@ in those areas.
   you did not mean to change. Runs live in `snapshots/` (gitignored), so
   a fresh worktree captures its own "before". A `page-*` scene fails on
   any console error, which is the case-page toys' error check.
+- A change that only paints a toy canvas: `snap.py` does not paint it.
+  Use `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]` (seconds; exits
+  1 on a blank toy or a console error; read the PNG it names), `py -3
+  tools/jscheck.py <files> --shot out.png`, or `snap.py
+  capture <run> --only <page>-toy` for its three scroll stops, plus the
+  flows. The full `snap.py` only when page DOM or CSS changes.
 
 ## Paths never to open
 
