@@ -1,5 +1,5 @@
 """Stop guard (Stop, main session): in worktree and cloud mode, the turn
-may not end with work that the owner's Ship command would miss.
+may not end with work that the owner's Commit command would miss.
 
 - Worktree or cloud: uncommitted or untracked (not ignored) files -> block
   once, asking to commit them by path, or to say why they stay.
@@ -54,7 +54,7 @@ def main():
     if paths:
         more = f" (+{len(paths) - 12} more)" if len(paths) > 12 else ""
         problems.append("uncommitted files: " + ", ".join(paths[:12]) + more
-                        + ". The Ship command merges commits only")
+                        + ". The Commit command merges commits only")
     if m == "cloud":
         branch = git("branch", "--show-current")
         remote = (git("rev-parse", "--abbrev-ref", "@{upstream}")
@@ -75,7 +75,8 @@ def main():
         f"Stop guard ({m} mode): " + "; ".join(problems) + ". Commit by path"
         + (" and push" if m == "cloud" else "")
         + ", then end with the report. If you are stopping on purpose "
-        "(a question for the owner, a blocker, work left for a handoff), "
+        "(a question for the owner, a blocker, work left for a handoff, a check "
+        "you deliberately skipped), "
         "say so in one line and stop again.")}))
 
 

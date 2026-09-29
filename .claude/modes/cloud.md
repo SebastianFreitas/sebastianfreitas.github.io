@@ -2,7 +2,7 @@
 
 A fresh Linux clone of GitHub, one container and one `claude/<name>`
 branch per session, so parallel sessions never share files. Nothing you
-push reaches `main` until the owner lands it.
+push reaches `main` until the owner lands it with Commit.
 
 - **Branch:** work, commit and push only on the branch this session was
   given (the GitHub proxy refuses pushes to any other). Never push to
@@ -18,20 +18,27 @@ push reaches `main` until the owner lands it.
   for new files and update descriptions only. `try.py --commit` runs the
   landing steps once on merge.
 - **Commands:** there is no `py -3` here; run every tool with `python3`.
-  Screenshots: send them with SendUserFile when the tool exists.
+  Screenshots: send them with SendUserFile when the tool exists. A tool
+  that needs a display: skip it and say so; the owner sees the change
+  with Try.
+- **The clone is the committed tree:** the owner's uncommitted edits
+  aren't here. If a check fails on the fresh clone before you changed
+  anything, report that instead of re-recording a baseline.
+- Baselines: as in worktree mode (re-record only on purpose, say so).
 
 ### Report commands
 
 The project's notes below give the literal paths.
 
-- **Try:** `py -3 <main checkout>/tools/try.py <branch> --path "<where>"`
-  checks the branch out into a sibling `-try` worktree of the owner's
+- **Try:** `py -3 <main checkout>/tools/try.py <branch>` plus the
+  project's Try flags checks the branch out into a sibling `-try` worktree of the owner's
   main checkout and launches it; typing `commit` at its prompt does the
   Commit step.
 - **Commit:** `py -3 <main checkout>/tools/try.py <branch> --commit`
-  (the same command as Try's prompt): fetches the branch from origin and
-  squashes it into local `main` in the main checkout, runs the landing
-  steps in that commit, and pushes nothing. On a conflict it pushes
+  (the same command as Try's prompt): fetches the branch from origin,
+  builds one squash commit on local `main` without touching the main
+  checkout's files, runs the landing steps and checks on the combined
+  tree in the `-try` checkout, fast-forwards `main`, and pushes nothing. On a conflict it pushes
   nothing and says so.
 
 After the owner pushes `main`, they close the PR by hand (GitHub shows it

@@ -54,7 +54,7 @@ backdrop never competes with them.
   at a glance.
 
 - The implementer never sees this file: copy the rules that apply into
-  the spec's Style section.
+  the spec's Rules section.
 
 ## Eldritch (the genesis cutscene)
 

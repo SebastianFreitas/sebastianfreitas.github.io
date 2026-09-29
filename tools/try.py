@@ -1,79 +1,50 @@
 """Try a session's branch locally, without touching the main checkout.
 
-    py -3 tools/try.py claude/adoring-fermi-87uf0y --path "/?genesis=1"
-    py -3 tools/try.py claude/adoring-fermi-87uf0y --commit
+    py -3 tools/try.py                                 list session branches
+    py -3 tools/try.py <branch> [project flags]        Try it
+    py -3 tools/try.py <branch> --commit               land it
+    py -3 tools/try.py main [project flags]            Try the main checkout as it is
 
-Checks the branch out into a reusable sibling worktree and launches it.
-
-Commit squashes the branch into ONE commit on main in the main checkout (the
-one GitHub Desktop shows), merges main back into the session's worktree
-branch so follow-up rounds stay clean, and never pushes: the owner pushes
-with GitHub Desktop. Afterwards it runs tools/cleanup.py, which deletes other
-session branches and worktrees that have landed on main and sat idle 24 h
-(never the branch just committed).
-
-Project-specific steps come from an optional tools/try_project.py in the main
-checkout, which may define setup(root), before_commit(root) -> bool and
-launch(tree, port, path) -> (Popen | None, url | None). Without it, try
-checks the branch out and commits with no extra steps.
+Try checks the branch out (detached) into the sibling <repo>-try worktree and
+launches it through the project's tools/try_project.py, which may define
+setup(root), add_arguments(parser) and launch(tree, args, is_main) ->
+(Popen | None, url | None). Without it, try only checks the branch out.
+Commit is tools/try_commit.py.
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
-import socket
 import subprocess
 import sys
 import time
 import webbrowser
 from pathlib import Path
 
-def _main_root() -> Path:
-    here = Path(__file__).resolve().parent.parent
-    r = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=here, capture_output=True, text=True)
-    if r.returncode != 0:
-        return here
-    return (here / r.stdout.strip()).resolve().parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-ROOT = _main_root()
-TRY_DIR = ROOT.parent / (ROOT.name + "-try")
+from try_commit import ROOT, TRY_DIR, ensure_tree, git, git_run, hook, land  # noqa: E402
 
 
-def load_project():
-    path = ROOT / "tools" / "try_project.py"
-    if not path.exists():
-        return None
-    spec = importlib.util.spec_from_file_location("try_project", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def list_branches() -> None:
+    git_run("fetch", "origin", "--prune")
+    listing = git(
+        "for-each-ref", "--sort=-committerdate",
+        "refs/heads/claude", "refs/heads/worktree-*", "refs/remotes/origin/claude",
+        "--format=%(refname:short)|%(committerdate:relative)|%(subject)",
+        check=False,
+    )
+    lines = [line for line in listing.splitlines() if line]
 
-
-PROJECT = load_project()
-
-
-def hook(name: str):
-    return getattr(PROJECT, name, None) if PROJECT else None
-
-
-def git(*args: str, cwd: Path = ROOT, check: bool = True) -> str:
-    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
-    if check and result.returncode != 0:
-        print(result.stderr, file=sys.stderr)
-        sys.exit(1)
-    return result.stdout.strip()
-
-
-def free_port(start: int) -> int:
-    for p in range(start, start + 50):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("127.0.0.1", p))
-                return p
-            except OSError:
-                continue
-    return start
+    print("Session branches, newest first:")
+    if not lines:
+        print("No session branches (claude/*) here or on origin.")
+    else:
+        for line in lines:
+            name, when, subject = line.split("|", 2)
+            print(f"  {name:<44} {when:<16} {subject[:70]}")
+    print()
+    print("Try one: py -3 tools/try.py <branch>    Land it: py -3 tools/try.py <branch> --commit")
 
 
 def resolve(name: str) -> tuple[str, str]:
@@ -81,17 +52,15 @@ def resolve(name: str) -> tuple[str, str]:
     the newest, else the local branch name. Exits with a listing if neither exists."""
     if name.startswith("origin/"):
         name = name[len("origin/"):]
-    if name == "main":
-        print("Give a session branch, not main.")
-        sys.exit(1)
 
     candidates = [name]
     if "/" not in name:
         candidates.append("claude/" + name)
+        candidates.append("worktree-" + name)
 
     for c in candidates:
         local = git("rev-parse", "--verify", "--quiet", f"refs/heads/{c}", check=False) != ""
-        subprocess.run(["git", "fetch", "origin", c], cwd=ROOT, capture_output=True, text=True)
+        git_run("fetch", "origin", c)
         remote = git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{c}", check=False) != ""
 
         if not local and not remote:
@@ -101,168 +70,91 @@ def resolve(name: str) -> tuple[str, str]:
         if remote and not local:
             return c, f"origin/{c}"
 
-        ahead = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", f"origin/{c}", c], cwd=ROOT,
-        ).returncode == 0
+        ahead = git_run("merge-base", "--is-ancestor", f"origin/{c}", c).returncode == 0
         if ahead:
             return c, c
         return c, f"origin/{c}"
 
-    print(f"No branch {name}, locally or on origin. Session branches:")
-    subprocess.run(["git", "fetch", "origin", "--prune"], cwd=ROOT, capture_output=True, text=True)
-    listing = git(
-        "for-each-ref",
-        "--sort=-committerdate",
-        "refs/heads/claude", "refs/remotes/origin/claude",
-        "--format=%(refname:short)  %(committerdate:relative)  %(subject)",
-        check=False,
-    )
-    print(listing)
+    print(f"No branch {name}, locally or on origin.")
+    list_branches()
     sys.exit(1)
 
 
-def ensure_tree(ref: str) -> None:
-    if not TRY_DIR.exists():
-        git("worktree", "prune", check=False)
-        git("worktree", "add", "--detach", str(TRY_DIR), ref)
-    elif (TRY_DIR / ".git").exists():
-        git("checkout", "--detach", "--force", ref, cwd=TRY_DIR)
-        git("clean", "-fd", cwd=TRY_DIR)
-    else:
-        print(f"{TRY_DIR} exists and is not a git worktree; move it away and re-run.")
-        sys.exit(1)
-
-
-def worktree_of(branch: str) -> Path | None:
-    """Path of the worktree that has `branch` checked out, else None."""
-    listing = git("worktree", "list", "--porcelain", check=False)
-    path = None
-    for entry in listing.split("\n\n"):
-        path = None
-        for line in entry.splitlines():
-            if line.startswith("worktree "):
-                path = line[len("worktree "):]
-            elif line == f"branch refs/heads/{branch}":
-                return Path(path)
-    return None
-
-
-def commit(branch: str, ref: str, subject: str) -> None:
-    wt = worktree_of(branch)
-    if wt and git("status", "--porcelain", cwd=wt, check=False):
-        print(f"Note: {wt} has uncommitted files; only its commits go in.")
-
-    current = git("rev-parse", "--abbrev-ref", "HEAD", check=False)
-    if current != "main":
-        print(f"The main checkout ({ROOT}) is on {current}, not main. Switch to main in GitHub Desktop and run this again. Nothing changed.")
-        sys.exit(1)
-
-    dirty = git("status", "--porcelain", "--untracked-files=no")
-    if dirty:
-        print("The main checkout has uncommitted changes; commit or discard them in GitHub Desktop first. Nothing changed:")
-        for line in dirty.splitlines():
-            print(f"  {line}")
-        sys.exit(1)
-
-    subprocess.run(["git", "fetch", "origin", "main"], cwd=ROOT, capture_output=True, text=True)
-    if git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main", check=False):
-        behind = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", "origin/main", "main"], cwd=ROOT,
-        ).returncode != 0
-        if behind:
-            print("origin/main has commits your main lacks. Pull (Fetch origin, then Pull) in GitHub Desktop first, then run this again. Nothing changed.")
-            sys.exit(1)
-
-    n = git("rev-list", "--count", "--no-merges", f"main..{ref}")
-    if n == "0":
-        print(f"{branch} has nothing that main lacks. Nothing to commit.")
+def stop(proc: subprocess.Popen | None) -> None:
+    if proc is None or proc.poll() is not None:
         return
-
-    titles = git("log", "--reverse", "--no-merges", "--format=- %s", f"main..{ref}")
-    trailer_lines = git("log", "--format=%(trailers:key=Co-Authored-By,valueonly)", f"main..{ref}").splitlines()
-    trailers = []
-    for t in trailer_lines:
-        if t and t not in trailers:
-            trailers.append(t)
-
-    r = subprocess.run(["git", "merge", "--squash", ref], cwd=ROOT, capture_output=True, text=True)
-    if r.returncode != 0:
-        files = git("diff", "--name-only", "--diff-filter=U", check=False)
-        git("reset", "--merge", check=False)
-        print("Conflicts with main, nothing changed:")
-        if files:
-            for f in files.splitlines():
-                print(f"  {f}")
-        else:
-            print(r.stderr or r.stdout)
-        print("In that session, ask Claude to merge main into its branch and resolve, then run this again.")
-        sys.exit(1)
-
-    before = hook("before_commit")
-    if before and not before(ROOT):
-        git("reset", "--hard", "HEAD", check=False)
-        print("try_project.before_commit failed; nothing changed.")
-        sys.exit(1)
-
-    git("add", "-u")
-    msg = subject + "\n\n" + f"Squashed from {branch}:\n" + titles
-    if trailers:
-        msg += "\n\n" + "\n".join("Co-Authored-By: " + t for t in trailers)
-    c = subprocess.run(["git", "commit", "-q", "-F", "-"], input=msg, cwd=ROOT, text=True, capture_output=True)
-    if c.returncode != 0:
-        print(c.stderr)
-        sys.exit(1)
-
-    sha = git("rev-parse", "--short", "HEAD")
-
-    if wt:
-        if git("status", "--porcelain", cwd=wt, check=False) == "":
-            m = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=wt, capture_output=True, text=True)
-            if m.returncode != 0:
-                subprocess.run(["git", "merge", "--abort"], cwd=wt, capture_output=True, text=True)
-                print(f"Could not merge main back into {branch} ({wt}); ask Claude in that session to merge main before its next round.")
-            else:
-                print(f"Merged main back into {branch}, so the next round there starts from this commit.")
-        else:
-            print(f"{branch} was not synced (uncommitted files there); ask Claude to merge main before its next round.")
-
-    print(f"Committed {sha} on main: {subject}")
-    print("Nothing was pushed. Review it in GitHub Desktop (History), then Push origin. To take it back before pushing: History, right-click it, Undo commit.")
-    subprocess.run([sys.executable, str(ROOT / "tools" / "cleanup.py"), "--quiet", "--keep", branch], cwd=ROOT)
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
 
 
-def main() -> None:
+def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # branch subjects can hold non-ASCII
+
     setup = hook("setup")
     if setup:
         setup(ROOT)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("branch")
-    parser.add_argument("--port", type=int, default=8766)
-    parser.add_argument("--path", default="/")
-    parser.add_argument("--no-open", action="store_true")
-    parser.add_argument("--commit", action="store_true")
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    parser.add_argument("branch", nargs="?")
+    parser.add_argument(
+        "--commit", action="store_true",
+        help="land the branch on local main as one commit; nothing is pushed",
+    )
+    parser.add_argument("--no-open", action="store_true", help="do not open the url in a browser")
+    add_arguments = hook("add_arguments")
+    if add_arguments:
+        add_arguments(parser)
     args = parser.parse_args()
 
+    if not args.branch:
+        list_branches()
+        return 0
+
+    launch = hook("launch")
+
+    if args.branch == "main":
+        if args.commit:
+            print("main is already main; nothing to commit.")
+            return 1
+        proc, url = launch(ROOT, args, True) if launch else (None, None)
+        print(f"Trying main (this checkout)  {git('log', '-1', '--format=%s', 'main')}")
+        print(f"Tree: {ROOT}")
+        if url:
+            print(f"Open: {url}")
+            print("Ctrl+C stops it.")
+            if not args.no_open:
+                time.sleep(0.8)
+                webbrowser.open(url)
+        if proc is None:
+            if not url:
+                print("No launcher (tools/try_project.py launch); open the tree yourself.")
+            return 0
+        try:
+            proc.wait()
+        except KeyboardInterrupt:
+            stop(proc)
+            print("Stopped.")
+        return 0
+
     branch, ref = resolve(args.branch)
+    if args.commit:
+        return land(branch, ref, args)
+
     sha = git("rev-parse", "--short", ref)
     subject = git("log", "-1", "--format=%s", ref)
 
-    if args.commit:
-        commit(branch, ref, subject)
-        return
-
     ensure_tree(ref)
 
-    port = free_port(args.port)
-    path = args.path if args.path.startswith("/") else "/" + args.path
-    launch = hook("launch")
-    proc, url = launch(TRY_DIR, port, path) if launch else (None, None)
+    proc, url = launch(TRY_DIR, args, False) if launch else (None, None)
 
     print(f"Trying {branch} @ {sha}  {subject}")
-    print(f"Tree:  {TRY_DIR}")
+    print(f"Tree: {TRY_DIR}")
     if url:
-        print(f"Open:  {url}")
+        print(f"Open: {url}")
         print("Ctrl+C stops the server.")
     if proc is None and url is None:
         print("No launcher (tools/try_project.py launch); open the tree yourself.")
@@ -279,30 +171,24 @@ def main() -> None:
             except (EOFError, KeyboardInterrupt):
                 ans = ""
             if ans == "commit":
-                if proc:
-                    proc.terminate()
-                    proc.wait(timeout=5)
-                commit(branch, ref, subject)
-                return
+                stop(proc)
+                return land(branch, ref, args)
             elif ans == "":
-                if proc:
-                    proc.terminate()
-                    proc.wait(timeout=5)
+                stop(proc)
                 print("Stopped.")
                 break
             else:
                 print("Type commit or press Enter.")
     else:
         if proc is None:
-            return
+            return 0
         try:
             proc.wait()
         except KeyboardInterrupt:
-            if proc:
-                proc.terminate()
-                proc.wait(timeout=5)
+            stop(proc)
             print("Stopped.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

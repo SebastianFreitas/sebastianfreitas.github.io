@@ -1,7 +1,8 @@
-"""Portfolio hooks for the shared tools/try.py: the ?v= merge driver, bump.py before a commit, and serve.py for Try."""
+"""Portfolio hooks for the shared tools/try.py: the ?v= merge driver, --port/--path for Try, serve.py as the launcher, and bump.py on the combined tree before a commit."""
 
 from __future__ import annotations
 
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -36,15 +37,33 @@ def setup(root: Path) -> None:
         attrs.write_text(prefix + line + "\n", encoding="utf-8", newline="\n")
 
 
-def before_commit(root: Path) -> bool:
-    bump = subprocess.run([sys.executable, str(root / "tools" / "bump.py")], cwd=root, capture_output=True, text=True)
+def add_arguments(parser) -> None:
+    parser.add_argument("--port", type=int, default=8766, help="first port to try for serve.py")
+    parser.add_argument("--path", default="/", help="URL path to open, e.g. /projects/voidscape.html")
+
+
+def _free_port(start: int) -> int:
+    for port in range(start, start + 51):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    return start
+
+
+def before_commit(tree: Path) -> bool:
+    bump = subprocess.run([sys.executable, str(tree / "tools" / "bump.py")], cwd=tree, capture_output=True, text=True)
     if bump.returncode != 0:
         print(bump.stderr)
         return False
     return True
 
 
-def launch(tree: Path, port: int, path: str):
+def launch(tree: Path, args, is_main: bool):
+    port = _free_port(args.port)
+    path = args.path if args.path.startswith("/") else "/" + args.path
     if not (tree / "serve.py").exists():
         print(f"{tree / 'serve.py'} is missing.")
         return None, None

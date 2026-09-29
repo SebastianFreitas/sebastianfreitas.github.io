@@ -20,4 +20,4 @@ paths:
 - Tiles read `r.env` only; they never reach into `Bridge`. Anything that
   does not change per paint goes in the tile's `paintStatic`.
 - The implementer never sees this file: copy the rules that apply into
-  the spec's Style section.
+  the spec's Rules section.

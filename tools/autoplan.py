@@ -12,6 +12,10 @@ live, kills it if it overflows, commits anything left uncommitted, reads
 the plan state, and starts the next session. A fresh process means a
 cleared context, so nobody has to type /clear or "go" between phases.
 
+Runs on the Max subscription only, never an API key: child_env strips
+every billing env var before a child session starts, and the runner
+stops itself on a usage limit rather than spend API money.
+
 Meant to run in a worktree, not the main checkout other sessions are
 using (pass --here to override that check).
 """
@@ -31,7 +35,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLANS = ROOT / ".claude" / "plans"
-STATE = ROOT / "PLAN_STATE.md"
 LOGS = ROOT / ".claude" / "autoplan"
 LOCK = ROOT / ".claude" / "autoplan" / "run.lock"
 
@@ -52,7 +55,32 @@ try:
 except (OSError, ValueError, AttributeError):
     pass
 
+# Env vars that would make a session spend API money instead of the Max
+# subscription; child_env pops all of these before launching claude.
+BILLING_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+               "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
+               "AWS_BEARER_TOKEN_BEDROCK")
+LIMIT_RE = re.compile(r"usage limit|rate limit|limit reached|out of (extra )?usage|limit will reset|resets at", re.I)
+
 _PLAN_NAME = "?"  # set by main() before the loop; safety_commit's message needs it
+
+
+def child_env(name: str, k: int, line: int) -> dict[str, str]:
+    """Build the child session's env: strip billing vars (Max subscription only), set AUTOPLAN_*."""
+    env = os.environ.copy()
+    for key in BILLING_ENV:
+        env.pop(key, None)
+    env["AUTOPLAN"] = "1"
+    env["AUTOPLAN_SESSION"] = str(k)
+    env["AUTOPLAN_PLAN"] = name
+    env["AUTOPLAN_LINE"] = str(line)
+    env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
+    return env
+
+
+def state_path(name: str) -> Path:
+    """Path to plan name's state file, .claude/plans/<name>.state.md."""
+    return PLANS / f"{name}.state.md"
 
 
 def find_claude(explicit: str | None) -> str:
@@ -119,6 +147,11 @@ def git(*args: str, check: bool = False) -> str:
     return result.stdout.strip()
 
 
+def main_root() -> Path:
+    """The main checkout: parent of the git common dir (ROOT itself when run from main)."""
+    return Path(git("rev-parse", "--path-format=absolute", "--git-common-dir")).parent
+
+
 def mode() -> str:
     """"worktree" if this checkout's git-common-dir differs from its toplevel, else "shared"."""
     common_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
@@ -163,17 +196,27 @@ def ensure_plan_worktree(name: str) -> Path:
     wt = ROOT / ".claude" / "worktrees" / f"plan-{name}"
     branch = f"claude/plan-{name}"
     wt_norm = os.path.normcase(os.path.abspath(str(wt)))
+    existing = False
     for line in git("worktree", "list", "--porcelain").splitlines():
         if line.startswith("worktree "):
-            existing = os.path.normcase(os.path.abspath(line[len("worktree "):]))
-            if existing == wt_norm:
-                return wt
-    branch_exists = bool(git("branch", "--list", branch).strip())
-    if branch_exists:
-        git("worktree", "add", str(wt), branch, check=True)
-    else:
-        git("worktree", "add", "-b", branch, str(wt), "HEAD", check=True)
-    print(f"Plan worktree: .claude/worktrees/plan-{name} (branch {branch})")
+            other = os.path.normcase(os.path.abspath(line[len("worktree "):]))
+            if other == wt_norm:
+                existing = True
+                break
+    if not existing:
+        branch_exists = bool(git("branch", "--list", branch).strip())
+        if branch_exists:
+            git("worktree", "add", str(wt), branch, check=True)
+        else:
+            git("worktree", "add", "-b", branch, str(wt), "HEAD", check=True)
+        print(f"Plan worktree: .claude/worktrees/plan-{name} (branch {branch})")
+
+    # bind the worktree to this plan, so the SessionStart hook there doesn't have to guess
+    here = wt / ".claude" / "plans" / "HERE"
+    here.parent.mkdir(parents=True, exist_ok=True)
+    with open(here, "w", newline="\n", encoding="utf-8") as f:
+        f.write(f"{name}\n")
+
     return wt
 
 
@@ -270,62 +313,120 @@ def acquire_lock(name: str, force: bool) -> None:
     atexit.register(release)
 
 
+def progress_rows(plan_lines: list[str]) -> list[dict]:
+    """Rows of the plan's ## Progress table: n, title, status, rests_on, needs (None: no Needs column)."""
+    rows = []
+    cols: dict[str, int] = {}
+    in_progress = False
+    for line in plan_lines:
+        if line.startswith("## Progress"):
+            in_progress = True
+            continue
+        if in_progress and line.startswith("## "):
+            break
+        if not in_progress or not line.startswith("| "):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not cols:
+            if cells and cells[0] == "#":
+                cols = {c.lower(): i for i, c in enumerate(cells)}
+            continue
+        if not line[2:3].isdigit() or len(cells) < 2:
+            continue
+        rests_i = cols.get("rests on", len(cells) - 2)
+        needs_i = cols.get("needs")
+        rows.append({
+            "n": cells[0],
+            "title": cells[1],
+            "status": cells[-1].lower(),
+            "rests_on": cells[rests_i] if rests_i < len(cells) else "",
+            "needs": None if needs_i is None or needs_i >= len(cells)
+            else re.findall(r"\d+", cells[needs_i]),
+        })
+    return rows
+
+
+def next_runnable(rows: list[dict]) -> dict | None:
+    """First row that is not done and not held back (deferred, or needing a held phase), else None."""
+    held: set[str] = set()
+    for row in rows:
+        if row["status"].startswith("done"):
+            continue
+        needs = row["needs"]
+        is_held = (
+            row["status"].startswith("deferred")
+            or (needs is not None and any(x in held for x in needs))
+            or (needs is None and bool(held))
+        )
+        if is_held:
+            held.add(row["n"])
+            continue
+        return row
+    return None
+
+
 def read_plan(name: str) -> dict:
-    """Parse .claude/plans/<name>.md: stage, and todo/done counts from the Progress table."""
+    """Parse .claude/plans/<name>.md: stage, todo/done/deferred counts and the runnable phase."""
     text = (PLANS / f"{name}.md").read_text(encoding="utf-8")
     stage = ""
     for line in text.splitlines():
         if line.strip().startswith("Stage:"):
             stage = line.split("Stage:", 1)[1].strip().lower()
             break
-    todo = 0
-    done = 0
-    in_progress = False
-    for line in text.splitlines():
-        if line.startswith("## Progress"):
-            in_progress = True
-            continue
-        if in_progress and line.startswith("## "):
-            break
-        if not in_progress:
-            continue
-        if not line.startswith("| "):
-            continue
-        rest = line[2:]
-        if not rest[:1].isdigit():
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if not cells:
-            continue
-        last = cells[-1].lower()
-        if last.startswith("done"):
-            done += 1
-        else:
-            todo += 1
-    return {"stage": stage, "todo": todo, "done": done}
+    rows = progress_rows(text.splitlines())
+    done = sum(1 for r in rows if r["status"].startswith("done"))
+    deferred = sum(1 for r in rows if r["status"].startswith("deferred"))
+    return {
+        "stage": stage, "todo": len(rows) - done, "done": done,
+        "deferred": deferred, "runnable": next_runnable(rows),
+    }
 
 
-def read_state() -> dict:
-    """Parse PLAN_STATE.md: status, blocker text, next-phase text."""
-    if not STATE.exists():
-        return {"status": None}
-    text = STATE.read_text(encoding="utf-8")
+def read_state(name: str) -> dict:
+    """Parse .claude/plans/<name>.state.md: status, Blocker, Next phase and Questions sections."""
+    sp = state_path(name)
+    if not sp.exists():
+        return {"status": None, "blocker": None, "next_phase": None, "questions": None, "q_count": 0}
+    lines = sp.read_text(encoding="utf-8").splitlines()
     status = None
-    blocker = None
-    next_phase = None
-    for line in text.splitlines():
-        stripped = line.strip()
-        if status is None:
-            m = re.match(r"status:\s*[`*]*([a-z-]+)", stripped, re.I)
-            if m:
-                status = m.group(1).lower()
-        if blocker is None and (stripped.startswith("- **Blocker:**") or stripped.startswith("Blocker:")):
-            blocker = stripped.replace("- **Blocker:**", "").replace("Blocker:", "").strip()
-            blocker = blocker.strip("*").strip()
-        if next_phase is None and (stripped.startswith("- **Next phase:**") or stripped.startswith("Next phase:")):
-            next_phase = stripped.replace("- **Next phase:**", "").replace("Next phase:", "").strip()
-            next_phase = next_phase.strip("*").strip()
-    return {"status": status, "blocker": blocker, "next_phase": next_phase}
+    for line in lines:
+        m = re.match(r"status:\s*[`*]*([a-z-]+)", line.strip(), re.I)
+        if m:
+            status = m.group(1).lower()
+            break
+
+    def section_after(is_heading) -> str | None:
+        start = next((i for i, line in enumerate(lines) if is_heading(line)), None)
+        if start is None:
+            return None
+        end = len(lines)
+        for j in range(start + 1, len(lines)):
+            if lines[j].startswith("## "):
+                end = j
+                break
+        return "\n".join(lines[start + 1:end]).strip()
+
+    def one_line(label: str) -> str | None:
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith(f"- **{label}:**") or stripped.startswith(f"{label}:"):
+                return stripped.replace(f"- **{label}:**", "").replace(f"{label}:", "").strip("* ")
+        return None
+
+    blocker = section_after(lambda line: line.strip() == "## Blocker")
+    if blocker is None:
+        blocker = one_line("Blocker")
+    next_phase = section_after(lambda line: line.strip().startswith("## Next phase"))
+    if next_phase is None:
+        next_phase = one_line("Next phase")
+    questions = section_after(lambda line: line.strip() == "## Questions")
+    q_count = 0
+    if questions and questions.strip("`*_.- \n").lower() != "none":
+        q_count = len(set(re.findall(r"Q\d+", questions)))
+    return {
+        "status": status, "blocker": blocker, "next_phase": next_phase,
+        "questions": questions, "q_count": q_count,
+    }
 
 
 def resolve_plan(explicit: str | None) -> str:
@@ -337,7 +438,10 @@ def resolve_plan(explicit: str | None) -> str:
         name = here.read_text(encoding="utf-8").strip()
         if name:
             return name
-    candidates = sorted(p for p in PLANS.glob("*.md") if p.name != "TEMPLATE.md")
+    candidates = sorted(
+        p for p in PLANS.glob("*.md")
+        if p.name != "TEMPLATE.md" and ".state." not in p.name and ".spec-" not in p.name
+    )
     active = []
     for p in candidates:
         plan = read_plan(p.stem)
@@ -353,7 +457,7 @@ def resolve_plan(explicit: str | None) -> str:
 
 
 def phase_brief(name: str) -> str:
-    """Build the phase brief for the prompt: PLAN_STATE.md, next phase section, cited decisions, carry-forward, specs."""
+    """Build the phase brief for the prompt: state file, next phase section, cited decisions, carry-forward, specs."""
 
     def cut(text: str, cap: int) -> str:
         if len(text) > cap:
@@ -374,35 +478,17 @@ def phase_brief(name: str) -> str:
     parts = []
 
     state_text = ""
-    if STATE.exists():
-        state_text = STATE.read_text(encoding="utf-8")
-        parts.append("## PLAN_STATE.md\n\n" + cut(state_text, 5000))
+    sp = state_path(name)
+    if sp.exists():
+        state_text = sp.read_text(encoding="utf-8")
+        parts.append(f"## {sp.relative_to(ROOT).as_posix()}\n\n" + cut(state_text, 5000))
 
     plan_path = PLANS / f"{name}.md"
     plan_text = plan_path.read_text(encoding="utf-8")
     plan_lines = plan_text.splitlines()
 
-    n = None
-    in_progress = False
-    for line in plan_lines:
-        if line.startswith("## Progress"):
-            in_progress = True
-            continue
-        if in_progress and line.startswith("## "):
-            break
-        if not in_progress:
-            continue
-        if not line.startswith("| "):
-            continue
-        rest = line[2:]
-        if not rest[:1].isdigit():
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if not cells:
-            continue
-        if not cells[-1].lower().startswith("done"):
-            n = cells[0]
-            break
+    runnable = next_runnable(progress_rows(plan_lines))
+    n = runnable["n"] if runnable else None
 
     phase_section = ""
     if n is not None:
@@ -415,22 +501,28 @@ def phase_brief(name: str) -> str:
             phase_section = f"Phase {n}: section not found; grep the plan for it."
     parts.append(f"## Phase {n} (from .claude/plans/{name}.md)\n\n" + cut(phase_section, 6000))
 
-    tokens = sorted(set(re.findall(r"D\d+", state_text + "\n" + phase_section)))
+    rests_on = runnable["rests_on"] if runnable else ""
+    tokens = sorted(set(re.findall(r"D\d+", state_text + "\n" + phase_section + "\n" + rests_on)))
     decision_blocks = []
     i = 0
     while i < len(plan_lines):
         line = plan_lines[i]
         stripped = line.strip()
-        hit = any(
-            stripped.startswith(f"- **{tok}") or stripped.startswith(tok) or stripped.startswith(f"| {tok} ")
-            for tok in tokens
-        )
+        hit = any(re.match(rf"^(?:- \*\*|\| )?{re.escape(tok)}\b", stripped) for tok in tokens)
         if hit:
             block = [line]
             j = i + 1
-            while j < len(plan_lines) and plan_lines[j] and plan_lines[j][0] in (" ", "\t"):
-                block.append(plan_lines[j])
-                j += 1
+            if stripped.startswith("- **"):
+                # a bullet runs until the next bullet or heading
+                while j < len(plan_lines) and not (
+                    plan_lines[j].strip().startswith("- **") or plan_lines[j].startswith("#")
+                ):
+                    block.append(plan_lines[j])
+                    j += 1
+            elif not stripped.startswith("| "):
+                while j < len(plan_lines) and plan_lines[j] and plan_lines[j][0] in (" ", "\t"):
+                    block.append(plan_lines[j])
+                    j += 1
             decision_blocks.append("\n".join(block))
             i = j
         else:
@@ -457,7 +549,7 @@ def session_prompt(name: str, k: int, rescue: dict | None, line: int, kill: int)
 You are running unattended under tools/autoplan.py. Nobody answers:
 AskUserQuestion is disabled. Read .claude/skills/plan/unattended.md
 first; it replaces SKILL.md's unattended section. The phase brief below
-is already loaded: do not re-read PLAN_STATE.md or the plan for it.
+is already loaded: do not re-read the plan's state file or the plan for it.
 
 Context: CONTEXT WATCH warns at {line // 1000}k; the runner kills this
 session at {kill // 1000}k. Execute the next phase (below) and stop when
@@ -477,8 +569,8 @@ its Handoff protocol is complete, or save your design as spec files
         prompt += f"""
 
 The previous session was stopped by the runner at {tokens // 1000}k
-context tokens, mid-phase. {work_note}. PLAN_STATE.md may be one phase
-stale: trust git log over it, and treat the phase as partial."""
+context tokens, mid-phase. {work_note}. The plan's state file may be one
+phase stale: trust git log over it, and treat the phase as partial."""
     prompt += "\n\n# Phase brief\n\n" + phase_brief(name)
     return prompt
 
@@ -538,6 +630,8 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
     killed = False
     result = None
     last_boundary = 0
+    limit = False
+    non_json_tail: list[str] = []  # last ~20 non-JSON lines, for a usage-limit check on a bad exit
 
     def stop_child():
         kill_tree(proc)
@@ -554,12 +648,21 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                 event = json.loads(stripped)
             except json.JSONDecodeError:
                 print(f"  | {stripped[:200]}")
+                non_json_tail.append(stripped)
+                non_json_tail = non_json_tail[-20:]
                 continue
             if not isinstance(event, dict):
                 print(f"  | {stripped[:200]}")
+                non_json_tail.append(stripped)
+                non_json_tail = non_json_tail[-20:]
                 continue
 
             etype = event.get("type")
+
+            if etype and "rate_limit" in str(etype):
+                info = event.get("rate_limit_info") or event
+                if isinstance(info, dict) and info.get("status") == "rejected":
+                    limit = True
 
             if etype == "assistant":
                 message = event.get("message", {}) or {}
@@ -617,6 +720,10 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
                     "result": (event.get("result") or "")[:300],
                     "terminal_reason": event.get("terminal_reason"),
                 }
+                if (result["is_error"] or result["subtype"] != "success") and LIMIT_RE.search(
+                    result["result"]
+                ):
+                    limit = True
 
             if not killed and ctx >= kill_at:
                 killed = True
@@ -635,6 +742,10 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
     if proc.poll() is None:
         proc.wait()
 
+    if not limit and proc.returncode not in (0, None) and non_json_tail:
+        if LIMIT_RE.search("\n".join(non_json_tail)):
+            limit = True
+
     cost_known = result is not None
     cost = (result or {}).get("total_cost_usd") or 0.0 if cost_known else 0.0
 
@@ -646,6 +757,7 @@ def run_session(cmd: list[str], env: dict, log_path: Path, kill_at: int, label: 
         "exit": proc.returncode,
         "cost": float(cost),
         "cost_known": cost_known,
+        "limit": limit,
     }
 
 
@@ -701,7 +813,7 @@ def print_summary(sessions: list[dict], stop_reason: str) -> None:
     print(f"stop reason: {stop_reason}")
 
 
-def main() -> None:
+def main() -> int:
     """Parse args, run the mode/dirty/stage checks, then drive the main session loop."""
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -764,7 +876,7 @@ def main() -> None:
         print(f"Note: running in {ROOT.name}, not plan-{name}.")
 
     pre_dirty = dirty_paths()
-    if m == "worktree" and pre_dirty:
+    if not args.dry_run and m == "worktree" and pre_dirty:
         print("Uncommitted changes found; commit or stash them first:")
         for p in sorted(pre_dirty):
             print(f"  {p}")
@@ -775,6 +887,18 @@ def main() -> None:
 
     global _PLAN_NAME
     _PLAN_NAME = name
+
+    answer_msg = (
+        f"Answer in the app: open a Claude Code session on {ROOT.as_posix()}, type go, "
+        f"then rerun: py -3 {main_root().as_posix()}/tools/autoplan.py {name}"
+    )
+    if not args.dry_run:
+        pre_state = read_state(name)
+        if pre_state.get("status") in ("blocked", "questions") or (
+            plan["runnable"] is None and plan["deferred"] > 0
+        ):
+            print(answer_msg)
+            return 4
 
     first_cmd = build_cmd(
         claude, session_prompt(name, 1, None, args.line, args.kill), args, args.budget
@@ -787,6 +911,19 @@ def main() -> None:
         print(f"claude: {claude}")
         print("command:")
         print(" ".join(json.dumps(c) if " " in c or c == "" else c for c in first_cmd))
+
+        runnable = plan["runnable"]
+        if runnable:
+            print(f"phase: {runnable['n']} · {runnable['title']}")
+        else:
+            print(f"phase: none runnable ({plan['deferred']} deferred)")
+
+        state = read_state(name)
+        print(f"state: {state.get('status') or 'no state file'}")
+
+        wt_path = ROOT if m == "worktree" else ROOT / ".claude" / "worktrees" / f"plan-{name}"
+        exists = wt_path.exists()
+        print(f"worktree: {wt_path} ({'exists' if exists else 'would be created'})")
         sys.exit(0)
 
     sessions = []
@@ -807,6 +944,9 @@ def main() -> None:
                 stop_reason = "plan done"
                 exit_code = 0
                 break
+            if plan["runnable"] is None and plan["deferred"] > 0:
+                stop_reason = f"questions: {plan['deferred']} deferred phase(s)"
+                break
             if args.budget is not None and spent >= args.budget:
                 stop_reason = "budget reached"
                 break
@@ -817,12 +957,7 @@ def main() -> None:
                 claude, session_prompt(name, k, rescue, args.line, args.kill), args, remaining
             )
 
-            env = os.environ.copy()
-            env["AUTOPLAN"] = "1"
-            env["AUTOPLAN_SESSION"] = str(k)
-            env["AUTOPLAN_PLAN"] = name
-            env["AUTOPLAN_LINE"] = str(args.line)
-            env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
+            env = child_env(name, k, args.line)
 
             log_path = run_dir / f"{label}.jsonl"
 
@@ -847,7 +982,11 @@ def main() -> None:
                 })
                 break
 
-            state = read_state()
+            if res["limit"]:
+                stop_reason = "usage limit"
+                break
+
+            state = read_state(name)
             plan = read_plan(name)
             status = state.get("status")
             if status is None and plan["stage"] == "done":
@@ -872,7 +1011,7 @@ def main() -> None:
                 f"done {plan['done']}/{plan['done'] + plan['todo']} | head {new_head[:7]}"
             )
 
-            if plan["stage"] == "done" or status == "plan-done":
+            if plan["stage"] == "done" or (status == "plan-done" and plan["todo"] == 0):
                 stop_reason = "plan done"
                 exit_code = 0
                 break
@@ -898,7 +1037,12 @@ def main() -> None:
             error_streak = 0
 
             if status == "blocked":
-                stop_reason = f"blocked: {state.get('blocker')}"
+                blocker_lines = (state.get("blocker") or "").strip().splitlines()
+                stop_reason = f"blocked: {blocker_lines[0] if blocker_lines else ''}"
+                break
+
+            if status == "questions":
+                stop_reason = f"questions: {state.get('q_count', 0)} waiting"
                 break
 
             if res["killed"]:
@@ -932,12 +1076,24 @@ def main() -> None:
         sys.exit(130)
 
     print_summary(sessions, stop_reason)
+    if stop_reason == "usage limit":
+        print(
+            "Usage limit reached: stopped without spending anything. The phase is resumable; "
+            f"when the limit resets run: py -3 {main_root().as_posix()}/tools/autoplan.py {name}"
+        )
+        return 3
     if m == "worktree":
         branch = git("rev-parse", "--abbrev-ref", "HEAD")
-        print(f"Land it: py -3 tools/try.py {branch} --commit")
-    sys.exit(exit_code)
+        print(
+            "Each phase lands itself on local main. Anything left unlanded: "
+            f"py -3 {main_root().as_posix()}/tools/try.py {branch} --commit"
+        )
+    if stop_reason.startswith(("blocked", "questions")):
+        print(answer_msg)
+        return 4
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
 

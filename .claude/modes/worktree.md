@@ -1,8 +1,10 @@
 ## Worktree mode
 
 This session has its own checkout under `.claude/worktrees/<name>` on its
-own branch; it shares only `.git` with the main checkout, so no other
-session touches these files and there are no foreign edits.
+own `claude/<name>` branch, cut from the main checkout's `HEAD`
+(`worktree.baseRef: "head"`, so it starts from commits the owner landed
+but hasn't pushed). It shares only `.git` with the main checkout, so no
+other session touches these files and there are no foreign edits.
 
 - **Commit on this branch, by path. Never push, never open a PR, never
   merge into `main`** (merging `main` INTO this branch is fine and is how
@@ -14,7 +16,12 @@ session touches these files and there are no foreign edits.
   new files and update descriptions only. Those two are where merge
   conflicts between parallel branches came from; `--commit` runs the
   landing steps once on merge.
-- Commit everything before the report: `--commit` merges commits only.
+- Commit everything before the report: `--commit` merges commits only,
+  and the Stop hook refuses to end a turn with uncommitted files.
+- Baselines (the project's snapshots, fingerprints, dumps): re-record
+  one only when the change is meant to alter it, and say so in the
+  report. Two branches that both re-record conflict at Commit; then
+  `git merge main` here, re-run the tool and re-record again.
 - Anything gitignored (snapshots, build output) is not shared with the
   main checkout: produce your own "before" here before any code changes.
 - Commands use `py -3`, exactly as in `CLAUDE.md`.
@@ -24,16 +31,19 @@ session touches these files and there are no foreign edits.
 Replace `<branch>` with `git branch --show-current` and `<main
 checkout>` with the path in the `MODE:` line.
 
-- **Try:** `py -3 <main checkout>/tools/try.py <branch> --path "<where>"`
-  checks the branch out into a sibling `-try` worktree and launches it;
-  typing `commit` at its prompt does the Commit step. The project's
-  notes below say what `--path` means there.
+- **Try:** `py -3 <main checkout>/tools/try.py <branch>` plus the
+  project's Try flags (its notes below) checks the branch out into a
+  sibling `-try` worktree and launches it; typing `commit` at its prompt
+  does the Commit step.
 - **Commit:** `py -3 <main checkout>/tools/try.py <branch> --commit`
-  squashes the branch into one commit on `main` in the main checkout,
-  runs the landing steps in it, merges `main` back into this branch, and
-  pushes nothing; the owner reviews in GitHub Desktop and pushes there.
-  On a conflict it changes nothing and says so; then run `git merge main`
-  here, resolve, commit, and run it again.
+  builds one squash commit on top of local `main` without touching the
+  main checkout's files, runs the project's landing steps and checks on
+  the combined tree in the `-try` checkout, then fast-forwards `main`,
+  merges `main` back into this branch and pushes nothing; the owner
+  reviews in GitHub Desktop and pushes there. On a conflict, a failed
+  check, or the owner's uncommitted edits in a file the branch changes,
+  it lands nothing and says why; then run `git merge main` here,
+  resolve, verify, commit, and run it again.
   **You run it yourself** (owner's call, 2026-09-26) once the work is
   verified and committed, then keep going; the report names the commit
   now on `main` instead of handing over the command. Make the branch

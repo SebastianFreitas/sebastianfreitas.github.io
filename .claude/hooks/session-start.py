@@ -8,10 +8,13 @@
    uncommitted (made by another session, never by this one).
 3. On a fresh start, /clear or compaction: the handoff left by the
    previous context (.claude/handoff.md), if any.
-4. Every time: the active plans (Stage planning/ready/running in
+4. In shared mode on a fresh start or /clear: the uncommitted paths are
+   also written to `<session dir>/foreign-paths.json`, which git-guard
+   reads to refuse staging them.
+5. Every time: the active plans (Stage planning/ready/running in
    .claude/plans/*.md). The one bound to this checkout (.claude/plans/HERE,
-   or the only active plan) prints as `PLAN: <name> · <stage>`; the others
-   are listed.
+   or the only active plan) prints as `PLAN: <name> · <stage>`, with its
+   state file's Status while running; the others are listed.
 
 SessionStart also fires after compaction ("compact") and on resume; the
 mode rules and the handoff are printed again then (compaction drops
@@ -40,13 +43,20 @@ def git(*args):
     try:
         out = subprocess.run(["git", *args], capture_output=True, text=True,
                              timeout=10)
-        return out.stdout.strip()
+        return out.stdout.rstrip()  # a leading space is part of `git status --short`
     except Exception:
         return ""
 
 
 def same(a, b):
     return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def session_dir(transcript_path: str) -> str:
+    p = os.path.normpath(transcript_path)
+    if os.path.basename(os.path.dirname(p)) == "subagents":
+        return os.path.dirname(os.path.dirname(p))
+    return os.path.splitext(p)[0]
 
 
 def detect(root):
@@ -82,75 +92,111 @@ def mode_rules(root, mode):
 
 def plan_lines(root):
     """Active plans in .claude/plans/*.md, and the one bound to this checkout."""
-    plans = os.path.join(root, ".claude", "plans")
-    if not os.path.isdir(plans):
-        return []
+    try:
+        plans = os.path.join(root, ".claude", "plans")
+        if not os.path.isdir(plans):
+            return []
 
-    active = []
-    for fname in os.listdir(plans):
-        if not fname.endswith(".md") or fname == "TEMPLATE.md":
-            continue
-        path = os.path.join(plans, fname)
-        try:
-            with open(path, encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-        except OSError:
-            continue
-        m = re.search(r"^Stage:\s*(planning|ready|running)", text, re.M)
-        if m:
-            active.append((fname[:-3], m.group(1)))
-    active.sort()
+        active = []
+        for fname in os.listdir(plans):
+            if (not fname.endswith(".md") or fname == "TEMPLATE.md"
+                    or fname.endswith(".state.md") or ".spec-" in fname):
+                continue
+            path = os.path.join(plans, fname)
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            m = re.search(r"^Stage:\s*(planning|ready|running)", text, re.M)
+            if m:
+                active.append((fname[:-3], m.group(1)))
+        active.sort()
 
-    here_path = os.path.join(plans, "HERE")
-    here = ""
-    if os.path.isfile(here_path):
+        here_path = os.path.join(plans, "HERE")
+        here = ""
         try:
             with open(here_path, encoding="utf-8", errors="ignore") as f:
-                here = f.read().strip()
+                here_text = f.read()
         except OSError:
-            here = ""
+            here_text = ""
+        for here_line in here_text.splitlines():
+            if here_line.strip():
+                here = here_line.strip()
+                break
 
-    active_names = [n for n, _ in active]
-    if here and here in active_names:
-        bound = here
-    elif len(active) == 1:
-        bound = active[0][0]
-    else:
-        bound = None
+        active_names = [n for n, _ in active]
+        if here and here in active_names:
+            bound = here
+        elif len(active) == 1:
+            bound = active[0][0]
+        else:
+            bound = None
 
-    if not active:
-        if here:
-            return [f"(.claude/plans/HERE names '{here}', which is not an "
-                     "active plan: delete HERE.)"]
-        return []
+        if not active:
+            if here:
+                return [f"(.claude/plans/HERE names '{here}', which is not an "
+                         "active plan: delete HERE.)"]
+            return []
 
-    here_note = None
-    if here and here != bound:
-        here_note = (f"(.claude/plans/HERE names '{here}', which is not "
-                      "active: rewrite HERE.)")
+        here_note = None
+        if here and here != bound:
+            here_note = (f"(.claude/plans/HERE names '{here}', which is not "
+                          "active: rewrite HERE.)")
 
-    if bound:
-        stage = dict(active)[bound]
-        rel = f".claude/plans/{bound}.md"
-        lines = [f"PLAN: {bound} · {stage}",
-                 f"Read .claude/skills/plan/SKILL.md, then {rel}: Interview, Brief, "
-                 "Decisions, Open items, Progress. A bare 'go' continues it."]
-        others = [(n, s) for n, s in active if n != bound]
-        if others:
-            lines.append("Other active plans (run in their own checkouts, "
-                          "do not touch their files): " +
-                          ", ".join(f"{n} · {s}" for n, s in others))
+        if bound:
+            stage = dict(active)[bound]
+            rel = f".claude/plans/{bound}.md"
+            state_rel = f".claude/plans/{bound}.state.md"
+            head = f"PLAN: {bound} · {stage}"
+            if stage == "running":
+                state_path = os.path.join(plans, bound + ".state.md")
+                if os.path.isfile(state_path):
+                    with open(state_path, encoding="utf-8",
+                              errors="ignore") as f:
+                        state_line = f.readline().strip()
+                    status = None
+                    if state_line.startswith("Status:"):
+                        status = state_line[len("Status:"):].strip()
+                        head += f" · {status}"
+                    if status in ("blocked", "questions"):
+                        second = ("Read .claude/skills/plan/SKILL.md, then "
+                                  f"{state_rel} and {rel}. Status {status}: a "
+                                  "bare 'go' does the skill's Answer (asks the "
+                                  "waiting questions), never a phase.")
+                    else:
+                        second = ("Read .claude/skills/plan/SKILL.md, then "
+                                  f"{state_rel} (its Next phase) and {rel}. A "
+                                  "bare 'go' continues it.")
+                else:
+                    head += " · no state file"
+                    second = ("Read .claude/skills/plan/SKILL.md, then "
+                              f"{rel} (no state file: take the first "
+                              "runnable row in Progress). A bare 'go' "
+                              "continues it.")
+            else:
+                second = ("Read .claude/skills/plan/SKILL.md, then "
+                          f"{rel}: Interview, Brief, Decisions, Open items, "
+                          "Progress. A bare 'go' continues it.")
+            lines = [head, second]
+            others = [(n, s) for n, s in active if n != bound]
+            if others:
+                lines.append("Other active plans (run in their own checkouts, "
+                              "do not touch their files): " +
+                              ", ".join(f"{n} · {s}" for n, s in others))
+            if here_note:
+                lines.append(here_note)
+            return lines
+
+        lines = ["PLANS: " + ", ".join(f"{n} · {s}" for n, s in active),
+                 "No plan is bound to this checkout. 'go <name>' binds one "
+                 "(write the name to .claude/plans/HERE) and continues it; a "
+                 "bare 'go' asks which. See .claude/skills/plan/SKILL.md."]
         if here_note:
             lines.append(here_note)
         return lines
-
-    lines = ["PLANS: " + ", ".join(f"{n} · {s}" for n, s in active),
-             "No plan is bound to this checkout. 'go <name>' binds one "
-             "(write the name to .claude/plans/HERE) and continues it; a "
-             "bare 'go' asks which. See .claude/skills/plan/SKILL.md."]
-    if here_note:
-        lines.append(here_note)
-    return lines
+    except Exception:
+        return []
 
 
 def workflow_sync_lines(root):
@@ -170,6 +216,33 @@ def workflow_sync_lines(root):
         return [l.strip() for l in r.stdout.splitlines() if l.strip()]
     except Exception:
         return []
+
+
+def dirty_paths(dirty):
+    paths = []
+    for line in dirty.splitlines():
+        if not line.strip():
+            continue
+        p = line[3:]
+        if " -> " in p:
+            old, new = p.split(" -> ", 1)
+            paths.append(old.strip('"'))
+            paths.append(new.strip('"'))
+        else:
+            paths.append(p.strip('"'))
+    return paths
+
+
+def write_foreign_paths(transcript_path, paths):
+    if not transcript_path:
+        return
+    fp = os.path.join(session_dir(transcript_path), "foreign-paths.json")
+    try:
+        os.makedirs(os.path.dirname(fp), exist_ok=True)
+        with open(fp, "w", encoding="utf-8") as f:
+            json.dump(paths, f)
+    except OSError:
+        pass
 
 
 def main():
@@ -211,6 +284,7 @@ def main():
                          "revert, stash or 'clean up' these paths. Stage "
                          "your own files by path.")
             add_dirty(dirty)
+            write_foreign_paths(d.get("transcript_path"), dirty_paths(dirty))
         elif dirty:
             lines.append("Uncommitted edits in this checkout at session "
                          "start (left by the previous context on this "
@@ -218,6 +292,8 @@ def main():
             add_dirty(dirty)
         else:
             lines.append("Tree clean at session start.")
+            if mode == "shared":
+                write_foreign_paths(d.get("transcript_path"), [])
 
     if source == "startup" and main_root:
         script = os.path.join(main_root, "tools", "cleanup.py")

@@ -2,7 +2,7 @@
 
 ## Spec details
 
-- **Style:** drawing work copies the rules that apply from
+- **Rules:** drawing work copies the rules that apply from
   `.claude/rules/art-style.md`; readings from `.claude/rules/instruments.md`.
 - **Verification:** never `serve.py` (it blocks). Browser behaviour:
   `py -3 tools/nav-flows.test.py <flows>`, which runs its own server and

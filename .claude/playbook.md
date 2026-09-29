@@ -19,6 +19,11 @@ read it too.
 - An implementer that reports "blocked" or "hit the context line": never
   resume it with SendMessage (that reloads its whole context); write a
   narrower spec for a fresh call.
+- A plan phase that stops after designing saves each finished spec as
+  `.claude/plans/<name>.spec-<phase>-<k>.md` in the format below (plan
+  skill).
+- Over about 150 lines or three files: the `reviewer` gets the spec(s)
+  and the diff before you commit.
 
 ## Spec format
 
@@ -26,15 +31,35 @@ Complete enough that the implementer never chooses a name, a location or
 a design. The implementer sees only the spec and
 `.claude/project/implementer.md`, never `CLAUDE.md`. Every spec has:
 
-1. **Target files:** the exact path of every file to create or edit, and
-   the function names to grep so it reads only that region.
-2. **Symbols:** exact names and full signatures to add or change.
+1. **Target files:** the exact path of every file to create, edit or
+   delete, and the function names to grep so it reads only that region.
+2. **Symbols:** exact names and full signatures (typed, where the
+   language has types) to add or change.
 3. **Logic steps:** an ordered, numbered list.
 4. **Edge cases:** each one and exactly how to handle it.
 5. **Do not touch:** files, symbols and behaviour that stay unchanged,
    including foreign edits already in a target file (shared mode).
-6. **Style:** the domain rules that apply (`.claude/rules/`), copied in;
-   the project playbook says which.
-7. **Verification:** the exact command, or "none". Never a command that
-   blocks (a dev server, an editor window); the project playbook names
-   the checks that run and exit.
+6. **Rules:** the project invariants and `.claude/rules/` values this
+   change must respect, copied in (the implementer never sees
+   `CLAUDE.md` or the rules); the project playbook says which.
+7. **Verification:** the exact commands, or "none", plus a `git grep`
+   proving deleted names are gone when the spec deletes something. Never
+   a command that blocks (a dev server, an editor window); the project
+   playbook names the checks that run and exit.
+
+## Commands every project has
+
+- **Try and Commit:** `tools/try.py`, commands in your mode file. Try
+  belongs to the owner: print it, never run it. Commit: worktree mode
+  runs it itself once verified; cloud and shared print it.
+- **Autoplan:** `py -3 tools/autoplan.py [<name>] [--dry-run]
+  [--max-sessions N] [--budget USD] [--effort medium] [--line 120000]
+  [--kill 140000] [--force]`. Owner-run from a terminal: runs a plan's
+  phases unattended, one headless session each, in
+  `.claude/worktrees/plan-<name>`, on the subscription only (no API key;
+  stops at the usage limit), and stops when questions wait, on a
+  blocker, or at plan-done. Logs and the run lock in `.claude/autoplan/`.
+- **Cleanup:** `py -3 tools/cleanup.py` deletes landed, idle session
+  branches and their worktrees (it also runs at session start).
+- **Sync:** `py -3 <master>/sync.py status|push|pull <project root>`
+  (`.claude/rules/workflow.md` "Shared files").

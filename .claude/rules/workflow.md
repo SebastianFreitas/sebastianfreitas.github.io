@@ -25,9 +25,18 @@ The project's half of the shared files lives in `.claude/project/`,
 which sync never touches: `modes/<mode>.md` (printed by the hook after
 the shared mode file: landing steps, literal Try/Commit paths),
 `playbook.md`, `implementer.md` (the only project context implementers
-get), optional `autoplan.json` (`allowedTools` for unattended runs).
-`tools/try.py` calls the project's optional `tools/try_project.py`
-(`setup`, `before_commit` for landing steps, `launch` for Try). Every
+get), `reviewer.md` (the project's invariants and runtime pitfalls the
+reviewer checks), optional `autoplan.json` (`allowedTools` for unattended runs),
+optional `file-guard.json` (extra binary suffixes and cache folders,
+source suffixes, generated files and why), optional `settings.json`
+(permissions and the project's own hooks: `sync.py push` merges it into
+`.claude/settings.json`, so edit the fragment, never the merged file).
+A project's own hook scripts sit in `.claude/hooks/` next to the shared
+ones; sync leaves files it does not list alone.
+`tools/try.py` and `tools/try_commit.py` call the project's optional
+`tools/try_project.py` (`add_arguments` and `launch` for Try,
+`before_commit` for landing steps and `verify` for checks, both on the
+combined tree in the `-try` checkout). Every
 project gitignores `.claude/handoff.md`, `.claude/worktrees/`,
 `.claude/plans/HERE` and `.claude/autoplan/`.
 
@@ -52,7 +61,8 @@ the report that the hook did not run. After `EnterWorktree`, read
 
 Big work runs as a plan: `.claude/plans/<name>.md`, started with
 `/plan new <name>: <brief>` and driven by `.claude/skills/plan/SKILL.md`
-(read it before touching a plan). The hook prints `PLAN: <name> ·
+(read it before touching a plan); while it runs, its state lives in
+`.claude/plans/<name>.state.md`. The hook prints `PLAN: <name> ·
 <stage>` when a plan is bound to this checkout, `PLANS:` when several
 are active and none is bound here. Planning is an interview in the app;
 execution is one phase per fresh session (owner's rule, 2026-09-26),
@@ -129,7 +139,7 @@ owner's rule 2026-09-29): no session runs on past its line; it stops
 and the owner clears or opens a new chat. Never compact, never clear
 yourself. `.claude/hooks/context-watch.py` prints `CONTEXT WATCH` near
 each line: main and headless plan sessions 120k (the runner kills at
-140k), Explore and Plan 100k, implementer and reviewer 60k. A subagent
+140k), Explore and Plan 100k, implementer 60k, reviewer 80k. A subagent
 at 1.5 times its line is denied further tools, which means the prompt
 was too wide: next time name the file, function and range, or split.
 

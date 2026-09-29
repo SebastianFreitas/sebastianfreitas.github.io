@@ -7,15 +7,17 @@ worktree or cloud branches land on `main` through the owner's `tools/try.py
 for any task longer than a quick fix; this mode is for small changes.
 
 - The SessionStart hook lists every path that was already uncommitted
-  when you started: those are foreign. Never stage, revert, stash or
-  "clean up" them.
+  when you started: those are foreign, and git-guard refuses to stage
+  them. Never stage, revert, stash or "clean up" them.
 - Stage by path, only the files your specs named, and read `git status`
   before every commit: anything else modified is someone else's.
-- A file you must change that already has foreign edits: say so in the
-  spec. The implementer edits by exact string, touches only its own hunks
-  and never cleans up. If a foreign edit breaks a check, report it; do not
-  fix it.
-- Commit straight to `main`, no branches. This mode runs the project's
+- A change that needs a file with foreign edits: don't start it. Staging
+  that file would sweep the foreign hunks into your commit, and git-guard
+  refuses to stage it anyway. Tell the owner to commit or discard their
+  edit first, or to run the task in a worktree session. If a foreign edit
+  breaks a check, report it; do not fix it.
+- Commit straight to `main`, no branches (git-guard refuses `git
+  checkout` and `git switch` here). This mode runs the project's
   landing steps itself before such a commit (the project's notes below
   name them); worktree and cloud never do.
 - **Never push, never pull, never merge anything into `main`.** Commit
