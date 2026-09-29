@@ -80,7 +80,10 @@ The owner sends one prompt and comes back to a finished, verified,
 committed change. Stopping at "ready to commit" costs them a whole turn.
 
 1. **Explore** through the `Explore` subagent. Ask the owner only when
-   the answer changes what you build.
+   the answer changes what you build, always with the `AskUserQuestion`
+   tool (never a plain-text question), then keep working in the same
+   turn once they answer. A turn ends early only when something went
+   really wrong, never just to ask.
 2. **Spec** one per implementer call (format in `.claude/playbook.md`).
    A step with more than about three deliverables becomes several specs.
 3. **Implement** with the `implementer` subagent.
@@ -115,7 +118,7 @@ because the main context is paid again on every turn.
 
 - Do not edit source files yourself (Write, Edit, or Bash that writes).
   The one exception is a single-line change where a spec would take
-  longer than the edit.
+  longer than the edit. Cost and convenience are not exceptions.
 - Docs, `.claude/MAP.md` rows, `.claude/handoff.md` and the markdown in
   `.claude/` are not source: edit those directly.
 - Before designing, grep `.claude/MAP.md`, then send code reading to

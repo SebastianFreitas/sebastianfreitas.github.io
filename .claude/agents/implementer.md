@@ -39,8 +39,7 @@ open. Where it and this file disagree, it wins.
 - The same command failing the same way three times: stop and report it
   with the last failure output. Do not keep trying variations.
 - Write files with the Write and Edit tools, never with Bash heredocs or
-  `echo` (on Windows they write CRLF and mangle `
-`).
+  `echo` (on Windows they write CRLF and mangle backslash escapes).
 
 ## Hooks that talk to you
 

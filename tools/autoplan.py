@@ -48,6 +48,11 @@ ALLOWED_TOOLS = [
     "Bash(mkdir *)", "PowerShell(git add *)", "PowerShell(git commit *)",
     "PowerShell(git status *)", "PowerShell(git diff *)",
     "PowerShell(git log *)", "PowerShell(py -3 tools/*)",
+    # Worktree sessions land their own phase and resolve merges.
+    "Bash(git merge *)", "Bash(git mv *)", "Bash(git rm *)",
+    "Bash(git branch --show-current)", "Bash(git grep *)",
+    "PowerShell(git merge *)", "PowerShell(git mv *)", "PowerShell(git rm *)",
+    "PowerShell(git branch --show-current)", "PowerShell(git grep *)",
 ]
 # Project-specific tools (e.g. an engine's CLI): .claude/project/autoplan.json {"allowedTools": [...]}
 try:
@@ -576,6 +581,9 @@ phase stale: trust git log over it, and treat the phase as partial."""
 
 
 def build_cmd(claude: str, prompt: str, args, budget: float | None) -> list[str]:
+    # The absolute-path Commit command the mode file prints (main checkout's try.py).
+    try_py = f"py -3 {main_root().as_posix()}/tools/try.py *"
+    allowed = [*ALLOWED_TOOLS, f"Bash({try_py})", f"PowerShell({try_py})"]
     cmd = [
         claude, "-p", prompt,
         "--output-format", "stream-json", "--verbose",
@@ -583,7 +591,7 @@ def build_cmd(claude: str, prompt: str, args, budget: float | None) -> list[str]
         "--permission-mode", args.permission_mode,
         "--permission-prompts", "none",
         "--disallowedTools", "AskUserQuestion",
-        "--allowedTools", *ALLOWED_TOOLS,
+        "--allowedTools", *allowed,
         "--settings", json.dumps({"env": {
             "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
             "AUTOPLAN_LINE": str(args.line),

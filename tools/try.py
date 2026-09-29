@@ -91,6 +91,44 @@ def stop(proc: subprocess.Popen | None) -> None:
         proc.wait()
 
 
+def wait_for(proc: subprocess.Popen | None) -> None:
+    """Block until proc exits; Ctrl+C stops it."""
+    if proc is None:
+        return
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        stop(proc)
+        print("Stopped.")
+
+
+def prompt_loop(proc: subprocess.Popen | None, allow_commit: bool, on_commit) -> int:
+    """Enter stops proc; "commit" (if allowed) stops it and returns on_commit()."""
+    print(
+        "Enter = stop."
+        + ("  Type commit + Enter = squash it into main as one commit (nothing is pushed)."
+           if allow_commit else "")
+    )
+    while True:
+        try:
+            ans = input("> ").strip().lower()
+        except EOFError:
+            # Nothing to read from (stdin at NUL reports isatty() on Windows): wait like the non-tty branch.
+            wait_for(proc)
+            return 0
+        except KeyboardInterrupt:
+            ans = ""
+        if ans == "commit" and allow_commit:
+            stop(proc)
+            return on_commit()
+        elif ans == "":
+            stop(proc)
+            print("Stopped.")
+            return 0
+        else:
+            print("Type commit or press Enter." if allow_commit else "Press Enter to stop.")
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # branch subjects can hold non-ASCII
 
@@ -133,11 +171,9 @@ def main() -> int:
             if not url:
                 print("No launcher (tools/try_project.py launch); open the tree yourself.")
             return 0
-        try:
-            proc.wait()
-        except KeyboardInterrupt:
-            stop(proc)
-            print("Stopped.")
+        if sys.stdin.isatty():
+            return prompt_loop(proc, False, None)
+        wait_for(proc)
         return 0
 
     branch, ref = resolve(args.branch)
@@ -164,29 +200,8 @@ def main() -> int:
         webbrowser.open(url)
 
     if sys.stdin.isatty():
-        print("Enter = stop.  Type commit + Enter = squash it into main as one commit (nothing is pushed).")
-        while True:
-            try:
-                ans = input("> ").strip().lower()
-            except (EOFError, KeyboardInterrupt):
-                ans = ""
-            if ans == "commit":
-                stop(proc)
-                return land(branch, ref, args)
-            elif ans == "":
-                stop(proc)
-                print("Stopped.")
-                break
-            else:
-                print("Type commit or press Enter.")
-    else:
-        if proc is None:
-            return 0
-        try:
-            proc.wait()
-        except KeyboardInterrupt:
-            stop(proc)
-            print("Stopped.")
+        return prompt_loop(proc, True, lambda: land(branch, ref, args))
+    wait_for(proc)
     return 0
 
 

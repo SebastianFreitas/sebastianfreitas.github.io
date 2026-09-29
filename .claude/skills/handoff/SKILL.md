@@ -14,6 +14,8 @@ in this order:
 - **In progress:** files, their state, the last spec sent.
 - **Next:** numbered; the first step concrete enough to start cold.
 - **Decisions:** each with its why.
+- **Task file:** the task or checklist file being worked, if any, and
+  which of its steps are ticked.
 - **Gotchas:** found this session and not yet in `CLAUDE.md`,
   `.claude/rules/` or `.claude/MAP.md` (add the lasting ones there
   before handing off).

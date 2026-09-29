@@ -51,7 +51,9 @@ checkout>` with the path in the `MODE:` line.
 
 After a Commit, the command already merged `main` back into this branch, so
 a follow-up round just commits on the same branch and ends with the same
-report. Archiving the session in the app removes the worktree.
+report. If Commit said it could not merge `main` back, start the next
+round with `git merge main` here. Archiving the session in the app
+removes the worktree.
 
 ### Context full
 

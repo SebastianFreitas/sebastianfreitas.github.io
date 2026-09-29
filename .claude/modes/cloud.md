@@ -43,10 +43,18 @@ The project's notes below give the literal paths.
 
 After the owner pushes `main`, they close the PR by hand (GitHub shows it
 closed, not merged). Never use GitHub's merge button: it skips the
-landing steps.
+landing steps and the checks.
 
 ### Context full
 
 The rule is `workflow.md`'s "Context budget" (stop, handoff, owner
 clears). Commit and push first, and put the handoff in the PR body under
 `## Handoff` as well as in `.claude/handoff.md`.
+
+If the owner starts a new cloud session for the same work and says
+"continue PR #<n>", that session runs `gh pr view <n>` and stays on the
+same branch: `git fetch origin <old>`, `git checkout <old>`, continue
+from the handoff's Next and push to `<old>`, so the PR is the same one.
+Only if that push is refused does it merge `origin/<old>` into its own
+branch and open a PR that replaces the old one (close the old PR with a
+link).
