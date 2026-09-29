@@ -143,6 +143,25 @@ def plan_lines(root):
     return lines
 
 
+def workflow_sync_lines(root):
+    """Prints the WORKFLOW SYNC drift line from the shared claude-workflow
+    master when this project has a workflow.lock."""
+    try:
+        lock = os.path.join(root, ".claude", "workflow.lock")
+        if not os.path.exists(lock):
+            return []
+        with open(lock, encoding="utf-8") as f:
+            master = json.load(f).get("master")
+        if not master or not os.path.exists(os.path.join(master, "sync.py")):
+            return []
+        r = subprocess.run([sys.executable, os.path.join(master, "sync.py"),
+                            "status", root, "--brief"],
+                           capture_output=True, text=True, timeout=20)
+        return [l.strip() for l in r.stdout.splitlines() if l.strip()]
+    except Exception:
+        return []
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -201,8 +220,11 @@ def main():
             except Exception:
                 pass
 
+    if source in ("startup", "clear"):
+        lines.extend(workflow_sync_lines(root))
+
     if source in ("startup", "clear", "compact"):
-        hand = os.path.join(root, ".claude", "handoff.md")
+        hand =os.path.join(root, ".claude", "handoff.md")
         if os.path.exists(hand):
             with open(hand, encoding="utf-8", errors="ignore") as f:
                 body = f.read().strip()

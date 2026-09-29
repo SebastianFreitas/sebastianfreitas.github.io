@@ -1,0 +1,13 @@
+{
+  "master": "C:/Users/Traff/Desktop/sebas/claude-workflow",
+  "commit": "22b464317008ba0824ef8c02ab10391d2188a90a",
+  "files": {
+    ".claude/agents/reviewer.md": "056eb0de792d15a41e7e7864171e6ffa92f781a7553df8cb530a90d949736f49",
+    ".claude/hooks/context-watch.py": "9203f4502faaa7ef432fc6894d13f187c94890e6745598ca6c0aefda9a24796f",
+    ".claude/hooks/git-guard.py": "d1ee42ac3ee61c296d588cfc0f531a7b1fcc97ed19e5427a2bc4159c91ce1f0c",
+    ".claude/hooks/run.sh": "c24f9c69af6cb369f81153d75aeb942fbb45a1ee8b0c066e74179ac17a594adf",
+    ".claude/hooks/stop-guard.py": "3e792803a5a10038557775a6e5c229e223ce0d31ba25d1f114b661e96b3d9eb0",
+    ".claude/rules/workflow.md": "c45c3cbc778123d5379964169c620157b332aa87de8d0559134f1305bea1889a",
+    ".claude/skills/handoff/SKILL.md": "c17ba2826e37fa927e8e8e4ce803f1beace2658dfdd395ca3274df0c721ecb58"
+  }
+}
