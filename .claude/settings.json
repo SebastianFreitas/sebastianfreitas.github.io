@@ -5,6 +5,8 @@
   "worktree": {
     "baseRef": "head"
   },
+  "enableArtifact": false,
+  "disableWorkflows": true,
   "permissions": {
     "allow": [
       "Bash(git status*)",
@@ -12,6 +14,14 @@
       "Bash(git log*)",
       "Bash(git show*)",
       "Bash(git branch --show-current)"
+    ],
+    "deny": [
+      "Workflow",
+      "ScheduleWakeup",
+      "ReportFindings",
+      "SuggestSkills",
+      "mcp__visualize__show_widget",
+      "mcp__visualize__read_me"
     ]
   },
   "hooks": {
