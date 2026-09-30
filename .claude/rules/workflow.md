@@ -67,11 +67,13 @@ is the index. While it runs, its state lives in
 `.claude/plans/<name>.state.md`. The hook prints `PLAN: <name> ·
 <stage>` when a plan is bound to this checkout, `PLANS:` when several
 are active and none is bound here. Planning is an interview in the app;
-execution is one phase per fresh session (owner's rule, 2026-09-26), in
-a terminal with `py -3 tools/autoplan.py <name>`, never started from
-the app: the ready gate ends with that command, and a bare `go` on a
-ready or running plan prints it (answering a blocked run's questions is
-the app's job). The runner sets `AUTOPLAN=1`: then read
+execution is one phase per fresh session (owner's rule, 2026-09-26),
+under `py -3 tools/autoplan.py <name>`, which the app session starts in
+the background and supervises (owner, 2026-09-30): the ready gate starts
+it, a bare `go` on a ready or running plan starts or reports it, and
+when it stops the app reports what landed, answers questions and
+restarts it. The owner never pastes a command or types `/clear` between
+phases. The runner sets `AUTOPLAN=1`: then read
 `.claude/skills/plan/unattended.md`.
 
 The same split applies outside plans: a prompt with two separable pieces

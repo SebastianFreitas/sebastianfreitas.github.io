@@ -14,8 +14,8 @@ the plan itself into the repo. `/plan` is the plan mode.
 
 Read `Interview` (which part is open) and `Open items`, and continue the
 interview from exactly there. While Stage is `ready`, a bare `go` runs
-no phase: it prints the terminal command (end of "Ready gate") and
-stops.
+no phase in this session: it starts the supervised run (`run.md`,
+"Supervising the run") and stops.
 
 ## The interview: how planning feels
 
@@ -294,27 +294,22 @@ Then ask one last `AskUserQuestion` with one question: "A question the
 plan missed, with no clear answer: park that phase for you to answer
 later (Recommended) / take the recommended option and keep going", which
 sets `Questions: ask` or `Questions: auto` in the header. Set `Stage:
-ready`, commit the plan and research by path, and end the turn with the
-terminal command. There is no "Start running the plan?" question.
-**Never run a phase in the planning session**: execution happens in the
-terminal, one fresh session per phase (owner, 2026-09-28, workflow-port
-D25; again 2026-09-30). A change the owner asks for later reopens the
-interview: record it as a D, show the pieces and phases it touches
-again, and run the gate again.
+ready`, commit the plan and research by path, then start the run
+yourself (`run.md`, "Supervising the run": `autoplan.py` in the
+background with this checkout's absolute forward-slash path; from the
+main checkout the runner makes its own `plan-<name>` worktree). There is
+no "Start running the plan?" question, and no command for the owner to
+paste. **Never run a phase in the planning session**: each phase runs in
+its own fresh session under the runner (owner, 2026-09-28, workflow-port
+D25); this session only supervises (owner, 2026-09-30). A change the
+owner asks for later reopens the interview: record it as a D, show the
+pieces and phases it touches again, and run the gate again.
 
-The last lines of the turn, nothing after them:
-
-> Plan ready. Run it in a terminal (PowerShell is fine), not the app:
->
-> ```bash
-> py -3 C:/<this checkout, absolute, forward slashes>/tools/autoplan.py <name>
-> ```
-
-with this checkout's absolute forward-slash path (the plan file lives on
-this checkout's branch; from the main checkout the runner makes its own
-`plan-<name>` worktree). If `tools/autoplan.py` does not exist in this
-checkout, say so and give the app fallback instead: `/clear`, then
-'Read .claude/plans/<name>.state.md and execute the next phase.'
+End the turn with one line: the plan is ready, the run has started, and
+you will report what each phase builds when it stops. If
+`tools/autoplan.py` does not exist in this checkout, say so and give the
+app fallback instead: `/clear`, then 'Read
+.claude/plans/<name>.state.md and execute the next phase.'
 
 Context: auto-compact is off (owner's rule, 2026-09-29). At `CONTEXT
 WATCH`, ask no new question. Record the answer you already have as a D,

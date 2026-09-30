@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Start, continue or run a many-phase plan in .claude/plans/. Planning is an interview through AskUserQuestion: ask → write → review, with one fresh-eyes review round (a second only for build-breaking findings, never a third; no question quota); the ready gate ends with the terminal command, and running happens in a terminal through tools/autoplan.py, one fresh session per phase (a bare `go` in the app on a ready or running plan prints that command). Owner-invoked only.
+description: Start, continue or run a many-phase plan in .claude/plans/. Planning is an interview through AskUserQuestion: ask → write → review, with one fresh-eyes review round (a second only for build-breaking findings, never a third; no question quota); the ready gate starts tools/autoplan.py in the background and this session supervises it, one fresh session per phase, reporting what each phase built (a bare `go` on a ready or running plan starts or reports the run). Owner-invoked only.
 disable-model-invocation: true
 argument-hint: "new <name>: <brief>  |  (nothing: continue the plan bound here)"
 ---
@@ -62,10 +62,11 @@ the one for the plan's `Stage:` line, never both:
   questions, Answer, Stage done). A session started by
   `tools/autoplan.py` reads `.claude/skills/plan/unattended.md` instead.
 
-Execution never starts in the app: a bare `go` on a `ready` or `running`
-plan prints the `tools/autoplan.py` command to run in a terminal (the
-first section of `run.md`), unless the run is `blocked` or has
-`questions`, which are answered in the app.
+No phase runs in the app session: it starts `tools/autoplan.py` in the
+background and supervises it (the first section of `run.md`), so the
+owner never opens a terminal or types `/clear` between phases. A run
+that stops `blocked` or with `questions` is answered in the app, and the
+run restarts.
 
 ## `/plan` with no plan bound here
 
