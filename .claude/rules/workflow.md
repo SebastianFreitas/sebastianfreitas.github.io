@@ -67,9 +67,11 @@ is the index. While it runs, its state lives in
 `.claude/plans/<name>.state.md`. The hook prints `PLAN: <name> ·
 <stage>` when a plan is bound to this checkout, `PLANS:` when several
 are active and none is bound here. Planning is an interview in the app;
-execution is one phase per fresh session (owner's rule, 2026-09-26),
-by hand (`/clear`, then "go") or unattended with `py -3
-tools/autoplan.py <name>`, where `AUTOPLAN=1` is set: then read
+execution is one phase per fresh session (owner's rule, 2026-09-26), in
+a terminal with `py -3 tools/autoplan.py <name>`, never started from
+the app: the ready gate ends with that command, and a bare `go` on a
+ready or running plan prints it (answering a blocked run's questions is
+the app's job). The runner sets `AUTOPLAN=1`: then read
 `.claude/skills/plan/unattended.md`.
 
 The same split applies outside plans: a prompt with two separable pieces
@@ -144,7 +146,8 @@ owner's rule 2026-09-29): no session runs on past its line; it stops
 and the owner clears or opens a new chat. Never compact, never clear
 yourself. `.claude/hooks/context-watch.py` prints `CONTEXT WATCH` near
 each line: main and headless plan sessions 160k (the runner kills at
-185k), Explore and Plan 100k, implementer 60k, reviewer 80k. A subagent
+185k), Explore and Plan 100k, implementer 60k, reviewer and
+plan-reviewer 80k. A subagent
 at 1.5 times its line is denied further tools, which means the prompt
 was too wide: next time name the file, function and range, or split.
 

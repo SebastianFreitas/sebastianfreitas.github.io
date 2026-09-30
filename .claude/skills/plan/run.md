@@ -8,10 +8,17 @@ state files only change on the branch that runs them.
 
 ## `go` while Stage is `running`: one phase per session
 
-Two ways to run it: the owner prompts each phase in the app (below), or
-`py -3 tools/autoplan.py <name>` runs every phase in a terminal, one
-fresh session each (see "Running unattended"). Planning, and answering
-a run's questions, always happen in the app.
+Execution belongs in the terminal: `py -3 tools/autoplan.py <name>` runs
+every phase there, one fresh session each, clearing between phases by
+itself (see "Running unattended"). The app is for planning and for
+answering a run's questions. A phase runs in the app only when the
+owner's prompt says to run it there, or while `tools/autoplan.py` does
+not exist yet; then the steps below end with the `/clear` hard stop.
+
+A bare `go` (or `/plan`) in the app while Stage is `ready`, or `running`
+with `Status` neither `blocked` nor `questions`, does not run a phase:
+it prints the terminal command (as at the ready gate in `interview.md`,
+with this checkout's absolute forward-slash path) and stops.
 
 The owner's rule (2026-09-26): *"we never do 2 continues work, we must
 always separate stuff."* A running plan is a chain of short, isolated
@@ -59,7 +66,8 @@ turn, never "keep going with Next".
    prompt me with `go` to answer them."* Do not start the next phase. Do
    not ask whether to continue.
 6. **The next prompt** ("Read .claude/plans/<name>.state.md and execute
-   the next phase", or a bare "go") starts at step 1 in a fresh context.
+   the next phase") starts at step 1 in a fresh context. A bare "go"
+   prints the terminal command instead (above).
 
 ### Which phase runs next
 
