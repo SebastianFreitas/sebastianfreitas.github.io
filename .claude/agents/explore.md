@@ -17,4 +17,4 @@ You search and summarize the portfolio, a GitHub Pages site in plain HTML, CSS a
 - Every JS file is an IIFE that publishes one `window.X` global (or adds to one, like `B.*` on `window.Bridge`), loaded by `<script>` tags in a fixed order. When asked for callers, search the global's methods (`X.method`, `B.method`), `window.X` reads, custom events (`dispatchEvent`, `addEventListener` with names like `xp:surge`, `site:enter`) and the `<script>` order in the HTML pages.
 - Never open `media/`, `snapshots/`, `*.pdf`, images or `__pycache__/`.
 - If something you were asked about doesn't exist, say so. Don't guess.
-- Context: about 100k tokens of room; past 150k every tool call is refused. If a hook prints CONTEXT WATCH, stop searching and answer from what you have.
+- Context: about 100k tokens of room; past 125k every tool call is refused. If a hook prints CONTEXT WATCH, stop searching and answer from what you have.
