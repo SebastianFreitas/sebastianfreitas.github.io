@@ -14,8 +14,8 @@ other session touches these files and there are no foreign edits.
   `try.py` reads it from here.
 - **Landing steps are not yours.** Never run a step the project's notes
   below reserve for landing (a cache-bust, a version bump) and never
-  change the line count of an existing `.claude/MAP.md` row. Add rows for
-  new files and update descriptions only. Those two are where merge
+  rewrite an existing `.claude/MAP.md` row beyond what your change needs.
+  Add rows for new files and update descriptions only. Those two are where merge
   conflicts between parallel branches came from; `--commit` runs the
   landing steps once on merge.
 - Commit everything before the report: `--commit` merges commits only,
@@ -46,10 +46,13 @@ checkout>` with the path in the `MODE:` line.
   check, or the owner's uncommitted edits in a file the branch changes,
   it lands nothing and says why; then run `git merge main` here,
   resolve, verify, commit, and run it again.
-  **You run it yourself** (owner's call, 2026-09-26) once the work is
-  verified and committed, then keep going; the report names the commit
-  now on `main` instead of handing over the command. Make the branch
-  tip's message describe the work first: the squash takes its message.
+  **Only with the owner's OK** (owner's call, 2026-10-01, replacing
+  "run it yourself"): work stays on this branch until the owner says
+  so. The report hands over the command; the owner runs it, or replies
+  "merge it" / "land it", and only then do you run it.
+  `git-guard.py` refuses it unless the owner's latest message says
+  merge or land. Make the branch tip's message describe the work first:
+  the squash takes its message.
 
 After a Commit, the command already merged `main` back into this branch, so
 a follow-up round just commits on the same branch and ends with the same

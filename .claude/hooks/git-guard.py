@@ -2,7 +2,9 @@
 tree at the same time, so blanket git commands are blocked (exit 2, the
 reason goes back to the session). A plain `git commit` passes through (the
 normal permission prompt still applies) and gets a note listing the
-unstaged files that are staying out of it.
+unstaged files that are staying out of it; paths matching the project's
+`quiet_dirty` globs (.claude/project/file-guard.json) are counted in one
+item instead of listed.
 
 Also enforces the owner-only path to `main`/origin: the owner lands
 branches with `py -3 tools/try.py <branch> --commit`, which pushes main
@@ -10,6 +12,11 @@ once it landed. Sessions never push (except a cloud session pushing its
 own non-main branch), never merge into `main`, never delete a branch or
 remove a worktree (tools/cleanup.py does both once a branch has landed),
 and never run `gh pr merge`.
+
+`tools/try.py <branch> --commit` (landing a branch on main) runs only on
+the owner's OK: the owner's latest prompt in the transcript must say
+merge or land (and not "don't merge"). Subagents and unattended
+(`AUTOPLAN=1`) sessions are always refused; the owner lands those runs.
 
 In the main checkout (shared mode), `git checkout` / `git switch` are also
 refused: the owner's GitHub Desktop and other sessions rely on it staying
@@ -33,6 +40,9 @@ import re
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from guard_config import load_config, matches_any, quiet_globs, quiet_line  # noqa: E402
 
 QUOTED = re.compile(r'"[^"]*"|\'[^\']*\'')
 
@@ -85,6 +95,64 @@ def pushes_main(bare: str, m: re.Match) -> bool:
         if TARGET_RE.match(tok):
             return True
     return False
+
+
+LAND_RE = re.compile(r"\btry\.py\b[^|;&\n]*\s--commit\b")
+LAND_OK_RE = re.compile(r"\b(merge|land)\b|--commit", re.I)
+LAND_NO_RE = re.compile(
+    r"\b(don'?t|do not|not yet|never|no|wait|hold)\b[^.\n]{0,25}\b(merge|land)", re.I)
+
+
+def last_owner_prompt(transcript_path: str) -> str:
+    """Text of the newest human prompt in the transcript (not a tool result,
+    not an injected meta entry), or "" when none is found."""
+    try:
+        with open(transcript_path, "rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            f.seek(max(0, size - 4_000_000))
+            lines = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return ""
+    for line in reversed(lines):
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if e.get("type") != "user" or e.get("isMeta"):
+            continue
+        content = (e.get("message") or {}).get("content")
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+                continue
+            text = " ".join(b.get("text", "") for b in content
+                            if isinstance(b, dict) and b.get("type") == "text")
+        else:
+            continue
+        # drop injected reminders so only the owner's own words count
+        text = re.sub(r"<system-reminder>.*?</system-reminder>", " ", text, flags=re.S)
+        if text.strip():
+            return text
+    return ""
+
+
+def landing_refusal(d: dict) -> str:
+    """Why this session may not run try.py --commit now, or "" when the owner OK'd it."""
+    if os.environ.get("AUTOPLAN") == "1":
+        return ("an unattended plan run never lands; the owner lands the "
+                "finished branch after the Stage done report")
+    tp = d.get("transcript_path") or ""
+    if os.path.basename(os.path.dirname(os.path.normpath(tp))) == "subagents":
+        return "a subagent never lands a branch"
+    said = last_owner_prompt(tp)
+    if LAND_OK_RE.search(said) and not LAND_NO_RE.search(said):
+        return ""
+    return ("landing on main waits for the owner's OK: their latest message "
+            "must say merge or land. Commit on the branch, end with the "
+            "Commit command in the report, and let the owner run it or reply "
+            "\"merge it\"")
 
 
 PATH_RE = r'"([^"]+)"|\'([^\']+)\'|([^\s;&|]+)'
@@ -195,9 +263,14 @@ def foreign_matches(cmd: str, cwd: str, d: dict) -> list[str]:
 def main():
     d = json.load(sys.stdin)
     cmd = (d.get("tool_input") or {}).get("command") or ""
-    if "git" not in cmd and "gh" not in cmd:
+    if "git" not in cmd and "gh" not in cmd and "try.py" not in cmd:
         return
     bare = mask_quotes(cmd)
+    if LAND_RE.search(bare):
+        why = landing_refusal(d)
+        if why:
+            sys.stderr.write(f"Blocked by .claude/hooks/git-guard.py: {why}.\n")
+            sys.exit(2)
     for pat, why in BLOCK:
         if re.search(pat, bare):
             sys.stderr.write(
@@ -265,10 +338,16 @@ def main():
         unstaged = git("diff", "--name-only")
         untracked = git("ls-files", "--others", "--exclude-standard")
         left = [l for l in (unstaged + "\n" + untracked).splitlines() if l]
+        # Paths matching quiet_dirty are counted, not listed.
+        top = git("rev-parse", "--show-toplevel")
+        quiet = quiet_globs(load_config(top)) if top else []
+        shown = [l for l in left if not (quiet and matches_any(l, quiet))]
+        if len(shown) < len(left):
+            shown.append(quiet_line(len(left) - len(shown), quiet))
         if left:
             note = ("Unstaged files staying out of this commit (foreign "
                     "edits unless you made them; if yours, stage them by "
-                    "path first): " + ", ".join(left))
+                    "path first): " + ", ".join(shown))
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "additionalContext": note}}))

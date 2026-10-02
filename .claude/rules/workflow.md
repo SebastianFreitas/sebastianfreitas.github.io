@@ -211,7 +211,8 @@ went from 44k to 51k and 68k for three specs each, 2026-10-01).
    an earlier window does not count; a fresh one is cheap).
 6. **Commit** by path, as your mode says, with a message that describes
    the work (a squash takes the branch tip's message). In worktree mode
-   run the mode's `try.py --commit` yourself once verified. Delete
+   commit on the branch only: `try.py --commit` waits for the owner's
+   OK (the mode file's Commit). Delete
    `.claude/specs/` and `.claude/handoff.md`.
 7. **Report**: end the turn with exactly this:
    1. **Name:** the feature in plain words, then the branch (and PR in cloud).
@@ -298,9 +299,12 @@ subagent's hand-back lands in a new turn that the Stop guard fights.
 
 ## Token rules (every agent)
 
-- Never read a whole file over 300 lines (MAP.md lists those over 500):
-  grep the name, then read around the hit. Names do not drift; line
-  numbers do.
+- Never read a whole file over 300 lines (file-guard refuses it and
+  gives the count): grep the name, then read around the hit. Names do
+  not drift; line numbers do.
+- Search with the Grep and Glob tools, not `grep`/`find` in Bash: they
+  skip gitignored paths, and `.claude/worktrees/` holds a full copy of
+  the repo per worktree (Van Gunner had 24, 2026-10-02).
 - Never open the binary and media paths `CLAUDE.md` lists; list them
   for names only. Never open `__pycache__/`.
 - Keep command output short: `tail -n 30`, `Select-Object -Last 30`, or
@@ -310,7 +314,15 @@ subagent's hand-back lands in a new turn that the Stop guard fights.
   picture. Read a picture only for a look no tool measures, once, with
   one line on what it shows; never re-read one already described.
 - A new file, moved function or new export gets its MAP.md row fixed in
-  the same commit (branches: see your mode file).
+  the same commit (branches: see your mode file). The map holds purpose
+  and exports, not line counts, and no line in it passes 300
+  characters: the Grep tool prints "[Omitted long matching line]"
+  instead of a longer one. Put detail on bullets under the table, each
+  starting with the file name. `review-guard.py` refuses a commit once
+  when either slips.
+- The map's "Owner's words" section maps the owner's nicknames to code
+  names. When the owner uses a word the code does not, add a line
+  (Van Gunner: `docs/glossary.md`, copied into the generated map).
 
 ## Git and the owner's commands
 
@@ -319,8 +331,8 @@ subagent's hand-back lands in a new turn that the Stop guard fights.
   delete branches by hand, never `gh pr merge`. `tools/cleanup.py`
   deletes local session branches and their worktrees once they have
   landed on `main` and sat idle 24 h; it runs at session start and after
-  `try.py --commit`. Only `try.py --commit` (run by you in worktree
-  mode) reaches local `main` from a branch, and it pushes `main` once
+  `try.py --commit`. Only `try.py --commit` (run by the owner, or by
+  you when the owner's latest message says merge or land) reaches local `main` from a branch, and it pushes `main` once
   it landed: the app cuts new worktrees from `origin/main`, so an
   unpushed `main` starts every new session without it (2026-10-01).
   Nothing else reaches origin except the owner's GitHub Desktop.

@@ -31,14 +31,21 @@ The project tunes this through an optional .claude/project/file-guard.json
   with "<path> is <why>." (a missing or empty why gets a default reason).
 - main_session_exempt_models: lowercase substrings; a session model that
   contains one skips the main-session source rule.
+- quiet_dirty: globs (same matching as generated) for paths a tool rewrites
+  all the time; session-start and git-guard count them in one line instead
+  of listing them, but still record them as foreign. Not used here.
+Loading and glob matching live in guard_config.py, shared with the other
+hooks that read this file.
 
 Never fails the hook: any error allows the call (exit 0).
 """
-import fnmatch
 import json
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from guard_config import load_config, matches_any, source_rule  # noqa: E402
 
 BINARY_SUFFIXES = {
     ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tga", ".exr", ".hdr",
@@ -49,13 +56,7 @@ BINARY_SUFFIXES = {
     ".psd", ".7z", ".gz", ".tar",
 }
 CACHE_DIR_NAMES = {"__pycache__", "node_modules", ".git"}
-SOURCE_SUFFIXES = {
-    ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".css", ".scss",
-    ".html", ".gd", ".tscn", ".tres", ".gdshader", ".gdshaderinc", ".cs",
-    ".cfg", ".sh",
-}
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
-CONFIG_PATH = ".claude/project/file-guard.json"
 DEFAULT_WHY = "generated or tool-owned (see .claude/project/file-guard.json)"
 
 MAX_LINES = 300
@@ -80,15 +81,6 @@ def find_root(path: str) -> str | None:
         if parent == d:
             return None
         d = parent
-
-
-def load_config(root: str) -> dict:
-    try:
-        with open(os.path.join(root, CONFIG_PATH), encoding="utf-8") as f:
-            cfg = json.load(f)
-    except (OSError, ValueError):
-        return {}
-    return cfg if isinstance(cfg, dict) else {}
 
 
 def deny(reason: str) -> None:
@@ -126,7 +118,7 @@ def read_violation(path: str, rel: str, tool_input: dict, cfg: dict) -> str | No
 def generated_reason(rel: str, cfg: dict) -> str | None:
     # First hit in the project's list wins; a hit without a why still denies.
     for entry in cfg.get("generated") or []:
-        if isinstance(entry, dict) and fnmatch.fnmatchcase(rel, str(entry.get("glob", ""))):
+        if isinstance(entry, dict) and matches_any(rel, [str(entry.get("glob", ""))]):
             return str(entry.get("why") or "") or DEFAULT_WHY
     return None
 
@@ -211,10 +203,7 @@ def main() -> None:
 
     if d.get("agent_id"):
         return
-    suffixes = SOURCE_SUFFIXES
-    if "source_suffixes" in cfg:
-        suffixes = {s.lower() for s in cfg["source_suffixes"] or []}
-    source_files = list(cfg.get("source_files") or [])
+    suffixes, source_files = source_rule(cfg)
     if ext(path) not in suffixes and rel not in source_files:
         return
     if not main_session_violation(tool_name, tool_input):
