@@ -9,6 +9,43 @@ commit. Grep for a file name, a function or a concept; never read the whole
 file. The map holds purpose and exports, not line counts (file-guard reports
 sizes at read time).
 
+## Owner's words
+
+Owner's words → code names. Add a line when the owner uses a word the code does not.
+
+- the nav bank: js/hud/tiles-nav.js (radar, signal, drive, nav tiles)
+- the sys bank, systems monitor: js/hud/tiles-sys.js (hull, repair, bus tiles); framework js/hud/instruments.js
+- the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
+- the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
+- beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
+- the gate, first-visit gate: js/site/entry.js (decision), js/site/intro.js (UI), css/gate.css
+- the level chip, rank card, level burst: js/site/xp.js (chip, ranks), js/site/surge.js (burst, card), css/beacon.css
+- the setting panel, Setting/Tier toggle: js/bridge/bridge-panel.js
+- the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
+- the places that bend the instruments: js/bridge/bridge-sites.js (SITES, GD_SITES), bridge-env.js
+- depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
+- Game Dev sector, the planets: js/bridge/marks.js PLANETS, js/bridge/planet.js, js/gdworld/, js/gamedev/zones.js (backdrops)
+- the bench, the run console (VoidScape): js/gamedev/forge.js, forge-guns.js, forge-missions.js
+- Sector Zero storm: js/gamedev/storm.js, fed by stormEnv in js/bridge/bridge-marks.js
+- the case pages, a page's toy: projects/*.html; toy js/pages/<page>.js on the shared js/pages/play.js, css/play.css
+- the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
+- the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
+- the womb, the flesh ball, Primordisentia: js/genesis/genesis-flesh.js (fleshGeom, drawFlesh, drawSeal)
+- the old ones: js/genesis/genesis-oldones.js (24 beings), painters in genesis-oldkin.js
+- the east-goers (dressed old ones): js/genesis/genesis-oldkin.js (Bare/Dressed painters), clothes in genesis-attire.js
+- the carers: CARERS (eye, chime, mound) in js/genesis/genesis-oldones.js
+- the red dot (Obrokxus inside the womb): js/genesis/genesis-dot.js; his forms in genesis-obrok.js, genesis-titans.js
+- the Hound: drawHound in js/genesis/genesis-titans.js; its ritual in genesis-ritual.js
+- the war, angels and devils: js/genesis/genesis-armies.js (sim), genesis-hosts.js, genesis-seraphin.js (angels), genesis-malgrur.js (devils)
+- the sky shadows, tier 3: js/genesis/genesis-tier3.js; palette genesis-eldpal.js
+- the Rex kingdoms: js/world/rex.js; art in js/world/art/ (firstlight, crimson, bonespire, titans, valkhar, law)
+- the Mainland factions: js/world/city.js drawLandPlace; art in js/world/art/ (shattered, libertech, dawn, accord, gore)
+- the tear: js/world/admin-tear.js (the Administration's cut in reality)
+- the Watcher's alien: js/world/serus.js (Serus), inside js/world/watcher.js
+- the ship, the wedge hull, the shard: js/ship/voidship*.js (art, prow = the shard)
+- v bump, cache bust: tools/bump.py
+- the top bar, topbar: css/style.css (topbar rules); pinned on scroll
+
 ## Shared state conventions
 
 Every JS file is an IIFE that publishes or extends one global on `window`.
