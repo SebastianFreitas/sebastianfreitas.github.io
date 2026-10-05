@@ -7,7 +7,7 @@
     ".claude/agents/plan-reviewer.md": "fe3f06d63605a85b3363d07d959850dcdee5de7a6ae004420a27b2ef16e9edcd",
     ".claude/agents/plan-writer.md": "24f47fdf3379939328f4a8e01e61594bbe6a78192a7db605342abf41b6e1c730",
     ".claude/agents/reviewer.md": "34a6ae8db7ba942491c3399bcffab37996cbfdbbd5b0119a911c77e86800ace0",
-    ".claude/hooks/agent-guard.py": "e3822907195845cd80bfec93df858e67fa40c31eb62f1c80481fd42021337609",
+    ".claude/hooks/agent-guard.py": "c21f1005ffcd0eabe0500d71eef33e8e24e9c4c1a7e56ff42703e0bb5e42abaf",
     ".claude/hooks/context-watch.py": "551220917f63cf0ce2b97eb79e2e67e326771427a3d065b039ddd951179cf849",
     ".claude/hooks/file-guard.py": "8f790c4f2f931533f2b9a472f64fadbc679ac153a047f2c2d270068f037eed69",
     ".claude/hooks/git-guard.py": "01908a6081787d77657ad3b4a3f12b98e91feb4d3d7d7181a69a6e2b35874a42",
@@ -30,7 +30,7 @@
     ".claude/skills/plan/interview.md": "29033dc03d5dcde8cbfd6d608f15f29c3705d1007f534c73490734affc864396",
     ".claude/skills/plan/run.md": "0d610869b8f2465d50fcdd4d684f36525ce18b8e6fd83f6d3ff824c29421cd2c",
     ".claude/skills/plan/unattended.md": "eab898b321dfb21d3ab6407ed1f462644215f1072fa93f87ee8a4e561d923bc9",
-    "tools/autoplan.py": "adff30a5a8d546ca134a40047e963a73820224041ed8c40a4ae223b3f2b75d97",
+    "tools/autoplan.py": "7bb358680ee5a1029f9f32ceafa1dd1384e3149f96cfbd2ac2e7573cd75a5f28",
     "tools/cleanup.py": "71108a1cc531c1beaada08f99c5269024843b6f035c0d575a0ef2ed603401c25",
     "tools/try.py": "8b99b9a9b721c72df9de747ece1e232d11b3462cf59971e6a2fcd36d3cc99645",
     "tools/try_commit.py": "19503ac68b4bf50488e538459ae1f3d444d037f58d974447586ac962e907527e"
