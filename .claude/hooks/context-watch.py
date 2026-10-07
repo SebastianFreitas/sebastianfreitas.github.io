@@ -6,21 +6,28 @@ and says to finish and hand off past it (rules in .claude/rules/
 workflow.md "Context budget"; handoff format in .claude/skills/handoff).
 The line depends on the window:
 - a headless plan session: AUTOPLAN_LINE from tools/autoplan.py;
-- a prepared run (.claude/handoff.md starts `Run: prepared`; remembered
-  for the window once seen, so deleting the handoff at the commit does
-  not move the line): RUN_LIMIT;
-- any other app window (a prepare, a quick fix, a plan interview or a
-  run's supervisor): LIMIT, lower, because what grows there is the
+- a prepared run (a go prompt naming .claude/handoff.md while it starts
+  `Run: prepared`; a handoff that merely exists, e.g. in the prepare
+  window that just wrote it, does not count; remembered for the window,
+  so deleting the handoff at the commit does not move the line):
+  RUN_LIMIT;
+- a plan run's supervisor (a prompt that is the go prompt `go: run plan`
+  or `carry on running plan`, or a Bash/PowerShell call that launches
+  `py ... autoplan.py <name>`; remembered for the window the same way):
+  RUN_LIMIT, because it reports every phase of a plan in one window;
+- any other app window (a prepare, a quick fix, a plan interview):
+  LIMIT, lower, because what grows there is the
   model's own output (specs, thinking), and two prepare windows went
   from 42k to 140k with one Explore call each (review of 2026-10-01).
 
 Subagents (Explore, Plan, general-purpose, claude-code-guide, implementer,
-implementer-wt, reviewer, plan-reviewer, plan-writer):
+implementer-wt, reviewer, plan-reviewer, look-judge, plan-writer):
 - PreToolUse: warns at SOFT x its line, says to stop reading past it.
   Advisory only; a model can ignore it.
 - PreToolUse: past HARD x its line, every further tool call is DENIED with
   an instruction to write the report now. This is the enforcement: a
-  subagent cannot drift past 1.25x its line.
+  subagent cannot drift past 1.25x its line. A Write or Edit under
+  .claude/specs/reports/ stays allowed, so the report can still land.
 - SubagentStop: logs the peak to a per-session ledger; the main session's
   next hook run reports it.
 
@@ -42,10 +49,23 @@ Never fails the hook: any error exits 0 (and allows the tool).
 """
 import json
 import os
+import re
 import sys
 
-LIMIT = 100_000       # app windows that are not a prepared run
-RUN_LIMIT = 160_000   # a prepared run's window (`Run: prepared` handoff)
+LIMIT = 120_000       # app windows that are not a prepared run
+RUN_LIMIT = 175_000   # a prepared run's window, or a plan run's supervisor
+# the go prompt that starts a prepared run (workflow.md "The go prompt")
+RUN_PROMPT = re.compile(r"\bgo:.*handoff\.md", re.I | re.S)
+SUPERVISOR_PROMPT = re.compile(r"go: run plan |carry on running plan ")
+# py / py.exe / python / python3 / python3.12 (bare, as a path, quoted or
+# not), an optional -3 / -3.12, then a path ending in autoplan.py (quoted
+# paths may hold spaces) and a word. `grep autoplan.py`, `cat
+# tools/autoplan.py` and `py tools/autoplan.py --dry-run x` do not match.
+SUPERVISOR_CMD = re.compile(
+    r"(?:^|[\s;&|(\"'/\\])py(?:thon[\d.]*)?(?:\.exe)?[\"']?\s+"
+    r"(?:-3(?:\.\d+)?\s+)?"
+    r"(?:\"[^\"\n]*autoplan\.py\"|'[^'\n]*autoplan\.py'|[^\s\"']*autoplan\.py)"
+    r"\s+\w")
 SOFT = 0.8            # subagents: warn from this fraction of a line
 MAIN_SOFT = 0.9       # main session: warn from this fraction of its line
 HARD = 1.25           # subagents: deny all tools from this multiple of the line
@@ -57,7 +77,7 @@ HARD = 1.25           # subagents: deny all tools from this multiple of the line
 SUB_LIMITS = {"Explore": 100_000, "Plan": 100_000,
               "general-purpose": 100_000, "claude-code-guide": 100_000,
               "implementer": 60_000, "implementer-wt": 60_000, "reviewer": 80_000,
-              "plan-reviewer": 80_000, "plan-writer": 120_000}
+              "plan-reviewer": 80_000, "look-judge": 80_000, "plan-writer": 120_000}
 
 
 def usage_total(u):
@@ -160,6 +180,15 @@ def own_transcript(d):
     return cand if os.path.exists(cand) else None
 
 
+def report_write(d):
+    """Past HARD the agent must still be able to write its report: a Write
+    or Edit under .claude/specs/reports/ (agents return only its path)."""
+    if d.get("tool_name") not in ("Write", "Edit"):
+        return False
+    p = ((d.get("tool_input") or {}).get("file_path") or "").replace("\\", "/")
+    return "/.claude/specs/reports/" in p or p.startswith(".claude/specs/reports/")
+
+
 def tier_of(used, limit, soft):
     if used >= limit:
         return 2
@@ -169,30 +198,49 @@ def tier_of(used, limit, soft):
 
 
 def main_line(d, state):
-    """(limit, is_run) for this app window."""
+    """(limit, kind) for this app window; kind is "run", "supervisor" or ""."""
     env = os.environ.get("AUTOPLAN_LINE")
     if env:
         try:
-            return int(env), False
+            return int(env), ""
         except ValueError:
             pass
-    if state["main"].get("run"):
-        return RUN_LIMIT, True
-    try:
-        hand = os.path.join(d.get("cwd") or os.getcwd(), ".claude", "handoff.md")
-        with open(hand, encoding="utf-8", errors="ignore") as f:
-            if f.readline().strip() == "Run: prepared":
-                state["main"]["run"] = True
-                return RUN_LIMIT, True
-    except OSError:
-        pass
-    return LIMIT, False
+    kind = state["main"].get("run")
+    if kind:
+        return RUN_LIMIT, ("supervisor" if kind == "supervisor" else "run")
+    text = d.get("prompt") or ""
+    if not text and d.get("tool_name") in ("Bash", "PowerShell"):
+        text = (d.get("tool_input") or {}).get("command") or ""
+    if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
+        kind = "supervisor"
+    elif d.get("hook_event_name") == "UserPromptSubmit" and RUN_PROMPT.search(text):
+        # only the go prompt makes a run window: a handoff that merely
+        # exists (the prepare window that just wrote it, another
+        # session's checkout) does not
+        try:
+            hand = os.path.join(d.get("cwd") or os.getcwd(), ".claude", "handoff.md")
+            with open(hand, encoding="utf-8", errors="ignore") as f:
+                if f.readline().strip() == "Run: prepared":
+                    kind = "run"
+        except OSError:
+            pass
+    if kind:
+        # the line moved: tiers crossed under the old line no longer hold
+        state["main"]["run"] = kind
+        state["main"]["tier"] = 0
+        return RUN_LIMIT, kind
+    return LIMIT, ""
 
 
-def main_message(used, limit, tier, is_run):
+def main_message(used, limit, tier, kind):
     pct = used * 100 // limit
     if tier == 2:
-        if is_run or os.environ.get("AUTOPLAN_LINE"):
+        if kind == "supervisor":
+            return (f"CONTEXT WATCH: {used:,} tokens in context, past the "
+                    f"supervisor line of {limit:,}. Launch nothing new: "
+                    "finish the phase report and end with the go prompt "
+                    "('carry on running plan <name>'), as run.md says.")
+        if kind or os.environ.get("AUTOPLAN_LINE"):
             return (f"CONTEXT WATCH: {used:,} tokens in context, past the "
                     f"handoff line of {limit:,}. Finish only the current "
                     "atomic step (an implementer already running may "
@@ -271,14 +319,15 @@ def on_subagent_tool(d, ev):
     used = context_tokens(own)
     if used is None:
         return
-    if ev == "PreToolUse" and used >= limit * HARD:
+    if ev == "PreToolUse" and used >= limit * HARD and not report_write(d):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": (
                 f"CONTEXT WATCH: {used:,} tokens, past your hard line of "
                 f"{int(limit * HARD):,}. No more tool calls. Write your "
-                "report now from what you have (for the implementer: "
+                "report now from what you have (Write to .claude/specs/reports/ "
+                "is still allowed; for the implementer: "
                 "files changed, verification so far, what is left), and "
                 "say you hit the context line so the task must be "
                 "narrowed or split.")}}))
@@ -341,13 +390,13 @@ def on_main(d, ev, path):
     if os.path.exists(path):
         used = context_tokens(path)
         if used is not None:
-            limit, is_run = main_line(d, state)
+            limit, kind = main_line(d, state)
             tier = tier_of(used, limit, MAIN_SOFT)
             last = int(state["main"].get("tier", 0))
             # a new prompt repeats the current state once; a tool call
             # speaks only when a threshold is crossed
             if tier > last or (ev == "UserPromptSubmit" and tier > 0):
-                m = main_message(used, limit, tier, is_run)
+                m = main_message(used, limit, tier, kind)
                 if m:
                     parts.append(m)
             state["main"]["tier"] = max(tier, last)

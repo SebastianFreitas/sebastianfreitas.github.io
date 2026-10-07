@@ -29,8 +29,11 @@ start one; when one is live, report where it is (below) and stop.
 ### Supervising the run (the app session)
 
 - **One phase per launch:** Bash with `run_in_background: true`:
-  `py -3 <main checkout, absolute, forward slashes>/tools/autoplan.py <name> --max-sessions 1`
-  (no `| tail`). Say in one line which phase runs. Do not poll or sleep:
+  `py -3 <the go prompt's checkout, absolute, forward slashes>/tools/autoplan.py <name> --max-sessions 1`
+  (the runner finds plans only in its own checkout: a plan written on
+  an app worktree's branch runs from that worktree, 2026-10-06)
+  (no `| tail`, no `--claude`: it finds the CLI itself). Say in one
+  line which phase runs. Do not poll or sleep:
   the harness notifies when it exits.
 - **When it exits:** read the run's last 12 lines of output (the
   session row and `stop reason:`), the state file (`Status`, Completed
@@ -39,7 +42,8 @@ start one; when one is live, report where it is (below) and stop.
   `stop reason: max sessions reached · last session: phase-done` (or
   `partial`, or `plan-done` after the last phase); a usage limit is
   exit 3 with `stop reason: usage limit`. Report the phase in at most three
-  lines: what it built in plain words, the pictures' paths, every
+  lines: what it built in plain words, the pictures (SendUserFile) and
+  the `look-judge` verdict when the phase had one, every
   `D<n> (auto)` as a Look at the owner can reverse. Then by `Status`:
   - `phase-done` or `partial` → launch the next one at once, same turn,
     no question to the owner. The same phase ending `partial` twice in a
@@ -52,7 +56,12 @@ start one; when one is live, report where it is (below) and stop.
   - **anything else stops everything:** any other `stop reason:` (a
     session killed at the kill line, errored twice, no progress, a
     failed safety commit, not logged in), a crash with no summary, the
-    same phase `partial` twice. Launch nothing; tell the owner what happened
+    same phase `partial` twice, and a phase report or state file that
+    says the Pass test or a look check failed, whatever its `Status`
+    says. Never reason that the next phase "does not depend on it"
+    (van-interior-salvage, 2026-10-07: phase 11's look failed on every
+    seed, phase 12 deleted the old interior anyway and the plan closed
+    as done). Launch nothing; tell the owner what happened
     in plain words (the phase, what landed, the log's last lines) and
     what you would do about it. The owner decides.
 - **Never** read a log whole, a picture, a diff, the plan's phase
@@ -68,14 +77,20 @@ start one; when one is live, report where it is (below) and stop.
   and its context size (from `usage`).
 - **Closed app:** the run dies with the session. The state file holds
   where it was: `go` in any new session starts it again (`--force` if a
-  stale lock is reported). The terminal command stays a fallback the
+  stale lock is reported). A crash or power cut can leave uncommitted
+  edits, and the runner refuses a dirty tree: commit them by path on the
+  plan branch as `WIP: phase <n> after a crash, unverified` (a reviewer
+  first if review-guard asks), relaunch with `--force`, and say so in
+  one line; the phase session verifies and finishes them. The terminal command stays a fallback the
   owner may use, never a step you hand them.
 
 The owner's rule (2026-09-26): *"we never do 2 continues work, we must
 always separate stuff."* A running plan is a chain of short, isolated
-sessions. Each prompt executes **exactly one phase**, then the session
-halts and the owner clears the context. Never run two phases in one
-turn, never "keep going with Next".
+sessions, each executing **exactly one phase**. A headless `autoplan`
+session then simply ends (step 5); the supervisor launches the next. The
+owner clears the app window once, between the ready gate and the run,
+never between phases. Never run two phases in one turn, never "keep
+going with Next".
 
 1. **Enter.** Read `.claude/plans/<name>.state.md` first. `Status:
    blocked` or `Status: questions` → do "Answer" below instead, never a
@@ -87,9 +102,9 @@ turn, never "keep going with Next".
    other phase.
 2. **Phase questions** come before the first spec (rules below).
 3. **Execute that phase only:** research its topics (digest to
-   `research/<name>-<NN>.md` when it is more than a few anchors), read
-   the `.claude/rules/` files for every area it touches, design, specs,
-   implementer, verify, and the `reviewer` over about 150 lines or more
+   `research/<name>-<NN>.md` when it is more than a few anchors), specs
+   naming the `.claude/rules/` files for every area it touches,
+   implementer (which verifies), and the `reviewer` over about 150 lines or more
    than three files, as `CLAUDE.md` says. Anything the phase reveals
    about a later phase goes into Carry forward or the state file, never
    into this session's work.
@@ -106,9 +121,13 @@ turn, never "keep going with Next".
       Carry forward, and commit those too (same path rules). The state
       file is committed: in cloud mode the next session is a fresh clone
       and reads it from the branch.
-5. **Hard stop.** End the turn with the normal report, then the go
-   prompt (`workflow.md` "The go prompt"; checkout and branch from git,
-   now) as the last thing, nothing after it:
+5. **Hard stop.** Headless (`AUTOPLAN=1`): end with a short phase
+   report for the supervisor (what landed, `Status`, Next phase); no
+   `/clear`, no go prompt. **In-app fallback only** (no
+   `tools/autoplan.py`, or the owner said to run the phase in the app):
+   end the turn with the normal report, then the go prompt (`workflow.md`
+   "The go prompt"; checkout and branch from git, now) as the last
+   thing, nothing after it:
 
        Phase complete. Please run `/clear`, then paste this:
 
@@ -121,9 +140,9 @@ turn, never "keep going with Next".
    Read .claude/plans/<name>.state.md first.`, introduced with "No phase
    can run until the questions are answered." Do not start the next
    phase. Do not ask whether to continue.
-6. **The next prompt** ("Read .claude/plans/<name>.state.md and execute
-   the next phase") starts at step 1 in a fresh context. A bare "go"
-   starts or reports the supervised run instead (above).
+6. **The next prompt** (fallback: "Read .claude/plans/<name>.state.md
+   and execute the next phase") starts at step 1 in a fresh context. A
+   bare "go" starts or reports the supervised run instead (above).
 
 ### Which phase runs next
 
@@ -136,16 +155,23 @@ questions`.
 
 ### Verify in a phase
 
-`CLAUDE.md` § Verify decides which commands a change needs; a phase runs
-every one of them for the areas it touched, once, on its finished
-change. **Pictures** (owner, 2026-10-01: "when we check images we
+`CLAUDE.md` § Verify decides which commands a change needs; the phase's
+implementer runs every one of them for the areas it touched, once, on
+the finished change, and reports the numbers. **Pictures** (owner, 2026-10-01: "when we check images we
 shouldn't repeat it if we get text from it"): a view a tool measures (a
 pixel count, a compare against a baseline) is judged by its number, and
-its picture is not read, including views measured clean. Read a picture
-only for a look no tool measures, or when a number says a view changed
+its picture is not read, including views measured clean. The
+implementer or reviewer (never the phase session) reads a picture only
+for a look no tool measures, or when a number says a view changed
 and the question is how; read each one once, write one line on what it
 shows, and never re-read a picture an earlier phase or session already
-described. A visible phase's Verification names the screenshots or views
+described. **The Pass test and look checks** go to the `look-judge`
+(prompt: plan path, phase, each shot's path with its view and seed, the
+report path, earlier verdicts and owner replies), never to the
+implementer, which looks for defects, not for the Brief. A FAIL gets the
+phase's tuning fallback once, then the judge again; still FAIL:
+`Status: blocked`, Blocker `Pass test failed: <the judge's reasons>`,
+whatever `Questions:` says. The owner decides what changes. A visible phase's Verification names the screenshots or views
 that must change and says the rest stay the same. A baseline is
 re-recorded (bless, update snapshots) only when the phase's Deliverable
 says so.

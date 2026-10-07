@@ -18,6 +18,18 @@ repo is allowed.
 - In the main session (no agent_id), source files are the implementer
   subagent's job, built from a spec (workflow.md Main session role); the main
   session itself may still make a single-line Edit.
+- A Write or Edit of .claude/handoff.md whose resulting file is over 80
+  lines or 6 KB: the handoff is a pointer for the next window (handoff
+  skill, "at most 80 lines"), and nothing enforced it (one ran to 28 KB and
+  every fresh window paid for it). Detail goes in the plan or state file,
+  a spec or a report file the handoff names. Main session and subagents.
+- A Write or Edit from a reviewer, plan-reviewer or look-judge subagent
+  (agent_type) outside .claude/specs/reports/: they got Write for their
+  report file only, and nothing but prompt text kept them out of source
+  (review 2026-10-05). A file outside any repo (scratchpad) stays allowed.
+  A look-judge may Read images anywhere: judging pictures is its job.
+- A Bash or PowerShell write to .claude/handoff.md: it skipped the cap
+  above; write the handoff with Write or Edit. Main session and subagents.
 - Bash and PowerShell writes to a source or generated file (redirects, tee,
   sed -i, cp/mv/install, python open(..., 'w'), Set-Content) are refused in
   the main session too: they skipped the Write/Edit check, and in cloud
@@ -63,6 +75,16 @@ DEFAULT_WHY = "generated or tool-owned (see .claude/project/file-guard.json)"
 
 MAX_LINES = 300
 MAX_READ_BYTES = 50 * 1024 * 1024
+HANDOFF_REL = ".claude/handoff.md"
+HANDOFF_MAX_LINES = 80
+HANDOFF_MAX_BYTES = 6 * 1024
+REPORT_ONLY_AGENTS = {"reviewer", "plan-reviewer", "look-judge"}
+# Agents whose job is reading pictures: images are allowed to them anywhere,
+# .godot/ shots included (phase 11 of van-interior-salvage copied shots to
+# %TEMP% only to get past the binary rule, 2026-10-07).
+IMAGE_READERS = {"look-judge"}
+MAIN_NO_READ = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tga", ".exr", ".hdr"}
+REPORTS_REL = ".claude/specs/reports/"
 
 
 def ext(path: str) -> str:
@@ -129,6 +151,44 @@ def edit_pairs(tool_name: str, tool_input: dict) -> list[tuple[str, str]]:
         edits = tool_input.get("edits") or []
         return [(e.get("old_string", ""), e.get("new_string", "")) for e in edits]
     return []
+
+
+def resulting_text(path: str, tool_name: str, tool_input: dict) -> str | None:
+    # The file as it would be after this Write/Edit/MultiEdit; None when it
+    # can't be worked out (the edit itself will fail, so allow).
+    if tool_name == "Write":
+        return tool_input.get("content") or ""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+    except OSError:
+        return None
+    if tool_name == "Edit":
+        edits = [tool_input]
+    elif tool_name == "MultiEdit":
+        edits = tool_input.get("edits") or []
+    else:
+        return None
+    for e in edits:
+        old, new = e.get("old_string", ""), e.get("new_string", "")
+        if not old or old not in text:
+            return None
+        text = text.replace(old, new) if e.get("replace_all") else text.replace(old, new, 1)
+    return text
+
+
+def handoff_violation(path: str, tool_name: str, tool_input: dict) -> str | None:
+    text = resulting_text(path, tool_name, tool_input)
+    if text is None:
+        return None
+    lines = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
+    size = len(text.encode("utf-8"))
+    if lines <= HANDOFF_MAX_LINES and size <= HANDOFF_MAX_BYTES:
+        return None
+    return (f"{HANDOFF_REL} would be {lines} lines, {size} bytes (limit "
+            f"{HANDOFF_MAX_LINES} lines, {HANDOFF_MAX_BYTES} bytes): move the "
+            "detail into the plan or state file, a spec or a report file and "
+            "keep the handoff a pointer to them (handoff skill).")
 
 
 def main_session_violation(tool_name: str, tool_input: dict) -> bool:
@@ -209,13 +269,51 @@ def bash_violation(d: dict, tool_input: dict) -> None:
             return
 
 
+def report_only_bash_violation(d: dict, tool_input: dict, agent_type: str) -> None:
+    """A reviewer's Bash may write only its report (or outside the repo):
+    sed -i or a redirect into the tree is the same as a refused Edit."""
+    command = tool_input.get("command") or ""
+    base = d.get("cwd") or os.getcwd()
+    for target in bash_write_targets(command):
+        path = os.path.abspath(os.path.join(base, target))
+        root = find_root(path)
+        if root is None:
+            continue
+        rel = os.path.relpath(path, root).replace("\\", "/")
+        if not rel.startswith(REPORTS_REL):
+            deny(f"{agent_type} writes only its report under {REPORTS_REL} "
+                 f"(or the scratchpad), not {rel}, with Bash or otherwise.")
+            return
+
+
+def bash_handoff_violation(d: dict, tool_input: dict) -> bool:
+    command = tool_input.get("command") or ""
+    base = d.get("cwd") or os.getcwd()
+    for target in bash_write_targets(command):
+        path = os.path.abspath(os.path.join(base, target))
+        root = find_root(path)
+        if root is None:
+            continue
+        if os.path.relpath(path, root).replace("\\", "/") == HANDOFF_REL:
+            deny(f"{HANDOFF_REL}: write it with Write or Edit, not a shell "
+                 f"command, so the {HANDOFF_MAX_LINES}-line cap applies "
+                 "(handoff skill).")
+            return True
+    return False
+
+
 def main() -> None:
     d = json.load(sys.stdin)
     tool_name = d.get("tool_name") or ""
     tool_input = d.get("tool_input") or {}
     if tool_name in ("Bash", "PowerShell"):
+        if bash_handoff_violation(d, tool_input):
+            return
+        agent_type = (d.get("agent_type") or "").split(":")[-1]
         if not d.get("agent_id"):
             bash_violation(d, tool_input)
+        elif agent_type in REPORT_ONLY_AGENTS:
+            report_only_bash_violation(d, tool_input, agent_type)
         return
     path =tool_input.get("file_path") or tool_input.get("notebook_path")
     if not path:
@@ -224,6 +322,16 @@ def main() -> None:
     if not os.path.isabs(path):
         path = os.path.join(cwd, path)
     path = os.path.abspath(path)
+
+    # Main session never Reads an image, anywhere (scratchpad shots too):
+    # one picture costs more than most specs (workflow.md Token rules).
+    if tool_name == "Read" and not d.get("agent_id") and ext(path) in MAIN_NO_READ:
+        deny("Main session: images are never Read here; pass the path on "
+             "(SendUserFile for the owner, or an agent's prompt).")
+        return
+    if tool_name == "Read" and d.get("agent_id") and ext(path) in MAIN_NO_READ \
+            and (d.get("agent_type") or "").split(":")[-1] in IMAGE_READERS:
+        return
 
     root = find_root(path)
     if root is None:
@@ -240,9 +348,21 @@ def main() -> None:
     if tool_name not in WRITE_TOOLS:
         return
 
+    agent_type = (d.get("agent_type") or "").split(":")[-1]
+    if d.get("agent_id") and agent_type in REPORT_ONLY_AGENTS             and not rel.startswith(REPORTS_REL):
+        deny(f"{agent_type} writes only its report under {REPORTS_REL} "
+             f"(or the scratchpad), not {rel}.")
+        return
+
     why = generated_reason(rel, cfg)
     if why is not None:
         deny(f"{rel} is {why}.")
+        return
+
+    if rel == HANDOFF_REL:
+        reason = handoff_violation(path, tool_name, tool_input)
+        if reason:
+            deny(reason)
         return
 
     if d.get("agent_id"):

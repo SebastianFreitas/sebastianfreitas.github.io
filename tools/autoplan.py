@@ -98,8 +98,10 @@ def state_path(name: str) -> Path:
 
 
 def find_claude(explicit: str | None) -> str:
-    """Resolve the claude CLI path: explicit, PATH, or newest installed version
-    (<version>/claude.exe or <version>/<hash>/claude.exe)."""
+    """Resolve the claude CLI path: explicit, PATH, the desktop app's newest
+    version (%APPDATA% or the Store app's Packages folder: <version>/claude.exe
+    or <version>/<hash>/claude.exe), then the native installer's
+    ~/.local/bin or ~/.claude/local. Supervisors never need --claude."""
     if explicit:
         if explicit.lower().endswith((".cmd", ".bat")):
             print("Pass the claude.exe path, not a .cmd shim.")
@@ -161,6 +163,10 @@ def find_claude(explicit: str | None) -> str:
                 best_exe = exe
     if best_exe is not None:
         return str(best_exe)
+    for exe in (Path.home() / ".local" / "bin" / "claude.exe",
+                Path.home() / ".claude" / "local" / "claude.exe"):
+        if exe.is_file():
+            return str(exe)
     print("Claude Code CLI not found. Install it (see https://code.claude.com/docs) or pass --claude PATH.")
     sys.exit(1)
 
@@ -618,7 +624,7 @@ def build_cmd(claude: str, prompt: str, args, budget: float | None) -> list[str]
         "--disallowedTools", "AskUserQuestion",
         "--allowedTools", *allowed,
         "--settings", json.dumps({"env": {
-            "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
+            "DISABLE_AUTO_COMPACT": "1",
             "AUTOPLAN_LINE": str(args.line),
         }}),
     ]
@@ -857,8 +863,8 @@ def main() -> int:
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", default="medium")
     parser.add_argument("--permission-mode", default="auto")
-    parser.add_argument("--line", type=int, default=160000)
-    parser.add_argument("--kill", type=int, default=185000)
+    parser.add_argument("--line", type=int, default=175000)
+    parser.add_argument("--kill", type=int, default=200000)
     parser.add_argument("--claude", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--here", "--shared", dest="here", action="store_true")

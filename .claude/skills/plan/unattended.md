@@ -13,8 +13,8 @@ or Progress row the brief does not carry, by grep, never whole.
 
 Everything in `run.md` "one phase per session" still holds (one phase,
 Handoff protocol, Which phase runs next, Verify in a phase, state file
-format, commit by path); open it by grep for one of those headings, never
-whole. The differences:
+format, commit by path) except the in-app `/clear` hard stop; open it by
+grep for one of those headings, never whole. The differences:
 
 ## Budget
 
@@ -23,25 +23,27 @@ the runner's kill line above it. The phase has to fit between the
 ~35k you start with and the line, so:
 
 - **Code reading goes to `Explore`**, always, with a named file,
-  function and question, asking for `file:line` anchors and a summary.
-  Read yourself only the range a spec is written against (under about
-  150 lines). A 1,000-line file read in main costs 30k and writes no
-  code.
+  function and question, asking for `file:line` anchors. Read no source
+  or rules yourself: the spec names them and the implementer reads them
+  (`workflow.md` "Coordinator"). A 1,000-line file read in main costs
+  30k and writes no code.
 - **Implementers run in the foreground** (`run_in_background: false`).
   Never launch one in the background and wait: no sleeps, no "waiting"
   messages, no ending the turn while one runs. Its commit must land
   before you write the state file.
 - **Verify what you touched, once**, with the cheapest check `CLAUDE.md`
-  § Verify names for it. Run the slow full checks only when the phase
+  § Verify names for it, run by the implementer (the spec's Acceptance). Run the slow full checks only when the phase
   needs them, and capture a "before" once per run, not per phase, if an
   earlier phase's capture is named in the brief. Never re-record a
   baseline unless the phase's Deliverable says so.
 - **Numbers before pictures.** A view a tool measures (a pixel count, a
-  compare against a baseline) is judged by its number; do not read its
-  picture, clean or not. Read a picture only for a look no tool
-  measures, or to see how a view the numbers flag has changed; once
-  each, with one line on what it shows, and never one an earlier
-  session already described (`run.md` "Verify in a phase").
+  compare against a baseline) is judged by its number. Never read a
+  picture yourself: the implementer or reviewer does, as `run.md`
+  "Verify in a phase" says.
+- **Look checks** go to the `look-judge` (foreground, `run.md` "Verify
+  in a phase"); SendUserFile does not exist here, so write the shot
+  paths and the verdict in the state file's Completed phase for the
+  supervisor to send. The run never waits for the owner's reply.
 - **The plan's numbers are built as written:** measure once, and apply
   the fallback written next to a number only when its check fails
   (`D<n> (auto)`). Do not re-derive them.
@@ -92,14 +94,18 @@ question as `run.md` "Phase questions" says (summarised here):
   recommended one first, and what was finished without it.
 - **Stop the run** (the code contradicts the plan, two D's conflict, a
   failing check you can't fix, a step that would lose work or spend
-  money): session end 4.
+  money, the Pass test or a look check still FAIL after its fallback):
+  session end 4.
 - **`Questions: auto` in the plan header:** nothing defers; take the
   recommended option as `D<n> (auto, owner-delegated)`. Only "stop the
-  run" still stops.
+  run" still stops. A choice that would make the Pass test harder to
+  pass (a piece that can't go where the Brief wants it, a cap the look
+  runs into) is never auto: it is a stop.
 
 The owner answers deferred questions and blockers later with `go` in an
 app session on this worktree, then restarts the runner.
 
 Keep going until the session ends one of the four ways. Do not end with
-a progress update. The report and hard-stop message are still written;
-the runner logs them.
+a progress update. End with a short phase report for the supervisor
+(what landed, `Status`, Next phase), never `/clear` or a go prompt: the
+session just ends and the supervisor launches the next.
