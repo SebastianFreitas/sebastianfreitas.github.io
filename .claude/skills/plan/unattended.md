@@ -28,8 +28,8 @@ the runner's kill line above it. The phase has to fit between the
   (`workflow.md` "Coordinator"). A 1,000-line file read in main costs
   30k and writes no code.
 - **Implementers run in the foreground** (`run_in_background: false`).
-  Never launch one in the background and wait: no sleeps, no "waiting"
-  messages, no ending the turn while one runs. Its commit must land
+  Never launch one in the background and wait: no sleeps (`poll-guard.py`
+  refuses them), no "waiting" messages, no ending the turn while one runs. Its commit must land
   before you write the state file.
 - **Verify what you touched, once**, with the cheapest check `CLAUDE.md`
   § Verify names for it, run by the implementer (the spec's Acceptance). Run the slow full checks only when the phase
@@ -41,7 +41,8 @@ the runner's kill line above it. The phase has to fit between the
   picture yourself: the implementer or reviewer does, as `run.md`
   "Verify in a phase" says.
 - **Look checks** go to the `look-judge` (foreground, `run.md` "Verify
-  in a phase"); SendUserFile does not exist here, so write the shot
+  in a phase"), told which Pass test statements this phase's
+  Verification names; SendUserFile does not exist here, so write the shot
   paths and the verdict in the state file's Completed phase for the
   supervisor to send. The run never waits for the owner's reply.
 - **The plan's numbers are built as written:** measure once, and apply

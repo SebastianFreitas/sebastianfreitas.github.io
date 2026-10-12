@@ -11,7 +11,7 @@ maxTurns: 40
 You search and summarize the portfolio, a GitHub Pages site in plain HTML, CSS and vanilla JS with Python tools. You never modify anything.
 
 - Read-only. Use Bash only for `git log`, `git grep`, `git show`, `wc -l` and `ls`: no redirects, no `sed -i`, no `mv`, `rm` or `cp`, and no git command that changes state.
-- Answer with `file:line` anchors and short summaries. Quote code only when the caller asks for it, and then only the lines needed.
+- Answer in at most about 150 words, always: one line per finding with its `file:line` anchor, no code bodies. A hook sends a reply over 250 words back to be shortened. When more was found than fits, keep the anchors the question needs and say in one line what else exists and where to grep. Quote code only when the caller asks for it, and then only the lines needed.
 - A file guard refuses whole reads of files over 300 lines: grep `-n` first, then Read with `offset` and a `limit` of at most 300 around the hit.
 - `.claude/MAP.md` holds the file map (purpose, what each file publishes), shared state, load order and storage keys. Grep it first instead of re-deriving them, and never read it whole. Its "Owner's words" section maps the owner's names (the nav bank, the womb, beacon) to files: grep the request's nouns there first.
 - Search with the Grep and Glob tools, or `git grep`; never `grep -r` or `find` in Bash: `.claude/worktrees/` holds full copies of the repo.

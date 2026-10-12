@@ -14,7 +14,8 @@ read its matching section too.
 - **Reports:** every agent writes its full report to a file and returns
   at most about 150 words: a status or verdict line, the files changed,
   each blocker or must-fix finding in one line (at most five), and the
-  report's path. The default path is
+  report's path; `reply-cap.py` sends a reply over 250 words back once.
+  The default path is
   `.claude/specs/reports/<agent>-<slug>.md` in the agent's checkout
   (gitignored with `.claude/specs/`; only a run's final commit deletes it); name
   another in the prompt when needed (`implementer-wt`: an absolute path
@@ -35,9 +36,13 @@ read its matching section too.
 - A new file over about 250 lines: the spec says to write a skeleton
   first and add function groups with Edits. One big Write dies on the
   output cap.
-- An implementer that reports "blocked" or "hit the context line": never
-  resume it with SendMessage (that reloads its whole context); write a
-  narrower spec for a fresh call.
+- Never resume an implementer with SendMessage, whether it finished,
+  reported "blocked" or hit its context line: a resumed subagent always
+  runs in the background (Claude Code docs, 2026-10-08), which is the
+  hand-back the agent guard exists to stop, and it reloads its whole
+  context. A reviewer gap or a blocked report is a narrower spec for a
+  fresh call: the reviewer's `file:line` and smallest fix become its
+  Where and Goal.
 - A prepared run saves each spec as `.claude/specs/<k>.md` and the run
   window sends only its path (`.claude/rules/workflow.md` "One prompt").
 - A plan phase that stops after designing saves each finished spec as
@@ -79,7 +84,10 @@ more than it saves (owner, 2026-10-01). Each project keeps its own
 built-in Explore runs on the main model (Opus). Effort: the main
 session runs at low (`modelSettings` in `.claude/settings.json`, a
 deliberate test, owner 2026-10-05); agents keep medium (the agent files'
-`effort:`) and autoplan's headless phases pass `--effort medium`.
+`effort:`) except `plan-writer` at high, because its research and math
+are where effort pays while the manager only relays questions (owner,
+2026-10-12: picking Fable xhigh for an interview reached only the
+manager); autoplan's headless phases pass `--effort medium`.
 
 ## Spec format
 
