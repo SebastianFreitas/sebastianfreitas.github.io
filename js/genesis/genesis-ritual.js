@@ -101,7 +101,7 @@
   }
 
   function drawUnder(ctx, S, F) {
-    /* ---- the pact rift: the sinner Ormius locked away ---- */
+    /* ---- the pact rift: the sinner Almur locked away ---- */
     if (S.pact > 0.01) {
       const xr = G.sx(S.cU - 0.07), yr = GenMain.surfY(xr) + 3;
       const R = Math.min(G.W, G.H) * 0.05, p = S.pact;

@@ -24,7 +24,7 @@ window.GenRex = (function () {
      the distance that smoothing lags, which is what keeps the pair
      in the middle of the frame instead of sliding to an edge. */
 
-  /* Obrokxus west (in front), Ormius then Ava behind him, closing. */
+  /* Obrokxus west (in front), Almur then Maelu behind him, closing. */
   function chaseAt(p) {
     const e = ease(p, 0.72);
     const k = smooth(p);
@@ -52,20 +52,27 @@ window.GenRex = (function () {
     const ph = p * 16;
     const strikeM = Math.pow(Math.max(0, Math.sin(ph * 1.5)), 6);
     const strikeA = Math.pow(Math.max(0, Math.sin(ph * 1.5 + 2.2)), 6);
+    const oyAbs = G.H * 0.34 + Math.sin(ph * 0.55 + 0.4) * span * 0.06;
+    const ayOff = Math.sin(ph * 1.1 + 2.0) * span * 0.10 * (1 - strikeA * 0.85);
+    /* Almur sits below the caption and below Maelu's box: his throne and
+       crest reach 1.62 h over his foot, Maelu's box drops 0.10 h under
+       hers, and his foot sits 0.45 h under `my`; the caption ends near 300 px */
+    const hG = G.GOD_H * G.H;
+    const myOff = Math.max(ayOff + 1.72 * hG + G.H * 0.016, Math.max(G.H * 0.605 - 0.45 * hG, Math.min(G.H * 0.40, 300) + 1.17 * hG) - oyAbs);
     return {
-      w, strikeM, strikeA,
+      w, strikeM, strikeA, cycM: 24 * p, cycA: 24 * p + 2.2,
       ouOff: Math.sin(ph * 0.8) * 0.030,
-      oyAbs: G.H * 0.34 + Math.sin(ph * 0.55 + 0.4) * span * 0.06,
+      oyAbs,
       mGap: mix(0.12 + Math.sin(ph * 0.6) * 0.03, 0.006, strikeM),
-      myOff: Math.sin(ph * 0.9 + 0.5) * span * 0.08 * (1 - strikeM * 0.85),
+      myOff,
       aGap: mix(0.20 + Math.sin(ph * 0.7 + 1.0) * 0.04, 0.010, strikeA),
-      ayOff: Math.sin(ph * 1.1 + 2.0) * span * 0.10 * (1 - strikeA * 0.85),
+      ayOff,
     };
   }
 
   /* The escape that has not ended. Obrokxus, a worm now, is in front
      and faster: he opens a gap, leaves the frame and does not come
-     back. Ormius keeps going west after him and never slows — the
+     back. Almur keeps going west after him and never slows — the
      position curve only speeds up, so there is no end to settle on.
      escapeG/escapeGV are the curve and its exact derivative, for the
      camera lead, as with the chase. */
@@ -87,10 +94,10 @@ window.GenRex = (function () {
     const oy = G.H * 0.33 + Math.sin(p * 8.0 + 0.6) * span * 0.04 - G.H * 0.06 * smooth(q);
     const oAmt = mix(0, 0.9, smooth(clamp(p / 0.12, 0, 1)))
                * (1 - smooth(clamp((p - 0.50) / 0.10, 0, 1)));
-    const strike = Math.pow(Math.max(0, Math.sin(p * 34)), 5)
-                 * (1 - smooth(clamp((p - 0.18) / 0.14, 0, 1)));
+    const cw = 1 - smooth(clamp((p - 0.18) / 0.14, 0, 1));
+    const strike = Math.pow(Math.max(0, Math.sin(p * 34)), 5) * cw;
     const search = smooth(clamp((p - 0.38) / 0.20, 0, 1));
-    return { ou, oy, oAmt, mu, my, strike, search };
+    return { ou, oy, oAmt, mu, my, strike, search, cyc: 34 * p, cw };
   }
 
   /* one of the five warlocks circling Obrokxus in the air, diving in
@@ -305,7 +312,11 @@ window.GenRex = (function () {
   }
 
   /* which crown each god wears, by kind */
-  const CROWN = { ormius: "bars", ava: "rings", kaeron: "orbit", kaelum: "petals", orochronus: "clock" };
+  const CROWN = { almur: "bars", maelu: "rings", ulden: "orbit", ixu: "petals", orochronus: "clock" };
+
+  /* each walker's painted box width in units of h at the end pose (measured at
+     h 144, columns with alpha > 0), so the line stands with no god over the next */
+  const LINE_W = { almur: 0.82, maelu: 1.792, ulden: 0.528, ixu: 0.896 };
 
   /* the five gods travel through Rex's own body, westward from the womb
      wall to the bridge, each carrying a chip of his colour. Held steps
@@ -318,14 +329,47 @@ window.GenRex = (function () {
 
     const u0 = G.REX_EAST - 0.02, u1 = G.REX_WEST + 0.08;
     const h = span * G.GOD_H;
+    /* walker i stands past the gaps of the walkers before it: half a box each
+       side and 0.05 h clear, in units (1 u = W px) */
+    const lineU = (n) => {
+      let s = 0;
+      for (let j = 0; j < n; j++) {
+        s += ((LINE_W[SIEGE_GODS[j].kind] + LINE_W[SIEGE_GODS[j + 1].kind]) / 2 + 0.05) * h / G.W;
+      }
+      return s;
+    };
+    /* the last second: Ixu turns and sinks into Rex's land, Serus climbs off the top */
+    const e = smooth(clamp((p - 0.86) / 0.14, 0, 1));
 
-    for (let i = 0; i < SIEGE_GODS.length; i++) {
+    /* Serus flies behind and above the four, who paint over him; he keeps
+       his slot's timing and the 8 held steps */
+    {
+      const iS = SIEGE_GODS.length - 1, g = SIEGE_GODS[iS];
+      const pe = 0.18 + iS * 0.05, pa = 0.72 + iS * 0.03;
+      if (p >= pe) {
+        const qS = clamp((p - pe) / (pa - pe), 0, 1);
+        const qs = Math.floor(qS * 8) / 8;
+        const uS = (u1 + (u1 + lineU(iS - 1))) / 2 + 0.195;
+        const u = u0 + (uS - u0) * qs;
+        const hS = G.SERUS_SCALE * h;
+        const footS = (p < pa ? rexSurfY(u) + 0.07 * G.H : G.H * G.DECK) - 1.4 * h;
+        const footY = footS - e * (footS + 1.0 * hS);
+        const x = G.sx(u) - 0.3 * hS * e;
+        F.drawGod(ctx, x, footY, hS, ORB_STYLE[g.kind], {
+          a: 1, face: -1, kind: g.kind, crown: CROWN[g.kind], wings: false,
+          tilt: -0.35 * e, ph: g.ph, mood: "happy", gait: p < pa ? qS * 8 : 0,
+        });
+        drawName(ctx, x, footY + 14, 1 - e, g.name, 0);
+      }
+    }
+
+    for (let i = 0; i < SIEGE_GODS.length - 1; i++) {
       const g = SIEGE_GODS[i];
       const pe = 0.18 + i * 0.05, pa = 0.72 + i * 0.03;
       const q = clamp((p - pe) / (pa - pe), 0, 1);
       if (p < pe) continue;
       const qs = Math.floor(q * 8) / 8;
-      const u1i = u1 + i * 0.035;
+      const u1i = u1 + lineU(i);
       const u = u0 + (u1i - u0) * qs;
 
       let x, footY;
@@ -337,19 +381,21 @@ window.GenRex = (function () {
         footY = G.H * G.DECK;
       }
 
-      F.drawGod(ctx, x, footY, h, ORB_STYLE[g.kind], {
-        a: 1, face: -1, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
-        tilt: 0, ph: g.ph, mood: "happy",
-      });
-      drawName(ctx, x, footY + 14, 1, g.name, 0);
+      const ixu = g.kind === "ixu";
+      const al = ixu ? 1 - smooth(clamp((e - 0.7) / 0.3, 0, 1)) : 1;
+      const lineY = footY;
+      if (ixu) { x += 0.15 * h * e; footY += 1.6 * h * e; }
+      if (al <= 0) continue;
+      /* the land hides everything below her standing line */
+      if (ixu && e > 0) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, G.W, lineY); ctx.clip(); }
 
-      if (qs >= 0.5 || p >= pa) {
-        const s = 0.16 * h;
-        ctx.fillStyle = "#c8b49a";
-        ctx.fillRect(x - s / 2, footY - 0.62 * h - s / 2, s, s);
-        ctx.fillStyle = "#8a7560";
-        ctx.fillRect(x - s / 2 + 0.35 * s, footY - 0.62 * h - s / 2, 0.65 * s, s);
-      }
+      F.drawGod(ctx, x, footY, h, ORB_STYLE[g.kind], {
+        a: al, face: ixu && e > 0 ? 1 : -1, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "maelu",
+        tilt: 0, ph: g.ph, mood: "happy", gait: p < pa ? q * 8 : 0,
+      });
+      drawName(ctx, x, footY + 14, al, g.name, 0);
+
+      if (ixu && e > 0) ctx.restore();
     }
   }
 

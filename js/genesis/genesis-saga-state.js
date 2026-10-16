@@ -147,7 +147,7 @@
       mu = mix(MAIN_U + 0.08, MAIN_U - 0.58, ret);
       my = yWob(1.4, 0.02);
     } else if (fleeLin > 0.02) {
-      mAmt = clamp((fleeLin - 0.02) / 0.10, 0, 1) * (1 - godsOut);
+      mAmt = clamp((fleeLin - 0.02) / 0.10, 0, 1) * (1 - smooth(clamp((lock - 0.88) / 0.12, 0, 1)));
       if (war <= 0) {
         mu = mix(C.mu, ou + F.mGap, F.w);
         my = mix(my, oy + F.myOff, F.w);
@@ -195,6 +195,19 @@
       const outA = smooth(clamp((fleeLin - 0.06) / 0.12, 0, 1));
       au = mix(BURY_U, au, outA);
       ay = mix(rexSurfY(BURY_U) + G.H * 0.03, ay, outA);
+    }
+    if (fleeLin > 0.02 && war < 0.108 && lock <= 0 && et <= 0 && ret <= 0) {
+      /* the flee keeps Almur under the caption and under Maelu's box, also
+         while the fight blends in and out (see chaseFightAt) */
+      const hG = G.GOD_H * G.H, my0 = my, mu0 = mu, keep = 1 - smooth(clamp(war / 0.108, 0, 1));
+      my = Math.max(my, G.H * 0.605 - 0.45 * hG, Math.min(G.H * 0.40, 300) + 1.17 * hG, Math.min(ay + 1.72 * hG + G.H * 0.016, G.H * 0.93 - 0.57 * hG));
+      /* where Maelu is still low the two share a height: Almur steps west of her box instead */
+      const ov = Math.min(my + 0.45 * hG + 0.12 * hG, ay + 0.45 * hG + 0.10 * hG + G.H * 0.016) - Math.max(my + 0.45 * hG - 1.62 * hG, ay + 0.45 * hG - 1.42 * hG);
+      const sepU = (1.65 * hG + G.H * 0.016) / (G.sx(1) - G.sx(0));
+      mu = mix(mu, Math.min(mu, au - sepU), smooth(clamp(ov / (0.5 * hG), 0, 1)));
+      /* the war eases him from the held place to its own over its first second */
+      my = mix(my0, my, keep);
+      mu = mix(mu0, mu, keep);
     }
 
     const born = clamp((lock - 0.42) / 0.40, 0, 1);
@@ -314,7 +327,7 @@
     const elY = gy(0.05, elU) + elDrop * 0.07 * G.H;
 
     /* facing: figures instead of discs need a direction to look. Obrokxus
-       faces whoever he's nearest once the war starts; Ormius and Ava turn
+       faces whoever he's nearest once the war starts; Almur and Maelu turn
        to face him once they've landed the flank. The warlocks and the
        hound face the way they're walking, and turn to face him instead
        once the ring fight starts. */
@@ -390,6 +403,8 @@
       cad, ael, vel, mid, cadL, aelL, velL, fifthL, cMortal, teach, pact, pactHit,
       aelChild, bless, vTaint, vHelp, vForge, ritual, drain, hBorn: houndBorn,
       fightW: war > 0 ? 0 : F.w, strikeM: F.strikeM, strikeA: F.strikeA,
+      cycM: F.cycM, cycA: F.cycA,
+      etCyc: et > 0 ? escapeAt(etLin).cyc : 0, etCw: et > 0 ? escapeAt(etLin).cw : 0,
       fallStrikes, etStrike: et > 0 ? escapeAt(etLin).strike : 0, etSearch: et > 0 ? escapeAt(etLin).search : 0,
       fallBeat, etBeat, lashM, elU, elDrop, elAmt, elY,
       oFace, mFace, aFace, mdFace, cFace, aelFace, vFace, hFace,

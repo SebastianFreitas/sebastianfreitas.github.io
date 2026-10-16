@@ -137,7 +137,7 @@
         html: `
         <p class="tag">Rex · hell / city of law</p>
         <h3>The City of Law</h3>
-        <p class="body">One of the remnants of Valkhar that still stands, filled with the children of Ormius. At its heart is a giant tower full of paperwork: the laws of reality, from how physics works to what a thing is allowed to be.</p>
+        <p class="body">One of the remnants of Valkhar that still stands, filled with the children of Almur Enkravum. At its heart is a giant tower full of paperwork: the laws of reality, from how physics works to what a thing is allowed to be.</p>
         <p class="body">It is heavily protected. Should anyone change what is written there, the effect on life could be vast.</p>
       `
       }

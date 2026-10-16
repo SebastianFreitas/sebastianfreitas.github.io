@@ -5,7 +5,7 @@
    plays the record from the point: the span comes out of the
    left of the frame, the old ones walk the deck, Primordisentia
    is found and warped then bound, two lights tear out and fight
-   in the void. Obrokxus escapes into the void; Ormius follows. Rex becomes Rex the Surface.
+   in the void. Obrokxus escapes into the void; Almur follows. Rex becomes Rex the Surface.
    Then the chase, the children's war, the warlocks born one by one
    (Cadmus, Aelius, Velindra) and bound fifth in a ritual of all four,
    the Hound, Mordrial's fall, and the duel that has not ended. Skip /
@@ -275,7 +275,7 @@ window.Genesis = (function () {
     const uEt    = since("eternity");
     let camRateOverride = null;
     if (uEt > 0) {
-      /* ride Ormius west, a little ahead of him, and lead by exactly
+      /* ride Almur west, a little ahead of him, and lead by exactly
          the smoothing lag so he holds his place in frame all the way
          out */
       const etP = linear("eternity");

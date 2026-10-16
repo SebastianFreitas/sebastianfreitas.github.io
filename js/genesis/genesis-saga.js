@@ -15,8 +15,10 @@
 
   /* where a god's beam leaves it: its hand, snout or jaws at full reach
      toward (tx, ty); each god's own geometry lives in genesis-gods.js */
-  function godHand(kind, x, yFoot, h, face, tx, ty) {
-    return window.GenFig.godHand(kind, x, yFoot, h, { face }, tx, ty);
+  function godHand(kind, x, yFoot, h, face, tx, ty, lean, search, mo) {
+    /* mo = Almur's reach, cyc and cw as his painter gets them: the jaws then follow his wind-up, overshoot and cast lift */
+    const g = window.GenFig.godHand(kind, x, yFoot, h, { face, lean, search, reach: mo && mo.reach, cyc: mo && mo.cyc, cw: mo && mo.cw }, tx, ty);
+    return kind === "almur" && !mo ? { x: g.x, y: g.y - 0.04 * h } : g; /* his head lifts 0.04 h on the cast */
   }
 
   /* Obrokxus: each form is half the size of the one before it */
@@ -110,7 +112,7 @@
     const oEyeX = oEye.x, oEyeY = oEye.y;
 
     /* ---- the cast, back to front: Eldrin, the Hound, the warlocks,
-       Ormius, Ava, Obrokxus */
+       Almur, Maelu, Obrokxus */
     if (S.elAmt > 0.01) {
       F.drawMortal(ctx, sx(S.elU), S.elY, 0.09 * G.H, { a: S.elAmt, face: 1, walk: G.t * 7 });
     }
@@ -170,21 +172,34 @@
 
     const inWarArc = S.war > 0 && S.lock <= 0;
     if (S.war <= 0 && S.mAmt > 0.02) { pushTrail(G.trailM, mX, S.my); drawTrail(ctx, G.trailM, "210,70,48", S.mAmt); }
+    /* firstlock: both gods hold one long cast at Mordrial, strongest at the joined beam's peak */
+    const lockP = S.lock > 0 ? clamp(1 - Math.abs(S.lock - 0.58) / 0.30, 0, 1) : 0;
+    const mLean = inWarArc ? 0.06 : 0, mSearch = S.etBeat ? S.etSearch : 0;
+    let mReach, mCyc, mCw;
+    if (S.etBeat) {
+      mReach = { x: oEyeX, y: oEyeY, amt: Math.max(S.etStrike, 0.35 * S.etSearch) }; mCyc = S.etCyc; mCw = S.etCw;
+    } else if (S.war <= 0) {
+      mReach = { x: oEyeX, y: oEyeY, amt: S.strikeM }; mCyc = S.cycM; mCw = S.fightW;
+    } else if (S.lock > 0) {
+      mReach = { x: mdX, y: mdYFoot, amt: lockP };
+    } else {
+      mReach = { x: oEyeX, y: oEyeY, amt: S.etStrike }; mCyc = S.etCyc; mCw = S.etCw;
+    }
+    const mMo = { reach: mReach, cyc: mCyc, cw: mCw };
     if (S.mAmt > 0.01) {
-      F.drawGod(ctx, mX, mYFoot, hM, ORB_STYLE.ormius, {
-        a: S.mAmt, face: S.mFace, kind: "ormius", crown: "bars",
-        reach: S.etBeat
-          ? { x: oEyeX, y: oEyeY, amt: Math.max(S.etStrike, 0.35 * S.etSearch) }
-          : { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeM : S.etStrike },
+      F.drawGod(ctx, mX, mYFoot, hM, ORB_STYLE.almur, {
+        a: S.mAmt, face: S.mFace, kind: "almur", crown: "bars",
+        reach: mReach, cyc: mCyc, cw: mCw, lean: mLean, search: mSearch,
         tilt: inWarArc ? -0.3 * S.mFace : 0,
       });
     }
 
     if (S.war <= 0 && S.aAmt > 0.02) { pushTrail(G.trailA, aX, S.ay); drawTrail(ctx, G.trailA, "255,206,80", S.aAmt); }
     if (S.aAmt > 0.01) {
-      F.drawGod(ctx, aX, aYFoot, hA, ORB_STYLE.ava, {
-        a: S.aAmt, face: S.aFace, kind: "ava", crown: "rings", wings: true,
-        reach: { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeA : 0 },
+      F.drawGod(ctx, aX, aYFoot, hA, ORB_STYLE.maelu, {
+        a: S.aAmt, face: S.aFace, kind: "maelu", crown: "rings", wings: true,
+        reach: S.war > 0 && S.lock > 0 ? { x: mdX, y: mdYFoot, amt: lockP } : { x: oEyeX, y: oEyeY, amt: S.war <= 0 ? S.strikeA : 0 },
+        cyc: S.war <= 0 ? S.cycA : undefined, cw: S.war <= 0 ? S.fightW : undefined,
       });
     }
 
@@ -217,21 +232,21 @@
 
     /* ---- beams, from hands and staff-gems, not centres --------- */
     if (S.fightW > 0.05 && S.oAmt > 0.05) {
-      const mHand = godHand("ormius", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
-      const aHand = godHand("ava", aX, aYFoot, hA, S.aFace, oEyeX, oEyeY);
+      const mHand = godHand("almur", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY, 0, 0, mMo);
+      const aHand = godHand("maelu", aX, aYFoot, hA, S.aFace, oEyeX, oEyeY);
       drawBeam(ctx, mHand.x, mHand.y, oEyeX, oEyeY, S.strikeM * S.fightW * S.mAmt);
       drawTintBeam(ctx, aHand.x, aHand.y, oEyeX, oEyeY, "255,206,80", S.strikeA * S.fightW * S.aAmt);
     }
 
-    if (S.lock > 0.40 && S.lock < 0.82 && S.mAmt > 0.08 && S.aAmt > 0.08) {
-      const p = 1 - Math.abs(S.lock - 0.58) / 0.18;
+    if (S.lock > 0.28 && S.lock < 0.88 && S.mAmt > 0.08 && S.aAmt > 0.08) {
+      const p = 1 - Math.abs(S.lock - 0.58) / 0.30;
       if (p > 0) {
         G.flash = Math.max(G.flash, p * 0.7);
         G.shake = Math.max(G.shake, 0.32 * p);
-        const mToA = godHand("ormius", mX, mYFoot, hM, S.mFace, aX, aYFoot);
-        const aToM = godHand("ava", aX, aYFoot, hA, S.aFace, mX, mYFoot);
-        const mToMd = godHand("ormius", mX, mYFoot, hM, S.mFace, mdX, mdYFoot);
-        const aToMd = godHand("ava", aX, aYFoot, hA, S.aFace, mdX, mdYFoot);
+        const mToA = godHand("almur", mX, mYFoot, hM, S.mFace, aX, aYFoot, mLean);
+        const aToM = godHand("maelu", aX, aYFoot, hA, S.aFace, mX, mYFoot);
+        const mToMd = godHand("almur", mX, mYFoot, hM, S.mFace, mdX, mdYFoot, mLean);
+        const aToMd = godHand("maelu", aX, aYFoot, hA, S.aFace, mdX, mdYFoot);
         drawTintBeam(ctx, mToA.x, mToA.y, aToM.x, aToM.y, "220,210,180", p);
         drawTintBeam(ctx, mToMd.x, mToMd.y, mdX, mdYFoot, "200,32,40", p * S.mdAmt);
         drawTintBeam(ctx, aToMd.x, aToMd.y, mdX, mdYFoot, "255,206,80", p * S.mdAmt);
@@ -261,9 +276,13 @@
 
     if (R) R.drawOver(ctx, S, { mdG, cG, aelG, vG });
 
-    if (S.et > 0.12 && S.oAmt > 0.2 && S.mAmt > 0.2) {
-      const mHand = godHand("ormius", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY);
-      drawBeam(ctx, mHand.x, mHand.y, oEyeX, oEyeY, S.etStrike * Math.min(S.oAmt, S.mAmt));
+    if (S.et > 0.12 && S.mAmt > 0.2 && (S.oAmt > 0.2 || S.etSearch > 0)) {
+      const mHand = godHand("almur", mX, mYFoot, hM, S.mFace, oEyeX, oEyeY, mLean, mSearch, mMo);
+      // searching, Obrokxus gone: the weak 0.35 beam keeps drawing toward where he slipped away
+      // the beam swings with his head sweep about the jaws
+      const sw = window.GenFig.almurSweep({ search: mSearch }), sc = Math.cos(sw), ss = Math.sin(sw);
+      const bdx = oEyeX - mHand.x, bdy = oEyeY - mHand.y;
+      drawBeam(ctx, mHand.x, mHand.y, mHand.x + bdx * sc - bdy * ss, mHand.y + bdx * ss + bdy * sc, Math.max(S.etStrike * Math.min(S.oAmt, S.mAmt), 0.35 * S.etSearch * S.mAmt));
       const dx = mX - oEyeX, dy = S.my - oEyeY;
       if (Math.hypot(dx, dy) < 40 && G.clashCool <= 0) {
         G.flash = 0.4;
@@ -333,8 +352,8 @@
     drawName(ctx, vX, vYFoot + 12, Math.max(S.vAmt, S.vTaint || 0) * nameUp, "VELINDRA", 0);
     drawName(ctx, hX, hYFoot + 12, S.hAmt * nameUp, "THE HOUND", 0);
     drawName(ctx, oxS, mix(oyFootO, oGround, S.oHide) + 12, S.oAmt, "OBROKXUS", 0);
-    drawName(ctx, mX, mYFoot + 12, S.mAmt, "ORMIUS", 0);
-    drawName(ctx, aX, aYFoot + 12, S.aAmt, "AVA", 0);
+    drawName(ctx, mX, mYFoot + 12, S.mAmt, "ALMUR", 0);
+    drawName(ctx, aX, aYFoot + 12, S.aAmt, "MAELU", 0);
 
     drawRings(ctx);
   }

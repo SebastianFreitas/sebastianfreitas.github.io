@@ -64,10 +64,10 @@ window.Gen = (function () {
       line: "Outside, the womb floated quiet again." },
     { id: "deep", dur: 11.0, tag: "XXII · Inside Rex",
       line: "They went down after him, into the deepest places of Rex. Chaos rose to meet them, answering to no one. Ten thousand years the war ran." },
-    { id: "slip", dur: 7.0, tag: "XXIII · His brothers",
-      line: "In time Obrokxus set his brothers upon the gods, and while the gods were held, he climbed." },
+    { id: "slip", dur: 7.0, tag: "XXIII · The hold breaks",
+      line: "In time Rex's hold on him weakened. Obrokxus slipped free of the body that covered him, and climbed." },
     { id: "flee", dur: 11.6, tag: "XXIV · Obrokxus flees",
-      line: "He tore up through Rex and left a hole where he had been. Two lights followed: Ormius, the law in gold and red, and Ava, pale as a wound that heals." },
+      line: "He tore up through Rex and left a hole where he had been. Two lights followed: Almur Enkravum, the law in gold and red, and Maelu, pale as a wound that heals." },
     { id: "war", dur: 9.2, tag: "XXV · Their children",
       line: "The gods did not finish it. Their children did: Vorath, Malgrur, Seravim, and a war with no end." },
     { id: "stalemate", dur: 5.4, tag: "XXVI · Nothing won",
@@ -75,9 +75,9 @@ window.Gen = (function () {
     { id: "firstlock", dur: 6.8, tag: "XXVII · Mordrial",
       line: "Out of the war they made one thing together, half Seravim and half Malgrur: Mordrial, the first warlock." },
     { id: "cadmus", dur: 10.0, tag: "XXVIII · Cadmus Baalzur",
-      line: "Cadmus was a mortal, a veteran of the war and one of its few survivors. Mordrial taught him, and with that teaching he made a pact with a sinner older than any mortal, one Ormius had locked away. So rose the second warlock: the Harbinger of Domination, Mordrial's right hand." },
+      line: "Cadmus was a mortal, a veteran of the war and one of its few survivors. Mordrial taught him, and with that teaching he made a pact with a sinner older than any mortal, one Almur had locked away. So rose the second warlock: the Harbinger of Domination, Mordrial's right hand." },
     { id: "aelius", dur: 8.6, tag: "XXIX · Aelius Luxent",
-      line: "The powers needed a balance. A child was found, one in a billion, who could receive the blessing of Ava herself. More than that, she was kind, as Cadmus was not. She became the third." },
+      line: "The powers needed a balance. A child was found, one in a billion, who could receive the blessing of Maelu herself. More than that, she was kind, as Cadmus was not. She became the third." },
     { id: "velindra", dur: 11.0, tag: "XXX · Velindra",
       line: "The fourth was never chosen. Chaos touched Velindra and she lived. To bear it she gave herself to the corruption, whose soldiers felt no pain and thrived in agony, and hoped for peace there. Both sides hunted her, until Cadmus took an interest. Helped for the first time in her life, she flourished, and made weapons of ruin." },
     { id: "four", dur: 6.0, tag: "XXXI · Four of the void",
@@ -87,9 +87,9 @@ window.Gen = (function () {
     { id: "fall", dur: 8.6, tag: "XXXIII · Mordrial fell",
       line: "They met Obrokxus, and the fight outlasted counting. Mordrial fell. The rest called it victory, and went home." },
     { id: "return", dur: 7.6, tag: "XXXIV · The mainland",
-      line: "They returned to the living and to the void. Only Ormius believed that Obrokxus had survived." },
+      line: "They returned to the living and to the void. Only Almur believed that Obrokxus had survived." },
     { id: "eternity", dur: 8.8, tag: "XXXV · Still searching",
-      line: "Obrokxus slipped past the edge of every record. Ormius went after him, and he is searching still." },
+      line: "Obrokxus slipped past the edge of every record. Almur went after him, and he is searching still." },
     { id: "now",   dur: 2.6, tag: "", line: "" },
   ];
 
@@ -131,16 +131,24 @@ window.Gen = (function () {
   G.FLEE_CAM_RATE = 2.20;
   G.ET_CAM_RATE   = 2.60;
   G.SIEGE_GODS = [
-    { kind: "ormius",     name: "ORMIUS",     rgb: "210,70,48",   ang: 3.40, ph: 0.0 },
-    { kind: "ava",        name: "AVA",        rgb: "255,206,80",  ang: 2.20, ph: 1.3 },
-    { kind: "kaeron",     name: "KAERON",     rgb: "70,130,255",  ang: 0.35, ph: 2.6 },
-    { kind: "kaelum",     name: "KAELUM",     rgb: "255,240,220", ang: 4.60, ph: 3.9 },
+    { kind: "almur",     name: "ALMUR",     rgb: "210,70,48",   ang: 3.40, ph: 0.0 },
+    { kind: "maelu",        name: "MAELU",       rgb: "255,206,80",  ang: 1.31, ph: 1.3 },
+    { kind: "ulden",     name: "ULDEN",     rgb: "70,130,255",  ang: 5.49, ph: 2.6 },
+    { kind: "ixu",     name: "IXU",     rgb: "255,240,220", ang: 4.60, ph: 3.9 },
     { kind: "orochronus", name: "OROCHRONUS", rgb: "196,206,226", ang: 5.70, ph: 5.2 },
   ];
 
-  /* the gods' height, a fraction of the screen's short side; small on
-     purpose so Rex (the land, the depths) stays massive next to them */
-  G.GOD_H = 0.11;
+  /* the gods' height, a fraction of the screen's short side; about 0.11 x
+     1.5, 144 px at a 900 px short side. Almur draws 1.3 h inside his
+     painter, Serus is 1.5 h long; Obrokxus (0.26 H blob, 0.34 H in the
+     depths) still dwarfs them */
+  G.GOD_H = 0.16;
+  /* the strike shape shared by the gods: sin(c) above STRIKE_S0 rises
+     and falls smoothly, so the act holds about 1.5 s of the 3.7 s cycle */
+  G.STRIKE_S0 = 0.29;
+  G.strikePulse = c => smooth(clamp((Math.sin(c) - G.STRIKE_S0) / 0.25, 0, 1));
+  /* Serus (orochronus) in the birth walk: twice the others' size */
+  G.SERUS_SCALE = 2.0;
 
   G.YELLOW_KEYS = [
     { t: 0.00, x:  0.36, y: -0.10 },
@@ -187,11 +195,11 @@ window.Gen = (function () {
   // lit/shade/glow/core colours for each flat god orb
   G.ORB_STYLE = {
     rex: { lit: "#f58a34", shade: "#b4461e", glow: "245,138,52", core: "#ffe2be" },
-    ormius: { lit: "#d24030", shade: "#8e1a1c", glow: "210,64,48", core: "#fff4dc" },
-    ava: { lit: "#f6f2ea", shade: "#c9bfae", glow: "255,206,80", core: "#ffd64a" },
-    kaelum: { lit: "#fff6ea", shade: "#d8ccc0", glow: "255,240,220", core: "#ffffff" },
+    almur: { lit: "#d24030", shade: "#8e1a1c", glow: "210,64,48", core: "#fff4dc" },
+    maelu: { lit: "#f6f2ea", shade: "#c9bfae", glow: "255,206,80", core: "#ffd64a" },
+    ixu: { lit: "#fff6ea", shade: "#d8ccc0", glow: "255,240,220", core: "#ffffff" },
     orochronus: { lit: "#5e6178", shade: "#262833", glow: "196,206,226", core: "#f0f4ff" },
-    kaeron: { lit: "#4682ff", shade: "#2240a0", glow: "70,130,255", core: "#e8f2ff" },
+    ulden: { lit: "#4682ff", shade: "#2240a0", glow: "70,130,255", core: "#e8f2ff" },
     cadmus: { lit: "#c84a36", shade: "#7a2a1e", glow: "240,150,120", core: "#ffc8aa" },
     aelius: { lit: "#1ea064", shade: "#10603c", glow: "30,160,100", core: "#e6fff0" },
     velindra: { lit: "#8c46d2", shade: "#56288a", glow: "140,70,210", core: "#f0dcff" },

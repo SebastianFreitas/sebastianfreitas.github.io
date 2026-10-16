@@ -1,39 +1,17 @@
 /* genesis-depths.js — inside Rex: the rock, the ribs, the pocket where
-   Obrokxus lies in Rex's grip, the five gods circling and striking, and
-   the brothers that climb out of the walls to bind them. Drawn under a
+   Obrokxus lies in Rex's grip, and the gods circling and striking. Drawn under a
    -diveY translate by the conductor. */
 window.GenDepths = (function () {
   const G = window.Gen;
-  const { clamp, mix, smooth, hash1, mulberry } = Util;
+  const { clamp, mix, smooth, hash1 } = Util;
   const { litShade } = Paint;
-  const { rexLandHeight, rexSurfY, gridXs } = GenPaint;
+  const { rexLandHeight, rexSurfY, gridXs, flatGlow } = GenPaint;
   const { fleshPath } = GenFlesh;
   const { drawTintBeam, drawRings, drawName } = GenVoid;
   const { drawRexGrip } = GenRex;
   const { DEEP_U, DEEP_Y, BURY_U, REX_BANDS, SIEGE_GODS, ORB_STYLE, idxOf, linear, sx } = G;
 
-  const CROWN = { ormius: "bars", ava: "rings", kaeron: "orbit", kaelum: "petals", orochronus: "clock" };
-  const BROTHER_KINDS = ["crawler", "winged", "blinker", "roller", "mass", "slider", "strider", "floater"];
-
-  // Obrokxus's brothers: 70 small old ones, built once (lazily, since
-  // GenOld must be looked up at call time — see the edge-case note below)
-  let DEPTH_BROTHERS = null;
-  function buildBrothers(O) {
-    const r = mulberry(9099);
-    const list = [];
-    for (let i = 0; i < 70; i++) {
-      const o = O.makeOne(BROTHER_KINDS[i % 8], 9100 + i, { lit: "rgb(74,14,20)", shade: "rgb(30,5,8)" });
-      o.hf *= 0.32; // small in the depths
-      o.ang = r() * 6.283;
-      o.rad = r();
-      o.sp = (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.9);
-      o.ph = r() * 6.28;
-      o.birth = Math.pow(r(), 0.8);
-      o.size = 5 + r() * 12;
-      list.push(o);
-    }
-    return list;
-  }
+  const CROWN = { almur: "bars", maelu: "rings", ulden: "orbit", ixu: "petals", orochronus: "clock" };
 
   /* the deepest pocket inside Rex, and the war fought there. Drawn in
      world space — the caller has already translated by -diveY, so
@@ -41,8 +19,6 @@ window.GenDepths = (function () {
   function drawDepths(ctx, dive, diveY) {
     const F = window.GenFig;
     if (!F) return;
-    const O = window.GenOld;
-    if (!O) return;
 
     const iD = idxOf("deep"), iP = idxOf("slip");
     if ((G.beat !== iD && G.beat !== iP) || dive < 0.001) return;
@@ -51,12 +27,10 @@ window.GenDepths = (function () {
     const slipLin = inSlip ? linear("slip") : 0;
     const span = Math.min(G.W, G.H), dx = sx(DEEP_U), dy = G.H * DEEP_Y;
 
-    if (!DEPTH_BROTHERS) DEPTH_BROTHERS = buildBrothers(O);
-
     ctx.save();
 
     /* 1. flat stepped rock, following the same surface as the land above.
-       This clip stays open through the brothers (step 8) so nothing inside
+       This clip stays open through the pocket steps so nothing inside
        the mountain can paint above its crest; it is restored before the
        gods, Obrokxus and the labels, which must never be clipped. */
     ctx.globalCompositeOperation = "source-over";
@@ -175,50 +149,65 @@ window.GenDepths = (function () {
     /* 7. phases */
     const grip = inSlip ? mix(0.35, 0, smooth(clamp(slipLin / 0.40, 0, 1))) : mix(1, 0.35, deepLin);
     const bind = inSlip ? smooth(clamp(slipLin / 0.40, 0, 1)) : 0;
-    const grow = clamp((deepLin - 0.22) / 0.60, 0, 1);
     const ex = sx(BURY_U), ey = rexSurfY(BURY_U) + G.H * 0.08;
 
-    /* the gods' positions, needed both by the brothers (their bound orbit
-       target) and by the drawing loop in step 9 */
+    /* the gods' positions, needed by the drawing loop in step 8.
+       Each god holds a fixed slot clear of Obrokxus's drawn box and of the
+       others (whole drawn boxes: half width and foot drop in h units).
+       Wide screens: all three stand right of him (he climbs to the left in
+       the slip), Maelu on the floor, Almur and Ulden in a row above her.
+       Tall screens (he fills the width): one row along the floor. */
     const gods = [];
+    const gh = G.GOD_H * G.H, gap = 0.025 * G.H, margin = 0.06 * G.W;
+    const HW = { almur: 0.43, maelu: 0.91, ulden: 0.35 }, EXT = { almur: 0.01, maelu: 0.01, ulden: 0.69 };
+    const live = SIEGE_GODS.filter(g => g.kind !== "ixu" && g.kind !== "orochronus");
+    let sw = 0.006 * span;   // the living sway
+    const slotX = {}, slotF = {};   // centre x, foot y (screen)
+    const floorF = 0.9 * G.H - sw;
+    if (G.W >= 1.2 * G.H) {
+      const rEdge = 0.94 * G.W - sw - (1 - bind) * 0.025 * G.W;   // the slip: they drift outward
+      slotX.maelu = rEdge - HW.maelu * gh;
+      slotX.ulden = rEdge - HW.ulden * gh;
+      slotX.almur = rEdge - 2 * HW.ulden * gh - gap - HW.almur * gh;
+      slotF.maelu = floorF - EXT.maelu * gh;
+      const rowF = floorF - 1.3 * gh - gap - 2 * sw;
+      slotF.almur = rowF - EXT.almur * gh;
+      slotF.ulden = rowF - EXT.ulden * gh;
+    } else {
+      const wsum = live.reduce((t, g) => t + 2 * HW[g.kind] * gh, 0);
+      const rgap = Math.max(0, (0.88 * G.W - wsum) / (live.length - 1));
+      let cx = margin;
+      for (const g of live) { slotX[g.kind] = cx + HW[g.kind] * gh; slotF[g.kind] = floorF - EXT[g.kind] * gh; cx += 2 * HW[g.kind] * gh + rgap; }
+      sw = Math.min(sw, rgap * 0.3);
+    }
+    // the drop: all fall together, leaving Rex as a copy of the slots spread wider
+    // vertically, so the gap between two gods only ever grows and nobody lands on a brother
+    const nl = live.length, slotGx = {};
+    let cxs = 0, cys = 0, lo = -1e9, hi = 1e9;
+    for (const g of live) {
+      const hw = HW[g.kind] * gh;
+      slotGx[g.kind] = clamp(slotX[g.kind], margin + hw + sw, 0.94 * G.W - hw - sw);
+      cxs += slotGx[g.kind] / nl; cys += (slotF[g.kind] - 0.45 * gh + diveY) / nl;
+      lo = Math.max(lo, margin + hw - slotGx[g.kind]); hi = Math.min(hi, 0.94 * G.W - hw - slotGx[g.kind]);
+    }
+    const shiftX = lo > hi ? 0 : clamp(ex - cxs, lo, hi);
+    const dropD = smooth(clamp(deepLin / 0.30, 0, 1));
     for (let i = 0; i < SIEGE_GODS.length; i++) {
       const g = SIEGE_GODS[i];
+      if (g.kind === "ixu" || g.kind === "orochronus") continue;   // they left before the fight
       const desc = smooth(clamp((deepLin - i * 0.04) / 0.30, 0, 1));
-      const ga = g.ang + G.t * 0.22 + Math.sin(G.t * 0.4 + g.ph) * 0.3;
-      const R = mix(span * (0.30 + 0.04 * Math.sin(G.t * 0.5 + g.ph)), span * 0.44, bind);
-      const ringX = dx + Math.cos(ga) * R * 1.3, ringY = dy + Math.sin(ga) * R * 0.85;
-      // Kaelum does not fight: she only orbits
-      const strike = g.kind === "kaelum" ? 0
-        : Math.pow(Math.max(0, Math.sin(G.t * 1.7 + g.ph)), 6) * (1 - bind) * desc;
-      const gx = mix(ex, mix(ringX, ox, strike * 0.88), desc), gy = mix(ey, mix(ringY, oy, strike * 0.88), desc);
-      gods.push({ g, gx, gy, amt: clamp(desc * 3, 0, 1), strike });
-    }
-
-    /* 8. the brothers: crawl in from the pocket wall onto the orbit around
-       Obrokxus, then (in slip) onto a tight orbit around one of the gods */
-    for (let i = 0; i < DEPTH_BROTHERS.length; i++) {
-      const o = DEPTH_BROTHERS[i];
-      if (o.birth > grow) continue;
-      const appear = clamp((grow - o.birth) / 0.08, 0, 1);
-      const edgeX = dx + Math.cos(o.ang) * G.W * 0.36, edgeY = dy + Math.sin(o.ang) * G.H * 0.30;
-      const ba = o.ang + G.t * o.sp * 0.35, fr = span * (0.10 + o.rad * 0.27);
-      const orbX = ox + Math.cos(ba) * fr * 1.3 + Math.sin(G.t * 3.1 + o.ph) * 4;
-      const orbY = oy + Math.sin(ba) * fr * 0.85 + Math.cos(G.t * 2.7 + o.ph) * 4;
-      const freeX = mix(edgeX, orbX, smooth(appear)), freeY = mix(edgeY, orbY, smooth(appear));
-      const tg = gods[i % gods.length];
-      const boundX = tg.gx + Math.cos(o.ph + G.t * 2.2 * o.sp) * span * 0.05,
-            boundY = tg.gy + Math.sin(o.ph + G.t * 2.2 * o.sp) * span * 0.05;
-      const bx = mix(freeX, boundX, bind), by = mix(freeY, boundY, bind);
-      const alpha = clamp(appear * 2, 0, 1) * (0.6 + 0.4 * Math.sin(G.t * 5 + o.ph));
-      if (alpha < 0.03) continue;
-      ctx.globalAlpha = alpha;
-      O.drawKind(ctx, o.kind, o, bx, by, o.hf * G.H, { phase: G.t * 4 * o.gait + o.ph, look: ox, sy: 1, kneel: 0 });
+      const slotGy = slotF[g.kind] - 0.45 * gh + diveY;
+      const strike = G.strikePulse(G.t * 1.7 + g.ph) * (1 - bind) * desc;
+      const wobX = Math.sin(G.t * 0.5 + g.ph) * sw, wobY = Math.sin(G.t * 0.4 + g.ph * 1.7) * sw;
+      const gx = slotGx[g.kind] + wobX * dropD + shiftX * (1 - dropD);
+      const gy = Math.min(mix(ey + (slotGy - cys), slotGy + wobY, dropD) + Math.sin(dropD * Math.PI) * G.H * 0.14, slotGy + sw);   // the drop bows low, under the caption, never below the floor
+      gods.push({ g, gx, gy, amt: clamp(desc * 3, 0, 1), strike, cw: (1 - bind) * desc });
     }
 
     ctx.restore(); // end the rock clip opened in step 1 — the gods, Obrokxus
                     // and the labels below must never be clipped
 
-    /* 9. the five gods */
+    /* 8. the gods */
     for (const e of gods) {
       if (e.amt <= 0.02) continue;
       const g = e.g, x = e.gx, y = e.gy, a = e.amt, strike = e.strike;
@@ -227,10 +216,26 @@ window.GenDepths = (function () {
       const yFoot = y + 0.45 * h;
       // where this god's beam leaves it: hand, snout or jaws at full reach
       const hand = F.godHand(g.kind, x, yFoot, h, { face }, ox, oy);
-      if (strike > 0.05) drawTintBeam(ctx, hand.x, hand.y, ox, oy, g.rgb, strike);
+      if (strike > 0.05) {
+        drawTintBeam(ctx, hand.x, hand.y, ox, oy, g.rgb, strike);
+        // a bright core on top: near-white tinted to the god (Almur: a gold bolt in a red halo)
+        const al = g.kind === "almur";
+        const halo = al ? "210,70,48" : g.rgb;
+        const core = al ? "255,200,110" : g.rgb.split(",").map(v => Math.round(255 - (255 - +v) * 0.3)).join(",");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(ox, oy);
+        ctx.strokeStyle = `rgba(${halo},${0.22 * strike})`; ctx.lineWidth = 30 * G.H / 900; ctx.stroke();
+        ctx.strokeStyle = `rgba(${core},${0.9 * strike})`; ctx.lineWidth = 9 * G.H / 900; ctx.stroke();
+        ctx.restore();
+        flatGlow(ctx, hand.x, hand.y, h * 0.28, halo, Math.min(1.8, 1.8 * strike));
+        flatGlow(ctx, ox, oy, h * 0.16, halo, strike);
+      }
       F.drawGod(ctx, x, yFoot, h, ORB_STYLE[g.kind], {
-        a, face, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "ava",
+        a, face, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "maelu",
         reach: { x: ox, y: oy, amt: strike }, ph: g.ph,
+        cyc: G.t * 1.7 + g.ph, cw: e.cw, bind,
         // her colour is her mood: settling in, then the siege angers her, then her brothers turn
         mood: G.beat >= G.idxOf("slip") ? "sad" : G.linear("deep") > 0.5 ? "angry" : "ok",
       });

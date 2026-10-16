@@ -115,19 +115,19 @@
       ctx.globalCompositeOperation = "source-over";
       flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.rex.glow, amt);
       flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.rex.lit, ORB_STYLE.rex.shade, ORB_STYLE.rex.core, amt);
-    } else if (kind === "ormius") {
+    } else if (kind === "almur") {
       ctx.globalCompositeOperation = "source-over";
-      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.ormius.glow, amt);
-      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.ormius.lit, ORB_STYLE.ormius.shade, ORB_STYLE.ormius.core, amt);
-    } else if (kind === "ava") {
+      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.almur.glow, amt);
+      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.almur.lit, ORB_STYLE.almur.shade, ORB_STYLE.almur.core, amt);
+    } else if (kind === "maelu") {
       ctx.globalCompositeOperation = "source-over";
-      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.ava.glow, amt);
-      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.ava.lit, ORB_STYLE.ava.shade, ORB_STYLE.ava.core, amt);
-    } else if (kind === "kaelum") {
+      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.maelu.glow, amt);
+      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.maelu.lit, ORB_STYLE.maelu.shade, ORB_STYLE.maelu.core, amt);
+    } else if (kind === "ixu") {
       const a = amt;
       ctx.globalCompositeOperation = "source-over";
-      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.kaelum.glow, a);
-      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.kaelum.lit, ORB_STYLE.kaelum.shade, ORB_STYLE.kaelum.core, a);
+      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.ixu.glow, a);
+      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.ixu.lit, ORB_STYLE.ixu.shade, ORB_STYLE.ixu.core, a);
     } else if (kind === "orochronus") {
       const a = amt;
       ctx.globalCompositeOperation = "source-over";
@@ -140,11 +140,11 @@
       ctx.moveTo(x, y);
       ctx.lineTo(x + Math.cos(G.t * 2.4) * R, y + Math.sin(G.t * 2.4) * R);
       ctx.stroke();
-    } else if (kind === "kaeron") {
+    } else if (kind === "ulden") {
       const a = amt;
       ctx.globalCompositeOperation = "source-over";
-      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.kaeron.glow, a);
-      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.kaeron.lit, ORB_STYLE.kaeron.shade, ORB_STYLE.kaeron.core, a);
+      flatGlow(ctx, x, y, R * 2.2, ORB_STYLE.ulden.glow, a);
+      flatSphere(ctx, x, y, R * 0.62, ORB_STYLE.ulden.lit, ORB_STYLE.ulden.shade, ORB_STYLE.ulden.core, a);
       ctx.fillStyle = `rgba(214,232,255,${0.8 * a})`;
       for (let k = 0; k < 3; k++) {
         const ang = G.t * 1.6 + k * 2.094;

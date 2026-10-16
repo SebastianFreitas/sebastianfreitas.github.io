@@ -290,7 +290,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
 | `genesis-titans.js` | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"` = his first form, the blob: stand/lunge/climb/flee; `"centihorse"`/`"worm"` dispatch to genesis-obrok.js) and `drawHound` | extends `window.GenFig` |
 | `genesis-obrok.js` | Obrokxus's later forms | extends `window.GenFig` |
-| `genesis-gods.js` | the five gods, one painter each, registered in `GenFig.GOD_PAINT` and picked by `drawGod` on `o.kind` | extends `window.GenFig {GOD_PAINT, godHand}` |
+| `genesis-gods.js` | the five gods, one painter each, registered in `GenFig.GOD_PAINT` and picked by `drawGod` on `o.kind` | extends `window.GenFig {GOD_PAINT, godHand, almurSweep}` |
 | `genesis-hosts.js` | the war's figures, flat and lit from the left | `window.GenHosts {ABOM, ABOM_PAL}` |
 | `genesis-seraphin.js` | the angels as winged beasts of light, no halos: `o.form` `"bird"` (crane) / `"hound"` (sighthound) / `"stag"` (gold antlers), big feathered `wing()`s (far wing a V behind), `o.fly` = flight pose (body around `y - 0.55s`), cast glow at `HAND` | sets `GenHosts.drawAngel` |
 | `genesis-malgrur.js` | the devils: `o.form` `"gaunt"` (tall, thin, crooked, two horns; most of them) / `"bat"` (membrane wings, always flies) / `"fiend"` (delegates to the old `drawDevil`, captured at parse time); cast flame at `HAND` | replaces `GenHosts.drawDevil` |
@@ -299,14 +299,15 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-armies.js` | the war simulation | `window.GenArmies` |
 | `genesis-orb.js` | `drawRip lightsAt` (titan keyframe paths) `pushTrail drawTrail drawOrb drawRings drawBeam drawTintBeam yWob drawName` | extends `window.GenVoid` |
 | `genesis-rex.js` | Rex chase, fight and the ending | `window.GenRex` |
-| `genesis-depths.js` | `drawDepths`: rock, ribs, stalactites, the pocket, Obrokxus in Rex's grip, the five gods circling, 70 brothers (old-one kinds in red), the year counter | `window.GenDepths` |
+| `genesis-depths.js` | `drawDepths`: rock, ribs, stalactites, the pocket, Obrokxus in Rex's grip, three gods (almur, maelu, ulden) striking him (deep and slip; no army, D38), the year counter | `window.GenDepths` |
 | `genesis-saga-state.js` | `sagaAt` | extends `window.GenSaga` |
 | `genesis-ritual.js` | the warlock births and the Hound's ritual | `window.GenRitual` |
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
 | `genesis.js` | Cutscene conductor: DOM, transport, camera, draw | `window.Genesis` |
 
 - `genesis-state.js`: world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`;
-- `genesis-state.js`: `G.GOD_H` (0.11) is the gods' height as a fraction of the screen
+- `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
+- `genesis-state.js`: `G.STRIKE_S0` (0.29) and `G.strikePulse(c)` are the gods' shared strike shape in deep and slip (act about 1.5 s of the 3.70 s cycle); `genesis-gods.js` `strikeOf` inverts `STRIKE_CA` from it
 - `genesis-tier3.js`: the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset,
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
@@ -333,8 +334,9 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-figures.js`: `drawGod` dispatches to `GenFig.GOD_PAINT[o.kind]` when set (genesis-gods.js), the robed figure is the fallback
 - `genesis-obrok.js`: `drawCentihorse` (the centipede horse from flee through fall, flying: the 18 legs row through the air like oars (extended on the backward power stroke, folded on the recovery, wave head to tail), stand/run/lunge,
 - `genesis-obrok.js`: `o.air` spreads the stroke wide) and `drawWorm` (the floating worm at the end of fall and in eternity, `o.speed`); `obrokEye(kind, x, y, h, o)` = where each form's eye is, which every beam aims at
-- `genesis-gods.js`: `ormius` (winged devil, serpent from the waist down, long horns), `ava` (white furred serpent, feathered wings, gold), `orochronus` (Serus, a black serpent dragon), `kaeron` (cloaked, faceless, long beard, staff),
-- `genesis-gods.js`: `kaelum` (a star whose colour is her mood: `o.mood` ok/happy/angry/sad, motes seeping out; she never strikes); `godHand(kind, x, yFoot, h, o, tx, ty)` = where each god's beam leaves it; kit `catmull`/`ribbon`/`vol`
+- `genesis-gods.js`: `almur` (cobra on a throne), `maelu` (crane with huge white wings), `ulden` (empty dark hood, owl eyes, beard on a thread), `orochronus` (Serus, a black serpent dragon);
+- `genesis-gods.js`: painter `o` fields `gait` (steps taken), `cyc`/`cw` (strike pulse angle/weight), `bind` (pull back), `lean`, `reach`; idle `breathOf`/`bobOf`, strikes `strikeOf`;
+- `genesis-gods.js`: `ixu` (pearl-headed figure, three-piece tentacled gown, two clawed arms; leaves in gods, never strikes); `godHand(kind, x, yFoot, h, o, tx, ty)` = where each god's beam leaves it; kit `catmull`/`ribbon`/`vol`
 - `genesis-hosts.js`: `drawDevil` (the humanoid devil: horns, tail, hooves, trident; kept as the rare `"fiend"` form),
 - `genesis-hosts.js`: `drawAbom` (bone and flesh, dispatches by `variant` mod length into the `ABOM` registry: 0 `drawBrute` / 1 `drawCrawler` / 2 `drawStalker`, more pushed by genesis-vorgath.js);
 - `genesis-hosts.js`: all `(ctx, x, y, s, o)` with y the foot line, `o = {a, face, walk, pose, down, lunge, cast, ph, variant, form, fly}`; `HAND` = casting-hand offset
@@ -343,11 +345,11 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-armies.js`: angels (`seraphin`) and devils (`malgrur`) against abominations of bone and flesh (`vorgath`); `step(dt, S)`, `draw(ctx, S)`, `reset()` (march, front tide, melee lunges and sparks, casters loosing `BOLTS` that land as `BURSTS`, deaths, corpses, reinforcements);
 - `genesis-armies.js`: each troop has a `form` and `alt` (flight height in sizes, 0 = grounded; set once in `host()` from `hash1`), `liftOf(T, s)` = bob, swoop in a fight, fall on death; fliers paint after the ground troops, their corpse waits out the fall (`hold`);
 - `genesis-armies.js`: bolts leave from and aim at the lifted height (`dy0`, `dy1`); seeded `rnd` (mulberry 9011), no Math.random; painters from `GenHosts`
-- `genesis-rex.js`: `chaseAt chaseFightAt ringFightAt`, the ending `escapeAt escapeDrift escapeCam escapeCamLead` (the worm gets away west, Ormius follows alone), `drawRexLand` (hot rock cooling to slate, fissures), `drawRexHole`, `drawRexGrip`, `drawBuried` (the eye in the ground),
+- `genesis-rex.js`: `chaseAt chaseFightAt ringFightAt`, the ending `escapeAt escapeDrift escapeCam escapeCamLead` (the worm gets away west, Almur follows alone), `drawRexLand` (hot rock cooling to slate, fissures), `drawRexHole`, `drawRexGrip`, `drawBuried` (the eye in the ground),
 - `genesis-rex.js`: `drawGodsBirth` (five gods walk west inside the land to the deck, each with a chip of Rex)
 - `genesis-saga-state.js`: every saga quantity for the frame (feet via `GenMain.surfYAt`, the warlock births `cMortal teach pact aelChild bless vTaint vHelp vForge`, the Hound's ritual `ritual drain hBorn`, Mordrial's fall/dark, Obrokxus's lash and sinking,
 - `genesis-saga-state.js`: his forms `oFrom oForm oMorph` (blob → centihorse in flee, centihorse → worm late in fall), `oHide` (buried on the mainland) and `oAir`, Eldrin, facing and walk flags, `fallBeat/etBeat`, `modern` (the city's rise to towers over return + early eternity))
-- `genesis-ritual.js`: `target(S)`, `drawUnder` (Cadmus's pact rift with Ormius's gold seal, Aelius as a child in Ava's light, Velindra tainted, then the drain: Obrokxus's brood (abominations, `BROOD`), souls, corrupted magic and spire shards pulled into the Hound),
+- `genesis-ritual.js`: `target(S)`, `drawUnder` (Cadmus's pact rift with Almur's gold seal, Aelius as a child in Maelu's light, Velindra tainted, then the drain: Obrokxus's brood (abominations, `BROOD`), souls, corrupted magic and spire shards pulled into the Hound),
 - `genesis-ritual.js`: `drawOver` (teaching/pact/blessing/help beams, Velindra's blades, the four ritual beams, latched flashes)
 - `genesis-saga.js`: `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`;
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
