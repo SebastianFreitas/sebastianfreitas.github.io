@@ -502,6 +502,14 @@ html.genesis-on .topbar {
 }
 .genesis[hidden] { display: none; }
 
+/* black veil the segment plays fade through; absent (hidden) when idle */
+.genesis-veil {
+  position: fixed; inset: 0; z-index: 95;
+  background: #000; opacity: 0;
+  pointer-events: none;
+}
+.genesis-veil[hidden] { display: none; }
+
 /* cinematic bars; the controls live inside them */
 .genesis::before, .genesis::after {
   content: ""; position: absolute; left: 0; right: 0; height: 6.5vh;

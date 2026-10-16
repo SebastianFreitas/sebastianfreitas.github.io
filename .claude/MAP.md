@@ -140,6 +140,9 @@ does not — it is pure data, no dependency on `B`.
 | `lamp.js` | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
 | `planet.js` | Placeholder worlds for the Game Dev sector, `THEMES` per game | `window.Planet {draw}` |
 
+- `bridge-notes.js`: `BEACON_SEGMENT` maps a beacon to a Genesis segment; its first claim plays it (`Genesis.playSegment`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat; the note opens on `site:genesis-done`; once seen the note carries a "Watch again" link.
+- `genesis.js`: segment plays fade a black `.genesis-veil` (css/bridge.css) in and out via `veilTo`; full plays cut.
+
 - `bridge.js`: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state,
 - `bridge.js`: scene-mode consts (`ZERO_MARK VS_MARK HL_MARK CONC_MARK XSTAGE`), `B.ship = Voidship.create`, `xp:freeze`, cursor, sheet, projection `viewUnitsNow`/`scale`/`wx`/`onScreen`/`flyK`/`markScreen`, `begin`
 - `bridge.js` publishes: `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin`
@@ -264,7 +267,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines) | `window.Gen` |
+| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines), `SEGMENTS` (`birth`), `?gseg=<id>` | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, read by the tier-3, old-one and kin painters | `window.GenEldPal` |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
@@ -303,7 +306,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga-state.js` | `sagaAt` | extends `window.GenSaga` |
 | `genesis-ritual.js` | the warlock births and the Hound's ritual | `window.GenRitual` |
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
-| `genesis.js` | Cutscene conductor: DOM, transport, camera, draw | `window.Genesis` |
+| `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playSegment`, `segmentSeen`, `skip`, `seek`), camera, draw | `window.Genesis` |
 
 - `genesis-state.js`: world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`;
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk

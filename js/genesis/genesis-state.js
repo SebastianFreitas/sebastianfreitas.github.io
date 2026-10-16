@@ -7,6 +7,7 @@ window.Gen = (function () {
 
   G.FORCE = /(?:[?&])genesis(?:=1)?(?:&|$)/.test(location.search);
   G.JUMP  = /[?&]gbeat=([a-z]+)/.exec(location.search);
+  G.SEG   = /[?&]gseg=([a-z]+)/.exec(location.search);
   /* dev switches run once: take them out of the URL so reload and
      Back don't run them again */
   (function dropParams(names) {
@@ -16,7 +17,7 @@ window.Gen = (function () {
       names.forEach(n => { if (url.searchParams.has(n)) { url.searchParams.delete(n); changed = true; } });
       if (changed) history.replaceState(history.state, "", url.pathname + url.search + url.hash);
     } catch (e) {}
-  })(["genesis", "gbeat"]);
+  })(["genesis", "gbeat", "gseg"]);
   G.reduced = Util.reduced();
 
   G.BEATS = [
@@ -102,6 +103,11 @@ window.Gen = (function () {
     for (let i = 0; i < G.BEATS.length; i++) { G.BEAT_START[i] = acc; acc += G.BEATS[i].dur; }
     G.BEAT_START[G.BEATS.length] = acc;
   })();
+
+  /* a segment plays from a beat to a global time, then ends like a finish */
+  G.SEGMENTS = {
+    birth: { from: G.BEATS[0].id, to: G.BEAT_START[BEAT_INDEX.walk] + 2.0 },
+  };
 
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;

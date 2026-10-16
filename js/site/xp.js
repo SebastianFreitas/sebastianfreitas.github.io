@@ -248,6 +248,7 @@ window.XP = (function () {
       if (released) return;
       released = true;
       ceremonyBusy = false;
+      window.dispatchEvent(new CustomEvent("xp:ceremony-done"));
       const next = queue.shift();
       if (next) setTimeout(() => ceremony(...next), 120);
     };

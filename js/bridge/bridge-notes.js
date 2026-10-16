@@ -42,6 +42,7 @@
     const el2 = noteEls[mark.id];
     if (!el2) return;
     noteTimer = setTimeout(() => {
+      if (BEACON_SEGMENT[mark.id]) paintReplay(mark.id);
       measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
@@ -89,9 +90,35 @@
   }
   B.placeNote = placeNote;
 
+  /* beacon id -> the Genesis segment its first claim plays; later claims add a row */
+  const BEACON_SEGMENT = { "bnote-bridge": "birth" };
+  Object.keys(BEACON_SEGMENT).forEach(id => {
+    const note = noteEls[id];
+    if (!note) return;
+    const a = document.createElement("a");
+    a.href = "#";
+    a.textContent = "Watch again";
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      if (window.Genesis) Genesis.playSegment(BEACON_SEGMENT[id]);
+    });
+    const p = document.createElement("p");
+    p.className = "body";
+    p.hidden = true;
+    p.appendChild(a);
+    note.appendChild(p);
+    note._replay = p;
+  });
+  /* the replay control shows once the segment has been seen */
+  function paintReplay(id) {
+    const p = noteEls[id] && noteEls[id]._replay;
+    if (p) p.hidden = !(window.Genesis && Genesis.segmentSeen(BEACON_SEGMENT[id]));
+  }
+
   /* claiming fires when the voidship reaches the beacon — both sectors
      file the same way. In the game dev sector, filing one can bring
      more into range. */
+  let segWaiting = false;
   function selectMark(m) {
     B.begin();
     hintDone("beacon");
@@ -111,7 +138,41 @@
     }
     B.revealDepths(true);
     B.activeMark = m;
-    showNote(m);
+    const segId = BEACON_SEGMENT[m.id];
+    if (segId && window.Genesis && !Genesis.segmentSeen(segId)) {
+      // the note waits for the segment to end, so it never flashes behind it
+      if (!segWaiting) {
+        segWaiting = true;
+        const open = e => {
+          if (!e.detail || e.detail.segment !== segId) return;
+          document.removeEventListener("site:genesis-done", open);
+          segWaiting = false;
+          // the scene switch on finish clears the mark; reclaim it for the note
+          B.activeMark = m;
+          showNote(m);
+        };
+        const go = () => {
+          document.addEventListener("site:genesis-done", open);
+          if (!Genesis.playSegment(segId)) { document.removeEventListener("site:genesis-done", open); segWaiting = false; showNote(m); }
+        };
+        // let the XP ceremony land first, then a beat, before the cutscene fades in
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduced || !window.XP || !XP.busy) go();
+        else {
+          let fired = false;
+          const beat = () => {
+            if (fired) return;
+            fired = true;
+            window.removeEventListener("xp:ceremony-done", beat);
+            setTimeout(go, 500);
+          };
+          window.addEventListener("xp:ceremony-done", beat);
+          setTimeout(beat, 4500);
+        }
+      }
+    } else {
+      showNote(m);
+    }
     if (B.ship) {
       Voidship.setThrusting(B.ship, false);
       Voidship.clearCourse(B.ship);

@@ -373,8 +373,11 @@ def flow_genesis(browser, base):
     """The cutscene plays once, counted from its start, without moving the page."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base, "#gate-world")
+    check("Setting does not autoplay the cutscene", state(page)["genesisActive"] is not True, None)
+    page.evaluate("Genesis.play({ thenMode: 'void' })")     # what the Genesis mode button calls
+    page.wait_for_timeout(300)
     s = state(page)
-    check("Setting starts the cutscene", s["genesisActive"] is True, s["genesisActive"])
+    check("Genesis starts the cutscene", s["genesisActive"] is True, s["genesisActive"])
     check("cutscene: hero stays in the page flow", s["heroPosition"] != "fixed", s["heroPosition"])
     check("cutscene: remembered as soon as it starts", s["genesisFlag"] is True, s["genesisFlag"])
     page.wait_for_timeout(2000)
@@ -388,6 +391,42 @@ def flow_genesis(browser, base):
     s = state(page)
     check("cutscene does not autoplay again", not s["genesisActive"], s["genesisActive"])
     check("... and the visitor is back in The Void", s["mode"] == "void", s["mode"])
+    ctx.close()
+
+
+def flow_genesis_segment(browser, base):
+    """The bridge beacon plays the birth segment once, then its note opens; later claims only show the note."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base, "#gate-world")
+    claim = "Bridge.selectMark(Bridge.MARKS.find(m => m.id === 'bnote-bridge'))"
+    note = "document.getElementById('bnote-bridge').classList.contains('show')"
+    check("segment: not seen on a fresh profile", page.evaluate("Genesis.segmentSeen('birth')") is False, None)
+    veil_op = "parseFloat(getComputedStyle(document.querySelector('.genesis-veil')).opacity)"
+    page.evaluate(claim)
+    page.wait_for_function("Genesis.active === true", timeout=12000)   # ceremony wait, beat, fade-in
+    page.wait_for_timeout(1500)
+    check("segment: Genesis is active after the first claim", page.evaluate("Genesis.active") is True, None)
+    check("segment: the note waits behind it", page.evaluate(note) is False, None)
+    box = page.evaluate("(() => { const r = document.getElementById('genesis-track').getBoundingClientRect(); return {x: r.left + r.width * 0.95, y: r.top + r.height / 2}; })()")
+    page.mouse.click(box["x"], box["y"])                     # the bar covers only the segment
+    page.wait_for_timeout(150)
+    check("segment: clicking the bar at 95% stays inside the segment",
+          page.evaluate("Genesis.active && Gen.beat <= Gen.idxOf('walk')") is True,
+          page.evaluate("[Genesis.active, Gen.beat, Gen.idxOf('walk')]"))
+    page.evaluate("Genesis.skip()")                          # a skip ends the segment through the fade
+    page.wait_for_timeout(3500)                              # fade out, finish, fade back
+    check("segment: Genesis finished", page.evaluate("Genesis.active") is False, None)
+    check("segment: marked seen", page.evaluate("Genesis.segmentSeen('birth')") is True, None)
+    check("segment: the note is open", page.evaluate(note) is True, None)
+    check("segment: the veil ends at opacity 0", page.evaluate(veil_op) == 0, None)
+    check("segment: replay control is shown",
+          page.evaluate("!document.querySelector('#bnote-bridge a[href=\"#\"]').closest('p').hidden") is True, None)
+    page.evaluate("Bridge.clearMark()")
+    page.wait_for_timeout(500)
+    page.evaluate(claim)
+    page.wait_for_timeout(800)
+    check("segment: second claim does not play", page.evaluate("Genesis.active") is False, None)
+    check("segment: second claim shows the note", page.evaluate(note) is True, None)
     ctx.close()
 
 
@@ -1089,7 +1128,7 @@ FLOWS = {
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
-    "genesis": flow_genesis, "twotabs": flow_twotabs, "header": flow_header,
+    "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,

@@ -73,7 +73,9 @@ window.Genesis = (function () {
     const fill = bar && bar.querySelector("i");
     const n = Math.max(1, BEATS.length - 1);
     const dur = Math.max(0.001, (BEATS[G.beat] && BEATS[G.beat].dur) || 1);
-    const u = clamp((G.beat + clamp(G.local / dur, 0, 1)) / n, 0, 1);
+    let u = clamp((G.beat + clamp(G.local / dur, 0, 1)) / n, 0, 1);
+    const sp = segSpan();
+    if (sp) u = clamp((G.BEAT_START[G.beat] + G.local - sp.t0) / (sp.t1 - sp.t0), 0, 1);
     if (fill) fill.style.width = (u * 100).toFixed(2) + "%";
   }
 
@@ -98,8 +100,21 @@ window.Genesis = (function () {
     paintTicks();
   }
 
+  let seg = null;   // id of the segment being played, else null
+
+  /* the playing segment's span: first beat a, last beat b, global seconds t0..t1 */
+  function segSpan() {
+    if (!seg || !G.SEGMENTS[seg]) return null;
+    const a = idxOf(G.SEGMENTS[seg].from);
+    const t0 = G.BEAT_START[a];
+    const t1 = G.SEGMENTS[seg].to;
+    let b = a;
+    while (b < BEATS.length - 1 && G.BEAT_START[b + 1] < t1) b++;
+    return { a, b, t0, t1 };
+  }
+
   function remember() {
-    if (window.XP && XP.flag) XP.flag("genesis");
+    if (window.XP && XP.flag) XP.flag(seg ? "genesis-seg-" + seg : "genesis");
   }
 
   function veilCanvas() {
@@ -131,7 +146,39 @@ window.Genesis = (function () {
     for (const k in G.nameSeen) delete G.nameSeen[k];
   }
 
+  /* black veil over the page: segments fade in and out through it (full plays cut) */
+  let veilTimer = 0, veil = null, segBusy = false, ending = false;
+  function veilTo(o, ms, then) {
+    if (!veil) {
+      veil = document.createElement("div");
+      veil.className = "genesis-veil";
+      veil.setAttribute("aria-hidden", "true");
+      veil.hidden = true;
+      document.body.appendChild(veil);
+    }
+    if (veil.hidden) {
+      veil.style.transition = "none";
+      veil.style.opacity = "0";
+      veil.hidden = false;
+    }
+    void veil.offsetWidth;
+    veil.style.transition = "opacity " + ms + "ms ease-in-out";
+    veil.style.opacity = String(o);
+    clearTimeout(veilTimer);
+    veilTimer = setTimeout(() => { if (o === 0) veil.hidden = true; if (then) then(); }, ms);
+  }
+
   function finish() {
+    if (!G.active || ending) return;
+    if (seg && !reduced) {
+      ending = true;
+      veilTo(1, 800, () => { ending = false; finishNow(); veilTo(0, 1000); });
+      return;
+    }
+    finishNow();
+  }
+
+  function finishNow() {
     if (!G.active) return;
     G.active = false;
     removeEventListener("wheel", holdPage, { passive: false });
@@ -148,8 +195,10 @@ window.Genesis = (function () {
     if (lineEl) lineEl.textContent = "";
     document.documentElement.classList.remove("genesis-on");
     if (host) host.classList.remove("is-cinematic");
+    const doneSeg = seg;
+    seg = null;
     document.dispatchEvent(new CustomEvent("site:genesis-done", {
-      detail: { mode: G.thenMode, camX: G.thenCamX },
+      detail: { mode: G.thenMode, camX: G.thenCamX, segment: doneSeg },
     }));
   }
 
@@ -191,8 +240,40 @@ window.Genesis = (function () {
     document.dispatchEvent(new CustomEvent("site:genesis-start"));
   }
 
+  /* true when the segment started or is fading in */
+  function playSegment(id) {
+    const s = G.SEGMENTS[id];
+    if (G.active || segBusy || !s) return false;
+    if (reduced && !FORCE) return false;
+    if (reduced) return startSegment(id, s);
+    segBusy = true;
+    veilTo(1, 700, () => {
+      segBusy = false;
+      // a failed start still signals done, so the waiting note opens
+      if (!startSegment(id, s))
+        document.dispatchEvent(new CustomEvent("site:genesis-done", { detail: { segment: id } }));
+      veilTo(0, 900);
+    });
+    return true;
+  }
+
+  function startSegment(id, s) {
+    if (G.active) return false;
+    seg = id;
+    play({ thenMode: "void" });
+    if (!G.active) { seg = null; return false; }
+    const i = idxOf(s.from);
+    if (i > 0) seek(i, 0);
+    return true;
+  }
+
+  function segmentSeen(id) {
+    return !!(window.XP && XP.has("genesis-seg-" + id));
+  }
+
   function skip() {
     if (!G.active) return;
+    if (seg) { finish(); return; }
     const last = idxOf("now");
     if (G.beat >= last && G.local > 0.12) { finish(); return; }
     go(last);
@@ -200,7 +281,8 @@ window.Genesis = (function () {
 
   function seek(i, frac) {
     if (!G.active) return;
-    i = clamp(i, 0, BEATS.length - 1);
+    const sp = segSpan();
+    i = clamp(i, sp ? sp.a : 0, sp ? sp.b : BEATS.length - 1);
     broke = i > idxOf("break");
     frac = clamp(frac, 0, 1);
     if (i === BEATS.length - 1) frac = 0;
@@ -208,6 +290,7 @@ window.Genesis = (function () {
     paintCopy(true);
     const dur = BEATS[i].dur;
     G.local = frac >= 1 ? dur - 0.001 : frac * dur;
+    if (sp && i === sp.b) G.local = Math.min(G.local, Math.max(0, sp.t1 - G.BEAT_START[i] - 0.05));
     resetFX();
     G.shake = 0;
     const aim = camAim();
@@ -223,8 +306,10 @@ window.Genesis = (function () {
 
   function stepBeat(dir) {
     if (!G.active) return;
+    const sp = segSpan();
     if (dir > 0) {
       if (G.beat >= BEATS.length - 1) { finish(); return; }
+      if (sp && (G.beat >= sp.b || G.BEAT_START[G.beat + 1] >= sp.t1)) { skip(); return; }
       seek(G.beat + 1, 0);
     } else {
       seek(G.local > 1.5 ? G.beat : G.beat - 1, 0);
@@ -235,6 +320,14 @@ window.Genesis = (function () {
     if (!trackEl) return;
     const r = trackEl.getBoundingClientRect();
     const u = clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1);
+    const sp = segSpan();
+    if (sp) {
+      const t = sp.t0 + u * (sp.t1 - sp.t0 - 0.05);
+      let i = sp.a;
+      while (i < sp.b && G.BEAT_START[i + 1] <= t) i++;
+      seek(i, (t - G.BEAT_START[i]) / Math.max(0.001, BEATS[i].dur));
+      return;
+    }
     const pos = u * (BEATS.length - 1);
     const i = Math.floor(pos);
     seek(i, pos - i);
@@ -341,6 +434,7 @@ window.Genesis = (function () {
 
   function step(dt) {
     if (!G.active) return false;
+    if (ending) return true;   // frozen under the fade-out
     G.t += dt;
     G.local += dt;
     G.tickAcc += dt;
@@ -380,6 +474,7 @@ window.Genesis = (function () {
     }
     paintTicks();
 
+    if (seg && G.BEAT_START[G.beat] + G.local >= G.SEGMENTS[seg].to) { finish(); return false; }
     const b = BEATS[G.beat];
     if (b && G.local >= b.dur) {
       if (G.beat >= BEATS.length - 1) { finish(); return false; }
@@ -619,18 +714,20 @@ window.Genesis = (function () {
   document.addEventListener("site:enter", e => {
     const d = e.detail || {};
     if (G.active) return;
+    const segId = G.SEG && G.SEGMENTS[G.SEG[1]] ? G.SEG[1] : null;
+    if (segId) {
+      setTimeout(() => { if (!G.active) playSegment(segId); }, 80);
+      return;
+    }
     if (FORCE) {
       setTimeout(() => { if (!G.active) play({ thenMode: "void" }); }, 80);
       return;
     }
-    // autoplay only when Setting is picked at the gate
-    if (d.entry === "gate" && d.mode === "void" && pending())
-      play({ thenMode: "void" });
   });
 
   return {
     get active() { return G.active; },
     get pending() { return pending(); },
-    play, skip, seek, step, draw,
+    play, playSegment, segmentSeen, skip, seek, step, draw,
   };
 })();
