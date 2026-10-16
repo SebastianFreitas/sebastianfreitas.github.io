@@ -16,9 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=166">
-<link rel="stylesheet" href="../css/beacon.css?v=166">
-<link rel="stylesheet" href="../css/play.css?v=166">
+<link rel="stylesheet" href="../css/style.css?v=167">
+<link rel="stylesheet" href="../css/beacon.css?v=167">
+<link rel="stylesheet" href="../css/play.css?v=167">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -88,6 +88,8 @@
   <p>How many modifiers a mission can carry is capped by the skill tree. A fresh save gets one.
      Deeper special runs raise the cap, so the biggest payouts sit behind the part of the game that
      tests you.</p>
+  <canvas id="void-mapgen" class="clip" aria-label="The mission console, interactive"></canvas>
+  <p class="caption">The mission console, live: pick a path, press search for a new board, or empower to push a mission further.</p>
 
   <h2>Going deeper</h2>
   <video class="clip" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
@@ -157,6 +159,9 @@
      instead.</p>
   <p>Four weapon slots and eight saved layouts persist between runs. Building a gun is a decision
      with consequences past the session.</p>
+
+  <canvas id="void-bench" class="clip" aria-label="The crafting bench, interactive"></canvas>
+  <p class="caption">The bench, live: add and remove mods, or scrap the gun.</p>
 
   <h2>The map only goes up</h2>
   <p>Every step of a run climbs: a flight of stairs, a corridor, a room, joined doorway to doorway.
@@ -245,15 +250,19 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="../js/lib/util.js?v=166"></script>
-<script src="../js/site/xp.js?v=166"></script>
-<script src="../js/site/surge.js?v=166"></script>
-<script src="../js/site/lazy-video.js?v=166"></script>
-<script src="../js/lib/pacer.js?v=166"></script>
-<script src="../js/gamedev/forge-guns.js?v=166"></script>
-<script src="../js/pages/play.js?v=166"></script>
-<script src="../js/pages/voidscape-boons.js?v=166"></script>
-<script src="../js/pages/voidscape.js?v=166"></script>
+<script src="../js/lib/util.js?v=167"></script>
+<script src="../js/site/xp.js?v=167"></script>
+<script src="../js/site/surge.js?v=167"></script>
+<script src="../js/site/lazy-video.js?v=167"></script>
+<script src="../js/lib/pacer.js?v=167"></script>
+<script src="../js/forge/forge-guns.js?v=167"></script>
+<script src="../js/forge/forge-missions.js?v=167"></script>
+<script src="../js/forge/forge.js?v=167"></script>
+<script src="../js/pages/voidscape-bench.js?v=167"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=167"></script>
+<script src="../js/pages/play.js?v=167"></script>
+<script src="../js/pages/voidscape-boons.js?v=167"></script>
+<script src="../js/pages/voidscape.js?v=167"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-voidscape",2,"VoidScape");});</script>
 </body>
 </html>

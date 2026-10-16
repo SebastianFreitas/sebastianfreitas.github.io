@@ -67,11 +67,9 @@
 
   /* ---- loop ---- */
   function atRest() {
-    if (B.frozen || B.xswitch || B.thrustId != null || B.vel !== 0) return false;
+    if (B.frozen || B.thrustId != null || B.vel !== 0) return false;
     if (window.Genesis && Genesis.active) return false;
     if (!B.marksSettled()) return false;
-    if (B.sceneMode === "gamedev" && Storm.lively()) return false;
-    if (B.sceneMode === "gamedev" && Forge.lively()) return false;
     if (!B.ship) return true;
     return Voidship.settled(B.ship);
   }
@@ -97,12 +95,11 @@
     }
     if (B.ship && B.ship.alpha < 1) B.ship.alpha = approach(B.ship.alpha, 1, 2.4, dt);
 
-    const warping = B.stepSwitch(dt);
-    if (!warping) step(dt);
+    step(dt);
 
     // render behind the gate while assets warm up
-    B.chaosNow  = approach(B.chaosNow,  B.sceneMode === "void" ? World.chaosAt(B.camX)  : 0, 1.4, dt);
-    B.futureNow = approach(B.futureNow, B.sceneMode === "void" ? World.futureAt(B.camX) : 0, 1.4, dt);
+    B.chaosNow  = approach(B.chaosNow,  World.chaosAt(B.camX), 1.4, dt);
+    B.futureNow = approach(B.futureNow, World.futureAt(B.camX), 1.4, dt);
 
     // DOM first (HUD text, minimap marker, note position), canvas after
     if (B.bridgeReady) B.updateHUD(dt);
@@ -113,21 +110,17 @@
       W: B.W, H: B.H, camX: B.camX, t: B.t, vel: B.vel,
       maxFling: CAM.maxFling,
       chaos: B.chaosNow, future: B.futureNow,
-      mode: B.sceneMode, dt, viewUnits: viewUnitsNow(),
+      mode: "void", dt, viewUnits: viewUnitsNow(),
     });
     // a claim holds travel still while the level lands — but beacon
     // fade-in must keep using real time. With dt=0 here, the first
     // entry claim left every mark at vis=0 for the whole ceremony,
     // so the span looked empty (and stayed empty if unfreeze glitched).
     try {
-      if (B.sceneMode === "gamedev") B.drawZones(dt);
       B.drawMarks(raw);
-      if (B.sceneMode === "gamedev" && B.ship) B.drawStorm(dt);
-      if (B.sceneMode === "gamedev") B.drawForge(dt);
       if (B.ship) {
         Voidship.draw(B.ship, ctx, { W: B.W, H: B.H, t: B.t, camX: B.camX, viewUnits: viewUnitsNow() });
       }
-      B.drawSwitchFX();
     } catch (err) {
       if (!render._warned) { render._warned = 1; console.warn("beacon layer:", err); }
     }
@@ -142,8 +135,8 @@
   function paintOnce() {
     if (B.portrait) return;
     if (B.pacer.running) return;
-    B.chaosNow  = B.sceneMode === "void" ? World.chaosAt(B.camX)  : 0;
-    B.futureNow = B.sceneMode === "void" ? World.futureAt(B.camX) : 0;
+    B.chaosNow  = World.chaosAt(B.camX);
+    B.futureNow = World.futureAt(B.camX);
     if (B.ship) B.ship.alpha = 1;
     for (const m of activeMarks()) m.vis = onScreen(markScreen(m).x, 60) ? 1 : 0;
     render(0);

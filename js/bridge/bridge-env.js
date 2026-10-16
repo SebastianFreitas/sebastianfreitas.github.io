@@ -54,23 +54,20 @@
     const e = B.env;
     e.t += dt;
     const x = B.camX || 0;
-    const gd = B.sceneMode !== "void";
 
     const tg = {};
     for (const k of FIELDS) tg[k] = 0;
-    if (!gd) {
-      tg.chaos = B.chaosNow || 0;
-      tg.future = B.futureNow || 0;
-      tg.jitter = 0.3 * tg.chaos;
-      const onLand = Math.abs(x - 69000) < 9600;
-      const onRex = x >= 333000 && x <= 400800;
-      tg.g = onLand ? 1 : onRex ? 1.3 : 0;
-      tg.rho = onLand ? 1 : onRex ? 1.1 : 0;
-    }
+    tg.chaos = B.chaosNow || 0;
+    tg.future = B.futureNow || 0;
+    tg.jitter = 0.3 * tg.chaos;
+    const onLand = Math.abs(x - 69000) < 9600;
+    const onRex = x >= 333000 && x <= 400800;
+    tg.g = onLand ? 1 : onRex ? 1.3 : 0;
+    tg.rho = onLand ? 1 : onRex ? 1.1 : 0;
     let gRefT = tg.g;
 
     if (window.BridgeSites) {
-      const list = gd ? BridgeSites.GD_SITES : BridgeSites.SITES;
+      const list = BridgeSites.SITES;
       let dom = null, domW = 0, best = null, bestW = 0;
       for (const site of list) {
         const w = gateOf(site) * weightOf(site, x);

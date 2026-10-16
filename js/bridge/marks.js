@@ -38,41 +38,6 @@ window.Marks = (function () {
     m.vis = 0;            // eased in as they enter the frame
     m.pop = 0;            // the burst when one is claimed
   });
-
-  /* ---- the other setting: Game Dev sector -----------------
-     Same ship, same bridge deck, a different span. Four bodies,
-     left to right, one per shipped project — beacons like the
-     lamps on the span, filed the same way. Some of them open out
-     into further nodes once reached (see depths.js). ---- */
-  const GD_SLOT = SLOT;
-  const gdAt = i => i * GD_SLOT;
-  const GD_LAND = {
-    entry:      gdAt(2),
-    zero:       gdAt(10),
-    voidscape:  gdAt(21),
-    heavylight: gdAt(32),
-    conclusus:  gdAt(43),
-    exit:       gdAt(48),
-  };
-  const GD_BOUNDS = { min: gdAt(0.6), max: gdAt(49) };
-  const GD_SPAWN = 59226; // camera x the Game Dev sector opens at: Sector Zero sits at 0.70W
-
-  const PLANETS = [
-    { id: "bnote-planet-zero",       cam: GD_LAND.zero,       off: -0.06, oy: 0.34, par: 0.7, xp: 1,
-      theme: "zero",       size: 1.25, name: "Sector Zero", sub: "Horror · one room, a terminal, a storm" },
-    { id: "bnote-planet-voidscape",  cam: GD_LAND.voidscape,  off:  0.05, oy: 0.28, par: 0.7, xp: 1,
-      theme: "voidscape",  size: 1.15, name: "VoidScape",   sub: "Roguelike — a skill-scaled special run" },
-    { id: "bnote-planet-heavylight", cam: GD_LAND.heavylight, off: -0.04, oy: 0.42, par: 0.7, xp: 1,
-      theme: "heavylight", size: 0.95, name: "HeavyLight",  sub: "Puzzle platformer. Light has weight" },
-    { id: "bnote-planet-conclusus",  cam: GD_LAND.conclusus,  off:  0.06, oy: 0.30, par: 0.7, xp: 1,
-      theme: "conclusus",  size: 1.05, name: "Conclusus",   sub: "Precision platformer. Plant a shadow, jump back" },
-  ];
-  PLANETS.forEach((m, i) => {
-    m.x = m.cam + (m.off * CAM.viewUnits) / m.par;
-    m.phase = i * 1.7 + 4;
-    m.vis = 0;
-    m.pop = 0;
-  });
-
-  return { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT, GD_SPAWN };
+  /* gamedev sector archived: PLANETS stays an empty shim for old readers */
+  return { MARKS, PLANETS: [] };
 })();

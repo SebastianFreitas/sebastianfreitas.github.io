@@ -24,9 +24,9 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
 - the places that bend the instruments: js/bridge/bridge-sites.js (SITES, GD_SITES), bridge-env.js
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
-- Game Dev sector, the planets: js/bridge/marks.js PLANETS, js/bridge/planet.js, js/gdworld/, js/gamedev/zones.js (backdrops)
-- the bench, the run console (VoidScape): js/gamedev/forge.js, forge-guns.js, forge-missions.js
-- Sector Zero storm: js/gamedev/storm.js, fed by stormEnv in js/bridge/bridge-marks.js
+- Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
+- the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
+- Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
 - the case pages, a page's toy: projects/*.html; toy js/pages/<page>.js on the shared js/pages/play.js, css/play.css
 - the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
@@ -92,7 +92,7 @@ shares `Gen`:
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI: boot log, the two paths, exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
+| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
@@ -127,8 +127,8 @@ does not — it is pure data, no dependency on `B`.
 | `bridge.js` | Core | `window.Bridge` |
 | `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
-| `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; sector glue `stormEnv`/`drawStorm`, `forgeEnv`/`drawForge`, `zonesEnv`/`drawZones`; debug `beaconReport stormReport forgeReport zonesReport` | `B.drawMarks drawStorm drawForge drawZones marksSettled` |
-| `bridge-panel.js` | Setting panel, Instruments scale, mode switch | `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX` |
+| `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
+| `bridge-panel.js` | Setting panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
@@ -136,9 +136,8 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
-| `marks.js` | Landmark roster: `MARKS` (Void beacons), `PLANETS` (Game Dev), `GD_LAND`/`GD_BOUNDS`/`GD_SPAWN` | `window.Marks`; uses `World` |
+| `marks.js` | Landmark roster: `MARKS` (Void beacons); `PLANETS` is an empty shim | `window.Marks {MARKS, PLANETS: []}`; uses `World` |
 | `lamp.js` | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
-| `planet.js` | Placeholder worlds for the Game Dev sector, `THEMES` per game | `window.Planet {draw}` |
 
 - `bridge-notes.js`: `BEACON_SEGMENT` maps a beacon to a Genesis segment; its first claim plays it (`Genesis.playSegment`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat; the note opens on `site:genesis-done`; once seen the note carries a "Watch again" link.
 - `genesis.js`: segment plays fade a black `.genesis-veil` (css/bridge.css) in and out via `veilTo`; full plays cut.
@@ -148,8 +147,8 @@ does not — it is pure data, no dependency on `B`.
 - `bridge.js` publishes: `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin`
 - `bridge-input.js`: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels`
 - `bridge-panel.js`: `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins;
-- `bridge-panel.js`: setting panel: `applySceneMode`, `applyPendingMode`/`applyPendingView`, `saveView`, `beginModeSwitch`, mode/genesis/gear buttons, `site:genesis-start`/`-done`, `stepSwitch`, `drawIris`, `drawSwitchFX`
-- `bridge-panel.js` publishes: `B.applySceneMode applyPendingMode applyPendingView saveView beginModeSwitch stepSwitch drawSwitchFX`; `window.__bridgeRefit`
+- `bridge-panel.js`: setting panel: `applyPendingView`, `saveView`, genesis/gear buttons, `site:genesis-start`/`-done`, `drawIris`
+- `bridge-panel.js` publishes: `B.applyPendingView saveView`; `window.__bridgeRefit`
 - `bridge-env.js`: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t}`;
 - `bridge-env.js`: `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases;
 - `bridge-env.js`: a site's `osc` may be one object or an array, each `{field, period, lo, hi, shape: "sine" | "square" | "pulse", duty?, phase?}`; debug `window.envReport`
@@ -163,7 +162,6 @@ does not — it is pure data, no dependency on `B`.
 | File | Purpose |
 |---|---|
 | `depths.js` | Core: `CLUSTERS` registry, `add`, `waveOf`, `LAYOUTS` (`rows arc chain branch`), `nodes()` | `window.Depths {nodes, clusters, add}` |
-| `zero.js` `voidscape.js` `heavylight.js` `conclusus.js` | One planet cluster each (10 nodes, `arc` layout), ids `bnote-sz-* bnote-vs-* bnote-hl-* bnote-cc-*`; registered with `Depths.add` in load order = cluster order |
 | `lore.js` | The four lore-beacon clusters in order: `bnote-rex` (10), `bnote-watcher` (2), `bnote-void` (3, `bnote-bridge-*`), `bnote-land` (5); mostly pinned with `at:` |
 
 ### js/ship
@@ -182,20 +180,34 @@ does not — it is pure data, no dependency on `B`.
 - `voidship-prow.js`: a broken-off chunk of the giant energy-giving metal Libertech built the ship around, doubling as ram and power core. Flat facets: slab faces `SLAB_TOP SLAB_SIDE SLAB_BOTTOM`, fracture facets `FR1 FR2 FR3` converging on the ram tip, notches, `CRACKS`,
 - `voidship-prow.js`: ember cracks `EMBER_PTS EMBER_LOW EMBER_TAP` (alpha = `emberOf(ship, t)`: pulse + strain, fixed pulse under `Util.reduced()`), the hull's jaws `JAW_T JAW_B` painted over the slab; `drawProwBack` is the red glow behind it; head-on `FV_*`. Palette `RUST_* EMBER`
 
-### js/gamedev
+### js/forge
+
+The VoidScape bench/console/floor plan; only `projects/voidscape.html` loads it (forge-guns, forge-missions, forge, voidscape-bench, voidscape-mapgen); `index.html` does not.
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `storm.js` | Sector Zero storm: `COMPS`/`HOLD`/`STORM`, `layout`, `ROSTER`, `PAINTERS`, cycle `startStorm`/`gust`/`snapHome`, `stepFlicker`, ghost `LINES`/`stepLines`, `step`, `draw`, `report` | `window.Storm {step, draw, lively, report}`; fed by `bridge-marks.js` `stormEnv` |
-| `forge-guns.js` | The one seeded `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
+| `forge-guns.js` | The one `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
 | `forge-missions.js` | `RUN_MODS`, `rollRunMod`, `regood`, `makeMission`, floor plan `genPlan` | `window.ForgeMissions`; uses `ForgeGuns` |
-| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock` | `window.Forge`; fed by `bridge-marks.js` `forgeEnv`, hit-tested in `bridge-input.js` pointerdown |
-| `zones.js` | Backdrop art around Conclusus / HeavyLight / VoidScape | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
+| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock`; `bench` and `map` (the inline mission console) seams | `window.Forge`; driven by `voidscape-bench.js` and `voidscape-mapgen.js` |
+
+### Archived (archive/gamedev/, loaded by no page)
+
+The Game Dev sector, cut from the site; see `archive/gamedev/README.md`. Paths below are under `archive/gamedev/`.
+
+| File | Purpose | Publishes |
+|---|---|---|
+| `js/gamedev/storm.js` | Sector Zero storm: `COMPS`/`HOLD`/`STORM`, `layout`, `ROSTER`, `PAINTERS`, cycle `startStorm`/`gust`/`snapHome`, `stepFlicker`, ghost `LINES`/`stepLines`, `step`, `draw`, `report` | `window.Storm {step, draw, lively, report}`; fed by `bridge-marks.js` `stormEnv` |
+| `js/gamedev/zones.js` | Backdrop art around Conclusus / HeavyLight / VoidScape | `window.Zones {step, draw, report}`; fed by `bridge-marks.js` `zonesEnv` |
+| `js/bridge/planet.js` | Placeholder worlds for the Game Dev sector, `THEMES` per game | `window.Planet {draw}` |
+| `js/depths/{zero,voidscape,heavylight,conclusus}.js` | One planet cluster each | `Depths.add` |
+| `index-beacon-notes.html` | The four planet note asides cut from index.html (fragment) | none |
+
+`js/gdworld/` is described next.
 
 - `zones.js`: sprite pipeline `CPAL`/`CSPR` (local) and `HPAL`/`HSPR` (read from `HeavyLightSprites`, js/shared) → `spriteCanvas` → `blitSprite`, `HL_GROUPS`, `LANTERN`, `BEAM`, `dropCrate`/`stepCrates`;
 - `zones.js`: HeavyLight drawn at `hlZoom()` (= backdrop `px()`/2) through one transform, layout compact enough to fit under the ceiling at 900 H; Conclusus likewise at `ccZoom()` (= `GdWorld.P.conclusus.px()`/2), `CPLATS` compacted, `CC_LIFT` lift threshold
 
-### js/gdworld
+#### js/gdworld
 
 The Game Dev sector's world: four backgrounds, one per game, that meld by
 distance. Each game's field is centred on its planet (`Marks.PLANETS[i].x`),
@@ -372,6 +384,8 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `sector-zero.js` | Viewport space | `window.PlayZero {report, thunder}` |
 | `sector-zero-records.js` | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
 | `voidscape-boons.js` | 34 boons from the game's list `{id, w, name, desc, fx}`; `build(gun, boons)` → the effective build from a `ForgeGuns` gun, its mods and the boons; weighted `offer(pool, rnd)` | `window.RangeBoons` |
+| `voidscape-mapgen.js` | The mission console inline on the VoidScape page: sizes `#void-mapgen`, paints `Forge.map` (random first missions, SEARCH and EMPOWER, no room plan), no rAF when idle | `window.VoidMapgen` |
+| `voidscape-bench.js` | The crafting bench inline on the VoidScape page: sizes `#void-bench`, paints `Forge.bench` while visible, input; `gun()`; fires `voidbench:gun` | `window.VoidBench` |
 | `voidscape.js` | The range, viewport space | `window.PlayRange {report}` |
 
 - `play.js`: `Play.start(spec)` mounts one fixed canvas behind the page (`.play`, z -1, pointer-events none; input is read on `window`, only presses on `body`/`html`/`main.case` count, panels are `.play-ui`),
@@ -473,17 +487,13 @@ Data read by both the bridge and a case page. No drawing, no state.
 `css/bridge.css`, then `js/lib/util.js`, `js/site/xp.js`, `js/site/entry.js`
 (blocking, on purpose), then the inline SW purge. Body tail, in this order:
 
-`site/surge → bridge/lamp → bridge/planet → depths/depths → depths/{zero,
-voidscape, heavylight, conclusus, lore} → hud/instruments → hud/tiles-nav →
-hud/tiles-sys → lib/paint → world/art/rex-kit → world/art/{firstlight,
-crimson, bonespire, titans, valkhar, law} → world/art/land-kit →
-world/art/{shattered, libertech, dawn, accord, gore} → world/world →
-world/{void, watcher, serus, nephilim, admin-tear, vikings, rex, city} →
-ship/voidship-art → ship/voidship-prow → ship/voidship → gamedev/storm →
-gamedev/forge-guns → gamedev/forge-missions → gamedev/forge →
-shared/heavylight-sprites → gamedev/zones →
-site/embed → lib/pacer → bridge/marks → gdworld/{gdworld, gd-zero, gd-voidscape,
-gd-heavylight, gd-conclusus} → bridge/bridge-sites → bridge/bridge-log →
+`site/surge → bridge/lamp → depths/depths → depths/lore → hud/instruments →
+hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/rex-kit →
+world/art/{firstlight, crimson, bonespire, titans, valkhar, law} →
+world/art/land-kit → world/art/{shattered, libertech, dawn, accord, gore} →
+world/world → world/{vortex, void, watcher, serus, nephilim, admin-tear,
+vikings, rex, city} → ship/voidship-art → ship/voidship-prow → ship/voidship →
+lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
 bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
 bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
 bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-eldpal, genesis-tier3, genesis-void,
@@ -495,11 +505,8 @@ genesis-saga-state, genesis-ritual, genesis-saga, genesis} → site/intro`.
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
-`instruments.js`, kits before places, `forge-guns` before `forge-missions`
-before `forge`, `voidship-art` before `voidship-prow` before `voidship`
-(the prow extends `VoidshipArt` at parse time)); `gdworld` after
-`bridge/marks` (it reads `Marks.PLANETS` at parse time) and its four
-painters after it; `bridge-sites` before
+`instruments.js`, kits before places, `voidship-art` before `voidship-prow` before `voidship`
+(the prow extends `VoidshipArt` at parse time)); `bridge-sites` before
 `bridge-voice`; `bridge-env` after `bridge-depths` and before
 `bridge-readout`; `genesis-flesh` before
 `genesis-rex` (it destructures `fleshPath` at parse time);
@@ -527,7 +534,7 @@ Project pages load `css/style.css`, `css/beacon.css`, `css/play.css`, then
 `js/lib/util.js → js/site/xp.js → js/site/surge.js`, `js/site/embed.js`
 (conclusus, heavylight) and `js/site/lazy-video.js` (all four), then the play
 layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
-`js/gamedev/forge-guns.js` before `play.js` and `voidscape-boons.js` before
+`js/forge/forge-guns.js` before `play.js` and `voidscape-boons.js` before
 `voidscape.js`; sector-zero: `sector-zero-records.js` before
 `sector-zero.js`; heavylight: `js/shared/heavylight-sprites.js` before
 `heavylight.js`), and the inline `XP.award(...)` last.
@@ -543,14 +550,14 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | Camera / pan / projection | `js/bridge/bridge.js` `B.camX`, `wx()`, `markScreen`; input in `js/bridge/bridge-input.js` |
 | Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
 | Ship art and fumes | `js/ship/voidship-art.js` (the dark wedge hull, wings, engine) and `js/ship/voidship-prow.js` (the red shard and the jaws that grip it); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
-| Sector Zero storm | `js/gamedev/storm.js`; anchored by `bridge-marks.js` `stormEnv`; spawn camera `marks.js` `GD_SPAWN` |
-| VoidScape bench / console / floor plan | `js/gamedev/forge.js` (+ `forge-guns.js`, `forge-missions.js`); anchored by `bridge-marks.js` `forgeEnv`; hit-tested in `bridge-input.js` pointerdown |
-| Game-themed backdrops | `js/gamedev/zones.js`; anchored by `bridge-marks.js` `zonesEnv`; planet colours in `bridge/planet.js` `THEMES` |
-| Game Dev background (the four melding worlds) | `js/gdworld/gdworld.js` core (`dens`, `scatter`, paint order); one painter per game `js/gdworld/gd-{zero,voidscape,heavylight,conclusus}.js`; wired from `js/world/world.js` `draw` |
-| Landmarks / beacons | `js/bridge/marks.js` `MARKS`/`PLANETS`; gated extras `js/depths/*` |
+| Sector Zero storm (archived) | `archive/gamedev/js/gamedev/storm.js` |
+| VoidScape bench / console / floor plan | `js/forge/forge.js` (+ `forge-guns.js`, `forge-missions.js`); driven by `js/pages/voidscape-bench.js` and `voidscape-mapgen.js` |
+| Game-themed backdrops (archived) | `archive/gamedev/js/gamedev/zones.js`, `archive/gamedev/js/bridge/planet.js` |
+| Game Dev background (archived) | `archive/gamedev/js/gdworld/` |
+| Landmarks / beacons | `js/bridge/marks.js` `MARKS`; gated extras `js/depths/*` |
 | Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
 | Notes and hints | `js/bridge/bridge-notes.js` |
-| Setting switch (void ↔ gamedev), iris FX, view persistence | `js/bridge/bridge-panel.js` |
+| View persistence, iris FX, setting panel | `js/bridge/bridge-panel.js` |
 | Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`) |
 | Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |

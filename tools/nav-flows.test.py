@@ -127,7 +127,6 @@ STATE = """
   const maxScroll = document.documentElement.scrollHeight - innerHeight;
   let stored = null;
   try { stored = JSON.parse(localStorage.getItem('arcanis.profile.v1') || 'null'); } catch (e) {}
-  const active = document.querySelector('.mode-btn.active');
   return {
     url: location.pathname + location.search + location.hash,
     gateShown: !!gate && getComputedStyle(gate).display !== 'none',
@@ -136,7 +135,7 @@ STATE = """
     maxScroll: Math.round(maxScroll),
     workTop: top('work'),
     experienceTop: top('experience'),
-    mode: active ? active.dataset.mode : null,
+    mode: 'void',
     heroPosition: hero ? getComputedStyle(hero).position : null,
     genesisActive: window.Genesis ? Genesis.active : null,
     genesisFlag: window.XP ? XP.has('genesis') : null,
@@ -170,7 +169,7 @@ def near(a, b):
     return a is not None and b is not None and abs(a - b) <= TOL
 
 
-def enter_via_gate(page, base, button="#gate-projects"):
+def enter_via_gate(page, base, button="#gate-world"):
     """First visit: wait for the gate's buttons, pick one, let the +1 land."""
     page.goto(base + "/")
     page.wait_for_selector("#gate-panel.on", timeout=10000)
@@ -181,22 +180,22 @@ def enter_via_gate(page, base, button="#gate-projects"):
 
 
 def flow_first(browser, base):
-    """First visit: the gate shows once; picking Game Dev enters Game Dev only."""
+    """First visit: the gate shows once; picking Setting goes to the void bridge only."""
     ctx, page = new_page(browser)
     page.goto(base + "/")
     page.wait_for_timeout(300)
     s = state(page)
     check("first visit shows the gate", s["gateShown"], s)
     page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-projects")
+    page.click("#gate-world")
     page.wait_for_timeout(2500)
     s = state(page)
-    check("gate closes after picking Game Dev", not s["gateShown"] and not s["frozen"], s)
-    check("sector is Game Dev", s["mode"] == "gamedev", s["mode"])
+    check("gate closes after picking Setting", not s["gateShown"] and not s["frozen"], s)
+    check("sector is the void", s["mode"] == "void", s["mode"])
     check("visitor is marked as seen", bool(s["stored"] and s["stored"]["seen"]), s["stored"])
     claimed = s["stored"]["claimed"] if s["stored"] else []
-    check("Game Dev path awarded", "path-projects" in claimed, claimed)
-    check("Setting path NOT awarded by picking Game Dev", "path-world" not in claimed, claimed)
+    check("Setting path awarded", "path-world" in claimed, claimed)
+    check("Game Dev path NOT awarded by picking Setting", "path-projects" not in claimed, claimed)
     ctx.close()
 
 
@@ -209,7 +208,7 @@ def flow_gate_exits(browser, base):
     page.wait_for_timeout(1500)
     s = state(page)
     check("Escape closes the gate", not s["gateShown"] and not s["frozen"], s)
-    check("Escape enters Game Dev", s["mode"] == "gamedev", s["mode"])
+    check("Escape enters the void", s["mode"] == "void", s["mode"])
     ctx.close()
 
     ctx, page = new_page(browser)
@@ -236,7 +235,7 @@ def flow_back(browser, base):
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("Back: no gate", not s["gateShown"] and not s["frozen"], s)
-    check("Back: sector is still Game Dev", s["mode"] == "gamedev", s["mode"])
+    check("Back: sector is still the void", s["mode"] == "void", s["mode"])
     check("Back: scroll position kept", near(s["scrollY"], y0), f"was {y0}, now {s['scrollY']}")
     check("Back: no cutscene", not s["genesisActive"], s["genesisActive"])
     ctx.close()
@@ -252,7 +251,7 @@ def flow_reload(browser, base):
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("reload: no gate", not s["gateShown"] and not s["frozen"], s)
-    check("reload: sector is still Game Dev", s["mode"] == "gamedev", s["mode"])
+    check("reload: sector is still the void", s["mode"] == "void", s["mode"])
     check("reload: scroll position kept", near(s["scrollY"], y0), f"was {y0}, now {s['scrollY']}")
     ctx.close()
 
@@ -290,7 +289,7 @@ def flow_deeplink(browser, base):
 
 def flow_returning(browser, base):
     """A returning visitor opening the bare homepage skips the gate, in the last sector."""
-    for button, mode in (("#gate-projects", "gamedev"), ("#gate-world", "void")):
+    for button, mode in (("#gate-world", "void"),):
         ctx, page = new_page(browser)
         enter_via_gate(page, base, button)
         if mode == "void":
@@ -355,7 +354,7 @@ def flow_reset(browser, base):
           page.evaluate("localStorage.getItem('other.key')"))
     page.evaluate("localStorage.removeItem('other.key')")
     page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-projects")
+    page.click("#gate-world")
     page.wait_for_timeout(2500)
     page.click("a.obj[href='projects/sector-zero.html']")
     page.wait_for_load_state("load")
@@ -549,94 +548,6 @@ def flow_shell(browser, base):
         href = nxt.first.get_attribute("href") if nxt.count() else None
         check(f"{case}: rel=next points to {NEXT[case]}", href == f"{NEXT[case]}.html", href)
     ctx.close()
-
-
-def flow_depths(browser, base):
-    """Beacon claims spawn depths notes in waves, fly out live, and survive reload."""
-    ctx, page = new_page(browser)
-    console_errors: list[str] = []
-    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
-    page.on("pageerror", lambda e: console_errors.append(str(e)))
-    page.goto(base + "/?reset=1")
-    enter_via_gate(page, base)
-
-    empty = page.evaluate("window.depthsReport().length")
-    check("depths: nothing spawned before any claim", empty == 0, empty)
-
-    report = page.evaluate("""() => {
-      XP.award('beacon-bnote-planet-voidscape', 1, 'VoidScape');
-      XP.award('beacon-bnote-planet-heavylight', 1, 'HeavyLight');
-      XP.award('beacon-bnote-planet-conclusus', 1, 'Conclusus');
-      window.depthsReveal();
-      return window.depthsReport();
-    }""")
-    ids = {n["id"] for n in report}
-    check("depths: first waves spawn",
-          ids == {"bnote-vs-godrun", "bnote-hl-play", "bnote-cc-play"}, ids)
-    check("depths: off-screen reveal points the way instead of flying", all(n["cue"] and not n["flying"] for n in report), report)
-
-    page.wait_for_timeout(2000)
-    report = page.evaluate("window.depthsReport()")
-    check("depths: flights land", all(not n["flying"] for n in report), report)
-
-    by_id = {n["id"]: n for n in report}
-    check("depths: play nodes are wide",
-          by_id["bnote-hl-play"]["wide"] and by_id["bnote-cc-play"]["wide"], report)
-
-    shells = page.evaluate("""() =>
-      !!document.querySelector('#bnote-hl-play .embed-shell[data-src] .embed-play') &&
-      !!document.querySelector('#bnote-cc-play .embed-shell[data-src] .embed-play')""")
-    check("depths: game shells injected", shells, shells)
-
-    page.route("**itch.io/**", lambda r: r.abort())
-    plays, resets = page.evaluate("""() => {
-      document.querySelector('#bnote-hl-play .embed-play').click();
-      const hasFrame = !!document.querySelector('#bnote-hl-play iframe');
-      Embed.reset(document.getElementById('bnote-hl-play'));
-      return [hasFrame, !document.querySelector('#bnote-hl-play iframe') &&
-        !!document.querySelector('#bnote-hl-play .embed-shell[data-src] .embed-play')];
-    }""")
-    check("depths: embed plays on click", plays, plays)
-    check("depths: embed resets", resets, resets)
-
-    page.evaluate("XP.award('beacon-bnote-vs-godrun', 1, 'The God Run');")
-    page.reload()
-    page.wait_for_timeout(SETTLE)
-    report = page.evaluate("window.depthsReport()")
-    ids = {n["id"] for n in report}
-    check("depths: reload restores waves, no flight",
-          "bnote-vs-board" in ids and "bnote-vs-deeper" in ids and "bnote-vs-progress" not in ids
-          and all(not n["flying"] for n in report), report)
-
-    report = page.evaluate("""() => {
-      ['bnote-planet-zero','bnote-sz-room','bnote-sz-quiet','bnote-sz-storm','bnote-sz-shell','bnote-sz-register','bnote-sz-chair','bnote-sz-brian','bnote-sz-dark','bnote-sz-crew','bnote-vs-godrun','bnote-vs-board','bnote-vs-deeper','bnote-vs-progress','bnote-vs-boons','bnote-vs-bench','bnote-vs-map','bnote-vs-rooms','bnote-vs-feel',
-       'bnote-hl-play','bnote-cc-play','bnote-cc-brief','bnote-cc-controls','bnote-cc-key','bnote-cc-pins','bnote-cc-shadow','bnote-cc-twins','bnote-cc-levels','bnote-cc-polish'].forEach(id => XP.award('beacon-'+id, 1, id));
-      window.depthsReveal();
-      return window.depthsReport();
-    }""")
-    check("depths: all 33 nodes spawn", len(report) == 33, len(report))
-    bounds_and_overlap_checks("depths", report)
-
-    errors = [e for e in console_errors if "itch.io" not in e and "ERR_FAILED" not in e
-              and "net::" not in e]
-    check("depths: no console errors", not errors, errors)
-    ctx.close()
-
-
-def bounds_and_overlap_checks(label, report):
-    """Shared with flow_depths: nodes stay in frame and don't overlap within a cluster."""
-    check(f"{label}: nodes stay in frame",
-          all(-0.44 <= n["off"] <= 0.44 and 0.16 <= n["oy"] <= 0.66 for n in report), report)
-
-    overlaps = []
-    for i, a in enumerate(report):
-        for b in report[i + 1:]:
-            if a["root"] != b["root"]:
-                continue
-            dist = ((a["off"] - b["off"]) ** 2 + ((a["oy"] - b["oy"]) * 0.56) ** 2) ** 0.5
-            if dist < 0.06:
-                overlaps.append((a["id"], b["id"], dist))
-    check(f"{label}: no two nodes of a cluster overlap", not overlaps, overlaps)
 
 
 def flow_rex(browser, base):
@@ -1129,7 +1040,7 @@ FLOWS = {
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "twotabs": flow_twotabs, "header": flow_header,
-    "shell": flow_shell, "phone": flow_phone, "depths": flow_depths, "rex": flow_rex,
+    "shell": flow_shell, "phone": flow_phone, "rex": flow_rex,
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,
     "cc-win": flow_cc_win,

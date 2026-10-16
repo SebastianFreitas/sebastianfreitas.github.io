@@ -64,6 +64,8 @@ window.Forge = (function () {
   let gone = 0;
   let timesUsed = 1;
 
+  function gunChanged() { document.dispatchEvent(new CustomEvent("forge:gun")); }
+
   const cost = () => (gun.level - 9) * (gun.mods.length + 1) * timesUsed;
 
   function benchOk(key) { flash[key] = { kind: "ok", text: null, until: t + FLASH }; }
@@ -77,6 +79,7 @@ window.Forge = (function () {
     gun.mods.push(m);
     timesUsed++;
     benchOk("add");
+    gunChanged();
   }
   function benchRemove() {
     if (gone > 0) return;
@@ -84,6 +87,7 @@ window.Forge = (function () {
     gun.mods.splice(rint(0, gun.mods.length), 1);
     timesUsed++;
     benchOk("remove");
+    gunChanged();
   }
   function benchDestroy() {
     if (gone > 0) return;
@@ -233,6 +237,7 @@ window.Forge = (function () {
   let reloadN = 1;
   let cflash = { search: null, empower: null, reload: null, portal: null, head: null };
   let run = null;
+  let standalone = false; // the inline console on the case page: SEARCH and EMPOWER only, SEARCH repeatable
   let consH = 0; // last computed console height, cached so hit()/over() (no ctx) can use it
 
   function consoleOk(key) { cflash[key] = { kind: "ok", text: null, until: t + FLASH }; }
@@ -246,6 +251,19 @@ window.Forge = (function () {
     searching = true;
     searchT = 0;
     searchIdx = 0;
+  }
+  function searchTick(dt) {
+    if (!searching) return;
+    searchT += dt;
+    while (searchIdx < 3 && searchT > (searchIdx + 1) * 0.6) {
+      mon[searchIdx] = rnd() < 0.5 ? { st: "found", m: makeMission() } : { st: "failed", m: null };
+      searchIdx++;
+    }
+    if (searchIdx >= 3) {
+      if (!mon.some(m => m.st === "found")) mon[0] = { st: "found", m: makeMission() };
+      searching = false;
+      searchDone = !standalone;
+    }
   }
   function empowerAction() {
     if (selected < 0) { consoleErr("empower", "SELECT A PATH"); return; }
@@ -378,7 +396,7 @@ window.Forge = (function () {
       }
     }
     const x0 = 484; // 3 × MON_W + 2 × MON_GAP + 10, right of the monitor row
-    for (let k = 0; k < 4; k++) {
+    for (let k = 0; k < (standalone ? 2 : 4); k++) {
       const y = qy + 32 + k * 32;
       if (k === 0) drawConsoleButton(g, qx + x0, y, 110, "SEARCH", cflash.search);
       else if (k === 1) {
@@ -408,20 +426,9 @@ window.Forge = (function () {
     for (const m of mon) if (m.errUntil && m.errUntil <= t) m.errUntil = 0;
     if (gone > 0) {
       gone -= dt;
-      if (gone <= 0) { gone = 0; gun = randomGun(); timesUsed = 1; }
+      if (gone <= 0) { gone = 0; gun = randomGun(); timesUsed = 1; gunChanged(); }
     }
-    if (searching) {
-      searchT += dt;
-      while (searchIdx < 3 && searchT > (searchIdx + 1) * 0.6) {
-        mon[searchIdx] = rnd() < 0.5 ? { st: "found", m: makeMission() } : { st: "failed", m: null };
-        searchIdx++;
-      }
-      if (searchIdx >= 3) {
-        if (!mon.some(m => m.st === "found")) mon[0] = { st: "found", m: makeMission() };
-        searching = false;
-        searchDone = true;
-      }
-    }
+    searchTick(dt);
     if (run) {
       run.t += dt;
       const cells = run.plan.cells.length;
@@ -545,5 +552,94 @@ window.Forge = (function () {
     };
   }
 
-  return { step, draw, hit, over, lively, report, unlock };
+  /* ---- standalone bench: any canvas, own origin, local pointer coords, no env ---- */
+  const BENCH_BTN = { x: 0, w: 190, h: 24 };
+  function benchButton(x, y) {
+    for (let k = 0; k < 3; k++) {
+      const yy = 140 + k * 28;
+      if (x >= 0 && x <= BENCH_BTN.w && y >= yy && y <= yy + BENCH_BTN.h) return k;
+    }
+    return -1;
+  }
+  function benchStep(dt) {
+    if (!(dt > 0)) return;
+    t += dt;
+    for (const k of ["add", "remove", "destroy"]) if (flash[k] && flash[k].until <= t) flash[k] = null;
+    if (gone > 0) {
+      gone -= dt;
+      if (gone <= 0) { gone = 0; gun = randomGun(); timesUsed = 1; gunChanged(); }
+    }
+  }
+  function benchDraw(ctx, x, y) {
+    ctx.save();
+    panelAlpha = 1;
+    drawBench(ctx, null, x + GAP + PANEL_W, y - TOP_Y);
+    ctx.restore();
+  }
+  function benchHit(x, y) {
+    const k = benchButton(x, y);
+    if (k < 0) return false;
+    if (k === 0) benchAdd(); else if (k === 1) benchRemove(); else benchDestroy();
+    return true;
+  }
+  function benchOver(x, y) { return benchButton(x, y) >= 0; }
+  function benchLively() {
+    if (armUntil > t || gone > 0) return true;
+    for (const k of ["add", "remove", "destroy"]) if (flash[k] && flash[k].until > t) return true;
+    return false;
+  }
+
+  /* ---- standalone mission console: the console's monitors with SEARCH and EMPOWER, no room plan ---- */
+  const MAP_W = CONS_W, MAP_MIN_H = 48 + MIN_SCREEN_LINES * LINE_H + 8 + 6;
+  const mapEnv = { reduced: false };
+  const mapMissions = () => mon.map(m => m.m ? m.m.mods.map(x => x.line).concat(m.m.good) : m.st);
+  function mapGenerate() {
+    standalone = true;
+    mon = [0, 1, 2].map(() => ({ st: "found", m: makeMission() }));
+    selected = -1; searching = false; searchDone = false;
+    return { missions: mapMissions() };
+  }
+  function mapStep(dt) {
+    if (!(dt > 0)) return;
+    t += dt;
+    for (const k of ["search", "empower"]) if (cflash[k] && cflash[k].until <= t) cflash[k] = null;
+    for (const m of mon) if (m.errUntil && m.errUntil <= t) m.errUntil = 0;
+    searchTick(dt);
+  }
+  function mapDraw(ctx, x, y) {
+    ctx.save();
+    panelAlpha = 1;
+    drawConsole(ctx, mapEnv, x - CONS_GAP, y - TOP_Y);
+    ctx.restore();
+  }
+  function mapButton(x, y) {
+    for (let k = 0; k < 2; k++) {
+      const yy = 32 + k * 32;
+      if (y >= yy && y <= yy + 26 && x >= 484 && x <= 594) return k;
+    }
+    return -1;
+  }
+  function mapMon(x, y) {
+    if (y < 32 || y > consH - 6 || x < 0) return -1;
+    const m = Math.floor(x / (MON_W + MON_GAP));
+    return m <= 2 && mon[m].st === "found" ? m : -1;
+  }
+  function mapOver(x, y) { return mapButton(x, y) >= 0 || mapMon(x, y) >= 0; }
+  function mapHit(x, y) {
+    const k = mapButton(x, y), m = mapMon(x, y);
+    if (k === 0) searchAction(); else if (k === 1) empowerAction(); else if (m >= 0) selected = m; else return false;
+    return true;
+  }
+  function mapLively() {
+    if (searching) return true;
+    for (const k of ["search", "empower"]) if (cflash[k] && cflash[k].until > t) return true;
+    return false;
+  }
+
+  return {
+    step, draw, hit, over, lively, report, unlock,
+    gun: () => gun,
+    bench: { W: PANEL_W, H: BENCH_H, step: benchStep, draw: benchDraw, hit: benchHit, over: benchOver, lively: benchLively },
+    map: { W: MAP_W, get H() { return Math.max(consH, MAP_MIN_H); }, step: mapStep, draw: mapDraw, hit: mapHit, over: mapOver, lively: mapLively, generate: mapGenerate, missions: mapMissions },
+  };
 })();

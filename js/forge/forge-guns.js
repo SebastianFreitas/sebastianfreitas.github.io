@@ -1,4 +1,4 @@
-/* js/gamedev/forge-guns.js — VoidScape weapon tables, mod rolls and stats (pure data; loads before forge.js) */
+/* js/forge/forge-guns.js — VoidScape weapon tables, mod rolls and stats (pure data; loads before forge.js) */
 window.ForgeGuns = (function () {
   const { clamp } = Util;
   const rnd = Util.mulberry(Date.now() & 0x7fffffff); // not Math.random: same reason as storm.js

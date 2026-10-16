@@ -2,7 +2,7 @@
 (function () {
   const B = window.Bridge;
   if (!B) return;
-  const { host, MARKS, PLANETS, HL_MARK } = B;
+  const { host, MARKS, PLANETS } = B;
   const { fmt } = Util;
 
   /* ---- notes ---- */
@@ -126,16 +126,8 @@
     if (window.XP) {
       const p = B.markScreen(m), r = hostBox();
       XP.award("beacon-" + m.id, m.xp, m.name, r.left + p.x, r.top + p.y);
-      if (m.id === "bnote-vs-bench") Forge.unlock("bench");
-      else if (m.id === "bnote-vs-map") Forge.unlock("console");
     }
-    // reaching HeavyLight or any of its depth nodes drops a crate into the lamp's beam
-    if (window.Zones && HL_MARK && (m === HL_MARK || m.root === HL_MARK.id)) Zones.dropCrate();
-    if (B.sceneMode === "gamedev") {
-      B.log.push(`docking: ${m.name.toLowerCase()} +${m.xp}`, "good");
-    } else {
-      B.log.push(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
-    }
+    B.log.push(`filed: ${m.name.toLowerCase()} +${m.xp}`, "good");
     B.revealDepths(true);
     B.activeMark = m;
     const segId = BEACON_SEGMENT[m.id];

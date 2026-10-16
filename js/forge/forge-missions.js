@@ -1,4 +1,4 @@
-/* js/gamedev/forge-missions.js — VoidScape mission rolls and the floor-plan generator (pure; loads after forge-guns.js, before forge.js) */
+/* js/forge/forge-missions.js — VoidScape mission rolls and the floor-plan generator (pure; loads after forge-guns.js, before forge.js) */
 window.ForgeMissions = (function () {
   const { clamp } = Util;
   const { rnd, rint, pick, MAX_PATH_MODS } = ForgeGuns;

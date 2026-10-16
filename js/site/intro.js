@@ -5,8 +5,8 @@
    only a first visit to the bare homepage gets the boot log and
    the two paths. Back, reload, #work / #experience links and
    returning visitors go straight in, in their last sector.
-   Escape or a top bar link leaves the gate (Game Dev).
-   path-projects: +1 on picking Game Dev or reaching #work.
+   Escape or a top bar link leaves the gate.
+   path-projects: +1 on reaching #work.
    path-world: +1 on picking Setting (bridge.js also awards it
    when The Void button is used).
    =========================================================== */
@@ -19,7 +19,7 @@
   const logEl   = document.getElementById("gate-log");
   const panelEl = document.getElementById("gate-panel");
   const touch   = Util.coarse();
-  const entry   = window.SiteEntry || { kind: "first", sector: "gamedev", view: null };
+  const entry   = window.SiteEntry || { kind: "first", sector: "void", view: null };
   const reduced = Util.reduced();
 
   const PATH = {
@@ -91,17 +91,10 @@
   }
 
   const btnWorld = document.getElementById("gate-world");
-  const btnProjects = document.getElementById("gate-projects");
   if (btnWorld) {
     btnWorld.addEventListener("click", () => pick({
       bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,
       mode: "void",
-    }));
-  }
-  if (btnProjects) {
-    btnProjects.addEventListener("click", () => pick({
-      bridge: true, scroll: "#bridge-hero", el: btnProjects, path: PATH.projects,
-      mode: "gamedev",
     }));
   }
 
@@ -117,7 +110,7 @@
   function onGateKey(e) {
     if (e.key !== "Escape" || gate.classList.contains("done")) return;
     e.preventDefault();
-    pick({ bridge: true, mode: "gamedev" });
+    pick({ bridge: true, mode: "void" });
   }
 
   /* skip the gate: no freeze, no boot, no award, same sector as last time */
@@ -135,7 +128,7 @@
   /* in-page top bar links still work while the gate is up */
   document.querySelectorAll(".topbar nav a[href^='#']").forEach(a => {
     a.addEventListener("click", () => {
-      if (!gate.classList.contains("done")) pick({ bridge: true, mode: "gamedev" });
+      if (!gate.classList.contains("done")) pick({ bridge: true, mode: "void" });
     });
   });
 

@@ -56,8 +56,8 @@
   const VOID_MIN = CAM.min, VOID_MAX = CAM.max;
   B.VOID_MIN = VOID_MIN; B.VOID_MAX = VOID_MAX;
 
-  const { MARKS, PLANETS, GD_LAND, GD_BOUNDS, GD_SLOT, GD_SPAWN } = Marks;
-  B.MARKS = MARKS; B.PLANETS = PLANETS; B.GD_BOUNDS = GD_BOUNDS;
+  const { MARKS, PLANETS } = Marks;
+  B.MARKS = MARKS; B.PLANETS = PLANETS;
 
   /* the lamp's own radius is tuned for a mouse; a fingertip on a zoomed-out
      phone needs a wider net or you sail straight past what you were aiming at */
@@ -67,9 +67,6 @@
     console.error("lamp.js did not load — canvas marks and claim flights are dead");
   }
 
-  if (!window.Planet) {
-    console.error("planet.js did not load — game dev sector has nothing to draw");
-  }
   if (!window.Depths) {
     console.error("depths.js did not load — no beacon will open into further nodes");
   }
@@ -123,7 +120,6 @@
     B.bridgeReady = true;
     begin();
     B.applyPendingView();
-    B.applyPendingMode();
     B.saveView();
   }
 
@@ -149,11 +145,10 @@
   addEventListener("load", repaintUnderGate);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(repaintUnderGate);
 
-  B.pendingMode = null; B.pendingView = null; B.pendingQuiet = false;
+  B.pendingView = null; B.pendingQuiet = false;
   document.addEventListener("site:enter", e => {
     B.entered = true;
     startLoop();
-    B.pendingMode = e.detail && e.detail.mode || null;
     B.pendingView = e.detail && e.detail.view || null;
     B.pendingQuiet = !!(e.detail && e.detail.entry && e.detail.entry !== "gate");
     if (e.detail.bridge !== false) readyBridge();
@@ -176,27 +171,9 @@
   B.frozen = false;
   let freezeGuard = null;
 
-  /* ---- setting: which map is currently under the bridge ---- */
-  B.sceneMode = "void";                 // "void" | "gamedev"
+  /* ---- gamedev sector archived: the bridge has one setting (the void) ---- */
   B.savedVoidCamX = LAND.bridge;
-  B.savedGDCamX = GD_SPAWN;
-  const activeMarks = () => B.sceneMode === "gamedev" ? PLANETS : MARKS;
-  B.activeMarks = activeMarks;
-  const ZERO_MARK = PLANETS.find(m => m.id === "bnote-planet-zero"); // the storm sits beside it
-  B.ZERO_MARK = ZERO_MARK;
-  const VS_MARK = PLANETS.find(m => m.id === "bnote-planet-voidscape"); // the bench and run console sit beside it
-  B.VS_MARK = VS_MARK;
-  const HL_MARK = PLANETS.find(m => m.id === "bnote-planet-heavylight"); // zone art sits around it (zones.js)
-  B.HL_MARK = HL_MARK;
-  const CONC_MARK = PLANETS.find(m => m.id === "bnote-planet-conclusus");
-  B.CONC_MARK = CONC_MARK;
-
-  /* ---- setting switch: swallowed by a black hole, then elsewhere ---- */
-  const XSTAGE = { CLOSE: 0, HOLD: 1, OPEN: 2 };
-  B.XSTAGE = XSTAGE;
-  const CLOSE_DUR = 0.85, HOLD_DUR = 0.30, OPEN_DUR = 0.80;
-  B.CLOSE_DUR = CLOSE_DUR; B.HOLD_DUR = HOLD_DUR; B.OPEN_DUR = OPEN_DUR;
-  B.xswitch = null; // { stage, t, cx, cy }
+  B.activeMarks = () => MARKS;
   B.ship = window.Voidship ? Voidship.create() : null;
   if (!window.Voidship) {
     console.error("voidship.js did not load — travel is dead");

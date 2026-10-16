@@ -34,9 +34,25 @@
   // DOM
   let card, ocard, hint, tip;
 
+  // the gun built on the inline bench, else a random one (no bench / not reporting yet)
+  function pickGun() {
+    const vb = window.VoidBench;
+    return (vb && vb.gun && vb.gun()) || FG.randomGun();
+  }
+  // a bench change lands on the next shot: swap the gun, rebuild, keep boons
+  document.addEventListener('voidbench:gun', function () {
+    if (!B || !window.VoidBench) return;
+    const g = window.VoidBench.gun();
+    if (!g) return;
+    gun = g;
+    B = RB.build(gun, boons);
+    hp = Math.min(hp, B.maxHp);
+    refresh();
+  });
+
   function setup(v) {
     V = v;
-    gun = FG.randomGun();
+    gun = pickGun();
     boons = [];
     pool = RB.BOONS.slice();
     B = RB.build(gun, boons);
@@ -578,7 +594,7 @@
     lost = 1.6;
     enemies = []; bullets = []; ebullets = [];
     boons = []; pool = RB.BOONS.slice();
-    gun = FG.randomGun();
+    gun = pickGun();
     B = RB.build(gun, boons);
     hp = B.maxHp; kills = 0; pending = 0;
     offerBoon = null;

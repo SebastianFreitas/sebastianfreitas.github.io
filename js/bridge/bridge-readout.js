@@ -13,7 +13,7 @@
      take a piece of the hull with them. */
   B.voice = BridgeVoice.create({
     get camX() { return B.camX; }, get vel() { return B.vel; }, get chaosNow() { return B.chaosNow; },
-    get futureNow() { return B.futureNow; }, get ship() { return B.ship; }, get sceneMode() { return B.sceneMode; },
+    get futureNow() { return B.futureNow; }, get ship() { return B.ship; },
     get env() { return B.env; },
     get breaches() { return breaches; }, activeMarks, LAND, SLOT, CAM,
   });
@@ -121,7 +121,7 @@
     const name = near ? near.name : "open span";
     if (name === B.lastRegion) return;
     B.lastRegion = name;
-    if (near) B.log.push(`${B.sceneMode === "gamedev" ? "approaching" : "entering"} ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
+    if (near) B.log.push(`entering ${near.name.toLowerCase()} — ${near.sub.toLowerCase()}`, "loc");
     else B.log.push("open span · nothing charted here", "loc");
   }
   B.checkRegion = checkRegion;
@@ -137,7 +137,7 @@
   ];
   let filedMark = 0, filedAt = 0, filedIn = false, filedGap = 16;
   function reportFiled(dt) {
-    const inCity = B.sceneMode === "void" && Math.abs(B.camX - LAND.mainland) < SLOT * 1.4;
+    const inCity = Math.abs(B.camX - LAND.mainland) < SLOT * 1.4;
     if (!inCity) { filedAt = 0; filedIn = false; return; }
     if (!filedIn) { filedIn = true; filedMark = B.catalogued; filedAt = 0; filedGap = 14 + Math.random() * 12; }
     filedAt += dt;
@@ -160,7 +160,7 @@
       if (pct !== youPct) { youEl.style.left = pct + "%"; youPct = pct; }
     }
 
-    if (B.sceneMode === "void" && Math.abs(B.camX - LAND.mainland) < SLOT * 1.4)
+    if (Math.abs(B.camX - LAND.mainland) < SLOT * 1.4)
       B.catalogued += (160 + Math.abs(B.vel) * 0.02) * dt;
 
     checkRegion();
@@ -195,8 +195,7 @@
         spanPct: (CAM.max - B.camX) / (CAM.max - CAM.min) * 100,
         travelled: B.travelled,
         region: B.lastRegion,
-        voice: (B.sceneMode === "gamedev" && B.env && B.env.site && B.env.w >= 0.5) ? B.env.site
-             : B.nearest ? (VOICE_OF[B.nearest.id] || "void")
+        voice: B.nearest ? (VOICE_OF[B.nearest.id] || "void")
                          : (B.futureNow > 0.45 ? "future" : "void"),
         marks: activeMarks().map(m => ({
           id: m.id, cam: m.cam, oy: m.oy, name: m.name,

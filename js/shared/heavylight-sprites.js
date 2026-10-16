@@ -1,6 +1,6 @@
 /* heavylight-sprites.js — the HeavyLight game's palette and its 16 px
    sprites (floor/wall/drip/pillar/plat tiles, spike, symbol, box, lamp,
-   key, lantern), shared by the bridge (gamedev/zones.js) and the
+   key, lantern), shared by the bridge (archived gamedev zones.js) and the
    HeavyLight case page (pages/heavylight.js). Each sprite is
    {w, h, ox, oy, px}: px is w*h letters, "." transparent, letter "a"
    = HPAL[0]. Data only: no drawing, no state. */

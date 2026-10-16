@@ -103,7 +103,7 @@ def settle(page, ms):
     page.clock.run_for(ms)
 
 
-def enter_via_gate(page, base, button="#gate-projects"):
+def enter_via_gate(page, base, button="#gate-world"):
     """nav-flows' enter_via_gate, waited out on the faked clock instead of on
     the wall: the gate types itself on timers, which only run when asked, and
     any real second that reaches a page moves its frames out of step."""
@@ -246,14 +246,12 @@ MARKS_SRC_FILE = (ROOT / "js" / "bridge" / "marks.js").read_text(encoding="utf-8
 BEATS_SRC_FILE = (ROOT / "js" / "genesis" / "genesis-state.js").read_text(encoding="utf-8")
 
 MARKS_SRC = js_block(MARKS_SRC_FILE, "const MARKS = [", "\n  ];")
-PLANETS_SRC = js_block(MARKS_SRC_FILE, "const PLANETS = [", "\n  ];")
 BEATS_SRC = js_block(BEATS_SRC_FILE, "G.BEATS = [", "\n  ];")
 
 MARK_IDS = re.findall(r'id:\s*"([^"]+)"', MARKS_SRC)
-PLANET_IDS = re.findall(r'id:\s*"([^"]+)"', PLANETS_SRC)
 BEAT_IDS = re.findall(r'id:\s*"([^"]+)"', BEATS_SRC)
-if not (MARK_IDS and PLANET_IDS and BEAT_IDS):
-    raise RuntimeError("snap.py: MARKS / PLANETS / BEATS no longer parse — "
+if not (MARK_IDS and BEAT_IDS):
+    raise RuntimeError("snap.py: MARKS / BEATS no longer parse — "
                        "no scene names can be built")
 
 # bridge.js pushes a depth node into these lists as each beacon is claimed, so
@@ -261,7 +259,6 @@ if not (MARK_IDS and PLANET_IDS and BEAT_IDS):
 # rather than walking the map.
 MAP_JS = """() => ({
   marks: Marks.MARKS.map(m => ({ id: m.id, x: m.x })),
-  planets: Marks.PLANETS.map(m => ({ id: m.id, x: m.x })),
   land: Object.keys(World.LAND), landBridge: World.LAND.bridge,
 })"""
 
@@ -285,7 +282,6 @@ SET_VIEW = """({ mode, x }) => {
   const view = JSON.stringify({
     mode,
     voidCamX: mode === 'void' ? x : null,
-    gdCamX: mode === 'gamedev' ? x : null,
   });
   const save = () => {
     sessionStorage.setItem('arcanis.view.v1', view);
@@ -308,7 +304,7 @@ def bridge_page(browser, base):
     """One entered page with every beacon claimed, so all depth nodes exist."""
     if "bridge" not in _shared:
         ctx, page = new_ctx(browser)
-        enter_via_gate(page, base, "#gate-projects")
+        enter_via_gate(page, base, "#gate-world")
         for mid in MARK_IDS:
             page.evaluate("id => XP.award('beacon-' + id, 1, id)", mid)
         page.evaluate("window.depthsReveal && depthsReveal()")
@@ -321,7 +317,7 @@ def genesis_page(browser, base):
     """One entered page; a known visitor skips the gate on every later load."""
     if "genesis" not in _shared:
         ctx, page = new_ctx(browser)
-        enter_via_gate(page, base, "#gate-projects")
+        enter_via_gate(page, base, "#gate-world")
         _shared["genesis"] = (ctx, page)
     return _shared["genesis"][1]
 
@@ -353,17 +349,13 @@ def mark_x(mid):
     return lambda m: next((e["x"] for e in m["marks"] if e["id"] == mid), None)
 
 
-def planet_x(pid):
-    return lambda m: next((e["x"] for e in m["planets"] if e["id"] == pid), None)
-
-
 def land_x(key):
     return lambda m: m["landBridge"] if key in m["land"] else None
 
 
 def scene_bridge_unclaimed(browser, base, out_dir):
     ctx, page = new_ctx(browser)
-    enter_via_gate(page, base, "#gate-projects")
+    enter_via_gate(page, base, "#gate-world")
     set_view(page, "void", world_map(page)["marks"][0]["x"])
     page.reload()
     page.wait_for_load_state("load")
@@ -375,7 +367,7 @@ def scene_bridge_unclaimed(browser, base, out_dir):
 def scene_bridge_phone_landscape(browser, base, out_dir):
     ctx, page = new_ctx(browser, nav.PHONE_LANDSCAPE, is_mobile=True,
                         has_touch=True, device_scale_factor=2)
-    enter_via_gate(page, base, "#gate-projects")
+    enter_via_gate(page, base, "#gate-world")
     set_view(page, "void", world_map(page)["marks"][0]["x"])
     page.reload()
     page.wait_for_load_state("load")
@@ -439,7 +431,7 @@ def toy_page(name):
 def index_section(section, label, viewport):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
-        enter_via_gate(page, base, "#gate-projects")
+        enter_via_gate(page, base, "#gate-world")
         page.evaluate(f"location.hash='#{section}'")
         rest(page)
         settle(page, 800)
@@ -457,8 +449,6 @@ def scenes():
         out.append((f"bridge-void-{mid}", bridge_camera("void", mid, mark_x(mid))))
     out.append(("bridge-void-bridge-span",
                 bridge_camera("void", "bridge-span", land_x("bridge"))))
-    for pid in PLANET_IDS:
-        out.append((f"bridge-gamedev-{pid}", bridge_camera("gamedev", pid, planet_x(pid))))
     out.append(("bridge-void-unclaimed", scene_bridge_unclaimed))
     out.append(("bridge-phone-landscape", scene_bridge_phone_landscape))
     out.append(("gate-first-visit", scene_gate))

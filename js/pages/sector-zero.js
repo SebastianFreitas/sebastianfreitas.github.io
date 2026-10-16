@@ -2,7 +2,7 @@
    objects float in the free strip beside the text, thunder rolls a strength
    on a timer and shoves the losers around, and a RealityTXT terminal card
    types out each object's record file on click. Palette and box() mirror
-   js/gamedev/storm.js's flat lit/shade look; nothing is imported from it. */
+   archive/gamedev storm.js's flat lit/shade look; nothing is imported from it. */
 (function () {
   'use strict';
   const U = window.Util, P = window.Play, R = window.ZeroRecords;

@@ -4,7 +4,7 @@
 window.BridgeVoice = (function () {
   const { fmt } = Util;
   function create(S) {
-    // S: { get camX(), get vel(), get chaosNow(), get futureNow(), get ship(), get sceneMode(),
+    // S: { get camX(), get vel(), get chaosNow(), get futureNow(), get ship(),
     //      get breaches(), activeMarks(), LAND, SLOT, CAM }
     const { LAND, SLOT, CAM, activeMarks } = S;
 
@@ -357,7 +357,6 @@ window.BridgeVoice = (function () {
     function zoneAt(x) {
       const e = S.env;
       if (e && e.site && e.w >= 0.5 && ZONES["site:" + e.site]) return "site:" + e.site;
-      if (S.sceneMode !== "void") return "gamedev";
       if (Math.abs(x - LAND.mainland) < SLOT * 1.6) return "mainland";
       if (x > LAND.root - SLOT * 1.4) return "root";
       if (Math.abs(x - LAND.rex) < SLOT * 1.5) return "rex";

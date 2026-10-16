@@ -11,9 +11,8 @@
 
 window.SiteEntry = (function () {
   const VIEW_KEY   = Util.KEYS.VIEW;     // sessionStorage: this tab's last view
-  const SECTOR_KEY = Util.KEYS.SECTOR;   // localStorage: last sector, any visit
   const SECTIONS = ["work", "experience"];
-  const SECTORS  = ["void", "gamedev"];
+  /* gamedev sector archived: the bridge has one sector; a stored "gamedev" is ignored */
 
   const read = Util.read;
 
@@ -27,9 +26,8 @@ window.SiteEntry = (function () {
 
   let view = null;
   try { view = JSON.parse(read(sessionStorage, VIEW_KEY) || "null"); } catch (e) {}
-  if (!view || SECTORS.indexOf(view.mode) === -1) view = null;
+  if (!view || typeof view !== "object") view = null;
 
-  const stored = read(localStorage, SECTOR_KEY);
   const hash = location.hash.replace(/^#/, "");
   const type = navType();
 
@@ -38,9 +36,7 @@ window.SiteEntry = (function () {
   else if (SECTIONS.indexOf(hash) !== -1) kind = "deeplink";
   else if (window.XP && XP.known) kind = "returning";
 
-  const sector = kind === "restore" ? view.mode
-               : SECTORS.indexOf(stored) !== -1 ? stored
-               : "gamedev";
+  const sector = "void";
 
   if (kind !== "first") document.documentElement.classList.add("gate-done");
 

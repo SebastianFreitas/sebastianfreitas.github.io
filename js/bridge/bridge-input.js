@@ -127,13 +127,9 @@
   B.retargetFromPointer = retargetFromPointer;
 
   host.addEventListener("pointerdown", e => {
-    if (B.frozen || B.xswitch || document.body.classList.contains("site-frozen")) return;
+    if (B.frozen || document.body.classList.contains("site-frozen")) return;
     // note panels scroll and hold clips, so a press inside one belongs to the panel, not a burn
     if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bnote")) return;
-    if (B.sceneMode === "gamedev") {
-      const r = B.hostBox();
-      if (Forge.hit(e.clientX - r.left, e.clientY - r.top)) return;   // a press on a panel is a button, not a burn
-    }
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -173,7 +169,7 @@
 
     if (!inside) { B.hoverMark = null; if (cursor) cursor.classList.remove("over"); return; }
     B.hoverMark = markAt(e.clientX, e.clientY);
-    if (cursor) cursor.classList.toggle("over", !!B.hoverMark || (B.sceneMode === "gamedev" && Forge.over(e.clientX - r.left, e.clientY - r.top)));
+    if (cursor) cursor.classList.toggle("over", !!B.hoverMark);
   }, { passive: true });
 
   addEventListener("pointerup", endBurn);
@@ -249,13 +245,8 @@
 
   function syncLabels() {
     if (trackLabels.length < 2) return;
-    if (B.sceneMode === "gamedev") {
-      trackLabels[0].textContent = "West · Sector Zero";
-      trackLabels[1].textContent = "East · Conclusus";
-    } else {
-      trackLabels[0].textContent = "West · the future";
-      trackLabels[1].textContent = "East · the past";
-    }
+    trackLabels[0].textContent = "West · the future";
+    trackLabels[1].textContent = "East · the past";
   }
   B.syncLabels = syncLabels;
 })();

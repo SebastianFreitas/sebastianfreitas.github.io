@@ -244,7 +244,7 @@ window.World = (function () {
     F.dtNow = v.dt != null ? v.dt : 1 / 60;
     if (v.maxFling) F.V.maxFling = v.maxFling;
     const mode = v.mode || "void";
-    // the Game Dev sector is its own world (js/gdworld/); only the ship is shared
+    // the Game Dev sector is its own world (archived); only the ship is shared
     if (mode === "gamedev" && window.GdWorld) { GdWorld.draw(context, v); return; }
     const { ctx, W, H } = F;
 

@@ -4,7 +4,6 @@
   if (!B) return;
   const {
     ctx, reduced, CUE_PULSE, ART_FADE, FLY_DUR,
-    ZERO_MARK, VS_MARK, HL_MARK, CONC_MARK,
     activeMarks, markScreen, onScreen, flyK, scale,
   } = B;
   const { approach } = Util;
@@ -14,10 +13,7 @@
   window.beaconReport = () => activeMarks().map(m => {
     const p = markScreen(m);
     return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
-  }).join("\n") + `\ncamX=${B.camX.toFixed(0)} mode=${B.sceneMode} frozen=${B.frozen} W=${B.W} H=${B.H}`;
-  window.stormReport = () => Storm.report();
-  window.forgeReport = () => Forge.report();
-  window.zonesReport = () => Zones.report();
+  }).join("\n") + `\ncamX=${B.camX.toFixed(0)} frozen=${B.frozen} W=${B.W} H=${B.H}`;
 
   function drawCue(m, p, stack) {
     const right = p.x >= B.W;
@@ -69,7 +65,6 @@
 
   function drawMarks(dt) {
     let shown = 0;
-    const gd = B.sceneMode === "gamedev";
     const cueStack = { l: 0, r: 0 };
     for (const m of activeMarks()) {
       if (m.fly) {
@@ -100,66 +95,18 @@
         ctx.stroke();
         ctx.restore();
       }
-      if (gd && window.Planet) {
-        Planet.draw(ctx, p.x, p.y, {
-          t: B.t, phase: m.phase, alpha: m.vis,
-          active: B.activeMark === m, hover: B.hoverMark === m,
-          claimed: !!(window.XP && XP.has("beacon-" + m.id)),
-          xp: m.xp,
-          theme: m.theme, size: m.fly ? m.size * (0.35 + 0.65 * flyK(m)) : m.size, pop: m.pop, label: m.name,
-        });
-      } else if (!gd) {
-        Beacon.draw(ctx, p.x, p.y, {
-          t: B.t, phase: m.phase, alpha: m.vis,
-          active: B.activeMark === m, hover: B.hoverMark === m,
-          claimed: window.XP && XP.has("beacon-" + m.id),
-          xp: m.xp, pop: m.pop, label: m.name,
-        });
-      }
+      Beacon.draw(ctx, p.x, p.y, {
+        t: B.t, phase: m.phase, alpha: m.vis,
+        active: B.activeMark === m, hover: B.hoverMark === m,
+        claimed: window.XP && XP.has("beacon-" + m.id),
+        xp: m.xp, pop: m.pop, label: m.name,
+      });
     }
     // if none ever appear, say so once — beaconReport() has the detail
     if (!shown && markDebug < 4 && (markDebug += dt) >= 4)
       console.warn("no marks drawn in 4s — run beaconReport() for why");
   }
   B.drawMarks = drawMarks;
-
-  // --- Sector Zero storm (storm.js): debris beside the planet, shoved by the ship ---
-  function stormEnv() {
-    const a = markScreen(ZERO_MARK);
-    const sp = Voidship.screenPos(B.ship, B.W);
-    return { ax: a.x, ay: a.y, W: B.W, H: B.H, sx: sp.x, sy: sp.y,
-             svx: B.ship.vel * ZERO_MARK.par * scale(), svy: B.ship.vy, spitch: B.ship.pitch, reduced };
-  }
-  function drawStorm(dt) {
-    const env = stormEnv();
-    Storm.step(dt, env);
-    Storm.draw(ctx, env);
-  }
-  B.drawStorm = drawStorm;
-
-  // --- VoidScape bench and run console (forge.js): flat panels beside the planet ---
-  function forgeEnv() {
-    const a = markScreen(VS_MARK);
-    return { ax: a.x, ay: a.y, W: B.W, H: B.H, reduced };
-  }
-  function drawForge(dt) {
-    const env = forgeEnv();
-    Forge.step(dt, env);
-    Forge.draw(ctx, env);
-  }
-  B.drawForge = drawForge;
-
-  // --- game zones (zones.js): ambient art around VoidScape, HeavyLight and Conclusus, painted under the planets ---
-  function zonesEnv() {
-    return { W: B.W, H: B.H, reduced,
-             at: { voidscape: markScreen(VS_MARK), heavylight: markScreen(HL_MARK), conclusus: markScreen(CONC_MARK) } };
-  }
-  function drawZones(dt) {
-    const env = zonesEnv();
-    Zones.step(dt, env);
-    Zones.draw(ctx, env);
-  }
-  B.drawZones = drawZones;
 
   /* a reveal keeps the loop awake until every part of it has played out:
      the flight, the landing burst, the art fade, and the pulse of a cue
