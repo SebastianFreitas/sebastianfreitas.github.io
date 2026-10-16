@@ -13,6 +13,7 @@
 
   const GREEN = "180,199,136", PALE = "247,255,197", RAIN = "175,192,132";
   const PLAT_W = 64, PLAT_H = 28;      // 32x14 art at 2x
+  const SOLID_ROW = [2, 3, 3, 3, 2];   // first solid grass art row per platform sprite (the door's base sits on it)
   const MAN_W = 16, MAN_H = 52;
   const MAN_CX = 32;                    // x of the man's centre inside a platform, measured from plat.x
   const SWAP = 0.25;                   // shadow/silhouette frame swap (game)
@@ -45,14 +46,15 @@
   let V;                       // the shared frame-state object, captured once in setup
   let SPR = {};                 // cached sprites, built in setup
   let plats = [], sils = [], spikes = [], rain = [], rrnd = null, bursts = [];
-  let keys = [], door = null, rainBoost = 0;
+  let keys = [], door = null, rainBoost = 0, rainSm = 0;
   let player = { plat: -1, x: 0, y: 0, face: 1, air: null, first: false, arrived: false };
   let placed = false, cool = 0, hover = null, sig = "", hintEl = null;
   let lastSnap = null;
   let idleT = 0, clicked = false;
   let revealed = false, revT = 0, rev = 0, revealY = 0;
   let playPlat = -1, playDone = false;
-  let won = false, winSeq = null;       // door flow state: { ph: fly|walk|fade|gone, t, paid }
+  let won = false, winSeq = null;       // door flow state: { ph: fly|dim, t, paid }
+  let winEnd = -1;                      // seconds since the win ended (hint + arch glow settle); -1 before
   let trayEl = null, slotEls = [], flyEl = null, flyG = null, flyDpr = 1, flyDirty = false, trayN = 0;
   let sigW = -1, sigDocH = -1;
   let spec = null;
@@ -249,7 +251,7 @@
     if (plats.length) {
       const th = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "What it taught me");
       const di = placeBeat(th ? th.y : plats[plats.length - 1].y, [playPlat, ...keys.map(k => k.plat)]);
-      if (di >= 0) door = { x: plats[di].x + PLAT_W - 60, y: plats[di].y - 62, plat: di, lit: 0 };
+      if (di >= 0) door = { x: plats[di].x + PLAT_W - 60, y: plats[di].y + SOLID_ROW[plats[di].spr] * 2 - SPR.door.h, plat: di, lit: 0 };
     }
 
     sils = [];
@@ -278,7 +280,7 @@
 
     restoreProgress(snap);
     lockKeys();
-    if (door) door.lit = doorOpen() ? 1 : 0;
+    if (door) { door.lit = doorOpen() ? 1 : 0; plats[door.plat].twin = false; }
     if (winSeq) finishWin();
     sizeFly();
     sig = sigOf(V);
@@ -306,7 +308,7 @@
     if (winSeq || !plats[i]) return;
     if (i === player.plat) return;
     burst(player.x, player.y - 26);
-    if (player.plat >= 0 && !player.air) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
+    if (player.plat >= 0 && !player.air && !(door && player.plat === door.plat)) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
     player.plat = i;
     player.arrived = true;
     player.air = null;
@@ -322,7 +324,7 @@
   // jump to an arbitrary point (a silhouette) and fall from there
   function warp(x, y) {
     burst(player.x, player.y - 26);
-    if (!player.air && player.plat >= 0) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
+    if (!player.air && player.plat >= 0 && !(door && player.plat === door.plat)) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
     player.plat = -1;
     player.x = x;
     player.y = y;
@@ -357,7 +359,7 @@
   }
 
   function doorSlot(k) {
-    return { x: door.x + 4 + k * 20 - 16, y: door.y - 26 - 16 };
+    return { x: door.x + 2 + k * 18, y: door.y + 8 };
   }
 
   function doorOpen() {
@@ -367,15 +369,16 @@
   function doorReady() { return !!door && !won && doorOpen() && door.lit >= 1; }
   function hideUi() { for (const el of [hintEl, trayEl]) if (el) { el.style.opacity = "0"; el.style.visibility = "hidden"; } }
 
-  // door click: the three tray keys fly to the arch, then he walks in
+  // he lands on the open door's platform: the three tray keys fly to the arch while he steps into it
   function startWin() {
     won = true; winSeq = { ph: "fly", t: 0, paid: false };
     clicked = true; hover = null; V.cursor && V.cursor(false);
+    player.x = door.x + 28; player.face = 1;
     for (let k = 0; k < 3; k++) {
       if (!keys[k]) continue;
       const r = slotEls[k] ? slotEls[k].getBoundingClientRect() : null;
       const s = doorSlot(k);
-      keys[k].fly = { t: 0, toDoor: true, x0: r ? r.left + r.width / 2 : V.W - 60, y0: r ? r.top + r.height / 2 : V.H - 60, tx: s.x + 16, ty: s.y + 16, ang0: 0 };
+      keys[k].fly = { t: 0, toDoor: true, x0: r ? r.left + r.width / 2 : V.W - 60, y0: r ? r.top + r.height / 2 : V.H - 60, tx: s.x + 8, ty: s.y + 8, ang0: 0 };
       paintSlot(k, false);
     }
     trayN = 0;
@@ -383,77 +386,62 @@
     if (trayEl) trayEl.style.opacity = "0";
   }
 
-  // he bursts out and appears 64 px left of the arch
-  function walkIn() {
-    const i = door.plat;
-    burst(player.x, player.y - 26);
-    if (player.plat >= 0 && player.plat !== i && !player.air) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; }
-    player.plat = i; player.air = null; player.face = 1;
-    player.x = door.x + 28 - 64;
-    player.y = plats[i].y + 2;
-    plats[i].twin = false;
-    plats[i].lit = Math.max(plats[i].lit, 0.001);
-    burst(player.x, player.y - 26);
-  }
-
   function enterArch() {
     if (winSeq) winSeq.paid = true;
-    P.award("play-cc-win", "Conclusus door", door.x + 28, door.y + 30 - V.sy);
+    P.award("play-cc-win", "Conclusus door", door.x - 90, door.y + 60 - V.sy);
     rainBoost = 1.7;
     burst(door.x + 28, door.y + 30);
     burst(door.x + 28, door.y + 30);
     burst(door.x + 28, door.y + 30);
   }
 
-  // he comes back out of the arch onto the platform nearest mid-screen
-  function reappear() {
-    const vt = V.sy + V.top, vb = V.sy + V.H, mid = vt + (vb - vt) * 0.46;
-    let i = -1;
-    for (let j = 0; j < plats.length; j++) {
-      if (door && j === door.plat) continue;
-      if (i < 0 || Math.abs(plats[j].y - mid) < Math.abs(plats[i].y - mid)) i = j;
-    }
-    if (i < 0) { if (!door) return; i = door.plat; }
-    player.plat = i; player.air = null; player.arrived = true;
-    if (plats[i].twin) player.face = plats[i].tf;
-    player.x = plats[i].x + MAN_CX;
-    player.y = plats[i].y + 2;
-    plats[i].twin = false;
-    plats[i].lit = Math.max(plats[i].lit, 0.001);
-    burst(player.x, player.y - 26);
-    cool = COOL;
-  }
-
-  // a relayout during the win snaps it to its end
-  function finishWin() {
+  // the one end state: he is gone into the light, the arch stays empty, the hint says so for 3 s
+  function endWin() {
     for (const q of keys) q.fly = null;
     flyDirty = true;
-    hideUi();
     if (door && !winSeq.paid) enterArch();
     player.plat = -1; player.air = null;
     winSeq = null;
-    if (plats.length) reappear();
+    winEnd = 0;
+    if (trayEl) { trayEl.style.opacity = "0"; trayEl.style.visibility = "hidden"; }
+    if (hintEl) { hintEl.textContent = "the door is open"; hintEl.style.visibility = "visible"; hintEl.style.opacity = "1"; }
   }
 
+  // a relayout during the win snaps it to its end
+  function finishWin() { endWin(); }
+
   const hasXP = () => !!(window.XP && XP.has);
-  function drawBeacon(ctx, id, x, y, V, has, a) {
-    if (V.reduced) return;
-    if (a === undefined) a = 1;
+  // the bridge's own beacon (lamp.js), +1 until the XP is claimed; claimed ones stay
+  function drawBeacon(ctx, id, x, y, V, has, a, hov) {
+    if (V.reduced || !window.Beacon) return;
     if (has === undefined) has = hasXP();
-    if (has && XP.has(id)) return;
-    const pu = 0.5 + 0.5 * Math.sin(V.t * 3);
-    P.glow(ctx, x, y, 18 + 6 * pu, PALE, 0.22 * a);
-    ctx.strokeStyle = "#f7ffc5";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 7 + 2 * pu, 0, U.TAU);
-    ctx.stroke();
-    ctx.fillStyle = "#f7ffc5";
-    ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
-    ctx.globalAlpha = 0.5 * a;
-    ctx.fillRect(Math.round(x), Math.round(y) - 24, 1, 14);
-    ctx.globalAlpha = a;
+    Beacon.draw(ctx, x, y, {
+      t: V.t, phase: x * 0.013, alpha: a === undefined ? 1 : a, hover: !!hov,
+      claimed: !!(has && XP.has(id)), xp: 1,
+    });
   }
+
+  // beacon hit tests, shared by press() and move(): same centres draw() uses
+  const beaconR = () => (window.Beacon && Beacon.HIT) || 26;
+  const nearB = (px, py, x, y) => (px - x) * (px - x) + (py - y) * (py - y) <= beaconR() * beaconR();
+  function keyAt(px, py) {
+    for (let k = 0; k < keys.length; k++) {
+      const q = keys[k];
+      if (!q.got && !q.locked && q.lit >= 0.02 && nearB(px, py, q.x + 16, q.y - 18)) return k;
+    }
+    return -1;
+  }
+  // a green twin standing on the platform that holds an untaken, unlocked key takes that key
+  function keyOnPlat(i) {
+    for (let k = 0; k < keys.length; k++) if (!keys[k].got && !keys[k].locked && keys[k].plat === i) return k;
+    return -1;
+  }
+  function playAt(px, py) {
+    if (playDone) return -1;
+    const t = playTarget();
+    return t >= 0 && nearB(px, py, plats[t].x + 32, plats[t].y - 72) ? t : -1;
+  }
+  const doorAt = (px, py) => doorReady() && (inBox(px, py, door.x, door.y, 56, 64) || inBox(px, py, plats[door.plat].x, plats[door.plat].y, PLAT_W, PLAT_H));
 
   // where to land when he falls past the bottom of the page: the visible twin nearest mid-screen
   function nearestVisibleTwin() {
@@ -555,16 +543,14 @@
       if (W.ph === "fly") {
         for (const q of keys) if (q.fly) q.fly.t = Math.min(1, W.t);
         if (W.t >= 0.6) hideUi();
-        if (W.t >= 1) { for (const q of keys) q.fly = null; flyDirty = true; walkIn(); W.ph = "walk"; W.t = 0; }
-      } else if (W.ph === "walk") {
-        const ax = door.x + 28;
-        player.face = 1;
-        player.x = Math.min(ax, player.x + 120 * dt);
-        if (player.x >= ax) { enterArch(); W.ph = "fade"; W.t = 0; }
-      } else if (W.ph === "fade") {
-        if (W.t >= 0.6) { if (plats[player.plat]) { plats[player.plat].twin = true; plats[player.plat].tf = player.face; } player.plat = -1; W.ph = "gone"; W.t = 0; }
-      } else if (W.t >= 0.6) { winSeq = null; reappear(); }
+        if (W.t >= 1) { for (const q of keys) q.fly = null; flyDirty = true; enterArch(); W.ph = "dim"; W.t = 0; }
+      } else if (W.t >= 0.6) endWin();
     }
+    if (winEnd >= 0) {
+      winEnd += dt;
+      if (winEnd >= 3 && hintEl && hintEl.style.opacity !== "0") { hintEl.style.opacity = "0"; hintEl.style.visibility = "hidden"; }
+    }
+    if (door && doorReady() && !winSeq && player.plat === door.plat && !player.air) startWin();
     if (rainBoost > 0) rainBoost = Math.max(0, rainBoost - dt);
     const vt = V.sy + V.top, vb = V.sy + V.H;
 
@@ -668,9 +654,10 @@
       }
     }
 
+    rainSm += (Math.min(1, rainBoost) - rainSm) * Math.min(1, dt * 6);
     for (let i = 0; i < rain.length; i++) {
       const r = rain[i];
-      const sp = rainBoost > 0 ? 2 : 1;
+      const sp = 1 + rainSm;
       r.x += r.vx * dt * sp; r.y += r.vy * dt * sp;
       if (r.x < -4 || r.y > V.H + 4) ray(r, rrnd, V, 0);
     }
@@ -694,23 +681,23 @@
     }
     const px = x, py = y + V.sy;
     hover = null;
-    // keys first, as in press(); a locked key swallows the click, so it blocks the twin hover under it
-    let lockedHit = false;
-    for (let k = 0; k < keys.length && !hover; k++) {
-      const q = keys[k];
-      if (q.got || !inBox(px, py, q.x, q.y, 32, 32)) continue;
-      if (q.locked) lockedHit = true;
-      else hover = { kind: "key", i: k };
-    }
-    for (let i = 0; i < plats.length && !hover && !lockedHit; i++) {
+    // beacons first, as in press(); a twin on a key's platform hovers that key
+    const bk = keyAt(px, py);
+    if (bk >= 0) hover = { kind: "key", i: bk };
+    const bp = hover ? -1 : playAt(px, py);
+    if (bp >= 0) hover = { kind: "twin", i: bp };
+    for (let i = 0; i < plats.length && !hover; i++) {
       const p = plats[i];
-      if (p.twin && i !== player.plat && inBox(px, py, p.x + 16, p.y - 54, 32, 56)) hover = { kind: "twin", i };
+      if (p.twin && i !== player.plat && inBox(px, py, p.x + 16, p.y - 54, 32, 56)) {
+        const kk = keyOnPlat(i);
+        hover = kk >= 0 ? { kind: "key", i: kk } : { kind: "twin", i };
+      }
     }
     for (let i = 0; i < sils.length && !hover; i++) {
       const sl = sils[i];
       if (!sl.gone && inBox(px, py, sl.x - 8, sl.y - 4, 32, 60)) hover = { kind: "sil", i };
     }
-    if (!hover && doorReady() && inBox(px, py, door.x, door.y, 56, 64)) hover = { kind: "door" };
+    if (!hover && doorAt(px, py) && player.plat !== door.plat) hover = { kind: "door" };
     V.cursor && V.cursor(!!hover);
   }
 
@@ -718,13 +705,15 @@
     if (winSeq || V.reduced) return false;
     if (rev < 1) return false;
     const px = x, py = y + V.sy;
-    for (let k = 0; k < keys.length; k++) {
-      const q = keys[k];
-      if (!q.got && inBox(px, py, q.x, q.y, 32, 32)) { if (q.locked) return true; takeKey(k, x, y); return true; }
-    }
+    const bk = keyAt(px, py);
+    if (bk >= 0) { takeKey(bk, x, y); return true; }
+    const bp = playAt(px, py);
+    if (bp >= 0) { teleportTo(bp); playBeat(x, y); return true; }
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
       if (p.twin && i !== player.plat && inBox(px, py, p.x + 16, p.y - 54, 32, 56)) {
+        const kk = keyOnPlat(i);
+        if (kk >= 0) { takeKey(kk, x, y); return true; }
         teleportTo(i);
         playBeat(x, y);
         return true;
@@ -739,8 +728,8 @@
         return true;
       }
     }
-    if (doorReady() && inBox(px, py, door.x, door.y, 56, 64)) {
-      startWin();
+    if (doorAt(px, py)) {
+      if (player.plat !== door.plat) { teleportTo(door.plat); clicked = true; }
       return true;
     }
     return false;
@@ -803,7 +792,7 @@
       const sy = f.toDoor ? f.y0 : f.y0 - V.sy;
       const ty = f.toDoor ? f.ty - V.sy : f.ty;
       const x = U.mix(f.x0, f.tx, e), y = U.mix(sy, ty, e) - 90 * Math.sin(Math.PI * e);
-      const s = f.toDoor ? U.mix(0.75, 1, e) : U.mix(1, 0.75, e);
+      const s = f.toDoor ? U.mix(0.75, 0.5, e) : U.mix(1, 0.75, e);
       P.glow(flyG, x, y, 24 * s, PALE, 0.25);
       flyG.save();
       flyG.translate(x, y);
@@ -816,8 +805,6 @@
 
   function draw(ctx, V) {
     paintFly(V);
-    if (rev <= 0) return;
-    ctx.globalAlpha = rev;
     for (let i = 0; i < rain.length; i++) {
       const k = Math.round(rain[i].a * 8);
       ctx.fillStyle = rainCol[k] || (rainCol[k] = "rgba(" + RAIN + "," + (k / 8) + ")");
@@ -830,31 +817,32 @@
     const m = ctx.getTransform();
     tileY0 = -m.f / m.d; tileY1 = tileY0 + 1024;
     const has = hasXP();
-    const a = rev;
+    const a = 1;
 
     for (let i = 0; i < plats.length; i++) {
       const p = plats[i];
       if (offTile(p.y)) continue;
-      if (i === player.plat) P.blit(ctx, SPR.plats[p.spr], p.x, p.y);
-      else if (a > 0) {
-        ctx.globalAlpha = a;
-        P.blit(ctx, SPR.plats[p.spr], p.x, p.y);
-        ctx.globalAlpha = 1;
-      }
+      P.blit(ctx, SPR.plats[p.spr], p.x, p.y);
     }
 
-    if (a > 0) {
+    {
     ctx.globalAlpha = a;
     if (door && !offTile(door.y)) {
       const L = door.lit;
       if (L > 0) {
-        const g = 0.35 + 0.35 * Math.sin(V.t * 1.5);
+        let g = 0.35 + 0.35 * Math.sin(V.t * 1.5);
+        if (winEnd >= 0) g += (0.5 - g) * Math.min(1, winEnd / 2);
+        if (winSeq && winSeq.ph === "dim") g += 0.8 * (1 - winSeq.t / 0.6);
         P.glow(ctx, door.x + 28, door.y + 40, 60 + 60 * g, PALE, (0.10 + 0.25 * g) * L * a);
       }
       if (L < 1) { ctx.globalAlpha = 0.55 * (1 - L) * a; P.blit(ctx, SPR.door, door.x, door.y); }
       if (L > 0) { ctx.globalAlpha = L * a; P.blit(ctx, SPR.doorLit, door.x - 2, door.y - 2); }
       ctx.globalAlpha = a;
-      if (won && !(winSeq && winSeq.ph === "fly")) for (let k = 0; k < 3; k++) { const s = doorSlot(k); P.blit(ctx, SPR.sym, s.x, s.y); }
+      if (winSeq && winSeq.ph === "dim") {
+        ctx.globalAlpha = Math.max(0, 1 - winSeq.t / 0.6) * a;
+        for (let k = 0; k < 3; k++) { const s = doorSlot(k); ctx.drawImage(SPR.sym.cv, s.x, s.y, 16, 16); }
+        ctx.globalAlpha = a;
+      }
     }
 
     const sf = frame01(V.t, SWAP);
@@ -918,15 +906,14 @@
         P.blit(ctx, SPR.sym, -16, -16);
         ctx.restore();
         ctx.globalAlpha = a;
-        if (!key.locked) drawBeacon(ctx, "play-cc-key" + (k + 1), cx, cy - 34, V, has, a * key.lit);
+        if (!key.locked) drawBeacon(ctx, "play-cc-key" + (k + 1), cx, cy - 34, V, has, a * key.lit, hover && hover.kind === "key" && hover.i === k);
       }
     }
 
     if (!playDone) {
       const t = playTarget();
-      if (t >= 0 && !offTile(plats[t].y)) drawBeacon(ctx, "play-conclusus", plats[t].x + 32, plats[t].y - 72, V, has, a);
+      if (t >= 0 && !offTile(plats[t].y)) drawBeacon(ctx, "play-conclusus", plats[t].x + 32, plats[t].y - 72, V, has, a, hover && hover.kind === "twin" && hover.i === t);
     }
-    if (door && !won && doorOpen() && !offTile(door.y)) drawBeacon(ctx, "play-cc-win", door.x + 28, door.y - 52, V, has, a * door.lit);
     ctx.globalAlpha = 1;
     }
 
@@ -941,7 +928,7 @@
 
     if ((player.plat >= 0 || player.air) && !offTile(player.y)) {
       const spr = player.air ? SPR.idle[0] : SPR.idle[frame01(V.t, 0.5)];
-      ctx.globalAlpha = winSeq && winSeq.ph === "fade" ? Math.max(0, 1 - winSeq.t / 0.6) : 1;
+      ctx.globalAlpha = winSeq && winSeq.ph === "dim" ? Math.max(0, 1 - winSeq.t / 0.6) : 1;
       P.blit(ctx, spr, player.x - MAN_W / 2, player.y - spr.h, player.face < 0);
       ctx.globalAlpha = 1;
     }
@@ -963,7 +950,7 @@
   }
 
   function report() {
-    const beat = (k) => ({ x: k.x + 16, y: k.y + 16, locked: !!k.locked, done: !!k.done });
+    const beat = (k) => ({ x: k.x + 16, y: k.y - 18, locked: !!k.locked, done: !!k.done });
     return {
       player: { x: player.x, y: player.y },
       twins: plats.filter((p, i) => p.twin && i !== player.plat).map(p => ({ x: p.x + 32, y: p.y - 26 })),
