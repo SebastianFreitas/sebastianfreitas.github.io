@@ -173,7 +173,7 @@
 
   /* ---- gamedev sector archived: the bridge has one setting (the void) ---- */
   B.savedVoidCamX = LAND.bridge;
-  B.activeMarks = () => MARKS;
+  B.activeMarks = () => MARKS.filter(m => Marks.visible(m.id));
   B.ship = window.Voidship ? Voidship.create() : null;
   if (!window.Voidship) {
     console.error("voidship.js did not load — travel is dead");

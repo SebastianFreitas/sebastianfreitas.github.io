@@ -394,11 +394,11 @@ def flow_genesis(browser, base):
 
 
 def flow_genesis_segment(browser, base):
-    """The bridge beacon plays the birth segment once, then its note opens; later claims only show the note."""
+    """The Void beacon plays the birth segment once, then its note opens; later claims only show the note."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base, "#gate-world")
-    claim = "Bridge.selectMark(Bridge.MARKS.find(m => m.id === 'bnote-bridge'))"
-    note = "document.getElementById('bnote-bridge').classList.contains('show')"
+    claim = "(() => { const m = Bridge.MARKS.find(m => m.id === 'bnote-void'); Bridge.camX = m.cam; Bridge.selectMark(m); })()"
+    note = "document.getElementById('bnote-void').classList.contains('show')"
     check("segment: not seen on a fresh profile", page.evaluate("Genesis.segmentSeen('birth')") is False, None)
     veil_op = "parseFloat(getComputedStyle(document.querySelector('.genesis-veil')).opacity)"
     page.evaluate(claim)
@@ -419,7 +419,7 @@ def flow_genesis_segment(browser, base):
     check("segment: the note is open", page.evaluate(note) is True, None)
     check("segment: the veil ends at opacity 0", page.evaluate(veil_op) == 0, None)
     check("segment: replay control is shown",
-          page.evaluate("!document.querySelector('#bnote-bridge a[href=\"#\"]').closest('p').hidden") is True, None)
+          page.evaluate("!document.querySelector('#bnote-void a[href=\"#\"]').closest('p').hidden") is True, None)
     page.evaluate("Bridge.clearMark()")
     page.wait_for_timeout(500)
     page.evaluate(claim)

@@ -91,10 +91,12 @@
   B.placeNote = placeNote;
 
   /* beacon id -> the Genesis segment its first claim plays; later claims add a row */
-  const BEACON_SEGMENT = { "bnote-bridge": "birth" };
-  Object.keys(BEACON_SEGMENT).forEach(id => {
+  const BEACON_SEGMENT = { "bnote-void": "birth", "bnote-rex": "rex", "bnote-rex-valkhar": "valkhar" };
+  B.beaconSegment = BEACON_SEGMENT;   // marks.js reads the keys: these beacons get the cutscene ring
+  /* depth-node notes (Valkhar) are built later, so the row is made on first paint too */
+  function addReplay(id) {
     const note = noteEls[id];
-    if (!note) return;
+    if (!note || note._replay) return;
     const a = document.createElement("a");
     a.href = "#";
     a.textContent = "Watch again";
@@ -108,9 +110,11 @@
     p.appendChild(a);
     note.appendChild(p);
     note._replay = p;
-  });
+  }
+  Object.keys(BEACON_SEGMENT).forEach(addReplay);
   /* the replay control shows once the segment has been seen */
   function paintReplay(id) {
+    addReplay(id);
     const p = noteEls[id] && noteEls[id]._replay;
     if (p) p.hidden = !(window.Genesis && Genesis.segmentSeen(BEACON_SEGMENT[id]));
   }
@@ -141,6 +145,7 @@
           segWaiting = false;
           // the scene switch on finish clears the mark; reclaim it for the note
           B.activeMark = m;
+          B.camX = m.cam;     // and the camera too: it was reset to the Bridge, and the note closes when far
           showNote(m);
         };
         const go = () => {

@@ -243,6 +243,9 @@
     if (d) d.classList.add("read");
   });
 
+  // a seen cutscene reveals more beacons
+  document.addEventListener("site:genesis-done", rebuildTrack);
+
   function syncLabels() {
     if (trackLabels.length < 2) return;
     trackLabels[0].textContent = "West · the future";

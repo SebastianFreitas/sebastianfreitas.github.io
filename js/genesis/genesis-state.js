@@ -107,6 +107,8 @@ window.Gen = (function () {
   /* a segment plays from a beat to a global time, then ends like a finish */
   G.SEGMENTS = {
     birth: { from: G.BEATS[0].id, to: G.BEAT_START[BEAT_INDEX.walk] + 2.0 },
+    rex:   { from: "rex", to: G.BEAT_START[BEAT_INDEX.gods] },
+    valkhar: { from: "flee", to: G.BEAT_START[BEAT_INDEX.firstlock] },
   };
 
   G.ROOT_U = 4.0;

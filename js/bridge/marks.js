@@ -38,6 +38,18 @@ window.Marks = (function () {
     m.vis = 0;            // eased in as they enter the frame
     m.pop = 0;            // the burst when one is claimed
   });
+  /* the reveal order: The Void alone, Rex once birth has been seen, the rest
+     once Rex's segment has been seen. Anything not named here (depth nodes) shows. */
+  const SEEN = { "bnote-rex": ["genesis-seg-birth", "beacon-bnote-void"] };
+  ["bnote-root", "bnote-watcher", "bnote-land", "bnote-bridge", "bnote-future"]
+    .forEach(id => SEEN[id] = ["genesis-seg-rex", "beacon-bnote-rex"]);
+  /* the Void's depth nodes (root "bnote-void") wait for the Mainland */
+  const visible = id => {
+    const m = MARKS.find(n => n.id === id);
+    if (m && m.root === "bnote-void") return visible("bnote-land");
+    return !SEEN[id] || !!(window.XP && SEEN[id].some(k => XP.has(k)));
+  };
+
   /* gamedev sector archived: PLANETS stays an empty shim for old readers */
-  return { MARKS, PLANETS: [] };
+  return { MARKS, PLANETS: [], visible };
 })();

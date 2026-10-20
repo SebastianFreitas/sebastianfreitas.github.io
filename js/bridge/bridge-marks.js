@@ -100,6 +100,7 @@
         active: B.activeMark === m, hover: B.hoverMark === m,
         claimed: window.XP && XP.has("beacon-" + m.id),
         xp: m.xp, pop: m.pop, label: m.name,
+        cutscene: !!(B.beaconSegment && B.beaconSegment[m.id]),
       });
     }
     // if none ever appear, say so once — beaconReport() has the detail

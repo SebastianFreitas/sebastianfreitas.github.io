@@ -34,7 +34,7 @@ window.World = (function () {
   const LAND = {
     future:   at(4.5),
     mainland: at(11.5),
-    voidmark: at(30),
+    voidmark: at(41.24),
     bridge:   at(41),
     watcher:  at(56),
     rex:      at(61.5),    // the prime mass

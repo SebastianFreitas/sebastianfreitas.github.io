@@ -51,7 +51,22 @@ window.Beacon = (function () {
     // a ring that never goes out, so it reads as a thing you can click
     ctx.strokeStyle = `rgba(${LAMP},${(0.26 + 0.14 * blink) * A})`;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(x, y, 11 * k, 0, 6.283); ctx.stroke();
+    if (o.cutscene) {
+      // a cutscene beacon: two thin arcs, ( ), gaps top and bottom,
+      // standing clear outside the body (past the hover ring at 17)
+      const R = 21 * k, g = 0.5;   // g: half-gap angle from vertical
+      ctx.strokeStyle = `rgba(${LAMP},${(0.6 + 0.2 * blink) * A})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(x, y, R, -Math.PI / 2 + g, Math.PI / 2 - g);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, R, Math.PI / 2 + g, 1.5 * Math.PI - g);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, 11 * k, 0, 6.283); ctx.stroke();
+    }
 
     const arm = (9 + 4 * blink) * k;
     ctx.strokeStyle = `rgba(${CORE},${0.55 * blink * A})`;

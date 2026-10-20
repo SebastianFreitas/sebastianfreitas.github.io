@@ -14,6 +14,8 @@ sizes at read time).
 Owner's words → code names. Add a line when the owner uses a word the code does not.
 
 - the nav bank: js/hud/tiles-nav.js (radar, signal, drive, nav tiles)
+- the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
+- the navigation bar (beacon positions): the bridge minimap `#bridge-map` (bridge-input.js)
 - the sys bank, systems monitor: js/hud/tiles-sys.js (hull, repair, bus tiles); framework js/hud/instruments.js
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
@@ -279,7 +281,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines), `SEGMENTS` (`birth`), `?gseg=<id>` | `window.Gen` |
+| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines), `SEGMENTS` (`birth`, `rex`: Rex vs Obrokxus, beats rex to death; `valkhar`: flee to stalemate, played by the Valkhar note), `?gseg=<id>` | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, read by the tier-3, old-one and kin painters | `window.GenEldPal` |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
