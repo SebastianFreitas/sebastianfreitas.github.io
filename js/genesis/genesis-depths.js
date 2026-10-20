@@ -143,11 +143,10 @@ window.GenDepths = (function () {
 
     /* 6. Obrokxus */
     let ox = dx + Math.sin(G.t * 0.9) * span * 0.03, oy = dy + Math.cos(G.t * 1.1) * span * 0.02;
-    const rise = inSlip ? smooth(clamp((slipLin - 0.40) / 0.50, 0, 1)) : 0;
-    ox = mix(ox, sx(BURY_U), rise); oy = mix(oy, rexSurfY(BURY_U) + G.H * 0.03, rise);
+    const rise = inSlip ? smooth(clamp((slipLin - 0.65) / 0.30, 0, 1)) : 0;   // the horse's run out of Rex
 
     /* 7. phases */
-    const grip = inSlip ? mix(0.35, 0, smooth(clamp(slipLin / 0.40, 0, 1))) : mix(1, 0.35, deepLin);
+    const grip = inSlip ? mix(0.35, 0, smooth(clamp(slipLin / 0.20, 0, 1))) : mix(1, 0.35, deepLin);
     const bind = inSlip ? smooth(clamp(slipLin / 0.40, 0, 1)) : 0;
     const ex = sx(BURY_U), ey = rexSurfY(BURY_U) + G.H * 0.08;
 
@@ -192,6 +191,12 @@ window.GenDepths = (function () {
     }
     const shiftX = lo > hi ? 0 : clamp(ex - cxs, lo, hi);
     const dropD = smooth(clamp(deepLin / 0.30, 0, 1));
+    /* the slip: the corpse falls out of the cave onto the gods' floor (screen-fixed like
+       the gods, so + diveY) and they close in round it */
+    const fall = inSlip ? smooth(clamp(slipLin / 0.20, 0, 1)) : 0;
+    let godsLeft = 1e9;
+    for (const g of live) godsLeft = Math.min(godsLeft, slotGx[g.kind] - HW[g.kind] * gh);
+    const corpseX = mix(ox, clamp(0.45 * godsLeft, 0.2 * G.W, 0.5 * G.W), fall);
     for (let i = 0; i < SIEGE_GODS.length; i++) {
       const g = SIEGE_GODS[i];
       if (g.kind === "ixu" || g.kind === "orochronus") continue;   // they left before the fight
@@ -199,20 +204,33 @@ window.GenDepths = (function () {
       const slotGy = slotF[g.kind] - 0.45 * gh + diveY;
       const strike = G.strikePulse(G.t * 1.7 + g.ph) * (1 - bind) * desc;
       const wobX = Math.sin(G.t * 0.5 + g.ph) * sw, wobY = Math.sin(G.t * 0.4 + g.ph * 1.7) * sw;
-      const gx = slotGx[g.kind] + wobX * dropD + shiftX * (1 - dropD);
-      const gy = Math.min(mix(ey + (slotGy - cys), slotGy + wobY, dropD) + Math.sin(dropD * Math.PI) * G.H * 0.14, slotGy + sw);   // the drop bows low, under the caption, never below the floor
+      // the slip: they close in round the corpse, then drift back off when it seems dead
+      const gather = inSlip ? smooth(clamp((slipLin - 0.08) / 0.28, 0, 1)) * (1 - smooth(clamp((slipLin - 0.68) / 0.20, 0, 1))) : 0;
+      const walk = inSlip ? smooth(clamp((slipLin - 0.68) / 0.26, 0, 1)) : 0;   // then they walk off to the right
+      // round the corpse: Maelu and Almur on its right, Ulden above and left
+      const ring = g.kind === "almur" ? corpseX + (0.45 + 2 * HW.maelu + HW.almur) * gh + 2 * gap
+        : g.kind === "maelu" ? corpseX + (0.45 + HW.maelu) * gh + gap : corpseX - 0.1 * gh;
+      const gx = mix(slotGx[g.kind] + wobX * dropD + shiftX * (1 - dropD), ring, gather) + walk * 0.3 * G.W;
+      let gy = Math.min(mix(ey + (slotGy - cys), slotGy + wobY, dropD) + Math.sin(dropD * Math.PI) * G.H * 0.14, slotGy + sw);   // the drop bows low, under the caption, never below the floor
+      if (g.kind === "almur") gy = mix(gy, floorF - EXT.almur * gh - 0.45 * gh + diveY, gather);
       gods.push({ g, gx, gy, amt: clamp(desc * 3, 0, 1), strike, cw: (1 - bind) * desc });
     }
 
     ctx.restore(); // end the rock clip opened in step 1 — the gods, Obrokxus
                     // and the labels below must never be clipped
 
+    /* the slip: after the burst the floor and gods scroll away with the camera */
+    const exitY = inSlip ? smooth(clamp((slipLin - 0.78) / 0.12, 0, 1)) * 1.3 * G.H : 0;   // after the burst the floor scrolls away with the camera
+    ctx.save();
+    ctx.translate(0, exitY);
+
     /* 8. the gods */
     for (const e of gods) {
       if (e.amt <= 0.02) continue;
       const g = e.g, x = e.gx, y = e.gy, a = e.amt, strike = e.strike;
       const h = G.GOD_H * G.H;
-      const face = ox > x ? 1 : -1;
+      const face = inSlip ? (corpseX > x ? 1 : -1) : (ox > x ? 1 : -1);   // the slip: they face the corpse, then turn away
+      const flip = inSlip ? mix(1, face === 1 ? 1 : -1, smooth(clamp((slipLin - 0.60) / 0.08, 0, 1))) : 1;   // a visible turn toward the right
       const yFoot = y + 0.45 * h;
       // where this god's beam leaves it: hand, snout or jaws at full reach
       const hand = F.godHand(g.kind, x, yFoot, h, { face }, ox, oy);
@@ -232,6 +250,8 @@ window.GenDepths = (function () {
         flatGlow(ctx, hand.x, hand.y, h * 0.28, halo, Math.min(1.8, 1.8 * strike));
         flatGlow(ctx, ox, oy, h * 0.16, halo, strike);
       }
+      ctx.save();
+      ctx.translate(x, 0); ctx.scale(flip, 1); ctx.translate(-x, 0);
       F.drawGod(ctx, x, yFoot, h, ORB_STYLE[g.kind], {
         a, face, kind: g.kind, crown: CROWN[g.kind], wings: g.kind === "maelu",
         reach: { x: ox, y: oy, amt: strike }, ph: g.ph,
@@ -239,6 +259,7 @@ window.GenDepths = (function () {
         // her colour is her mood: settling in, then the siege angers her, then her brothers turn
         mood: G.beat >= G.idxOf("slip") ? "sad" : G.linear("deep") > 0.5 ? "angry" : "ok",
       });
+      ctx.restore();
       if (strike > 0.8 && a > 0.3 && G.clashCool <= 0 && Math.hypot(x - ox, y - oy) < span * 0.12) {
         G.flash = Math.max(G.flash, 0.5);
         G.shake = Math.max(G.shake, 0.5);
@@ -249,6 +270,8 @@ window.GenDepths = (function () {
       drawName(ctx, x, yFoot + 12, a, g.name, 0);
     }
 
+    ctx.restore();   // end the scroll-away of band and gods
+
     /* 10. Obrokxus, held in Rex's grip, facing whichever god is nearest */
     const hT = 0.34 * G.H;
     let near = gods[0], nearD = Infinity;
@@ -257,14 +280,60 @@ window.GenDepths = (function () {
       if (d < nearD) { nearD = d; near = e; }
     }
     drawRexGrip(ctx, ox, oy, grip, span * 0.13);
-    F.drawTitan(ctx, ox, oy + 0.45 * hT, hT, "obrokxus", {
+    /* the slip: the blob dies and its corpse hits the floor and stays; the horse
+       squeezes out underground, waits, then bursts up and runs out of Rex */
+    const floorW = floorF + (inSlip ? G.DIVE_DEPTH * G.H : diveY);   // where the corpse fell, fixed in world space: it scrolls down as the camera rises, never up
+    const bodyFoot = mix(oy + 0.45 * hT, floorW - 0.1 * hT, fall);   // lifted so the toppled side rests on the floor
+    const cFace = near.gx > corpseX ? 1 : -1;
+    ctx.save();
+    const tLive = G.t;
+    if (fall > 0) G.t = 1.3;   // frozen: its animation reads G.t
+    F.drawTitan(ctx, corpseX, bodyFoot, hT, "obrokxus", {
       a: 1,
-      face: near.gx > ox ? 1 : -1,
-      pose: rise > 0.05 ? "climb" : "stand",
+      face: cFace,
+      pose: "stand",
       look: { x: near.gx, y: near.gy },
       ph: 0.7,
+      tilt: 0.4 * fall,   // toppled a little onto its side
+      dead: fall > 0.5,   // eye shut
     });
-    drawName(ctx, ox, oy + 0.45 * hT + 12, 1, "OBROKXUS", 0);
+    G.t = tLive;
+    ctx.restore();
+    if (!inSlip || slipLin < 0.2) drawName(ctx, corpseX, bodyFoot + 12, 1, "OBROKXUS", 0);
+    if (inSlip && slipLin > 0.2) {
+      const squeeze = smooth(clamp((slipLin - 0.20) / 0.20, 0, 1));
+      const burst = smooth(clamp((slipLin - 0.65) / 0.12, 0, 1));
+      const hHorse = mix(0.17, 0.13, rise) * G.H * (1 + 0.025 * Math.sin(G.t * 2.1) * (1 - burst));
+      const hx = mix(mix(corpseX, corpseX - 0.12 * G.W, squeeze), sx(BURY_U), rise);
+      const footUg = floorW + 1.15 * hHorse, footEnd = rexSurfY(BURY_U) + G.H * 0.03 + 0.45 * 0.13 * G.H;
+      const hFoot = mix(footUg, mix(floorW - 0.02 * G.H, footEnd, rise), burst);
+      ctx.save();
+      if (burst < 0.999) {   // hidden under the floor line; it rises out through it
+        ctx.beginPath();
+        ctx.rect(0, floorW - 4 * G.H, G.W, 4 * G.H);   // only what is above the floor line shows
+        ctx.clip();
+      }
+      F.drawTitan(ctx, hx, hFoot, hHorse, "centihorse", {
+        a: 1,
+        face: -1,
+        pose: burst > 0.3 ? "run" : "stand",
+        look: { x: hx - 100, y: hFoot },
+        ph: 0.7,
+      });
+      ctx.restore();
+      if (burst > 0 && burst < 1) {   // dirt chunks thrown up from the break
+        const bt = clamp((slipLin - 0.65) / 0.16, 0, 1);
+        ctx.save();
+        ctx.fillStyle = "#6b4630";
+        ctx.globalAlpha = 1 - bt * bt;
+        for (let k = 0; k < 9; k++) {
+          const vx = (hash1(k * 3 + 11) - 0.5) * 0.5 * G.H, vy = (0.5 + 0.5 * hash1(k * 3 + 12)) * 0.9 * G.H;
+          const cs = (0.012 + 0.014 * hash1(k * 3 + 13)) * G.H;
+          ctx.fillRect(hx + vx * bt - cs / 2, floorW - vy * bt + 1.4 * G.H * bt * bt * 0.5 - cs / 2, cs, cs);
+        }
+        ctx.restore();
+      }
+    }
 
     /* 11. rings, year counter, shake floor */
     drawRings(ctx);

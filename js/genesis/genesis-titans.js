@@ -140,6 +140,11 @@ window.GenFig = window.GenFig || {};
     }
 
     const ex = bx + f * 0.10 * h, ey = by - 0.08 * h;
+    if (o.dead) {   // both eyes shut: a lid in the body colour over each, a thin slit on it
+      circle(ctx, ex, ey, 0.105 * h, OBR.lit);
+      fillPoly(ctx, [[ex - 0.09 * h, ey], [ex, ey - 0.012 * h], [ex + 0.09 * h, ey], [ex, ey + 0.012 * h]], OBR.shade);
+      return;
+    }
     flatGlow(ctx, ex, ey, 0.36 * h, OBR.glow, 0.9);
     circle(ctx, ex, ey, 0.10 * h, OBR.iris);
     const look = o.look || { x: ex + f, y: ey };

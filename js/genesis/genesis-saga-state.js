@@ -100,7 +100,7 @@
       oy += 0.14 * G.H * smooth(clamp((fall - 0.78) / 0.22, 0, 1));
       oAmt = mix(1, 0, clamp((fall - 0.86) / 0.14, 0, 1));
     } else {
-      oAmt = mix(0.88, 1, settle);
+      oAmt = 1;
       if (war <= 0) {
         ou = C.ou + F.ouOff * F.w;
         oy = mix(oy, F.oyAbs, F.w);
@@ -112,8 +112,8 @@
       oy = mix(rexSurfY(BURY_U) + G.H * 0.03, oy, outO);
     }
 
-    /* his forms: the blob climbs out of Rex and becomes the centipede
-       horse on the run; on the mainland he lies in the ground (oHide)
+    /* his forms: the blob turns into the centipede horse inside Rex
+       (the slip) and runs as the horse; on the mainland he lies in the ground (oHide)
        with only his head and spines out; he comes up for the fight and
        leaves it as the floating worm. The painter draws oFrom at
        oAmt*(1-oMorph) and oForm at oAmt*oMorph. */
@@ -127,9 +127,6 @@
       oAir = air;
     } else if (war > 0) {
       oHide = smooth(clamp(war / 0.35, 0, 1));
-    } else {
-      oFrom = "obrokxus";
-      oMorph = smooth(clamp((fleeLin - 0.03) / 0.12, 0, 1));
     }
 
     let mu = C.mu;
