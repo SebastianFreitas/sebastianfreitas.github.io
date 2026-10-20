@@ -141,7 +141,9 @@ does not — it is pure data, no dependency on `B`.
 | `marks.js` | Landmark roster: `MARKS` (Void beacons); `PLANETS` is an empty shim | `window.Marks {MARKS, PLANETS: []}`; uses `World` |
 | `lamp.js` | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
 
-- `bridge-notes.js`: `BEACON_SEGMENT` maps a beacon to a Genesis segment; its first claim plays it (`Genesis.playSegment`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat; the note opens on `site:genesis-done`; once seen the note carries a "Watch again" link.
+- `bridge-notes.js`: `BEACON_SEGMENT` maps four beacons (void→birth, root, rex, rex-valkhar→valkhar) to Genesis scenes; its first claim plays it (`Genesis.playScene`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat.
+- `bridge-notes.js`: the note opens on `site:genesis-done`; once seen it carries a "Watch again" link.
+- `bridge-notes.js`: beacon XP keys stay `genesis-seg-<id>` so saved progress survives the scene split.
 - `genesis.js`: segment plays fade a black `.genesis-veil` (css/bridge.css) in and out via `veilTo`; full plays cut.
 
 - `bridge.js`: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state,
@@ -281,7 +283,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines), `SEGMENTS` (`birth`, `rex`: Rex vs Obrokxus, beats rex to death; `valkhar`: flee to stalemate, played by the Valkhar note), `?gseg=<id>` | `window.Gen` |
+| `genesis-state.js` | `BEATS` (34 beats, Roman-numeral tags, biblical lines), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex rex–death, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, read by the tier-3, old-one and kin painters | `window.GenEldPal` |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
@@ -320,7 +322,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga-state.js` | `sagaAt` | extends `window.GenSaga` |
 | `genesis-ritual.js` | the warlock births and the Hound's ritual | `window.GenRitual` |
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
-| `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playSegment`, `segmentSeen`, `skip`, `seek`), camera, draw | `window.Genesis` |
+| `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw | `window.Genesis` |
 
 - `genesis-state.js`: world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`;
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
@@ -575,7 +577,7 @@ layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
-| Dev URL params | `?reset=1` in `xp.js`; `?genesis=1` and `?gbeat=<name>` in `genesis-state.js` |
+| Dev URL params | `?reset=1` in `xp.js`; `?genesis=1`, `?gbeat=<name>` and `?gscene=<id>` in `genesis-state.js` |
 | Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js` |
 
 - Environment model / place readings: one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate`; the four Game Dev sites' physics and their `lines()` live in `bridge-sites.js` `GD_SITES`

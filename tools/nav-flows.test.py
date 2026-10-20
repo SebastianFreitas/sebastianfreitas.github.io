@@ -410,7 +410,7 @@ def flow_genesis_segment(browser, base):
     page.mouse.click(box["x"], box["y"])                     # the bar covers only the segment
     page.wait_for_timeout(150)
     check("segment: clicking the bar at 95% stays inside the segment",
-          page.evaluate("Genesis.active && Gen.beat <= Gen.idxOf('walk')") is True,
+          page.evaluate("Genesis.active && Gen.sceneOf(Gen.beat) === 'birth' && Gen.beat <= Gen.idxOf('walk')") is True,
           page.evaluate("[Genesis.active, Gen.beat, Gen.idxOf('walk')]"))
     page.evaluate("Genesis.skip()")                          # a skip ends the segment through the fade
     page.wait_for_timeout(3500)                              # fade out, finish, fade back
@@ -426,6 +426,51 @@ def flow_genesis_segment(browser, base):
     page.wait_for_timeout(800)
     check("segment: second claim does not play", page.evaluate("Genesis.active") is False, None)
     check("segment: second claim shows the note", page.evaluate(note) is True, None)
+    ctx.close()
+
+
+def flow_genesis_scenes(browser, base):
+    """Each of the four cutscene beacons plays its own whole scene; the full Genesis joins scenes with a fade."""
+    veil_op = "parseFloat(getComputedStyle(document.querySelector('.genesis-veil')).opacity)"
+    for note_id, scene in (("bnote-void", "birth"), ("bnote-root", "root"),
+                           ("bnote-rex", "rex"), ("bnote-rex-valkhar", "valkhar")):
+        ctx, page = new_page(browser)        # a fresh context: every beacon is a first claim
+        enter_via_gate(page, base, "#gate-world")
+        if note_id == "bnote-rex-valkhar":   # a depth node: file the beacons it hangs off so it spawns
+            page.evaluate("""(() => {
+                const need = id => { const d = Depths.nodes().find(n => n.id === id); if (d) d.after.forEach(need);
+                                     if (id !== 'bnote-rex-valkhar') XP.award('beacon-' + id, 1, id); };
+                need('bnote-rex-valkhar'); Bridge.revealDepths(false);
+            })()""")
+        page.evaluate("(() => { const m = Bridge.MARKS.find(m => m.id === '%s'); Bridge.camX = m.cam; Bridge.selectMark(m); })()" % note_id)
+        page.wait_for_function("Genesis.active === true", timeout=15000)
+        page.wait_for_timeout(1200)
+        first = page.evaluate("Gen.BEATS[Gen.beat].id || Gen.BEATS[Gen.beat]")
+        want = page.evaluate("Gen.SCENES['%s'].from" % scene)
+        check(f"scenes: {scene}: first beat is the scene's from", first == want, [first, want])
+        box = page.evaluate("(() => { const r = document.getElementById('genesis-track').getBoundingClientRect(); return {x: r.left + r.width * 0.95, y: r.top + r.height / 2}; })()")
+        page.mouse.click(box["x"], box["y"])
+        page.wait_for_timeout(150)
+        check(f"scenes: {scene}: 95% of the bar stays inside the scene",
+              page.evaluate("Genesis.active && Gen.sceneOf(Gen.beat) === '%s'" % scene) is True,
+              page.evaluate("[Genesis.active, Gen.beat, Gen.sceneOf(Gen.beat)]"))
+        page.evaluate("Genesis.skip()")
+        page.wait_for_timeout(3500)
+        check(f"scenes: {scene}: skip ends it", page.evaluate("Genesis.active") is False, None)
+        check(f"scenes: {scene}: the note opens",
+              page.evaluate("document.getElementById('%s').classList.contains('show')" % note_id) is True, None)
+        check(f"scenes: {scene}: veil at 0", page.evaluate(veil_op) == 0, None)
+        check(f"scenes: {scene}: marked seen", page.evaluate("Genesis.segmentSeen('%s')" % scene) is True, None)
+        ctx.close()
+    ctx, page = new_page(browser)
+    page.goto(base + "/?genesis=1&gbeat=corrupt")
+    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.evaluate("window.__seam = false; setInterval(() => { if (Genesis.seaming) window.__seam = true; }, 25)")
+    page.click("#gate-world")                # the gate's Setting button starts the forced Genesis
+    page.wait_for_function("Gen.beat === Gen.idxOf('rex')", timeout=60000)
+    page.wait_for_timeout(1500)
+    check("full play: the seam into rex was a fade", page.evaluate("window.__seam") is True, None)
+    check("full play: the veil ended at 0", page.evaluate(veil_op) == 0, None)
     ctx.close()
 
 
@@ -1039,7 +1084,7 @@ FLOWS = {
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
-    "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "twotabs": flow_twotabs, "header": flow_header,
+    "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "genesis-scenes": flow_genesis_scenes,"twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "rex": flow_rex,
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,

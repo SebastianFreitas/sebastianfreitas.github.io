@@ -91,7 +91,7 @@
   B.placeNote = placeNote;
 
   /* beacon id -> the Genesis segment its first claim plays; later claims add a row */
-  const BEACON_SEGMENT = { "bnote-void": "birth", "bnote-rex": "rex", "bnote-rex-valkhar": "valkhar" };
+  const BEACON_SEGMENT = { "bnote-void": "birth", "bnote-root": "root", "bnote-rex": "rex", "bnote-rex-valkhar": "valkhar" };
   B.beaconSegment = BEACON_SEGMENT;   // marks.js reads the keys: these beacons get the cutscene ring
   /* depth-node notes (Valkhar) are built later, so the row is made on first paint too */
   function addReplay(id) {
@@ -102,7 +102,7 @@
     a.textContent = "Watch again";
     a.addEventListener("click", e => {
       e.preventDefault();
-      if (window.Genesis) Genesis.playSegment(BEACON_SEGMENT[id]);
+      if (window.Genesis) Genesis.playScene(BEACON_SEGMENT[id]);
     });
     const p = document.createElement("p");
     p.className = "body";
@@ -150,7 +150,7 @@
         };
         const go = () => {
           document.addEventListener("site:genesis-done", open);
-          if (!Genesis.playSegment(segId)) { document.removeEventListener("site:genesis-done", open); segWaiting = false; showNote(m); }
+          if (!Genesis.playScene(segId)) { document.removeEventListener("site:genesis-done", open); segWaiting = false; showNote(m); }
         };
         // let the XP ceremony land first, then a beat, before the cutscene fades in
         const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;

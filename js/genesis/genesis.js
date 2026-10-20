@@ -104,13 +104,8 @@ window.Genesis = (function () {
 
   /* the playing segment's span: first beat a, last beat b, global seconds t0..t1 */
   function segSpan() {
-    if (!seg || !G.SEGMENTS[seg]) return null;
-    const a = idxOf(G.SEGMENTS[seg].from);
-    const t0 = G.BEAT_START[a];
-    const t1 = G.SEGMENTS[seg].to;
-    let b = a;
-    while (b < BEATS.length - 1 && G.BEAT_START[b + 1] < t1) b++;
-    return { a, b, t0, t1 };
+    if (!seg || !G.SCENES[seg]) return null;
+    return G.sceneSpan(seg);
   }
 
   function remember() {
@@ -147,7 +142,7 @@ window.Genesis = (function () {
   }
 
   /* black veil over the page: segments fade in and out through it (full plays cut) */
-  let veilTimer = 0, veil = null, segBusy = false, ending = false;
+  let veilTimer = 0, veil = null, segBusy = false, ending = false, seaming = false, hop = 0;
   function veilTo(o, ms, then) {
     if (!veil) {
       veil = document.createElement("div");
@@ -166,6 +161,17 @@ window.Genesis = (function () {
     veil.style.opacity = String(o);
     clearTimeout(veilTimer);
     veilTimer = setTimeout(() => { if (o === 0) veil.hidden = true; if (then) then(); }, ms);
+  }
+
+  /* full play: cross into the next scene through the veil (cut when reduced) */
+  function seam(next) {
+    if (reduced) { seek(next, 0); return; }
+    seaming = true;
+    const mine = hop;   // a skip or seek during the fade-in bumps hop and wins
+    veilTo(1, 350, () => {
+      if (G.active && hop === mine) seek(next, 0);
+      veilTo(0, 450, () => { seaming = false; });
+    });
   }
 
   function finish() {
@@ -241,28 +247,29 @@ window.Genesis = (function () {
   }
 
   /* true when the segment started or is fading in */
-  function playSegment(id) {
-    const s = G.SEGMENTS[id];
+  function playScene(id) {
+    const s = G.SCENES[id];
     if (G.active || segBusy || !s) return false;
     if (reduced && !FORCE) return false;
-    if (reduced) return startSegment(id, s);
+    if (reduced) return startScene(id, s);
     segBusy = true;
     veilTo(1, 700, () => {
       segBusy = false;
       // a failed start still signals done, so the waiting note opens
-      if (!startSegment(id, s))
+      if (!startScene(id, s))
         document.dispatchEvent(new CustomEvent("site:genesis-done", { detail: { segment: id } }));
       veilTo(0, 900);
     });
     return true;
   }
 
-  function startSegment(id, s) {
+  function startScene(id, s) {
     if (G.active) return false;
     seg = id;
     play({ thenMode: "void" });
     if (!G.active) { seg = null; return false; }
-    const i = idxOf(s.from);
+    const j = JUMP && G.SCENE === id ? idxOf(JUMP[1]) : -1;
+    const i = j >= 0 ? j : idxOf(s.from);
     if (i > 0) seek(i, 0);
     return true;
   }
@@ -273,6 +280,7 @@ window.Genesis = (function () {
 
   function skip() {
     if (!G.active) return;
+    hop++;
     if (seg) { finish(); return; }
     const last = idxOf("now");
     if (G.beat >= last && G.local > 0.12) { finish(); return; }
@@ -281,6 +289,7 @@ window.Genesis = (function () {
 
   function seek(i, frac) {
     if (!G.active) return;
+    hop++;
     const sp = segSpan();
     i = clamp(i, sp ? sp.a : 0, sp ? sp.b : BEATS.length - 1);
     broke = i > idxOf("break");
@@ -434,7 +443,7 @@ window.Genesis = (function () {
 
   function step(dt) {
     if (!G.active) return false;
-    if (ending) return true;   // frozen under the fade-out
+    if (ending || seaming) return true;   // frozen under the fade-out / the seam veil
     G.t += dt;
     G.local += dt;
     G.tickAcc += dt;
@@ -474,11 +483,12 @@ window.Genesis = (function () {
     }
     paintTicks();
 
-    if (seg && G.BEAT_START[G.beat] + G.local >= G.SEGMENTS[seg].to) { finish(); return false; }
+    if (seg && G.BEAT_START[G.beat] + G.local >= segSpan().t1) { finish(); return false; }
     const b = BEATS[G.beat];
     if (b && G.local >= b.dur) {
       if (G.beat >= BEATS.length - 1) { finish(); return false; }
-      go(G.beat + 1);
+      if (!seg && G.sceneOf(G.beat + 1) !== G.sceneOf(G.beat)) seam(G.beat + 1);
+      else go(G.beat + 1);
     }
     return true;
   }
@@ -722,9 +732,9 @@ window.Genesis = (function () {
   document.addEventListener("site:enter", e => {
     const d = e.detail || {};
     if (G.active) return;
-    const segId = G.SEG && G.SEGMENTS[G.SEG[1]] ? G.SEG[1] : null;
+    const segId = G.SCENE;
     if (segId) {
-      setTimeout(() => { if (!G.active) playSegment(segId); }, 80);
+      setTimeout(() => { if (!G.active) playScene(segId); }, 80);
       return;
     }
     if (FORCE) {
@@ -736,6 +746,7 @@ window.Genesis = (function () {
   return {
     get active() { return G.active; },
     get pending() { return pending(); },
-    play, playSegment, segmentSeen, skip, seek, step, draw,
+    get seaming() { return seaming; },
+    play, playScene, playSegment: playScene, segmentSeen, skip, seek, step, draw,
   };
 })();

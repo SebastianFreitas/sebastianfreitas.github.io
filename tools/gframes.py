@@ -1,5 +1,6 @@
 """Multi-frame genesis capture for review.
 usage: py -3 tools/gframes.py <run> [beat ...] [--every 1.5] [--max 12]
+       py -3 tools/gframes.py --scene <id> [<run>]   (a scene's beats, <scene>-<beat>.png)
 Plays each genesis beat headless on a faked clock and tiles a frame every
 `every` seconds into snapshots/frames/<run>/<beat>.png; run it from any cwd.
 Reuses tools/snap.py.
@@ -17,7 +18,13 @@ skip = {opts[i + 1] for i, a in enumerate(opts) if a.startswith("--") and i + 1 
 args = [a for a in opts if not a.startswith("--") and a not in skip]
 def opt(name, default):
     return float(opts[opts.index(name) + 1]) if name in opts else default
-run = args[0]; beats = args[1:] or snap.BEAT_IDS
+scene = opts[opts.index("--scene") + 1] if "--scene" in opts else None
+if scene:
+    a, b = snap.SCENE_SPANS[scene]
+    beats = snap.BEAT_IDS[snap.BEAT_IDS.index(a):snap.BEAT_IDS.index(b) + 1]
+    run = args[0] if args else scene
+else:
+    run = args[0]; beats = args[1:] or snap.BEAT_IDS
 every = opt("--every", 1.5); mx = int(opt("--max", 12))
 out = ROOT / "snapshots" / "frames" / run; out.mkdir(parents=True, exist_ok=True)
 
@@ -27,15 +34,19 @@ try:
         browser = p.chromium.launch(args=snap.CHROME)
         for bid in beats:
             page = snap.genesis_page(browser, base)
-            page.goto(f"{base}/?genesis=1&gbeat={bid}")
+            page.goto(f"{base}/?genesis=1&gscene={scene}&gbeat={bid}" if scene
+                      else f"{base}/?genesis=1&gbeat={bid}")
             page.wait_for_load_state("load")
             snap.settle(page, 120)
+            if scene:
+                snap.wait_scene(page, bid)
+                print("  beat at frame 0:", page.evaluate("Gen.BEATS[Gen.beat].id"))
             durs = dict(page.evaluate("Gen.BEATS.map(b => [b.id, b.dur])"))
             dur = durs[bid]
             n = min(mx, max(2, int(dur / every) + 1))
             step = dur / (n - 1) if n > 1 else dur
             frames = []
-            t = 0.12
+            t = page.evaluate('Gen.local') if scene else 0.12
             for k in range(n):
                 target = min(dur - 0.05, k * step) if k else 0.12
                 if target > t:
@@ -55,9 +66,10 @@ try:
             for k, (label, im) in enumerate(ims):
                 x, y = (k % cols) * TW, (k // cols) * TH
                 sheet.paste(im, (x, y + 14)); d.text((x + 3, y + 1), label, fill=(255, 220, 120))
-            sheet.save(out / f"{bid}.png")
+            name = f"{scene}-{bid}" if scene else bid
+            sheet.save(out / f"{name}.png")
             for _, f in frames: f.unlink()
-            print(f"  {bid:12} {dur:5.1f}s x{n} -> {out / (bid + '.png')}")
+            print(f"  {bid:12} {dur:5.1f}s x{n} -> {out / (name + '.png')}")
         snap.close_shared(); browser.close()
 finally:
     httpd.shutdown()

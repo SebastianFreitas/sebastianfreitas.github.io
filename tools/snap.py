@@ -250,8 +250,12 @@ BEATS_SRC = js_block(BEATS_SRC_FILE, "G.BEATS = [", "\n  ];")
 
 MARK_IDS = re.findall(r'id:\s*"([^"]+)"', MARKS_SRC)
 BEAT_IDS = re.findall(r'id:\s*"([^"]+)"', BEATS_SRC)
-if not (MARK_IDS and BEAT_IDS):
-    raise RuntimeError("snap.py: MARKS / BEATS no longer parse — "
+SCENES_SRC = js_block(BEATS_SRC_FILE, "G.SCENES = {", "\n  };")
+SCENE_SPANS = {m[0]: (m[1], m[2]) for m in re.findall(
+    r'(\w+):\s*\{\s*from:\s*"([^"]+)",\s*to:\s*"([^"]+)"', SCENES_SRC)}
+SCENE_IDS = list(SCENE_SPANS)
+if not (MARK_IDS and BEAT_IDS and SCENE_IDS):
+    raise RuntimeError("snap.py: MARKS / BEATS / SCENES no longer parse — "
                        "no scene names can be built")
 
 # bridge.js pushes a depth node into these lists as each beacon is claimed, so
@@ -396,6 +400,29 @@ def genesis_beat(bid):
     return fn
 
 
+def wait_scene(page, bid=None):
+    """Run the clock until a ?gscene load is on screen: Genesis active, on the
+    expected beat (the scene's first when bid is None), not seaming, veil gone."""
+    want = f"'{bid}'" if bid else "Gen.SCENES[Gen.SCENE].from"
+    cond = (f"Genesis.active && !Genesis.seaming && Gen.BEATS[Gen.beat].id === {want}"
+            " && (!document.querySelector('.genesis-veil') || document.querySelector('.genesis-veil').hidden)")
+    for _ in range(60):
+        if page.evaluate(cond):
+            return
+        page.clock.run_for(100)
+
+
+def genesis_scene(sid):
+    def fn(browser, base, out_dir):
+        page = genesis_page(browser, base)
+        page.goto(f"{base}/?genesis=1&gscene={sid}")
+        page.wait_for_load_state("load")
+        settle(page, 120)
+        wait_scene(page)
+        shot(page, out_dir, f"genesis-scene-{sid}")
+    return fn
+
+
 def project_page(name, label, viewport):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
@@ -454,6 +481,8 @@ def scenes():
     out.append(("gate-first-visit", scene_gate))
     for bid in BEAT_IDS:
         out.append((f"genesis-{bid}", genesis_beat(bid)))
+    for sid in SCENE_IDS:
+        out.append((f"genesis-scene-{sid}", genesis_scene(sid)))
     for name in PROJECTS:
         out.append((f"page-{name}-desktop", project_page(name, "desktop", nav.DESKTOP)))
         out.append((f"page-{name}-phone", project_page(name, "phone", nav.PHONE)))

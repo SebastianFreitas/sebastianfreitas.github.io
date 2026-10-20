@@ -15,7 +15,8 @@ Local tools run with `py -3`; the cloud container has only `python3`.
 - **Run:** `py -3 serve.py`, then `http://127.0.0.1:8765/` (the desktop
   Preview uses `.claude/launch.json`). The test tools pick free ports.
 - **Cutscene frames:** `py -3 tools/gframes.py <run> [beat ...]` writes
-  `snapshots/frames/<run>/<beat>.png`.
+  `snapshots/frames/<run>/<beat>.png`; `--scene <id>` takes that scene's
+  beats and writes `<scene>-<beat>.png`.
 - **JS check:** `py -3 tools/jscheck.py <files> --eval "<js>" [--shot
   out.png]` loads files in a headless page.
 - **Toy check:** `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]`

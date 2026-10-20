@@ -7,7 +7,8 @@ window.Gen = (function () {
 
   G.FORCE = /(?:[?&])genesis(?:=1)?(?:&|$)/.test(location.search);
   G.JUMP  = /[?&]gbeat=([a-z]+)/.exec(location.search);
-  G.SEG   = /[?&]gseg=([a-z]+)/.exec(location.search);
+  const SCENE_Q = /[?&]gscene=([a-z]+)/.exec(location.search) || /[?&]gseg=([a-z]+)/.exec(location.search);
+  G.SCENE = null;   /* ?gscene=<id> (or the ?gseg alias); validated against SCENES below */
   /* dev switches run once: take them out of the URL so reload and
      Back don't run them again */
   (function dropParams(names) {
@@ -17,7 +18,7 @@ window.Gen = (function () {
       names.forEach(n => { if (url.searchParams.has(n)) { url.searchParams.delete(n); changed = true; } });
       if (changed) history.replaceState(history.state, "", url.pathname + url.search + url.hash);
     } catch (e) {}
-  })(["genesis", "gbeat", "gseg"]);
+  })(["genesis", "gbeat", "gseg", "gscene"]);
   G.reduced = Util.reduced();
 
   G.BEATS = [
@@ -104,13 +105,41 @@ window.Gen = (function () {
     G.BEAT_START[G.BEATS.length] = acc;
   })();
 
-  /* a segment plays from a beat to a global time, then ends like a finish */
-  G.SEGMENTS = {
-    birth: { from: G.BEATS[0].id, to: G.BEAT_START[BEAT_INDEX.walk] + 2.0 },
-    rex:   { from: "rex", to: G.BEAT_START[BEAT_INDEX.gods] },
-    valkhar: { from: "flee", to: G.BEAT_START[BEAT_INDEX.firstlock] },
+  /* a scene is whole beats, `from` to `to` (its last beat, played in full) */
+  G.SCENES = {
+    birth:    { from: "point",     to: "walk" },
+    root:     { from: "root",      to: "corrupt" },
+    rex:      { from: "rex",       to: "death" },
+    valkhar:  { from: "gods",      to: "stalemate" },
+    mainland: { from: "firstlock", to: "now" },
+  };
+  G.SCENE_ORDER = ["birth", "root", "rex", "valkhar", "mainland"];
+
+  G.sceneSpan = function (id) {
+    const s = G.SCENES[id];
+    const a = BEAT_INDEX[s.from], b = BEAT_INDEX[s.to];
+    return { a: a, b: b, t0: G.BEAT_START[a], t1: G.BEAT_START[b + 1] };
+  };
+  G.sceneOf = function (beatIdx) {
+    for (let k = 0; k < G.SCENE_ORDER.length; k++) {
+      const sp = G.sceneSpan(G.SCENE_ORDER[k]);
+      if (beatIdx >= sp.a && beatIdx <= sp.b) return G.SCENE_ORDER[k];
+    }
+    return null;
+  };
+  G.sceneT = function () {
+    const id = G.sceneOf(G.beat);
+    return G.BEAT_START[G.beat] + G.local - (id ? G.sceneSpan(id).t0 : 0);
   };
 
+  (function () {
+    if (SCENE_Q && G.SCENES[SCENE_Q[1]]) G.SCENE = SCENE_Q[1];
+    /* ?gscene narrows ?gbeat to beats inside the scene */
+    if (G.SCENE && G.JUMP) {
+      const sp = G.sceneSpan(G.SCENE), i = BEAT_INDEX[G.JUMP[1]];
+      if (i == null || i < sp.a || i > sp.b) G.JUMP = null;
+    }
+  })();
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;
   G.BAY_U  = 0.125;
