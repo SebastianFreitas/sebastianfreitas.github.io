@@ -446,7 +446,8 @@ def toy_page(name):
         settle(page, 1000)
         lo, hi = page.evaluate(
             f"(() => {{ const s = document.getElementById('{name}'); "
-            "return [s.offsetTop, Math.max(s.offsetTop, s.offsetTop + s.offsetHeight - innerHeight)]; })()")
+            "const t = s.getBoundingClientRect().top + window.scrollY; "
+            "return [t, Math.max(t, t + s.offsetHeight - innerHeight)]; })()")
         for label, frac in TOY_STOPS:
             toy_frame(page, round(lo + frac * (hi - lo)))
             ink = toy_ink(page)

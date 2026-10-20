@@ -1,52 +1,12 @@
-/* Case folders on index.html: a closed cover in the Work section's language,
-   opened by js (spec 04) which adds .open and drops [hidden]. */
+/* Case folders on index.html: each body sits under its Work row, hidden until
+   js (folders.js) grows it open (.is-opening / .is-open / .is-closing). */
 
 .case-folder {
   position: relative;
-  padding: 0 var(--gutter);
+  padding: 0;
   margin: 0;
 }
 
-/* closed cover: a wide tab-headed card, full width of the content column */
-.folder-tab {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "id title open" "line line line";
-  align-items: baseline;
-  gap: 0.4rem 1.25rem;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 1.5rem 1.5rem 1.75rem;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  background: var(--petrol-up);
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--brick);
-  border-radius: 0.6rem 0.6rem 0 0;
-  transition: background 0.25s;
-}
-.folder-tab:hover, .folder-tab:focus-visible { background: var(--petrol); }
-.folder-tab:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
-
-.folder-tab .obj-id { grid-area: id; }
-.folder-title {
-  grid-area: title;
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: clamp(1.8rem, 4vw, 2.8rem);
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: #fff;
-}
-.folder-tab:hover .folder-title { color: var(--lamp); }
-.folder-line {
-  grid-area: line;
-  max-width: var(--measure);
-  color: var(--sage);
-}
 .open-case {
   grid-area: open;
   font-family: var(--mono);
@@ -55,19 +15,129 @@
   text-transform: uppercase;
   color: var(--sage-dim);
 }
-.folder-tab:hover .open-case { color: var(--lamp); }
+.folder-body[hidden] { display: none; }
+.folder-body.is-opening, .folder-body.is-closing { overflow: hidden; }
 
-.case-folder:not(.open) .folder-body { display: none; }
+.folder-close {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin: 2rem 0 0;
+  padding: 0.9rem var(--gutter) 1.1rem;
+  background: none;
+  border: 0;
+  border-top: 1px solid rgb(var(--lamp-rgb) / 0.55);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+  cursor: pointer;
+}
+.folder-close::before {
+  content: "END OF FILE //";
+  color: var(--lamp);
+  font-size: 0.62rem;
+  letter-spacing: 0.34em;
+  text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
+}
+.folder-close:hover, .folder-close:focus-visible { color: var(--lamp); }
 
 /* open: the body is see-through so the toy canvas behind shows */
 .case-folder.open .folder-body,
 .case-folder.open .folder-body .case { background: transparent; }
-.case-folder.open .folder-tab { background: transparent; }
 
-@media (max-width: 700px) {
-  .folder-tab {
-    grid-template-columns: 1fr;
-    grid-template-areas: "id" "title" "line" "open";
-    padding: 1.25rem 1rem 1.5rem;
-  }
+/* the toy canvas (fixed, z -1) sits behind section.work, so the section turns see-through while a file is open */
+.work:has(.case-folder.open) { background: transparent; }
+
+/* open: lamp-yellow energy-terminal sequence, all timed off --open-ms (set by folders.js) */
+.folder-body { position: relative; --open-ms: 700ms; }
+
+/* the terminal frame: lamp left rule with corner ticks, and a header strip the kicker settles into */
+.folder-body:not([hidden])::before {
+  content: "CASE FILE // " attr(data-obj);
+  display: block;
+  padding: 0.9rem var(--gutter) 0.7rem;
+  border-bottom: 1px solid rgb(var(--lamp-rgb) / 0.22);
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase;
+  color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
+}
+.folder-body:not([hidden])::after {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; pointer-events: none;
+  border-left: 1px solid rgb(var(--lamp-rgb) / 0.55);
+  background:
+    linear-gradient(var(--lamp), var(--lamp)) 0 0 / 7px 1px no-repeat,
+    linear-gradient(var(--lamp), var(--lamp)) 0 100% / 7px 1px no-repeat;
+}
+.folder-body.is-opening::before { animation: folderHead var(--open-ms) steps(1, end) both; }
+.folder-bar, .folder-scan, .folder-kicker { position: absolute; pointer-events: none; opacity: 0; }
+
+.obj[aria-expanded="true"] { box-shadow: inset 2px 0 0 var(--lamp); }
+.obj[aria-expanded="true"] h3 { color: var(--lamp); }
+
+.folder-bar {
+  left: 0; right: 0; top: 0; height: 2px; z-index: 2;
+  background: var(--lamp); box-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
+  transform-origin: 0 50%;
+}
+.folder-body.is-open .folder-bar, .folder-body.is-closing .folder-bar {
+  opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35);
+}
+.folder-body.is-closing .folder-bar { transition: opacity calc(var(--open-ms) * 0.6) linear; opacity: 0; }
+
+.folder-scan {
+  left: 0; right: 0; bottom: 0; height: 26px; z-index: 3;
+  background: linear-gradient(to top, #fff6dd 0 1px, var(--lamp) 1px 2px,
+    rgb(var(--lamp-rgb) / 0.3) 2px 8px, rgb(var(--lamp-rgb) / 0.1) 8px 16px, rgb(var(--lamp-rgb) / 0) 26px);
+}
+
+.folder-kicker {
+  left: var(--gutter); top: 0.9rem; z-index: 3; white-space: nowrap;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase;
+  color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6), 0 2px 12px rgba(0,0,0,0.9);
+}
+
+.folder-body.is-opening {
+  animation: folderGlow var(--open-ms) ease-out both;
+}
+.folder-body.is-opening > :not(.folder-scan):not(.folder-bar):not(.folder-kicker) {
+  animation: folderFlicker var(--open-ms) steps(1, end) both;
+}
+.folder-body.is-opening .folder-bar { animation: folderBar var(--open-ms) cubic-bezier(.3,.7,.3,1) both; }
+.folder-body.is-opening .folder-scan { animation: folderScan var(--open-ms) linear both; }
+.folder-body.is-opening .folder-kicker {
+  animation: folderKicker var(--open-ms) steps(1, end) both, folderType var(--open-ms) steps(24, end) both;
+}
+
+@keyframes folderBar {
+  0% { opacity: 1; transform: scaleX(0); }
+  40% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 1; transform: scaleX(1); height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
+}
+@keyframes folderScan {
+  0% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes folderFlicker {
+  0% { opacity: 0.4; } 8% { opacity: 1; } 14% { opacity: 0.55; } 20% { opacity: 1; }
+  30% { opacity: 0.8; } 36%, 100% { opacity: 1; }
+}
+@keyframes folderKicker {
+  0% { opacity: 0; } 5% { opacity: 1; } 22% { opacity: 0.6; } 26% { opacity: 1; }
+  70% { opacity: 1; } 100% { opacity: 0; }
+}
+@keyframes folderHead { 0%, 68% { color: transparent; text-shadow: none; } 70%, 100% { color: var(--lamp); } }
+@keyframes folderType { from { clip-path: inset(0 100% 0 0); } 45%, to { clip-path: inset(0 0 0 0); } }
+@keyframes folderGlow {
+  0% { box-shadow: inset 0 0 0 rgb(var(--lamp-rgb) / 0); }
+  35% { box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.2); }
+  100% { box-shadow: inset 0 0 0 rgb(var(--lamp-rgb) / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder-body.is-opening, .folder-body.is-opening > *, .folder-body.is-opening .folder-bar { animation: none !important; }
+  .folder-scan, .folder-kicker { display: none; }
+  .folder-bar { opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
 }

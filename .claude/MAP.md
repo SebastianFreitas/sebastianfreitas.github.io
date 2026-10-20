@@ -28,7 +28,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
-- case folder: `section.case-folder` on index.html (js/site/folders.js, css/folder.css)
+- case folder: `div.case-folder` under its game's row in section#work on index.html (js/site/folders.js, css/folder.css)
 - Game Dev beacon: `bnote-gamedev`; the game beacons: the `gamedev` cluster (js/depths/gamedev.js)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
 - the case pages, a page's toy: folders on index.html (`projects/*.html` are redirect stubs); toy js/pages/<page>.js registers on js/pages/play.js, css/play.css
@@ -99,7 +99,7 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `folders.js` | Case folders: opens one `section.case-folder` at a time from Work buttons, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
+| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (WAAPI height, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`
@@ -448,8 +448,8 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | Level chip and pips, claim ceremony, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
-| `css/folder.css` | The four case folders on index: tab, body, open/close states |
-| `index.html` | Homepage; holds the four case folders (`section.case-folder`). Inline head script is only the service-worker purge |
+| `css/folder.css` | The four case folders on index: inline body, hidden/clip states |
+| `index.html` | Homepage; holds the four case folders (`div.case-folder`). Inline head script is only the service-worker purge |
 | `projects/*.html` | Four redirect stubs to `/#<key>`, keeping og tags |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |

@@ -293,7 +293,7 @@
     window.addEventListener("pointerdown", e => {
       if (e.button !== 0 || !on) return;
       const t = e.target;
-      const bare = t === document.body || t === document.documentElement || t === rootEl || t === mainEl;
+      const bare = t === document.body || t === document.documentElement || t === rootEl || t === mainEl || t === rootEl.parentElement;
       if (!bare && !(t instanceof Element && rootEl.contains(t) &&
         !t.closest("a, button, input, select, textarea, summary, video, [tabindex], p, h1, h2, h3, h4, h5, h6, li, figure, img, dt, dd"))) return;
       V.pointer.x = e.clientX; V.pointer.y = e.clientY; V.pointer.down = true;

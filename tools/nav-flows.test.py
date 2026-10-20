@@ -524,7 +524,7 @@ def flow_header(browser, base):
             page.wait_for_timeout(1200)
             r = page.evaluate("""(c) => ({
               bar: Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom),
-              first: Math.round(document.querySelector('#' + c + ' .folder-tab').getBoundingClientRect().top) })""", case)
+              first: Math.round(document.querySelector('a.obj[href="projects/' + c + '.html"]').getBoundingClientRect().top) })""", case)
             check(f"header clear of content: {case} ({label})", r["bar"] - TOL <= r["first"], r)
         ctx.close()
 
@@ -605,9 +605,9 @@ def flow_phone(browser, base):
     ctx.add_init_script(INIT)
     page = ctx.new_page()
     enter_via_gate(page, base)
-    tab = page.evaluate("""() => { const r = document.querySelector('#conclusus .folder-tab').getBoundingClientRect();
+    tab = page.evaluate("""() => { const r = document.querySelector('a.obj[href="projects/conclusus.html"]').getBoundingClientRect();
       return r.width > 0 && r.height > 0; }""")
-    check("phone: the folder tab is visible", tab)
+    check("phone: the Conclusus row is visible", tab)
     page.evaluate("Folders.open('conclusus')")
     page.wait_for_timeout(1000)
     canvases = page.evaluate("""() => Array.from(document.querySelectorAll('canvas.play'))
@@ -933,9 +933,9 @@ def flow_cc_read_xp(browser, base):
     goto_cc(page, base)
     page.wait_for_timeout(1500)
     check("cc-read-xp: not owned after load (jump)", not page.evaluate(CC_OWNED))
-    page.evaluate("window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })")
+    page.evaluate("window.scrollTo({ top: document.getElementById('cc-taught').getBoundingClientRect().top + scrollY - innerHeight / 4, behavior: 'instant' })")
     page.wait_for_timeout(600)
-    check("cc-read-xp: owned after jumping to the bottom", page.evaluate(CC_OWNED))
+    check("cc-read-xp: owned after jumping past the heading", page.evaluate(CC_OWNED))
     ctx.close()
 
 
@@ -1123,18 +1123,25 @@ def flow_cc_win(browser, base):
 
 
 def flow_work_open(browser, base):
-    """A Work button opens its folder in place: hash set, no page load, folder open, scrolled to it."""
+    """A Work row opens its case file inline under it: hash set, no page load, body right after the row, row panned to the top; clicking the row again closes it."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     page.click("a.obj[href='projects/conclusus.html']")
     page.wait_for_timeout(SETTLE)
     r = page.evaluate("""() => { const s = document.getElementById('conclusus');
       return { hash: location.hash, navs: performance.getEntriesByType('navigation').length,
-               open: s.classList.contains('open'), off: Math.abs(s.getBoundingClientRect().top) }; }""")
+               open: s.classList.contains('open'),
+               after: document.querySelector('a.obj[href="projects/conclusus.html"]').nextElementSibling === s,
+               off: Math.abs(document.querySelector('a.obj[href="projects/conclusus.html"]').getBoundingClientRect().top - 24) }; }""")
     check("work-open: hash is #conclusus", r["hash"] == "#conclusus", r)
     check("work-open: no page load (one navigation entry)", r["navs"] == 1, r)
     check("work-open: the folder is open", r["open"], r)
-    check("work-open: scrolled to the folder", r["off"] <= 80, r)
+    check("work-open: the body sits right after its row", r["after"], r)
+    check("work-open: row panned near the top", r["off"] <= 90, r)
+    page.click("a.obj[href='projects/conclusus.html']")
+    page.wait_for_timeout(SETTLE)
+    r = page.evaluate("({ open: document.getElementById('conclusus').classList.contains('open'), hidden: document.getElementById('conclusus-body').hidden })")
+    check("work-open: clicking the open row closes it", not r["open"] and r["hidden"], r)
     ctx.close()
 
 
