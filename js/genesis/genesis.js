@@ -348,7 +348,7 @@ window.Genesis = (function () {
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
     root: [1.02, 1.06], enter: [1.06, 1.09],
     soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09], rex: [1.09, 1.09], dot: [1.09, 1.09], clash: [1.09, 1.09], death: [1.09, 1.09],
-    gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
+    land: [1.00, 1.05], gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
     four: [1.10, 1.02], fifth: [1.02, 1.10], fall: [1.10, 1.00],
@@ -426,7 +426,8 @@ window.Genesis = (function () {
          past the right edge; panning further east shows its ragged side.
          during the surface beat it eases onto where the chase camera
          starts, so the flee beat opens on a move and not a jerk */
-      target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0), since("gods"));
+      target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0),
+        G.beat === G.idxOf("gods") ? since("gods") : since("land"));
     else
       target = mix(0, ROOT_U - 0.50, clamp(uWalk, 0, 1));
     let camRate = 1.55;
@@ -525,10 +526,10 @@ window.Genesis = (function () {
     const uRoot  = since("root");
     const uSwarm = since("enter");
     const uWomb  = since("soup");
-    const pastBirth = G.beat >= G.idxOf("gods") ? 1 : 0;
+    const pastBirth = G.beat >= G.idxOf("land") ? 1 : 0;
     const uBirth = pastBirth;
     const uFight = pastBirth;
-    const uLand  = since("gods");
+    const uLand  = since("land");
     const uFlee  = since("flee");
     const uNow   = only("now");
 
@@ -587,7 +588,7 @@ window.Genesis = (function () {
       const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
       const fleshVis = approaching * (1 - uLand * 0.28);
       const geom = GenFlesh.fleshGeom(uWomb);
-      const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("gods") ? 1 : 0);
+      const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("land") ? 1 : 0);
       if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
       const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
       const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
@@ -631,11 +632,10 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("circle") && window.GenCircle) GenCircle.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("chains") && window.GenChains) GenChains.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("corrupt") && window.GenCorrupt) GenCorrupt.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("rex") && window.GenRexIn) GenRexIn.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("dot") && window.GenDot) GenDot.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("gods") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("land") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L && L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;

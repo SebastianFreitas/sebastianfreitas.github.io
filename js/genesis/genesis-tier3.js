@@ -26,6 +26,7 @@ window.GenTier3 = (function () {
     },
     trade: { brim: { ...SLIVER_R(0), mv: { m: "fade", at: 1.0, gap: 2.0 } } },
     walk: { comb: { x: 0.35, dir: 1, n: 7, len: 0.22, s: 2, mv: { m: "pass", from: -0.2, to: 0.7 } } },
+    land: { brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } } },
     gods: { brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } } },
     calm: { brim: { ...SLIVER_R(0), mv: { m: "drift", v: -1 } } },
     flee: {

@@ -467,9 +467,9 @@ def flow_genesis_scenes(browser, base):
     page.wait_for_selector("#gate-panel.on", timeout=10000)
     page.evaluate("window.__seam = false; setInterval(() => { if (Genesis.seaming) window.__seam = true; }, 25)")
     page.click("#gate-world")                # the gate's Setting button starts the forced Genesis
-    page.wait_for_function("Gen.beat === Gen.idxOf('rex')", timeout=60000)
+    page.wait_for_function("Gen.beat === Gen.idxOf('dot')", timeout=60000)
     page.wait_for_timeout(1500)
-    check("full play: the seam into rex was a fade", page.evaluate("window.__seam") is True, None)
+    check("full play: the seam into dot was a fade", page.evaluate("window.__seam") is True, None)
     check("full play: the veil ended at 0", page.evaluate(veil_op) == 0, None)
     ctx.close()
 

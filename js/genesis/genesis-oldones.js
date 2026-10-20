@@ -259,12 +259,12 @@ window.GenOld = (function () {
     if (isFlyer) y = mix(y, deckY - 0.05 * H, still * 0.8);
 
     /* 6. alpha */
-    let a = (e > 0 ? 1 : 0) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("gods"));
+    let a = (e > 0 ? 1 : 0) * (x < 12 ? clamp(x / 12, 0, 1) : 1) * (1 - G.since("land"));
     if (watch > 0.5) a *= 0.55;
 
     let pinU = -1;
     if (hasLeaveBeat() && !o.bro && !CARERS[o.kind]) {
-      const ls = G.secs("gods");
+      const ls = G.secs("land");
       const at = LEAVE_T0 + (LEAVE_T1 - LEAVE_T0) * clamp(x / W, 0, 1);
       const u = (ls - at) / PIN_DUR;
       if (u >= 0 && u < 1 && a >= 0.04) pinU = Math.floor(u * 8) / 8;
@@ -403,7 +403,7 @@ window.GenOld = (function () {
   const CARERS = { eye: 1, chime: 1, mound: 1 };
   var _hasLeaveBeat = null;
   function hasLeaveBeat() {
-    if (_hasLeaveBeat === null) _hasLeaveBeat = G.BEATS.some((b) => b.id === "gods");
+    if (_hasLeaveBeat === null) _hasLeaveBeat = G.BEATS.some((b) => b.id === "land");
     return _hasLeaveBeat;
   }
   var _dressAt = null;
