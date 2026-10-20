@@ -123,7 +123,7 @@
       });
     }
 
-    const mdStyle = { lit: "#c8202a", shade: "#7a1218", glow: "190,30,36", core: "#f2e6d8" };
+    const mdStyle = { lit: "#c8202a", shade: "#7a1018", glow: "190,30,36", core: "#f2e6d8", gnarl: true, look: "D" };
     let mdPose = "stand";
     if (S.fallStrikes[0] > 0.05 || S.ritual > 0.1 || S.teach > 0.1) mdPose = "cast";
     else if (S.mdWalk) mdPose = "walk";
@@ -131,7 +131,7 @@
     let mdG = { gx: 0, gy: 0 };
     if (S.mdAmt > 0.01) {
       mdG = F.drawWarlock(ctx, mdX, mdYFoot, hMd, mdStyle, {
-        a: S.mdAmt, face: S.mdFace, pose: mdPose, split: true,
+        a: S.mdAmt, face: S.mdFace, pose: mdPose,
         tilt: S.mdFall * (Math.PI / 2) * S.mdFace, walk: G.t * 140,
         reach: T ? T : S.teach > 0.1 ? { x: cX, y: cYFoot - 0.06 * G.H } : undefined,
       });
