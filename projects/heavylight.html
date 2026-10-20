@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HeavyLight — Sebastião Freitas</title>
 <meta name="description" content="2D puzzle platformer where light carries momentum. Unity, WebGL.">
-<link rel="canonical" href="https://sebastianfreitas.github.io/projects/heavylight.html">
+<link rel="canonical" href="https://sebastianfreitas.github.io/#heavylight">
 <meta property="og:type" content="website">
 <meta property="og:title" content="HeavyLight — Sebastião Freitas">
 <meta property="og:description" content="2D puzzle platformer where light carries momentum. Unity, WebGL.">
@@ -13,104 +13,10 @@
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0d1114">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230d1114'/><text x='32' y='42' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='30' fill='%23f5d06b'>SF</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=172">
-<link rel="stylesheet" href="../css/beacon.css?v=172">
-<link rel="stylesheet" href="../css/play.css?v=172">
+<meta http-equiv="refresh" content="0; url=../#heavylight">
+<script>location.replace("../#heavylight")</script>
 </head>
-<body class="page-case">
-<a class="skip" href="#main">Skip to content</a>
-
-<header class="topbar">
-  <a class="wordmark" href="../index.html">SF</a>
-  <div class="xp-slot" id="xp-slot"></div>
-  <nav aria-label="Site">
-    <a href="../index.html#work">Work</a>
-    <a href="../index.html#experience">Experience</a>
-    <a href="https://github.com/sebastianfreitas">GitHub</a>
-    <a href="mailto:sebsfrets@gmail.com">Email</a>
-  </nav>
-</header>
-
-<main class="case" id="main">
-  <span class="obj-id">OBJ_0003</span>
-  <h1>HeavyLight</h1>
-
-  <dl class="props">
-    <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
-    <div><dt>Language</dt><dd>C#</dd></div>
-    <div><dt>Role</dt><dd>Solo</dd></div>
-    <div><dt>Year</dt><dd>2022</dd></div>
-    <div><dt>Time</dt><dd>Under four weeks</dd></div>
-  </dl>
-
-  <p>A 2D puzzle platformer built on one rule: light has weight. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
-
-  <div class="embed embed-shell"
-       data-src="https://itch.io/embed-upload/6434502?color=002f4b"
-       data-title="Play HeavyLight in your browser"
-       style="background-image:url('../media/heavylight/heavylightFrontPage.webp')">
-    <button type="button" class="embed-play">Play HeavyLight</button>
-  </div>
-  <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
-
-  <h2>The brief</h2>
-  <p>HeavyLight was a challenge I set myself: make a game fast, under tight constraints, and keep it simple. One mechanic, some physics, and a lot of level design. It went from nothing to a finished web build in under four weeks.</p>
-
-  <h2>The rule</h2>
-  <p>A lamp's beam is a physical force. Stand in a sideways beam and it carries you along it. Stand under a lamp aimed up and it lifts you. You can nudge inside a beam but you cannot fight it, and the moment you step out you stop dead, so where a beam ends matters as much as where it starts.</p>
-  <p>Crates go further. A crate treats the beam as its new down. Point a lamp sideways and the crate falls sideways. Point it up and the crate climbs. Switch it off and the crate drops back to the floor.</p>
-
-  <h2>Lamps</h2>
-  <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
-  <video class="clip" src="../media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
-
-  <h2>One new thing per level</h2>
-  <p>Twenty levels, and every one adds something the last did not have. The first few are only walking and jumping. Then the first lamp, then timers, then crates, then spikes, then beams that push down instead of up. By the end you are chaining lamps on timers while a crate falls in three directions. Nothing is introduced twice. That is what kept the game short and what made the level design take most of the four weeks.</p>
-
-  <h2>The journal</h2>
-  <p>ESC opens the journal, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
-  <img class="clip" src="../media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
-  <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
-
-  <h2>The clues</h2>
-  <p>There is a story, and it is optional. Small glowing wisps sit around each level. Touch one and it bursts into a line of thought from the man in red, an investigator sent to an old town on a case everyone called normal. The houses carry the same symbols as a notebook he cannot read, and every house with the symbols was left in a hurry. Some wisps are red, and those speak in a different voice.</p>
-  <p>Find every clue in every level and the ending changes. Three secret levels open after the last one, and the thing behind the barred door makes an offer. Leave, fight, or sign.</p>
-
-  <h2>Under the hood</h2>
-  <p>The base is Unity's 2D platformer template, rebuilt where it mattered. The controller got coyote time, a jump buffer, a variable height jump and an input curve of my own. The beam push, the crate gravity, the lamp timers, the clue system and the journal are all mine. The build is WebGL and checks which site it runs on. A copy uploaded somewhere else sends you to a gif and quits.</p>
-
-  <h2>Built to be reused</h2>
-  <p>I wrote it as a base rather than a one-off. The follow-up, <a href="conclusus.html">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original. That was the actual test of whether the base was any good.</p>
-
-  <h2>What it taught me</h2>
-  <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
-
-  <nav class="case-nav" aria-label="More work">
-    <a class="back" href="../index.html#work">← All work</a>
-    <a class="next" rel="next" href="conclusus.html">Next: Conclusus →</a>
-  </nav>
-</main>
-
-<footer>
-  <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
-  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
-  <p class="rights">The Warlocks © 2026 Sebastião Freitas. All rights reserved.<br>
-     Original setting, lore, characters, and written material by Sebastião Freitas.</p>
-</footer>
-
-<script src="../js/lib/util.js?v=172"></script>
-<script src="../js/site/xp.js?v=172"></script>
-<script src="../js/site/surge.js?v=172"></script>
-<script src="../js/site/embed.js?v=172"></script>
-<script src="../js/site/lazy-video.js?v=172"></script>
-<script src="../js/lib/pacer.js?v=172"></script>
-<script src="../js/pages/play.js?v=172"></script>
-<script src="../js/shared/heavylight-sprites.js?v=172"></script>
-<script src="../js/pages/heavylight.js?v=172"></script>
-<script>document.addEventListener("DOMContentLoaded",function(){if(window.XP)XP.award("proj-heavylight",1,"HeavyLight");});</script>
+<body>
+<p><a href="../#heavylight">HeavyLight has moved</a></p>
 </body>
 </html>

@@ -95,6 +95,7 @@
         ctx.stroke();
         ctx.restore();
       }
+      if (m.art && window.BridgeMotifs) BridgeMotifs.draw(m.art, ctx, p.x, p.y, { t: B.t, dt, alpha: m.vis * (m.shown ?? 1), W: B.W, H: B.H });
       Beacon.draw(ctx, p.x, p.y, {
         t: B.t, phase: m.phase, alpha: m.vis,
         active: B.activeMark === m, hover: B.hoverMark === m,
@@ -116,6 +117,7 @@
   function marksSettled() {
     for (const m of activeMarks()) {
       if (m.fly || m.pop > 0) return false;
+      if (m.art && m.vis >= 0.02) return false;   // the motif moves
       if (m.unseen ? m.cue < CUE_PULSE : m.shown < 1) return false;
     }
     return true;

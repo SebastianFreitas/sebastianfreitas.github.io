@@ -1,0 +1,73 @@
+/* Case folders on index.html: a closed cover in the Work section's language,
+   opened by js (spec 04) which adds .open and drops [hidden]. */
+
+.case-folder {
+  position: relative;
+  padding: 0 var(--gutter);
+  margin: 0;
+}
+
+/* closed cover: a wide tab-headed card, full width of the content column */
+.folder-tab {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "id title open" "line line line";
+  align-items: baseline;
+  gap: 0.4rem 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1.5rem 1.5rem 1.75rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--petrol-up);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--brick);
+  border-radius: 0.6rem 0.6rem 0 0;
+  transition: background 0.25s;
+}
+.folder-tab:hover, .folder-tab:focus-visible { background: var(--petrol); }
+.folder-tab:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+
+.folder-tab .obj-id { grid-area: id; }
+.folder-title {
+  grid-area: title;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #fff;
+}
+.folder-tab:hover .folder-title { color: var(--lamp); }
+.folder-line {
+  grid-area: line;
+  max-width: var(--measure);
+  color: var(--sage);
+}
+.open-case {
+  grid-area: open;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage-dim);
+}
+.folder-tab:hover .open-case { color: var(--lamp); }
+
+.case-folder:not(.open) .folder-body { display: none; }
+
+/* open: the body is see-through so the toy canvas behind shows */
+.case-folder.open .folder-body,
+.case-folder.open .folder-body .case { background: transparent; }
+.case-folder.open .folder-tab { background: transparent; }
+
+@media (max-width: 700px) {
+  .folder-tab {
+    grid-template-columns: 1fr;
+    grid-template-areas: "id" "title" "line" "open";
+    padding: 1.25rem 1rem 1.5rem;
+  }
+}

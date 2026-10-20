@@ -743,6 +743,6 @@
     };
   }
 
-  P.start({ name: 'heavylight', seed: 11, setup, step, draw, atRest, resize, press, move });
+  P.register({ name: 'heavylight', seed: 11, setup, step, draw, atRest, resize, press, move });
   window.PlayHeavyLight = { report, on, play };
 })();

@@ -59,7 +59,7 @@ FRAME = 16                        # ms: the faked clock's own frame interval
 OPENING = 96                      # ms: the jump that opens a scene, past the site's dt clamp
 OBSERVE = 400                     # ms of real time: long enough for observers to land
 TOY_MS = 1200                     # ms of frames a toy runs at each scroll stop before its shot
-TOY_STOPS = (("top", 0.0), ("mid", 0.4), ("low", 0.75))   # fractions of the page's max scroll
+TOY_STOPS = (("top", 0.0), ("mid", 0.4), ("low", 0.75))   # fractions of the open folder's extent
 
 # Chromium doesn't raster the same picture into the same pixels twice on its
 # own: subpixel text is rendered against whatever layer its element sits on,
@@ -426,7 +426,8 @@ def genesis_scene(sid):
 def project_page(name, label, viewport):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
-        page.goto(f"{base}/projects/{name}.html")
+        page.goto(f"{base}/#{name}")
+        page.wait_for_selector(f"#{name}.open")
         page.wait_for_load_state("load")
         settle(page, 1000)
         shot(page, out_dir, f"page-{name}-{label}", full_page=True)
@@ -439,12 +440,15 @@ def toy_page(name):
     viewport shots at each of TOY_STOPS. Fails when the toy is missing or blank."""
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, nav.DESKTOP, reduced_motion="no-preference")
-        page.goto(f"{base}/projects/{name}.html")
+        page.goto(f"{base}/#{name}")
+        page.wait_for_selector(f"#{name}.open")
         page.wait_for_load_state("load")
         settle(page, 1000)
-        max_y = page.evaluate("Math.max(0, document.documentElement.scrollHeight - innerHeight)")
+        lo, hi = page.evaluate(
+            f"(() => {{ const s = document.getElementById('{name}'); "
+            "return [s.offsetTop, Math.max(s.offsetTop, s.offsetTop + s.offsetHeight - innerHeight)]; })()")
         for label, frac in TOY_STOPS:
-            toy_frame(page, round(frac * max_y))
+            toy_frame(page, round(lo + frac * (hi - lo)))
             ink = toy_ink(page)
             if ink is None:
                 raise RuntimeError(f"no toy canvas on {name}")

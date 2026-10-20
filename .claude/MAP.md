@@ -28,8 +28,10 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
+- case folder: `section.case-folder` on index.html (js/site/folders.js, css/folder.css)
+- Game Dev beacon: `bnote-gamedev`; the game beacons: the `gamedev` cluster (js/depths/gamedev.js)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
-- the case pages, a page's toy: projects/*.html; toy js/pages/<page>.js on the shared js/pages/play.js, css/play.css
+- the case pages, a page's toy: folders on index.html (`projects/*.html` are redirect stubs); toy js/pages/<page>.js registers on js/pages/play.js, css/play.css
 - the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
 - the womb, the flesh ball, Primordisentia: js/genesis/genesis-flesh.js (fleshGeom, drawFlesh, drawSeal)
@@ -97,6 +99,7 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
+| `folders.js` | Case folders: opens one `section.case-folder` at a time from Work buttons, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`
@@ -129,6 +132,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge.js` | Core | `window.Bridge` |
 | `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
+| `bridge-motifs.js` | The five motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
 | `bridge-panel.js` | Setting panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
@@ -167,6 +171,7 @@ does not — it is pure data, no dependency on `B`.
 |---|---|
 | `depths.js` | Core: `CLUSTERS` registry, `add`, `waveOf`, `LAYOUTS` (`rows arc chain branch`), `nodes()` | `window.Depths {nodes, clusters, add}` |
 | `lore.js` | The four lore-beacon clusters in order: `bnote-rex` (10), `bnote-watcher` (2), `bnote-void` (3, `bnote-bridge-*`), `bnote-land` (5); mostly pinned with `at:` |
+| `gamedev.js` | The `gamedev` cluster: four `gd-*` game beacons (sector-zero, voidscape, heavylight, conclusus) under `bnote-gamedev`, each card with an Open case file button | registers into `Depths` |
 
 ### js/ship
 
@@ -196,7 +201,7 @@ The VoidScape bench/console/floor plan; only `projects/voidscape.html` loads it 
 
 ### Archived (archive/gamedev/, loaded by no page)
 
-The Game Dev sector, cut from the site; see `archive/gamedev/README.md`. Paths below are under `archive/gamedev/`.
+The Game Dev sector, cut from the site; see `archive/gamedev/README.md`. Paths below are under `archive/gamedev/`. The five motif drawers from here now live in `js/bridge/bridge-motifs.js`.
 
 | File | Purpose | Publishes |
 |---|---|---|
@@ -382,10 +387,10 @@ only ever read `V` from `Play` and never reach into the bridge.
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `play.js` | Shared play layer: canvas, view `V`, tiles, sprites, XP award | `window.Play` |
-| `heavylight.js` | the case-page toy | `window.PlayHeavyLight {play, on, report}` |
-| `conclusus.js` | Document-space case-page toy | `window.PlayConclusus {report}` |
-| `sector-zero.js` | Viewport space | `window.PlayZero {report, thunder}` |
+| `play.js` | Shared play layer, now a registry: canvas, view `V`, tiles, sprites, XP award | `window.Play {register (start alias), open, close, mount, handle, current, sprite, blit, glow, award, MIN_W}` |
+| `heavylight.js` | The case-page toy; registers `heavylight` instead of starting | `window.PlayHeavyLight {play, on, report}` |
+| `conclusus.js` | Document-space case-page toy; registers `conclusus` | `window.PlayConclusus {report}` |
+| `sector-zero.js` | Viewport space; registers `zero` | `window.PlayZero {report, thunder}` |
 | `sector-zero-records.js` | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
 | `voidscape-boons.js` | 34 boons from the game's list `{id, w, name, desc, fx}`; `build(gun, boons)` → the effective build from a `ForgeGuns` gun, its mods and the boons; weighted `offer(pool, rnd)` | `window.RangeBoons` |
 | `voidscape-mapgen.js` | The mission console inline on the VoidScape page: sizes `#void-mapgen`, paints `Forge.map` (random first missions, SEARCH and EMPOWER, no room plan), no rAF when idle | `window.VoidMapgen` |
@@ -443,20 +448,21 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
 | `css/beacon.css` | Level chip and pips, claim ceremony, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
-| `index.html` | Homepage. Inline head script is only the service-worker purge |
-| `projects/*.html` | Four case-study pages, same shell |
+| `css/folder.css` | The four case folders on index: tab, body, open/close states |
+| `index.html` | Homepage; holds the four case folders (`section.case-folder`). Inline head script is only the service-worker purge |
+| `projects/*.html` | Four redirect stubs to `/#<key>`, keeping og tags |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
 | `projects/heavylight.html` | Case page for HeavyLight, a 2D puzzle platformer where light carries momentum (Unity, WebGL); toy `js/pages/heavylight.js` |
 | `404.html` | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
-| `tools/nav-flows.test.py` | Playwright flows; starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
-| `tools/snap.py` | Screenshot regression |
+| `tools/nav-flows.test.py` | Playwright flows (folder and beacon-nav flows: see `--list`); starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
+| `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>` |
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/merge-cachebust.py` | Git merge driver for `*.html`: merges with every `?v=` number treated as equal, then writes the highest back, so bumps never conflict; installed by `try.py` |
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
-| `tools/toyshot.py` | One case-page toy in seconds |
+| `tools/toyshot.py` | One case-folder toy in seconds (loads `/#<name>`) |
 | `tools/scrollperf.py` | Scroll-jank measure |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
@@ -488,23 +494,26 @@ Data read by both the bridge and a case page. No drawing, no state.
 ### Load order
 
 `index.html` head: `css/style.css`, `css/gate.css`, `css/beacon.css`,
-`css/bridge.css`, then `js/lib/util.js`, `js/site/xp.js`, `js/site/entry.js`
-(blocking, on purpose), then the inline SW purge. Body tail, in this order:
+`css/bridge.css`, `css/play.css`, `css/folder.css`, then `js/lib/util.js`,
+`js/site/xp.js`, `js/site/entry.js` (blocking, on purpose), then the inline
+SW purge. Body tail, in this order:
 
-`site/surge → bridge/lamp → depths/depths → depths/lore → hud/instruments →
-hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/rex-kit →
-world/art/{firstlight, crimson, bonespire, titans, valkhar, law} →
-world/art/land-kit → world/art/{shattered, libertech, dawn, accord, gore} →
-world/world → world/{vortex, void, watcher, serus, nephilim, admin-tear,
-vikings, rex, city} → ship/voidship-art → ship/voidship-prow → ship/voidship →
-lib/pacer → bridge/marks → bridge/bridge-sites → bridge/bridge-log →
-bridge/bridge-voice → bridge/{bridge, bridge-notes, bridge-input,
-bridge-marks, bridge-panel, bridge-depths, bridge-env, bridge-readout,
-bridge-loop} → genesis/{genesis-state, genesis-paint, genesis-eldpal, genesis-tier3, genesis-void,
-genesis-flesh, genesis-elements, genesis-matter, genesis-trade,
-genesis-oldones, genesis-oldkin, genesis-attire, genesis-figures, genesis-titans, genesis-obrok, genesis-gods,
-genesis-hosts, genesis-seraphin, genesis-malgrur, genesis-vorgath, genesis-mainland, genesis-armies, genesis-orb, genesis-rex, genesis-depths,
-genesis-saga-state, genesis-ritual, genesis-saga, genesis} → site/intro`.
+`site/surge → bridge/lamp → depths/depths → depths/lore → depths/gamedev →
+hud/instruments → hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/* →
+world/world → world/* → ship/voidship-art → ship/voidship-prow →
+ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
+bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,
+bridge-input, bridge-motifs, bridge-marks, bridge-panel, bridge-depths,
+bridge-env, bridge-readout, bridge-loop} → genesis/* → site/lazy-video →
+pages/play → pages/{sector-zero-records, sector-zero} → forge/{forge-guns,
+forge-missions, forge} → pages/{voidscape-bench, voidscape-mapgen,
+voidscape-boons, voidscape} → site/embed → shared/heavylight-sprites →
+pages/{heavylight, conclusus} → site/folders → site/intro`.
+
+Case folders are on index, so the page toys load here, after the bridge.
+`folders.js` loads after every toy (they register on `Play`) and before
+`intro.js`. `genesis/*` and `world/*` keep the order in `index.html` (grep
+`<script`); the constraints below still hold.
 
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
@@ -534,14 +543,7 @@ multiply at draw time. `Util.clamp` has no default bounds: always pass
 `0, 1`. Scripts carry `?v=N` cache-busters; bump them with
 `py -3 tools/bump.py`.
 
-Project pages load `css/style.css`, `css/beacon.css`, `css/play.css`, then
-`js/lib/util.js → js/site/xp.js → js/site/surge.js`, `js/site/embed.js`
-(conclusus, heavylight) and `js/site/lazy-video.js` (all four), then the play
-layer `js/lib/pacer.js → js/pages/play.js → js/pages/<page>.js` (voidscape:
-`js/forge/forge-guns.js` before `play.js` and `voidscape-boons.js` before
-`voidscape.js`; sector-zero: `sector-zero-records.js` before
-`sector-zero.js`; heavylight: `js/shared/heavylight-sprites.js` before
-`heavylight.js`), and the inline `XP.award(...)` last.
+Project pages (`projects/*.html`) are redirect stubs and load no scripts.
 
 ### Where things live
 

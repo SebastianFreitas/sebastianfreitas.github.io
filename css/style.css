@@ -238,8 +238,8 @@ a:hover { color: #fff; }
 .case li { margin-bottom: 0.4rem; }
 /* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
 @media (min-width: 900px) {
-  .page-conclusus .case { padding-top: 18vh; }
-  .page-conclusus .case h2 { margin-top: 5rem; }
+  #conclusus .case { padding-top: 18vh; }
+  #conclusus .case h2 { margin-top: 5rem; }
 }
 
 .clip {

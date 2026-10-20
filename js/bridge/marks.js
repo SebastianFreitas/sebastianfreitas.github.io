@@ -31,6 +31,8 @@ window.Marks = (function () {
       name: "Rex",            sub: "Three masses, three layers, one war" },
     { id: "bnote-root",    cam: CAM.max,       off: -0.10, oy: 0.24, par: 0.70, xp: 1,
       name: "The Root",       sub: "Every arm of it is still climbing" },
+    { id: "bnote-gamedev", cam: LAND.bridge - SLOT * 3, off: 0, oy: 0.34, par: 0.5, xp: 1,
+      name: "Game Dev",       sub: "Four files, one engine room", art: "gamedev" },
   ];
   MARKS.forEach((m, i) => {
     m.x = m.cam + (m.off * CAM.viewUnits) / m.par;

@@ -1,6 +1,7 @@
 /* play.js — mounts one small interactive "toy" on a case page: a full-page
    canvas that sits behind the article (see css/play.css) and reads pointer,
-   scroll and resize on window. Play.start(spec) does the DOM and measurement
+   scroll and resize on window. Play.register(spec) stores a toy and Play.open(folder, name)
+   runs it behind the open folder (Play.close stops it; Play.mount adds its panels). It does the DOM and measurement
    plumbing so a toy only has to supply setup/step/draw/atRest; Play.sprite
    and Play.blit are a tiny pixel-art cache, and Play.glow/Play.award are
    small shared helpers. One Pacer instance drives each toy's loop. Toys with
@@ -14,14 +15,53 @@
   const TILE = 1024;
   const TILE_PAD = 200;
 
-  // mount one toy on the current page; null on pages/widths that don't get one
-  function start(spec) {
-    if (!document.body.classList.contains("page-case")) return null;
-    const mainEl = document.querySelector("main.case");
+  const toys = {};       // name -> { spec, handle, panels, resume }
+  let current = null;    // name of the open toy, or null
+
+  // toys register a spec; the toy runs only while its folder is open
+  function register(spec) {
+    if (!toys[spec.name]) toys[spec.name] = { spec, handle: null, panels: [], resume: null };
+    return null;
+  }
+
+  // open the toy `name` behind folder `rootEl`; null under MIN_W or when unregistered
+  function open(rootEl, name) {
+    const toy = toys[name];
+    if (!toy || !rootEl) return null;
+    if (!matchMedia("(min-width: " + MIN_W + "px)").matches) return null;
+    if (current && current !== name) close();
+    current = name;
+    glowDoc = !!toy.spec.doc;
+    if (!toy.handle) { toy.handle = build(toy.spec, rootEl); return toy.handle; }
+    toy.resume(rootEl);
+    return toy.handle;
+  }
+
+  function close() {
+    const toy = current && toys[current];
+    current = null;
+    if (!toy || !toy.handle) return;
+    toy.handle.stop();
+    toy.handle.V.cursor(false);
+    for (const el of toy.panels) el.dataset.off = "";
+  }
+
+  // a panel/overlay owned by the toy being opened: appended to body, hidden with the toy
+  function mount(el) {
+    document.body.appendChild(el);
+    const toy = current && toys[current];
+    if (toy) toy.panels.push(el);
+    return el;
+  }
+
+  function handle(name) { return toys[name] ? toys[name].handle : null; }
+
+  // build one toy on first open (the old start body)
+  function build(spec, rootEl) {
+    const name = spec.name;
+    let mainEl = rootEl.querySelector(".case");
     const topbar = document.querySelector(".topbar");
-    const footer = document.querySelector("footer");
     if (!mainEl) return null;
-    if (spec.doc) glowDoc = true;
 
     const mq = matchMedia("(min-width: " + MIN_W + "px)");
     const reduced = U.reduced();
@@ -102,7 +142,6 @@
       V.band.w = V.band.x1 - V.band.x0;
       V.blocks = [];
       const els = [...mainEl.children];
-      if (footer) els.push(footer);
       for (const el of els) {
         const b = el.getBoundingClientRect();
         if (b.width < 2 || b.height < 2) continue;
@@ -224,6 +263,20 @@
 
     const handle = { V, canvas, pacer, measure, tiles: tiles ? tiles.el : null,
       stop() { on = false; canvas.hidden = true; if (tiles) tiles.el.hidden = true; } };
+    const toy = toys[name];
+    // later opens: show again and remeasure
+    toy.resume = function (root) {
+      rootEl = root;
+      mainEl = root.querySelector(".case") || mainEl;
+      V.mainEl = mainEl;
+      for (const el of toy.panels) delete el.dataset.off;
+      canvas.hidden = false; if (tiles) tiles.el.hidden = false;
+      size(); measure();
+      spec.resize && spec.resize(V);
+      if (reduced) return;
+      on = true;
+      if (pacer) pacer.start();
+    };
 
     size(); measure(); spec.setup(V); frame(0);
     if (reduced) return handle;   // a still frame only: no loop, no listeners
@@ -240,7 +293,9 @@
     window.addEventListener("pointerdown", e => {
       if (e.button !== 0 || !on) return;
       const t = e.target;
-      if (!(t === document.body || t === document.documentElement || t === mainEl)) return;
+      const bare = t === document.body || t === document.documentElement || t === rootEl || t === mainEl;
+      if (!bare && !(t instanceof Element && rootEl.contains(t) &&
+        !t.closest("a, button, input, select, textarea, summary, video, [tabindex], p, h1, h2, h3, h4, h5, h6, li, figure, img, dt, dd"))) return;
       V.pointer.x = e.clientX; V.pointer.y = e.clientY; V.pointer.down = true;
       if (spec.press && spec.press(e.clientX, e.clientY, V)) e.preventDefault();
     });
@@ -252,6 +307,7 @@
     window.addEventListener("pointercancel", release);
 
     window.addEventListener("scroll", () => {
+      if (current !== name) return;
       syCache = window.scrollY;
       V.scrolled = true;
       if (pacer && !spec.doc) pacer.wake();
@@ -259,6 +315,7 @@
     }, { passive: true });
 
     window.addEventListener("resize", () => {
+      if (current !== name) return;
       size(); measure();
       topDirty = true;
       spec.resize && spec.resize(V);
@@ -269,6 +326,7 @@
     });
 
     window.addEventListener("load", () => {
+      if (current !== name) return;
       measure();
       if (pacer) pacer.wake();
     });
@@ -278,7 +336,7 @@
       let roTimer = 0;
       new ResizeObserver(() => {
         clearTimeout(roTimer);
-        roTimer = setTimeout(() => { measure(); if (pacer) pacer.wake(); }, 150);
+        roTimer = setTimeout(() => { if (current !== name) return; measure(); if (pacer) pacer.wake(); }, 150);
       }).observe(mainEl);
     }
 
@@ -363,5 +421,5 @@
     if (window.XP && !XP.has(id)) XP.award(id, 1, label, x, y);
   }
 
-  window.Play = { start, sprite, blit, glow, award, MIN_W };
+  window.Play = { register, start: register, open, close, mount, handle, get current() { return current; }, sprite, blit, glow, award, MIN_W };
 })();

@@ -186,6 +186,7 @@ window.Depths = (function () {
             xp: node.xp || 1,
             name: node.name,
             sub: node.sub,
+            art: node.art,
             wide: !!node.wide,
             html: node.html,
             at: node.at || null

@@ -1,7 +1,7 @@
 """One case-page toy, shot in seconds.
 usage: py -3 tools/toyshot.py <page> [--out PATH.png] [--t MS] [--y PX|FRAC] [--click-beat KIND]... [--show-beat KIND]
-Loads projects/<page>.html at 1440x900 on snap.py's stopped clock, scrolls to
---y (pixels, or a fraction of the max scroll when it is between 0 and 1 and
+Loads /#<page> (the open folder) at 1440x900 on snap.py's stopped clock, scrolls to
+--y (pixels, or a fraction of the folder's extent when it is between 0 and 1 and
 has a decimal point; default 0), runs --t ms of frames (default snap.TOY_MS)
 and writes a viewport shot, by default to snapshots/toys/<page>-<y>.png.
 Exits 1 on a console error, a missing toy or a blank toy canvas.
@@ -119,7 +119,8 @@ def main(argv):
         with sync_playwright() as p:
             browser = p.chromium.launch(args=snap.CHROME)
             ctx, page = snap.new_ctx(browser, snap.nav.DESKTOP, reduced_motion="no-preference")
-            page.goto(f"{base}/projects/{page_name}.html")
+            page.goto(f"{base}/#{page_name}")
+            page.wait_for_selector(f"#{page_name}.open")
             page.wait_for_load_state("load")
             snap.settle(page, 1000)
 
@@ -146,10 +147,11 @@ def main(argv):
                     y = beat_scroll(page, beat)
             elif failure is None:
                 if "." in ys and 0 <= float(ys) <= 1:
-                    max_y = page.evaluate(
-                        "Math.max(0, document.documentElement.scrollHeight - innerHeight)"
+                    lo, hi = page.evaluate(
+                        f"(() => {{ const s = document.getElementById('{page_name}'); "
+                        "return [s.offsetTop, Math.max(s.offsetTop, s.offsetTop + s.offsetHeight - innerHeight)]; })()"
                     )
-                    y = round(float(ys) * max_y)
+                    y = round(lo + float(ys) * (hi - lo))
                 else:
                     y = int(float(ys))
 

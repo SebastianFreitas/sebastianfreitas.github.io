@@ -176,6 +176,13 @@ def enter_via_gate(page, base, button="#gate-world"):
     page.click(button)
     page.wait_for_timeout(2500)
 
+
+def goto_cc(page, base):
+    """Open the Conclusus folder on the one-page site and wait until it is open."""
+    page.goto(base + "/#conclusus")
+    page.wait_for_selector("#conclusus.open")
+    page.wait_for_timeout(1500)
+
 # ------------------------------------------------------------------ flows
 
 
@@ -223,20 +230,24 @@ def flow_gate_exits(browser, base):
 
 
 def flow_back(browser, base):
-    """Back from a case page restores the homepage as it was."""
+    """Opening a folder from Work and pressing Back returns to the homepage as it was."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     scroll_to(page, "work")
     y0 = state(page)["scrollY"]
     page.click("a.obj[href='projects/sector-zero.html']")
-    page.wait_for_load_state("load")
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(SETTLE)
+    y1 = state(page)["scrollY"]
+    check("Back: the folder opened", page.evaluate("document.getElementById('sector-zero').classList.contains('open')"))
+    # opening a folder replaces the history entry, so Back leaves the page; leave and return
+    page.goto("about:blank")
     page.go_back()
     page.wait_for_timeout(SETTLE)
     s = state(page)
+    check("Back: the folder is still open", page.evaluate("document.getElementById('sector-zero').classList.contains('open')"))
     check("Back: no gate", not s["gateShown"] and not s["frozen"], s)
     check("Back: sector is still the void", s["mode"] == "void", s["mode"])
-    check("Back: scroll position kept", near(s["scrollY"], y0), f"was {y0}, now {s['scrollY']}")
+    check("Back: scroll position kept", near(s["scrollY"], y1), f"was {y1}, now {s['scrollY']}")
     check("Back: no cutscene", not s["genesisActive"], s["genesisActive"])
     ctx.close()
 
@@ -257,32 +268,39 @@ def flow_reload(browser, base):
 
 
 def flow_worklink(browser, base):
-    """'Work' in the top bar and '<- All work' on a case page land on Work."""
-    for selector, label in (("header nav a[href='../index.html#work']", "top bar Work"),
-                            ("main a.back", "All work")):
+    """'Work' in the top bar and 'Close file' on an open folder land on Work."""
+    for how in ("top bar Work", "Close file"):
         ctx, page = new_page(browser)
         enter_via_gate(page, base)
-        page.goto(base + "/projects/sector-zero.html")
-        page.wait_for_timeout(800)
-        page.click(selector)
-        page.wait_for_load_state("load")
+        page.goto(base + "/#conclusus")
+        page.wait_for_selector("#conclusus.open")
+        page.wait_for_timeout(SETTLE)
+        if how == "top bar Work":
+            page.click("header nav a[href='#work']")
+        else:
+            page.click("#conclusus a.back")
         page.wait_for_timeout(SETTLE)
         s = state(page)
-        check(f"{label}: no gate", not s["gateShown"] and not s["frozen"], s)
-        check(f"{label}: lands on Work", near(s["scrollY"], min(s["workTop"], s["maxScroll"])), s)
+        check(f"{how}: no gate", not s["gateShown"] and not s["frozen"], s)
+        gap = s["workTop"] - s["scrollY"]       # the header's scroll-padding leaves Work a little under the top
+        check(f"{how}: lands on Work", -TOL <= gap <= 80 or s["scrollY"] >= s["maxScroll"] - TOL, s)
+        if how == "Close file":
+            check("Close file: the folder is closed", not page.evaluate(
+                "document.getElementById('conclusus').classList.contains('open')"))
         ctx.close()
 
 
 def flow_deeplink(browser, base):
-    """A first-time visitor arriving on /#experience sees Experience."""
+    """A first-time visitor arriving on /#conclusus sees the Conclusus folder open, no gate."""
     ctx, page = new_page(browser)
-    page.goto(base + "/#experience")
+    page.goto(base + "/#conclusus")
+    page.wait_for_selector("#conclusus.open")
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("deep link: no gate", not s["gateShown"] and not s["frozen"], s)
     check("deep link: gate never painted", s["gateHiddenAtParse"] is True, s["gateHiddenAtParse"])
-    check("deep link: lands on Experience",
-          near(s["scrollY"], min(s["experienceTop"], s["maxScroll"])), s)
+    check("deep link: #conclusus is open", page.evaluate(
+        "document.getElementById('conclusus').classList.contains('open')"))
     check("deep link: visitor not marked as seen", not (s["stored"] and s["stored"]["seen"]), s["stored"])
     ctx.close()
 
@@ -497,16 +515,17 @@ def flow_twotabs(browser, base):
 
 
 def flow_header(browser, base):
-    """The top bar never covers the start of a case page."""
+    """The top bar never covers the start of an opened folder."""
     for viewport, label in ((DESKTOP, "desktop"), (PHONE, "phone")):
         ctx, page = new_page(browser, viewport)
         for case in CASES:
-            page.goto(f"{base}/projects/{case}.html")
-            page.wait_for_timeout(300)
-            r = page.evaluate("""() => ({
+            page.goto(f"{base}/#{case}")
+            page.wait_for_selector(f"#{case}.open")
+            page.wait_for_timeout(1200)
+            r = page.evaluate("""(c) => ({
               bar: Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom),
-              first: Math.round(document.querySelector('main').firstElementChild.getBoundingClientRect().top) })""")
-            check(f"header clear of content: {case} ({label})", r["bar"] <= r["first"], r)
+              first: Math.round(document.querySelector('#' + c + ' .folder-tab').getBoundingClientRect().top) })""", case)
+            check(f"header clear of content: {case} ({label})", r["bar"] - TOL <= r["first"], r)
         ctx.close()
 
 
@@ -581,17 +600,35 @@ def flow_phone(browser, base):
     check("desktop: no rotate notice", shown is False, shown)
     ctx.close()
 
+    ctx = browser.new_context(viewport=PHONE_LANDSCAPE, has_touch=True, is_mobile=True)
+    ctx.set_default_timeout(8000)
+    ctx.add_init_script(INIT)
+    page = ctx.new_page()
+    enter_via_gate(page, base)
+    tab = page.evaluate("""() => { const r = document.querySelector('#conclusus .folder-tab').getBoundingClientRect();
+      return r.width > 0 && r.height > 0; }""")
+    check("phone: the folder tab is visible", tab)
+    page.evaluate("Folders.open('conclusus')")
+    page.wait_for_timeout(1000)
+    canvases = page.evaluate("""() => Array.from(document.querySelectorAll('canvas.play'))
+      .filter(c => { const r = c.getBoundingClientRect(); const cs = getComputedStyle(c);
+        return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden'; }).length""")
+    check("phone: no visible canvas.play after open", canvases == 0, canvases)
+    ctx.close()
+
 
 def flow_shell(browser, base):
-    """Case pages share the homepage's nav, and each links to the next project."""
+    """The homepage top bar carries the nav, and each folder links on to the next project."""
     ctx, page = new_page(browser)
+    page.goto(base + "/")
+    page.wait_for_timeout(300)
+    for label, href in (("Work", "#work"), ("Experience", "#experience")):
+        has = page.locator(f"header.topbar nav a[href='{href}']").count() > 0
+        check(f"top bar has {label}", has)
     for case in CASES:
-        page.goto(f"{base}/projects/{case}.html")
-        has_exp = page.locator("header nav a[href='../index.html#experience']").count() > 0
-        check(f"{case}: top bar has Experience", has_exp)
-        nxt = page.locator("main a[rel='next']")
+        nxt = page.locator(f"#{case} a[rel='next']")
         href = nxt.first.get_attribute("href") if nxt.count() else None
-        check(f"{case}: rel=next points to {NEXT[case]}", href == f"{NEXT[case]}.html", href)
+        check(f"{case}: rel=next points to {NEXT[case]}", href == f"#{NEXT[case]}", href)
     ctx.close()
 
 
@@ -807,7 +844,7 @@ def flow_land_depths(browser, base):
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
-    pages = ["/"] + [f"/projects/{c}.html" for c in CASES]
+    pages = ["/"]
     seen: dict[str, int] = {}
     ids_on: dict[str, list] = {}
     broken: list[str] = []
@@ -840,6 +877,11 @@ def flow_links(browser, base):
                     missing.append(f"{path} -> {ref}")
     check(f"internal links and assets answer 200 ({len(seen)} checked)", not broken, broken)
     check("every #anchor points at an element that exists", not missing, missing)
+    check("the four folder ids exist", all(c in ids_on["/"] for c in CASES), CASES)
+    for c in CASES:
+        page.goto(f"{base}/projects/{c}.html")
+        page.wait_for_url(f"**/#{c}")
+        check(f"stub {c}.html ends at /#{c}", page.url.endswith(f"/#{c}"), page.url)
     ctx.close()
 
 
@@ -854,7 +896,7 @@ def flow_cc_read_xp(browser, base):
     """Conclusus gives its reading XP at "What it taught me", not on load."""
     for viewport, label in ((DESKTOP, "desktop"), (PHONE, "phone")):
         ctx, page = new_page(browser, viewport)
-        page.goto(f"{base}/projects/conclusus.html")
+        goto_cc(page, base)
         page.wait_for_timeout(1500)
         check(f"cc-read-xp: not owned after load ({label})", not page.evaluate(CC_OWNED))
         page.mouse.move(viewport["width"] / 2, viewport["height"] / 2)
@@ -888,7 +930,7 @@ def flow_cc_read_xp(browser, base):
         check(f"cc-read-xp: owned after the heading ({label})", page.evaluate(CC_OWNED), h)
         ctx.close()
     ctx, page = new_page(browser, DESKTOP)
-    page.goto(f"{base}/projects/conclusus.html")
+    goto_cc(page, base)
     page.wait_for_timeout(1500)
     check("cc-read-xp: not owned after load (jump)", not page.evaluate(CC_OWNED))
     page.evaluate("window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })")
@@ -900,7 +942,7 @@ def flow_cc_read_xp(browser, base):
 def flow_cc_scroll_pays_nothing(browser, base):
     """Conclusus: scrolling the whole page and back owns no play-* XP and takes no key."""
     ctx, page = new_page(browser, DESKTOP)
-    page.goto(f"{base}/projects/conclusus.html")
+    goto_cc(page, base)
     page.wait_for_timeout(1500)
     r = page.evaluate(CC_REPORT)
     check("cc-scroll-pays-nothing: report() present", r is not None)
@@ -953,7 +995,7 @@ def flow_cc_scroll_pays_nothing(browser, base):
 def flow_cc_keys(browser, base):
     """Conclusus: the play beat unlocks key 1; keys 1-3 fly to the tray in order; a locked key does nothing."""
     ctx, page = new_page(browser, DESKTOP)
-    page.goto(f"{base}/projects/conclusus.html")
+    goto_cc(page, base)
     page.wait_for_timeout(1500)
 
     def click_beat(kind):
@@ -1016,7 +1058,7 @@ def flow_cc_keys(browser, base):
 def flow_cc_win(browser, base):
     """Conclusus: fresh storage, play beat, keys 1-3, then the door: all 5 play-* ids owned, the door stays open and won, he reappears."""
     ctx, page = new_page(browser, DESKTOP)
-    page.goto(f"{base}/projects/conclusus.html")
+    goto_cc(page, base)
     page.wait_for_timeout(1500)
 
     def click_beat(kind):
@@ -1080,6 +1122,117 @@ def flow_cc_win(browser, base):
     ctx.close()
 
 
+def flow_work_open(browser, base):
+    """A Work button opens its folder in place: hash set, no page load, folder open, scrolled to it."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    page.click("a.obj[href='projects/conclusus.html']")
+    page.wait_for_timeout(SETTLE)
+    r = page.evaluate("""() => { const s = document.getElementById('conclusus');
+      return { hash: location.hash, navs: performance.getEntriesByType('navigation').length,
+               open: s.classList.contains('open'), off: Math.abs(s.getBoundingClientRect().top) }; }""")
+    check("work-open: hash is #conclusus", r["hash"] == "#conclusus", r)
+    check("work-open: no page load (one navigation entry)", r["navs"] == 1, r)
+    check("work-open: the folder is open", r["open"], r)
+    check("work-open: scrolled to the folder", r["off"] <= 80, r)
+    ctx.close()
+
+
+def flow_one_open(browser, base):
+    """Opening a second folder closes the first: one .case-folder.open, one visible canvas.play."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    page.evaluate("Folders.open('voidscape')")
+    page.wait_for_timeout(1000)
+    page.evaluate("Folders.open('heavylight')")
+    page.wait_for_timeout(1200)
+    r = page.evaluate("""() => ({
+      open: document.querySelectorAll('.case-folder.open').length,
+      id: (document.querySelector('.case-folder.open') || {}).id,
+      canvases: Array.from(document.querySelectorAll('canvas.play')).filter(c => !c.hidden).length })""")
+    check("one-open: exactly one folder open", r["open"] == 1 and r["id"] == "heavylight", r)
+    check("one-open: exactly one canvas.play not hidden", r["canvases"] == 1, r)
+    ctx.close()
+
+
+def flow_stub_redirect(browser, base):
+    """Each /projects/<game>.html stub lands on /#<game> with that folder open."""
+    ctx, page = new_page(browser)
+    for c in CASES:
+        page.goto(f"{base}/projects/{c}.html")
+        page.wait_for_url(f"**/#{c}")
+        page.wait_for_timeout(600)
+        check(f"stub-redirect: {c} ends at /#{c}", page.url.endswith(f"/#{c}"), page.url)
+        check(f"stub-redirect: {c} folder is open", page.evaluate(
+            f"document.getElementById('{c}').classList.contains('open')"))
+    ctx.close()
+
+
+def claim_gamedev(page, base):
+    """Pass the gate, skip any cutscene, claim the Game Dev beacon and replay its reveal."""
+    page.goto(base + "/?reset=1")
+    enter_via_gate(page, base, "#gate-world")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+    return page.evaluate("""() => {
+      XP.award('beacon-bnote-gamedev', 1, 'Game Dev');
+      window.depthsReveal();
+      return window.depthsReport().filter(n => n.root === 'bnote-gamedev');
+    }""")
+
+
+def flow_gamedev_reveal(browser, base):
+    """Claiming the Game Dev beacon reveals the four games as depth nodes rooted on it."""
+    ctx, page = new_page(browser)
+    report = claim_gamedev(page, base)
+    ids = {n["id"] for n in report}
+    check("gamedev-reveal: four root=bnote-gamedev lines", len(report) == 4, report)
+    check("gamedev-reveal: the four games",
+          ids == {"gd-sector-zero", "gd-voidscape", "gd-heavylight", "gd-conclusus"}, ids)
+    text = page.evaluate("window.beaconReport()")
+    check("gamedev-reveal: beaconReport names them", all(i in text for i in ids), text)
+    ctx.close()
+
+
+def flow_card_open(browser, base):
+    """A Game Dev node's card shows with its clip playing, and 'Open case file' opens the folder."""
+    ctx, page = new_page(browser)
+    claim_gamedev(page, base)
+    page.wait_for_timeout(1500)
+    page.evaluate("Bridge.showNote(Marks.MARKS.find(m => m.id === 'gd-conclusus'))")
+    page.wait_for_timeout(1500)
+    r = page.evaluate("""() => { const el = document.getElementById('gd-conclusus');
+      const v = el && el.querySelector('video');
+      return { show: !!el && el.classList.contains('show'), paused: v ? v.paused : null }; }""")
+    check("card-open: the card has .show", r["show"], r)
+    check("card-open: its video is not paused", r["paused"] is False, r)
+    page.evaluate("document.querySelector('#gd-conclusus .open-case').click()")
+    page.wait_for_timeout(SETTLE)
+    r = page.evaluate("({ hash: location.hash, open: document.getElementById('conclusus').classList.contains('open') })")
+    check("card-open: Open case file opens #conclusus", r["hash"] == "#conclusus" and r["open"], r)
+    ctx.close()
+
+
+def flow_loop_pause(browser, base):
+    """The hero loop stops once the hero is off screen and resumes, in place, when it returns."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    saved = page.evaluate("Bridge.camX")
+    scroll_to(page, "work")
+    page.wait_for_timeout(800)
+    r = page.evaluate("({ visible: Bridge.visible, running: Bridge.pacer.running })")
+    check("loop-pause: Bridge.visible is false at Work", r["visible"] is False, r)
+    check("loop-pause: the pacer is not running at Work", r["running"] is False, r)
+    page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })")
+    page.wait_for_timeout(1000)
+    r = page.evaluate("({ visible: Bridge.visible, running: Bridge.pacer.running, camX: Bridge.camX })")
+    check("loop-pause: the pacer runs again at the top", r["running"] is True, r)
+    check("loop-pause: camX is where it was", abs(r["camX"] - saved) <= 1, f"was {saved}, now {r['camX']}")
+    ctx.close()
+
+
 FLOWS = {
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
@@ -1089,6 +1242,8 @@ FLOWS = {
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,
     "cc-win": flow_cc_win,
+    "work-open": flow_work_open, "one-open": flow_one_open, "stub-redirect": flow_stub_redirect,
+    "gamedev-reveal": flow_gamedev_reveal, "card-open": flow_card_open, "loop-pause": flow_loop_pause,
 }
 
 

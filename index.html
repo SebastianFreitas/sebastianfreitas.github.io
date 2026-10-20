@@ -16,13 +16,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=172">
-<link rel="stylesheet" href="css/gate.css?v=172">
-<link rel="stylesheet" href="css/beacon.css?v=172">
-<link rel="stylesheet" href="css/bridge.css?v=172">
-<script src="js/lib/util.js?v=172"></script>
-<script src="js/site/xp.js?v=172"></script>
-<script src="js/site/entry.js?v=172"></script>
+<link rel="stylesheet" href="css/style.css?v=173">
+<link rel="stylesheet" href="css/gate.css?v=173">
+<link rel="stylesheet" href="css/beacon.css?v=173">
+<link rel="stylesheet" href="css/bridge.css?v=173">
+<link rel="stylesheet" href="css/play.css?v=173">
+<link rel="stylesheet" href="css/folder.css?v=173">
+<script src="js/lib/util.js?v=173"></script>
+<script src="js/site/xp.js?v=173"></script>
+<script src="js/site/entry.js?v=173"></script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
    them; http://127.0.0.1:8000 often did, and they served ghost JS.
@@ -174,6 +176,13 @@
     <p class="body">Nothing is written here, and that is no fault in the record. Ships are set
        west, they cease to answer, and we enter them not as lost but as future.</p>
     <p class="stat"><span>Recorded <b>None</b></span><span>Status <b>Pending</b></span></p>
+  </aside>
+
+  <aside class="bnote" id="bnote-gamedev">
+    <p class="tag">Engine room</p>
+    <h3>Game Dev</h3>
+    <p class="body">Four games, each built end to end: the systems, the tools and the feel of it in the hand.</p>
+    <p class="body">Every one has its own case file, and each beacon that opens from here plays a clip of it running.</p>
   </aside>
 
   <aside class="bnote" id="bnote-bridge">
@@ -343,6 +352,588 @@
   </ul>
 </section>
 
+<!-- ================= CASE FOLDERS ================= -->
+<section class="case-folder" id="sector-zero" data-case="sector-zero" data-toy="zero">
+  <button class="folder-tab" aria-expanded="false" aria-controls="sector-zero-body">
+    <span class="obj-id">OBJ_0001</span>
+    <span class="folder-title">Sector Zero</span>
+    <span class="folder-line">A horror game where the debug console is the main mechanic. Full in-game Linux-style terminal with command history; edit any object's properties at runtime — set weight negative and it leaves the floor.</span>
+    <span class="open-case">Open case file</span>
+  </button>
+  <div class="folder-body" id="sector-zero-body" hidden>
+    <article class="case">
+      <span class="obj-id">OBJ_0001</span>
+      <h1>Sector Zero</h1>
+
+      <dl class="props">
+        <div><dt>Engine</dt><dd>Unreal 5</dd></div>
+        <div><dt>Language</dt><dd>C++ / Blueprint</dd></div>
+        <div><dt>Role</dt><dd>Solo, everything</dd></div>
+        <div><dt>Status</dt><dd>Proof of concept</dd></div>
+      </dl>
+
+      <p>A first-person horror game set in a single room. A text file is the physics engine. You play
+         Brian, sent into a dead research site with no memory of arriving. The terminal, RealityTXT,
+         keeps a record of every object in the room, and whatever the record says, reality obeys.
+         Brian has a record too.</p>
+
+      <p>This page runs from the goals down to the specifics. The bridge notes on the home page carry
+         the short version; this is the long one.</p>
+
+      <video class="clip" src="media/sector-zero/login.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Credentials come off a note in the room. Tab completion, command history, and a
+         real error on a bad path.</p>
+
+      <h2>One room, on purpose</h2>
+      <p>The whole game happens in one room. That is not a limit the project ran into, it is the
+         design. A big map spreads a solo budget so thin that every object ends up as a generic
+         interact prompt. One room lets every object get the time it needs, and it makes a standard of
+         polish feasible that a normal-sized game could never afford.</p>
+      <p>The office chair is the example. It was built until it felt real: it turns to meet you, eases
+         you into the seat, kicks forward in a rhythm, slides, spins, and bounces off walls. Nothing
+         about that was required. But once a chair feels real, a chair is suddenly fun to play with,
+         and that is the bar for everything else in the room.</p>
+      <p>It is also why every object carries lore. Even things that will never matter mechanically have
+         an ID and a note from whoever handled them before you. A dull object still holds weight for
+         anyone who reads, and the characters get to exist through the things they left behind.</p>
+
+      <h2>Say nothing</h2>
+      <video class="clip" src="media/sector-zero/checkItemsFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Every object has a three-character ID and a note left by whoever handled it
+         last. Read it, or do not.</p>
+      <p>Sector Zero is a sandbox. The game explains almost nothing and never waits for you to do the
+         one thing it wanted. You read the notes on objects, you try things, you draw your own
+         conclusions. Most problems have more than one solution, and a player who never finds the
+         intended one has still played the game correctly. This is a game about discovery, not about
+         following.</p>
+
+      <h2>Do not expect the obvious</h2>
+      <p>Some things make sense. Scissors are sharp, and if you use them as a weapon they behave like
+         one. But this is a place where nothing has to be what it looks like, and the design keeps that
+         freedom on purpose. An object can have a capability that has nothing to do with what it is. A
+         floppy disk could be a teleporter.</p>
+      <p>That rule teaches the player something valuable early: stop expecting the obvious. From then
+         on the most ordinary object in the room is worth a second look, because it could be
+         anything.</p>
+
+      <h2>The storm</h2>
+      <p>The room starts broken. On a timer, thunder rolls a strength, and every loose object rolls
+         against it. The ones that lose drop their gravity and drift off with a shove. A few seconds
+         later the screen blinks black and they snap back to where they belong. One of the caught
+         objects comes back changed, marked by whatever the storm is. Stronger thunder means the next
+         one comes sooner.</p>
+      <p>This is the chaos the game is built around. Things vanish, things move, the room refuses to
+         stay legible.</p>
+
+      <h2>Register it or lose it</h2>
+      <video class="clip" src="media/sector-zero/createEntryFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Look at an object, read its ID, type create. The object is now a text file,
+         and the text file is now the object.</p>
+      <p>The goal is simple: register things so the storm, the chaos and the unknown cannot take them.
+         Point at anything, read its three-character ID, and <code>create</code> writes it into the
+         filesystem as a text file. From then on that file is the object. Edit it and the object
+         follows: rename it, rewrite its note, change what it is. A registered object is stable,
+         readable and usable.</p>
+      <p>Every save spends from a budget, so attention is the currency. You cannot register everything
+         at once; you choose what matters. Session by session the room gets calmer and starts to make
+         sense, which is the whole arc of the game: chaos first, then an order you built yourself.</p>
+      <p>Gadgets arrive broken on purpose. The lantern's record reads Condition: Poor, and it plays the
+         part: it flickers, dies, and wants a smack. Half the time you switch it on it holds steady for
+         about ten seconds and then goes back to being itself. A better lantern is one whose file says
+         so.</p>
+
+      <h2>A real shell</h2>
+      <p>RealityTXT is a working shell over a virtual filesystem, not a menu dressed as one. It runs
+         <code>ls</code>, <code>cd</code>, <code>cat</code>, <code>create</code>, <code>edit</code>,
+         <code>rm</code>, <code>mail</code>, <code>read</code>, <code>reply</code>, <code>logout</code>
+         and <code>reset</code>, with tab completion, command history and real errors. Your login is a
+         line in a file, so editing the file changes your password. <code>help</code> does not list
+         every command. Anyone who has used a terminal already knows how to play, and because every
+         mechanic is a text operation, a new feature costs a command rather than a UI.</p>
+      <p>The mail client lives inside the shell. Messages arrive, you read them, and replies are
+         numbered options rather than one right answer. It is the cheapest narrative surface in the
+         game and it doubles as the hint system.</p>
+
+      <h2>Friction, then less of it</h2>
+      <p>Typing is slow, and early on that is the point. Friction makes the room feel like a workplace
+         and the game feel down to earth. But a terminal mechanic can turn tedious fast, so the design
+         does not lean on it. The terminal is kept for the moments that need it, balanced against
+         actually exploring the room, and later in the game tools automate registering so the friction
+         fades as you get better. Early friction is realism. Late friction would just be waste.</p>
+
+      <h2>The chair</h2>
+      <video class="clip" src="media/sector-zero/chairUseFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Kick, slide, spin, bounce. Tank controls on an office chair.</p>
+      <p>Sit and the chair turns to face you, waits half a second, then eases you into the seat with
+         the camera. Forward is not a speed, it is a kick in three beats: a weak push, a strong push, a
+         weak push, then a pause. The chair keeps almost all of its speed from frame to frame, so it
+         slides, and it brakes a little harder right after a kick so it never feels like ice. Turning
+         builds up and winds down with its own inertia, loose when fast and grippy when slow. Hit a
+         wall and it reflects with a small boost and ignores input for a quarter of a second, so a
+         bounce feels like a bounce.</p>
+      <p>You can work the whole room without standing up. That is the standard the single room makes
+         affordable: in one room a chair is a tenth of the furniture, so it gets built like it
+         matters.</p>
+
+      <h2>Brian is an object</h2>
+      <video class="clip" src="media/sector-zero/editplayerFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Weight, height, sex, age, password. Save the file and Brian changes.</p>
+      <p>Brian is a middle-aged man who is heavy and out of shape. He walks slowly. Crouching is slow
+         and uncomfortable. That is not a movement setting, it is his worker record: a text file with
+         his weight, height, sex, age and login. Weight drives walk speed, jump and gravity. Height
+         rescales the whole character and keeps his feet on the floor. Go past two and a half metres
+         and the file kills him.</p>
+
+      <h2>Mass, not fat</h2>
+      <p>Find the medical records and you can rewrite him. Type a lower weight and he moves like a
+         healthy man, and he can suddenly fit through gaps that were closed to him before. Type a
+         negative weight and gravity flips: he falls onto the ceiling, the controls invert with him,
+         and he gets thrown out of the chair. The number is his mass, not his fat percentage. What the
+         file says, he is. It is the same rule as every other object in the room, applied to the
+         player.</p>
+
+      <h2>The dark</h2>
+      <p>The horror works because you never leave. You learn where everything sits, so even a minor
+         change reads loudly, in a way it never could in a game that keeps moving you somewhere new. A
+         mug that moved is worse than a jump scare.</p>
+      <p>Something shares the room. It is dark, hard to see, and never fully shown. Maybe it is one of
+         the other three. Maybe it is something else. The game does not say, and the player is left to
+         draw their own conclusions. It throws objects. It reaches the terminal and deletes progress or
+         corrupts files. No music announces it, so you never know whether you are safe. Hit it with a
+         thrown weapon while it hides and it goes still for a while, the only breathing room you
+         get.</p>
+      <p>It should not stay that hard. Early on the creature is the big problem. Over time the player
+         gets better tools, and later traps, that push it back and maybe solve it for good, instead of
+         being stuck repeating the same defence forever. Brian starts as a victim and ends as the
+         master of the room. None of this is in the build yet; it is the plan the room is being built
+         to hold.</p>
+
+      <h2>Obscura Dynamics</h2>
+      <p>Obscura Dynamics researches anomalies. Secretive, very well funded, and decades into trying to
+         decode why reality misbehaves, they noticed that certain anomalies shared a component that was
+         not matter, sound or light. They named it Anomium. Anything that touches it suffers pure
+         chaos: combustion, transmutation, erasure. Long exposure breaks minds and bodies.</p>
+      <p>They built devices to detect it, then embedded it safely in a reinforced computer, and after a
+         run of catastrophic failures produced RealityTXT: a terminal that gives control over any
+         physical object listed inside it. Type <code>static</code> on an object and it holds, even
+         against Anomium. For the first time the company had a weapon against chaos. What Anomium
+         actually is, they still do not know.</p>
+
+      <h2>Four people in debt</h2>
+      <p>A remote Obscura facility called Sector Zero went silent after an experiment got away from
+         them, with vital RealityTXT data still inside. Rather than risk staff, Obscura recruited
+         people in serious financial trouble, told them the risk plainly, and had them sign. It was
+         human experimentation with a contract.</p>
+      <p>Brian was a schoolteacher until anxiety and depression cost him the job. He is gentle, easily
+         swayed, and has been with Amy for years. Amy ran corporate operations until a corruption
+         accusation ended her career; she leads by force of will and gets more controlling under
+         pressure. Laura was a nurse until one traumatic night; she panics, and she still puts everyone
+         else first. Jason was a mechanic with gambling debts; he is careless, and his carelessness
+         occasionally finds solutions nobody else would.</p>
+      <p>The game opens after the four have been separated. You are Brian, alone, without memories,
+         piecing together what happened to you and to them. The creature is the threat. The
+         corporation that sent you is the antagonist.</p>
+
+      <h2>Where it stands</h2>
+      <p>Built: the shell and its filesystem, login off a file, the register and edit loop with its
+         budget, the worker record with weight, height and inverted gravity, the storm cycle with its
+         blackout snap, the chair, a screwdriver that charges for three seconds and flies back to where
+         you threw it from, and a lantern that lies about working.</p>
+      <p>Next: the creature, the traps, the tools that automate registering, the medical records.
+         Sector Zero is a proof of concept on purpose. Prove one room can carry a game, then fill
+         it.</p>
+
+      <nav class="case-nav" aria-label="More work">
+        <a class="back" href="#work">Close file</a>
+        <a class="next" rel="next" href="#voidscape">Next: VoidScape →</a>
+      </nav>
+    </article>
+  </div>
+</section>
+
+<section class="case-folder" id="voidscape" data-case="voidscape" data-toy="range">
+  <button class="folder-tab" aria-expanded="false" aria-controls="voidscape-body">
+    <span class="obj-id">OBJ_0002</span>
+    <span class="folder-title">VoidScape</span>
+    <span class="folder-line">First-person roguelike. The special run scales on player skill instead of stats, so a lucky build can't delete a boss in one shot. 50+ boons, craftable weapons that persist between runs.</span>
+    <span class="open-case">Open case file</span>
+  </button>
+  <div class="folder-body" id="voidscape-body" hidden>
+    <article class="case">
+      <span class="obj-id">OBJ_0002</span>
+      <h1>VoidScape</h1>
+
+      <dl class="props">
+        <div><dt>Engine</dt><dd>Unity</dd></div>
+        <div><dt>Language</dt><dd>C#</dd></div>
+        <div><dt>Role</dt><dd>Solo, everything</dd></div>
+        <div><dt>Status</dt><dd>Playable, 2 bosses</dd></div>
+        <div><dt>Play</dt><dd><a href="https://sebastianfreitas.itch.io/voidscape-prototype">Download on itch.io</a></dd></div>
+      </dl>
+
+      <p>A first-person roguelike where the player writes their own difficulty and the game pays out in
+         proportion. Runs, weapons and boons are all rolled, not authored. Two things survive a run: the
+         guns you built and the skill tree you paid for with special runs. Everything else is gone when
+         you die.</p>
+
+      <video class="clip" src="media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Choosing a run. Every modifier on a mission raises the payout.</p>
+
+      <h2>The problem</h2>
+      <p>Every roguelike I played had the same failure: the god run. The drops line up, damage goes
+         exponential, and the boss you were supposed to fear dies in one shot. The run you waited ten
+         hours for is the least interesting one you will play, because the game stopped asking anything
+         of you at exactly the moment it should have asked the most.</p>
+      <p>Stat scaling causes it. If power is a number and enemies are a number, one eventually runs away
+         from the other. Tuning does not fix that. It only moves where the break happens.</p>
+
+      <h2>Two answers</h2>
+      <p>The classic answer is to let the player pick a harder difficulty, and VoidScape has that. The
+         run itself is rolled on a board of missions, each with its own modifiers, and every modifier
+         raises the payout. It is a good answer, but it is not a new one. Numbers against numbers still
+         break eventually.</p>
+      <p>The new answer is the special run. Once a run is done you can attempt to go deeper, onto a path
+         that scales on execution rather than on numbers: longer, more broken, more elites, a boss group
+         waiting at the end. A build that trivialises the normal run still has to be played out there,
+         and it is the only place skill points come from.</p>
+
+      <h2>The board</h2>
+      <p>Before entering, you stand at a bank of monitors. Each one searches for a mission and shows what
+         it found: a rolled set of modifiers and the payout they earn. Modifiers cut both ways. Some make
+         things worse: more monster health, damage or action speed, halved healing, grenades disabled,
+         slower movement, a whole damage type made immune. Some make things better: a higher weapon
+         level, extra gun parts per kill, more boon rooms, every side room special.</p>
+      <p>Every modifier on the list, good or bad, raises elite chance, special room frequency and drop
+         rate, with a random component on top so two equally loaded missions are not equally worth
+         taking. You read the board, weigh it, and choose. A mission can be pushed further or the whole
+         board rerolled, paid in gun parts, and the price climbs each time.</p>
+      <p>Four modifiers do not explain themselves at all: <code>Danger</code>, <code>ERROR</code>,
+         <code>UnknownX</code> and <code>UnknownY</code>. They carry the lowest weights in the table. The
+         only way to find out is to take one.</p>
+      <p>How many modifiers a mission can carry is capped by the skill tree. A fresh save gets one.
+         Deeper special runs raise the cap, so the biggest payouts sit behind the part of the game that
+         tests you.</p>
+      <canvas id="void-mapgen" class="clip" aria-label="The mission console, interactive"></canvas>
+      <p class="caption">The mission console, live: pick a path, press search for a new board, or empower to push a mission further.</p>
+
+      <h2>Going deeper</h2>
+      <video class="clip" src="media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Attempting to go deeper. Special runs are the only source of skill points. 0:41.</p>
+      <p>The special run is not a mission. It is a path built from bridge pieces out in the void, each one
+         shifted and tilted at random, with a chance for any piece to be missing. Monsters wait on every
+         other piece, turning elite as you near the end, and a boss group holds the last one. Every
+         completed run makes the next one longer and harder, and each level of depth is worth one skill
+         point.</p>
+      <p>Skill points buy the only permanent upgrades in the game: max life, weapon drop level, boon
+         drop chance, the chance to locate missions, and the cap on modifiers a mission can carry. The
+         tree is small on purpose. Its job is to attach long-term progression to the part of the game
+         that a lucky build cannot cheese.</p>
+
+      <h2>Two progressions</h2>
+      <img class="clip" src="media/voidscape/skilltree.webp" alt="The skill tree: five rows of plus and minus buttons for max life, chance to locate paths, item drop level, boon drop chance and maximum path mods" width="1600" height="978" loading="lazy">
+      <p class="caption">The skill tree. Five upgrades, paid only with special runs.</p>
+      <p>Two kinds of progression run through a save, and they last different lengths of time. Boons
+         last one run. They are by far the strongest modifiers in the game, and they are gone when you
+         die. Weapons and the skill tree last forever. A gun you build stays in the inventory across
+         runs, with its layouts saved, and skill points never expire. Those two are what make it a
+         roguelike rather than a series of unrelated attempts.</p>
+      <p>The two are designed to need each other. Most boons are flat numbers, not multipliers: +50
+         physical damage, +10 fire, +1% freeze chance. A boon is only as good as the gun that scales it,
+         and +10 fire damage is worth nothing on a gun that never sets anything alight. So the long game
+         is keeping a spread of guns in the inventory, so that whatever a run rolls, there is a weapon
+         that turns those boons into something.</p>
+
+      <video class="clip" src="media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">A boon offer after a fight. Take it, turn it down for 10 health, or pay gun parts to reroll.</p>
+
+      <h2>Fifty-odd boons, and most of them cost something</h2>
+      <p>Boons are weighted by rarity and stack for the rest of the run. One you take or refuse leaves
+         the pool, so a run never sees the same offer twice.</p>
+      <p>The flat upgrades exist, but the interesting half are trades. Lose 20 max health for +10 fire
+         damage. Shrink your explosion radius by 90% to double its damage. Deal all your poison damage
+         instantly, at half value. Halve your bullet speed for +50 physical.</p>
+      <p>Then there are the ones that change what the gun is. Ricochet force doubles on every bounce.
+         Ricochets home onto poisoned enemies. Every bounce spawns a cold shot. Enemies killed by cold
+         burst into eight more. Fire bullets survive their own explosion, or explode a second time a
+         moment later, or pull instead of push. One turns being launched by your own fire blast into a
+         speed buff, which makes shooting the floor to travel a legitimate build. Elements are not
+         separate lanes, so builds collide in ways I never wrote down.</p>
+
+      <h2>Weapons are generated, not designed</h2>
+      <p>A gun rolls a base type, a level and a set of modifiers. There are four base types, basic,
+         shotgun, machine gun and sniper, each with an elemental variant in physical, fire, cold and
+         poison. The sniper round leaves at twice the speed of anything else and bounces ten times.</p>
+      <p>Modifiers come in three grades: interior for damage, exterior for handling, and special for the
+         build-defining effects like ignite chance, freeze chance, double damage and bleeding. Each grade
+         has a weight that drops by half when it lands and to nothing the second time, so a gun carries
+         at most two of any grade and comes out mixed instead of stacking five of the same thing.
+         Specials start at a hundredth of the weight of the others, which keeps them rare without a hard
+         cap.</p>
+
+      <img class="clip" src="media/voidscape/shop.webp" alt="Shop screen for a rolled machinegun: base stats and four rolled mods" width="1482" height="988" loading="lazy">
+      <p class="caption">A rolled machinegun in the shop. Base stats on the left, one rolled mod per row.</p>
+
+      <video class="clip" src="media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Adding, removing, and scrapping mods at the bench.</p>
+
+      <h2>The bench</h2>
+      <p>Gun parts drop from enemies and pay for adding mods, removing them, or scrapping a weapon
+         outright. Adding costs the weapon's level times its mod count, and the bench raises its price
+         every time you use it, so pushing a good gun further costs progressively more. Scrapping
+         refunds twice the base price of a mod, so a near miss is worth real money if you break it down
+         instead.</p>
+      <p>Four weapon slots and eight saved layouts persist between runs. Building a gun is a decision
+         with consequences past the session.</p>
+
+      <canvas id="void-bench" class="clip" aria-label="The crafting bench, interactive"></canvas>
+      <p class="caption">The bench, live: add and remove mods, or scrap the gun.</p>
+
+      <h2>The map only goes up</h2>
+      <p>Every step of a run climbs: a flight of stairs, a corridor, a room, joined doorway to doorway.
+         A mission is ten to twenty main rooms plus whatever depth the modifiers add, and the last room
+         is always the boss.</p>
+      <p>Because the path only ever goes up, the space around a new room is almost always empty, and
+         that is what gives the generator its freedom. Tiles that were never designed to sit next to
+         each other can be chained anyway, because nothing occupies the space they need. There is an
+         overlap check, but it rarely has to say no, and when a layout fails ten times the whole level
+         is thrown away and rolled again.</p>
+      <p>Spare doorways grow side rooms: encounters, specials, and a rotating set of shops and reward
+         rooms, with a symbol on the door saying which.</p>
+
+      <img class="clip" src="media/voidscape/room.webp" alt="A generated room with catwalks and railings over a lower floor" width="1600" height="904" loading="lazy">
+      <p class="caption">One generated room. Catwalks and drops give the dashes somewhere to go.</p>
+
+      <h2>Finding your way</h2>
+      <p>Generated rooms can all look the same, and getting lost was one of the first problems players
+         hit. Two rules fix it. Up is always forward, so the next room is wherever the stairs are. And
+         every room is lit white until you complete it, then its lights turn red. At a glance you know
+         where you have been and where you have not.</p>
+
+      <h2>Every room has versions</h2>
+      <p>Every room carries optional pieces that each roll their own chance to exist, so the same room
+         comes back different. The trapped versions matter most: laser beams that sweep the floor,
+         spikes with a short warning, blast plates, lava that rises while you fight. In a game where
+         movement is the best defence, a trap forces you to plan your movement instead of spending it,
+         which makes an encounter genuinely hard without making a single enemy stronger. A few of those
+         variants roll so rarely that finding them takes many runs.</p>
+
+      <img class="clip" src="media/voidscape/enemy.webp" alt="Mid-fight in a generated corridor, a red enemy taking hits" width="1600" height="986" loading="lazy">
+      <p class="caption">Mid-fight in a generated corridor.</p>
+
+      <h2>Things floating about</h2>
+      <p>Rooms are also full of floating objects, drifting and spinning at random, and some of them
+         matter. Canisters detonate when a bullet touches them and set off their neighbours. Medkits
+         drift past the walkway. The point is rarity: something useful can turn up anywhere, so even an
+         empty room with nothing to fight is worth a look.</p>
+
+      <h2>Feel: movement</h2>
+      <p>Movement is snappy and forgiving, and most of the work is in the small things. Coyote time and
+         jump buffering, so inputs land when the player means them. Three separate ground checks, so a
+         landing never gets missed. Gravity that triples past the apex of a jump, which makes it feel
+         heavier without cutting its height. A side dash that cuts gravity and makes you invulnerable
+         while it lasts, plus one air dash per landing. Input direction locks after a jump or dash until
+         you press the opposite key, so momentum carries instead of letting you steer mid-air. Enemy
+         hits and explosions apply real knockback through a mass-weighted impact vector.</p>
+
+      <h2>Feel: shooting and the camera</h2>
+      <p>Bullets are physics bodies that bounce. A sniper round leaves at 5000 units a second and
+         ricochets ten times, and boons can double the bounce force on every hit. Keeping that stable
+         when stats go extreme, so nothing falls apart or feels wrong at the top end, took longer than
+         any other system in the game. Every enemy has a floor on how fast it can act, so speed
+         modifiers push right up to the edge and no further.</p>
+      <p>The camera alone took weeks. Mouse look runs through framerate-independent exponential
+         smoothing, so it feels the same at 60 and at 240 frames a second.</p>
+
+      <h2>What it cost</h2>
+      <p>Fifty interacting boons on top of rolled weapons and rolled missions means the combination
+         space is not testable by hand. Most of the work was not writing mechanics. It was making them
+         compose without producing states I never anticipated, and accepting that some of those states
+         are the reason the game is worth playing. A fire build inside a mission that rolled fire
+         immunity is a problem nobody authored, and the player has to solve it with what they brought.</p>
+      <p>This was my first project, and I wrote it without AI tools.</p>
+
+      <h2>Where it stands</h2>
+      <p>Playable through two bosses. The generators are all in place, missions, weapons, mods, boons,
+         rooms, and what is missing is content volume rather than architecture. Adding a modifier means
+         adding a row to a table. Adding a room means adding a prefab. That was the point of building it
+         this way.</p>
+      <p><a href="https://sebastianfreitas.itch.io/voidscape-prototype">Download the prototype on itch.io →</a></p>
+
+      <video class="clip" src="media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">One full run on a short mission, from the hub out and back. 1:43, uncut.</p>
+
+      <nav class="case-nav" aria-label="More work">
+        <a class="back" href="#work">Close file</a>
+        <a class="next" rel="next" href="#heavylight">Next: HeavyLight →</a>
+      </nav>
+    </article>
+  </div>
+</section>
+
+<section class="case-folder" id="heavylight" data-case="heavylight" data-toy="heavylight">
+  <button class="folder-tab" aria-expanded="false" aria-controls="heavylight-body">
+    <span class="obj-id">OBJ_0003</span>
+    <span class="folder-title">HeavyLight</span>
+    <span class="folder-line">2D puzzle platformer built around one rule: light carries momentum. It pushes crates, and it pushes you. Shipped for WebGL and reused as the base for Conclusus.</span>
+    <span class="open-case">Open case file</span>
+  </button>
+  <div class="folder-body" id="heavylight-body" hidden>
+    <article class="case">
+      <span class="obj-id">OBJ_0003</span>
+      <h1>HeavyLight</h1>
+
+      <dl class="props">
+        <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
+        <div><dt>Language</dt><dd>C#</dd></div>
+        <div><dt>Role</dt><dd>Solo</dd></div>
+        <div><dt>Year</dt><dd>2022</dd></div>
+        <div><dt>Time</dt><dd>Under four weeks</dd></div>
+      </dl>
+
+      <p>A 2D puzzle platformer built on one rule: light has weight. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
+
+      <div class="embed embed-shell"
+           data-src="https://itch.io/embed-upload/6434502?color=002f4b"
+           data-title="Play HeavyLight in your browser"
+           style="background-image:url('media/heavylight/heavylightFrontPage.webp')">
+        <button type="button" class="embed-play">Play HeavyLight</button>
+      </div>
+      <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
+
+      <h2>The brief</h2>
+      <p>HeavyLight was a challenge I set myself: make a game fast, under tight constraints, and keep it simple. One mechanic, some physics, and a lot of level design. It went from nothing to a finished web build in under four weeks.</p>
+
+      <h2>The rule</h2>
+      <p>A lamp's beam is a physical force. Stand in a sideways beam and it carries you along it. Stand under a lamp aimed up and it lifts you. You can nudge inside a beam but you cannot fight it, and the moment you step out you stop dead, so where a beam ends matters as much as where it starts.</p>
+      <p>Crates go further. A crate treats the beam as its new down. Point a lamp sideways and the crate falls sideways. Point it up and the crate climbs. Switch it off and the crate drops back to the floor.</p>
+
+      <h2>Lamps</h2>
+      <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
+      <video class="clip" src="media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
+
+      <h2>One new thing per level</h2>
+      <p>Twenty levels, and every one adds something the last did not have. The first few are only walking and jumping. Then the first lamp, then timers, then crates, then spikes, then beams that push down instead of up. By the end you are chaining lamps on timers while a crate falls in three directions. Nothing is introduced twice. That is what kept the game short and what made the level design take most of the four weeks.</p>
+
+      <h2>The journal</h2>
+      <p>ESC opens the journal, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
+      <img class="clip" src="media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
+      <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
+
+      <h2>The clues</h2>
+      <p>There is a story, and it is optional. Small glowing wisps sit around each level. Touch one and it bursts into a line of thought from the man in red, an investigator sent to an old town on a case everyone called normal. The houses carry the same symbols as a notebook he cannot read, and every house with the symbols was left in a hurry. Some wisps are red, and those speak in a different voice.</p>
+      <p>Find every clue in every level and the ending changes. Three secret levels open after the last one, and the thing behind the barred door makes an offer. Leave, fight, or sign.</p>
+
+      <h2>Under the hood</h2>
+      <p>The base is Unity's 2D platformer template, rebuilt where it mattered. The controller got coyote time, a jump buffer, a variable height jump and an input curve of my own. The beam push, the crate gravity, the lamp timers, the clue system and the journal are all mine. The build is WebGL and checks which site it runs on. A copy uploaded somewhere else sends you to a gif and quits.</p>
+
+      <h2>Built to be reused</h2>
+      <p>I wrote it as a base rather than a one-off. The follow-up, <a href="#conclusus">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original. That was the actual test of whether the base was any good.</p>
+
+      <h2>What it taught me</h2>
+      <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
+
+      <nav class="case-nav" aria-label="More work">
+        <a class="back" href="#work">Close file</a>
+        <a class="next" rel="next" href="#conclusus">Next: Conclusus →</a>
+      </nav>
+    </article>
+  </div>
+</section>
+
+<section class="case-folder" id="conclusus" data-case="conclusus" data-toy="conclusus">
+  <button class="folder-tab" aria-expanded="false" aria-controls="conclusus-body">
+    <span class="obj-id">OBJ_0004</span>
+    <span class="folder-title">Conclusus</span>
+    <span class="folder-line">A precision platformer on the HeavyLight base: thirty levels, pins, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly. Four new mechanics, built in less time than the original.</span>
+    <span class="open-case">Open case file</span>
+  </button>
+  <div class="folder-body" id="conclusus-body" hidden>
+    <article class="case">
+      <span class="obj-id">OBJ_0004</span>
+      <h1>Conclusus</h1>
+
+      <dl class="props">
+        <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
+        <div><dt>Language</dt><dd>C#</dd></div>
+        <div><dt>Role</dt><dd>Solo</dd></div>
+        <div><dt>Year</dt><dd>2022</dd></div>
+        <div><dt>Base</dt><dd><a href="#heavylight">HeavyLight</a></dd></div>
+        <div><dt>Music</dt><dd>George Tantchev</dd></div>
+      </dl>
+
+      <p>A precision platformer built on the <a href="#heavylight">HeavyLight</a> base. Thirty levels, a symbol to carry to a door, pins that launch you, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly every 1.2 seconds.</p>
+
+      <div class="embed embed-shell"
+           data-src="https://itch.io/embed-upload/14396412?color=141a1d"
+           data-title="Play Conclusus in your browser"
+           style="background-image:url('media/conclusus/conclususFrontPage.webp')">
+        <button type="button" class="embed-play">Play Conclusus</button>
+      </div>
+      <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
+
+      <h2>The brief</h2>
+      <p>HeavyLight ran on one mechanic, which meant its level design had to carry the whole game. For Conclusus I chose the opposite: several mechanics that players already understand, so each level could combine them instead of inventing something new. That took weight off the level design and let me spend it where I am strongest, on the feel of the controls and on the look of the game.</p>
+      <p>It is a game of technical difficulty rather than puzzles. The levels are short, one hit kills, and the retry is instant, so the challenge is execution.</p>
+
+      <h2>The controls</h2>
+      <p>The character controller is the one from HeavyLight, carried over untouched. Coyote time and a jump buffer of 0.15 seconds each, a jump that reaches its apex in 0.4 seconds with 1.75 times gravity on the way up, and a deceleration high enough that you stop the frame you release the key. Move with A and D or the arrows, jump with Space, W or Up, and use the shadow with S or Down.</p>
+      <p>Any hazard kills in one touch. You respawn at the start of the level in about a second, with the shadow, the platforms and the symbol reset with you.</p>
+
+      <h2>Key and door</h2>
+      <p>Every level ends at a door with a spinning symbol somewhere in the level. Touch the symbol and it glides to the door over one second, and the door opens. In ten levels the symbol is split into three pieces that must be collected in order, each playing its own note.</p>
+      <video class="clip" src="media/conclusus/pieces.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">A symbol in three pieces. Each one is collected in order, and the door opens on the third.</p>
+      <p>Twenty levels add a second condition: every platform in the level has to be lit at the same moment. Stepping on a platform lights a shard on it, and the light fades over about five seconds. The route through the level becomes a race to reach the last platform before the first goes dark. When the last one lights with the symbol in place, a chime and a burst of particles tell you the door is open.</p>
+      <video class="clip" src="media/conclusus/platforms.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Lighting every platform before the first one goes dark. The door opens on the last.</p>
+
+      <h2>Pins</h2>
+      <p>Pins are the first mechanic the game introduces. There are 88 of them. Touching one snaps you to it, cancels your momentum and fires you in the direction it points. For the next second your fall speed is held close to zero, so you hang in the air with time to steer toward the next pin or a platform. The pin spins, plays its animation and springs as you leave.</p>
+      <p>Chains of pins are how the game does its flying sections. The float window after each launch is what keeps them readable at speed.</p>
+      <video class="clip" src="media/conclusus/pins.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">A chain of pins to the door. Each launch holds the fall for a second, long enough to line up the next one.</p>
+
+      <h2>The shadow</h2>
+      <p>The main mechanic. Press S while standing on the ground and a grass green copy of you stays where you were. Press S again from anywhere in the level and you teleport back into it, keeping your speed and facing. Only one shadow exists at a time, and walking back into it on foot also uses it up. Placing plays a grass footstep and teleporting plays another, with a particle burst on arrival.</p>
+      <p>The shadow is unlocked by a pickup in level 7, with a short tutorial that fades in. From then on the levels are built around it: cross a gap of silhouettes once by pin, plant the shadow, collect the symbol, and jump straight back.</p>
+      <video class="clip" src="media/conclusus/shadow.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Plant the shadow, take the pins up to the symbol, then teleport straight back to it and walk to the door.</p>
+
+      <h2>The silhouettes</h2>
+      <p>The last mechanic keeps the theme of other selves. The late levels hold figures shaped like your shadow. All of them switch state together every 1.2 seconds: green means safe, and touching one teleports you into it and removes it; silver means deadly, and touching one kills you. The switch is fixed and synchronised, so a level can be read, timed and learned.</p>
+      <p>There are 40 silhouettes in the game, first appearing in level 16 and filling levels 25 to 30, where the timing of the switch becomes the whole level.</p>
+      <video class="clip" src="media/conclusus/silhouettes.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">A silhouette on every platform. Green ones teleport you in, silver ones kill, and they all switch together every 1.2 seconds.</p>
+
+      <h2>Thirty levels</h2>
+      <p>Thirty levels in three chapters, each chapter closing with a heavier rain. The first levels teach walking, jumping and pins. Level 7 gives you the shadow, level 16 gives you a double jump and the first silhouettes, and the last six levels combine everything. Progress is a single saved number, and a level select with thirty buttons opens them in order.</p>
+      <p>There is no optional content. The journal, secret levels and collectibles from HeavyLight were cut on purpose, and the time went into mechanics and polish instead.</p>
+      <img class="clip" src="media/conclusus/levels.webp" alt="The level select: thirty numbered buttons in three rows, 1 to 25 green, 26 outlined, 27 to 30 dark, with the ESC, WASD, space and arrow keys drawn below" width="1600" height="900" loading="lazy">
+      <p class="caption">The level select. Thirty buttons that open in order. Here 26 is next and the last four are still locked.</p>
+
+      <h2>The polish</h2>
+      <p>Most of the time saved by reusing the base went into how the game looks and feels. The whole game is drawn from one palette file. Every platform picks one of five grass sprites or four floor sprites when it appears, so no two levels tile the same way. The symbol wobbles and reverses on random timings. Spike balls spin and bob, each at its own height. Rain falls through every level.</p>
+      <p>Finishing a level is an event. Your input locks, the bloom ramps from 1.5 to 50 in half a second, the rain doubles, and the level fades out over three seconds before the next fades in. At the end of a chapter the rain pours at twenty times its speed. The soundtrack is one track, Waves, by George Tantchev.</p>
+
+      <h2>Under the hood</h2>
+      <p>Unity 2021.3 with the Universal Render Pipeline, a Bloom volume, Cinemachine and the new Input System, built for WebGL. All thirty levels are objects in one scene that get switched on and off rather than loaded, and every mechanic implements its own Reset, so a restart puts the shadow, the platforms, the symbol and every silhouette back in one call. Sprites are 32 pixels and sort by height. The build checks which site it runs on, and a copy uploaded elsewhere sends you to a gif and quits.</p>
+
+      <h2>Built on HeavyLight</h2>
+      <p>I wrote HeavyLight as a base rather than a one off, and Conclusus was the proof. The controller, the level switching, the reset convention and the door logic came over as they were, and the pins, the shadow, the silhouettes and the lit platforms went on top without touching them. Thirty levels and four new mechanics took less time than the original twenty.</p>
+
+      <h2 id="cc-taught">What it taught me</h2>
+      <p>Conclusus started from a base and a deadline rather than from a locked concept, and the shadow, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
+
+      <nav class="case-nav" aria-label="More work">
+        <a class="back" href="#work">Close file</a>
+        <a class="next" rel="next" href="#sector-zero">Next: Sector Zero →</a>
+      </nav>
+    </article>
+  </div>
+</section>
+
+
 <footer>
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="cv.pdf">CV (PDF)</a></p>
@@ -350,94 +941,112 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="js/site/surge.js?v=172"></script>
-<script src="js/bridge/lamp.js?v=172"></script>
-<script src="js/depths/depths.js?v=172"></script>
-<script src="js/depths/lore.js?v=172"></script>
-<script src="js/hud/instruments.js?v=172"></script>
-<script src="js/hud/tiles-nav.js?v=172"></script>
-<script src="js/hud/tiles-sys.js?v=172"></script>
-<script src="js/lib/paint.js?v=172"></script>
-<script src="js/world/art/rex-kit.js?v=172"></script>
-<script src="js/world/art/firstlight.js?v=172"></script>
-<script src="js/world/art/crimson.js?v=172"></script>
-<script src="js/world/art/bonespire.js?v=172"></script>
-<script src="js/world/art/titans.js?v=172"></script>
-<script src="js/world/art/valkhar.js?v=172"></script>
-<script src="js/world/art/law.js?v=172"></script>
-<script src="js/world/art/land-kit.js?v=172"></script>
-<script src="js/world/art/shattered.js?v=172"></script>
-<script src="js/world/art/libertech.js?v=172"></script>
-<script src="js/world/art/dawn.js?v=172"></script>
-<script src="js/world/art/accord.js?v=172"></script>
-<script src="js/world/art/gore.js?v=172"></script>
-<script src="js/world/world.js?v=172"></script>
-<script src="js/world/vortex.js?v=172"></script>
-<script src="js/world/void.js?v=172"></script>
-<script src="js/world/watcher.js?v=172"></script>
-<script src="js/world/serus.js?v=172"></script>
-<script src="js/world/nephilim.js?v=172"></script>
-<script src="js/world/admin-tear.js?v=172"></script>
-<script src="js/world/vikings.js?v=172"></script>
-<script src="js/world/rex.js?v=172"></script>
-<script src="js/world/city.js?v=172"></script>
-<script src="js/ship/voidship-art.js?v=172"></script>
-<script src="js/ship/voidship-prow.js?v=172"></script>
-<script src="js/ship/voidship.js?v=172"></script>
-<script src="js/lib/pacer.js?v=172"></script>
-<script src="js/bridge/marks.js?v=172"></script>
-<script src="js/bridge/bridge-sites.js?v=172"></script>
-<script src="js/bridge/bridge-log.js?v=172"></script>
-<script src="js/bridge/bridge-voice.js?v=172"></script>
-<script src="js/bridge/bridge.js?v=172"></script>
-<script src="js/bridge/bridge-notes.js?v=172"></script>
-<script src="js/bridge/bridge-input.js?v=172"></script>
-<script src="js/bridge/bridge-marks.js?v=172"></script>
-<script src="js/bridge/bridge-panel.js?v=172"></script>
-<script src="js/bridge/bridge-depths.js?v=172"></script>
-<script src="js/bridge/bridge-env.js?v=172"></script>
-<script src="js/bridge/bridge-readout.js?v=172"></script>
-<script src="js/bridge/bridge-loop.js?v=172"></script>
-<script src="js/genesis/genesis-state.js?v=172"></script>
-<script src="js/genesis/genesis-paint.js?v=172"></script>
-<script src="js/genesis/genesis-eldpal.js?v=172"></script>
-<script src="js/genesis/genesis-tier3.js?v=172"></script>
-<script src="js/genesis/genesis-void.js?v=172"></script>
-<script src="js/genesis/genesis-flesh.js?v=172"></script>
-<script src="js/genesis/genesis-soup.js?v=172"></script>
-<script src="js/genesis/genesis-eye.js?v=172"></script>
-<script src="js/genesis/genesis-roles.js?v=172"></script>
-<script src="js/genesis/genesis-circle.js?v=172"></script>
-<script src="js/genesis/genesis-chains.js?v=172"></script>
-<script src="js/genesis/genesis-corrupt.js?v=172"></script>
-<script src="js/genesis/genesis-rexin.js?v=172"></script>
-<script src="js/genesis/genesis-dot.js?v=172"></script>
-<script src="js/genesis/genesis-clash.js?v=172"></script>
-<script src="js/genesis/genesis-death.js?v=172"></script>
-<script src="js/genesis/genesis-gods-beat.js?v=172"></script>
-<script src="js/genesis/genesis-elements.js?v=172"></script>
-<script src="js/genesis/genesis-matter.js?v=172"></script>
-<script src="js/genesis/genesis-trade.js?v=172"></script>
-<script src="js/genesis/genesis-oldones.js?v=172"></script>
-<script src="js/genesis/genesis-oldkin.js?v=172"></script>
-<script src="js/genesis/genesis-attire.js?v=172"></script>
-<script src="js/genesis/genesis-figures.js?v=172"></script>
-<script src="js/genesis/genesis-titans.js?v=172"></script>
-<script src="js/genesis/genesis-obrok.js?v=172"></script>
-<script src="js/genesis/genesis-gods.js?v=172"></script>
-<script src="js/genesis/genesis-hosts.js?v=172"></script>
-<script src="js/genesis/genesis-seraphin.js?v=172"></script>
-<script src="js/genesis/genesis-malgrur.js?v=172"></script>
-<script src="js/genesis/genesis-vorgath.js?v=172"></script>
-<script src="js/genesis/genesis-mainland.js?v=172"></script>
-<script src="js/genesis/genesis-armies.js?v=172"></script>
-<script src="js/genesis/genesis-orb.js?v=172"></script>
-<script src="js/genesis/genesis-rex.js?v=172"></script>
-<script src="js/genesis/genesis-depths.js?v=172"></script>
-<script src="js/genesis/genesis-saga-state.js?v=172"></script>
-<script src="js/genesis/genesis-ritual.js?v=172"></script>
-<script src="js/genesis/genesis-saga.js?v=172"></script>
-<script src="js/genesis/genesis.js?v=172"></script>
-<script src="js/site/intro.js?v=172"></script>
+<script src="js/site/surge.js?v=173"></script>
+<script src="js/bridge/lamp.js?v=173"></script>
+<script src="js/depths/depths.js?v=173"></script>
+<script src="js/depths/lore.js?v=173"></script>
+<script src="js/depths/gamedev.js?v=173"></script>
+<script src="js/hud/instruments.js?v=173"></script>
+<script src="js/hud/tiles-nav.js?v=173"></script>
+<script src="js/hud/tiles-sys.js?v=173"></script>
+<script src="js/lib/paint.js?v=173"></script>
+<script src="js/world/art/rex-kit.js?v=173"></script>
+<script src="js/world/art/firstlight.js?v=173"></script>
+<script src="js/world/art/crimson.js?v=173"></script>
+<script src="js/world/art/bonespire.js?v=173"></script>
+<script src="js/world/art/titans.js?v=173"></script>
+<script src="js/world/art/valkhar.js?v=173"></script>
+<script src="js/world/art/law.js?v=173"></script>
+<script src="js/world/art/land-kit.js?v=173"></script>
+<script src="js/world/art/shattered.js?v=173"></script>
+<script src="js/world/art/libertech.js?v=173"></script>
+<script src="js/world/art/dawn.js?v=173"></script>
+<script src="js/world/art/accord.js?v=173"></script>
+<script src="js/world/art/gore.js?v=173"></script>
+<script src="js/world/world.js?v=173"></script>
+<script src="js/world/vortex.js?v=173"></script>
+<script src="js/world/void.js?v=173"></script>
+<script src="js/world/watcher.js?v=173"></script>
+<script src="js/world/serus.js?v=173"></script>
+<script src="js/world/nephilim.js?v=173"></script>
+<script src="js/world/admin-tear.js?v=173"></script>
+<script src="js/world/vikings.js?v=173"></script>
+<script src="js/world/rex.js?v=173"></script>
+<script src="js/world/city.js?v=173"></script>
+<script src="js/ship/voidship-art.js?v=173"></script>
+<script src="js/ship/voidship-prow.js?v=173"></script>
+<script src="js/ship/voidship.js?v=173"></script>
+<script src="js/lib/pacer.js?v=173"></script>
+<script src="js/bridge/marks.js?v=173"></script>
+<script src="js/bridge/bridge-sites.js?v=173"></script>
+<script src="js/bridge/bridge-log.js?v=173"></script>
+<script src="js/bridge/bridge-voice.js?v=173"></script>
+<script src="js/bridge/bridge.js?v=173"></script>
+<script src="js/bridge/bridge-notes.js?v=173"></script>
+<script src="js/bridge/bridge-input.js?v=173"></script>
+<script src="js/bridge/bridge-motifs.js?v=173"></script>
+<script src="js/bridge/bridge-marks.js?v=173"></script>
+<script src="js/bridge/bridge-panel.js?v=173"></script>
+<script src="js/bridge/bridge-depths.js?v=173"></script>
+<script src="js/bridge/bridge-env.js?v=173"></script>
+<script src="js/bridge/bridge-readout.js?v=173"></script>
+<script src="js/bridge/bridge-loop.js?v=173"></script>
+<script src="js/genesis/genesis-state.js?v=173"></script>
+<script src="js/genesis/genesis-paint.js?v=173"></script>
+<script src="js/genesis/genesis-eldpal.js?v=173"></script>
+<script src="js/genesis/genesis-tier3.js?v=173"></script>
+<script src="js/genesis/genesis-void.js?v=173"></script>
+<script src="js/genesis/genesis-flesh.js?v=173"></script>
+<script src="js/genesis/genesis-soup.js?v=173"></script>
+<script src="js/genesis/genesis-eye.js?v=173"></script>
+<script src="js/genesis/genesis-roles.js?v=173"></script>
+<script src="js/genesis/genesis-circle.js?v=173"></script>
+<script src="js/genesis/genesis-chains.js?v=173"></script>
+<script src="js/genesis/genesis-corrupt.js?v=173"></script>
+<script src="js/genesis/genesis-rexin.js?v=173"></script>
+<script src="js/genesis/genesis-dot.js?v=173"></script>
+<script src="js/genesis/genesis-clash.js?v=173"></script>
+<script src="js/genesis/genesis-death.js?v=173"></script>
+<script src="js/genesis/genesis-gods-beat.js?v=173"></script>
+<script src="js/genesis/genesis-elements.js?v=173"></script>
+<script src="js/genesis/genesis-matter.js?v=173"></script>
+<script src="js/genesis/genesis-trade.js?v=173"></script>
+<script src="js/genesis/genesis-oldones.js?v=173"></script>
+<script src="js/genesis/genesis-oldkin.js?v=173"></script>
+<script src="js/genesis/genesis-attire.js?v=173"></script>
+<script src="js/genesis/genesis-figures.js?v=173"></script>
+<script src="js/genesis/genesis-titans.js?v=173"></script>
+<script src="js/genesis/genesis-obrok.js?v=173"></script>
+<script src="js/genesis/genesis-gods.js?v=173"></script>
+<script src="js/genesis/genesis-hosts.js?v=173"></script>
+<script src="js/genesis/genesis-seraphin.js?v=173"></script>
+<script src="js/genesis/genesis-malgrur.js?v=173"></script>
+<script src="js/genesis/genesis-vorgath.js?v=173"></script>
+<script src="js/genesis/genesis-mainland.js?v=173"></script>
+<script src="js/genesis/genesis-armies.js?v=173"></script>
+<script src="js/genesis/genesis-orb.js?v=173"></script>
+<script src="js/genesis/genesis-rex.js?v=173"></script>
+<script src="js/genesis/genesis-depths.js?v=173"></script>
+<script src="js/genesis/genesis-saga-state.js?v=173"></script>
+<script src="js/genesis/genesis-ritual.js?v=173"></script>
+<script src="js/genesis/genesis-saga.js?v=173"></script>
+<script src="js/genesis/genesis.js?v=173"></script>
+<script src="js/site/lazy-video.js?v=173"></script>
+<script src="js/pages/play.js?v=173"></script>
+<script src="js/pages/sector-zero-records.js?v=173"></script>
+<script src="js/pages/sector-zero.js?v=173"></script>
+<script src="js/forge/forge-guns.js?v=173"></script>
+<script src="js/forge/forge-missions.js?v=173"></script>
+<script src="js/forge/forge.js?v=173"></script>
+<script src="js/pages/voidscape-bench.js?v=173"></script>
+<script src="js/pages/voidscape-mapgen.js?v=173"></script>
+<script src="js/pages/voidscape-boons.js?v=173"></script>
+<script src="js/pages/voidscape.js?v=173"></script>
+<script src="js/site/embed.js?v=173"></script>
+<script src="js/shared/heavylight-sprites.js?v=173"></script>
+<script src="js/pages/heavylight.js?v=173"></script>
+<script src="js/pages/conclusus.js?v=173"></script>
+<script src="js/site/folders.js?v=173"></script>
+<script src="js/site/intro.js?v=173"></script>
 </body>
 </html>

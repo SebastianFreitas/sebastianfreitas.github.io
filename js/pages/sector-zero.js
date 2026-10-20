@@ -535,7 +535,7 @@
     card.className = 'play-ui record';
     card.hidden = true;
     card.innerHTML = '<h3>RealityTXT</h3><pre></pre><button class="minor" type="button">logout</button>';
-    document.body.appendChild(card);
+    Play.mount(card);
     pre = card.querySelector('pre');
     pre.style.cssText = 'margin:0;font:inherit;white-space:pre-wrap;min-height:6em';
     card.querySelector('button').addEventListener('click', () => { card.hidden = true; typing = null; hint.style.bottom = ''; });
@@ -543,7 +543,7 @@
     hint = document.createElement('p');
     hint.className = 'play-hint';
     hint.textContent = HINT_DEFAULT;
-    document.body.appendChild(hint);
+    Play.mount(hint);
 
     place(V);
 
@@ -565,9 +565,10 @@
     };
   }
 
-  const H = P.start({ name: 'zero', seed: 29, setup, step, draw, atRest, press, move, resize: place });
+  P.register({ name: 'zero', seed: 29, setup, step, draw, atRest, press, move, resize: place });
 
   function thunder() {
+    const H = Play.handle("zero");
     if (H) rollThunder(H.V);
   }
 

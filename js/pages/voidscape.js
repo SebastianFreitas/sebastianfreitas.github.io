@@ -73,7 +73,7 @@
       '<p class="boons"></p>' +
       '<div class="row"><span class="k">kills</span><span class="kills"></span></div>' +
       '<p class="tip dim">hold the mouse on empty page to fire · bullets bounce off the screen edges · heads crit</p>';
-    document.body.appendChild(card);
+    Play.mount(card);
     tip = card.querySelector('.tip');
 
     ocard = document.createElement('aside');
@@ -85,7 +85,7 @@
       '<button class="take" type="button"></button>' +
       '<button class="reroll minor" type="button">reroll</button>' +
       '<button class="deny minor" type="button">refuse · −10 health</button>';
-    document.body.appendChild(ocard);
+    Play.mount(ocard);
     ocard.querySelector('.take').addEventListener('click', takeBoon);
     ocard.querySelector('.reroll').addEventListener('click', rerollBoon);
     ocard.querySelector('.deny').addEventListener('click', denyBoon);
@@ -93,7 +93,7 @@
     hint = document.createElement('p');
     hint.className = 'play-hint';
     hint.textContent = 'the range · hold to fire';
-    document.body.appendChild(hint);
+    Play.mount(hint);
     hint.style.bottom = (card.offsetHeight + 24) + 'px';
 
     refresh();
@@ -860,6 +860,6 @@
     return { gun: gun.type, boons: boons.map(b => b.id), hp, kills, bullets: bullets.length, enemies: enemies.length };
   }
 
-  const H = P.start({ name: 'range', seed: 41, setup, step, draw, atRest, press, release, resize });
+  P.register({ name: 'range', seed: 41, setup, step, draw, atRest, press, release, resize });
   window.PlayRange = { report };
 })();

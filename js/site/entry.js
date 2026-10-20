@@ -11,7 +11,7 @@
 
 window.SiteEntry = (function () {
   const VIEW_KEY   = Util.KEYS.VIEW;     // sessionStorage: this tab's last view
-  const SECTIONS = ["work", "experience"];
+  const SECTIONS = ["work", "experience", "sector-zero", "voidscape", "heavylight", "conclusus"];
   /* gamedev sector archived: the bridge has one sector; a stored "gamedev" is ignored */
 
   const read = Util.read;

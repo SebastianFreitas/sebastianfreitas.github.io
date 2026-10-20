@@ -46,6 +46,7 @@
       measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
+      el2.querySelectorAll("video").forEach(v => { v.play().catch(() => {}); });
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(B.catalogued);
     }, 280);
   }

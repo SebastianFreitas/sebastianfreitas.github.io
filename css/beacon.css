@@ -203,3 +203,17 @@
   .rank-name { font-size: 1.5rem; }
 }
 
+
+/* game beacon cards: a muted looping clip and the case-file button */
+.bnote .bclip {
+  display: block; width: 100%; height: auto; margin: 0 0 0.9rem;
+  border-radius: 6px; background: #000;
+}
+/* the card is tall enough to cover the bridge hint line; opaque, so it cannot show through */
+.bnote:has(.bclip) { background: rgb(var(--ink-rgb)); }
+.bnote .open-case {
+  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lamp); background: none; cursor: pointer;
+  border: 0; border-bottom: 1px solid rgb(var(--lamp-rgb) / 0.4); padding: 0 0 3px;
+}
+.bnote .open-case:hover { color: #fff; border-color: #fff; }

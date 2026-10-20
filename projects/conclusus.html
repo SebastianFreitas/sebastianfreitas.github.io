@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conclusus — Sebastião Freitas</title>
 <meta name="description" content="Precision platformer on the HeavyLight base: thirty levels, a shadow you plant and teleport back to, pins that launch you, and silhouettes that switch between safe and deadly. Unity, WebGL.">
-<link rel="canonical" href="https://sebastianfreitas.github.io/projects/conclusus.html">
+<link rel="canonical" href="https://sebastianfreitas.github.io/#conclusus">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Conclusus — Sebastião Freitas">
 <meta property="og:description" content="Precision platformer on the HeavyLight base: thirty levels, a shadow you plant and teleport back to, pins that launch you, and silhouettes that switch between safe and deadly. Unity, WebGL.">
@@ -13,174 +13,10 @@
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0d1114">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230d1114'/><text x='32' y='42' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='30' fill='%23f5d06b'>SF</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=172">
-<link rel="stylesheet" href="../css/beacon.css?v=172">
-<link rel="stylesheet" href="../css/play.css?v=172">
+<meta http-equiv="refresh" content="0; url=../#conclusus">
+<script>location.replace("../#conclusus")</script>
 </head>
-<body class="page-case page-conclusus">
-<a class="skip" href="#main">Skip to content</a>
-
-<header class="topbar">
-  <a class="wordmark" href="../index.html">SF</a>
-  <div class="xp-slot" id="xp-slot"></div>
-  <nav aria-label="Site">
-    <a href="../index.html#work">Work</a>
-    <a href="../index.html#experience">Experience</a>
-    <a href="https://github.com/sebastianfreitas">GitHub</a>
-    <a href="mailto:sebsfrets@gmail.com">Email</a>
-  </nav>
-</header>
-
-<main class="case" id="main">
-  <span class="obj-id">OBJ_0004</span>
-  <h1>Conclusus</h1>
-
-  <dl class="props">
-    <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
-    <div><dt>Language</dt><dd>C#</dd></div>
-    <div><dt>Role</dt><dd>Solo</dd></div>
-    <div><dt>Year</dt><dd>2022</dd></div>
-    <div><dt>Base</dt><dd><a href="heavylight.html">HeavyLight</a></dd></div>
-    <div><dt>Music</dt><dd>George Tantchev</dd></div>
-  </dl>
-
-  <p>A precision platformer built on the <a href="heavylight.html">HeavyLight</a> base. Thirty levels, a symbol to carry to a door, pins that launch you, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly every 1.2 seconds.</p>
-
-  <div class="embed embed-shell"
-       data-src="https://itch.io/embed-upload/14396412?color=141a1d"
-       data-title="Play Conclusus in your browser"
-       style="background-image:url('../media/conclusus/conclususFrontPage.webp')">
-    <button type="button" class="embed-play">Play Conclusus</button>
-  </div>
-  <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
-
-  <h2>The brief</h2>
-  <p>HeavyLight ran on one mechanic, which meant its level design had to carry the whole game. For Conclusus I chose the opposite: several mechanics that players already understand, so each level could combine them instead of inventing something new. That took weight off the level design and let me spend it where I am strongest, on the feel of the controls and on the look of the game.</p>
-  <p>It is a game of technical difficulty rather than puzzles. The levels are short, one hit kills, and the retry is instant, so the challenge is execution.</p>
-
-  <h2>The controls</h2>
-  <p>The character controller is the one from HeavyLight, carried over untouched. Coyote time and a jump buffer of 0.15 seconds each, a jump that reaches its apex in 0.4 seconds with 1.75 times gravity on the way up, and a deceleration high enough that you stop the frame you release the key. Move with A and D or the arrows, jump with Space, W or Up, and use the shadow with S or Down.</p>
-  <p>Any hazard kills in one touch. You respawn at the start of the level in about a second, with the shadow, the platforms and the symbol reset with you.</p>
-
-  <h2>Key and door</h2>
-  <p>Every level ends at a door with a spinning symbol somewhere in the level. Touch the symbol and it glides to the door over one second, and the door opens. In ten levels the symbol is split into three pieces that must be collected in order, each playing its own note.</p>
-  <video class="clip" src="../media/conclusus/pieces.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">A symbol in three pieces. Each one is collected in order, and the door opens on the third.</p>
-  <p>Twenty levels add a second condition: every platform in the level has to be lit at the same moment. Stepping on a platform lights a shard on it, and the light fades over about five seconds. The route through the level becomes a race to reach the last platform before the first goes dark. When the last one lights with the symbol in place, a chime and a burst of particles tell you the door is open.</p>
-  <video class="clip" src="../media/conclusus/platforms.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Lighting every platform before the first one goes dark. The door opens on the last.</p>
-
-  <h2>Pins</h2>
-  <p>Pins are the first mechanic the game introduces. There are 88 of them. Touching one snaps you to it, cancels your momentum and fires you in the direction it points. For the next second your fall speed is held close to zero, so you hang in the air with time to steer toward the next pin or a platform. The pin spins, plays its animation and springs as you leave.</p>
-  <p>Chains of pins are how the game does its flying sections. The float window after each launch is what keeps them readable at speed.</p>
-  <video class="clip" src="../media/conclusus/pins.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">A chain of pins to the door. Each launch holds the fall for a second, long enough to line up the next one.</p>
-
-  <h2>The shadow</h2>
-  <p>The main mechanic. Press S while standing on the ground and a grass green copy of you stays where you were. Press S again from anywhere in the level and you teleport back into it, keeping your speed and facing. Only one shadow exists at a time, and walking back into it on foot also uses it up. Placing plays a grass footstep and teleporting plays another, with a particle burst on arrival.</p>
-  <p>The shadow is unlocked by a pickup in level 7, with a short tutorial that fades in. From then on the levels are built around it: cross a gap of silhouettes once by pin, plant the shadow, collect the symbol, and jump straight back.</p>
-  <video class="clip" src="../media/conclusus/shadow.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">Plant the shadow, take the pins up to the symbol, then teleport straight back to it and walk to the door.</p>
-
-  <h2>The silhouettes</h2>
-  <p>The last mechanic keeps the theme of other selves. The late levels hold figures shaped like your shadow. All of them switch state together every 1.2 seconds: green means safe, and touching one teleports you into it and removes it; silver means deadly, and touching one kills you. The switch is fixed and synchronised, so a level can be read, timed and learned.</p>
-  <p>There are 40 silhouettes in the game, first appearing in level 16 and filling levels 25 to 30, where the timing of the switch becomes the whole level.</p>
-  <video class="clip" src="../media/conclusus/silhouettes.mp4" muted loop playsinline preload="none" data-lazy></video>
-  <p class="caption">A silhouette on every platform. Green ones teleport you in, silver ones kill, and they all switch together every 1.2 seconds.</p>
-
-  <h2>Thirty levels</h2>
-  <p>Thirty levels in three chapters, each chapter closing with a heavier rain. The first levels teach walking, jumping and pins. Level 7 gives you the shadow, level 16 gives you a double jump and the first silhouettes, and the last six levels combine everything. Progress is a single saved number, and a level select with thirty buttons opens them in order.</p>
-  <p>There is no optional content. The journal, secret levels and collectibles from HeavyLight were cut on purpose, and the time went into mechanics and polish instead.</p>
-  <img class="clip" src="../media/conclusus/levels.webp" alt="The level select: thirty numbered buttons in three rows, 1 to 25 green, 26 outlined, 27 to 30 dark, with the ESC, WASD, space and arrow keys drawn below" width="1600" height="900" loading="lazy">
-  <p class="caption">The level select. Thirty buttons that open in order. Here 26 is next and the last four are still locked.</p>
-
-  <h2>The polish</h2>
-  <p>Most of the time saved by reusing the base went into how the game looks and feels. The whole game is drawn from one palette file. Every platform picks one of five grass sprites or four floor sprites when it appears, so no two levels tile the same way. The symbol wobbles and reverses on random timings. Spike balls spin and bob, each at its own height. Rain falls through every level.</p>
-  <p>Finishing a level is an event. Your input locks, the bloom ramps from 1.5 to 50 in half a second, the rain doubles, and the level fades out over three seconds before the next fades in. At the end of a chapter the rain pours at twenty times its speed. The soundtrack is one track, Waves, by George Tantchev.</p>
-
-  <h2>Under the hood</h2>
-  <p>Unity 2021.3 with the Universal Render Pipeline, a Bloom volume, Cinemachine and the new Input System, built for WebGL. All thirty levels are objects in one scene that get switched on and off rather than loaded, and every mechanic implements its own Reset, so a restart puts the shadow, the platforms, the symbol and every silhouette back in one call. Sprites are 32 pixels and sort by height. The build checks which site it runs on, and a copy uploaded elsewhere sends you to a gif and quits.</p>
-
-  <h2>Built on HeavyLight</h2>
-  <p>I wrote HeavyLight as a base rather than a one off, and Conclusus was the proof. The controller, the level switching, the reset convention and the door logic came over as they were, and the pins, the shadow, the silhouettes and the lit platforms went on top without touching them. Thirty levels and four new mechanics took less time than the original twenty.</p>
-
-  <h2 id="cc-taught">What it taught me</h2>
-  <p>Conclusus started from a base and a deadline rather than from a locked concept, and the shadow, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
-
-  <nav class="case-nav" aria-label="More work">
-    <a class="back" href="../index.html#work">← All work</a>
-    <a class="next" rel="next" href="sector-zero.html">Next: Sector Zero →</a>
-  </nav>
-</main>
-
-<footer>
-  <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
-  <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
-  <p class="rights">The Warlocks © 2026 Sebastião Freitas. All rights reserved.<br>
-     Original setting, lore, characters, and written material by Sebastião Freitas.</p>
-</footer>
-
-<script src="../js/lib/util.js?v=172"></script>
-<script src="../js/site/xp.js?v=172"></script>
-<script src="../js/site/surge.js?v=172"></script>
-<script src="../js/site/embed.js?v=172"></script>
-<script src="../js/site/lazy-video.js?v=172"></script>
-<script src="../js/lib/pacer.js?v=172"></script>
-<script src="../js/bridge/lamp.js?v=172"></script>
-<script src="../js/pages/play.js?v=172"></script>
-<script src="../js/pages/conclusus.js?v=172"></script>
-<script>
-/* reading XP: proj-conclusus fires once, when "What it taught me" reaches mid-screen */
-(function () {
-  var h = document.getElementById("cc-taught");
-  if (!h || !window.XP || XP.has("proj-conclusus")) return;
-  var done = false, headY = 0, docH = 0, io = null, ro = null, timer = 0;
-
-  function measure() {
-    headY = h.getBoundingClientRect().top + window.scrollY;
-    docH = document.documentElement.scrollHeight;
-  }
-
-  function give() {
-    if (done) return;
-    done = true;
-    if (io) io.disconnect();
-    if (ro) ro.disconnect();
-    removeEventListener("scroll", check);
-    clearTimeout(timer);
-    var r = h.getBoundingClientRect();
-    var x = r.left;
-    var y = Math.max(40, Math.min(innerHeight - 40, r.top + r.height / 2));
-    XP.award("proj-conclusus", 1, "Conclusus", x, y);
-  }
-
-  function check() {
-    if (scrollY + innerHeight / 2 >= headY || scrollY + innerHeight >= docH - 2) give();
-  }
-
-  measure();
-  if ("IntersectionObserver" in window) {
-    io = new IntersectionObserver(function (es) {
-      for (var i = 0; i < es.length; i++) {
-        if (es[i].isIntersecting) { give(); return; }
-      }
-    }, { rootMargin: "0px 0px -50% 0px" });
-    io.observe(h);
-  }
-  addEventListener("scroll", check, { passive: true });
-  if ("ResizeObserver" in window) {
-    ro = new ResizeObserver(function () {
-      clearTimeout(timer);
-      timer = setTimeout(function () { measure(); check(); }, 150);
-    });
-    ro.observe(document.getElementById("main"));
-  }
-  addEventListener("load", function () { if (!done) { measure(); check(); } });
-  check();
-})();
-</script>
+<body>
+<p><a href="../#conclusus">Conclusus has moved</a></p>
 </body>
 </html>

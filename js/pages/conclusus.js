@@ -226,7 +226,7 @@
       plats[player.plat].twin = false;
     }
 
-    const ph = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "The brief");
+    const ph = V.blocks.find(b => b.el && b.el.matches && b.el.matches(".case h2") && b.el.textContent.trim() === "The brief");
     if (!plats.length) playPlat = -1;
     else if (ph) {
       playPlat = plats.findIndex(p => p.y >= ph.y);
@@ -237,7 +237,7 @@
     if (plats.length >= 4) {
       const held = [playPlat];
       for (let n = 0; n < 3; n++) {
-        const h = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === KEY_HEADS[n]);
+        const h = V.blocks.find(b => b.el && b.el.matches && b.el.matches(".case h2") && b.el.textContent.trim() === KEY_HEADS[n]);
         const y = h ? h.y : plats[Math.floor(plats.length * [0.3, 0.5, 0.75][n])].y;
         const idx = placeBeat(y, held);
         if (idx < 0) break;
@@ -249,16 +249,16 @@
 
     door = null;
     if (plats.length) {
-      const th = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "What it taught me");
+      const th = V.blocks.find(b => b.el && b.el.matches && b.el.matches(".case h2") && b.el.textContent.trim() === "What it taught me");
       const di = placeBeat(th ? th.y : plats[plats.length - 1].y, [playPlat, ...keys.map(k => k.plat)]);
       if (di >= 0) door = { x: plats[di].x + PLAT_W - 60, y: plats[di].y + SOLID_ROW[plats[di].spr] * 2 - SPR.door.h, plat: di, lit: 0 };
     }
 
     sils = [];
-    const sh2 = V.blocks.find(b => b.el && b.el.matches && b.el.matches("main.case h2") && b.el.textContent.trim() === "The silhouettes");
+    const sh2 = V.blocks.find(b => b.el && b.el.matches && b.el.matches(".case h2") && b.el.textContent.trim() === "The silhouettes");
     if (sh2) {
       let nextY = Infinity;
-      for (const b of V.blocks) if (b.el && b.el.matches && b.el.matches("main.case h2") && b.y > sh2.y && b.y < nextY) nextY = b.y;
+      for (const b of V.blocks) if (b.el && b.el.matches && b.el.matches(".case h2") && b.y > sh2.y && b.y < nextY) nextY = b.y;
       const held = [playPlat, ...keys.map(k => k.plat), door ? door.plat : -1];
       for (let i = 0; i < plats.length && sils.length < 5; i++) {
         if (plats[i].y < sh2.y || plats[i].y >= nextY || held.includes(i)) continue;
@@ -492,7 +492,7 @@
     hintEl.style.opacity = "0";
     hintEl.style.visibility = "hidden";
     hintEl.style.transition = "opacity 0.6s";
-    document.body.appendChild(hintEl);
+    Play.mount(hintEl);
     trayEl = document.createElement("div");
     trayEl.className = "play-ui cc-tray";
     trayEl.setAttribute("aria-hidden", "true");
@@ -507,12 +507,12 @@
       trayEl.appendChild(c);
       slotEls.push(c);
     }
-    document.body.appendChild(trayEl);
+    Play.mount(trayEl);
     for (let k = 0; k < 3; k++) paintSlot(k, !!(keys[k] && keys[k].done));
     flyEl = document.createElement("canvas");
     flyEl.className = "cc-fly";
     flyEl.setAttribute("aria-hidden", "true");
-    document.body.appendChild(flyEl);
+    Play.mount(flyEl);
     flyG = flyEl.getContext("2d");
     sizeFly();
     if (V.reduced) { revealed = true; rev = 1; revT = 0.6; }
@@ -971,6 +971,6 @@
   }
 
   spec = { name: "conclusus", seed: 17, doc: true, docX0: undefined, setup, step, draw, drawDoc, atRest, press, move, resize: layout };
-  const H = P.start(spec);
+  P.register(spec);
   window.PlayConclusus = { report };
 })();

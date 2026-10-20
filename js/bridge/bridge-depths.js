@@ -34,7 +34,7 @@
     const node = {
       id: def.id, root: def.root, from: origin.id, cam: cam, off, oy, par: def.par || root.par,
       theme: def.theme, size: def.size, xp: def.xp,
-      name: def.name, sub: def.sub,
+      name: def.name, sub: def.sub, art: def.art,
     };
     node.x = node.cam + (off * CAM.viewUnits) / node.par;
     node.phase = list.length * 1.7 + 4;
