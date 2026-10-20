@@ -182,6 +182,7 @@
   const SPAN_BAY_U = 0.46;
   const hh = (b, i, k) => { const v = Math.sin(b * 91.7 + i * 37.3 + k * 13.9 + 5.1) * 43758.5453; return v - Math.floor(v); };
   let spanCv = null, spanCtx = null;
+  const spanKey = new Float64Array(11);
   // The span: an old one, long dead. Few limbs bowed at the knee, a thin iron
   // deck, near the void's own colour; limbs and ends go into the fog.
   function drawSpan(ctx, grow) {
@@ -204,6 +205,26 @@
     const dy1 = ch;
     if (dx1 <= dx0 || dy1 <= dy0) return;
     const bx0 = dx0 / sxk, bx1 = dx1 / sxk, by0 = dy0 / syk, by1 = dy1 / syk; // same box in CSS px
+    const first = Math.floor((G.cam - 0.5) / SPAN_BAY_U) - 1;
+    const last = Math.ceil((G.cam + 0.5) / SPAN_BAY_U) + 1;
+    const arrived = (id, b, k) => G.secs(id) >= hh(b, 0, k) * G.beatDur(id) * 0.8;
+    // everything in the offscreen depends on these only: blit it when none changed
+    let sig = 0;
+    for (let b = first; b <= last; b++) {
+      sig = (sig * 31 + (arrived("trade", b, 2) ? 1 : 0) + (arrived("walk", b, 21) ? 2 : 0) + (arrived("trade", b, 41) ? 4 : 0)) | 0;
+    }
+    const K = spanKey;
+    const same = K[0] === cw && K[1] === ch && K[2] === W && K[3] === H && K[4] === x0 && K[5] === x1
+      && K[6] === G.cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0;
+    if (same) {
+      ctx.save();
+      ctx.globalAlpha = clamp(grow * 3, 0, 1) * 0.9;
+      ctx.drawImage(spanCv, dx0, dy0, dx1 - dx0, dy1 - dy0, bx0, by0, bx1 - bx0, by1 - by0);
+      ctx.restore();
+      return;
+    }
+    K[0] = cw; K[1] = ch; K[2] = W; K[3] = H; K[4] = x0; K[5] = x1;
+    K[6] = G.cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0;
     const g = spanCtx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = "source-over";
@@ -216,10 +237,7 @@
     const sh = 0.06 * H; // shoulder half-span
     const LIMB_LIT = "#151b20", LIMB_SHADE = "#0d1115";
     const CITY_LIT = "#1e262d", CITY_SHADE = "#12181d", UNDER_LIT = "#161c21", UNDER_SHADE = "#0e1216", NEST_LIT = "#1b1f22", NEST_SHADE = "#101316", WIN = "rgba(245,208,107,0.35)";
-    const arrived = (id, b, k) => G.secs(id) >= hh(b, 0, k) * G.beatDur(id) * 0.8;
     const SLAB = "#11161a", DECK_TOP = "#1a2127", DECK_HI = "#34414b";
-    const first = Math.floor((G.cam - 0.5) / SPAN_BAY_U) - 1;
-    const last = Math.ceil((G.cam + 0.5) / SPAN_BAY_U) + 1;
     const fr = v => v - Math.floor(v);
     const rnd = b => fr(Math.sin(b * 127.1 + 11.3) * 43758.5453);
 

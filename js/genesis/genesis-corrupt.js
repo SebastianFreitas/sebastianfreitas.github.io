@@ -224,7 +224,21 @@ window.GenCorrupt = (function () {
     if (key !== geoKey) { geoKey = key; build(W, H); }
     if (!geo) return;
 
-    hexField(ctx, geo.r, 0.08, 1.7, 0, 0, W, H);
+    const T = ctx.getTransform();
+    if (!geo.field || geo.fa !== T.a || geo.fb !== T.b || geo.fc !== T.c
+      || geo.fd !== T.d || geo.fe !== T.e || geo.ff !== T.f) {
+      if (!geo.field) geo.field = document.createElement("canvas");
+      geo.fa = T.a; geo.fb = T.b; geo.fc = T.c; geo.fd = T.d; geo.fe = T.e; geo.ff = T.f;
+      geo.field.width = ctx.canvas.width;
+      geo.field.height = ctx.canvas.height;
+      const fg = geo.field.getContext("2d");
+      fg.setTransform(T);
+      hexField(fg, geo.r, 0.08, 1.7, 0, 0, W, H);
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(geo.field, 0, 0);
+    ctx.restore();
 
     for (let k = 0; k < geo.targets.length; k++) drawTarget(ctx, geo, geo.targets[k], t, k);
 

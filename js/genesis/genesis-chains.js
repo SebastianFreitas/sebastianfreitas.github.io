@@ -147,7 +147,21 @@ window.GenChains = (function () {
   }
 
   function drawLevel1(ctx, g, W, H) {
-    hexField(ctx, 0.035 * g.m, 0.08, 1.7, 0, 0, W, H);
+    const T = ctx.getTransform();
+    if (!g.field1 || g.fa !== T.a || g.fb !== T.b || g.fc !== T.c
+      || g.fd !== T.d || g.fe !== T.e || g.ff !== T.f) {
+      if (!g.field1) g.field1 = document.createElement("canvas");
+      g.fa = T.a; g.fb = T.b; g.fc = T.c; g.fd = T.d; g.fe = T.e; g.ff = T.f;
+      g.field1.width = ctx.canvas.width;
+      g.field1.height = ctx.canvas.height;
+      const fg = g.field1.getContext("2d");
+      fg.setTransform(T);
+      hexField(fg, 0.035 * g.m, 0.08, 1.7, 0, 0, W, H);
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(g.field1, 0, 0);
+    ctx.restore();
   }
 
   function drawLevel2(ctx, g, W, H) {

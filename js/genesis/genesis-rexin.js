@@ -180,6 +180,9 @@ window.GenRexIn = (function () {
     }
   }
 
+  // the zoom-step hex field, rendered once per (W, H, z) and blitted
+  let fieldCache = null;
+
   function draw(ctx, W, H, t, reduced, reach) {
     if (!W || !H) return;
     if (reduced) t = 99;
@@ -207,7 +210,24 @@ window.GenRexIn = (function () {
     } else {
       ctx.fillStyle = "#2a0a10";
       ctx.fillRect(0, 0, W, H);
-      hexField(ctx, (m * 0.035) / S, 0.12, 13 + z, 0, 0, W, H);
+      const T = ctx.getTransform();
+      if (!fieldCache || fieldCache.W !== W || fieldCache.H !== H || fieldCache.z !== z
+        || fieldCache.a !== T.a || fieldCache.b !== T.b || fieldCache.c !== T.c
+        || fieldCache.d !== T.d || fieldCache.e !== T.e || fieldCache.f !== T.f) {
+        if (!fieldCache) fieldCache = { canvas: document.createElement("canvas") };
+        fieldCache.W = W; fieldCache.H = H; fieldCache.z = z;
+        fieldCache.a = T.a; fieldCache.b = T.b; fieldCache.c = T.c;
+        fieldCache.d = T.d; fieldCache.e = T.e; fieldCache.f = T.f;
+        fieldCache.canvas.width = ctx.canvas.width;
+        fieldCache.canvas.height = ctx.canvas.height;
+        const fg = fieldCache.canvas.getContext("2d");
+        fg.setTransform(T);
+        hexField(fg, (m * 0.035) / S, 0.12, 13 + z, 0, 0, W, H);
+      }
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(fieldCache.canvas, 0, 0);
+      ctx.restore();
     }
 
     // roof band, held at every zoom step

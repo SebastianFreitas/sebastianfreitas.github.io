@@ -522,90 +522,97 @@ window.Genesis = (function () {
     const uFlee  = since("flee");
     const uNow   = only("now");
 
-    fillBg(ctx);
-    if (window.GenTier3) GenTier3.draw(ctx, G.W, G.H, z, sxh, syh);
-    const bl = G.BEATS[G.beat].id === "break" && window.GenTier3 ? GenTier3.offset("brim") : null;
-    const lurched = !!(bl && bl.dx !== 0);
-    const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1);
-    drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
-    const streak = uWalk * (1 - uRoot) * 52
-      + uFlee * (1 - since("war")) * 70
-      + since("eternity") * 84;
-    drawMotes(ctx, clamp(uBreak * 0.55 + uWalk * 0.45 + uLand * 0.15 + uFlee * 0.2, 0, 1), streak);
-    GenElem.drawResidue(ctx);   // what the first waves left in the void, for good
+    /* from enter on the placeholder below paints opaque over the whole outside scene;
+       skip it while the cover is full (the fade-in at the start of enter still paints it) */
+    const covered = G.beat > G.idxOf("enter") && G.beat <= G.idxOf("death")
+      || (G.beat === G.idxOf("enter") && linear("enter") >= 0.8);
+    let L = null;
+    if (!covered) {
+      fillBg(ctx);
+      if (window.GenTier3) GenTier3.draw(ctx, G.W, G.H, z, sxh, syh);
+      const bl = G.BEATS[G.beat].id === "break" && window.GenTier3 ? GenTier3.offset("brim") : null;
+      const lurched = !!(bl && bl.dx !== 0);
+      const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1);
+      drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
+      const streak = uWalk * (1 - uRoot) * 52
+        + uFlee * (1 - since("war")) * 70
+        + since("eternity") * 84;
+      drawMotes(ctx, clamp(uBreak * 0.55 + uWalk * 0.45 + uLand * 0.15 + uFlee * 0.2, 0, 1), streak);
+      GenElem.drawResidue(ctx);   // what the first waves left in the void, for good
 
-    const iDeep = idxOf("deep"), iSlip = idxOf("slip");
-    let dive = 0;
-    if (G.beat === iDeep) dive = smooth(clamp(linear("deep") / 0.30, 0, 1));
-    else if (G.beat === iSlip) dive = 1 - smooth(clamp((linear("slip") - 0.45) / 0.55, 0, 1));
-    const diveY = dive * DIVE_DEPTH * G.H;
-    ctx.save();
-    ctx.translate(0, -diveY);
+      const iDeep = idxOf("deep"), iSlip = idxOf("slip");
+      let dive = 0;
+      if (G.beat === iDeep) dive = smooth(clamp(linear("deep") / 0.30, 0, 1));
+      else if (G.beat === iSlip) dive = 1 - smooth(clamp((linear("slip") - 0.45) / 0.55, 0, 1));
+      const diveY = dive * DIVE_DEPTH * G.H;
+      ctx.save();
+      ctx.translate(0, -diveY);
 
-    const uBreakLin = linear("break");
-    const leave = smooth(clamp(uBreakLin * 3.2, 0, 1));
-    const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
-    const pointVis = (G.beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
-    drawPoint(ctx, pointVis, crack);
+      const uBreakLin = linear("break");
+      const leave = smooth(clamp(uBreakLin * 3.2, 0, 1));
+      const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
+      const pointVis = (G.beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
+      drawPoint(ctx, pointVis, crack);
 
-    /* the instant the point breaks: one flash, one shock ring, a hard shake */
-    const breakLin = linear("break");
-    if (breakLin > 0.20 && !broke) {
-      broke = true;
-      G.flash = 1;
-      G.shake = Math.max(G.shake, 1.3);
-      G.zoomKick = Math.max(G.zoomKick, 0.05);
-      G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
+      /* the instant the point breaks: one flash, one shock ring, a hard shake */
+      const breakLin = linear("break");
+      if (breakLin > 0.20 && !broke) {
+        broke = true;
+        G.flash = 1;
+        G.shake = Math.max(G.shake, 1.3);
+        G.zoomKick = Math.max(G.zoomKick, 0.05);
+        G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
+      }
+      GenVoid.drawSpan(ctx, uDrawn);
+      GenElem.drawSea(ctx);
+      GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
+      GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light
+      const tTrade = G.secs("trade");
+      const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, uWalk);   // step off early, then keep pace with the camera
+      // the old ones still climbing out of the mass sit behind its stones
+      GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" });
+      GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms; the stone gathers into the mass the old ones climb out of
+
+      const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
+      const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
+      const fleshVis = approaching * (1 - uLand * 0.28);
+      const geom = GenFlesh.fleshGeom(uWomb);
+      const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("gods") ? 1 : 0);
+      if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
+      const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
+      const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
+      const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1) * (1 - calmOn);
+      GenFlesh.drawCry(ctx, flesh, cryAmt);
+      GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis * (1 - calmOn), GenOld.ROSTER);
+      const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
+      GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
+
+      const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
+      const still = uWomb;
+      const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
+      /* the old ones climb out of the mass one by one through the trade beat, and start
+         down the span before it ends, so the procession never stops */
+      GenTrade.drawStream(ctx);   // everything that travels with them
+      GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
+
+      L = lightsAt(uBirth, uFight, uLand, flesh);
+
+      if (uFight > 0.08 && uLand < 0.2) G.shake = Math.max(G.shake, 0.22 + uFight * 0.2);
+      if (uFight > 0.82 && uLand < 0.2) G.shake = Math.max(G.shake, 0.55 + (1 - L.yAmt) * 0.45);
+      if (uBirth > 0.35 && uBirth < 0.95) G.shake = Math.max(G.shake, 0.32);
+
+      const landRise = smooth(clamp(uLand / 0.9, 0, 1));
+      /* inside Rex the depths paint opaque rock over everything below
+         1.69 screen heights, so the land fill can stop just under that */
+      const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
+      drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
+      drawGodsBirth(ctx, flesh);
+      if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
+      drawRexHole(ctx);
+      drawSaga(ctx);
+      ctx.restore();
     }
-    GenVoid.drawSpan(ctx, uDrawn);
-    GenElem.drawSea(ctx);
-    GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
-    GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light
-    const tTrade = G.secs("trade");
-    const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, uWalk);   // step off early, then keep pace with the camera
-    // the old ones still climbing out of the mass sit behind its stones
-    GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" });
-    GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms; the stone gathers into the mass the old ones climb out of
-
-    const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
-    const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
-    const fleshVis = approaching * (1 - uLand * 0.28);
-    const geom = GenFlesh.fleshGeom(uWomb);
-    const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("gods") ? 1 : 0);
-    if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
-    const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
-    const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
-    const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1) * (1 - calmOn);
-    GenFlesh.drawCry(ctx, flesh, cryAmt);
-    GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis * (1 - calmOn), GenOld.ROSTER);
-    const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
-    GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
-
-    const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
-    const still = uWomb;
-    const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
-    /* the old ones climb out of the mass one by one through the trade beat, and start
-       down the span before it ends, so the procession never stops */
-    GenTrade.drawStream(ctx);   // everything that travels with them
-    GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
-
-    const L = lightsAt(uBirth, uFight, uLand, flesh);
-
-    if (uFight > 0.08 && uLand < 0.2) G.shake = Math.max(G.shake, 0.22 + uFight * 0.2);
-    if (uFight > 0.82 && uLand < 0.2) G.shake = Math.max(G.shake, 0.55 + (1 - L.yAmt) * 0.45);
-    if (uBirth > 0.35 && uBirth < 0.95) G.shake = Math.max(G.shake, 0.32);
     if (uSwarm > 0.1 && uWomb < 0.2) G.shake = Math.max(G.shake, 0.18);
-
-    const landRise = smooth(clamp(uLand / 0.9, 0, 1));
-    /* inside Rex the depths paint opaque rock over everything below
-       1.69 screen heights, so the land fill can stop just under that */
-    const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
-    drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
-    drawGodsBirth(ctx, flesh);
-    if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
-    drawRexHole(ctx);
-    drawSaga(ctx);
-    ctx.restore();
 
     drawInsidePlaceholder(ctx);
     if (G.beat === G.idxOf("soup") && window.GenSoup) GenSoup.draw(ctx, G.W, G.H, G.local, G.reduced);
@@ -620,7 +627,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("gods") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
 
-    if (L.die > 0.02 && L.die < 0.55) {
+    if (L && L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
       if (p > 0) {
         ctx.fillStyle = `rgba(40,4,8,${0.22 * p})`;
@@ -652,7 +659,8 @@ window.Genesis = (function () {
     if (!(a < BEATS.length && G.beat >= a && G.beat <= b)) return;
     const cover = G.beat === a ? (linear("enter") >= 0.8 ? 1 : 0) : 1;
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const pr = ctx.canvas.width / G.W;
+    ctx.setTransform(pr, 0, 0, pr, 0, 0);
     ctx.globalAlpha = cover;
     ctx.fillStyle = "#2a0a10";
     ctx.fillRect(0, 0, G.W, G.H);
