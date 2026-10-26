@@ -54,26 +54,21 @@
 /* open: lamp-yellow energy-terminal sequence, all timed off --open-ms (set by folders.js) */
 .folder-body { position: relative; --open-ms: 700ms; }
 
-/* the terminal frame: lamp left rule with corner ticks, and a header strip the kicker settles into */
-.folder-body:not([hidden])::before {
-  content: "CASE FILE // " attr(data-obj);
-  display: block;
-  padding: 0.9rem var(--gutter) 0.7rem;
-  border-bottom: 1px solid rgb(var(--lamp-rgb) / 0.22);
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase;
-  color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
-}
-.folder-body:not([hidden])::after {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; pointer-events: none;
-  border-left: 1px solid rgb(var(--lamp-rgb) / 0.55);
-  background:
-    linear-gradient(var(--lamp), var(--lamp)) 0 0 / 7px 1px no-repeat,
-    linear-gradient(var(--lamp), var(--lamp)) 0 100% / 7px 1px no-repeat;
-}
-.folder-body.is-opening::before { animation: folderHead var(--open-ms) steps(1, end) both; }
 .folder-bar, .folder-scan, .folder-kicker { position: absolute; pointer-events: none; opacity: 0; }
 
-.obj[aria-expanded="true"] { box-shadow: inset 2px 0 0 var(--lamp); }
+/* opened folder: the row's tab and outline carry on down around the case file */
+/* one opaque colour on every side, so the row and the case (over the see-through canvas) read as one outline */
+.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: color-mix(in srgb, var(--lamp) 55%, var(--petrol)); }
+/* hover/focus rules would repaint the open row's border translucent: name them here so the open colour wins; no bottom border, so no blended corner pixel at the join */
+.obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: var(--open-line); border-width: 2px 2px 0; margin-bottom: 0; }
+.obj[aria-expanded="true"]:hover > .obj-id, .obj[aria-expanded="true"]:focus-visible > .obj-id { border-color: var(--open-line); }
+.obj[aria-expanded="true"] > .obj-id { border-color: var(--open-line); border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); color: var(--lamp); }
+.case-folder:has(.folder-body:not([hidden])) { border: 2px solid var(--open-line); border-top: 0; }
+/* a page-colour gap (12px) just outside the gold line, same on both sides, so canvas squares never touch it */
+.obj[aria-expanded="true"] { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 -12px 0 var(--petrol); clip-path: inset(-3rem -12px 0 -12px); }
+.case-folder:has(.folder-body:not([hidden])) { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 12px 0 var(--petrol); }
+/* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
+body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .obj[aria-expanded="true"] h3 { color: var(--lamp); }
 
 .folder-bar {
@@ -81,9 +76,7 @@
   background: var(--lamp); box-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
   transform-origin: 0 50%;
 }
-.folder-body.is-open .folder-bar, .folder-body.is-closing .folder-bar {
-  opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35);
-}
+.folder-body.is-open .folder-bar, .folder-body.is-closing .folder-bar { opacity: 0; }
 .folder-body.is-closing .folder-bar { transition: opacity calc(var(--open-ms) * 0.6) linear; opacity: 0; }
 
 .folder-scan {
