@@ -171,7 +171,7 @@ does not — it is pure data, no dependency on `B`.
 |---|---|
 | `depths.js` | Core: `CLUSTERS` registry, `add`, `waveOf`, `LAYOUTS` (`rows arc chain branch`), `nodes()` | `window.Depths {nodes, clusters, add}` |
 | `lore.js` | The four lore-beacon clusters in order: `bnote-rex` (10), `bnote-watcher` (2), `bnote-void` (3, `bnote-bridge-*`), `bnote-land` (5); mostly pinned with `at:` |
-| `gamedev.js` | The `gamedev` cluster: four `gd-*` game beacons (sector-zero, voidscape, heavylight, conclusus) under `bnote-gamedev`, each card with an Open case file button | registers into `Depths` |
+| `gamedev.js` | The `gamedev` cluster: four `gd-*` game beacons (sector-zero, voidscape, conclusus, heavylight) under `bnote-gamedev`, each card with an Open case file button | registers into `Depths` |
 
 ### js/ship
 

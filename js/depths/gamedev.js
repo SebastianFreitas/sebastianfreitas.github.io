@@ -32,20 +32,20 @@
         html: card("voidscape", "VoidScape", "boons.mp4", "A game of boons and consequence, where every choice changes the run.")
       },
       {
-        id: "gd-heavylight",
-        art: "heavylight",
-        after: ["bnote-gamedev"],
-        name: "HeavyLight",
-        sub: "Lamps that carry the level",
-        html: card("heavylight", "HeavyLight", "lamps.mp4", "Light you can carry, and a level that is built around it.")
-      },
-      {
         id: "gd-conclusus",
         art: "conclusus",
         after: ["bnote-gamedev"],
         name: "Conclusus",
         sub: "Pins on a board that fights back",
         html: card("conclusus", "Conclusus", "pins.mp4", "A puzzle of pins and pieces, tuned until it plays clean.")
+      },
+      {
+        id: "gd-heavylight",
+        art: "heavylight",
+        after: ["bnote-gamedev"],
+        name: "HeavyLight",
+        sub: "Lamps that carry the level",
+        html: card("heavylight", "HeavyLight", "lamps.mp4", "Light you can carry, and a level that is built around it.")
       }
     ]
   });

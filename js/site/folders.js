@@ -5,7 +5,7 @@
    =========================================================== */
 
 window.Folders = (function () {
-  const KEYS = ["sector-zero", "voidscape", "heavylight", "conclusus"];
+  const KEYS = ["sector-zero", "voidscape", "conclusus", "heavylight"];
   const XP_FIRST = {
     "sector-zero": ["proj-sector-zero", 5, "Sector Zero"],
     "voidscape":   ["proj-voidscape", 2, "VoidScape"],

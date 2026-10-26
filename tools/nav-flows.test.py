@@ -43,9 +43,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DESKTOP = {"width": 1440, "height": 900}
 PHONE = {"width": 390, "height": 844}
 PHONE_LANDSCAPE = {"width": 844, "height": 390}
-CASES = ["sector-zero", "voidscape", "heavylight", "conclusus"]
-NEXT = {"sector-zero": "voidscape", "voidscape": "heavylight",
-        "heavylight": "conclusus", "conclusus": "sector-zero"}
+CASES = ["sector-zero", "voidscape", "conclusus", "heavylight"]
+NEXT = {"sector-zero": "voidscape", "voidscape": "conclusus",
+        "conclusus": "heavylight", "heavylight": "sector-zero"}
 TOL = 4          # px of slack when comparing scroll positions
 SETTLE = 2000    # ms: long enough for any smooth scroll to finish
 

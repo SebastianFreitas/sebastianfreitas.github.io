@@ -24,7 +24,7 @@
   align-items: center;
   width: 100%;
   margin: 2rem 0 0;
-  padding: 0.9rem var(--gutter) 1.1rem;
+  padding: 0.9rem var(--gutter) var(--gutter);
   background: none;
   border: 0;
   border-top: 1px solid rgb(var(--lamp-rgb) / 0.55);

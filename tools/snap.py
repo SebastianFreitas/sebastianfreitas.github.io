@@ -472,7 +472,7 @@ def index_section(section, label, viewport):
     return fn
 
 
-PROJECTS = ["sector-zero", "voidscape", "heavylight", "conclusus"]
+PROJECTS = ["sector-zero", "voidscape", "conclusus", "heavylight"]
 
 
 def scenes():

@@ -16,15 +16,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=178">
-<link rel="stylesheet" href="css/gate.css?v=178">
-<link rel="stylesheet" href="css/beacon.css?v=178">
-<link rel="stylesheet" href="css/bridge.css?v=178">
-<link rel="stylesheet" href="css/play.css?v=178">
-<link rel="stylesheet" href="css/folder.css?v=178">
-<script src="js/lib/util.js?v=178"></script>
-<script src="js/site/xp.js?v=178"></script>
-<script src="js/site/entry.js?v=178"></script>
+<link rel="stylesheet" href="css/style.css?v=179">
+<link rel="stylesheet" href="css/gate.css?v=179">
+<link rel="stylesheet" href="css/beacon.css?v=179">
+<link rel="stylesheet" href="css/bridge.css?v=179">
+<link rel="stylesheet" href="css/play.css?v=179">
+<link rel="stylesheet" href="css/folder.css?v=179">
+<script src="js/lib/util.js?v=179"></script>
+<script src="js/site/xp.js?v=179"></script>
+<script src="js/site/entry.js?v=179"></script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
    them; http://127.0.0.1:8000 often did, and they served ghost JS.
@@ -684,76 +684,6 @@
       <p class="caption">One full run on a short mission, from the hub out and back. 1:43, uncut.</p>
 
       <nav class="case-nav" aria-label="More work">
-        <a class="next" rel="next" href="#heavylight">Next: HeavyLight →</a>
-      </nav>
-    </article>
-  </div>
-</div>
-
-  <a class="obj" href="projects/heavylight.html">
-    <img class="obj-shot" src="media/heavylight/heavylightFrontPage.webp" alt="" loading="lazy">
-    <span class="obj-id">OBJ_0003</span>
-    <h3 id="heavylight-title">HeavyLight</h3>
-    <p class="obj-line">2D puzzle platformer built around one rule: light carries momentum. It pushes
-       crates, and it pushes you. Shipped for WebGL and reused as the base for Conclusus.</p>
-    <dl class="props">
-      <div><dt>Engine</dt><dd>Unity — WebGL</dd></div>
-      <div><dt>Language</dt><dd>C#</dd></div>
-      <div><dt>Role</dt><dd>Solo</dd></div>
-      <div><dt>Status</dt><dd>Shipped, playable</dd></div>
-      <div><dt>Year</dt><dd>2022</dd></div>
-      <div><dt>Time</dt><dd>Under four weeks</dd></div>
-    </dl>
-  </a>
-
-<div class="case-folder" id="heavylight" data-case="heavylight" data-toy="heavylight">
-  <div class="folder-body" id="heavylight-body" hidden>
-    <article class="case" aria-labelledby="heavylight-title">
-
-      <p>A 2D puzzle platformer built on one rule: light has weight. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
-
-      <div class="embed embed-shell"
-           data-src="https://itch.io/embed-upload/6434502?color=002f4b"
-           data-title="Play HeavyLight in your browser"
-           style="background-image:url('media/heavylight/heavylightFrontPage.webp')">
-        <button type="button" class="embed-play">Play HeavyLight</button>
-      </div>
-      <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
-
-      <h2>The brief</h2>
-      <p>HeavyLight was a challenge I set myself: make a game fast, under tight constraints, and keep it simple. One mechanic, some physics, and a lot of level design. It went from nothing to a finished web build in under four weeks.</p>
-
-      <h2>The rule</h2>
-      <p>A lamp's beam is a physical force. Stand in a sideways beam and it carries you along it. Stand under a lamp aimed up and it lifts you. You can nudge inside a beam but you cannot fight it, and the moment you step out you stop dead, so where a beam ends matters as much as where it starts.</p>
-      <p>Crates go further. A crate treats the beam as its new down. Point a lamp sideways and the crate falls sideways. Point it up and the crate climbs. Switch it off and the crate drops back to the floor.</p>
-
-      <h2>Lamps</h2>
-      <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
-      <video class="clip" src="media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
-      <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
-
-      <h2>One new thing per level</h2>
-      <p>Twenty levels, and every one adds something the last did not have. The first few are only walking and jumping. Then the first lamp, then timers, then crates, then spikes, then beams that push down instead of up. By the end you are chaining lamps on timers while a crate falls in three directions. Nothing is introduced twice. That is what kept the game short and what made the level design take most of the four weeks.</p>
-
-      <h2>The journal</h2>
-      <p>ESC opens the journal, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
-      <img class="clip" src="media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
-      <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
-
-      <h2>The clues</h2>
-      <p>There is a story, and it is optional. Small glowing wisps sit around each level. Touch one and it bursts into a line of thought from the man in red, an investigator sent to an old town on a case everyone called normal. The houses carry the same symbols as a notebook he cannot read, and every house with the symbols was left in a hurry. Some wisps are red, and those speak in a different voice.</p>
-      <p>Find every clue in every level and the ending changes. Three secret levels open after the last one, and the thing behind the barred door makes an offer. Leave, fight, or sign.</p>
-
-      <h2>Under the hood</h2>
-      <p>The base is Unity's 2D platformer template, rebuilt where it mattered. The controller got coyote time, a jump buffer, a variable height jump and an input curve of my own. The beam push, the crate gravity, the lamp timers, the clue system and the journal are all mine. The build is WebGL and checks which site it runs on. A copy uploaded somewhere else sends you to a gif and quits.</p>
-
-      <h2>Built to be reused</h2>
-      <p>I wrote it as a base rather than a one-off. The follow-up, <a href="#conclusus">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original. That was the actual test of whether the base was any good.</p>
-
-      <h2>What it taught me</h2>
-      <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
-
-      <nav class="case-nav" aria-label="More work">
         <a class="next" rel="next" href="#conclusus">Next: Conclusus →</a>
       </nav>
     </article>
@@ -762,7 +692,7 @@
 
   <a class="obj" href="projects/conclusus.html">
     <img class="obj-shot" src="media/conclusus/conclususFrontPage.webp" alt="" loading="lazy">
-    <span class="obj-id">OBJ_0004</span>
+    <span class="obj-id">OBJ_0003</span>
     <h3 id="conclusus-title">Conclusus</h3>
     <p class="obj-line">A precision platformer on the HeavyLight base: thirty levels, pins, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly. Four new mechanics, built in less time than the original.</p>
     <dl class="props">
@@ -844,6 +774,76 @@
       <p>Conclusus started from a base and a deadline rather than from a locked concept, and the shadow, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
 
       <nav class="case-nav" aria-label="More work">
+        <a class="next" rel="next" href="#heavylight">Next: HeavyLight →</a>
+      </nav>
+    </article>
+  </div>
+</div>
+
+  <a class="obj" href="projects/heavylight.html">
+    <img class="obj-shot" src="media/heavylight/heavylightFrontPage.webp" alt="" loading="lazy">
+    <span class="obj-id">OBJ_0004</span>
+    <h3 id="heavylight-title">HeavyLight</h3>
+    <p class="obj-line">2D puzzle platformer built around one rule: light carries momentum. It pushes
+       crates, and it pushes you. Shipped for WebGL and reused as the base for Conclusus.</p>
+    <dl class="props">
+      <div><dt>Engine</dt><dd>Unity — WebGL</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Role</dt><dd>Solo</dd></div>
+      <div><dt>Status</dt><dd>Shipped, playable</dd></div>
+      <div><dt>Year</dt><dd>2022</dd></div>
+      <div><dt>Time</dt><dd>Under four weeks</dd></div>
+    </dl>
+  </a>
+
+<div class="case-folder" id="heavylight" data-case="heavylight" data-toy="heavylight">
+  <div class="folder-body" id="heavylight-body" hidden>
+    <article class="case" aria-labelledby="heavylight-title">
+
+      <p>A 2D puzzle platformer built on one rule: light has weight. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
+
+      <div class="embed embed-shell"
+           data-src="https://itch.io/embed-upload/6434502?color=002f4b"
+           data-title="Play HeavyLight in your browser"
+           style="background-image:url('media/heavylight/heavylightFrontPage.webp')">
+        <button type="button" class="embed-play">Play HeavyLight</button>
+      </div>
+      <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
+
+      <h2>The brief</h2>
+      <p>HeavyLight was a challenge I set myself: make a game fast, under tight constraints, and keep it simple. One mechanic, some physics, and a lot of level design. It went from nothing to a finished web build in under four weeks.</p>
+
+      <h2>The rule</h2>
+      <p>A lamp's beam is a physical force. Stand in a sideways beam and it carries you along it. Stand under a lamp aimed up and it lifts you. You can nudge inside a beam but you cannot fight it, and the moment you step out you stop dead, so where a beam ends matters as much as where it starts.</p>
+      <p>Crates go further. A crate treats the beam as its new down. Point a lamp sideways and the crate falls sideways. Point it up and the crate climbs. Switch it off and the crate drops back to the floor.</p>
+
+      <h2>Lamps</h2>
+      <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
+      <video class="clip" src="media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
+      <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
+
+      <h2>One new thing per level</h2>
+      <p>Twenty levels, and every one adds something the last did not have. The first few are only walking and jumping. Then the first lamp, then timers, then crates, then spikes, then beams that push down instead of up. By the end you are chaining lamps on timers while a crate falls in three directions. Nothing is introduced twice. That is what kept the game short and what made the level design take most of the four weeks.</p>
+
+      <h2>The journal</h2>
+      <p>ESC opens the journal, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
+      <img class="clip" src="media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
+      <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
+
+      <h2>The clues</h2>
+      <p>There is a story, and it is optional. Small glowing wisps sit around each level. Touch one and it bursts into a line of thought from the man in red, an investigator sent to an old town on a case everyone called normal. The houses carry the same symbols as a notebook he cannot read, and every house with the symbols was left in a hurry. Some wisps are red, and those speak in a different voice.</p>
+      <p>Find every clue in every level and the ending changes. Three secret levels open after the last one, and the thing behind the barred door makes an offer. Leave, fight, or sign.</p>
+
+      <h2>Under the hood</h2>
+      <p>The base is Unity's 2D platformer template, rebuilt where it mattered. The controller got coyote time, a jump buffer, a variable height jump and an input curve of my own. The beam push, the crate gravity, the lamp timers, the clue system and the journal are all mine. The build is WebGL and checks which site it runs on. A copy uploaded somewhere else sends you to a gif and quits.</p>
+
+      <h2>Built to be reused</h2>
+      <p>I wrote it as a base rather than a one-off. The follow-up, <a href="#conclusus">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original. That was the actual test of whether the base was any good.</p>
+
+      <h2>What it taught me</h2>
+      <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
+
+      <nav class="case-nav" aria-label="More work">
         <a class="next" rel="next" href="#sector-zero">Next: Sector Zero →</a>
       </nav>
     </article>
@@ -890,112 +890,112 @@
      Original setting, lore, characters, and written material by Sebastião Freitas.</p>
 </footer>
 
-<script src="js/site/surge.js?v=178"></script>
-<script src="js/bridge/lamp.js?v=178"></script>
-<script src="js/depths/depths.js?v=178"></script>
-<script src="js/depths/lore.js?v=178"></script>
-<script src="js/depths/gamedev.js?v=178"></script>
-<script src="js/hud/instruments.js?v=178"></script>
-<script src="js/hud/tiles-nav.js?v=178"></script>
-<script src="js/hud/tiles-sys.js?v=178"></script>
-<script src="js/lib/paint.js?v=178"></script>
-<script src="js/world/art/rex-kit.js?v=178"></script>
-<script src="js/world/art/firstlight.js?v=178"></script>
-<script src="js/world/art/crimson.js?v=178"></script>
-<script src="js/world/art/bonespire.js?v=178"></script>
-<script src="js/world/art/titans.js?v=178"></script>
-<script src="js/world/art/valkhar.js?v=178"></script>
-<script src="js/world/art/law.js?v=178"></script>
-<script src="js/world/art/land-kit.js?v=178"></script>
-<script src="js/world/art/shattered.js?v=178"></script>
-<script src="js/world/art/libertech.js?v=178"></script>
-<script src="js/world/art/dawn.js?v=178"></script>
-<script src="js/world/art/accord.js?v=178"></script>
-<script src="js/world/art/gore.js?v=178"></script>
-<script src="js/world/world.js?v=178"></script>
-<script src="js/world/vortex.js?v=178"></script>
-<script src="js/world/void.js?v=178"></script>
-<script src="js/world/watcher.js?v=178"></script>
-<script src="js/world/serus.js?v=178"></script>
-<script src="js/world/nephilim.js?v=178"></script>
-<script src="js/world/admin-tear.js?v=178"></script>
-<script src="js/world/vikings.js?v=178"></script>
-<script src="js/world/rex.js?v=178"></script>
-<script src="js/world/city.js?v=178"></script>
-<script src="js/ship/voidship-art.js?v=178"></script>
-<script src="js/ship/voidship-prow.js?v=178"></script>
-<script src="js/ship/voidship.js?v=178"></script>
-<script src="js/lib/pacer.js?v=178"></script>
-<script src="js/bridge/marks.js?v=178"></script>
-<script src="js/bridge/bridge-sites.js?v=178"></script>
-<script src="js/bridge/bridge-log.js?v=178"></script>
-<script src="js/bridge/bridge-voice.js?v=178"></script>
-<script src="js/bridge/bridge.js?v=178"></script>
-<script src="js/bridge/bridge-notes.js?v=178"></script>
-<script src="js/bridge/bridge-input.js?v=178"></script>
-<script src="js/bridge/bridge-motifs.js?v=178"></script>
-<script src="js/bridge/bridge-marks.js?v=178"></script>
-<script src="js/bridge/bridge-panel.js?v=178"></script>
-<script src="js/bridge/bridge-depths.js?v=178"></script>
-<script src="js/bridge/bridge-env.js?v=178"></script>
-<script src="js/bridge/bridge-readout.js?v=178"></script>
-<script src="js/bridge/bridge-loop.js?v=178"></script>
-<script src="js/genesis/genesis-state.js?v=178"></script>
-<script src="js/genesis/genesis-paint.js?v=178"></script>
-<script src="js/genesis/genesis-eldpal.js?v=178"></script>
-<script src="js/genesis/genesis-tier3.js?v=178"></script>
-<script src="js/genesis/genesis-void.js?v=178"></script>
-<script src="js/genesis/genesis-flesh.js?v=178"></script>
-<script src="js/genesis/genesis-soup.js?v=178"></script>
-<script src="js/genesis/genesis-eye.js?v=178"></script>
-<script src="js/genesis/genesis-roles.js?v=178"></script>
-<script src="js/genesis/genesis-circle.js?v=178"></script>
-<script src="js/genesis/genesis-chains.js?v=178"></script>
-<script src="js/genesis/genesis-corrupt.js?v=178"></script>
-<script src="js/genesis/genesis-rexin.js?v=178"></script>
-<script src="js/genesis/genesis-dot.js?v=178"></script>
-<script src="js/genesis/genesis-clash.js?v=178"></script>
-<script src="js/genesis/genesis-death.js?v=178"></script>
-<script src="js/genesis/genesis-gods-beat.js?v=178"></script>
-<script src="js/genesis/genesis-elements.js?v=178"></script>
-<script src="js/genesis/genesis-matter.js?v=178"></script>
-<script src="js/genesis/genesis-trade.js?v=178"></script>
-<script src="js/genesis/genesis-oldones.js?v=178"></script>
-<script src="js/genesis/genesis-oldkin.js?v=178"></script>
-<script src="js/genesis/genesis-attire.js?v=178"></script>
-<script src="js/genesis/genesis-figures.js?v=178"></script>
-<script src="js/genesis/genesis-titans.js?v=178"></script>
-<script src="js/genesis/genesis-obrok.js?v=178"></script>
-<script src="js/genesis/genesis-gods.js?v=178"></script>
-<script src="js/genesis/genesis-hosts.js?v=178"></script>
-<script src="js/genesis/genesis-seraphin.js?v=178"></script>
-<script src="js/genesis/genesis-malgrur.js?v=178"></script>
-<script src="js/genesis/genesis-vorgath.js?v=178"></script>
-<script src="js/genesis/genesis-mainland.js?v=178"></script>
-<script src="js/genesis/genesis-armies.js?v=178"></script>
-<script src="js/genesis/genesis-orb.js?v=178"></script>
-<script src="js/genesis/genesis-rex.js?v=178"></script>
-<script src="js/genesis/genesis-depths.js?v=178"></script>
-<script src="js/genesis/genesis-saga-state.js?v=178"></script>
-<script src="js/genesis/genesis-ritual.js?v=178"></script>
-<script src="js/genesis/genesis-saga.js?v=178"></script>
-<script src="js/genesis/genesis.js?v=178"></script>
-<script src="js/site/lazy-video.js?v=178"></script>
-<script src="js/pages/play.js?v=178"></script>
-<script src="js/pages/sector-zero-records.js?v=178"></script>
-<script src="js/pages/sector-zero.js?v=178"></script>
-<script src="js/forge/forge-guns.js?v=178"></script>
-<script src="js/forge/forge-missions.js?v=178"></script>
-<script src="js/forge/forge.js?v=178"></script>
-<script src="js/pages/voidscape-bench.js?v=178"></script>
-<script src="js/pages/voidscape-mapgen.js?v=178"></script>
-<script src="js/pages/voidscape-boons.js?v=178"></script>
-<script src="js/pages/voidscape.js?v=178"></script>
-<script src="js/site/embed.js?v=178"></script>
-<script src="js/shared/heavylight-sprites.js?v=178"></script>
-<script src="js/pages/heavylight.js?v=178"></script>
-<script src="js/pages/conclusus.js?v=178"></script>
-<script src="js/site/folders.js?v=178"></script>
-<script src="js/site/intro.js?v=178"></script>
+<script src="js/site/surge.js?v=179"></script>
+<script src="js/bridge/lamp.js?v=179"></script>
+<script src="js/depths/depths.js?v=179"></script>
+<script src="js/depths/lore.js?v=179"></script>
+<script src="js/depths/gamedev.js?v=179"></script>
+<script src="js/hud/instruments.js?v=179"></script>
+<script src="js/hud/tiles-nav.js?v=179"></script>
+<script src="js/hud/tiles-sys.js?v=179"></script>
+<script src="js/lib/paint.js?v=179"></script>
+<script src="js/world/art/rex-kit.js?v=179"></script>
+<script src="js/world/art/firstlight.js?v=179"></script>
+<script src="js/world/art/crimson.js?v=179"></script>
+<script src="js/world/art/bonespire.js?v=179"></script>
+<script src="js/world/art/titans.js?v=179"></script>
+<script src="js/world/art/valkhar.js?v=179"></script>
+<script src="js/world/art/law.js?v=179"></script>
+<script src="js/world/art/land-kit.js?v=179"></script>
+<script src="js/world/art/shattered.js?v=179"></script>
+<script src="js/world/art/libertech.js?v=179"></script>
+<script src="js/world/art/dawn.js?v=179"></script>
+<script src="js/world/art/accord.js?v=179"></script>
+<script src="js/world/art/gore.js?v=179"></script>
+<script src="js/world/world.js?v=179"></script>
+<script src="js/world/vortex.js?v=179"></script>
+<script src="js/world/void.js?v=179"></script>
+<script src="js/world/watcher.js?v=179"></script>
+<script src="js/world/serus.js?v=179"></script>
+<script src="js/world/nephilim.js?v=179"></script>
+<script src="js/world/admin-tear.js?v=179"></script>
+<script src="js/world/vikings.js?v=179"></script>
+<script src="js/world/rex.js?v=179"></script>
+<script src="js/world/city.js?v=179"></script>
+<script src="js/ship/voidship-art.js?v=179"></script>
+<script src="js/ship/voidship-prow.js?v=179"></script>
+<script src="js/ship/voidship.js?v=179"></script>
+<script src="js/lib/pacer.js?v=179"></script>
+<script src="js/bridge/marks.js?v=179"></script>
+<script src="js/bridge/bridge-sites.js?v=179"></script>
+<script src="js/bridge/bridge-log.js?v=179"></script>
+<script src="js/bridge/bridge-voice.js?v=179"></script>
+<script src="js/bridge/bridge.js?v=179"></script>
+<script src="js/bridge/bridge-notes.js?v=179"></script>
+<script src="js/bridge/bridge-input.js?v=179"></script>
+<script src="js/bridge/bridge-motifs.js?v=179"></script>
+<script src="js/bridge/bridge-marks.js?v=179"></script>
+<script src="js/bridge/bridge-panel.js?v=179"></script>
+<script src="js/bridge/bridge-depths.js?v=179"></script>
+<script src="js/bridge/bridge-env.js?v=179"></script>
+<script src="js/bridge/bridge-readout.js?v=179"></script>
+<script src="js/bridge/bridge-loop.js?v=179"></script>
+<script src="js/genesis/genesis-state.js?v=179"></script>
+<script src="js/genesis/genesis-paint.js?v=179"></script>
+<script src="js/genesis/genesis-eldpal.js?v=179"></script>
+<script src="js/genesis/genesis-tier3.js?v=179"></script>
+<script src="js/genesis/genesis-void.js?v=179"></script>
+<script src="js/genesis/genesis-flesh.js?v=179"></script>
+<script src="js/genesis/genesis-soup.js?v=179"></script>
+<script src="js/genesis/genesis-eye.js?v=179"></script>
+<script src="js/genesis/genesis-roles.js?v=179"></script>
+<script src="js/genesis/genesis-circle.js?v=179"></script>
+<script src="js/genesis/genesis-chains.js?v=179"></script>
+<script src="js/genesis/genesis-corrupt.js?v=179"></script>
+<script src="js/genesis/genesis-rexin.js?v=179"></script>
+<script src="js/genesis/genesis-dot.js?v=179"></script>
+<script src="js/genesis/genesis-clash.js?v=179"></script>
+<script src="js/genesis/genesis-death.js?v=179"></script>
+<script src="js/genesis/genesis-gods-beat.js?v=179"></script>
+<script src="js/genesis/genesis-elements.js?v=179"></script>
+<script src="js/genesis/genesis-matter.js?v=179"></script>
+<script src="js/genesis/genesis-trade.js?v=179"></script>
+<script src="js/genesis/genesis-oldones.js?v=179"></script>
+<script src="js/genesis/genesis-oldkin.js?v=179"></script>
+<script src="js/genesis/genesis-attire.js?v=179"></script>
+<script src="js/genesis/genesis-figures.js?v=179"></script>
+<script src="js/genesis/genesis-titans.js?v=179"></script>
+<script src="js/genesis/genesis-obrok.js?v=179"></script>
+<script src="js/genesis/genesis-gods.js?v=179"></script>
+<script src="js/genesis/genesis-hosts.js?v=179"></script>
+<script src="js/genesis/genesis-seraphin.js?v=179"></script>
+<script src="js/genesis/genesis-malgrur.js?v=179"></script>
+<script src="js/genesis/genesis-vorgath.js?v=179"></script>
+<script src="js/genesis/genesis-mainland.js?v=179"></script>
+<script src="js/genesis/genesis-armies.js?v=179"></script>
+<script src="js/genesis/genesis-orb.js?v=179"></script>
+<script src="js/genesis/genesis-rex.js?v=179"></script>
+<script src="js/genesis/genesis-depths.js?v=179"></script>
+<script src="js/genesis/genesis-saga-state.js?v=179"></script>
+<script src="js/genesis/genesis-ritual.js?v=179"></script>
+<script src="js/genesis/genesis-saga.js?v=179"></script>
+<script src="js/genesis/genesis.js?v=179"></script>
+<script src="js/site/lazy-video.js?v=179"></script>
+<script src="js/pages/play.js?v=179"></script>
+<script src="js/pages/sector-zero-records.js?v=179"></script>
+<script src="js/pages/sector-zero.js?v=179"></script>
+<script src="js/forge/forge-guns.js?v=179"></script>
+<script src="js/forge/forge-missions.js?v=179"></script>
+<script src="js/forge/forge.js?v=179"></script>
+<script src="js/pages/voidscape-bench.js?v=179"></script>
+<script src="js/pages/voidscape-mapgen.js?v=179"></script>
+<script src="js/pages/voidscape-boons.js?v=179"></script>
+<script src="js/pages/voidscape.js?v=179"></script>
+<script src="js/site/embed.js?v=179"></script>
+<script src="js/shared/heavylight-sprites.js?v=179"></script>
+<script src="js/pages/heavylight.js?v=179"></script>
+<script src="js/pages/conclusus.js?v=179"></script>
+<script src="js/site/folders.js?v=179"></script>
+<script src="js/site/intro.js?v=179"></script>
 </body>
 </html>
