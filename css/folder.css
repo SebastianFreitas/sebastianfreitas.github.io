@@ -51,8 +51,8 @@
 /* the toy canvas (fixed, z -1) sits behind section.work, so the section turns see-through while a file is open */
 .work:has(.case-folder.open) { background: transparent; }
 
-/* open: lamp-yellow energy-terminal sequence, all timed off --open-ms (set by folders.js) */
-.folder-body { position: relative; --open-ms: 700ms; }
+/* open: lamp-yellow energy-terminal sequence, every effect driven from one progress value by caseAnim in folders.js */
+.folder-body { position: relative; }
 
 .folder-bar, .folder-scan, .folder-kicker { position: absolute; pointer-events: none; opacity: 0; }
 
@@ -67,6 +67,11 @@
 /* a page-colour gap (12px) just outside the gold line, same on both sides, so canvas squares never touch it */
 .obj[aria-expanded="true"] { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 -12px 0 var(--petrol); clip-path: inset(-3rem -12px 0 -12px); }
 .case-folder:has(.folder-body:not([hidden])) { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 12px 0 var(--petrol); }
+/* the gold frame fades in on open and out on close (200 ms); the class holds the frame for the fade after the body hides */
+.case-folder:has(.folder-body:not([hidden])) { animation: gold-edge 200ms ease-out backwards; }
+.case-folder.gold-out { border: 2px solid transparent; border-top: 0; animation: gold-edge-out 200ms ease-in forwards; --open-line: color-mix(in srgb, var(--lamp) 55%, var(--petrol)); }
+@keyframes gold-edge { from { border-color: transparent; } to { border-color: var(--open-line); } }
+@keyframes gold-edge-out { from { border-color: var(--open-line); } to { border-color: transparent; } }
 /* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
 body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .obj[aria-expanded="true"] h3 { color: var(--lamp); }
@@ -76,11 +81,10 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
   background: var(--lamp); box-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
   transform-origin: 0 50%;
 }
-.folder-body.is-open .folder-bar, .folder-body.is-closing .folder-bar { opacity: 0; }
-.folder-body.is-closing .folder-bar { transition: opacity calc(var(--open-ms) * 0.6) linear; opacity: 0; }
+.folder-body.is-open .folder-bar { opacity: 0; }
 
 .folder-scan {
-  left: 0; right: 0; bottom: 0; height: 26px; z-index: 3;
+  left: 0; right: 0; top: 0; height: 26px; z-index: 3; /* js rides it down the wipe edge */
   background: linear-gradient(to top, #fff6dd 0 1px, var(--lamp) 1px 2px,
     rgb(var(--lamp-rgb) / 0.3) 2px 8px, rgb(var(--lamp-rgb) / 0.1) 8px 16px, rgb(var(--lamp-rgb) / 0) 26px);
 }
@@ -91,68 +95,34 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
   color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6), 0 2px 12px rgba(0,0,0,0.9);
 }
 
-/* glow on a pseudo-element with a fixed shadow: only its opacity animates */
-.folder-body.is-opening::after {
-  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+/* glow: its own layer, js sets only its opacity (caseAnim in js/site/folders.js drives every open effect from one progress value) */
+.folder-glow {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
   box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.2);
-  animation: folderGlow var(--open-ms) ease-out both;
 }
-.folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker { will-change: transform, opacity; }
-.folder-body.is-opening > :not(.folder-scan):not(.folder-bar):not(.folder-kicker):not(.folder-loader) {
-  animation: folderFlicker var(--open-ms) steps(1, end) both;
-}
-.folder-body.is-opening .folder-bar { animation: folderBar var(--open-ms) cubic-bezier(.3,.7,.3,1) both; }
-.folder-body.is-opening .folder-scan { animation: folderScan var(--open-ms) linear both; }
-.folder-body.is-opening .folder-kicker {
-  animation: folderKicker var(--open-ms) steps(1, end) both, folderType var(--open-ms) steps(24, end) both;
-}
+.folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker,
+.folder-body.is-closing .folder-bar, .folder-body.is-closing .folder-scan, .folder-body.is-closing .folder-kicker { will-change: transform, opacity; }
 
-@keyframes folderBar {
-  0% { opacity: 1; transform: scaleX(0); }
-  40% { opacity: 1; transform: scaleX(1); }
-  100% { opacity: 1; transform: scaleX(1); height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
+/* loading line in the case's header bar, under the kicker; js types it in and fills the bar from the open progress */
+.folder-load {
+  position: absolute; left: var(--gutter); top: 2.1rem; z-index: 3; pointer-events: none;
+  display: flex; flex-direction: column; gap: 8px;
 }
-@keyframes folderScan {
-  0% { opacity: 1; }
-  85% { opacity: 1; }
-  100% { opacity: 0; }
-}
-@keyframes folderFlicker {
-  0% { opacity: 0.4; } 8% { opacity: 1; } 14% { opacity: 0.55; } 20% { opacity: 1; }
-  30% { opacity: 0.8; } 36%, 100% { opacity: 1; }
-}
-@keyframes folderKicker {
-  0% { opacity: 0; } 5% { opacity: 1; } 22% { opacity: 0.6; } 26% { opacity: 1; }
-  70% { opacity: 1; } 100% { opacity: 0; }
-}
-@keyframes folderHead { 0%, 68% { color: transparent; text-shadow: none; } 70%, 100% { color: var(--lamp); } }
-@keyframes folderType { from { clip-path: inset(0 100% 0 0); } 45%, to { clip-path: inset(0 0 0 0); } }
-@keyframes folderGlow {
-  0% { opacity: 0; }
-  35% { opacity: 1; }
-  100% { opacity: 0; }
-}
+.folder-load-line { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; color: var(--lamp); white-space: nowrap; text-shadow: 0 0 10px rgb(var(--lamp-rgb) / 0.5), 0 2px 12px rgba(0,0,0,0.9); }
+.folder-load-bar { width: min(220px, 50vw); height: 2px; background: rgb(var(--lamp-rgb) / 0.2); overflow: hidden; }
+.folder-load-bar i { display: block; height: 100%; background: var(--lamp); transform-origin: left; transform: scaleX(0); }
 
+/* the centred loading graphic of the empty window: js sets its top to the middle of the visible part and its opacity */
+.folder-load-mid {
+  position: absolute; left: 0; right: 0; z-index: 3; pointer-events: none; opacity: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 12px; transform: translateY(-50%);
+}
+.folder-load-mid .folder-load-line { font-size: 0.85rem; }
+.folder-load-mid .folder-load-bar { width: min(320px, 60vw); height: 3px; }
+
+/* a long button close hides its scroll jump behind this: js fades it in, jumps, fades it out over the close wipe */
+.folder-veil { position: fixed; inset: 0; z-index: 90; background: var(--petrol); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
-  .folder-body.is-opening::after, .folder-body.is-opening > *, .folder-body.is-opening .folder-bar { animation: none !important; }
-  .folder-scan, .folder-kicker { display: none; }
+  .folder-scan, .folder-kicker, .folder-glow { display: none; }
   .folder-bar { opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
 }
-
-/* page-load screen inside the opening case file (js/site/folders.js loadScreen) */
-.folder-loader {
-  position: absolute; inset: 0; z-index: 3; background: var(--petrol);
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  opacity: 1; transition: opacity 200ms linear;
-}
-/* the text block rides the viewport centre (the body is thousands of px tall); the top margin keeps it under the header */
-.folder-loader-block {
-  position: sticky; top: calc(50vh - 16px); margin-top: 64px;
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-}
-.folder-loader.is-out { opacity: 0; pointer-events: none; }
-.folder-loader-line { font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.14em; color: var(--lamp); }
-.folder-loader-bar { width: min(260px, 60vw); height: 2px; background: rgb(var(--lamp-rgb) / 0.2); overflow: hidden; }
-.folder-loader-bar i { display: block; height: 100%; background: var(--lamp); transform-origin: left; animation: folder-load 600ms linear forwards; }
-@keyframes folder-load { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@media (prefers-reduced-motion: reduce) { .folder-loader-bar i { animation: none; } }

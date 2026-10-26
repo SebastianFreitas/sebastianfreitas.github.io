@@ -1153,6 +1153,11 @@ def flow_one_open(browser, base):
     page.wait_for_timeout(1000)
     page.evaluate("Folders.open('heavylight')")
     page.wait_for_timeout(1200)
+    # the toy starts only after the window wipe: poll for its canvas (up to ~4 s)
+    for _ in range(8):
+        if page.evaluate("document.querySelectorAll('canvas.play:not([hidden])').length") >= 1:
+            break
+        page.wait_for_timeout(500)
     r = page.evaluate("""() => ({
       open: document.querySelectorAll('.case-folder.open').length,
       id: (document.querySelector('.case-folder.open') || {}).id,
