@@ -99,7 +99,7 @@
 
   function sigOf(V) {
     // hysteresis: ignore scrollbar-sized width jitter and small doc-height drift
-    if (sigW < 0 || Math.abs(V.W - sigW) >= 20) sigW = V.W;
+    if (sigW < 0 || Math.abs(V.R - sigW) >= 20) sigW = V.R;
     if (sigDocH < 0 || Math.abs(V.docH - sigDocH) >= 40) sigDocH = V.docH;
     return V.blocks.length + "/" + Math.round(sigDocH) + "/" + Math.round(V.main.w) + "/" + sigW;
   }
@@ -182,15 +182,16 @@
   // (re)build every platform, silhouette, the symbol, the door and the spikes from
   // V.blocks; called from setup, resize, and from step whenever the page signature changes
   function layout(V) {
+    if (trayEl) trayEl.style.right = (V.W - V.R + 16) + "px";   // the key tray stays inside the folder frame
     const snap = snapshotProgress();
     const rnd = U.mulberry(23);           // local: layouts are identical on every run
     const arr = [];
     for (let i = 0; i < V.blocks.length && arr.length < 60; i++) {
       const b = V.blocks[i];
-      const free = V.W - 24 - (b.x + b.w);
+      const free = V.R - 24 - (b.x + b.w);
       if (free < 100) continue;
       const ys = (b.media && b.h > 300) ? [b.y + b.h * 0.3, b.y + b.h * 0.85] : [b.y + b.h - 4];
-      const xmin = b.x + b.w + (b.media ? 24 : 40), xmax = V.W - 24 - PLAT_W;
+      const xmin = b.x + b.w + (b.media ? 24 : 40), xmax = V.R - 24 - PLAT_W;
       if (xmax < xmin) continue;
       for (let j = 0; j < ys.length && arr.length < 60; j++) {
         const y = ys[j];
@@ -271,7 +272,7 @@
 
     spikes = [];
     for (let i = 0; i < 2; i++) {
-      const x = V.W - 60 - i * 70;
+      const x = V.R - 60 - i * 70;
       const idx = Math.floor(plats.length * 0.5) + i;
       const y = (plats[idx] && plats[idx].y - 80) || V.main.y + 300;
       if (x < V.main.x + 200 || pointHitsBlocks(x, y, V.blocks)) continue;
@@ -462,7 +463,7 @@
   function ray(r, rnd, V, age) {
     const a = (110 + rnd() * 50) * Math.PI / 180, sp = 24 + rnd() * 24;
     r.vx = Math.cos(a) * sp; r.vy = Math.sin(a) * sp;
-    r.x = V.W + rnd() * 40 + r.vx * age;
+    r.x = V.R + rnd() * 40 + r.vx * age;
     r.y = -rnd() * 40 + r.vy * age;
     r.a = 0.2 + rnd() * 0.3;
     return r;
@@ -508,6 +509,7 @@
       slotEls.push(c);
     }
     Play.mount(trayEl);
+    trayEl.style.right = (v.W - v.R + 16) + "px";
     for (let k = 0; k < 3; k++) paintSlot(k, !!(keys[k] && keys[k].done));
     flyEl = document.createElement("canvas");
     flyEl.className = "cc-fly";
@@ -786,6 +788,15 @@
     flyDirty = any;
     if (!any) return;
     flyG.imageSmoothingEnabled = false;
+    // the flight arc stays inside the open folder's gold frame
+    const fr = V.mainEl && V.mainEl.closest(".case-folder");
+    flyG.save();
+    if (fr) {
+      const r = fr.getBoundingClientRect();
+      flyG.beginPath();
+      flyG.rect(r.left + fr.clientLeft, Math.max(r.top, 0), fr.clientWidth, Math.min(r.bottom, V.H) - Math.max(r.top, 0));
+      flyG.clip();
+    }
     for (const key of keys) {
       if (!key.fly) continue;
       const f = key.fly, e = easeIO(f.t);
@@ -801,6 +812,7 @@
       flyG.drawImage(SPR.sym.cv, -16, -16);
       flyG.restore();
     }
+    flyG.restore();
   }
 
   function draw(ctx, V) {

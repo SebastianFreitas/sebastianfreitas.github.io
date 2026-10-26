@@ -72,7 +72,7 @@
   // home layout: the objects sit in a grid in the free strip right of the text
   function place(V) {
     if (V.band.w >= 100) { stripX0 = V.band.x0 + 8; stripX1 = V.band.x1 - 8; }
-    else { stripX0 = V.main.x + 660; stripX1 = V.W - 24; }
+    else { stripX0 = V.main.x + 660; stripX1 = V.R - 24; }
     const x0 = stripX0, x1 = stripX1;
     const cols = Math.max(1, Math.floor((x1 - x0) / 96));
     const cellW = (x1 - x0) / cols;
@@ -124,8 +124,8 @@
 
   function bounce(o, V) {
     const hw = o.w / 2, hh = o.h / 2;
-    if (o.x - hw < 4) { o.x = 4 + hw; o.vx = -o.vx * 0.6; }
-    else if (o.x + hw > V.W - 4) { o.x = V.W - 4 - hw; o.vx = -o.vx * 0.6; }
+    if (o.x - hw < V.L + 4) { o.x = V.L + 4 + hw; o.vx = -o.vx * 0.6; }
+    else if (o.x + hw > V.R - 4) { o.x = V.R - 4 - hw; o.vx = -o.vx * 0.6; }
     if (o.y - hh < V.top + 4) { o.y = V.top + 4 + hh; o.vy = -o.vy * 0.6; }
     else if (o.y + hh > V.H - 4) { o.y = V.H - 4 - hh; o.vy = -o.vy * 0.6; }
   }

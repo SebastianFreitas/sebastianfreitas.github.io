@@ -59,7 +59,7 @@
     hp = B.maxHp;
     kills = 0; pending = 0; offerBoon = null; rerolls = 0;
     bullets = []; ebullets = []; enemies = []; pops = []; fx = []; delayed = [];
-    mount = { x: Math.max(22, V.gutter * 0.5 + 2), y: V.H - 48, ang: 0 };
+    mount = { x: Math.max(V.L + 40, V.gutter * 0.5 + 2), y: V.H - 48, ang: 0 };
     firing = false; shotAcc = 0; armed = false; lastShot = 0; spawnAcc = 0; lost = 0; hitCool = 0;
 
     card = document.createElement('aside');
@@ -163,7 +163,7 @@
     stepEnemyBullets(dt);
     if (lastShot >= QUIET_AFTER) {
       for (const e of enemies) { e.vx = 120; e.x += e.vx * dt; }
-      enemies = enemies.filter(e => e.x <= V.W + 40);
+      enemies = enemies.filter(e => e.x <= V.R + 40);
     } else {
       stepEnemies(dt);
       stepSpawn(dt);
@@ -200,8 +200,8 @@
         bl.x += bl.vx * h; bl.y += bl.vy * h;
 
         let hitWall = false, nx = 0, ny = 0;
-        if (bl.x - bl.r < 0) { bl.x = bl.r; bl.vx = Math.abs(bl.vx); nx = 1; hitWall = true; }
-        else if (bl.x + bl.r > V.W) { bl.x = V.W - bl.r; bl.vx = -Math.abs(bl.vx); nx = -1; hitWall = true; }
+        if (bl.x - bl.r < V.L) { bl.x = V.L + bl.r; bl.vx = Math.abs(bl.vx); nx = 1; hitWall = true; }
+        else if (bl.x + bl.r > V.R) { bl.x = V.R - bl.r; bl.vx = -Math.abs(bl.vx); nx = -1; hitWall = true; }
         if (bl.y - bl.r < V.top) { bl.y = V.top + bl.r; bl.vy = Math.abs(bl.vy); ny = 1; hitWall = true; }
         else if (bl.y + bl.r > V.H) { bl.y = V.H - bl.r; bl.vy = -Math.abs(bl.vy); ny = -1; hitWall = true; }
         if (hitWall) bounce(bl, nx, ny);
@@ -382,7 +382,7 @@
   // keep a drifted/shoved enemy from ending up somewhere nonsensical; wide on x so the
   // right-edge spawn (+20) and quiet-exit drift (to +40) both stay well inside it
   function clampEnemyToScreen(e) {
-    e.x = U.clamp(e.x, -40, V.W + 60);
+    e.x = U.clamp(e.x, V.L - 40, V.R + 60);
     e.y = U.clamp(e.y, V.top, V.H);
   }
 
@@ -435,12 +435,12 @@
     const big = !mini && V.rnd() < 0.08;
     let e;
     if (kind === 'skull') {
-      e = mkEnemy(kind, V.W + 20, V.H - 20, 34, 34, 50, mini, big);
+      e = mkEnemy(kind, V.R + 20, V.H - 20, 34, 34, 50, mini, big);
       e.hop = 0.4 + V.rnd() * 0.5;
     } else if (kind === 'cone') {
-      let x = V.W - 60, y = V.top + 80;
+      let x = V.R - 60, y = V.top + 80;
       for (let i = 0; i < 8; i++) {
-        const tx = V.W * 0.55 + V.rnd() * (V.W * 0.45 - 40);
+        const tx = V.R * 0.55 + V.rnd() * (V.R * 0.45 - 40);
         const ty = V.top + 40 + V.rnd() * (V.H * 0.55 - V.top);
         if (V.free(tx - 20, ty - 20, 40, 40)) { x = tx; y = ty; break; }
       }
@@ -448,7 +448,7 @@
       e.y0 = y; e.fireT = 1.2 + V.rnd() * 0.8;
     } else {
       const y = V.top + 60 + V.rnd() * (V.H - V.top - 120);
-      e = mkEnemy(kind, V.W + 20, y, 31, 31, 50, mini, big);
+      e = mkEnemy(kind, V.R + 20, y, 31, 31, 50, mini, big);
       e.state = 'rest'; e.stateT = 1.2;
     }
     enemies.push(e);
@@ -476,8 +476,8 @@
     }
     e.ang += e.vx * dt / 40;
     bounceSkullMedia(e);
-    if (e.x - e.w / 2 < 0) { e.x = e.w / 2; e.vx = Math.abs(e.vx); }
-    else if (e.x + e.w / 2 > V.W) { e.x = V.W - e.w / 2; e.vx = -Math.abs(e.vx); }
+    if (e.x - e.w / 2 < V.L) { e.x = V.L + e.w / 2; e.vx = Math.abs(e.vx); }
+    else if (e.x + e.w / 2 > V.R) { e.x = V.R - e.w / 2; e.vx = -Math.abs(e.vx); }
     if (Math.hypot(mount.x - e.x, mount.y - e.y) < 30) { damage(10 * (e.big ? 2 : 1)); e.vx = 300; }
   }
 
@@ -573,7 +573,7 @@
     for (let i = 0; i < ebullets.length; i++) {
       const b = ebullets[i];
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-      if (b.x < 0 || b.x > V.W || b.y < V.top || b.y > V.H) { b.dead = true; continue; }
+      if (b.x < V.L || b.x > V.R || b.y < V.top || b.y > V.H) { b.dead = true; continue; }
       if (Math.hypot(b.x - mount.x, b.y - mount.y) < 14) { damage(10 * (b.big ? 2 : 1)); b.dead = true; }
     }
     ebullets = ebullets.filter(b => !b.dead && b.life > 0);
@@ -851,7 +851,7 @@
   }
 
   function resize(v) {
-    mount.x = Math.max(22, v.gutter * 0.5 + 2);
+    mount.x = Math.max(v.L + 40, v.gutter * 0.5 + 2);
     mount.y = v.H - 48;
     for (const e of enemies) clampEnemyToScreen(e);
   }

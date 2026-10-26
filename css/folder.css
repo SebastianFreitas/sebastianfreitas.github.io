@@ -75,6 +75,7 @@
 /* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
 body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .obj[aria-expanded="true"] h3 { color: var(--lamp); }
+.obj[aria-expanded="true"] .obj-shot, .obj[aria-expanded="true"]:hover .obj-shot { transform: none; transition: opacity 0.4s ease; } /* the hover zoom would poke into the 12px clip allowance past the gold line */
 
 .folder-bar {
   left: 0; right: 0; top: 0; height: 2px; z-index: 2;

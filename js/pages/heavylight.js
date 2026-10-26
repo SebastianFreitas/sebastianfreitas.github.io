@@ -7,14 +7,16 @@
   const U = window.Util, P = window.Play;
   if (!U || !P) return;
 
-  const S = 3;                 // art scale
-  const ART = 16, T = ART * S; // tile art px, tile screen px (48)
-  const SHELF_LIFT = 4, SHELF_GAP = 12, EDGE = 0;
-  const CW = 42;               // crate size (14 art px)
+  const ART = 16;
+  const SCALES = [3, 2];       // art scale, largest first; a smaller one when the room beside the text is short
+  let S = 3, T = ART * S;      // art scale, tile screen px (48 at 3)
+  const SHELF_LIFT = 4, SHELF_GAP = 10, EDGE = 10, BEAM_PAD = 24, BEAM_FADE = 16;
+  let CW = 14 * S;             // crate size (14 art px)
   const CULL = 120;
   const SPREAD = Math.tan(6 * Math.PI / 180), ON_FOR = 8;
   // the bridge beacon's beam recipe (zones.js BEAM/lampGlow)
-  const CONE = '110,160,240', LAMP_GLOW = '170,215,240', GLOW_R = 26, GLOW_LIT = .28, GLOW_IDLE = .07, GLOW_HOVER = .14, FADE_IN = .15, FADE_OUT = .25, NUDGE = 2;
+  const CONE = '110,160,240', LAMP_GLOW = '170,215,240', GLOW_R0 = 26, GLOW_LIT = .28, GLOW_IDLE = .07, GLOW_HOVER = .14, FADE_IN = .15, FADE_OUT = .25, NUDGE = 2;
+  let GLOW_R = GLOW_R0;
   let VV = null;
   let clock = 0;
 
@@ -46,7 +48,7 @@
 
   // ---- scripted lamp/crate events ----
   const G = 1800;   // fall gravity, px/s^2
-  const SLIDE_V = 96;  // crate slide speed, px/s (2 tiles/s)
+  let SLIDE_V = 32 * S;  // crate slide speed, px/s (2 tiles/s)
   const HOLD = 0.4;    // a released lamp holds lit this long before it fades
   const STILL_T = [0.9, 0.4, 2.05];   // reduced-motion pose per event, s (D82)
   const REPLAY_FADE = 0.3;   // replay: crate fades out at its end, then in at home (D54)
@@ -54,39 +56,39 @@
     { k: 0, steps: [
       { op: 'light', lamp: 0 },
       { op: 'wait', lamp: 0 },
-      { op: 'slide', x: 4 * T + 3 },
+      { op: 'slide', x: 65 },
       { op: 'release', lamp: 0 },
       { op: 'drop', row: 1 },
     ] },
     { k: 1, steps: [
       { op: 'light', lamp: 0 },
       { op: 'wait', lamp: 0 },
-      { op: 'slide', x: 2 * T + 3 },
+      { op: 'slide', x: 33 },
       { op: 'release', lamp: 0 },
       { op: 'light', lamp: 1 },
       { op: 'drop', row: 1 },
       { op: 'wait', lamp: 1 },
-      { op: 'slide', x: 3 * T + 3 },
+      { op: 'slide', x: 49 },
       { op: 'release', lamp: 1 },
       { op: 'light', lamp: 2 },
       { op: 'drop', row: 2 },
       { op: 'wait', lamp: 2 },
-      { op: 'slide', x: 5 * T - CW },
+      { op: 'slide', x: 66 },
       { op: 'release', lamp: 2 },
     ] },
     { k: 2, steps: [
       { op: 'light', lamp: 0 },
       { op: 'wait', lamp: 0 },
-      { op: 'slide', x: 3 * T - CW },
+      { op: 'slide', x: 34 },
       { op: 'release', lamp: 0 },
       { op: 'light', lamp: 1 },
       { op: 'wait', lamp: 1 },
-      { op: 'lift', y: T - CW + 15 },
+      { op: 'lift', y: 7 },
       { op: 'light', lamp: 2 },
-      { op: 'lift', y: T - CW },
+      { op: 'lift', y: 2 },
       { op: 'wait', lamp: 2 },
       { op: 'release', lamp: 1 },
-      { op: 'slide', x: 5 * T - CW },
+      { op: 'slide', x: 66 },
       { op: 'release', lamp: 2 },
       { op: 'goal' },
     ] },
@@ -95,11 +97,14 @@
 
   function setup(V) {
     VV = V;
+    layout(V);
+  }
+
+  function buildSpr() {
     SPR = { right: P.sprite(HPAL, lamp_right, S), up: P.sprite(HPAL, lamp_up, S), box: P.sprite(HPAL, box_Box1, S) };
     SPR.down = vflip(SPR.up);   // lamp_up flipped for the down-facing lamp
     SPR.wall = P.sprite(HPAL, lamp_wall, S);
     SPR.floor = P.sprite(HPAL, lamp_floor, S);
-    layout(V);
   }
 
   // a fresh sprite whose canvas is s.cv drawn upside down
@@ -158,7 +163,7 @@
   }
 
   function sigOf(V) {
-    return V.blocks.length + '/' + V.docH + '/' + V.main.w + '/' + V.W + '/' + V.H;
+    return V.blocks.length + '/' + V.docH + '/' + V.main.w + '/' + V.R + '/' + V.W + '/' + V.H;
   }
 
   function findBlock(V, k, used) {
@@ -174,18 +179,30 @@
   function layout(V) {
     sig = sigOf(V);
     shelves = [];
-    const used = [];
+    // largest art scale at which any shelf fits beside its text block
+    const blocks = [];
     for (let k = 0; k < 3; k++) {
-      const b = findBlock(V, k, used);
+      const b = findBlock(V, k, blocks);
+      blocks.push(b);
+    }
+    let sc = SCALES[SCALES.length - 1];
+    for (const cand of SCALES) {
+      if (blocks.some((b, k) => b && CHUNKS[k] && (1 + Math.max(...CHUNKS[k].cells.map(c => c[0]))) * ART * cand <= V.R - EDGE - (b.x + b.w + SHELF_GAP))) { sc = cand; break; }
+    }
+    if (sc !== S || !SPR) {
+      S = sc; T = ART * S; CW = 14 * S; SLIDE_V = 32 * S; GLOW_R = GLOW_R0 * S / 3;
+      buildSpr();
+    }
+    for (let k = 0; k < blocks.length; k++) {
+      const b = blocks[k];
       if (!b) continue;
-      used.push(b);
       const chunk = CHUNKS[k];
       if (!chunk) continue;
       // a built chunk of tiles
       const cols = 1 + Math.max(...chunk.cells.map(c => c[0]));
       const rows = 1 + Math.max(...chunk.cells.map(c => c[1]));
       const x = b.x + b.w + SHELF_GAP;
-      const avail = V.W - EDGE - x;
+      const avail = V.R - EDGE - x;
       if (cols * T > avail) continue;
       const y = b.y + b.h - SHELF_LIFT - rows * T;
       const w = cols * T;
@@ -199,15 +216,15 @@
       });
       const lamps = chunk.lamps.map(lm => {
         const spr = SPR[lm.kind];
-        if (lm.kind === 'wall') return { kind: lm.kind, x: x + (lm.c + 1) * T - spr.w, y: y + lm.r * T + T - 36 - 3 * S };
+        if (lm.kind === 'wall') return { kind: lm.kind, x: x + (lm.c + 1) * T - spr.w, y: y + lm.r * T + T - 12 * S - 3 * S };
         if (lm.kind === 'floor') return { kind: lm.kind, x: x + (lm.c + 1) * T - CW / 2 - 3 * S, y: y + lm.r * T };
-        return { kind: lm.kind, x: x + lm.c * T + 3, y: y + lm.r * T - spr.h };
+        return { kind: lm.kind, x: x + lm.c * T + S, y: y + lm.r * T - spr.h };
       });
       for (let i = 0; i < lamps.length; i++) {
         lamps[i].on = 0;
         lamps[i].a = 0;
       }
-      const cx = x + chunk.crate.c * T + 3, cy = y + chunk.crate.r * T - CW;
+      const cx = x + chunk.crate.c * T + S, cy = y + chunk.crate.r * T - CW;
       const crates = [{ x: cx, y: cy, hx: cx, hy: cy, mode: 'rest', al: 1 }];
       shelves.push({ k, x, y, w, tiles, cells, rows, target: TARGETS[k], lamps, crates });
     }
@@ -256,7 +273,7 @@
   function reach(l, V) {
     const o = face(l, -V.sy);
     let d;
-    if (l.kind === 'right' || l.kind === 'wall') d = V.W - o.x;
+    if (l.kind === 'right' || l.kind === 'wall') d = V.R - BEAM_PAD - o.x;
     else if (l.kind === 'up' || l.kind === 'floor') d = o.y - Math.round(V.top);
     else d = V.H - o.y;
     for (const s of shelves) {
@@ -274,18 +291,19 @@
     return Math.max(0, d);
   }
 
-  function wedge(l, V) {
+  // out: optional reused 4-point array, r: reach already measured; both avoid per-frame allocation
+  function wedge(l, V, cut, out, r) {
     const o = face(l, -V.sy);
     const sx = o.x + o.dx * NUDGE, sy = o.y + o.dy * NUDGE;
-    const d = Math.max(0, reach(l, V) - NUDGE);
+    const d = Math.max(0, (r === undefined ? reach(l, V) : r) - NUDGE - (cut || 0));
     const h1 = o.half + d * SPREAD;
     const nx = -o.dy, ny = o.dx;
-    return [
-      [sx + nx * o.half, sy + ny * o.half],
-      [sx + o.dx * d + nx * h1, sy + o.dy * d + ny * h1],
-      [sx + o.dx * d - nx * h1, sy + o.dy * d - ny * h1],
-      [sx - nx * o.half, sy - ny * o.half],
-    ];
+    const p = out || [[0, 0], [0, 0], [0, 0], [0, 0]];
+    p[0][0] = sx + nx * o.half; p[0][1] = sy + ny * o.half;
+    p[1][0] = sx + o.dx * d + nx * h1; p[1][1] = sy + o.dy * d + ny * h1;
+    p[2][0] = sx + o.dx * d - nx * h1; p[2][1] = sy + o.dy * d - ny * h1;
+    p[3][0] = sx - nx * o.half; p[3][1] = sy - ny * o.half;
+    return p;
   }
 
   function drawWedgePath(ctx, pts) {
@@ -295,6 +313,7 @@
     ctx.closePath();
   }
 
+  const SCR = [0, 1, 2].map(() => [[0, 0], [0, 0], [0, 0], [0, 0]]);
   function drawBeams(ctx, V) {
     const ca = 0.20 + 0.03 * Math.sin(clock * 3.1);
     for (const shelf of shelves) {
@@ -302,10 +321,18 @@
         if (!l.a || l.a <= 0) continue;
         const o = face(l, -V.sy);
         if (o.y < -600 || o.y > V.H + 600) continue;
-        const pts = wedge(l, V);
-        if (reach(l, V) - NUDGE < 2) continue;
+        const r = reach(l, V);
+        if (r - NUDGE < 2) continue;
+        // a beam that runs out at the frame instead of a shelf thins out over its last two steps
+        const open = (l.kind === 'right' || l.kind === 'wall') && r >= V.R - BEAM_PAD - o.x - 0.5;
+        if (open) {
+          // three stacked layers; per-layer alpha so the overlapped core reads the same ca * l.a as a single fill
+          ctx.fillStyle = 'rgba(' + CONE + ',' + (1 - Math.pow(1 - ca * l.a, 1 / 3)).toFixed(3) + ')';
+          for (let k = 2; k >= 0; k--) { drawWedgePath(ctx, wedge(l, V, k * BEAM_FADE, SCR[k], r)); ctx.fill(); }
+          continue;
+        }
         ctx.fillStyle = 'rgba(' + CONE + ',' + (ca * l.a).toFixed(3) + ')';
-        drawWedgePath(ctx, pts);
+        drawWedgePath(ctx, wedge(l, V, 0, SCR[0], r));
         ctx.fill();
       }
     }
@@ -322,7 +349,7 @@
         P.glow(ctx, o.x + o.dx * NUDGE, o.y + o.dy * NUDGE, GLOW_R, LAMP_GLOW, base + (GLOW_LIT - base) * (l.a || 0));
       }
       if (shelf.goal) {
-        P.glow(ctx, shelf.x + 4.5 * T, shelf.y + 1 * T - V.sy, 39, LAMP_GLOW, .14);
+        P.glow(ctx, shelf.x + 4.5 * T, shelf.y + 1 * T - V.sy, 13 * S, LAMP_GLOW, .14);
       }
     }
   }
@@ -376,7 +403,7 @@
       }
       if (op.op === 'slide') {
         c.mode = 'script';
-        const target = s.x + op.x;
+        const target = s.x + op.x * S;   // op.x/op.y in art px
         const dir = target >= c.x ? 1 : -1;
         c.x += dir * SLIDE_V * dt;
         if ((dir > 0 && c.x >= target) || (dir < 0 && c.x <= target)) { c.x = target; c.mode = 'rest'; e.i++; continue; }
@@ -384,7 +411,7 @@
       }
       if (op.op === 'lift') {
         c.mode = 'script';
-        const target = s.y + op.y;
+        const target = s.y + op.y * S;
         c.y -= SLIDE_V * dt;
         if (c.y <= target) { c.y = target; c.mode = 'rest'; e.i++; continue; }
         break;

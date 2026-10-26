@@ -88,7 +88,7 @@
     let topDirty = true;
     let syCache = window.scrollY;   // written by the passive scroll listener, never read in rAF
     const V = {
-      W: 0, H: 0, dpr: 1, top: 0, sy: 0, docH: 0, t: 0, dt: 0,
+      W: 0, H: 0, L: 0, R: 0, dpr: 1, top: 0, sy: 0, docH: 0, t: 0, dt: 0,
       main: { x: 0, y: 0, w: 0, h: 0 }, gutter: 0, band: { x0: 0, x1: 0, w: 0 },
       blocks: [], vis: [], rnd: U.mulberry(spec.seed || 1),
       pointer: { x: -1, y: -1, down: false, has: false },
@@ -138,7 +138,11 @@
         h: r.height,
       };
       V.band.x0 = Math.round(V.main.x + V.main.w + 16);
-      V.band.x1 = V.W - 16;
+      // the open folder's inner box: toys lay out between L and R, not the viewport edges
+      const fr = rootEl.getBoundingClientRect();
+      V.L = Math.max(0, fr.left + rootEl.clientLeft); V.R = Math.min(V.W, fr.right - rootEl.clientLeft);
+      V.band.x1 = V.R - 16;
+      document.documentElement.style.setProperty('--play-r', (V.W - V.R + 16) + 'px');   // panels and hints stay inside the frame
       V.band.w = V.band.x1 - V.band.x0;
       V.blocks = [];
       const els = [...mainEl.children];
@@ -222,7 +226,7 @@
         g.clearRect(0, 0, tiles.w, e.h);
         g.save();
         g.beginPath();
-        g.rect(0, 0, tiles.w, e.h);
+        g.rect(fL - tiles.x0, fT + V.sy - e.slot * TILE, fW, fH);
         g.clip();
         g.translate(-tiles.x0, -e.slot * TILE);
         spec.drawDoc(g, V);
@@ -230,6 +234,7 @@
       }
     }
 
+    let fL = 0, fT = 0, fW = 0, fH = 0, panelB = -1;
     function frame(dt) {
       dt = Math.max(0, dt);
       V.dt = dt; V.t += dt;
@@ -251,8 +256,17 @@
       }
       V.vis.length = n;
       spec.step(dt, V);
+      // read the open folder's inner box before any style write; nothing the toy paints may leave it
+      const fr = rootEl.getBoundingClientRect();
+      fL = fr.left + rootEl.clientLeft; fT = fr.top + rootEl.clientTop;
+      fW = fr.right - rootEl.clientLeft - fL; fH = fr.bottom - rootEl.clientTop - fT;
+      // fixed panels and hints ride up with the frame's bottom edge near the folder's end
+      const pb = Math.max(0, Math.round(V.H - (fr.bottom - (rootEl.offsetHeight - rootEl.clientHeight - rootEl.clientTop))));
+      if (pb !== panelB) { panelB = pb; document.documentElement.style.setProperty('--play-b', pb + 'px'); }
       ctx.clearRect(0, 0, V.W, V.H);
+      ctx.save(); ctx.beginPath(); ctx.rect(fL, fT, fW, fH); ctx.clip();
       spec.draw(ctx, V);
+      ctx.restore();
       if (tiles && spec.drawDoc) paintTiles();
       V.scrolled = false;
     }
@@ -266,7 +280,7 @@
     const toy = toys[name];
     // later opens: show again and remeasure
     toy.resume = function (root) {
-      rootEl = root;
+      rootEl = root; panelB = -1;
       mainEl = root.querySelector(".case") || mainEl;
       V.mainEl = mainEl;
       for (const el of toy.panels) delete el.dataset.off;
@@ -334,11 +348,15 @@
     // fonts/media settling (and any later reflow of the column) remeasure, debounced
     if ("ResizeObserver" in window) {
       let roTimer = 0;
-      new ResizeObserver(() => {
+      const roMain = new ResizeObserver(() => {
         clearTimeout(roTimer);
-        roTimer = setTimeout(() => { if (current !== name) return; measure(); if (pacer) pacer.wake(); }, 150);
-      }).observe(mainEl);
+        roTimer = setTimeout(() => { if (current !== name) return; const l0 = V.L, r0 = V.R; measure(); if ((V.L !== l0 || V.R !== r0) && spec.resize) spec.resize(V); if (pacer) pacer.wake(); }, 150);
+      });
+      roMain.observe(mainEl); roMain.observe(rootEl);
     }
+
+    // the folder grows and shrinks while it opens and closes: redraw the clip with it
+    if ("ResizeObserver" in window) new ResizeObserver(() => { if (current === name && pacer) pacer.wake(); }).observe(rootEl);
 
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && on) { if (pacer) pacer.start(); }
