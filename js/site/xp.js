@@ -213,7 +213,7 @@ window.XP = (function () {
 
     // everything earned so far rides quietly as the top bar's underline
     document.documentElement.style.setProperty("--xp-progress",
-      (Math.min(1, lv / TOTAL) * 100).toFixed(2) + "%");
+      Math.min(1, lv / TOTAL).toFixed(4));
   }
 
   /* =========================================================

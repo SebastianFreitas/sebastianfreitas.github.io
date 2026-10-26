@@ -16,7 +16,7 @@
   color: var(--sage-dim);
 }
 .folder-body[hidden] { display: none; }
-.folder-body.is-opening, .folder-body.is-closing { overflow: hidden; }
+.folder-body.is-opening, .folder-body.is-closing { overflow: clip; } /* clip, not hidden: hidden makes the body a scroll container and the loader's sticky block stops following the viewport */
 
 .folder-close {
   display: flex;
@@ -91,10 +91,14 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
   color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6), 0 2px 12px rgba(0,0,0,0.9);
 }
 
-.folder-body.is-opening {
+/* glow on a pseudo-element with a fixed shadow: only its opacity animates */
+.folder-body.is-opening::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.2);
   animation: folderGlow var(--open-ms) ease-out both;
 }
-.folder-body.is-opening > :not(.folder-scan):not(.folder-bar):not(.folder-kicker) {
+.folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker { will-change: transform, opacity; }
+.folder-body.is-opening > :not(.folder-scan):not(.folder-bar):not(.folder-kicker):not(.folder-loader) {
   animation: folderFlicker var(--open-ms) steps(1, end) both;
 }
 .folder-body.is-opening .folder-bar { animation: folderBar var(--open-ms) cubic-bezier(.3,.7,.3,1) both; }
@@ -124,13 +128,31 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 @keyframes folderHead { 0%, 68% { color: transparent; text-shadow: none; } 70%, 100% { color: var(--lamp); } }
 @keyframes folderType { from { clip-path: inset(0 100% 0 0); } 45%, to { clip-path: inset(0 0 0 0); } }
 @keyframes folderGlow {
-  0% { box-shadow: inset 0 0 0 rgb(var(--lamp-rgb) / 0); }
-  35% { box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.2); }
-  100% { box-shadow: inset 0 0 0 rgb(var(--lamp-rgb) / 0); }
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .folder-body.is-opening, .folder-body.is-opening > *, .folder-body.is-opening .folder-bar { animation: none !important; }
+  .folder-body.is-opening::after, .folder-body.is-opening > *, .folder-body.is-opening .folder-bar { animation: none !important; }
   .folder-scan, .folder-kicker { display: none; }
   .folder-bar { opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
 }
+
+/* page-load screen inside the opening case file (js/site/folders.js loadScreen) */
+.folder-loader {
+  position: absolute; inset: 0; z-index: 3; background: var(--petrol);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  opacity: 1; transition: opacity 200ms linear;
+}
+/* the text block rides the viewport centre (the body is thousands of px tall); the top margin keeps it under the header */
+.folder-loader-block {
+  position: sticky; top: calc(50vh - 16px); margin-top: 64px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.folder-loader.is-out { opacity: 0; pointer-events: none; }
+.folder-loader-line { font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.14em; color: var(--lamp); }
+.folder-loader-bar { width: min(260px, 60vw); height: 2px; background: rgb(var(--lamp-rgb) / 0.2); overflow: hidden; }
+.folder-loader-bar i { display: block; height: 100%; background: var(--lamp); transform-origin: left; animation: folder-load 600ms linear forwards; }
+@keyframes folder-load { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .folder-loader-bar i { animation: none; } }

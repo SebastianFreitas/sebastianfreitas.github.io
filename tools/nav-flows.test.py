@@ -278,7 +278,7 @@ def flow_worklink(browser, base):
         if how == "top bar Work":
             page.click("header nav a[href='#work']")
         else:
-            page.click("#conclusus a.back")
+            page.click("#conclusus .folder-close")
         page.wait_for_timeout(SETTLE)
         s = state(page)
         check(f"{how}: no gate", not s["gateShown"] and not s["frozen"], s)

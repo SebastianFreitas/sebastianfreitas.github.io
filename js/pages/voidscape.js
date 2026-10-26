@@ -103,7 +103,7 @@
   function refresh() {
     card.querySelector('.gun').textContent = gun.base.name + ' · lvl ' + (gun.level - 9);
     card.querySelector('.hp').textContent = hp + '/' + B.maxHp;
-    card.querySelector('.bar i').style.width = (hp / B.maxHp * 100) + '%';
+    card.querySelector('.bar i').style.transform = 'scaleX(' + (hp / B.maxHp) + ')';
     card.querySelector('.mods').textContent = gun.mods.map(m => m.text).join(' · ') || 'no mods';
     card.querySelector('.boons').textContent = boons.length
       ? 'boons: ' + boons.map(b => b.name).join(' · ')

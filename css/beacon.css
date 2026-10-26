@@ -7,7 +7,7 @@
    ========================================================= */
 
 /* ---- top bar: wordmark left, level centre, links right ---- */
-:root { --xp-progress: 0%; }
+:root { --xp-progress: 0; }
 
 .xp-slot { justify-self: center; }
 

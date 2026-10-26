@@ -1,6 +1,4 @@
-/* heavylight.js — the HeavyLight case page toy. A viewport-fixed cave ring
-   owns the border (ceiling notches, floor mounds, right-wall ledges, a
-   floor spike row), three tile shelves sit in the gutter beside the hero,
+/* heavylight.js — the HeavyLight case page toy. Three tile shelves sit in the gutter beside the hero,
    the Lamps clip and the journal, crates rest on them and the lamps light
    with the bridge beacon's beam: straight right/up/down, stopped at the
    first solid tile, 0.15s fade in, 0.25s fade out, a faint idle glow. */
@@ -102,7 +100,6 @@
     SPR.wall = P.sprite(HPAL, lamp_wall, S);
     SPR.floor = P.sprite(HPAL, lamp_floor, S);
     layout(V);
-    buildRing(V);
   }
 
   // a fresh sprite whose canvas is s.cv drawn upside down
@@ -114,106 +111,6 @@
     ctx.scale(1, -1);
     ctx.drawImage(s.cv, 0, 0);
     return { cv, w: s.w, h: s.h, ox: s.ox, oy: s.oy, scale: s.scale };
-  }
-
-  // ---- cave ring: one viewport-fixed border built from the game's own tiles ----
-  let ring = null, ringKey = '';
-
-  function ringGeom(V) {
-    const y0 = Math.round(V.top);
-    const cols = Math.ceil(V.W / T), rows = Math.ceil((V.H - y0) / T);
-    const cR = Math.floor((V.W - T) / T), rB = Math.floor((V.H - y0 - T) / T);
-    const extra = new Set();
-    function baseSolid(c, r) { return c === 0 || r === 0 || c >= cR || r >= rB; }
-    function solid(c, r) {
-      if (c < 0 || r < 0 || c >= cols || r >= rows) return true;
-      return baseSolid(c, r) || extra.has(c + ',' + r);
-    }
-    const bandX = V.main.x + V.main.w + 8;
-    const spikes = placeSpikes(cR, rB, bandX, V.main.x);
-    const bulges = placeBulges(V, extra, cols, rows, cR, rB, bandX, spikes);
-    let cells = 0;
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (solid(c, r)) cells++;
-    return { y0, cols, rows, cR, rB, solid, bulges, spikes, cells };
-  }
-
-  // one bulge per n-slot along an edge, hashed and clamped from corners and each other
-  function placeBulges(V, extra, cols, rows, cR, rB, bandX, spikes) {
-    const bulges = { top: [], right: [], bottom: [], left: [] };
-    const reserved = new Set();
-    if (spikes.length) {
-      const lo = spikes[0].c - 1, hi = spikes[spikes.length - 1].c + 1;
-      for (let c = lo; c <= hi; c++) reserved.add(c);
-    }
-    { // top: "notch + hanging drip" — 3 cols wide, 1 extra row, 1 more cell under its middle
-      const hi = cols - 2, minCol = Math.max(2, Math.ceil(bandX / T));
-      const n = Math.max(1, Math.round(V.W / 600)), span = hi - minCol;
-      let lastEnd = -Infinity;
-      for (let s = 0; s < n && span >= 3; s++) {
-        const slotStart = minCol + Math.floor(s * span / n), slotEnd = minCol + Math.floor((s + 1) * span / n);
-        const room = slotEnd - slotStart - 3;
-        if (room < 0) continue;
-        const c0 = slotStart + Math.floor(U.hash1(701 + s) * (room + 1));
-        if (c0 < lastEnd + 1 || c0 + 2 >= hi) continue;
-        for (let dc = 0; dc < 3; dc++) extra.add((c0 + dc) + ',1');
-        extra.add((c0 + 1) + ',2');
-        bulges.top.push({ c0 });
-        lastEnd = c0 + 3;
-      }
-    }
-    { // bottom: "mound" — 3-4 cols wide, 1 extra row, middle 1-2 cells 1 row higher
-      const hi = cols - 2, minCol = Math.max(2, Math.ceil(bandX / T));
-      const n = Math.max(1, Math.round(V.W / 600)), span = hi - minCol;
-      let lastEnd = -Infinity;
-      for (let s = 0; s < n && span >= 4; s++) {
-        const slotStart = minCol + Math.floor(s * span / n), slotEnd = minCol + Math.floor((s + 1) * span / n);
-        const w = 3 + (U.hash1(811 + s * 2) < 0.5 ? 0 : 1);
-        const room = slotEnd - slotStart - w;
-        if (room < 0) continue;
-        const c0 = slotStart + Math.floor(U.hash1(811 + s) * (room + 1));
-        if (c0 < lastEnd + 1 || c0 + w - 1 >= hi) continue;
-        let blocked = false;
-        for (let dc = 0; dc < w; dc++) if (reserved.has(c0 + dc)) blocked = true;
-        if (blocked) continue;
-        for (let dc = 0; dc < w; dc++) extra.add((c0 + dc) + ',' + (rB - 1));
-        const peak = w === 3 ? 1 : 1 + Math.floor(U.hash1(811 + s * 3) * 2);
-        for (let dc = 0; dc < peak; dc++) extra.add((c0 + 1 + dc) + ',' + (rB - 2));
-        bulges.bottom.push({ c0, w });
-        lastEnd = c0 + w;
-      }
-    }
-    { // right: "stepped ledge" — 3 rows tall, 2-3 cols inward, only the top/bottom 20% of the window
-      const topLo = 1, topHi = Math.max(3, Math.floor(rows * 0.2));
-      const botLo = Math.floor(rows * 0.8), botHi = rB - 1;
-      const zones = [];
-      if (topHi - topLo >= 2) zones.push([topLo, topHi]);
-      if (botHi - botLo >= 2) zones.push([botLo, botHi]);
-      const n = Math.max(1, Math.round((V.H - Math.round(V.top)) / 600));
-      let lastEnd = -Infinity;
-      for (let s = 0; s < n; s++) {
-        const zone = zones[zones.length > 1 ? s % zones.length : 0];
-        if (!zone) continue;
-        const [lo, hi] = zone, room = hi - lo - 2;
-        if (room < 0) continue;
-        const r0 = lo + Math.floor(U.hash1(919 + s) * (room + 1));
-        if (r0 < lastEnd + 1 || r0 + 2 > hi) continue;
-        for (let dr = 0; dr < 3; dr++) {
-          const depth = 1 + (dr === 1 ? 1 : 0) + (U.hash1(919 + s * 5 + dr) < 0.4 ? 1 : 0);
-          for (let dd = 0; dd < depth; dd++) extra.add((cR - 1 - dd) + ',' + (r0 + dr));
-        }
-        bulges.right.push({ r0 });
-        lastEnd = r0 + 3;
-      }
-    }
-    return bulges;
-  }
-
-  function placeSpikes(cR, rB, bandX, mainX) {
-    function fits(c) { return c + 2 <= cR - 2; }
-    let c0 = Math.max(2, Math.ceil(bandX / T));
-    if (!fits(c0)) c0 = Math.max(2, Math.ceil((mainX + 24) / T));
-    if (!fits(c0)) return [];
-    return [{ c: c0, r: rB }, { c: c0 + 1, r: rB }, { c: c0 + 2, r: rB }];
   }
 
   // pick the sheet's autotile face from the four cardinal air neighbours
@@ -234,48 +131,6 @@
     return { name: 'h_wall', flip: false };
   }
 
-  // a solid cell with no cardinal air but a diagonal one: the two rims meet with a gap unless patched
-  function innerCorners(solid, c, r) {
-    if (!solid(c, r - 1) || !solid(c + 1, r) || !solid(c, r + 1) || !solid(c - 1, r)) return [];
-    const out = [];
-    if (!solid(c + 1, r - 1)) out.push('ne');
-    if (!solid(c + 1, r + 1)) out.push('se');
-    if (!solid(c - 1, r + 1)) out.push('sw');
-    if (!solid(c - 1, r - 1)) out.push('nw');
-    return out;
-  }
-
-  // one art-pixel light-rim nub, the size the sheet uses for its own corner bevels
-  function paintCorner(ctx, x, y, dir) {
-    const cx = dir[1] === 'e' ? x + T - S : x, cy = dir[0] === 's' ? y + T - S : y;
-    ctx.fillStyle = HPAL[3];
-    ctx.fillRect(Math.round(cx), Math.round(cy), S, S);
-  }
-
-  function buildRing(V) {
-    const key = V.W + 'x' + V.H + '@' + Math.round(V.top) + '|' + Math.round(V.main.x + V.main.w);
-    if (key === ringKey && ring) return;
-    ringKey = key;
-    const g = ringGeom(V);
-    const cv = document.createElement('canvas');
-    cv.width = V.W; cv.height = V.H;
-    const ctx = cv.getContext('2d');
-    for (let r = 0; r < g.rows; r++) {
-      for (let c = 0; c < g.cols; c++) {
-        if (!g.solid(c, r)) continue;
-        const x = c * T, y = g.y0 + r * T;
-        const tile = ringTile(g.solid, c, r);
-        P.blit(ctx, P.sprite(HPAL, HSPR[tile.name], S), x, y, tile.flip);
-        for (const dir of innerCorners(g.solid, c, r)) paintCorner(ctx, x, y, dir);
-      }
-    }
-    for (const sp of g.spikes) {
-      P.blit(ctx, P.sprite(HPAL, HSPR.h_spike, S), sp.c * T, g.y0 + (sp.r - 1) * T + HSPR.h_spike.oy * S, false);
-    }
-    ring = cv;
-    ring._g = g;
-  }
-
   // ---- shelves, crates, lamps ----
   const TARGETS = ['.embed-shell', 'video[src*="lamps"]', 'img[src*="journal"]'];
   // built shelf "chunks": cells in tile units from the chunk origin, plus lamp mounts and the crate's home cell.
@@ -292,7 +147,7 @@
       crate: { c: 1, r: 4 } },
   ];
 
-  // pick a shelf cell's tile: a flat platform face if it's open above and below, else the ring's own autotile
+  // pick a shelf cell's tile: a flat platform face if it's open above and below, else the sheet's autotile
   function chunkTile(solid, c, r) {
     if (!solid(c, r - 1) && !solid(c, r + 1)) {
       if (!solid(c - 1, r)) return { name: 'h_platL', flip: false };
@@ -330,7 +185,7 @@
       const cols = 1 + Math.max(...chunk.cells.map(c => c[0]));
       const rows = 1 + Math.max(...chunk.cells.map(c => c[1]));
       const x = b.x + b.w + SHELF_GAP;
-      const avail = ringGeom(V).cR * T - EDGE - x;
+      const avail = V.W - EDGE - x;
       if (cols * T > avail) continue;
       const y = b.y + b.h - SHELF_LIFT - rows * T;
       const w = cols * T;
@@ -397,28 +252,13 @@
     return { x: l.x + 13 * S, y: l.y + SPR.down.h + oy, dx: 0, dy: 1, half: 3 * S };
   }
 
-  // beam length in px from the face to the first solid tile (ring, else a shelf, else the screen edge)
+  // beam length in px from the face to the first solid tile (a shelf, else the screen edge)
   function reach(l, V) {
-    const o = face(l, -V.sy), g = ring && ring._g;
-    if (!g) {
-      if (l.kind === 'right' || l.kind === 'wall') return Math.max(0, V.W - o.x);
-      if (l.kind === 'up' || l.kind === 'floor') return Math.max(0, o.y);
-      return Math.max(0, V.H - o.y);
-    }
+    const o = face(l, -V.sy);
     let d;
-    if (l.kind === 'right' || l.kind === 'wall') {
-      let r = Math.floor((o.y - g.y0) / T), c = Math.floor((o.x + 1) / T);
-      while (!g.solid(c, r)) c++;
-      d = c * T - o.x;
-    } else if (l.kind === 'up' || l.kind === 'floor') {
-      let c = Math.floor(o.x / T), r = Math.floor((o.y - 1 - g.y0) / T);
-      while (!g.solid(c, r)) r--;
-      d = o.y - (g.y0 + (r + 1) * T);
-    } else {
-      let c = Math.floor(o.x / T), r = Math.floor((o.y + 1 - g.y0) / T);
-      while (!g.solid(c, r)) r++;
-      d = g.y0 + r * T - o.y;
-    }
+    if (l.kind === 'right' || l.kind === 'wall') d = V.W - o.x;
+    else if (l.kind === 'up' || l.kind === 'floor') d = o.y - Math.round(V.top);
+    else d = V.H - o.y;
     for (const s of shelves) {
       for (const cell of s.cells) {
         const cx = s.x + cell.c * T, cy = s.y + cell.r * T - V.sy;
@@ -691,11 +531,9 @@
   }
 
   function draw(ctx, V) {
-    buildRing(V);
     drawShelves(ctx, V);
     drawGlows(ctx, V);
     drawBeams(ctx, V);
-    ctx.drawImage(ring, 0, 0);
   }
 
   function atRest(V) {
@@ -710,7 +548,6 @@
 
   function resize(V) {
     layout(V);
-    buildRing(V);
   }
 
   function on(k, i) {
@@ -732,9 +569,7 @@
         if ((l.a || 0) > 0) wedges.push({ k: s.k, i, kind: l.kind, pts: VV ? wedge(l, VV) : [], a: +l.a.toFixed(2), d: Math.round(VV ? reach(l, VV) : 0) });
       }
     }
-    const g = ring && ring._g;
     return {
-      ring: g ? { y0: g.y0, cols: g.cols, rows: g.rows, cR: g.cR, rB: g.rB, cells: g.cells, bulges: { top: g.bulges.top.length, right: g.bulges.right.length, bottom: g.bulges.bottom.length, left: g.bulges.left.length }, spikes: g.spikes.length } : null,
       shelves: shelves.map(s => ({ k: s.k, x: s.x, y: s.y, w: s.w, tiles: s.tiles, rows: s.rows, cells: s.cells.map(c => ({ c: c.c, r: c.r, name: c.name })), lamps: s.lamps.map(l => l.kind), crates: s.crates.length, boxes: s.crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y), mode: c.mode, al: c.al === undefined ? 1 : +c.al.toFixed(2) })) })),
       wedges,
       events: evs.map((e, k) => ({ k, state: e.state, t: +e.t.toFixed(2) })),

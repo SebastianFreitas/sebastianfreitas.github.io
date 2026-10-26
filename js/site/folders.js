@@ -92,12 +92,63 @@ window.Folders = (function () {
 
   ["wheel", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, stopPan, { passive: true }));
 
-  function animate(body, from, to, ms, easing, done) {
+  // close: the layout drops at once; the body stays as a frozen overlay and a clip-path wipes it up (no per-frame layout)
+  function animate(body, ms, easing, done) {
     if (body._anim) body._anim.cancel();
-    const a = body._anim = body.animate([{ height: from + "px" }, { height: to + "px" }], { duration: ms, easing });
-    const end = () => { if (body._anim !== a) return; body._anim = null; done(); };
-    a.onfinish = end;
-    a.oncancel = () => {};
+    const st = body.style;
+    st.position = "absolute"; st.top = body.offsetTop + "px"; st.left = body.offsetLeft + "px";
+    st.width = body.offsetWidth + "px"; st.height = body.offsetHeight + "px"; st.zIndex = "5";
+    const a = body._anim = body.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 100% 0)" }], { duration: ms, easing });
+    a.finished.then(() => { if (body._anim !== a) return; body._anim = null; done(); }, () => {});
+  }
+
+  // open: the body is already laid out; a clip-path wipe reveals it downward (no per-frame layout)
+  function reveal(body, ms, done) {
+    if (body._anim) body._anim.cancel();
+    const a = body._anim = body.animate([{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: ms, easing: "ease-out" });
+    a.finished.then(() => { if (body._anim !== a) return; body._anim = null; done(); }, () => {});
+  }
+
+  function dropLoader(body) {
+    if (body._loader) body._loader.remove();
+    body._loader = null;
+  }
+
+  // opaque page-load screen inside the opening folder body: up from the first frame, fades once the open motion is done and the page is ready (400-700 ms)
+  function loadScreen(key, section, body, motion, done) {
+    dropLoader(body);
+    const el = document.createElement("div");
+    el.className = "folder-loader";
+    el.setAttribute("aria-hidden", "true");
+    const line = document.createElement("div");
+    line.className = "folder-loader-line";
+    line.textContent = "> loading " + key + "\u2026";
+    const bar = document.createElement("div");
+    bar.className = "folder-loader-bar";
+    bar.appendChild(document.createElement("i"));
+    const block = document.createElement("div");
+    block.className = "folder-loader-block";
+    block.append(line, bar);
+    el.appendChild(block);
+    body.appendChild(el);
+    body._loader = el;
+    const t0 = performance.now();
+    let over = false;
+    const hide = () => {
+      if (over || body._loader !== el) return;
+      over = true;
+      done();
+      el.classList.add("is-out");
+      setTimeout(() => { el.remove(); if (body._loader === el) body._loader = null; }, 260);
+    };
+    const frame = new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const imgs = Array.prototype.slice.call(section.querySelectorAll(".folder-body img")).slice(0, 3)
+      .map((im) => (im.decode ? im.decode() : Promise.resolve()).catch(() => {}));
+    const ready = Promise.race([
+      Promise.all([frame].concat(imgs)).then(() => new Promise((r) => setTimeout(r, Math.max(0, 400 - (performance.now() - t0))))),
+      new Promise((r) => setTimeout(r, 700))
+    ]);
+    Promise.all([ready, motion]).then(hide);
   }
 
   function close({ instant = false } = {}) {
@@ -114,13 +165,17 @@ window.Folders = (function () {
     const row = rowOf(key);
     if (row) row.setAttribute("aria-expanded", "false");
     const body = bodyOf(section);
-    const fin = () => { body.classList.remove("is-open", "is-closing"); body.hidden = true; };
+    const fin = () => {
+      body.classList.remove("is-open", "is-closing"); body.hidden = true;
+      ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; });
+    };
     body.classList.remove("is-opening");
+    dropLoader(body);
     if (instant || Util.reduced()) { if (body._anim) body._anim.cancel(); body._anim = null; fin(); return; }
     body.classList.remove("is-open");
     body.classList.add("is-closing");
     body.style.setProperty("--open-ms", SHUT_MS + "ms");
-    animate(body, body.offsetHeight, 0, SHUT_MS, "ease-in", fin);
+    animate(body, SHUT_MS, "ease-in", fin);
   }
 
   function open(key, { scroll = true, hash = true, instant = false } = {}) {
@@ -130,7 +185,6 @@ window.Folders = (function () {
     if (current) close({ instant });
     current = key;
     const body = dress(section, key);
-    const fast = instant || Util.reduced();
     body.hidden = false;
     section.classList.add("open");
     const row = rowOf(key);
@@ -144,26 +198,30 @@ window.Folders = (function () {
     };
     window.dispatchEvent(new Event("resize"));
     if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(section, section.dataset.toy);
+    if (body._anim) { body._anim.cancel(); ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; }); }
+    body._anim = null;
+    body.classList.remove("is-closing");
+    const fast = instant || Util.reduced();
+    let motion;
     if (fast) {
-      if (body._anim) body._anim.cancel();
-      body._anim = null;
-      body.classList.remove("is-closing");
       settled();
-      if (scroll) {
-        const land = () => jump(row.getBoundingClientRect().top + window.scrollY - topGap());
+      motion = Promise.resolve();
+    } else {
+      body.classList.remove("is-open");
+      body.classList.add("is-opening");
+      motion = new Promise((r) => reveal(body, GROW_MS, () => { settled(); r(); }));
+    }
+    if (scroll) {
+      const land = () => jump(row.getBoundingClientRect().top + window.scrollY - topGap());
+      if (fast) {
         land();
         // images and fonts above the row settle after a deep link; land again until the reader moves
         const again = () => { if (relax === again) land(); };
         relax = again;
         if (document.readyState !== "complete") window.addEventListener("load", again, { once: true });
-        setTimeout(again, 500);
-      }
-    } else {
-      body.classList.remove("is-closing", "is-open");
-      body.classList.add("is-opening");
-      animate(body, 0, body.scrollHeight, GROW_MS, "ease-out", settled);
-      if (scroll) panTo(key);
+      } else panTo(key);
     }
+    loadScreen(key, section, body, motion, () => { if (scroll && relax) relax(); });
     const xp = XP_FIRST[key];
     if (xp && window.XP) XP.award(xp[0], xp[1], xp[2]);
     if (key === "conclusus") watchTaught();

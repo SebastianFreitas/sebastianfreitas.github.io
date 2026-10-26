@@ -27,7 +27,7 @@
 .play-ui .k { color: var(--sage-dim); }
 .play-ui .row { display: flex; justify-content: space-between; gap: 0.75rem; }
 .play-ui .bar { height: 4px; margin: 0.25rem 0 0.45rem; background: var(--line); }
-.play-ui .bar i { display: block; height: 100%; background: var(--lamp); transition: width .15s linear; }
+.play-ui .bar i { display: block; height: 100%; background: var(--lamp); transform-origin: 0 50%; transition: transform .15s cubic-bezier(.2,.7,.2,1); }
 .play-ui button {
   display: block; width: 100%; margin: 0.35rem 0 0; padding: 0.4rem 0.55rem;
   font: 500 0.7rem/1.35 var(--mono); text-align: left; color: var(--sage);

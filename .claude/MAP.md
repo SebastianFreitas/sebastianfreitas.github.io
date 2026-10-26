@@ -99,7 +99,7 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (WAAPI height, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
+| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP; every open shows a petrol "> loading <key>…" page-load screen inside the opening folder body only (loadScreen, from the first frame until the open motion ends and 400-700 ms pass, 200 ms fade, no scroll lock) | `window.Folders {open, close, current, KEYS}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`
@@ -405,7 +405,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 - `play.js`: each cleared and painted per frame through `spec.drawDoc(ctx, V)` in page coordinates;
 - `play.js`: `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow` (with a `doc: true` toy: 4 px radius buckets drawn at the exact radius, 128-entry oldest-first cache), `award` (one XP point, once). Desktop only (`min-width: 900px`);
 - `play.js`: a still frame under reduced motion
-- `heavylight.js`: a viewport-fixed cave ring pre-rendered from HeavyLightSprites HSPR once per resize (ceiling notches, floor mounds, right-wall ledges in the top/bottom 20%, a 3-spike floor row, inner-corner rim nubs),
+- `heavylight.js`: no border; the beam runs to the viewport edge or the first shelf tile,
 - `heavylight.js`: three built gutter chunks (`CHUNKS[k]`: cells, lamps right/up/wall/floor, a crate) each with a step list (`EVENTS[k].steps`: light/wait/slide/lift/drop/release/goal, run by `runSteps`);
 - `heavylight.js`: event 3 slides the crate, lifts it on a floor lamp and hands it off onto the symbol tile, which then glows faintly; an event plays once when its chunk enters the middle third, pauses off-screen, and a click on a lamp replays a settled chunk (0.3 s fade out/in);
 - `heavylight.js`: hover over a lamp gives a pointer and a .14 head glow; reduced motion is one still frame posed by `poseStill` (events frozen at 0.9/0.4/2.05 s); the toy fires only `play-heavylight`, never `play-heavylight-tower` (that id stays listed elsewhere, D64);

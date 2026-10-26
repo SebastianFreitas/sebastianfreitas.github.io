@@ -96,10 +96,10 @@ a:hover { color: #fff; }
 /* everything earned so far, kept quiet: the rule under the top bar */
 .topbar::after {
   content: ""; position: absolute; left: 0; bottom: 0; height: 1px;
-  width: var(--xp-progress);
+  width: 100%; transform: scaleX(var(--xp-progress)); transform-origin: 0 50%;
   background: linear-gradient(to right, rgb(var(--lamp-rgb) / 0.25), var(--lamp));
   box-shadow: 0 0 10px rgb(var(--lamp-rgb) / 0.35);
-  transition: width 0.9s cubic-bezier(.6,0,.3,1);
+  transition: transform 0.9s cubic-bezier(.6,0,.3,1);
   pointer-events: none;
 }
 
