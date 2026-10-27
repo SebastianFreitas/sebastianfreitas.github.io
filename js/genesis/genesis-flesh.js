@@ -59,6 +59,7 @@ window.GenFlesh = (function () {
     calm = calm ? 1 : 0;
     const bodyPain = calm ? 0 : pain;
     const bodyTt = calm ? 0 : G.t;
+    const arr = 1 - smooth(clamp((since("root") - 0.3) / 0.5, 0, 1));   // arrival layers: full at the end of walk, gone over root
     const m = Math.min(G.W, G.H);
     const flesh = fleshGeom(womb);
     const { cx, cy, rx, ry } = flesh;
@@ -96,6 +97,27 @@ window.GenFlesh = (function () {
       ctx.quadraticCurveTo((x0 + x1) / 2 + sway, (y0 + y1) / 2, x1, y1);
     }
     ctx.stroke();
+
+    // ridges: lit folds beside each vein, and a darker rim just inside the edge
+    if (arr > 0.01) {
+    ctx.globalAlpha = vis * arr;
+    ctx.strokeStyle = "rgba(142,52,40,0.8)";
+    ctx.lineWidth = 0.010 * m;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a0 = (k * 60 + 20) * DEG - 7 * DEG, a1 = a0 + 25 * DEG;
+      const x0 = cx + Math.cos(a0) * rx * 0.32, y0 = cy + Math.sin(a0) * ry * 0.32;
+      const x1 = cx + Math.cos(a1) * rx * 0.96, y1 = cy + Math.sin(a1) * ry * 0.96;
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 - 0.05 * ry, x1, y1);
+    }
+    ctx.stroke();
+    fleshPath(ctx, cx, cy, rx * 0.97, ry * 0.97, bodyPain, 0, bodyTt);
+    ctx.strokeStyle = "#1a0407";
+    ctx.lineWidth = 0.035 * m;
+    ctx.stroke();
+    ctx.globalAlpha = vis;
+    }
 
     // 4. eyes: mostly open, closing under pain or the womb, watching west
     if (!calm) {
@@ -153,6 +175,36 @@ window.GenFlesh = (function () {
     }
 
     ctx.restore();
+
+    // a lit edge on the left, and roots reaching west along the path the walkers take
+    if (arr > 0.01) {
+    ctx.globalAlpha = vis * arr;
+    ctx.strokeStyle = "#a03a2c";
+    ctx.lineWidth = 0.008 * m;
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const ang = (130 + i * 100 / 24) * DEG;
+      const wob = 1 + Math.sin(ang * 3 + bodyTt * 0.5) * 0.08 * bodyPain + Math.sin(ang * 7 - bodyTt * 0.35) * 0.05 * bodyPain
+        + Math.sin(ang * 2 + bodyTt * 0.22) * 0.05 + Math.sin(ang * 11 + bodyTt * 1.1) * 0.03 * bodyPain;
+      const x = cx + Math.cos(ang) * rx * wob, y = cy + Math.sin(ang) * ry * wob;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    ctx.beginPath();
+    for (let k = 0; k < 5; k++) {
+      const a = (155 + k * 12.5) * DEG;
+      const x0 = cx + Math.cos(a) * rx * 0.98, y0 = cy + Math.sin(a) * ry * 0.98;
+      const len = m * (0.28 + 0.1 * hash1(k * 3 + 2));
+      const x1 = x0 - len, y1 = y0 + (k - 2) * 0.05 * m + 0.03 * m;
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(x0 - len * 0.5, y0 + (y1 - y0) * 0.15 - 0.03 * m, x1, y1);
+    }
+    ctx.strokeStyle = "#3a0a0e";
+    ctx.lineWidth = 0.014 * m;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
 
     // the calm band: a faint darker shape across the top of the body
     if (calm) {

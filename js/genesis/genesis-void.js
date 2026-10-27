@@ -124,15 +124,24 @@
     }
   })();
 
-  function drawPoint(ctx, amt, crack) {
+  let pulsePh = 0, pulseLast = 0;
+  function drawPoint(ctx, amt, crack, tension, implode) {
     if (amt < 0.01 && crack < 0.02) return;
     const cx = sx(0), cy = G.H * 0.46;
     const m = Math.min(G.W, G.H);
+    const tn = tension || 0, im = implode || 0;
+    const still = G.reduced && tn > 0;
+    const sc = 1 - Math.floor(im * 4) / 4;
+    if (tn <= 0) pulsePh = G.t;
+    else pulsePh += Math.min(0.1, Math.max(0, G.t - pulseLast)) * (1 + 2 * tn);
+    pulseLast = G.t;
+    const tt = still ? 0 : pulsePh;
+    const pull = 1 - 0.55 * tn;
 
     ctx.lineWidth = 1;
-    for (let k = 0; k < 5; k++) {
-      const base = (0.10 + 0.07 * k) * m;
-      const f = G.t * 0.22 + k * 0.2;
+    for (let k = 0; sc > 0 && k < 5; k++) {
+      const base = (0.10 + 0.07 * k) * m * sc;
+      const f = tt * 0.22 + k * 0.2;
       const r = base * (1 - 0.08 * (f - Math.floor(f)));
       ctx.strokeStyle = `rgba(120,128,124,${0.16 * amt * (1 - 0.12 * k)})`;
       ctx.beginPath();
@@ -140,21 +149,61 @@
       ctx.stroke();
     }
 
-    const pulse = 0.85 + 0.15 * Math.sin(G.t * 1.7);
-    flatGlow(ctx, cx, cy, (26 + 60 * amt) * pulse * 1.3, "245,208,107", 0.7 + 0.3 * amt);
+    const pulse = still ? 1 : 0.8 + 0.25 * Math.sin(tt * 3.4);
+    if (sc > 0) flatGlow(ctx, cx, cy, (26 + 60 * amt) * pulse * 1.3 * sc, "245,208,107", 0.7 + 0.3 * amt);
 
-    for (const s of MINDS) {
-      const a = s.ph + G.t * s.speed;
-      const x = cx + Math.cos(a) * s.r * (1 + 0.3 * amt);
-      const y = cy + Math.sin(a) * s.r * 0.7 * (1 + 0.3 * amt);
+    // slowly turning corona rays and three bright satellites, scaled by the screen
+    const lv = G.reduced ? 0 : G.t;
+    if (sc > 0) {
+      const R = m * 0.03 * sc * pull;
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      for (let i = 0; i < 8; i++) {
+        const a = i * 0.7854 + lv * 0.7;
+        const len = R * (1.6 + 0.9 * Math.sin(lv * 3.1 + i * 1.9) + (i % 2));
+        ctx.strokeStyle = `rgba(255,226,140,${(0.4 + 0.2 * (i % 2)) * amt})`;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.5, cy + Math.sin(a) * R * 0.5);
+        ctx.lineTo(cx + Math.cos(a) * (R * 0.5 + len), cy + Math.sin(a) * (R * 0.5 + len));
+        ctx.stroke();
+      }
+      ctx.lineCap = "butt";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.094 + lv * (1.9 - 0.5 * i) * (i === 1 ? -1 : 1);
+        const rr = R * (2.6 + 1.3 * i);
+        const sx2 = cx + Math.cos(a) * rr, sy2 = cy + Math.sin(a) * rr * 0.75;
+        flatGlow(ctx, sx2, sy2, 12 + 4 * i, "245,208,107", 0.55 * amt);
+        ctx.fillStyle = `rgba(255,246,214,${0.95 * amt})`;
+        ctx.beginPath(); ctx.arc(sx2, sy2, 3 + i, 0, 6.283); ctx.fill();
+      }
+    }
+
+    for (let i = 0; sc > 0 && i < MINDS.length; i++) {
+      const s = MINDS[i];
+      const a = s.ph + (still ? 0 : G.t * s.speed);
+      const x = cx + Math.cos(a) * s.r * (1 + 0.3 * amt) * pull * sc;
+      const y = cy + Math.sin(a) * s.r * 0.7 * (1 + 0.3 * amt) * pull * sc;
       ctx.fillStyle = `rgba(${s.g},${s.g},${s.g},${0.55 * amt})`;
       ctx.fillRect(x - s.size * 0.75, y - s.size * 0.75, s.size * 1.5, s.size * 1.5);
     }
 
+    // faint turning halo of motes drawn inward, and a tremor that grows with tension
+    const live = G.reduced ? 0 : G.t;
+    for (let i = 0; sc > 0 && i < 7; i++) {
+      const f = (live * 0.35 + i / 7) % 1;
+      const a = i * 2.4 + live * 0.8;
+      const rr = (46 + 14 * (i % 3)) * (1 - f) * pull * sc + 4;
+      ctx.fillStyle = `rgba(245,208,107,${0.5 * amt * Math.sin(f * 3.1416)})`;
+      ctx.fillRect(cx + Math.cos(a) * rr - 1, cy + Math.sin(a) * rr * 0.8 - 1, 2, 2);
+    }
+    const trem = G.reduced ? 0 : tn * tn * 2.5;
+    const tx = cx + Math.sin(G.t * 53) * trem, ty = cy + Math.cos(G.t * 61) * trem;
+    const br = 1 + 0.25 * Math.sin(live * 3.4);
     ctx.fillStyle = "#fff3d0";
-    ctx.beginPath(); ctx.arc(cx, cy, 4 + 3 * amt, 0, 6.283); ctx.fill();
+    if (sc > 0) { ctx.beginPath(); ctx.arc(tx, ty, (4 + 3 * amt) * sc * br, 0, 6.283); ctx.fill(); }
     ctx.fillStyle = "#ffffff";
-    ctx.beginPath(); ctx.arc(cx, cy, 3 + 2 * amt, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx, ty, sc > 0 ? Math.max(1.5, (3 + 2 * amt) * sc * br) : 1.5, 0, 6.283); ctx.fill();
 
     if (crack > 0.02) {
       ctx.strokeStyle = `rgba(255,248,230,${0.85 * crack})`;
@@ -179,16 +228,51 @@
     ctx.lineWidth = 1;
   }
 
+  // top of the gold rail on the deck (shared by drawSpan and drawSpanLife)
+  const railY = (H) => H * DECK - 0.012 * H - 1.5;
+
+  // The point being stretched: a bright head runs the rail with a dusty tail, thickness flickers
+  function drawSpanLife(ctx, grow) {
+    if (grow < 0.02 || G.beat > idxOf("drawn")) return;
+    const x0 = sx(SPAN_START_U), x1 = sx(mix(-0.48, ROOT_U + 0.22, grow));
+    if (x1 - x0 < 8) return;
+    const y = railY(G.H) + 0.75, len = x1 - x0;
+    const t = G.reduced ? 0.3 : G.t;
+    ctx.save();
+    ctx.fillStyle = `rgba(245,208,107,${0.45 + 0.25 * Math.sin(t * 9)})`;
+    ctx.fillRect(x0, y - 1.5, len, 3 + Math.floor(1.5 + 1.5 * Math.sin(t * 7 + 1)));
+    // the point pulled along the rail: a bright stretched blob at the start, breathing in length
+    const pw = 14 + 12 * Math.sin(t * 5.5);
+    flatGlow(ctx, x0, y, 30, "245,208,107", 0.6);
+    ctx.fillStyle = "rgba(255,243,208,0.95)";
+    ctx.fillRect(x0 - 4, y - 4, 8 + pw, 8);
+    for (let h = 0; h < 3; h++) {
+      const f = (t * (0.5 + 0.12 * h) + h / 3) % 1;
+      const hx = x0 + len * f;
+      for (let k = 0; k < 10; k++) {
+        const tx = hx - k * 10 - 6;
+        if (tx < x0) break;
+        ctx.fillStyle = `rgba(240,225,190,${0.7 * (1 - k / 10)})`;
+        ctx.fillRect(tx, y - 2 + 12 * (hh(h, k, 1) - 0.5) * (k / 10), 4, 3);
+      }
+      ctx.fillStyle = "rgba(255,243,208,0.95)";
+      ctx.fillRect(hx - 5, y - 5, 12, 10);
+      flatGlow(ctx, hx, y, 34, "245,208,107", 0.65);
+    }
+    ctx.restore();
+  }
+
   const SPAN_BAY_U = 0.46;
   const hh = (b, i, k) => { const v = Math.sin(b * 91.7 + i * 37.3 + k * 13.9 + 5.1) * 43758.5453; return v - Math.floor(v); };
   let spanCv = null, spanCtx = null;
-  const spanKey = new Float64Array(11);
+  const spanKey = new Float64Array(12);
   // The span: an old one, long dead. Few limbs bowed at the knee, a thin iron
   // deck, near the void's own colour; limbs and ends go into the fog.
   function drawSpan(ctx, grow) {
     if (grow < 0.02) return;
     const W = G.W, H = G.H, deckY = H * DECK;
     const inf = G.beat >= idxOf("flee");
+    const lit = G.beat <= idxOf("drawn") ? 1 : 0;
     const startU = inf ? G.cam - 2.65 : SPAN_START_U;
     const endU = inf ? G.cam + 2.45 : mix(-0.48, ROOT_U + 0.22, grow);
     const x0 = sx(startU);
@@ -215,7 +299,7 @@
     }
     const K = spanKey;
     const same = K[0] === cw && K[1] === ch && K[2] === W && K[3] === H && K[4] === x0 && K[5] === x1
-      && K[6] === G.cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0;
+      && K[6] === G.cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0 && K[11] === lit;
     if (same) {
       ctx.save();
       ctx.globalAlpha = clamp(grow * 3, 0, 1) * 0.9;
@@ -224,7 +308,7 @@
       return;
     }
     K[0] = cw; K[1] = ch; K[2] = W; K[3] = H; K[4] = x0; K[5] = x1;
-    K[6] = G.cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0;
+    K[6] = G.cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0; K[11] = lit;
     const g = spanCtx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = "source-over";
@@ -237,7 +321,8 @@
     const sh = 0.06 * H; // shoulder half-span
     const LIMB_LIT = "#151b20", LIMB_SHADE = "#0d1115";
     const CITY_LIT = "#1e262d", CITY_SHADE = "#12181d", UNDER_LIT = "#161c21", UNDER_SHADE = "#0e1216", NEST_LIT = "#1b1f22", NEST_SHADE = "#101316", WIN = "rgba(245,208,107,0.35)";
-    const SLAB = "#11161a", DECK_TOP = "#1a2127", DECK_HI = "#34414b";
+    // while it is drawn (point, drawn) the deck is lit: a held step well above the backdrop and a pale cold edge
+    const SLAB = "#11161a", DECK_TOP = lit ? "#2e383f" : "#1e262c", DECK_HI = lit ? "#b4c6d2" : "#34414b";
     const fr = v => v - Math.floor(v);
     const rnd = b => fr(Math.sin(b * 127.1 + 11.3) * 43758.5453);
 
@@ -427,7 +512,7 @@
     g.fillStyle = DECK_HI;
     g.fillRect(x0, deckY - 0.012 * H, x1 - x0, 0.003 * H);
     g.fillStyle = "rgba(245,208,107,0.30)";
-    g.fillRect(x0, deckY - 0.012 * H - 1.5, x1 - x0, 1.5);
+    g.fillRect(x0, railY(H), x1 - x0, 1.5);
 
     // deck cities: little towers standing on the rail
     for (let b = first; b < last; b++) {
@@ -436,7 +521,7 @@
       const cx = sx(cu);
       const cwid = (0.01 + 0.02 * hh(b, 0, 43)) * H;
       const n = 5 + Math.floor(hh(b, 0, 44) * 8);
-      const yb = deckY - 0.012 * H - 1.5;
+      const yb = railY(H);
       for (let i = 0; i < n; i++) {
         const x = cx + (hh(b, i, 45) * 2 - 1) * cwid;
         const w = Math.max(1, (0.0015 + 0.003 * hh(b, i, 46)) * H);
@@ -513,6 +598,6 @@
   }
 
   window.GenVoid = Object.assign(window.GenVoid || {}, {
-    fillBg, drawMotes, drawChaos, drawPoint, drawSpan,
+    fillBg, drawMotes, drawChaos, drawPoint, drawSpan, drawSpanLife,
   });
 })();

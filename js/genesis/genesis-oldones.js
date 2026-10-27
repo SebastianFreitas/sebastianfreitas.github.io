@@ -171,6 +171,17 @@ window.GenOld = (function () {
 
   /* ---- placement --------------------------------------------------- */
 
+  // east-goers in a fixed shuffled order, for their staggered start along the walk path
+  const EAST = ROSTER.filter(o => o.side > 0).sort((a, b) => hash1(a.idx * 5 + 2) - hash1(b.idx * 5 + 2));
+  const WALK_SPAN = 1.0;
+  // start centre (world u) of an east-goer: packed in shuffled order by body width, then spread over 0.12..0.78 of the frame
+  function eastStartU(o) {
+    const w = e => 0.5 * e.hf * G.H * 1.5 + (e.move === "fly" ? 0.03 * G.W : 0);
+    const c = []; let acc = 0;
+    EAST.forEach((e, k) => { if (k) acc += 0.5 * (w(EAST[k - 1]) + w(e)); c.push(acc); });
+    return -0.38 + 0.66 * c[Math.max(0, EAST.indexOf(o))] / Math.max(1, acc);
+  }
+
   function place(o, env) {
     const W = G.W, H = G.H, deckY = DECK * H;
     const idx = o.idx;
@@ -188,50 +199,40 @@ window.GenOld = (function () {
     const s = e <= 0 ? 0 : Math.min(1, (Math.floor(e * n) + 1) / n);
     const rimX = v.x1, rimY = v.y1;
     const xe = rimX, ye = rimY + (1 - s) * 1.1 * o.hf * H;
-    const scale = 1;
+    // the walk is read at half the frame: they grow through it and settle back for the root
+    const scale = 1 + 0.5 * smooth(G.since("walk")) * (1 - clamp(G.linear("root") / 0.1, 0, 1));   // back to 1x within ~0.6 s of root
     const rot = 0;
     const settle = smooth(clamp((emerge - VENT_T0[idx] - ventDur(idx)) / 1.2, 0, 1));
 
     /* 2. split to the deck */
     const splitU = o.side * (0.15 + 0.08 * hash1(idx * 7 + 1));
     const xd = sx(splitU), yd = deckY;
-    let x, y;
+    let y;
 
-    /* 3. walk (or slide / roll / fly — same progress formula; blink hops) */
-    const isBlinker = o.move === "blink";
-    let sy = 1;
+    /* 3. walk (or slide / roll / fly): a smooth steady glide, no stops: everyone leaves the frame before the walk ends */
+    const sy = 1;
+    let x;
     if (o.side < 0) {
-      let w = walk;
-      if (isBlinker) {
-        const k = w * 5, i = Math.floor(k), f = k - i;
-        sy = f < 0.12 ? 1 - f / 0.12 : f < 0.24 ? (f - 0.12) / 0.12 : 1;
-        w = Math.min(1, (i + (f < 0.12 ? 0 : 1)) / 5);
-      }
-      x = sx(splitU - o.gait * 2.2 * w);
+      x = sx(splitU - o.gait * 2.2 * walk);
     } else {
-      const endU = ROOT_U - 0.06 - 0.10 * hash1(idx * 13 + 3);
-      let prog = clamp(walk * (0.70 + 0.14 * o.gait), 0, 1);
-      if (isBlinker) {
-        const k = prog * 5, i = Math.floor(k), f = k - i;
-        sy = f < 0.12 ? 1 - f / 0.12 : f < 0.24 ? (f - 0.12) / 0.12 : 1;
-        prog = Math.min(1, (i + (f < 0.12 ? 0 : 1)) / 5);
+      if (G.beat <= G.idxOf("walk")) {
+        // staggered along the path and moving at one steady pace, so they read one by one and leave in a line
+        const startU = eastStartU(o);
+        x = sx(startU + WALK_SPAN * clamp(walk, 0, 1));
+      } else {
+        // root and after: the e2f713b endpoint, so the root scene is unchanged
+        const endU = ROOT_U - 0.06 - 0.10 * hash1(idx * 13 + 3);
+        const prog = clamp(walk * (0.70 + 0.14 * o.gait), 0, 1);
+        x = mix(sx(splitU), sx(endU), prog);
       }
-      x = mix(sx(splitU), sx(endU), prog);
     }
     const sd = (o.idx || 0) + 1;
     const tl = (G.t || 0) + sd * 1.37;
-    let phase = Math.abs(x - xd) * 0.045 * o.gait;
-    if (o.side > 0) {
-      const Ps = 3.2 + 2.4 * hash1a(sd);
-      const held = (tl % Ps) < 0.18;
-      if ((dressHold || held) && o._ph != null) phase = o._ph;
-      else o._ph = phase;
-      if (o.kind === "gentleman") phase = Math.round(phase / (Math.PI / 6)) * (Math.PI / 6);
-    }
+    const phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
     const isFlyer = o.move === "fly";
     if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H;
     else y = deckY - 2 + o.lane * 0.012 * H;
-    if (isFlyer) x += 0.04 * W * Math.sin(G.t * 0.5 + o.ph);
+    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.since("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph);
 
     // from the rim of the mass down to the deck
     x = mix(xe, x, settle); y = mix(ye, y, settle);
@@ -285,8 +286,10 @@ window.GenOld = (function () {
 
       const Pt = 6 + 3 * hash1a(sd * 7.1);
       if (!dressHold && (tl % Pt) < 0.08 && p.e >= 0.85) {
-        p.x += 0.02 * H * (hash1a(sd * 3.3) - 0.5 < 0 ? -1 : 1);
-        p.rot += 0.04;
+        const tw = Math.sin(Math.PI * (tl % Pt) / 0.08);
+        const tk = G.beat === G.idxOf("walk") ? 1 - clamp(G.since("walk") / 0.8, 0, 1) : 1;   // off while walking, faded in from the beat change
+        p.x += 0.02 * H * tw * tw * tk * (hash1a(sd * 3.3) - 0.5 < 0 ? -1 : 1);
+        p.rot += 0.04 * tw * tw * tk;
       }
 
       if (dressHold) {
@@ -307,9 +310,13 @@ window.GenOld = (function () {
         stumbleKey = key;
         stumbleXs = GenTier3.tines("comb");
       }
-      if (stumbleXs && stumbleXs.some((xi) => Math.abs(p.x - xi) < 0.025 * W)) {
-        p.rot += 0.07 * (o.side < 0 ? -1 : 1);
-        p.y += 0.004 * H;
+      if (stumbleXs) {
+        let dm = Infinity;
+        for (const xi of stumbleXs) dm = Math.min(dm, Math.abs(p.x - xi));
+        const sw = clamp(1 - dm / (0.025 * W), 0, 1);
+        const sk = sw * sw * (3 - 2 * sw);
+        p.rot += 0.07 * sk * (o.side < 0 ? -1 : 1);
+        p.y += 0.004 * H * sk;
       }
     }
 
@@ -376,6 +383,18 @@ window.GenOld = (function () {
   }
   // the pass-6 proportions; Obrokxus's brothers (makeOne) keep the old ones
   function pu(o, old, now) { return o.bro ? old : now; }
+
+  // a planted foot rides back at the body's own speed (phase is distance travelled), then lifts and swings
+  // forward on an eased arc. Returns [dx along the facing, lift 0..1]; reduced motion keeps feet at rest.
+  function foot(o, p, q, m, stance) {
+    if (G.reduced) return [0, 0];
+    const face = o.side >= 0 ? 1 : -1;
+    const L = stance * TAU / (0.045 * o.gait * m) / 2 / (p.scale || 1);   // drawn under p.scale: keep the contact fixed in world x
+    const u = (p.phase * m / TAU + q) % 1;
+    if (u < stance) return [face * L * (1 - 2 * u / stance), 0];
+    const w = (u - stance) / (1 - stance);
+    return [face * (-L + 2 * L * w * w * (3 - 2 * w)), Math.sin(Math.PI * w)];
+  }
 
   /* ---- kind painters -------------------------------------------------
      h = height px, foot line at y. Every filled volume is lit/shade split
@@ -579,7 +598,9 @@ window.GenOld = (function () {
   }
 
   function strider(ctx, o, x, y, h, p) {
-    const bob = 0.02 * h * Math.abs(Math.sin(p.phase));
+    // long slow legs, high-stepping; the body sinks and rises twice a stride and rocks with it
+    const rd = G.reduced ? 0 : 1;
+    const bob = 0.035 * h * Math.sin(p.phase * 2.8) * rd;
     const cy = y - pu(o, 0.85, 1.05) * h + bob, cx = x;
     const rx = 0.14 * h, ry = 0.09 * h;
     litShade(ctx, () => { ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU); },
@@ -587,10 +608,10 @@ window.GenOld = (function () {
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (let k = 0; k < 4; k++) {
       const off = k - 1.5;
-      const kneeX = x + off * 0.16 * h, kneeY = y - pu(o, 1.02, 1.28) * h;
-      const swing = p.phase + (k % 2) * Math.PI;
-      const footX = x + off * 0.22 * h + 0.06 * h * Math.sin(swing);
-      const footY = y - 0.05 * h * Math.max(0, Math.sin(swing));
+      const ft = foot(o, p, (k % 2) * 0.5, 1.4, 0.7);
+      const footX = x + off * 0.22 * h + ft[0];
+      const footY = y - 0.16 * h * ft[1];
+      const kneeX = x + off * 0.16 * h + ft[0] * 0.4, kneeY = y - pu(o, 1.02, 1.28) * h - 0.08 * h * ft[1];
       const col = off < 0 ? o.lit : o.shade;
       line(ctx, [[cx, cy], [kneeX, kneeY], [footX, footY]], col, 0.015 * h);
     }
@@ -608,7 +629,8 @@ window.GenOld = (function () {
   }
 
   function crawler(ctx, o, x, y, h, p) {
-    const bodyY = y - pu(o, 0.22, 0.17) * h;
+    // many short legs, a wave running front to back along them; the body ripples low
+    const bodyY = y - pu(o, 0.22, 0.17) * h - (G.reduced ? 0 : 0.012 * h * Math.sin(p.phase * 2.5));
     const rx = pu(o, 0.50, 0.60) * h, ry = pu(o, 0.22, 0.16) * h;
     const pts = [];
     for (let i = 0; i < 8; i++) {
@@ -621,10 +643,11 @@ window.GenOld = (function () {
       const hipX = x + (k - 1.5) * 0.2 * h, hipY = y - pu(o, 0.2, 0.15) * h;
       for (let s = 0; s < 2; s++) {
         const side = s === 0 ? -1 : 1;
-        const kneeX = hipX + side * pu(o, 0.18, 0.25) * h, kneeY = y - pu(o, 0.42, 0.33) * h;
-        const footX = hipX + side * pu(o, 0.30, 0.42) * h + 0.06 * h * Math.sin(p.phase * 1.6 + k * 0.8);
+        const ft = foot(o, p, k * 0.125 + s * 0.06, 2.5, 0.75);
+        const kneeX = hipX + side * pu(o, 0.18, 0.25) * h + ft[0] * 0.5, kneeY = y - pu(o, 0.42, 0.33) * h - 0.04 * h * ft[1];
+        const footX = hipX + side * pu(o, 0.30, 0.42) * h + ft[0];
         const col = side < 0 ? o.lit : o.shade;
-        line(ctx, [[hipX, hipY], [kneeX, kneeY], [footX, y]], col, 0.02 * h);
+        line(ctx, [[hipX, hipY], [kneeX, kneeY], [footX, y - 0.07 * h * ft[1]]], col, 0.02 * h);
       }
     }
     const face = o.side >= 0 ? 1 : -1;
@@ -650,7 +673,9 @@ window.GenOld = (function () {
       if (v > vMax) vMax = v;
     }
     const vs = height / Math.max(1e-4, vMax - vMin);
-    const pts = raw.map(([u, v]) => [x + u, y + (v - vMax) * vs]);
+    // a slow ripple runs along its length, strongest at the base
+    const rip = G.reduced ? 0 : 0.02 * h;
+    const pts = raw.map(([u, v]) => [x + u, y + (v - vMax) * vs + rip * (1 - (v - vMin) / Math.max(1e-4, vMax - vMin)) * Math.sin(u / (0.18 * h) * face - p.phase * 1.5)]);
     litSplit(ctx, pts, o.lit, o.shade);
     const prevA = ctx.globalAlpha;
     ctx.globalAlpha = prevA * 0.3;
@@ -665,6 +690,7 @@ window.GenOld = (function () {
 
   function floater(ctx, o, x, y, h, p) {
     const pulse = 1 + 0.05 * Math.sin(G.t * 1.1 + o.ph);
+    const rd = G.reduced ? 0 : 1;
     const rx = 0.24 * h * pulse, ry = 0.16 * h * pulse;
     litShade(ctx, () => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, Math.PI, TAU); ctx.closePath(); },
       x - rx + 0.4 * 2 * rx, o.lit, o.shade);
@@ -673,7 +699,8 @@ window.GenOld = (function () {
     ctx.lineWidth = 0.02 * h;
     for (let k = 0; k < 5; k++) {
       const rimX = x + (k - 2) * (rx * 0.4), rimY = y;
-      const endX = x + (k - 2) * 0.05 * h + 0.05 * h * Math.sin(G.t * 1.4 + k);
+      // the tendrils trail the bell in a slow wave
+      const endX = x + (k - 2) * 0.05 * h + 0.08 * h * Math.sin(G.t * 1.1 + o.ph - k * 0.7) * rd;
       const endY = y + pu(o, 0.6, 0.95) * h;
       ctx.beginPath();
       ctx.moveTo(rimX, rimY);
@@ -684,12 +711,15 @@ window.GenOld = (function () {
   }
 
   function winged(ctx, o, x, y, h, p) {
-    const yy = y + 0.06 * h * Math.sin(G.t * 1.3 + o.ph);
+    // slow, heavy beats: a long downstroke, the body lifting as the wings fall
+    const wt = G.reduced ? 0 : G.t * 2 + o.ph;
+    const beat = Math.sin(wt) + 0.3 * Math.sin(2 * wt);
+    const yy = y + 0.04 * h * beat + (G.reduced ? 0 : 0.03 * h * Math.sin(G.t * 0.5 + o.ph));
     for (let k = 0; k < 2; k++) {
       const side = k === 0 ? -1 : 1;
       litSplit(ctx, [
         [x, yy - 0.02 * h],
-        [x + side * pu(o, 0.5, 0.68) * h, yy - 0.25 * h * Math.sin(G.t * 6.5 + o.ph)],
+        [x + side * pu(o, 0.5, 0.68) * h, yy - 0.25 * h * beat],
         [x + side * 0.28 * h, yy + 0.06 * h],
       ], o.lit, o.shade);
     }
@@ -698,6 +728,17 @@ window.GenOld = (function () {
   }
 
   function blinker(ctx, o, x, y, h, p) {
+    // the kite rocks over its foot, pivoting from point to point as it goes
+    if (G.reduced || h <= 0) return blinkerBody(ctx, o, x, y, h, p);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(0.1 * Math.sin(p.phase * 0.8));
+    ctx.translate(-x, -y);
+    blinkerBody(ctx, o, x, y - 0.02 * h * Math.abs(Math.sin(p.phase * 0.8)), h, p);
+    ctx.restore();
+  }
+
+  function blinkerBody(ctx, o, x, y, h, p) {
     const dressed = o.bro ? false : (o.dressed != null ? o.dressed : dressNow());
     if (dressed && window.GenAttire && window.GenEldPal) blinkerDressed(ctx, o, x, y, h, p);
     else blinkerBare(ctx, o, x, y, h, p);
@@ -746,9 +787,10 @@ window.GenOld = (function () {
   }
 
   function rollerBare(ctx, o, x, y, h, p) {
-    const cx = x, cy = y - pu(o, 0.35, 0.43) * h;
-    const rot = -p.phase * 0.9;
     const rBase = pu(o, 0.20, 0.17) * h, rTip = pu(o, 0.35, 0.43) * h, rDisc = pu(o, 0.12, 0.10) * h;
+    // rolls on its tips: turn = distance / contact radius, the hub dipping between points
+    const rot = G.reduced ? 0 : (o.side >= 0 ? 1 : -1) * (p.phase / (0.045 * o.gait)) / (0.92 * rTip * (p.scale || 1));
+    const cx = x, cy = y - rTip * (G.reduced ? 1 : 0.96 + 0.04 * Math.cos(8 * rot));
     const halfA = Math.asin(0.3); // 0.06h base half-width on a 0.20h circle
     const trace = () => {
       ctx.beginPath();
@@ -789,11 +831,15 @@ window.GenOld = (function () {
         ctx.closePath();
       }
     };
+    // rolls on its tips like the bare one: the hub rides the true rolling path over its tips, driven by distance travelled
+    const rTip = pu(o, 0.35, 0.43) * h;
+    const rot = (side >= 0 ? 1 : -1) * (p.phase / (0.045 * o.gait)) / (0.92 * rTip * (p.scale || 1));
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
     litShade(ctx, trace, cx - 0.4 * h, o.lit, o.shade);
+    ctx.restore();
 
-    // hop every 1.2s, 0.2hf, a snap down (no in-between)
-    const hopUp = (G.t % 1.2) / 1.2 < 0.5;
-    const footY = hopUp ? y - 0.2 * h : y;
+    const footY = G.reduced ? y : y - 0.04 * rTip * (1 + Math.cos(8 * rot));
 
     // one huge boot on the peg leg's foot: 3x the crest width long
     const bootLen = 3 * crestW;
@@ -1193,62 +1239,368 @@ window.GenOld = (function () {
   }
 
   /* ---- shards --------------------------------------------------------
-     26 splinters flung when the point breaks open. */
+     Splinters flung when the point breaks open. Three groups converge in
+     held steps on the edge of three old ones; then each one's whole
+     silhouette (its own painter, limbs and eye kept) appears dark with a
+     pale rim, the shards stay on its edge as a crust, hold, then everything
+     shatters. Times are seconds into the break beat; the hit is at 0.5. */
+
+  const FIG_N = 36, SHARD_FORM = 3 * FIG_N, CONF_N = 30, FLASH_N = 8, SHARD_N = SHARD_FORM + CONF_N + FLASH_N;
+  const T_FLASH = 0.7;      // flash shards are gone this long after the hit
+  const T_HIT = 0.5, T_STOP = 1.1, T_SNAP = 0.2, T_SIL = 1.5, T_HOLD = 2.4, T_END = 2.9;
+  const FIG_KINDS = ["foot", "face", "hand", "eye"];
+  const FIG_SIZE = [0.45, 0.45, 0.5, 0.35];      // longest side, in screen heights; each sits mostly in frame, at most slightly cut by one edge
+
+  /* four giant fragments of flesh: a smooth closed body through lumpy points
+     (clockwise, y down, in each one's own unit box), union-filled with round
+     lobes (toes, fingers, bumps), then holes cut to the backdrop as
+     ellipses [cx, cy, rx, ry, rot]. The eye adds sclera, iris and a slit pupil. */
+  const FRAGS = {
+    foot: { w: 200, h: 100,
+      body: [[22,0],[90,0],[98,20],[130,26],[165,26],[186,36],[184,62],[178,84],[150,96],[110,92],[76,98],[36,100],[8,84],[0,52],[10,24]],
+      lobes: [[188,40,12,15,0],[186,60,10,10,0],[181,76,9,9,0],[172,88,8,7,0],[34,16,14,16,0]],
+      holes: [[191,35,4,5,0.3]] },
+    face: { w: 100, h: 160,
+      body: [[96,0],[100,60],[100,150],[64,160],[34,152],[28,138],[40,124],[30,116],[34,106],[42,98],[16,82],[10,72],[26,66],[36,54],[26,40],[36,20],[56,2]],
+      lobes: [[44,44,16,12,-0.3]],
+      holes: [[58,42,11,7,-0.2],[22,77,3,2,0.5],[54,111,16,3,0.05]] },
+    hand: { w: 140, h: 206,
+      body: [[44,0],[112,0],[122,40],[130,80],[122,120],[70,126],[24,120],[18,84],[24,50]],
+      lobes: [[28,150,11,42,0.08],[56,160,11,46,0],[85,152,11,42,-0.06],[114,138,10,34,-0.2],[14,76,11,30,0.5]],
+      holes: [] },
+    eye: { w: 160, h: 130, eye: true,
+      body: [[50,6],[100,0],[142,22],[158,64],[146,108],[104,128],[56,130],[16,110],[2,66],[14,26]],
+      lobes: [[150,30,16,18,0],[10,96,14,16,0],[120,118,20,12,0]],
+      holes: [] }
+  };
+  function fleshTone(name, lit, shade) {
+    const GP = window.GenEldPal, t = GP ? GP.tone(name) : null;
+    return t ? [t.lit, t.shade] : [lit, shade];
+  }
+  function paintFrag(c, kind, S) {
+    const f = FRAGS[kind], k = S * 0.8 / Math.max(f.w, f.h);
+    const ell = (e) => { c.moveTo(e[0] + e[2] * Math.cos(e[4]), e[1] + e[2] * Math.sin(e[4])); c.ellipse(e[0], e[1], e[2], e[3], e[4], 0, TAU); };
+    const trace = () => {
+      const p = f.body, n = p.length;
+      c.beginPath();
+      c.moveTo((p[n - 1][0] + p[0][0]) / 2, (p[n - 1][1] + p[0][1]) / 2);
+      for (let i = 0; i < n; i++) {
+        const q = p[(i + 1) % n];
+        c.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + q[0]) / 2, (p[i][1] + q[1]) / 2);
+      }
+      c.closePath();
+      for (const l of f.lobes) ell(l);
+    };
+    c.save();
+    c.translate((S - f.w * k) / 2, (S - f.h * k) / 2);
+    c.scale(k, k);
+    const flesh = fleshTone("beaver", "#6a5a4a", "#3a3128");
+    litShade(c, trace, f.w * 0.4, flesh[0], flesh[1]);
+    if (f.eye) {
+      const sc = fleshTone("linen", "#b8b2a4", "#6e6a62"), ir = fleshTone("oxblood", "#5c2c2e", "#331718");
+      litShade(c, () => { c.beginPath(); c.ellipse(80, 64, 50, 42, 0, 0, TAU); }, 62, sc[0], sc[1]);
+      litShade(c, () => { c.beginPath(); c.ellipse(88, 66, 26, 26, 0, 0, TAU); }, 80, ir[0], ir[1]);
+    }
+    c.globalCompositeOperation = "destination-out";
+    c.fillStyle = "#000";
+    c.beginPath();
+    for (const h of f.holes) ell(h);
+    if (f.eye) ell([90, 66, 6, 20, 0]);
+    c.fill();
+    c.restore();
+  }
+  const FIG_AT = [[-0.30, 0.42], [0.36, 0.50], [0.02, 0.58]];   // x in widths, y in heights from the point's x
+  const RIM_FLAT = "rgb(78,86,92)";   // clearly above the body fill, on the lit side only
+  const RIM_TONE = ["rgb(30,36,40)", "rgb(20,25,29)"];
+  const SHARD_TONES = [["rgb(150,156,150)", "rgb(70,74,70)"], ["rgb(122,128,124)", "rgb(56,60,58)"], ["rgb(178,182,176)", "rgb(92,96,92)"]];
 
   const SHARDS = (function build() {
     const rnd = mulberry(9002);
     const list = [];
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < SHARD_N; i++) {
       list.push({
         ang: rnd() * TAU,
-        spd: mix(0.6, 1.4, rnd()),
-        size: mix(12, 40, rnd()),
+        spd: mix(0.7, 1.3, rnd()),
+        size: i >= SHARD_FORM + CONF_N ? mix(70, 110, rnd()) : mix(20, 60, rnd()),
         spin: (rnd() < 0.5 ? -1 : 1) * mix(2, 6, rnd()),
-        ph: rnd() * TAU,
+        tone: Math.floor(rnd() * 3),
+        rs: mix(0.16, 0.34, rnd()),
+        tang: rnd() * TAU,
+        fig: i < SHARD_FORM ? i % 3 : -1,
+        pt: i < SHARD_FORM ? Math.floor(i / 3) : 0,
+        flash: i >= SHARD_FORM + CONF_N,
       });
+      // flash shards fly up and out sideways, never down into the caption band
+      if (i >= SHARD_FORM + CONF_N) list[i].ang = -Math.PI * (0.08 + 0.84 * ((i - SHARD_FORM - CONF_N + rnd() * 0.7) / FLASH_N));
     }
     return list;
   })();
 
-  function paintShard(c, qx, qy, ang, sz) {
-    c.save();
-    c.translate(qx, qy);
-    c.rotate(ang);
-    litSplit(c, [[0, -sz * 0.6], [sz * 0.5, sz * 0.4], [-sz * 0.5, sz * 0.4]],
-      "rgb(150,156,150)", "rgb(70,74,70)");
-    c.restore();
+  // per figure, built once: FIG_CV[f] is the dark silhouette with a pale rim
+  // (bbox centred, padded), FIG_M[f] its longest side in px; FIG_PTS holds
+  // edge points in unit coordinates (longest side = 1, centred)
+  let FIG_PTS = null;
+  const FIG_CV = [null, null, null, null], FIG_M = [1, 1, 1, 1];
+  function sampleFigures() {
+    FIG_PTS = new Float32Array(4 * FIG_N * 2);
+    const S = 320, PAD = 5, cv = document.createElement("canvas");
+    cv.width = cv.height = S;
+    const c = cv.getContext("2d", { willReadFrequently: true });
+    for (let f = 0; f < 4; f++) {
+      c.clearRect(0, 0, S, S);
+      paintFrag(c, FIG_KINDS[f], S);
+      const d = c.getImageData(0, 0, S, S).data;
+      const ex = [], ey = [];
+      let x0 = S, x1 = 0, y0 = S, y1 = 0;
+      const solid = (x, y) => x >= 0 && y >= 0 && x < S && y < S && d[(y * S + x) * 4 + 3] > 100;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        if (!solid(x, y)) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (x % 2 === 0 && y % 2 === 0 && !(solid(x - 3, y) && solid(x + 3, y) && solid(x, y - 3) && solid(x, y + 3))) { ex.push(x); ey.push(y); }
+      }
+      if (x1 < x0) continue;
+      const bw = x1 - x0 + 1, bh = y1 - y0 + 1, m = Math.max(bw, bh), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      FIG_M[f] = m;
+      for (let k = 0; k < FIG_N && ex.length; k++) {
+        const j = Math.min(ex.length - 1, Math.floor((k + 0.5) * ex.length / FIG_N));
+        FIG_PTS[(f * FIG_N + k) * 2] = (ex[j] - cx) / m;
+        FIG_PTS[(f * FIG_N + k) * 2 + 1] = (ey[j] - cy) / m;
+      }
+      // the painted fragment cropped to its box, padded
+      const out = document.createElement("canvas");
+      out.width = bw + PAD * 2; out.height = bh + PAD * 2;
+      out.getContext("2d").drawImage(cv, x0, y0, bw, bh, PAD, PAD, bw, bh);
+      FIG_CV[f] = out;
+    }
   }
 
-  function drawShards(ctx, burst, kick = 0) {
-    if (burst <= 0.001 || burst >= 0.999) return;
-    const W = G.W, H = G.H;
-    const sb = smooth(burst);
-    const ox = sx(0), oy = 0.46 * H;
-    const a = (1 - burst) * 0.95;
-    const wantRift = G.BEATS[G.beat].id === "break" && riftOn();
-    const R = wantRift ? riftAnchor() : null;
-    const dmin = 0.03 * H;
-    let nearest = null;
-    ctx.save();
-    ctx.globalAlpha = a;
-    for (const s of SHARDS) {
-      const d = (0.04 + 0.90 * sb) * s.spd * (1 + kick);
-      const qx = ox + Math.cos(s.ang) * d * W * 0.55;
-      const qy = oy + Math.sin(s.ang) * d * H * 0.35 + burst * burst * 0.35 * H;
-      const ang = s.ang + burst * s.spin * 3;
-      const sz = s.size;
-      paintShard(ctx, qx, qy, ang, sz);
-      if (wantRift) {
-        const dd = (qx - R.x) * (qx - R.x) + (qy - R.y) * (qy - R.y);
-        if (dd >= dmin * dmin && (!nearest || dd < nearest.dd)) nearest = { qx, qy, ang, sz, dd };
+  // one flat-lit triangle, no arrays, no clip: shade whole, lit left half
+  function paintShard(c, qx, qy, ang, sz, tone) {
+    const t = tone === -1 ? RIM_TONE : SHARD_TONES[tone || 0];
+    const co = Math.cos(ang), si = Math.sin(ang);
+    const ax = qx - si * -sz * 0.6, ay = qy + co * -sz * 0.6;
+    const bx = qx + co * sz * 0.5 - si * sz * 0.4, by = qy + si * sz * 0.5 + co * sz * 0.4;
+    const dx = qx - co * sz * 0.5 - si * sz * 0.4, dy = qy - si * sz * 0.5 + co * sz * 0.4;
+    c.fillStyle = t[1];
+    c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.lineTo(dx, dy); c.closePath(); c.fill();
+    c.fillStyle = t[0];
+    c.beginPath(); c.moveTo(ax, ay); c.lineTo((bx + dx) * 0.5, (by + dy) * 0.5); c.lineTo(dx, dy); c.closePath(); c.fill();
+  }
+
+  const SH_NEAR = { a: 1, qx: 0, qy: 0, ang: 0, sz: 0, tone: 0, dd: 0, on: false };
+  // a fragment's final centre for a box w by h: only its signature edge stays in frame
+  // (foot: toe corner bottom-left; face: profile edge at the right; hand: fingertips from the top; eye: cut by the top edge)
+  function figPose(f, w, h, W, H) {
+    if (f === 0) return [0.46 * w, 0.7 * H + h / 2];   // foot: bottom-left, its edge just cut
+    if (f === 1) return [W - 0.46 * w, 0.5 * H];   // face: right edge, profile just cut
+    if (f === 3) return [0.64 * W, 0.45 * h];   // eye: the top edge just cuts it (5%), clear of the other three
+    return [0.46 * w, 0.34 * H];   // hand: left edge, upper half
+  }
+
+  let CAP_BAND = null;
+  // the fragments are no longer drawn, so nothing covers the dust
+  function figCover() { return 0; }
+  // the measured caption band in canvas px, or null
+  function captionBand() { return G.BEATS[G.beat].id === "break" ? CAP_BAND : null; }
+
+  const CAP_CLIP = { on: false, x0: 0, x1: 0, y0: 0, y1: 0 };
+
+  /* what each fragment leaves behind, in every later beat: the face a faint still ghost, the hand a
+     faint after-image blinking in held steps, the foot and the eye a tiny absence of far lights where
+     they shrank to. Silhouettes are tinted once and cached. */
+  const BANG_T = T_HIT;   // the bang peaks here (break tb); the traces key off it
+  const TR_ON = BANG_T + 0.1, TR_HOLD = 2.8, TR_STEP = 0.5, TR_SINK = TR_ON + TR_HOLD;   // on at 0.6, ghosts to 0.8, sink from 3.4 to 5.4
+  // owner-approved exception to the tier-3 "1-2 steps" rule (2026-10-26): about 5 flat steps off #0d1114, still dim and cool
+  const TRACE_TINT = ["#222a2f", "#232b30", "#242c31", "#222a2f"];
+  const TRACE_CV = [null, null, null, null];
+  // a thin lighter rim (about 1.75 px on screen) round a tinted body, painted once with the shape
+  const TRACE_RIM = "#2e373d";
+  function rimmed(src, sc) {
+    const pad = Math.max(1, Math.ceil(1.75 / sc)), o = document.createElement("canvas");
+    o.width = src.width + pad * 2; o.height = src.height + pad * 2;
+    const c = o.getContext("2d"), r = document.createElement("canvas");
+    r.width = src.width; r.height = src.height;
+    const rc = r.getContext("2d");
+    rc.drawImage(src, 0, 0);
+    rc.globalCompositeOperation = "source-in";
+    rc.fillStyle = TRACE_RIM;
+    rc.fillRect(0, 0, r.width, r.height);
+    for (let i = 0; i < 12; i++) c.drawImage(r, pad + Math.cos(i * 0.5236) * pad, pad + Math.sin(i * 0.5236) * pad);
+    c.drawImage(src, pad, pad);
+    o.pad = pad; o.bw = src.width;
+    return o;
+  }
+  function traceSil(f) {
+    if (TRACE_CV[f]) return TRACE_CV[f];
+    const cv = FIG_CV[f], o = document.createElement("canvas");
+    o.width = cv.width; o.height = cv.height;
+    const c = o.getContext("2d");
+    c.drawImage(cv, 0, 0);
+    c.globalCompositeOperation = "source-in";
+    c.fillStyle = TRACE_TINT[f];
+    c.fillRect(0, 0, o.width, o.height);
+    return (TRACE_CV[f] = rimmed(o, FIG_SIZE[f] * G.H / FIG_M[f]));
+  }
+  // the foot and eye traces are drawn shapes (flat greys), painted once into small canvases
+  const TR_SHAPE = [null, null, null, null];
+  function traceShape(f) {
+    if (TR_SHAPE[f]) return TR_SHAPE[f];
+    const o = document.createElement("canvas"), c = o.getContext("2d");
+    if (f === 0) {   // foot, sole view: five splayed toes, ball, narrow arch, round heel
+      o.width = 150; o.height = 256;
+      c.fillStyle = TRACE_TINT[f];   // after the resize: sizing a canvas resets its fill to black
+      c.beginPath();
+      c.moveTo(10, 112); c.bezierCurveTo(10, 140, 30, 170, 36, 200);
+      c.bezierCurveTo(38, 250, 108, 250, 108, 200);
+      c.bezierCurveTo(108, 172, 86, 160, 96, 138);
+      c.bezierCurveTo(100, 128, 140, 128, 142, 100);
+      c.bezierCurveTo(142, 76, 120, 70, 90, 70);
+      c.lineTo(14, 84); c.closePath(); c.fill();
+      for (const t of [[114, 44, 22], [82, 38, 14], [56, 52, 13], [34, 70, 12], [17, 92, 10]]) {
+        c.beginPath(); c.arc(t[0], t[1], t[2], 0, 6.2832); c.fill();
       }
+    } else {         // eye: almond with a lid line, a darker iris and a pupil
+      o.width = 256; o.height = 150;
+      c.fillStyle = TRACE_TINT[f];
+      c.beginPath();
+      c.moveTo(8, 84); c.quadraticCurveTo(128, 0, 248, 84); c.quadraticCurveTo(128, 168, 8, 84); c.closePath(); c.fill();
+      c.fillStyle = "#192024";
+      c.beginPath(); c.arc(128, 80, 40, 0, 6.2832); c.fill();
+      c.fillStyle = "#12171a";
+      c.beginPath(); c.arc(128, 80, 17, 0, 6.2832); c.fill();
+      c.strokeStyle = TRACE_TINT[f]; c.lineWidth = 7; c.lineCap = "round";
+      c.beginPath(); c.moveTo(34, 56); c.quadraticCurveTo(128, -22, 222, 56); c.stroke();
     }
-    if (nearest) {
-      riftBand(ctx, nearest.qx, nearest.qy, nearest.sz,
-        (c) => paintShard(c, nearest.qx, nearest.qy, nearest.ang, nearest.sz));
+    return (TR_SHAPE[f] = rimmed(o, (f === 0 ? 0.28 : 0.16) * G.H / 256));
+  }
+  // trace boxes (x, y, w, h per fragment), cached per canvas size and motion setting
+  const TR_BOX = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+  let TR_W = 0, TR_H = 0, TR_RED = null, BREAK_IDX = -1;
+  function traceBoxes(W, H) {
+    for (let f = 0; f < 4; f++) {
+      const cv = FIG_CV[f], b = TR_BOX[f];
+      if (!cv) { b[2] = 0; continue; }
+      const k = FIG_SIZE[f] * H / FIG_M[f], w = cv.width * k, h = cv.height * k;
+      const fp = figPose(f, w, h, W, H);
+      b[0] = fp[0]; b[1] = fp[1]; b[2] = w; b[3] = h;
+      if (f === 0 || f === 3) {   // foot and eye: a small shrunken silhouette where it vanished
+        const sh = traceShape(f), s = (f === 0 ? 0.28 : 0.16) * H / (f === 0 ? 256 : sh.bw);
+        b[2] = sh.bw * s; b[3] = (sh.height - sh.pad * 2) * s;
+        // in the open middle: clear of the hand ghost, the caption band, the bridge and the sea bed
+        if (f === 3) { b[0] = 0.64 * W; b[1] = 0.4 * H; }
+      }
+      if (f === 0 && !G.reduced) { b[0] = 0.3 * W; b[1] = 0.42 * H; }
+      if (f === 0) {   // the larger foot stays fully on screen
+        b[0] = Math.min(Math.max(b[0], b[2] / 2 + 4), W - b[2] / 2 - 4);
+        b[1] = Math.min(Math.max(b[1], b[3] / 2 + 4), H - b[3] / 2 - 4);
+      }
+      if (f === 2 && !G.reduced) b[1] -= 0.1 * H;
+    }
+    TR_W = W; TR_H = H; TR_RED = G.reduced;
+  }
+  const TR_ALPHA = [1, 0.6, 0.35, 0.2, 0.15];
+  const TR_GHOST = 0.2;   // while the flash is in its first two steps (to BANG_T + 0.3) the traces are pale ghosts, well below the core
+  function drawTraces(ctx) {
+    if (BREAK_IDX < 0) BREAK_IDX = G.idxOf("break");
+    if (G.beat < BREAK_IDX) return;
+    const red = G.reduced, T = G.beat === BREAK_IDX ? G.secs("break") : 1e9;
+    if (T < TR_ON) return;
+    if (!FIG_PTS) sampleFigures();
+    const W = G.W, H = G.H;
+    if (W !== TR_W || H !== TR_H || red !== TR_RED) traceBoxes(W, H);
+    ctx.save();
+    for (let f = 0; f < 4; f++) {
+      if (!FIG_CV[f]) continue;
+      const b = TR_BOX[f];
+      // hand: on most of the time, off one 0.5 s step in six, on the genesis clock; reduced motion keeps it on
+      if (f === 2 && !red && hash1(Math.floor(G.t / 0.5) * 7 + 3) < 0.17) continue;
+      const im = f === 0 || f === 3 ? traceShape(f) : traceSil(f), sc = b[2] / im.bw, pd = im.pad * sc;
+      // clear for TR_HOLD s, then four held steps (TR_STEP s each) to faint, each also slid toward the nearest frame edge
+      const n = T < TR_SINK ? 0 : Math.min(4, Math.floor((T - TR_SINK) / TR_STEP) + 1);
+      // pale ghosts while the wash is up (to 1.6 s), then darkening gradually to their normal look by 2.6 s
+      const pale = TR_GHOST + (1 - TR_GHOST) * Math.min(1, Math.max(0, (T - 1.6) / 1.0));
+      ctx.globalAlpha = T < BANG_T + 0.3 ? TR_GHOST : TR_ALPHA[n] * pale;
+      let x = b[0], y = b[1];
+      if (n) {
+        const q = n / 4;
+        if (f === 3) y += ((0.1 * b[3]) - y) * q;   // the eye sinks into the top edge
+        else x += ((x < W / 2 ? 0.1 * b[2] : W - 0.1 * b[2]) - x) * q;   // the rest, into the side edge: ~40% cut at the end
+      }
+      ctx.drawImage(im, x - b[2] / 2 - pd, y - b[3] / 2 - pd, im.width * sc, im.height * sc);
     }
     ctx.restore();
   }
 
-  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR, dressNow, windAt, frostNow };
+  function drawShards(ctx, burst, kick = 0) {
+    const T = G.secs("break");
+    const W = G.W, H = G.H;
+    // the caption band in canvas px (DOM text, so measured): no shard, figure or confetti paints inside it;
+    // measured every frame of the beat, before the early returns
+    let bt = 0, bb = 0, capX0 = 0, capX1 = W;
+    const capA = document.getElementById("genesis-tag"), capB = document.getElementById("genesis-line");
+    if (capB && ctx.canvas) {
+      const cr = ctx.canvas.getBoundingClientRect(), r1 = (capA || capB).getBoundingClientRect(), r2 = capB.getBoundingClientRect();
+      if (cr.height > 0 && r2.height > 0) {
+        bt = (r1.top - cr.top) / cr.height * H - 0.02 * H;
+        bb = (r2.bottom - cr.top) / cr.height * H + 0.02 * H;
+        capX0 = (Math.min(r1.left, r2.left) - cr.left) / cr.width * W - 0.02 * H;
+        capX1 = (Math.max(r1.right, r2.right) - cr.left) / cr.width * W + 0.02 * H;
+      }
+    }
+    CAP_BAND = bb > bt ? { y0: bt, y1: bb } : null;
+    if (burst <= 0.001) return;
+    if (T < T_HIT || T >= T_END) return;
+    if (!FIG_PTS) sampleFigures();
+    const ox = sx(0), oy = 0.46 * H;
+    const u = T - T_HIT;
+    const big = Math.max(W, H);
+    const wantRift = G.BEATS[G.beat].id === "break" && riftOn();
+    const R = wantRift ? riftAnchor() : null;
+    const dmin = 0.03 * H;
+    const yMax = 0.78 * H;
+    const reduced = G.reduced;
+    SH_NEAR.on = false;
+    CAP_CLIP.on = bb > bt; CAP_CLIP.x0 = capX0; CAP_CLIP.x1 = capX1; CAP_CLIP.y0 = bt; CAP_CLIP.y1 = bb;
+    ctx.save();
+    for (const s of SHARDS) {
+      let qx, qy, ang, a = 1;
+      let sz = s.size, tone = s.tone;
+      if (s.fig >= 0) {
+        continue;
+      } else {
+        if (reduced) continue;
+        let r;
+        if (s.flash) {
+          if (u > T_FLASH) continue;
+          r = (0.02 * H + Math.pow(u / T_FLASH, 1.5) * 1.15 * big * s.spd) * (1 + kick);
+        } else {
+          if (T >= T_STOP && T < T_HOLD + 0.3) continue;
+          r = (0.02 * H + (1 - Math.exp(-3.2 * u)) * 0.9 * big * s.spd) * (1 + kick);
+        }
+        qx = ox + Math.cos(s.ang) * r;
+        qy = oy + Math.sin(s.ang) * r;
+        ang = s.ang + u * s.spin;
+        if (T > 2.5) a = clamp((T_END - T) / (T_END - 2.5), 0, 1);
+        if (T >= T_HOLD) a *= clamp((T - T_HOLD) / 0.15, 0, 1);
+        if (qy + sz * 1.05 > yMax) continue;
+      }
+      if (qy + sz * 1.05 > bt && qy - sz * 1.05 < bb) continue;   // full rotated radius clears the caption band
+      ctx.globalAlpha = a * 0.95;
+      paintShard(ctx, qx, qy, ang, sz, tone);
+      if (wantRift) {
+        const dd = (qx - R.x) * (qx - R.x) + (qy - R.y) * (qy - R.y);
+        if (dd >= dmin * dmin && (!SH_NEAR.on || dd < SH_NEAR.dd)) {
+          SH_NEAR.on = true; SH_NEAR.qx = qx; SH_NEAR.qy = qy; SH_NEAR.ang = ang; SH_NEAR.sz = sz; SH_NEAR.tone = tone; SH_NEAR.a = a; SH_NEAR.dd = dd;
+        }
+      }
+    }
+    if (SH_NEAR.on) {
+      ctx.globalAlpha = 0.95 * SH_NEAR.a;
+      riftBand(ctx, SH_NEAR.qx, SH_NEAR.qy, SH_NEAR.sz,
+        (c) => paintShard(c, SH_NEAR.qx, SH_NEAR.qy, SH_NEAR.ang, SH_NEAR.sz, SH_NEAR.tone));
+    }
+    ctx.restore();
+  }
+
+  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawTraces, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR, dressNow, windAt, frostNow };
 })();

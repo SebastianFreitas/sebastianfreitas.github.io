@@ -39,6 +39,22 @@ window.Genesis = (function () {
   const host    = document.getElementById("bridge-hero");
 
   let copyTimer = 0;
+  let copyInk = false;
+  let hitG = null, hitW = 0, hitH = 0, hitCx = 0, hitCy = 0;
+  /* the hit's flash: opaque near-white core round the point, falling to about half alpha at the corners; cached per size */
+  function hitGrad(ctx, cx, cy) {
+    const ix = cx | 0, iy = cy | 0;
+    if (!hitG || hitW !== G.W || hitH !== G.H || hitCx !== ix || hitCy !== iy) {
+      hitW = G.W; hitH = G.H; hitCx = ix; hitCy = iy;
+      const far = Math.hypot(Math.max(cx, G.W - cx), Math.max(cy, G.H - cy)) + 160;
+      const core = Math.min(0.9, 0.25 * Math.hypot(G.W, G.H) / far);
+      hitG = ctx.createRadialGradient(cx, cy, 0, cx, cy, far);
+      hitG.addColorStop(0, "rgba(255,250,232,1)");
+      hitG.addColorStop(core, "rgba(255,238,196,1)");
+      hitG.addColorStop(1, "rgba(226,184,128,1)");
+    }
+    return hitG;
+  }
   let broke = false;
   function paintCopy(immediate) {
     const b = BEATS[G.beat];
@@ -51,8 +67,11 @@ window.Genesis = (function () {
       if (tagEl) tagEl.textContent = "";
       return;
     }
+    if (!immediate && copyEl.classList.contains("on") && tagEl && lineEl
+      && tagEl.textContent === b.tag && lineEl.textContent === b.line) return;   // same words: no swap
     const show = () => {
       copyEl.classList.remove("on", "out");
+      copyEl.style.alignSelf = b.id === "trade" ? "flex-start" : "";   // trade: off the gentleman, who climbs out right of centre
       if (tagEl) tagEl.textContent = b.tag;
       if (lineEl) lineEl.textContent = b.line;
       requestAnimationFrame(() => copyEl.classList.add("on"));
@@ -345,7 +364,7 @@ window.Genesis = (function () {
   /* slow push-in / pull-out per beat: [from, to] applied over the beat */
   const ZOOM = {
     point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05],
-    elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.05], walk: [1.05, 1.02],
+    elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.30], walk: [1.30, 1.02],
     root: [1.02, 1.06], enter: [1.06, 1.09],
     soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09], rex: [1.09, 1.09], dot: [1.09, 1.09], clash: [1.09, 1.09], death: [1.09, 1.09],
     land: [1.00, 1.05], gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
@@ -428,8 +447,12 @@ window.Genesis = (function () {
          starts, so the flee beat opens on a move and not a jerk */
       target = mix(ROOT_U - 0.50, chaseAt(0).cam + chaseCamLead(0),
         G.beat === G.idxOf("gods") ? since("gods") : since("land"));
-    else
-      target = mix(0, ROOT_U - 0.50, clamp(uWalk, 0, 1));
+    else {
+      /* walk: the camera drifts a little to the right for the first ~3.5 s, well slower than
+         every walker, then holds; after the walk beat it is back on the root value */
+      target = G.beat > G.idxOf("walk") ? ROOT_U - 0.50
+        : 0.10 * smooth(clamp(G.local / 3.5, 0, 1));
+    }
     let camRate = 1.55;
     if (uWalk > 0.001 && uRoot < 0.02) camRate = 2.25;
     if (uFlee > 0 && uWar < 0.02) camRate = FLEE_CAM_RATE;
@@ -509,8 +532,13 @@ window.Genesis = (function () {
     G.W = env.W; G.H = env.H;
     if (env.t != null) G.t = env.t;
 
-    const sxh = G.shakeRX * G.shake * 12;
-    const syh = G.shakeRY * G.shake * 9;
+    /* seconds into the break (-1 elsewhere): the hit is at 0.5 s, the shake runs 0.5 to 1.0 s */
+    const tb = G.beat === idxOf("break") ? G.secs("break") : -1;
+    let hitShake = 0;
+    if (tb >= 0.5 && tb < 1.0) { const k = 1 - (tb - 0.5) / 0.5; hitShake = 5.2 * k * k; }
+    const shk = G.reduced ? 0 : G.shake + hitShake;
+    const sxh = G.shakeRX * shk * 12;
+    const syh = G.shakeRY * shk * 9;
     ctx.save();
     ctx.translate(sxh, syh);
     const z = G.zoom || 1;
@@ -543,7 +571,9 @@ window.Genesis = (function () {
       if (window.GenTier3) GenTier3.draw(ctx, G.W, G.H, z, sxh, syh);
       const bl = G.BEATS[G.beat].id === "break" && window.GenTier3 ? GenTier3.offset("brim") : null;
       const lurched = !!(bl && bl.dx !== 0);
-      const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7), 0, 1);
+      // the far-realm blobs read as one flat ellipse behind the walkers: dim them through walk and root, back to full once the womb beat begins
+      const farDim = 1 - 0.75 * uWalk * (1 - since("enter"));
+      const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7) * farDim, 0, 1);
       drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
       const streak = uWalk * (1 - uRoot) * 52
         + uFlee * (1 - since("war")) * 70
@@ -559,27 +589,31 @@ window.Genesis = (function () {
       ctx.save();
       ctx.translate(0, -diveY);
 
-      const uBreakLin = linear("break");
-      const leave = smooth(clamp(uBreakLin * 3.2, 0, 1));
-      const crack = leave * (1 - leave) * 4 * (1 - clamp(linear("walk") * 8, 0, 1));
-      const pointVis = (G.beat > idxOf("point") ? 1 : mix(0.75, 1, linear("point"))) * (1 - leave);
-      drawPoint(ctx, pointVis, crack);
+      /* implode 0-0.4 s, a short dark beat to 0.5 s, then the point is gone (the hit) */
+      const iPoint = idxOf("point"), iDrawn = idxOf("drawn");
+      const dPt = G.BEATS[iPoint].dur, dDr = G.BEATS[iDrawn].dur;
+      const tension = G.beat < iPoint ? 0
+        : G.beat === iPoint ? clamp(linear("point") * dPt / (dPt + dDr), 0, 1)
+        : G.beat === iDrawn ? clamp((dPt + linear("drawn") * dDr) / (dPt + dDr), 0, 1)
+        : 1;
+      const implode = tb >= 0 ? clamp(tb / 0.4, 0, 1) : 0;
+      const pointVis = tb >= 0.5 || G.beat > idxOf("break") ? 0
+        : (G.beat > iPoint ? 1 : mix(0.75, 1, linear("point")));
+      drawPoint(ctx, pointVis, 0, tension, implode);
 
-      /* the instant the point breaks: one flash, one shock ring, a hard shake */
+      /* the instant the point breaks: a kick; the flash, ring and shake are drawn from tb */
       const breakLin = linear("break");
       if (breakLin > 0.20 && !broke) {
         broke = true;
-        G.flash = 1;
-        G.shake = Math.max(G.shake, 1.3);
         G.zoomKick = Math.max(G.zoomKick, 0.05);
         G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
       }
       GenVoid.drawSpan(ctx, uDrawn);
-      GenElem.drawSea(ctx);
+      GenVoid.drawSpanLife(ctx, uDrawn);
+      GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
-      GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light
       const tTrade = G.secs("trade");
-      const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, uWalk);   // step off early, then keep pace with the camera
+      const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace
       // the old ones still climbing out of the mass sit behind its stones
       GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" });
       GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms; the stone gathers into the mass the old ones climb out of
@@ -617,6 +651,14 @@ window.Genesis = (function () {
          1.69 screen heights, so the land fill can stop just under that */
       const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
       drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
+      GenElem.drawSea(ctx);   // the sea bed, over the matter, flesh and land, under the gods
+      if (window.GenOld && tb < 0) {   // (in the break they are drawn over the flash, below) what the four break fragments left, for good: over the later layers, under the gods
+        ctx.save();
+        ctx.translate(0, diveY);   // they stay on the screen through the dive
+        unzoom(ctx, z);
+        GenOld.drawTraces(ctx);
+        ctx.restore();
+      }
       drawGodsBirth(ctx, flesh);
       if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
       drawRexHole(ctx);
@@ -636,6 +678,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("land") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
+    if (G.beat === G.idxOf("land") && G.local < 1.2 && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // the death frame covers the world for 1.2 s; the traces stay over it
 
     if (L && L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
@@ -644,12 +687,74 @@ window.Genesis = (function () {
         ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
       }
     }
+    const underBang = tb >= 0.5 && tb < 0.95;   // the traces sit under the bang's peak: the flash paints over their tint and rim
+    if (underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }
     if (G.flash > 0.02) {
-      ctx.fillStyle = `rgba(255,244,220,${0.18 * G.flash})`;
+      ctx.fillStyle = `rgba(200,200,205,${0.18 * G.flash})`;
       ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
     }
+    if (tb >= 0.5 && tb < 1.6) {
+      /* the bang: a warm full-frame flash at full strength for 0.1 s (the peak, tb 0.5), then held step-downs */
+      const fa = tb < 0.8 ? 1 : tb < 0.95 ? 0.7 : tb < 1.1 ? 0.34 : tb < 1.4 ? 0.18 : 0.08;
+      ctx.globalAlpha = fa;
+      ctx.fillStyle = hitGrad(ctx, sx(0), 0.46 * G.H);
+      ctx.fillRect(-160, -160, G.W + 320, G.H + 320);
+      const rx = sx(0), ry = 0.46 * G.H;
+      const m = Math.min(G.W, G.H);
+      /* the shock ring: a sharp flat stroke in three held sizes, past the corners by 1.7 s; over the wash, under the core */
+      if (tb < 1.0) {
+        const rp = G.reduced ? 0.5 : tb < 0.62 ? 0.12 : tb < 0.75 ? 0.38 : tb < 0.88 ? 0.7 : 1;
+        const far = Math.hypot(Math.max(rx, G.W - rx), Math.max(ry, G.H - ry));
+        const lw = m * (rp < 0.2 ? 0.05 : rp < 0.5 ? 0.04 : rp < 0.8 ? 0.028 : 0.016);
+        ctx.globalAlpha = 1;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.shadowColor = "rgba(255,200,90,0.9)";
+        ctx.shadowBlur = lw * 0.9;
+        ctx.strokeStyle = tb < 0.9 ? "#fffbea" : "#fff2c8";
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.arc(rx, ry, Math.max(1, (far + lw) * rp), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      /* the white-hot core in the point's warm light: three held sizes */
+      if (tb < 0.9) {
+        const cr = m * (tb < 0.75 ? 0.13 : 0.09);
+        ctx.globalAlpha = 1;
+        const cg = ctx.createRadialGradient(rx, ry, 0, rx, ry, cr * 1.5);
+        cg.addColorStop(0, "#ffffff"); cg.addColorStop(0.66, "#ffffff");   // the pure-white disc
+        cg.addColorStop(0.75, "#fff3a0"); cg.addColorStop(1, "rgba(255,226,120,0)");   // the hot yellow-white falloff
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(rx, ry, cr * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (tb >= 0 && !underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // over the flash, so they read from their first step
 
     ctx.restore();
+
+    /* the cut is screen-fixed: drawn outside the camera transform */
+    if (tb >= 0.9 && tb < 1.2) {   // not before 0.9: nothing dark may sit on the white core's peak
+      const fa = tb < 0.8 ? 0.78 : tb < 0.95 ? 0.5 : tb < 1.08 ? 0.28 : 0.11;
+      if (window.GenTier3 && GenTier3.drawCut) {
+        GenTier3.drawCut(ctx, G.W, G.H, fa / 0.78, tb + 0.7);   // the cut's own clock still starts at 1.2
+      }
+    }
+    /* the caption is DOM text: dark ink while the flash is up (tag and line set their own colour) */
+    {
+      /* dark while the flash is light (to 0.8), light once it has dropped to 0.34 or less */
+      const inkOn = tb >= 0.5 && tb < 0.8;
+      if (inkOn !== copyInk) {
+        copyInk = inkOn;
+        /* the overlay's dark centre vignette (bridge.css) would grey the flash heart */
+        if (overlay) overlay.style.background = inkOn ? "none" : "";
+        if (tagEl) { tagEl.style.color = inkOn ? "#1a1626" : ""; tagEl.style.textShadow = inkOn ? "none" : ""; }
+        if (lineEl) { lineEl.style.color = inkOn ? "#1a1626" : ""; lineEl.style.textShadow = inkOn ? "none" : ""; }
+      }
+    }
 
     if (uNow > 0.001) {
       const fade = smooth(uNow);
@@ -662,6 +767,14 @@ window.Genesis = (function () {
         ctx.fillRect(0, 0, G.W, G.H);
       }
     }
+  }
+
+  /* undo the camera zoom: the edge-sunk traces are screen-space, so they stay inside the frame */
+  function unzoom(ctx, z) {
+    if (z === 1) return;
+    ctx.translate(G.W * 0.5, G.H * 0.5);
+    ctx.scale(1 / z, 1 / z);
+    ctx.translate(-G.W * 0.5, -G.H * 0.5);
   }
 
   function drawInsidePlaceholder(ctx) {

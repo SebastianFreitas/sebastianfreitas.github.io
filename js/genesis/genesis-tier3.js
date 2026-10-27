@@ -265,6 +265,93 @@ window.GenTier3 = (function () {
     ctx.restore();
   }
 
+  /* The break glimpse: a huge dark limb cut out of the flash, reaching in from
+     the top right edge. Screen-fixed; poses step on time (t, seconds into the
+     break) so it keeps moving through the held flash; the previous pose
+     lingers as a clear faint copy. Curved tapered segments, hooked spurs. */
+  const cut = { w: 0, h: 0, paths: null };
+  const CUT_T0 = 1.2, CUT_STEP = 0.13;
+  const CUT_POSE = [
+    { jx: 1.00, jy: 0.10, tx: 0.95, ty: 0.28, b: 0.10 },
+    { jx: 0.92, jy: 0.14, tx: 0.83, ty: 0.37, b: 0.16 },
+    { jx: 0.84, jy: 0.16, tx: 0.69, ty: 0.45, b: 0.22 },
+    { jx: 0.78, jy: 0.15, tx: 0.56, ty: 0.51, b: 0.28 },
+    { jx: 0.74, jy: 0.14, tx: 0.45, ty: 0.54, b: 0.34 },
+    { jx: 0.72, jy: 0.13, tx: 0.37, ty: 0.50, b: 0.42 },
+  ];
+  const CUT_AMT_POSE = [0, 2, 4, 5];
+
+  // one tapered curved segment's outer (+n) edge, with a hooked spur at its middle
+  function cutEdge(path, ax, ay, aw, bx, by, bw, bend, spur, first) {
+    const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1;
+    const tx = dx / l, ty = dy / l, nx = -ty, ny = tx;
+    const cx = (ax + bx) / 2 + nx * bend * l, cy = (ay + by) / 2 + ny * bend * l;
+    const cw = (aw + bw) / 2;
+    const A = [ax + nx * aw, ay + ny * aw], B = [bx + nx * bw, by + ny * bw];
+    const C = [cx + nx * cw, cy + ny * cw];
+    if (first) path.moveTo(A[0], A[1]);
+    if (!spur) { path.quadraticCurveTo(C[0], C[1], B[0], B[1]); return; }
+    const M = [(A[0] + 2 * C[0] + B[0]) / 4, (A[1] + 2 * C[1] + B[1]) / 4];
+    const s = spur;
+    path.quadraticCurveTo((A[0] + C[0]) / 2, (A[1] + C[1]) / 2, M[0] - tx * s * 0.6, M[1] - ty * s * 0.6);
+    path.lineTo(M[0] + nx * s * 1.2 + tx * s * 1.1, M[1] + ny * s * 1.2 + ty * s * 1.1);
+    path.lineTo(M[0] + tx * s * 0.6, M[1] + ty * s * 0.6);
+    path.quadraticCurveTo((C[0] + B[0]) / 2, (C[1] + B[1]) / 2, B[0], B[1]);
+  }
+
+  function cutBack(path, ax, ay, aw, bx, by, bw, bend) {
+    const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1;
+    const nx = -dy / l, ny = dx / l;
+    const cx = (ax + bx) / 2 + nx * bend * l, cy = (ay + by) / 2 + ny * bend * l;
+    const cw = (aw + bw) / 2;
+    path.quadraticCurveTo(cx + nx * cw, cy + ny * cw, bx + nx * bw, by + ny * bw);
+  }
+
+  function buildCutPath(W, H, p) {
+    const path = new Path2D();
+    const rx = 1.2 * W, ry = -0.12 * H;
+    const jx = p.jx * W, jy = p.jy * H, tx = p.tx * W, ty = p.ty * H;
+    const w0 = 0.2 * H, w1 = 0.07 * H, w2 = 0.014 * H;
+    const b1 = -0.06, b2 = p.b;
+    cutEdge(path, rx, ry, w0, jx, jy, w1, b1, 0.032 * H, true);
+    cutEdge(path, jx, jy, w1 * 0.9, tx, ty, w2, b2, 0.026 * H, false);
+    // split, hooked tip: two prongs curling in toward the point
+    const dx = tx - jx, dy = ty - jy, l = Math.hypot(dx, dy) || 1;
+    const dux = dx / l, duy = dy / l, nx = -duy, ny = dux;
+    const q = 0.05 * W;
+    path.lineTo(tx + nx * w2 + dux * q * 0.9 - nx * 0.01 * H, ty + ny * w2 + duy * q * 0.9 - ny * 0.01 * H);
+    path.lineTo(tx + dux * q * 0.3, ty + duy * q * 0.3);
+    path.lineTo(tx - nx * w2 + dux * q * 1.1 - nx * 0.03 * H, ty - ny * w2 + duy * q * 1.1 - ny * 0.03 * H);
+    path.lineTo(tx - nx * w2, ty - ny * w2);
+    cutBack(path, tx, ty, w2, jx, jy, w1 * 0.9, -b2);
+    cutBack(path, jx, jy, w1, rx, ry, w0, -b1);
+    path.closePath();
+    return path;
+  }
+
+  function drawCut(ctx, W, H, amt, t) {
+    if (!(amt > 0) || W <= 0 || H <= 0) return;
+    const pal = window.GenEldPal && window.GenEldPal.TIER3;
+    if (cut.w !== W || cut.h !== H || !cut.paths) {
+      cut.w = W; cut.h = H;
+      cut.paths = CUT_POSE.map((p) => buildCutPath(W, H, p));
+    }
+    let i;
+    if (G.reduced) i = 3;
+    else if (typeof t === "number") i = clamp(Math.floor((t - CUT_T0) / CUT_STEP), 0, CUT_POSE.length - 1);
+    else i = CUT_AMT_POSE[amt > 0.8 ? 0 : amt > 0.5 ? 1 : amt > 0.25 ? 2 : 3];
+    const a = clamp(amt, 0, 1);
+    ctx.save();
+    ctx.fillStyle = pal ? pal.under : "#0a0d10";
+    if (!G.reduced && i > 0) {
+      ctx.globalAlpha = 0.45 * a;
+      ctx.fill(cut.paths[typeof t === "number" ? i - 1 : CUT_AMT_POSE.indexOf(i) > 0 ? CUT_AMT_POSE[CUT_AMT_POSE.indexOf(i) - 1] : 0]);
+    }
+    ctx.globalAlpha = a;
+    ctx.fill(cut.paths[i]);
+    ctx.restore();
+  }
+
   let frameKey = null, frameList = null;
 
   function pocket(x, y) {
@@ -312,5 +399,5 @@ window.GenTier3 = (function () {
     return combTines(p, G.W, G.H).map((t) => t.xi + parX(G.W) + m.dx);
   }
 
-  return { draw, pocket, offset, tines, POSE };
+  return { draw, drawCut, pocket, offset, tines, POSE };
 })();

@@ -16,14 +16,6 @@
     const m = (r + g + b) / 3;
     return "rgb(" + Math.round(mix(m, r, 0.35) * 0.45) + "," + Math.round(mix(m, g, 0.35) * 0.45) + "," + Math.round(mix(m, b, 0.35) * 0.45) + ")";
   });
-  const SEA_HUE_IDX = [1, 5, 6, 0];
-  const SEA_MULT = [0.34, 0.27, 0.21, 0.16];
-  const SEA_FILL = SEA_HUE_IDX.map((hi, idx) => {
-    const [r, g, b] = HUES[hi].split(",").map(Number);
-    const m = (r + g + b) / 3;
-    const mu = SEA_MULT[idx];
-    return "rgb(" + Math.round(mix(m, r, 0.25) * mu) + "," + Math.round(mix(m, g, 0.25) * mu) + "," + Math.round(mix(m, b, 0.25) * mu) + ")";
-  });
   const POS = { x: 0, y: 0, angle: 0, rg: 0, a: 0, q: 0 };
 
   // rage events: the bottle being shaken, sparse bursts through wave 1
@@ -93,36 +85,42 @@
     return SLOSH;
   }
 
-  // 460 particles, born dense and early, dying by the end of the elements/matter beats
+  // 240 particles, one kind leading at a time: each kind has its own window of the elements beat
+  // (s = secs("break") - 2.1; the beat spans s 3.9 to 11.9), building up to the split
+  const WINDOW = {   // kind: [first birth, last birth, count]
+    dust: [0.3, 5.0, 72], air: [3.9, 6.0, 30], wind: [4.8, 7.0, 36],
+    sound: [5.8, 7.8, 24], colour: [6.4, 8.8, 44], light: [7.4, 9.4, 34],
+  };
   const PARTS = [];
   (function seedParts() {
     const r = mulberry(9101);
-    for (let i = 0; i < 460; i++) {
-      const kind = KINDS[Math.floor(r() * 6)];
-      const birth = 17.5 * r() * r();
-      let life = 3.2 + r() * 3.6;
-      if (birth + life > 20.5) life = 20.5 - birth;
-      const ang = r() * TAU;
-      const spd = 0.55 + r() * 0.75;
-      const size = 1.5 + r() * 1.5;
-      const ph = r() * TAU;
-      const hueA = Math.floor(r() * 8);
-      let hueB = Math.floor(r() * 8);
-      if (hueB === hueA) hueB = (hueA + 3) % 8;
-      const flip = 0.35 + r() * 1.4;
-      const wgt = kind === "dust" ? 0.8 + r() * 0.2 : kind === "air" ? r() * 0.2 : r();
-      const curl = (r() - 0.5) * 2.4;
-      const settle = r() < 0.35;
-      PARTS.push({ i, kind, birth, life, ang, spd, size, ph, hueA, hueB, flip, wgt, curl, settle });
+    for (const kind of KINDS) {
+      const w = WINDOW[kind];
+      for (let n = 0; n < w[2]; n++) {
+        const birth = w[0] + (w[1] - w[0]) * r();
+        const life = 2.4 + r() * 2.2;
+        const ang = r() * TAU;
+        const spd = 0.55 + r() * 0.75;
+        const size = 0.9 + r() * r() * 3.1;
+        const ph = r() * TAU;
+        const hueA = Math.floor(r() * 8);
+        let hueB = Math.floor(r() * 8);
+        if (hueB === hueA) hueB = (hueA + 3) % 8;
+        const flip = 0.35 + r() * 1.4;
+        const wgt = kind === "dust" ? 0.8 + r() * 0.2 : kind === "air" ? r() * 0.2 : r();
+        const curl = (r() - 0.5) * 2.4;
+        const settle = r() < 0.35;
+        PARTS.push({ i: PARTS.length, kind, birth, life, ang, spd, size, ph, hueA, hueB, flip, wgt, curl, settle });
+      }
     }
     PARTS.sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind));
     for (const pt of PARTS) {
       const h = pt.i * 7;
       pt.fate = Math.min(2, Math.floor(hash1(h + 11) * 3));
-      pt.splitT = 9.5 + hash1(h + 12) * 3.0;
-      pt.hold = 0.25 + hash1(h + 13) * 0.35;
+      pt.splitT = 8.6 + hash1(h + 12) * 1.0;
+      pt.hold = 0.2 + hash1(h + 13) * 0.25;
       pt.steps = 3 + Math.min(2, Math.floor(hash1(h + 14) * 3));
-      pt.stepDur = 0.2 + hash1(h + 15) * 0.18;
+      pt.stepDur = 0.12 + hash1(h + 15) * 0.1;
       pt.gy = hash1(h + 16);
       pt.splits = pt.birth <= pt.splitT && pt.birth + pt.life > pt.splitT;
     }
@@ -153,9 +151,9 @@
 
   function drawAir(ctx, pt, x, y, a, q, alpha, sizeMul, angle) {
     if (q < 0.4) {
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.strokeStyle = "#dfe6ea"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(x, y, (3 + q * 20) * sizeMul, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = alpha * 0.16;
+      ctx.fillStyle = "#dfe6ea";
+      ctx.beginPath(); ctx.arc(x, y, (3 + q * 20) * sizeMul, 0, TAU); ctx.fill();
     } else if (q < 0.8) {
       ctx.globalAlpha = alpha * 0.25;
       ctx.fillStyle = "#dfe6ea";
@@ -241,16 +239,12 @@
       ctx.fillStyle = "#ffffff";
       ctx.beginPath(); ctx.arc(x, y, 1.6 * sizeMul, 0, TAU); ctx.fill();
     } else if (q < 0.8) {
-      if (hash1(pt.i * 7 + Math.floor(a * 6)) > 0.3) {
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = "#fff3d6"; ctx.lineWidth = 1;
-        for (let k = 0; k < 4; k++) {
-          const ang = pt.ph + k * Math.PI / 2;
-          ctx.beginPath(); ctx.moveTo(x, y);
-          ctx.lineTo(x + Math.cos(ang) * 9 * sizeMul, y + Math.sin(ang) * 9 * sizeMul);
-          ctx.stroke();
-        }
-      }
+      // a soft glint: a swelling glow with one short, flat flare through it
+      const sw = 0.6 + 0.4 * Math.sin(a * 5 + pt.ph);
+      flatGlow(ctx, x, y, 11 * sizeMul * sw, "255,240,205", alpha * 0.8);
+      ctx.globalAlpha = alpha * 0.55 * sw;
+      ctx.fillStyle = "#fff3d6";
+      ctx.beginPath(); ctx.ellipse(x, y, 8 * sizeMul * sw, 0.9 * sizeMul, pt.ph * 0.2, 0, TAU); ctx.fill();
     } else {
       if (Math.sin(a * 18 + pt.ph) > 0) {
         ctx.globalAlpha = alpha;
@@ -261,31 +255,12 @@
   }
 
   function drawSound(ctx, pt, x, y, a, q, alpha, sizeMul) {
+    // one ripple that widens and thins out, then nothing
+    if (q >= 0.8) return;
+    const k = q / 0.8;
+    ctx.globalAlpha = alpha * 0.5 * (1 - k);
     ctx.strokeStyle = "#9fb4c8"; ctx.lineWidth = 1;
-    if (q < 0.4) {
-      ctx.globalAlpha = alpha * 0.6;
-      const r1 = (4 + (a * 18) % 12) * sizeMul;
-      ctx.beginPath(); ctx.arc(x, y, r1, 0, TAU); ctx.stroke();
-      ctx.beginPath(); ctx.arc(x, y, r1 + 5 * sizeMul, 0, TAU); ctx.stroke();
-    } else if (q < 0.8) {
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      for (let k = 0; k < 9; k++) {
-        const ang = k / 9 * TAU;
-        const rr = 9 * sizeMul * (0.7 + 0.6 * hash1(pt.i * 13 + k + Math.floor(a * 8) * 17));
-        const px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr;
-        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.closePath(); ctx.stroke();
-    } else {
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = "#9fb4c8";
-      for (let k = 0; k < 5; k++) {
-        const h = (2 + 7 * Math.abs(Math.sin(a * 9 + k * 1.3 + pt.ph))) * sizeMul;
-        const bx = x + (k - 2) * (1.5 + 2) * sizeMul;
-        ctx.fillRect(bx - 0.75 * sizeMul, y - h / 2, 1.5 * sizeMul, h);
-      }
-    }
+    ctx.beginPath(); ctx.ellipse(x, y, (4 + 20 * k) * sizeMul, (3 + 14 * k) * sizeMul, 0, 0, TAU); ctx.stroke();
   }
 
   // pure pose at time t: motion, wind wobble, slosh and rage push. Writes POS (no allocation)
@@ -327,6 +302,9 @@
 
     const originX = G.sx(0);
     const sl = slosh(s);
+    // break only: no confetti inside the old-one figures or the caption band
+    const gate = window.GenOld && GenOld.figCover && G.BEATS[G.beat].id === "break";
+    const band = gate && GenOld.captionBand ? GenOld.captionBand() : null;
 
     for (const pt of PARTS) {
       if (pt.splits && s >= pt.splitT) {
@@ -341,6 +319,7 @@
       const x = P.x, y = P.y, angle = P.angle, rg = P.rg, q = P.q;
 
       if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
+      if (gate && (GenOld.figCover(x, y) > 0 || (band && y > band.y0 && y < band.y1))) continue;
 
       let fadeOut;
       if (q < 0.8) fadeOut = 1;
@@ -433,42 +412,110 @@
     ctx.fillRect(Math.round(x), Math.round(y), gs, gs);
   }
 
-  // landed fraction of sinkers, 0..1, a closed form of local time
-  function seaK(s) {
-    return smooth(clamp((s - 10.2) / 4.5, 0, 1));
-  }
-
   // the sea at the frame bottom: flat, lumpy, dark strata rising as the sinkers land
   function drawSea(ctx) {
     if (typeof G.secs !== "function") return;
     const W = G.W, H = G.H;
     if (!W || !H) return;
     const s = G.secs("break") - 2.1;
-    const k = seaK(s);
-    if (k < 0.01) return;
+    if (s < 10.2) return;
 
-    const lvl = SEA_H * k;
     const camOff = G.cam * W;
-
-    for (let i = 0; i < 4; i++) {
-      const topY = H * (1 - lvl * (1 - i * 0.22));
-      ctx.beginPath();
-      let prevY = null;
-      for (let x = -4; x <= W + 4; x += 4) {
-        const col = Math.floor((camOff + x - W / 2) / 4);
-        const xs = col * 4 - camOff + W / 2;
-        const off = Math.round((hash1(col * 13 + i * 101) * 2 + hash1((col >> 2) * 7 + i * 57) * 2) * (0.5 + 0.5 * k));
-        const y = topY - off;
-        if (prevY === null) ctx.moveTo(xs, y);
-        else { ctx.lineTo(xs, prevY); ctx.lineTo(xs, y); }
-        prevY = y;
+    const tick = Math.floor(G.t * 1.5);
+    ctx.globalAlpha = 1;
+    // the bed as a body: a low band with an uneven top, so the dots read over any land
+    if (bandW !== W || bandH !== H) {
+      bandW = W; bandH = H;
+      bandPath = new Path2D();
+      const bh = H * 0.145, step = Math.max(12, Math.round(W / 60)), r = mulberry(4417);
+      bandPath.moveTo(0, H);
+      bandTop = new Path2D();
+      let lump = 0;
+      for (let x = 0; x <= W + step; x += step) {
+        lump = clamp(lump + (r() - 0.5) * bh * 0.2, -bh * 0.15, bh * 0.15);
+        bandPath.lineTo(x, Math.round(H - bh - lump));
+        if (x === 0) bandTop.moveTo(x, Math.round(H - bh - lump) + 1);
+        else bandTop.lineTo(x, Math.round(H - bh - lump) + 1);
       }
-      ctx.lineTo(W + 4, H + 2);
-      ctx.lineTo(-4, H + 2);
-      ctx.closePath();
-      ctx.fillStyle = SEA_FILL[i];
-      ctx.globalAlpha = 1;
-      ctx.fill();
+      bandPath.lineTo(W + step, H);
+      bandPath.closePath();
+    }
+    ctx.fillStyle = "rgb(200,205,215)";   // a light veil: lifts any land under it a clear step
+    ctx.globalAlpha = BAND_A;
+    ctx.fill(bandPath);
+    ctx.globalAlpha = 0.1;   // and a thin lighter top line, so the edge reads
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgb(235,238,245)";
+    ctx.stroke(bandTop);
+    ctx.globalAlpha = 1;
+    // two passes: settled colour, then the few dots shimmering one value step brighter
+    for (let pass = 0; pass < 2; pass++) {
+      for (let h = 0; h < 8; h++) {
+        const list = BED_BY_HUE[h];
+        ctx.fillStyle = pass === 0 ? BED_BASE[h] : BED_BRIGHT[h];
+        for (let n = 0; n < list.length; n++) {
+          const d = list[n];
+          if (s < d.arr) continue;
+          const sh = !G.reduced && hash1(d.i * 7 + tick * 131) < 0.07;
+          if ((pass === 1) !== sh) continue;
+          const x = Math.round(((d.u * W - camOff) % W + W) % W);
+          ctx.fillRect(x, Math.round(H - H * 0.065 - H * 0.075 * d.d), d.sz, d.sz);
+        }
+      }
+    }
+    drawAirDrift(ctx, W, H);   // the air rides with the bed, over the land
+  }
+
+  // the bed: the sinkers, landed and packed denser toward the bottom, kept in every later scene
+  const bedTone = (h, k) => {
+    const [r, g, b] = h.split(",").map(Number);
+    const m = (r + g + b) / 3;
+    return "rgb(" + Math.round(mix(m, r, 0.4) * k) + "," + Math.round(mix(m, g, 0.4) * k) + "," + Math.round(mix(m, b, 0.4) * k) + ")";
+  };
+  const BED_BASE = HUES.map(h => bedTone(h, 1));
+  const BED_BRIGHT = HUES.map(h => bedTone(h, 1.25));
+  const AIR_LIGHT = HUES.map(h => bedTone(h, 2.6));
+  let bandW = 0, bandH = 0, bandPath = null, bandTop = null;
+  const BAND_A = 0.14;
+  const BED_BY_HUE = [[], [], [], [], [], [], [], []];
+  const AIR = [];
+  (function seedBed() {
+    const r = mulberry(9301);
+    for (let i = 0; i < 900; i++) {
+      const hue = Math.floor(r() * 8);
+      BED_BY_HUE[hue].push({ i, u: r(), d: Math.pow(r(), 2.2), arr: 10.2 + r() * 4.5, sz: r() < 0.55 ? 4 : 2 });
+    }
+    for (let i = 0; i < 320; i++) {
+      AIR.push({ i, u: r(), y: 0.04 + r() * 0.9, par: 0.1 + r() * 0.15, hue: Math.floor(r() * 8), arr: 10.2 + r() * 4.5, sz: r() < 0.5 ? 4 : 3 });
+    }
+  })();
+
+  // the air: the risers, a thin sparse drift in the upper frame, stepping very slowly
+  function drawAirDrift(ctx, W, H) {
+    const s = G.secs("break") - 2.1;
+    if (s < 10.2) return;
+    const span = 1.6 * W;
+    const camOff = G.cam * W;
+    const stepX = G.reduced ? 0 : Math.floor(G.t / 4) * 3;
+    ctx.globalAlpha = 0.5;   // a dark edge first, so the specks read over blue-grey
+    ctx.fillStyle = "rgb(6,8,12)";
+    for (let n = 0; n < AIR.length; n++) {
+      const a = AIR[n];
+      if (s < a.arr) continue;
+      const x = Math.round(((a.u * span - camOff * a.par - stepX * (0.5 + a.par)) % span + span) % span - span * 0.1);
+      if (x < -2 || x > W + 2) continue;
+      ctx.fillRect(x - 1, Math.round(a.y * H) - 1, a.sz + 2, a.sz + 2);
+    }
+    ctx.globalAlpha = 0.95;
+    for (let h = 0; h < 8; h++) {
+      ctx.fillStyle = AIR_LIGHT[h];
+      for (let n = 0; n < AIR.length; n++) {
+        const a = AIR[n];
+        if (a.hue !== h || s < a.arr) continue;
+        const x = Math.round(((a.u * span - camOff * a.par - stepX * (0.5 + a.par)) % span + span) % span - span * 0.1);
+        if (x < -2 || x > W + 2) continue;
+        ctx.fillRect(x, Math.round(a.y * H), a.sz, a.sz);
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -527,12 +574,14 @@
       ctx.stroke();
     }
 
-    for (const it of RES.stains) {
+    // the flat colour stains and the sound rings read as stray ellipses in the first segment: they are gone by the end of trade, stay out through walk and root, and are back at full after enter (covered, so the step is unseen)
+    const quiet = G.beat > G.idxOf("enter") ? 1 : 1 - clamp((G.linear("trade") - 0.5) * 2, 0, 1);
+    for (const it of (quiet < 0.01 ? [] : RES.stains)) {
       const x = ((it.u * span - camOff * it.par - G.t * it.drift) % span + span) % span - span * 0.1;
       if (x < -200 || x > W + 200) continue;
       const swap = Math.floor((G.t + it.ph * 3) / (5 + it.ph)) % 2;
       ctx.fillStyle = HUE_FILL[swap === 0 ? it.hueA : it.hueB];
-      ctx.globalAlpha = 0.07 * k;
+      ctx.globalAlpha = 0.07 * k * quiet;
       ctx.save();
       ctx.translate(x, it.y * H);
       ctx.beginPath(); ctx.ellipse(0, 0, it.rx, it.ry, 0, 0, TAU); ctx.fill();
@@ -553,7 +602,7 @@
       const x = ((it.u * span - camOff * it.par - G.t * it.drift) % span + span) % span - span * 0.1;
       if (x < -200 || x > W + 200) continue;
       const frac = ((G.t + it.ph * 4) % 5) / 5;
-      ctx.globalAlpha = 0.10 * k * (1 - frac);
+      ctx.globalAlpha = 0.10 * k * quiet * (1 - frac);
       ctx.beginPath(); ctx.arc(x, it.y * H, frac * 110, 0, TAU); ctx.stroke();
     }
 

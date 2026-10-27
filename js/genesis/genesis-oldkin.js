@@ -10,6 +10,27 @@
   const { litSplit, eyeDot } = O;
   const TAU = Math.PI * 2;
 
+  // gait phase from distance travelled (the x the painter gets), so planted parts
+  // stay put while the body passes; it grows whichever way the body goes. Off in
+  // reduced motion.
+  function gait(o, x, rate) {
+    return G.reduced ? 0 : (x + G.cam * G.W) * (o.side || 1) * rate + (o.ph || 0);
+  }
+  const moving = () => (G.reduced ? 0 : 1);
+
+  // a planted contact, drawn under scale sc: while planted (u < duty of a cycle
+  // of cyc gait-radians, rate per px) it slides back at body speed so it stays
+  // fixed in world x; then it lifts and swings forward. Returns [local x offset
+  // from the body, lift 0..1].
+  function stride(u, duty, cyc, rate, side, sc) {
+    if (G.reduced) return [0, 0];
+    u -= Math.floor(u);
+    const S = duty * cyc / rate;
+    if (u < duty) return [side * S * (0.5 - u / duty) / sc, 0];
+    const t = (u - duty) / (1 - duty);
+    return [side * S * (-0.5 + t * t * (3 - 2 * t)) / sc, Math.sin(Math.PI * t)];
+  }
+
   // circle/ellipse counterpart of litSplit's under-22px flat-fill fallback
   function circSplit(ctx, trace, xSplit, lit, shade, hpx) {
     if (hpx < 22) { trace(); ctx.fillStyle = lit; ctx.fill(); return; }
@@ -27,8 +48,9 @@
   /* 1b. tower — thin tall slab that rocks around its forward foot corner */
   function towerBare(ctx, o, x, y, h, p) {
     const w = 0.12 * h;
-    const tilt = Math.sin(p.phase) * 0.12;
-    const cornerX = x + o.side * 0.5 * w;
+    // sways onto alternate foot corners: pivots on the one that stays down
+    const tilt = Math.sin(gait(o, x, 0.03)) * 0.16;
+    const cornerX = x + (tilt > 0 ? 1 : -1) * 0.5 * w;
     ctx.save();
     ctx.translate(cornerX, y);
     ctx.rotate(tilt);
@@ -52,8 +74,8 @@
   function towerDressed(ctx, o, x, y, h, p) {
     const GA = window.GenAttire, GP = window.GenEldPal;
     const w = 0.20 * h;
-    const tilt = Math.sin(p.phase) * 0.12;
-    const cornerX = x + o.side * 0.5 * w;
+    const tilt = Math.sin(gait(o, x, 0.03)) * 0.16;
+    const cornerX = x + (tilt > 0 ? 1 : -1) * 0.5 * w;
     ctx.save();
     ctx.translate(cornerX, y);
     ctx.rotate(tilt);
@@ -97,10 +119,13 @@
 
   /* 2. pearl — wet rolling sphere with a turning seam and a fixed highlight */
   function pearl(ctx, o, x, y, h, p) {
-    const r = 0.5 * h, cx = x, cy = y - 0.5 * h;
+    // rolls without slipping (seam turns with distance) and bounces softly
+    const r = 0.5 * h, cx = x;
+    const hop = Math.sin(gait(o, x, 0.04));
+    const cy = y - 0.5 * h - hop * hop * 0.07 * h;
     circSplit(ctx, () => { ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); },
       cx + 0.1 * r, o.lit, o.shade, r * 2);
-    const rot = -p.phase;
+    const rot = G.reduced ? 0 : x / (r * (p.scale || 1));
     ctx.strokeStyle = o.shade;
     ctx.lineWidth = Math.max(1, 0.06 * h);
     ctx.beginPath();
@@ -312,13 +337,24 @@
     else slabBare(ctx, o, x, y, h, p);
   }
 
+  // the slab inches like a caterpillar: the rear rises off the deck, the front
+  // slides on, then the rear drops and the whole thing hauls up behind it
+  function inch(ctx, o, x, y, h, w, p) {
+    const side = o.side || 1, f = moving();
+    // glides at body speed; the rear rises and settles in a steady wave
+    const rise = 0.5 + 0.5 * Math.sin(gait(o, x, 0.025));
+    const fx = side * 0.5 * w;
+    ctx.translate(x, y);
+    ctx.translate(fx, 0);
+    ctx.rotate(side * (0.02 + 0.09 * rise) * f);
+    ctx.translate(-fx, 0);
+  }
+
   /* 5b. slab — fat chamfered block that shuffles by tilting front/back */
   function slabBare(ctx, o, x, y, h, p) {
     const w = 1.45 * h, ht = 0.62 * h, c = 0.15 * h;
-    const tilt = Math.sin(p.phase) * 0.06;
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tilt);
+    inch(ctx, o, x, y, h, w, p);
     const l = -0.5 * w, r = 0.5 * w, top = -ht;
     litSplit(ctx, [
       [l + c, 0], [r - c, 0], [r, -c], [r, top + c], [r - c, top],
@@ -337,11 +373,8 @@
      cinched trousers, a half-sprung gibus the middle spike pierces */
   function slabDressed(ctx, o, x, y, h, p) {
     const GA = window.GenAttire, GP = window.GenEldPal;
-    const phase = isFinite(p.phase) ? p.phase : 0;
-    const tilt = Math.sin(phase) * 0.06;
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tilt);
+    inch(ctx, o, x, y, h, 1.45 * h, p);
 
     if (!o._att) {
       const seed = (o.idx || 0) + 1;
@@ -529,6 +562,13 @@
     else combBare(ctx, o, x, y, h, p);
   }
 
+  // one leg of the comb: a wave of steps runs along the row; the foot swings
+  // forward and up, then is planted and drawn back as the body passes
+  function combStep(o, x, h, k, lag, sc) {
+    const st = stride((gait(o, x, 0.05) - k * lag) / TAU, 0.7, TAU, 0.05, o.side || 1, sc || 1);
+    return [st[0], st[1] * 0.07 * h];
+  }
+
   /* 7b. comb — bar with a travelling wave of hanging teeth */
   function combBare(ctx, o, x, y, h, p) {
     const w = 1.2 * h;
@@ -539,9 +579,9 @@
     const tw = Math.max(1, 0.05 * h);
     for (let k = 0; k < 9; k++) {
       const tx = mix(x - 0.5 * w + 0.05 * w, x + 0.5 * w - 0.05 * w, k / 8);
-      const shift = Math.sin(p.phase + k * 0.7) * 0.05 * h;
+      const wv = combStep(o, x, h, k, 0.7, p.scale);
       const col = k >= 5 ? o.shade : o.lit;
-      line(ctx, [[tx, barBot], [tx + shift, y]], col, tw);
+      line(ctx, [[tx, barBot], [tx + wv[0], y - wv[1]]], col, tw);
     }
   }
 
@@ -589,9 +629,9 @@
       const hipY = apexY + a * dx * dx + thick;
       const front = side > 0 ? u : (1 - u);
       const col = front > 0.5 ? o.lit : o.shade;
-      const shift = Math.sin(p.phase + k * 0.7) * 0.05 * h;
-      const kneeX = sx + 0.05 * h, kneeY = mix(hipY, y, 0.55);
-      const footX = sx + shift, footY = y;
+      const wv = combStep(o, x, h, k, 0.9, p.scale);
+      const kneeX = sx + 0.05 * h + 0.5 * wv[0], kneeY = mix(hipY, y, 0.55) - 0.5 * wv[1];
+      const footX = sx + wv[0], footY = y - wv[1];
       line(ctx, [[sx, hipY], [kneeX, kneeY]], col, legW);
       line(ctx, [[kneeX, kneeY], [footX, footY]], col, legW);
       // linen spats on the bottom 30% of the leg, a coal button on the outer side
@@ -699,10 +739,11 @@
   /* 9b. knot — two overlapped rings turning against each other */
   function knotBare(ctx, o, x, y, h, p) {
     const cy = y - 0.45 * h;
-    const turn = -p.phase * 0.6;
+    // the rings turn against each other, one with the roll and one against it
+    const turn = gait(o, x, 0.03 / (p.scale || 1));
     ctx.lineWidth = 0.10 * h;
     for (let k = 0; k < 2; k++) {
-      const rot = turn + (k === 0 ? 0.9 : -0.9);
+      const rot = (k === 0 ? 0.9 + turn : -0.9 - turn * 0.6);
       ctx.save();
       ctx.translate(x, cy);
       ctx.rotate(rot);
@@ -726,9 +767,9 @@
     const wy = y - wheelR;
     const hy = wy - wheelR - gap - haloR;
 
-    // the lower wheel, rolling one slot per beat
+    // the lower wheel, rolling with the distance travelled
     const nHoop = 5, slot = TAU / nHoop;
-    const roll = Math.floor(p.phase / slot) * slot;
+    const roll = G.reduced ? 0 : x / (wheelR * (p.scale || 1));
     ctx.save();
     ctx.translate(x, wy);
     ctx.rotate(roll);
@@ -745,11 +786,11 @@
     }
     ctx.restore();
 
-    // the upper halo, held still above
+    // the upper halo, drifting against the wheel's turn
     ctx.strokeStyle = o.lit;
     ctx.lineWidth = Math.max(1, 0.05 * h);
     ctx.beginPath();
-    ctx.ellipse(x, hy, haloR, haloR * 0.4, 0, 0, TAU);
+    ctx.ellipse(x - 0.04 * h * Math.sin(gait(o, x, 0.03)), hy, haloR, haloR * 0.4, 0, 0, TAU);
     ctx.stroke();
 
     // the crinolette cage: 5 open gunmetal hoops between the wheel and the
@@ -780,13 +821,17 @@
   function husk(ctx, o, x, y, h, p) {
     const breathe = 1 + 0.06 * Math.sin(G.t * 2.5 + o.ph);
     const rx = 0.45 * h * breathe, ry = 0.32 * h * breathe;
-    const cy = y - 0.5 * h;
+    // shuffles: each block lifts and drags forward in turn, the body dips and
+    // leans onto the one that lands
+    const ph = gait(o, x, 0.045), f = moving();
+    const cy = y - 0.5 * h + 0.025 * h * Math.cos(2 * ph) * f;
     const face = o.side >= 0 ? 0 : Math.PI;
     for (let k = 0; k < 2; k++) {
       const side = k === 0 ? -1 : 1;
-      const lift = side < 0 ? Math.max(0, Math.sin(p.phase)) * 0.06 * h
-                            : Math.max(0, -Math.sin(p.phase)) * 0.06 * h;
-      Paint.rect(ctx, x + side * 0.2 * h - 0.095 * h, y - 0.19 * h - lift, x + side * 0.2 * h + 0.095 * h, y - lift, o.shade);
+      const st = stride(ph / TAU + (k ? 0.5 : 0), 0.6, TAU, 0.045, o.side || 1, p.scale || 1);
+      const lift = st[1] * 0.09 * h;
+      const drag = st[0];
+      Paint.rect(ctx, x + drag + side * 0.2 * h - 0.095 * h, y - 0.19 * h - lift, x + drag + side * 0.2 * h + 0.095 * h, y - lift, o.shade);
     }
     ctx.beginPath();
     ctx.ellipse(x, cy, rx, ry, 0, 0, TAU);

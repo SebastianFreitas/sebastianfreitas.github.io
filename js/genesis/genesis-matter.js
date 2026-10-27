@@ -39,7 +39,7 @@
       const modeR = r();
       const c = {
         mat,
-        birth: r() * 7.0,
+        birth: r() * 3.5,
         ang: r() * TAU,
         // launch speed as a fraction of H: G.H is 0 at load time (before the
         // conductor sizes the canvas), so the actual px/s speed is resolved
@@ -109,8 +109,8 @@
     for (let i = 0; i < 7; i++) {
       STORMS.push({
         type: types[i],
-        t: 1.2 + i * 1.25 + r() * 0.6,
-        dur: 1.1 + r() * 0.9,
+        t: 1.0 + i * 0.8 + r() * 0.3,
+        dur: 0.8 + r() * 0.5,
         xf: 0.12 + r() * 0.76,
         yf: 0.18 + r() * 0.6,
         Rf: 0.08 + r() * 0.08,
@@ -360,7 +360,7 @@
       const m = massScale(trs);
       const keep = clamp((m - c.mr * 0.6) / 0.2, 0, 1);
       y += (1 - keep) * 0.05 * G.H;
-      alpha *= keep * (1 - smooth(clamp((trs - 9.2) / 0.8, 0, 1)));
+      alpha *= keep * (1 - smooth(clamp((trs - 8.2) / 0.8, 0, 1)));
     }
 
     if (x < -c.size - 40 || x > G.W + c.size + 40 || y < -c.size - 40 || y > G.H + c.size + 40) return;
@@ -389,7 +389,7 @@
       let deathT = ins.hatch + ins.die;
       for (let k = 0; k < STORMS.length; k++) {
         const st = STORMS[k];
-        if (st.t <= ins.hatch || st.t >= deathT) continue;
+        if (st.type === "lightning" || st.t <= ins.hatch || st.t >= deathT) continue; // lightning storms are not drawn
         const bt = st.t - ins.hatch;
         const px = hx + Math.cos(ins.ang) * ins.spd * bt + Math.sin(bt * 9 + ins.wob) * 6;
         const py = hy + Math.sin(ins.ang) * ins.spd * bt + Math.cos(bt * 7 + ins.wob) * 5;
@@ -489,7 +489,8 @@
       const st = STORMS[i];
       const isFront = st.type === "fire" || st.type === "lightning";
       if (isFront !== front) continue;
-      const e = stormEnv(st, s);
+      // calm build before the event, calm settle after: storms run at half strength
+      const e = stormEnv(st, s) * 0.5;
       if (e <= 0.02) continue;
       const cx = st.xf * G.W, cy = st.yf * G.H, R = st.Rf * G.W;
       if (st.type === "air") drawAirStorm(ctx, cx, cy, R, s, st, e);
@@ -499,35 +500,18 @@
     }
   }
 
+  // air: a soft flat gust, no rings or ticks (the chunks still shudder in it)
   function drawAirStorm(ctx, cx, cy, R, s, st, e) {
-    ctx.strokeStyle = AIR_COLOR;
-    ctx.lineWidth = 2;
-    let ring0 = 0;
-    for (let k = 0; k < 3; k++) {
-      const rad = R * (((s - st.t) * 1.6 + k * 0.33) % 1);
-      if (k === 0) ring0 = rad;
-      ctx.globalAlpha = 0.35 * e;
-      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.283); ctx.stroke();
-    }
-    ctx.globalAlpha = 0.35 * e;
-    for (let k = 0; k < 10; k++) {
-      const a = (k / 10) * TAU;
-      const x0 = cx + Math.cos(a) * ring0, y0 = cy + Math.sin(a) * ring0;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x0 + Math.cos(a) * 14, y0 + Math.sin(a) * 14);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    flatGlow(ctx, cx, cy, R * 0.7, "200,210,220", 0.12 * e);
   }
 
   function drawRainStorm(ctx, cx, cy, R, st, e) {
     ctx.strokeStyle = RAIN_COLOR;
     ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.55 * e;
+    ctx.globalAlpha = 0.3 * e;
     const dir = Math.PI / 2 + st.tilt;
     const dx = Math.cos(dir), dy = Math.sin(dir);
-    for (let k = 0; k < 70; k++) {
+    for (let k = 0; k < 28; k++) {
       const px0 = hash1(k * 7 + 1) * 2 * R - R, py0 = hash1(k * 7 + 2) * 2 * R - R;
       const scroll = (G.t * 420 + hash1(k * 7 + 3) * 400) % (2 * R);
       const px = ((px0 + dx * scroll + R) % (2 * R)) - R;
@@ -579,35 +563,38 @@
     flatGlow(ctx, cx, cy, R * 0.6, "240,138,42", 0.6 * e);
   }
 
-  function drawLightningStorm(ctx, cx, cy, R, s, st, e) {
-    const strikeTimes = [st.t, st.t + 0.18, st.t + 0.5];
-    for (let si = 0; si < 3; si++) {
-      const dt = s - strikeTimes[si];
-      if (dt < 0 || dt > 0.09) continue;
-      const a0 = hash1(si * 100 + 1) * TAU;
-      const a1 = a0 + Math.PI;
-      const x0 = cx + Math.cos(a0) * R, y0 = cy + Math.sin(a0) * R;
-      const x1 = cx + Math.cos(a1) * R, y1 = cy + Math.sin(a1) * R;
-      const pts = [];
+  // the one event: a single bolt into the gathered mass, flesh and stone set,
+  // about the middle of the 8 s beat (s = local + 0.8). Replaces the strike storms.
+  const EV_T = 4.8;
+  const EV_PTS = [];
+  for (let k = 0; k <= 8; k++) EV_PTS.push([0, 0]);
+  function drawMatterEvent(ctx, s) {
+    const dt = s - EV_T;
+    if (dt < 0 || dt > 0.7) return;
+    const mx = G.sx(0), my = MASS.yf * G.H;
+    if (dt < 0.2) {
+      const x0 = mx + G.W * 0.03, y0 = 0, x1 = mx, y1 = my;
+      const nl = Math.hypot(y1 - y0, x1 - x0) || 1;
+      const nx = -(y1 - y0) / nl, ny = (x1 - x0) / nl;
       for (let k = 0; k <= 8; k++) {
         const u = k / 8;
-        const bx = mix(x0, x1, u), by = mix(y0, y1, u);
-        const off = (hash1(si * 100 + k) - 0.5) * 2 * R * 0.25;
-        const nx = -(y1 - y0), ny = (x1 - x0);
-        const nl = Math.hypot(nx, ny) || 1;
-        pts.push([bx + (nx / nl) * off, by + (ny / nl) * off]);
+        const off = k === 8 ? 0 : (hash1(900 + k) - 0.5) * G.H * 0.1;
+        EV_PTS[k][0] = mix(x0, x1, u) + nx * off;
+        EV_PTS[k][1] = mix(y0, y1, u) + ny * off;
       }
-      ctx.globalAlpha = 0.5 * e;
-      Paint.line(ctx, pts, LIGHT_OUTER, 4);
-      ctx.globalAlpha = e;
-      Paint.line(ctx, pts, LIGHT_CORE, 1.5);
-      ctx.globalAlpha = 0.12 * e;
-      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283);
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
+      ctx.globalAlpha = 0.5;
+      Paint.line(ctx, EV_PTS, LIGHT_OUTER, 5);
+      ctx.globalAlpha = 1;
+      Paint.line(ctx, EV_PTS, LIGHT_CORE, 2);
     }
+    // the flash holds, then settles in steps
+    const f = dt < 0.2 ? 0.18 : dt < 0.4 ? 0.1 : dt < 0.55 ? 0.05 : 0.02;
+    flatGlow(ctx, mx, my, MASS.rxH * G.H * 1.1, "244,240,255", f * 2);
     ctx.globalAlpha = 1;
   }
+
+  // lightning storms no longer strike: the single event above replaces them
+  function drawLightningStorm() {}
 
   /* ---- public draw ------------------------------------------------------- */
   function draw(ctx) {
@@ -619,7 +606,8 @@
     drawStormsLayer(ctx, s, false); // air, rain: behind
     for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, s);
     drawInsects(ctx, s);
-    drawStormsLayer(ctx, s, true); // fire, lightning: in front
+    drawStormsLayer(ctx, s, true); // fire: in front
+    drawMatterEvent(ctx, s);
 
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
