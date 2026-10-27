@@ -68,6 +68,38 @@ body.site-frozen > .topbar {
 .gate-log .bl:last-child { color: var(--sage); }
 @keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 
+/* ---- loading bar: a track and fill in the log's ink, with a mono label ---- */
+.gate-bar {
+  position: absolute; left: 50%; bottom: -3.2rem; transform: translateX(-50%);
+  width: min(16rem, 70%);
+  display: flex; flex-direction: column; align-items: stretch; gap: 0.45rem;
+  transition: opacity 0.4s ease;
+}
+.gate-bar-track {
+  height: 6px; background: #1b2220; border: 1px solid #3d4644; overflow: hidden;
+  box-sizing: content-box;
+}
+.gate-bar-track i {
+  display: block; height: 100%; background: var(--lamp);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform 0.2s cubic-bezier(.2,.8,.3,1);
+}
+.gate-bar-label {
+  font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.09em;
+  text-transform: uppercase; color: #7d8985; line-height: 1.5; text-align: center;
+}
+.gate-bar.full .gate-bar-label { color: var(--sage); }
+.gate-bar.out { opacity: 0; }
+
+/* the way in looks like it is waiting until the warm-up is done */
+.gate-btn.waiting,
+.gate-btn-primary.waiting {
+  opacity: 0.45; box-shadow: none; animation: none; cursor: progress;
+}
+.gate-btn-primary.waiting:hover {
+  background: var(--lamp); border-color: var(--lamp); box-shadow: none;
+}
+
 /* ---- bio panel (replaces terminal) ---- */
 .gate-panel {
   width: 100%;

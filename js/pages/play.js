@@ -435,10 +435,8 @@
     ctx.globalAlpha = prevAlpha;
   }
 
-  // one XP point, once
-  function award(id, label, x, y) {
-    if (window.XP && !XP.has(id)) XP.award(id, 1, label, x, y);
-  }
+  // case-page toys give no XP any more (the bridge is the only place that does); kept so callers don't break
+  function award() {}
 
   // true once the toy `name` has painted two frames (or has no built toy to wait for)
   function painted(name) { const h = handle(name); return !h || h.painted(); }

@@ -248,6 +248,7 @@
       document.removeEventListener("keydown", onKey);
       card = null;
       document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: false } }));
+      document.dispatchEvent(new CustomEvent("xp:card-closed"));
       if (instant) {
         veil.remove();
       } else {

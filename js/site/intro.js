@@ -26,9 +26,29 @@
     world:    { id: "path-world",    label: "Setting" },
     projects: { id: "path-projects", label: "Game Dev" },
   };
-  const watchers = {};
 
   let autoTimer = 0;
+
+  /* the heavy first-time work, four tasks; onStep(done, total) after each one */
+  const WARM_CAP_MS = 8000;
+  function warmUp(onStep) {
+    const total = 4;
+    let n = 0;
+    const step = () => { n++; if (onStep) onStep(n, total); };
+    const run = (fn) => Promise.resolve().then(fn).catch(() => {}).then(step);
+    const loaded = new Promise(res => {
+      if (document.readyState === "complete") res(); else addEventListener("load", res, { once: true });
+    });
+    return Promise.all([
+      run(() => Promise.all([loaded, document.fonts && document.fonts.ready])),
+      run(() => loaded.then(() => window.Folders && Folders.warm())),
+      run(() => loaded.then(() => window.Folders && Folders.decodeImages())),
+      run(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce();
+        res();
+      })))),
+    ]);
+  }
 
   function finish() {
     clearTimeout(autoTimer);
@@ -37,38 +57,6 @@
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
     if (window.XP) XP.seen();
-  }
-
-  function tryAward(id, label, el) {
-    if (!window.XP || XP.has(id)) return;
-    const r = el
-      ? el.getBoundingClientRect()
-      : { left: innerWidth * 0.5, top: innerHeight * 0.5, width: 0, height: 0 };
-    XP.award(id, 1, label, r.left + r.width / 2, r.top + r.height / 2);
-  }
-
-  function unwatch(id) {
-    if (watchers[id]) { watchers[id].disconnect(); delete watchers[id]; }
-  }
-
-  function watchSection(sel, id, label) {
-    if (!window.XP || XP.has(id)) return;
-    const el = document.querySelector(sel);
-    if (!el || !("IntersectionObserver" in window)) return;
-    const io = new IntersectionObserver(es => {
-      if (!es[0].isIntersecting) return;
-      if (!document.documentElement.classList.contains("gate-done")) return;
-      if (window.XP && XP.has(id)) { unwatch(id); return; }
-      const r = el.getBoundingClientRect();
-      XP.award(id, 1, label, r.left + r.width * 0.5, r.top + Math.min(r.height * 0.25, 100));
-      unwatch(id);
-    }, { threshold: 0.28 });
-    io.observe(el);
-    watchers[id] = io;
-  }
-
-  function watchPaths() {
-    watchSection("#work", PATH.projects.id, PATH.projects.label);
   }
 
   function pick(opts) {
@@ -82,20 +70,46 @@
         view: entry.view,
       },
     }));
-    if (opts.path) {
-      unwatch(opts.path.id);
-      tryAward(opts.path.id, opts.path.label, opts.el);
-    }
     if (opts.scroll) {
       const target = document.querySelector(opts.scroll);
       if (target) target.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
     }
-    watchPaths();
   }
+
+  /* the way in waits for the warm-up: a click before 100% is held and fires on completion */
+  let warmed = false, held = null;
+  function go(opts) {
+    if (warmed) { if (!gate.classList.contains("done")) pick(opts); return; }
+    held = opts;
+  }
+  /* the label never runs ahead of the fill: READY waits for the fill to reach 100% */
+  let filling = false;
+  function warmDone() {
+    if (warmed || filling) return;
+    filling = true;
+    clearTimeout(capTimer);
+    if (!barFill) { warmReady(); return; }
+    let t = 0;
+    const settle = () => { clearTimeout(t); barFill.removeEventListener("transitionend", settle); warmReady(); };
+    barFill.addEventListener("transitionend", settle);
+    t = setTimeout(settle, 450);
+    barFill.style.transform = "scaleX(1)";
+  }
+  function warmReady() {
+    if (warmed) return;
+    warmed = true;
+    if (barEl) barEl.classList.add("full");
+    if (barLabel) barLabel.textContent = "ready";
+    if (btnWorld) { btnWorld.classList.remove("waiting"); btnWorld.removeAttribute("aria-disabled"); }
+    if (held && !gate.classList.contains("done")) pick(held);
+    held = null;
+    if (barEl) setTimeout(() => barEl.classList.add("out"), 350);
+  }
+  let capTimer = 0, barEl = null, barFill = null, barLabel = null;
 
   const btnWorld = document.getElementById("gate-world");
   if (btnWorld) {
-    btnWorld.addEventListener("click", () => pick({
+    btnWorld.addEventListener("click", () => go({
       bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,
       mode: "void",
     }));
@@ -123,7 +137,9 @@
     document.dispatchEvent(new CustomEvent("site:enter", {
       detail: { bridge: true, auto: true, mode: entry.sector, entry: entry.kind, view: entry.view },
     }));
-    watchPaths();
+    /* the same warm-up, in idle time after load */
+    const idle = () => { if (window.requestIdleCallback) requestIdleCallback(() => warmUp(), { timeout: 3000 }); else setTimeout(() => warmUp(), 600); };
+    if (document.readyState === "complete") idle(); else addEventListener("load", idle, { once: true });
     return;
   }
 
@@ -137,6 +153,28 @@
 
   document.body.classList.add("site-frozen");
   document.dispatchEvent(new CustomEvent("site:preload"));
+
+  /* loading bar under the stage (track, fill, label), filled by finished tasks */
+  barEl = document.createElement("div");
+  barEl.className = "gate-bar";
+  const trackEl = document.createElement("div");
+  trackEl.className = "gate-bar-track";
+  barFill = document.createElement("i");
+  trackEl.appendChild(barFill);
+  barLabel = document.createElement("span");
+  barLabel.className = "gate-bar-label";
+  barLabel.textContent = "loading 0%";
+  barEl.append(trackEl, barLabel);
+  const stageEl = gate.querySelector(".gate-stage");
+  if (stageEl) stageEl.appendChild(barEl);
+  if (btnWorld) { btnWorld.classList.add("waiting"); btnWorld.setAttribute("aria-disabled", "true"); }
+  capTimer = setTimeout(warmDone, WARM_CAP_MS);
+  warmUp((n, total) => {
+    if (n < total && barFill) {
+      barFill.style.transform = "scaleX(" + (n / total) + ")";
+      if (barLabel) barLabel.textContent = "loading " + Math.round(n / total * 100) + "%";
+    }
+  }).then(warmDone);
 
   const lines = [
     "link established",
@@ -159,7 +197,7 @@
       /* nobody clicked: continue by itself after time to read (3 s + words / 4) */
       const words = panelEl.textContent.trim().split(/\s+/).length;
       autoTimer = setTimeout(() => {
-        if (!gate.classList.contains("done")) pick({
+        go({
           bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,
           mode: "void",
         });

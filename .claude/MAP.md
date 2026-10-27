@@ -100,12 +100,14 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
+| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `folders.js`: every open wipes an empty window first, defers the resize dispatch and toy start until the wipe ends, then fades the case content in (300 ms, once the first images have decoded or 2.5 s; warm opens skip the wait).
 - `folders.js`: holds the hero loop (`B.hold`) and scroll anchoring from the click; measures each case at idle (cache keyed on window width and height) so the first click does no full layout.
-- `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`
+- `folders.js`: `warm()` measures every shut case, `decodeImages()` decodes their lazy images off screen (both run by the gate's warm-up in intro.js); the opening push matches the closed layout (`body._y0`); fires `folder-settled` when the slide ends, and lazy-video.js holds a folder's videos until then.
+- `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue); only the bridge awards XP, cross-tab sync, `?reset=1`
+- `xp.js` queue: FIFO, one at a time, waits for no scroll and the bridge on screen; a rank-up waits for `xp:card-closed` (surge.js); `busy` while any wait; a hidden tab pauses the fallback timer.
 - `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` per level, `xp:rankup` once per rank crossed
 
 ### js/hud
@@ -408,7 +410,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 - `play.js`: re-measures on load/resize and a 150 ms-debounced ResizeObserver on `main`; no layout read inside rAF (`V.sy` from a passive scroll listener cache, topbar rect on resize only);
 - `play.js`: a toy with `doc: true` also gets `.play-tiles` (absolute, z -1 after the canvas, x from `spec.docX0` or `band.x0 - 128` to the viewport right, page-height tall): a fixed pool of 1024 px canvases repositioned by `translateY` over the viewport ±200 px,
 - `play.js`: each cleared and painted per frame through `spec.drawDoc(ctx, V)` in page coordinates;
-- `play.js`: `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow` (with a `doc: true` toy: 4 px radius buckets drawn at the exact radius, 128-entry oldest-first cache), `award` (one XP point, once). Desktop only (`min-width: 900px`);
+- `play.js`: `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow` (with a `doc: true` toy: 4 px radius buckets drawn at the exact radius, 128-entry oldest-first cache), `award` (a no-op now: only the bridge gives XP). Desktop only (`min-width: 900px`);
 - `play.js`: a still frame under reduced motion
 - `heavylight.js`: no border; the beam runs to the viewport edge or the first shelf tile,
 - `heavylight.js`: three built gutter chunks (`CHUNKS[k]`: cells, lamps right/up/wall/floor, a crate) each with a step list (`EVENTS[k].steps`: light/wait/slide/lift/drop/release/goal, run by `runSteps`);
@@ -599,7 +601,7 @@ Project pages (`projects/*.html`) are redirect stubs and load no scripts.
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
 - Case-page toys (lamps, shadow walker, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
-- Case-page toys (lamps, shadow walker, records, the range): XP ids `play-*`. Conclusus: a document-space toy (`doc: true`, page-coordinate `.play-tiles`), beats unlock in order (twin → 3 keys by click into a tray → door → win), progress survives relayout, cached glow sprites in `play.js`
+- Case-page toys (lamps, shadow walker, records, the range): give no XP (`Play.award` is a no-op). Conclusus: a document-space toy (`doc: true`, page-coordinate `.play-tiles`), beats unlock in order (twin → 3 keys by click into a tray → door → win), progress survives relayout, cached glow sprites in `play.js`
 
 ### Storage keys
 

@@ -6,34 +6,11 @@
 
 window.Folders = (function () {
   const KEYS = ["sector-zero", "voidscape", "conclusus", "heavylight"];
-  const XP_FIRST = {
-    "sector-zero": ["proj-sector-zero", 5, "Sector Zero"],
-    "voidscape":   ["proj-voidscape", 2, "VoidScape"],
-    "heavylight":  ["proj-heavylight", 1, "HeavyLight"]
-  };
+
   let current = null;
-  let io = null;
 
   const sectionOf = (key) => document.getElementById(key);
   const bodyOf = (section) => section.querySelector(".folder-body");
-
-  function watchTaught() {
-    const h = document.getElementById("cc-taught");
-    if (!h || !window.XP || XP.has("proj-conclusus") || !("IntersectionObserver" in window)) return;
-    io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      const r = h.getBoundingClientRect();
-      const y = Math.max(40, Math.min(innerHeight - 40, r.top + r.height / 2));
-      XP.award("proj-conclusus", 1, "Conclusus", r.left, y);
-      stopWatch();
-    }, { rootMargin: "0px 0px -50% 0px" });
-    io.observe(h);
-  }
-
-  function stopWatch() {
-    if (io) io.disconnect();
-    io = null;
-  }
 
   const rowOf = (key) => document.querySelector('a.obj[href^="projects/' + key + '"]');
   const PAN_MS = 1200;
@@ -202,6 +179,29 @@ window.Folders = (function () {
       if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2000 }); else run();
     }, 60);
   }
+  // the opening screen's warm-up: the measure pass for every shut case, one per task so the loading bar can move
+  function warm() {
+    return new Promise((resolve) => {
+      const todo = KEYS.slice();
+      const step = () => {
+        const k = todo.shift();
+        if (!k) { resolve(); return; }
+        const s = sectionOf(k), b = s && bodyOf(s);
+        if (b && b.hidden && !measureOf(b) && !current && !pan && !pending) measure(k);
+        setTimeout(step, 0);
+      };
+      step();
+    });
+  }
+  // decode the cases' lazy images off screen (the real elements keep their lazy src), so opening one finds them in cache
+  function decodeImages() {
+    const srcs = [];
+    KEYS.forEach((k) => {
+      const s = sectionOf(k), b = s && bodyOf(s);
+      if (b) b.querySelectorAll("img[loading=lazy]").forEach((i) => { const u = i.dataset.src || i.getAttribute("src"); if (u && srcs.indexOf(u) < 0) srcs.push(u); });
+    });
+    return Promise.all(srcs.map((u) => { const im = new Image(); im.src = u; return (im.decode ? im.decode() : Promise.resolve()).catch(() => {}); }));
+  }
   window.addEventListener("resize", () => {
     const stale = KEYS.some((k) => { const s = sectionOf(k), b = s && bodyOf(s); return b && b._m && (b._m.w !== innerWidth || b._m.ih !== innerHeight); });
     if (stale) measureLater();
@@ -239,6 +239,10 @@ window.Folders = (function () {
     // every row and the footer after the case: the layout is already H taller, so they ride the wipe edge down
     const sib = m ? m.sib.slice() : flowAfter(body);
     body._sib = sib;
+    // the open row and case also change border and margin the moment they open: take the real push of the first row after, so frame 1 is the closed layout
+    const y0 = body._y0;
+    body._y0 = null;
+    if (dir > 0 && y0 != null && sib.length) extra = sib[0].getBoundingClientRect().top - y0 - H;
     // the hero loop rests and the animated layers get promoted from here to the end of the sweep (after every layout read above)
     const swept = [body].concat(kids, sib);
     hold(true);
@@ -438,7 +442,6 @@ window.Folders = (function () {
       if (t < 0 || t > innerHeight - 200) { panTo(key, () => { if (current !== key) return; const rw = rowOf(key); if (rw) jump(rw.getBoundingClientRect().top + window.scrollY - topGap()); close({ now: true, then }); }, bodyOf(sectionOf(key))); return; }
     }
     current = null;
-    stopWatch();
     // the toy and its panels leave with the scan out, so Play.close waits for the end of it
     const stopToy = () => { if (window.Play && section && Play.current === section.dataset.toy) Play.close(); };
     if (!section) { stopToy(); if (then) then(); return; }
@@ -491,12 +494,16 @@ window.Folders = (function () {
     const settled = () => {
       body.classList.remove("is-opening");
       body.classList.add("is-open");
+      body.dispatchEvent(new CustomEvent("folder-settled", { bubbles: true }));
     };
     // glide to the row with the case still shut, then unhide and open it
     const start = () => {
       if (current !== key) { if (!current) hold(false); return; }
       // read the section's top while the case is still shut (the cached measure gives the body's offset from it)
       body._top0 = !fast && measureOf(body) ? section.getBoundingClientRect().top : null;
+      // the first row after the case, while everything is still shut: caseAnim measures how far the open state really pushes it
+      const m0 = measureOf(body), nx0 = m0 ? m0.sib[0] : flowAfter(body)[0];
+      body._y0 = !fast && nx0 ? nx0.getBoundingClientRect().top : null;
       // the case's lazy images wait for the loading beat (begin); the fast path loads them at once
       const lazy = Array.prototype.filter.call(body.querySelectorAll("img[loading=lazy]"), (i) => i.getAttribute("src") && !i.complete);
       if (!fast) lazy.forEach((i) => { i.dataset.src = i.getAttribute("src"); i.removeAttribute("src"); });
@@ -509,8 +516,6 @@ window.Folders = (function () {
       body.classList.remove("is-closing");
       const loaded = () => {
         if (scroll && relax) relax();
-        const xp = XP_FIRST[key];
-        if (xp && window.XP) setTimeout(() => XP.award(xp[0], xp[1], xp[2]), 260);
       };
       const restore = () => body.querySelectorAll("img[data-src]").forEach((i) => { i.setAttribute("src", i.dataset.src); delete i.dataset.src; });
       if (fast) {
@@ -562,7 +567,6 @@ window.Folders = (function () {
         if (document.readyState !== "complete") window.addEventListener("load", again, { once: true });
       }
     }
-    if (key === "conclusus") watchTaught();
     }
   }
 
@@ -597,5 +601,5 @@ window.Folders = (function () {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fromHash);
   else fromHash();
 
-  return { open, close, KEYS, get current() { return current; } };
+  return { open, close, warm, decodeImages, KEYS, get current() { return current; } };
 })();

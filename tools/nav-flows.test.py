@@ -201,7 +201,8 @@ def flow_first(browser, base):
     check("sector is the void", s["mode"] == "void", s["mode"])
     check("visitor is marked as seen", bool(s["stored"] and s["stored"]["seen"]), s["stored"])
     claimed = s["stored"]["claimed"] if s["stored"] else []
-    check("Setting path awarded", "path-world" in claimed, claimed)
+    check("Setting path awards nothing (XP is bridge only)",
+          "path-world" not in claimed and (s["stored"]["level"] == 0), s["stored"])
     check("Game Dev path NOT awarded by picking Setting", "path-projects" not in claimed, claimed)
     ctx.close()
 
@@ -374,6 +375,8 @@ def flow_reset(browser, base):
     page.wait_for_selector("#gate-panel.on", timeout=10000)
     page.click("#gate-world")
     page.wait_for_timeout(2500)
+    page.evaluate("XP.award('beacon-bnote-bridge', 1, 'The Bridge')")   # a bridge beacon: the one grant left
+    page.wait_for_timeout(500)
     page.click("a.obj[href='projects/sector-zero.html']")
     page.wait_for_load_state("load")
     page.wait_for_timeout(2500)
@@ -381,7 +384,7 @@ def flow_reset(browser, base):
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("reset: Back does not reset again",
-          bool(s["stored"] and s["stored"]["seen"] and s["stored"]["level"] >= 5), s["stored"])
+          bool(s["stored"] and s["stored"]["seen"] and s["stored"]["level"] >= 1), s["stored"])
     check("reset: Back shows no gate", not s["gateShown"], s)
     ctx.close()
 
@@ -501,13 +504,17 @@ def flow_twotabs(browser, base):
     case.goto(base + "/projects/sector-zero.html")
     case.wait_for_timeout(2500)
     after_case = case.evaluate("JSON.parse(localStorage.getItem('arcanis.profile.v1')).level")
+    check("two tabs: opening a case awards nothing",
+          "proj-sector-zero" not in case.evaluate("JSON.parse(localStorage.getItem('arcanis.profile.v1')).claimed"), None)
+    case.evaluate("XP.award('beacon-bnote-bridge', 1, 'The Bridge')")   # the other tab's claim: a bridge beacon
+    case.wait_for_timeout(500)
     home.bring_to_front()
-    home.evaluate("XP.award('beacon-bnote-bridge', 1, 'The Bridge')")   # what a beacon contact calls
+    home.evaluate("XP.award('beacon-twotabs-home', 1, 'The Bridge')")   # home's own write, after the other tab's
     home.wait_for_timeout(500)
     stored = home.evaluate("JSON.parse(localStorage.getItem('arcanis.profile.v1'))")
-    check("two tabs: level adds up", stored["level"] == after_case + 1,
-          f"expected {after_case + 1}, stored {stored['level']}")
-    check("two tabs: the other tab's claim survives", "proj-sector-zero" in stored["claimed"],
+    check("two tabs: level adds up", stored["level"] == after_case + 2,
+          f"expected {after_case + 2}, stored {stored['level']}")
+    check("two tabs: the other tab's claim survives", "beacon-bnote-bridge" in stored["claimed"],
           list(stored["claimed"]))
     level_shown = home.evaluate("XP.level")
     check("two tabs: homepage picks up the new level", level_shown == stored["level"], level_shown)

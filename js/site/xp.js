@@ -232,11 +232,37 @@ window.XP = (function () {
   let ceremonyBusy = false;
   const queue = [];   // claims that landed while another was still playing
   let rowTimer = 0;
+  let pumpTimer = 0;
+  let lastScroll = -1e9;
+  addEventListener("scroll", () => { lastScroll = performance.now(); }, { passive: true, capture: true });
 
+  // a claim plays only while the page is still and the bridge is on screen
+  function canPlay() {
+    if (performance.now() - lastScroll < 250) return false;
+    const h = document.getElementById("bridge-hero");
+    if (!h) return true;
+    const r = h.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight;
+  }
+
+  // the only thing that starts a queued claim: one at a time, in order
+  function pump(delay) {
+    clearTimeout(pumpTimer);
+    pumpTimer = setTimeout(() => {
+      if (!queue.length || ceremonyBusy) return;
+      if (!canPlay()) return pump(200);
+      play(...queue.shift());
+    }, delay == null ? 200 : delay);
+  }
+
+  // every claim goes through the queue, first in first out
   function ceremony(n, label, x, y, fromLevel) {
     if (!chip) { paint(); return; }
-    // one claim at a time: a second beacon taken mid-flight waits its turn
-    if (ceremonyBusy) { queue.push([n, label, x, y, fromLevel]); return; }
+    queue.push([n, label, x, y, fromLevel]);
+    if (!ceremonyBusy) pump(0);
+  }
+
+  function play(n, label, x, y, fromLevel) {
     const toLevel = fromLevel + n;
     const milestone = rankIndex(fromLevel) !== rankIndex(toLevel);
 
@@ -249,12 +275,23 @@ window.XP = (function () {
       released = true;
       ceremonyBusy = false;
       window.dispatchEvent(new CustomEvent("xp:ceremony-done"));
-      const next = queue.shift();
-      if (next) setTimeout(() => ceremony(...next), 120);
+      if (queue.length) pump(120);
     };
     const FLY = milestone ? 1150 : 780;
     const FILL = milestone ? 1250 : 820;
-    setTimeout(release, FLY + Math.max(240, FILL / n) * n + 1500);
+    // a rank-up holds the queue until its card has closed (card opens 380 ms late, auto-closes at 3.8 s)
+    // (a hidden tab freezes the animation, so the timer waits for the tab to come back)
+    const fallback = () => {
+      if (document.hidden) {
+        const back = () => {
+          if (document.hidden) return;
+          document.removeEventListener("visibilitychange", back);
+          setTimeout(release, 1500);
+        };
+        document.addEventListener("visibilitychange", back);
+      } else release();
+    };
+    setTimeout(fallback, FLY + Math.max(240, FILL / n) * n + 1500 + (milestone ? 4600 : 0));
     paint(fromLevel, 0);          // the run-up always starts empty
 
     const target = chip.getBoundingClientRect();
@@ -335,6 +372,8 @@ window.XP = (function () {
               detail: { level: toLevel, count: RANKS.length, from: rankOf(fromLevel), to: rankOf(toLevel) },
             }));
           } catch (e) { console.warn("rankup:", e); }
+          document.addEventListener("xp:card-closed", () => setTimeout(release, 250), { once: true });
+          return;
         }
         release();
       }
@@ -394,7 +433,7 @@ window.XP = (function () {
       return true;
     },
 
-    get busy() { return ceremonyBusy; },
+    get busy() { return ceremonyBusy || queue.length > 0; },
 
     seen() { sync(); fresh = false; state.seen = true; save(); },
     /* claim without a level — flags like genesis, not beacons */
