@@ -21,9 +21,9 @@ window.Marks = (function () {
       name: "The Unwritten",  sub: "West of the last recorded thing" },
     { id: "bnote-land",    cam: LAND.mainland, off:  0.22, oy: 0.40, par: 0.66, xp: 1,
       name: "The Mainland",   sub: "Born of a war between souls" },
-    { id: "bnote-void",    cam: LAND.voidmark, off:  0.08, oy: 0.20, par: 0.30, xp: 1,
+    { id: "bnote-void",    cam: LAND.voidmark, off:  0.125, oy: 0.20, par: 0.30, xp: 1,
       name: "The Void",       sub: "The uncertainty of reality itself" },
-    { id: "bnote-bridge",  cam: LAND.bridge,   off:  0.16, oy: 0.46, par: 0.94, xp: 1,
+    { id: "bnote-bridge",  cam: LAND.bridge - SLOT * 1.5, off:  0.16, oy: 0.46, par: 0.30, xp: 1,
       name: "The Bridge",     sub: "First law. It holds because it must" },
     { id: "bnote-watcher", cam: LAND.watcher,  off:  0.23, oy: 0.30, par: 0.24, xp: 1,
       name: "The Watcher",    sub: "It holds the void off Rex" },
@@ -31,7 +31,7 @@ window.Marks = (function () {
       name: "Rex",            sub: "Three masses, three layers, one war" },
     { id: "bnote-root",    cam: CAM.max,       off: -0.10, oy: 0.24, par: 0.70, xp: 1,
       name: "The Root",       sub: "Every arm of it is still climbing" },
-    { id: "bnote-gamedev", cam: LAND.bridge - SLOT * 3, off: 0, oy: 0.34, par: 0.5, xp: 1,
+    { id: "bnote-gamedev", cam: LAND.voidmark - 1540, off: 0, oy: 0.34, par: 0.30, xp: 1,
       name: "Game Dev",       sub: "Four files, one engine room", art: "gamedev" },
   ];
   MARKS.forEach((m, i) => {
@@ -42,7 +42,8 @@ window.Marks = (function () {
   });
   /* the reveal order: The Void alone, Rex once birth has been seen, the rest
      once Rex's segment has been seen. Anything not named here (depth nodes) shows. */
-  const SEEN = { "bnote-rex": ["genesis-seg-birth", "beacon-bnote-void"] };
+  const SEEN = { "bnote-rex": ["genesis-seg-birth", "beacon-bnote-void"],
+                 "bnote-gamedev": ["beacon-bnote-void"] };
   ["bnote-root", "bnote-watcher", "bnote-land", "bnote-bridge", "bnote-future"]
     .forEach(id => SEEN[id] = ["genesis-seg-rex", "beacon-bnote-rex"]);
   /* the Void's depth nodes (root "bnote-void") wait for the Mainland */
@@ -53,5 +54,8 @@ window.Marks = (function () {
   };
 
   /* gamedev sector archived: PLANETS stays an empty shim for old readers */
-  return { MARKS, PLANETS: [], visible };
+  /* the camera at which a beacon sits on the ship's screen x (the ship is at W/2) */
+  const camUnder = id => MARKS.find(n => n.id === id).x;
+
+  return { MARKS, PLANETS: [], visible, camUnder };
 })();

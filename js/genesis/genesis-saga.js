@@ -360,7 +360,7 @@
 
   function drawLiveWorld(ctx, amt) {
     if (amt < 0.01 || !window.World) return;
-    const camX = G.thenCamX != null ? G.thenCamX : World.LAND.bridge;
+    const camX = G.thenCamX != null ? G.thenCamX : ((window.XP && XP.known) ? World.LAND.bridge : Marks.camUnder("bnote-void"));
     const mode = G.thenMode === "gamedev" ? "gamedev" : "void";
     ctx.save();
     ctx.globalAlpha = clamp(amt, 0, 1);

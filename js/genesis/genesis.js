@@ -36,6 +36,7 @@ window.Genesis = (function () {
   const prevEl  = document.getElementById("genesis-prev");
   const nextEl  = document.getElementById("genesis-next");
   const skipEl  = document.getElementById("genesis-skip");
+  const pauseEl = document.getElementById("genesis-pause");
   const host    = document.getElementById("bridge-hero");
 
   let copyTimer = 0;
@@ -206,6 +207,7 @@ window.Genesis = (function () {
   function finishNow() {
     if (!G.active) return;
     G.active = false;
+    setPause(false);
     removeEventListener("wheel", holdPage, { passive: false });
     removeEventListener("touchmove", holdPage, { passive: false });
     remember();
@@ -233,7 +235,7 @@ window.Genesis = (function () {
     G.thenMode = (opts && opts.thenMode) || "void";
     G.thenCamX = opts && opts.thenCamX;
     if (G.thenCamX == null && window.World && G.thenMode === "void")
-      G.thenCamX = World.LAND.bridge;
+      G.thenCamX = (window.XP && XP.known) ? World.LAND.bridge : Marks.camUnder("bnote-void");   // first visit: land under the Void beacon
     G.active = true;
     remember();     // counted from the start: leaving mid-way doesn't replay it
     addEventListener("wheel", holdPage, { passive: false });
@@ -242,6 +244,9 @@ window.Genesis = (function () {
     G.local = 0;
     G.shake = 0;
     G.t = 0;
+    setPause(false);
+    tShift = 0;
+    lastEnvT = 0;
     G.cam = 0;
     G.camTarget = 0;
     resetFX();
@@ -295,6 +300,15 @@ window.Genesis = (function () {
 
   function segmentSeen(id) {
     return !!(window.XP && XP.has("genesis-seg-" + id));
+  }
+
+  let tShift = 0, lastEnvT = 0;
+  function setPause(on) {
+    G.paused = !!on;
+    if (pauseEl) {
+      pauseEl.textContent = G.paused ? "Play" : "Pause";
+      pauseEl.setAttribute("aria-pressed", G.paused ? "true" : "false");
+    }
   }
 
   function skip() {
@@ -468,6 +482,7 @@ window.Genesis = (function () {
   function step(dt) {
     if (!G.active) return false;
     if (ending || seaming) return true;   // frozen under the fade-out / the seam veil
+    if (G.paused) return true;            // clock held; the loop still draws the frame
     G.t += dt;
     G.local += dt;
     G.tickAcc += dt;
@@ -530,7 +545,11 @@ window.Genesis = (function () {
     if (!G.active) return;
     G.sparks = G.sparks || [];
     G.W = env.W; G.H = env.H;
-    if (env.t != null) G.t = env.t;
+    if (env.t != null) {
+      if (G.paused) tShift += env.t - lastEnvT;   // the frame loop's clock runs on; ours holds
+      lastEnvT = env.t;
+      G.t = env.t - tShift;
+    }
 
     /* seconds into the break (-1 elsewhere): the hit is at 0.5 s, the shake runs 0.5 to 1.0 s */
     const tb = G.beat === idxOf("break") ? G.secs("break") : -1;
@@ -807,11 +826,11 @@ window.Genesis = (function () {
 
   if (overlay) {
     overlay.addEventListener("click", e => {
-      if (e.target === skipEl) return;
+      if (e.target === skipEl || e.target === pauseEl) return;
       e.stopPropagation();
     });
     overlay.addEventListener("pointerdown", e => {
-      if (e.target === skipEl) return;
+      if (e.target === skipEl || e.target === pauseEl) return;
       e.stopPropagation();
     });
   }
@@ -819,6 +838,13 @@ window.Genesis = (function () {
     skipEl.addEventListener("click", e => {
       e.stopPropagation();
       skip();
+    });
+  }
+  if (pauseEl) {
+    pauseEl.addEventListener("click", e => {
+      e.stopPropagation();
+      setPause(!G.paused);
+      pauseEl.blur();   // keep focus off it so Space never presses it a second time
     });
   }
   if (trackEl) {
@@ -840,6 +866,13 @@ window.Genesis = (function () {
     if (e.key === "Escape") { e.preventDefault(); skip(); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); stepBeat(-1); }
     else if (e.key === "ArrowRight") { e.preventDefault(); stepBeat(1); }
+    else if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+      if (!e.repeat) setPause(!G.paused);
+    }
+  }, true);
+  addEventListener("keyup", e => {
+    if (G.active && (e.key === " " || e.code === "Space")) e.preventDefault();   // no click on a focused button
   }, true);
 
   document.addEventListener("site:enter", e => {

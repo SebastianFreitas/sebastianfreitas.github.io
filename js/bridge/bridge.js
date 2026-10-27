@@ -164,7 +164,7 @@
   });
 
   /* ---- state ---- */
-  B.camX = LAND.bridge; B.vel = 0; B.travelled = 0; B.t = 0;
+  B.camX = (window.XP && XP.known) ? LAND.bridge : Marks.camUnder("bnote-void"); B.vel = 0; B.travelled = 0; B.t = 0;
   B.catalogued = 4182993201; B.started = false;
   B.activeMark = null; B.hoverMark = null;
   B.chaosNow = 0; B.futureNow = 0;

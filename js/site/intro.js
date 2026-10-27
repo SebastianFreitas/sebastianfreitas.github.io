@@ -28,7 +28,10 @@
   };
   const watchers = {};
 
+  let autoTimer = 0;
+
   function finish() {
+    clearTimeout(autoTimer);
     removeEventListener("keydown", onGateKey, true);
     document.body.classList.remove("site-frozen");
     gate.classList.add("done");
@@ -153,6 +156,14 @@
     if (panelEl) {
       panelEl.hidden = false;
       requestAnimationFrame(() => panelEl.classList.add("on"));
+      /* nobody clicked: continue by itself after time to read (3 s + words / 4) */
+      const words = panelEl.textContent.trim().split(/\s+/).length;
+      autoTimer = setTimeout(() => {
+        if (!gate.classList.contains("done")) pick({
+          bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,
+          mode: "void",
+        });
+      }, (3 + words / 4) * 1000);
     }
   }
 

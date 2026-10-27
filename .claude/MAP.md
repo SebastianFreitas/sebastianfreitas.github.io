@@ -143,7 +143,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
-| `marks.js` | Landmark roster: `MARKS` (Void beacons); `PLANETS` is an empty shim | `window.Marks {MARKS, PLANETS: []}`; uses `World` |
+| `marks.js` | Landmark roster: `MARKS` (Void beacons); `PLANETS` is an empty shim | `window.Marks {MARKS, PLANETS: [], visible, camUnder}`; uses `World` |
 | `lamp.js` | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
 
 - `bridge-notes.js`: `BEACON_SEGMENT` maps four beacons (void→birth, root, rex, rex-valkhar→valkhar) to Genesis scenes; its first claim plays it (`Genesis.playScene`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat.

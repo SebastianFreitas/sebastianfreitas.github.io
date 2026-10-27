@@ -527,6 +527,7 @@ html.genesis-on .topbar {
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
 }
 .genesis-skip:hover { color: var(--lamp); }
+.genesis-skip.genesis-pause { right: 6.2rem; min-width: 4.6rem; }
 
 .genesis-copy {
   max-width: min(44rem, 88vw);
@@ -597,6 +598,7 @@ html.genesis-on .topbar {
   .genesis { padding-top: calc(4.5vh + 1.6rem); }
   .genesis::before, .genesis::after { height: 4.5vh; }
   .genesis-skip { top: calc(2.25vh - 0.75rem); right: 0.85rem; }
+  .genesis-skip.genesis-pause { right: 5.65rem; }
   .genesis-ticks { bottom: calc(var(--hud-floor) + 0.4rem); }
 }
 

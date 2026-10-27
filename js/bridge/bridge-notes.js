@@ -78,7 +78,7 @@
     if (el2._pw == null) measureNote(el2);
     const p = B.markScreen(mark);
     const pw = el2._pw, ph = el2._ph;
-    const pad = 22, edge = 20;
+    const pad = 50, edge = 20;   // clear of the beacon's hover label
     const right = p.x + pad + pw < B.W - edge;
     let left = right ? p.x + pad : p.x - pad - pw;
     left = Math.min(B.W - pw - edge, Math.max(edge, left));
