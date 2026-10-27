@@ -7,6 +7,10 @@
   margin: 0;
 }
 
+/* closed folders stack like a filing drawer: each tab and top edge sits over the bottom padding of the folder before; an open folder keeps the full gap below it */
+.work > .case-folder + .obj { margin-top: -1px; }
+.work > .case-folder:has(.folder-body:not([hidden])) + .obj { margin-top: 2.8rem; }
+
 .open-case {
   grid-area: open;
   font-family: var(--mono);
@@ -103,23 +107,6 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 }
 .folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker,
 .folder-body.is-closing .folder-bar, .folder-body.is-closing .folder-scan, .folder-body.is-closing .folder-kicker { will-change: transform, opacity; }
-
-/* loading line in the case's header bar, under the kicker; js types it in and fills the bar from the open progress */
-.folder-load {
-  position: absolute; left: var(--gutter); top: 2.1rem; z-index: 3; pointer-events: none;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.folder-load-line { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; color: var(--lamp); white-space: nowrap; text-shadow: 0 0 10px rgb(var(--lamp-rgb) / 0.5), 0 2px 12px rgba(0,0,0,0.9); }
-.folder-load-bar { width: min(220px, 50vw); height: 2px; background: rgb(var(--lamp-rgb) / 0.2); overflow: hidden; }
-.folder-load-bar i { display: block; height: 100%; background: var(--lamp); transform-origin: left; transform: scaleX(0); }
-
-/* the centred loading graphic of the empty window: js sets its top to the middle of the visible part and its opacity */
-.folder-load-mid {
-  position: absolute; left: 0; right: 0; z-index: 3; pointer-events: none; opacity: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 12px; transform: translateY(-50%);
-}
-.folder-load-mid .folder-load-line { font-size: 0.85rem; }
-.folder-load-mid .folder-load-bar { width: min(320px, 60vw); height: 3px; }
 
 /* a long button close hides its scroll jump behind this: js fades it in, jumps, fades it out over the close wipe */
 .folder-veil { position: fixed; inset: 0; z-index: 90; background: var(--petrol); pointer-events: none; }

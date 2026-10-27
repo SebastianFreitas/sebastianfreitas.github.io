@@ -100,7 +100,7 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP; every open shows a petrol "> loading <key>…" page-load screen inside the opening folder body only (loadScreen, from the first frame until the open motion ends and 400-700 ms pass, 200 ms fade, no scroll lock) | `window.Folders {open, close, current, KEYS}` |
+| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP; every open wipes an empty window first, defers the resize dispatch and toy start until the wipe ends, then fades the case content in (300 ms, once the first images have decoded or 1.2 s); no loading line | `window.Folders {open, close, current, KEYS}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`

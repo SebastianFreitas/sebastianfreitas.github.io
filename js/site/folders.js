@@ -150,7 +150,7 @@ window.Folders = (function () {
   const CASE_MS = 950;
   const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const CLOSE_MS = 700;
-  const HOLD_MS = 800, WAIT_MS = 2500, SCAN_MS = 600, SCAN_OUT_MS = 450; // loading beat: at least HOLD_MS, until ready or WAIT_MS; then the scan in
+  const WAIT_MS = 1200, FADE_MS = 300, SCAN_MS = 600, SCAN_OUT_MS = 450; // loading beat: until ready or WAIT_MS, then the content fades in over FADE_MS
 
   // begin (opening): runs when the empty window has finished opening; starts the toy and returns a ready() check
   function caseAnim(body, dir, done, onLoad, begin, scanned) {
@@ -158,12 +158,20 @@ window.Folders = (function () {
     body._anim = null;
     if (body._raf) cancelAnimationFrame(body._raf);
     const H = body.offsetHeight;
+    // the row after the case also gains its open gap when the body unhides: that extra travels with the wipe too
+    const nx = body.parentElement.nextElementSibling;
+    let extra = 0;
+    if (nx && !body.hidden) {
+      const gapOpen = parseFloat(getComputedStyle(nx).marginTop);
+      body.hidden = true;
+      const gapShut = parseFloat(getComputedStyle(nx).marginTop);
+      body.hidden = false;
+      extra = gapOpen - gapShut;
+    }
     const vis = Math.max(1, Math.min(H, innerHeight - body.getBoundingClientRect().top));
     const q = (c) => body.querySelector(c);
     const scan = q(".folder-scan"), bar = q(".folder-bar"), kick = q(".folder-kicker"), glow = q(".folder-glow");
-    const load = body._loader, lline = load && load.firstChild, lbar = load && load.lastChild.firstChild;
-    const txt = lline ? lline.textContent : "";
-    const kids = Array.prototype.filter.call(body.children, (c) => !/folder-(scan|bar|kicker|glow|load)/.test(c.className));
+    const kids = Array.prototype.filter.call(body.children, (c) => !/folder-(scan|bar|kicker|glow)/.test(c.className));
     // the toy's canvas and panels sit outside the body: they come up and go down with p too
     let hud = Array.prototype.slice.call(document.querySelectorAll(".play, .play-tiles"));
     let panels = Array.prototype.slice.call(document.querySelectorAll(".play-ui"));
@@ -191,9 +199,8 @@ window.Folders = (function () {
       for (let i = 0; i < kids.length; i++) kids[i].style.opacity = 0;
       for (let i = 0; i < hud.length; i++) hud[i].style.opacity = 0;
       for (let i = 0; i < panels.length; i++) panels[i].style.opacity = 0;
-      const ty = p >= 1 ? "" : "translateY(" + (edge - H) + "px)";
+      const ty = p >= 1 ? "" : "translateY(" + (edge - H - extra * (1 - p)) + "px)";
       for (let i = 0; i < sib.length; i++) sib[i].style.transform = ty;
-      if (load) load.style.opacity = 0; // no loader line while the empty window opens
     };
     const clear = () => {
       body.style.clipPath = "";
@@ -202,9 +209,8 @@ window.Folders = (function () {
       hud.concat(panels).forEach((h) => { h.style.opacity = ""; h.style.clipPath = ""; });
       sib.forEach((e) => { e.style.transform = ""; });
     };
-    // phases 3 and 4 (opening only): the loading beat, then the gold scan reveals the content top to bottom
+    // phases 3 and 4 (opening only): the empty window waits for the deferred work and the first images, then the content fades in
     const afterWipe = () => {
-      const mid = body._loadMid, mline = mid && mid.firstChild, mbar = mid && mid.lastChild.firstChild;
       const ready = begin ? begin() : null;
       // the toy's layers exist only now: hide them in the same frame
       hud = Array.prototype.slice.call(document.querySelectorAll(".play, .play-tiles"));
@@ -212,27 +218,34 @@ window.Folders = (function () {
       hud.concat(panels).forEach((h) => { h.style.opacity = 0; });
       body._phase = "load";
       const t3 = performance.now();
-      let waited = false;
+      let t4 = null;
       const loadStep = (now) => {
-        const t = now - t3;
-        const lp = Math.min(1, t / HOLD_MS);
-        const fin = Math.min(1, t / 200);
-        if (load) { load.style.opacity = fin; lline.textContent = txt.slice(0, Math.ceil(txt.length * Math.min(1, lp / 0.4))); lbar.style.transform = "scaleX(" + lp + ")"; }
-        if (mid) { mid.style.opacity = fin; mline.textContent = txt.slice(0, Math.ceil(txt.length * Math.min(1, lp / 0.4))); mbar.style.transform = "scaleX(" + lp + ")"; }
-        if (!waited && t >= HOLD_MS && (!ready || ready() || t >= WAIT_MS)) waited = true;
-        if (!waited) { body._raf = requestAnimationFrame(loadStep); return; }
-        scanIn(0, true);
+        if (t4 == null) {
+          if (now - t3 < 32 || (ready && !ready() && now - t3 < WAIT_MS)) { body._raf = requestAnimationFrame(loadStep); return; }
+          t4 = now;
+          body._phase = "fade";
+        }
+        const f = Math.min(1, (now - t4) / FADE_MS);
+        const o = 1 - Math.pow(1 - f, 2);
+        kids.forEach((k) => { k.style.opacity = o; });
+        hud.concat(panels).forEach((h) => { h.style.opacity = o; });
+        bar.style.opacity = Math.max(0, 1 - o * 4); // the gold rule is gone by the time the content is a quarter in
+        if (f < 1) { body._raf = requestAnimationFrame(loadStep); return; }
+        body._raf = null;
+        body._p = null;
+        body._phase = null;
+        clear();
+        if (onLoad) onLoad();
+        done();
       };
       body._raf = requestAnimationFrame(loadStep);
     };
     // the gold scan line over the visible part of the window: s runs 0 to 1 opening (content comes in behind the line, top to bottom)
     // and 1 to 0 closing (the same sweep backwards, bottom to top); every effect is a pure function of s
-    const sweepRun = (s0, d, ms, end, useFx) => {
+    const sweepRun = (s0, d, ms, end) => {
       const top = body.getBoundingClientRect().top;
-      const mid = body._loadMid;
       // layout is read once here; the sweep below only writes
       const geo = kids.map((k) => [k.offsetTop, k.offsetHeight]);
-      const fx = useFx ? [[load, 26 / vis], [mid, 0.5]] : [];
       // page-absolute HUD layers (the Conclusus tiles) are clipped by the scan line's page-y against their own box; fixed ones by the viewport
       const sy0 = window.scrollY, pageTop = top + sy0;
       const hgeo = hud.map((h) => {
@@ -257,7 +270,6 @@ window.Folders = (function () {
         }
         bar.style.opacity = 1 - u;
         for (let i = 0; i < panels.length; i++) panels[i].style.clipPath = hc;
-        fx.forEach((f) => { if (f[0]) f[0].style.opacity = Math.max(0, Math.min(1, 1 - (u - f[1]) / 0.4)); });
       };
       const frame = (now) => {
         s4 = Math.max(0, Math.min(1, s4 + d * (now - last) / ms));
@@ -270,7 +282,7 @@ window.Folders = (function () {
       draw();
       body._raf = requestAnimationFrame(frame);
     };
-    const scanIn = (s0, useFx) => {
+    const scanIn = (s0) => {
       body._phase = "scan";
       sweepRun(s0, 1, SCAN_MS, () => {
         body._p = null;
@@ -279,7 +291,7 @@ window.Folders = (function () {
         clear();
         if (onLoad) onLoad();
         done();
-      }, useFx);
+      });
     };
     kick.textContent = kick.textContent.replace(/^(OPENING|CLOSING)/, dir > 0 ? "OPENING" : "CLOSING");
     // the window wipe, opening or closing; starts from where a running timeline stopped, so a reversal plays back from the current p
@@ -312,16 +324,14 @@ window.Folders = (function () {
     const ph = body._phase, s4 = body._s4 == null ? 1 : body._s4;
     if (dir > 0) {
       if (ph === "scanout") { // reopened during the scan out: the scan goes forward again from where it is
-        if (load) load.style.opacity = 0;
-        if (body._loadMid) body._loadMid.style.opacity = 0;
-        scanIn(s4, false);
+        scanIn(s4);
       } else windowRun();
       return;
     }
     // closing: scan out (content leaves), then the empty window closes
     const toWindow = () => { if (scanned) scanned(); windowRun(); };
     if (ph === "wipe" || ph === "close") toWindow(); // the window is still moving: reverse it from where it is
-    else if (ph === "load") { // loading beat: the loader fades out (dropLoader), then the window closes
+    else if (ph === "load" || ph === "fade") { // loading beat or fade in: the content hides at once, then the window closes
       body._phase = "close";
       body._p = 1;
       set(1);
@@ -332,7 +342,7 @@ window.Folders = (function () {
       body._phase = "scanout";
       body._p = 1;
       set(1);
-      sweepRun(s4, -1, SCAN_OUT_MS, toWindow, false);
+      sweepRun(s4, -1, SCAN_OUT_MS, toWindow);
     }
   }
 
@@ -349,54 +359,6 @@ window.Folders = (function () {
       c.style.clipPath = "";
       if (/folder-(scan|bar|kicker|glow)/.test(c.className)) { c.style.transform = ""; c.style.clipPath = ""; }
     });
-  }
-
-  function dropLoader(body, fade) {
-    const el = body._loader, mid = body._loadMid;
-    body._loader = null;
-    body._loadMid = null;
-    if (!el) return;
-    if (!fade) { el.remove(); if (mid) mid.remove(); return; }
-    el.style.transition = "opacity 150ms linear";
-    el.style.opacity = "0";
-    if (mid) { mid.style.transition = "opacity 150ms linear"; mid.style.opacity = "0"; }
-    setTimeout(() => { el.remove(); if (mid) mid.remove(); }, 170);
-  }
-
-  // loading line in the case's header bar; caseAnim types it in, fills its bar and fades it with the effects
-  function loadLine(key, body) {
-    dropLoader(body);
-    const el = document.createElement("div");
-    el.className = "folder-load";
-    el.setAttribute("aria-hidden", "true");
-    const line = document.createElement("div");
-    line.className = "folder-load-line";
-    line.textContent = "> loading " + key + "_";
-    const bar = document.createElement("div");
-    bar.className = "folder-load-bar";
-    bar.appendChild(document.createElement("i"));
-    el.append(line, bar);
-    body.appendChild(el);
-    body._loader = el;
-    // centred graphic: middle of the part of the window that is on screen
-    const mid = document.createElement("div");
-    mid.className = "folder-load-mid";
-    mid.setAttribute("aria-hidden", "true");
-    const mline = document.createElement("div");
-    mline.className = "folder-load-line";
-    mline.textContent = line.textContent;
-    const mbar = document.createElement("div");
-    mbar.className = "folder-load-bar";
-    mbar.appendChild(document.createElement("i"));
-    mid.append(mline, mbar);
-    body.appendChild(mid);
-    body._loadMid = mid;
-    midTop(body);
-    return el;
-  }
-
-  function midTop(body) {
-    if (body._loadMid) body._loadMid.style.top = Math.max(1, Math.min(body.offsetHeight, innerHeight - body.getBoundingClientRect().top)) / 2 + "px";
   }
 
   function close({ instant = false, now = false, then = null } = {}) {
@@ -432,9 +394,7 @@ window.Folders = (function () {
       if (then) then();
     };
     body.classList.remove("is-opening");
-    const ph = body._phase;
     stopCase(body);
-    dropLoader(body, !instant && !Util.reduced() && (ph === "load" || ph === "scan"));
     if (instant || Util.reduced()) { stopToy(); if (body._anim) body._anim.cancel(); body._anim = null; fin(); return; }
     body.classList.remove("is-open");
     body.classList.add("is-closing");
@@ -476,7 +436,6 @@ window.Folders = (function () {
       body.hidden = false;
       section.classList.add("open");
       if (row) { row.setAttribute("aria-expanded", "true"); row.setAttribute("aria-controls", key + "-body"); }
-      window.dispatchEvent(new Event("resize"));
       const startToy = () => { if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(section, section.dataset.toy); };
       if (body._anim) { body._anim.cancel(); ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; }); }
       body._anim = null;
@@ -487,35 +446,35 @@ window.Folders = (function () {
         if (xp && window.XP) setTimeout(() => XP.award(xp[0], xp[1], xp[2]), 260);
       };
       const restore = () => body.querySelectorAll("img[data-src]").forEach((i) => { i.setAttribute("src", i.dataset.src); delete i.dataset.src; });
-      const ln = loadLine(key, body);
       if (fast) {
         restore();
-        // no wipe: the loader line shows briefly, then the case is simply there
+        // no wipe: the case is simply there
+        window.dispatchEvent(new Event("resize"));
         startToy();
         settled();
-        ln.querySelector("i").style.transform = "scaleX(1)";
-        body._loadMid.style.opacity = 1;
-        body._loadMid.lastChild.firstChild.style.transform = "scaleX(1)";
-        setTimeout(() => { if (body._loader !== ln) return; dropLoader(body); loaded(); }, 400);
+        loaded();
       } else {
         body.classList.remove("is-open");
         body.classList.add("is-opening");
         // the toy and the media start loading only once the empty window is open; ready when the visible images have landed
         const begin = () => {
           if (current !== key) return null;
+          window.dispatchEvent(new Event("resize"));
           startToy();
           restore();
           const imgs = Array.prototype.filter.call(body.querySelectorAll("img"), (i) => i.getBoundingClientRect().top < innerHeight);
-          return () => imgs.every((i) => i.complete);
+          let decoded = false;
+          Promise.all(imgs.map((i) => (i.decode ? i.decode() : Promise.resolve()).catch(() => {}))).then(() => { decoded = true; });
+          return () => decoded;
         };
-        caseAnim(body, 1, () => { settled(); dropLoader(body); }, loaded, begin);
+        caseAnim(body, 1, settled, loaded, begin);
       }
     };
     if (scroll && !fast) panTo(key, start);
     else {
       start();
       if (scroll) {
-        const land = () => { jump(row.getBoundingClientRect().top + window.scrollY - topGap()); midTop(body); };
+        const land = () => { jump(row.getBoundingClientRect().top + window.scrollY - topGap()); };
         land();
         // images and fonts above the row settle after a deep link; land again until the reader moves
         const again = () => { if (relax === again) land(); };
