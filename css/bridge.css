@@ -493,7 +493,7 @@ html.genesis-on .topbar {
   position: fixed; inset: 0; z-index: 90;
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start;
-  padding: calc(6.5vh + 2.2rem) 1.5rem 0;
+  padding: 3.8rem 1.5rem 0;
   pointer-events: auto;
   cursor: default;
   background: radial-gradient(ellipse 70% 55% at 50% 48%, rgba(8,11,13,0.22) 0%, transparent 70%);
@@ -508,16 +508,9 @@ html.genesis-on .topbar {
 }
 .genesis-veil[hidden] { display: none; }
 
-/* cinematic bars; the controls live inside them */
-.genesis::before, .genesis::after {
-  content: ""; position: absolute; left: 0; right: 0; height: 6.5vh;
-  background: #05070a; z-index: 1; pointer-events: none;
-}
-.genesis::before { top: 0; }
-.genesis::after { bottom: 0; }
-
+/* no bars: the controls sit in a slim transparent overlay along the top */
 .genesis-skip {
-  position: absolute; top: calc(3.25vh - 0.85rem); right: 1.4rem; z-index: 2;
+  position: absolute; top: 0.8rem; right: 1.4rem; z-index: 2;
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--lamp);
   background: rgba(9,13,15,0.92);
@@ -555,7 +548,7 @@ html.genesis-on .topbar {
 }
 
 .genesis-ticks {
-  position: absolute; bottom: calc(3.25vh - 0.8rem); z-index: 2;
+  position: absolute; top: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 2;
   width: min(20rem, 78vw);
   display: flex; align-items: center; gap: 0.55rem;
   pointer-events: auto;
@@ -595,11 +588,10 @@ html.genesis-on .topbar {
 .genesis-step:hover { border-color: var(--lamp); }
 
 @media (max-width: 760px) {
-  .genesis { padding-top: calc(4.5vh + 1.6rem); }
-  .genesis::before, .genesis::after { height: 4.5vh; }
-  .genesis-skip { top: calc(2.25vh - 0.75rem); right: 0.85rem; }
+  .genesis { padding-top: 3.4rem; }
+  .genesis-skip { top: 0.6rem; right: 0.85rem; }
   .genesis-skip.genesis-pause { right: 5.65rem; }
-  .genesis-ticks { bottom: calc(var(--hud-floor) + 0.4rem); }
+  .genesis-ticks { top: 0.6rem; left: 0.85rem; transform: none; width: calc(100vw - 12rem); }
 }
 
 /* =========================================================

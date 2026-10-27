@@ -293,6 +293,7 @@
     }
     const d = Math.pow(q, 0.8) * pt.spd * 0.62 * Math.hypot(W, H) * 0.62;
     let x = originX + Math.cos(angle) * d;
+    const reach = 0.34 * H;   // the path's height above the origin is squeezed into 0.12 H..origin, never off the top
     let y = originY + Math.sin(angle) * d;
 
     const sfac = (pt.wgt - 0.5) * 2 * Math.min(1, q * 3);
@@ -303,6 +304,7 @@
     const rg = rageAt(t, x, y);
     x += PUSH.x * 26;
     y += PUSH.y * 26;
+    if (y < originY) y = originY - reach * Math.tanh((originY - y) / reach);   // squeezed last, so slosh and push stay below 0.12 H too
 
     POS.x = x; POS.y = y; POS.angle = angle; POS.rg = rg; POS.a = a; POS.q = q;
     return POS;
@@ -370,9 +372,11 @@
   function seaPlan(pt, s, originX, W, H, camOff, spW) {
     const tf = pt.birth + pt.life * 0.2;
     let P = posAt(pt, tf, originX, W, H);
-    const x1 = P.x, y1 = P.y;
+    const x1 = P.x, y1raw = P.y;
+    // a fall starts inside the picture: at least 0.14 H, plus a small per-particle extra so streams do not bunch on one line
+    const y1 = Math.max(y1raw, H * (0.14 + 0.05 * (((pt.jit * 97) % 1 + 1) % 1)));
     P = posAt(pt, tf - 0.1, originX, W, H);
-    PLAN.vx = clamp((x1 - P.x) * 10, -0.3 * W, 0.3 * W); PLAN.vy = (y1 - P.y) * 10;
+    PLAN.vx = clamp((x1 - P.x) * 10, -0.3 * W, 0.3 * W); PLAN.vy = (y1raw - P.y) * 10;
     // the nearest form (world x, wrapped) is the heap it falls to
     const uw = (x1 + camOff) / W;
     let bd = 0, bm = 1e9, bf = false;
@@ -386,7 +390,8 @@
     lx = (lx + spW) % spW;
     if (lx > spW - 0.2 * W) lx -= spW;
     const lvl = Math.min(shAt(lx, W) + (bf ? H * 0.036 : 0), H * 0.96);   // the drawn surface, or the pile floor while it is still low
-    const drop = Math.max(lvl + H * (0.004 - 0.016 * pt.gy) - y1, 2);
+    const yland = Math.max(lvl + H * (0.004 - 0.016 * pt.gy), y1raw + 2);   // the landing is unchanged by the lower start
+    const drop = Math.max(yland - y1, 2);
     PLAN.x1 = x1; PLAN.y1 = y1; PLAN.lx = lx; PLAN.yl = y1 + drop;
     PLAN.T = pt.fall + drop / H * 0.6;
     PLAN.tf = tf; PLAN.tl = tf + PLAN.T;
@@ -399,7 +404,7 @@
     const vy0 = Math.min(PLAN.vy, 0.8 * drop / T);
     const g = 2 * (drop - vy0 * T) / (T * T);
     PLAN.px = PLAN.x1 + PLAN.vx * tau + (PLAN.lx - PLAN.x1 - PLAN.vx * T) * p * p;
-    PLAN.py = PLAN.y1 + vy0 * tau + 0.5 * g * tau * tau;
+    PLAN.py = Math.max(PLAN.y1, PLAN.y1 + vy0 * tau + 0.5 * g * tau * tau);   // grows downward from its start, never above it
     PLAN.p = p;
   }
 
@@ -412,13 +417,14 @@
     ctx.globalAlpha = 0.6 * (1 - q) * fade;
     ctx.fillStyle = "rgb(62,68,66)";
     ctx.beginPath();
-    ctx.ellipse(lx, yl, z * (1.5 + 5 * q), z * (0.3 + 0.9 * q), 0, 0, TAU);
+    const ry = z * (0.3 + 0.9 * q);
+    ctx.ellipse(lx, yl + ry, z * (1.5 + 5 * q), ry, 0, 0, TAU);   // its round top sits on the sea line, not above it
     ctx.fill();
     ctx.fillStyle = "rgb(120,128,124)";
     const rise = z * 5 * Math.sin(Math.PI * Math.min(1, q * 1.3));
     for (let f = 0; f < 4; f++) {
       const dx = (f - 1.5) * z * (1.2 + 0.4 * ((pt.jit * 97 + f) % 1 + 1) % 1), fh = rise * (0.6 + 0.4 * (f & 1));
-      ctx.fillRect(Math.round(lx + dx * (0.6 + q)), Math.round(yl - fh), 2, Math.max(2, Math.round(fh * 0.5)));
+      ctx.fillRect(Math.round(lx + dx * (0.6 + q)), Math.round(yl + 1), 2, Math.max(2, Math.round(fh * 0.5)));
     }
     ctx.globalAlpha = 1;
   }
@@ -436,10 +442,16 @@
       const P = posAt(pt, s, originX, W, H, sl);
       x = P.x; y = P.y; angle = P.angle; rg = P.rg;
     } else {
-      seaFallAt(Math.max(s - 0.15, PLAN.tf));
+      // glide: the first 0.35 s of the fall blends from the flight path to the fall path
+      const s1 = Math.max(s - 0.15, PLAN.tf);
+      seaFallAt(s1);
       tx = PLAN.px; ty = PLAN.py;
+      let w = 1 - smooth(clamp((s1 - PLAN.tf) / 0.35, 0, 1));
+      if (w > 0) ty += (posAt(pt, s1, originX, W, H, sl).y - ty) * w;
       seaFallAt(s);
       x = PLAN.px; y = PLAN.py;
+      w = 1 - smooth(clamp((s - PLAN.tf) / 0.35, 0, 1));
+      if (w > 0) y += (posAt(pt, s, originX, W, H, sl).y - y) * w;
       alpha *= 1 - smooth(clamp((PLAN.p - 0.8) / 0.2, 0, 1));
     }
     if (x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
@@ -493,7 +505,7 @@
       ty = H * (1 - SEA_H * (0.2 + 0.7 * pt.gy));
     } else {
       tx = x0 + (hash1(pt.i * 7 + 17) - 0.5) * 0.04 * W;
-      ty = -30 - pt.gy * 40;
+      ty = H * (0.12 + 0.03 * pt.gy);   // rises and fades inside the frame
     }
 
     const u = s - pt.splitT;
@@ -563,13 +575,16 @@
     SRISE = smooth(Math.pow(clamp(n / (0.6 * SEA_LT.length), 0, 1), 0.75));
     SBASE = H * (0.86 + (1 - SRISE) * (0.095 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));   // a ~50 px strip from s 2, rising to ~15% of the frame above the letterbox
     const wp = camOff / W, nw = WV.length - 1;
-    for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.0015 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7);   // between the feet: flat, only a ripple
+    for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.0015 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7) + H * 0.012 * swellS(k / nw + wp, t);   // between the feet: flat, only a ripple
     seaSurf(W, H, camOff, t, nw);
   }
 
+  // the slow swell: a long low wave travelling along the sea line (wx in screen widths of world x), -1..1
+  function swellS(wx, t) { return Math.sin(TAU * wx / 1.1 - t * 0.9); }
+
   // fills SH (the engraved surface: a seeded kind per world segment, swells against the piers) and the curl list
   function seaSurf(W, H, camOff, t, nw) {
-    const segW = W * 0.22, i0 = Math.floor(camOff / segW), U = (window.GenVoid && GenVoid.SPAN_BAY_U) || 0.46;
+    const segW = W * 0.22, i0 = Math.floor(camOff / segW);
     for (let j = 0; j < SGN_; j++) {
       const i = i0 + j;
       SGT[j] = Math.floor(hash1(i * 131 + 11) * 6);
@@ -578,23 +593,12 @@
       SGD[j] = hash1(i * 131 + 53) < 0.5 ? -1 : 1;
       SGK[j] = 4 + Math.floor(hash1(i * 131 + 71) * 5);
     }
-    PIN = 0;
-    for (let b = Math.floor((G.cam - 0.5) / U) - 1, e = Math.ceil((G.cam + 0.5) / U) + 1; b <= e && PIN < 8; b++) {
-      const xb = G.sx(b * U);
-      if (xb < -W * 0.1 || xb > W * 1.1) continue;
-      PIB[PIN] = b; PIX[PIN] = xb; PIH[PIN] = SRISE * H * (0.06 + 0.02 * hash1(b * 131 + 97)); PID[PIN] = b % 2 ? 1 : -1; PIN++;
-    }
-    const R = W * 0.08;
     for (let k = 0; k <= NS; k++) {
       const x = k / NS * W;
-      // flat between the piers and a little lower; only the heaps under the bridge feet rise
-      const uu = k / NS * nw, kk = Math.min(nw - 1, Math.floor(uu));
-      let y = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) + H * 0.014 * SRISE;
-      for (let p = 0; p < PIN; p++) {
-        const dx = Math.abs(x - PIX[p]) / R;
-        if (dx < 1) y -= PIH[p] * 0.5 * (1 + Math.cos(Math.PI * dx));   // a smooth rounded bulge
-      }
-      SH[k] = y;
+      // a low line, gently uneven: three slow seeded waves over the world x (wide scales), no relation to the bridge feet
+      const uu = k / NS * nw, kk = Math.min(nw - 1, Math.floor(uu)), wx = (x + camOff) / W;
+      const und = 0.004 * Math.sin(wx * TAU / 1.7 + 1.3) + 0.003 * Math.sin(wx * TAU / 0.83 + 4.1) + 0.0018 * Math.sin(wx * TAU / 0.41 + 2.2);
+      SH[k] = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) + H * (0.014 + und) * SRISE;
     }
   }
 
@@ -625,11 +629,17 @@
     ctx.fill();
     ctx.save();
     ctx.clip();
-    ctx.fillStyle = "rgb(31,35,34)";
-    const vb = H * 0.935;   // the letterbox bars hide the canvas below this
-    ctx.fillRect(0, Math.round(sy + (vb - sy) * 0.45), W, H);
-    ctx.fillStyle = "rgb(24,27,27)";
-    ctx.fillRect(0, Math.round(sy + (vb - sy) * 0.8), W, H);
+    const vb = H;   // the visible bottom: no letterbox bars
+    for (let b = 0; b < 2; b++) {   // the bands follow the surface, so no straight edge
+      const bf = b ? 0.8 : 0.45;
+      ctx.fillStyle = b ? "rgb(24,27,27)" : "rgb(31,35,34)";
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k] + (vb - SH[k]) * bf);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { if (k) ctx.lineTo(k / NS * W, SH[k] + 1); else ctx.moveTo(0, SH[0] + 1); }
@@ -638,48 +648,70 @@
     ctx.stroke();
     // a soft lighter band just under the surface line
     ctx.beginPath();
-    for (let k = 0; k <= NS; k++) { if (k) ctx.lineTo(k / NS * W, SH[k] + H * 0.012); else ctx.moveTo(0, SH[0] + H * 0.012); }
-    ctx.strokeStyle = "rgb(45,51,49)";
-    ctx.lineWidth = H * 0.014;
+    for (let k = 0; k <= NS; k++) { const by = SH[k] + H * 0.012 + 1.6 * Math.sin(k * 0.45 + t * 0.5); if (k) ctx.lineTo(k / NS * W, by); else ctx.moveTo(0, by); }
+    ctx.strokeStyle = "rgb(66,74,72)";
+    ctx.lineWidth = H * 0.016;
     ctx.stroke();
-    // swell sheen: streaks following each pier's curve (about +14 lightness)
-    ctx.strokeStyle = "rgb(50,56,54)";
-    ctx.lineWidth = 2;
-    for (let p = 0; p < PIN; p++) {
-      if (PIH[p] < 6) continue;
-      for (let c = 0; c < 2; c++) {
-        const k0 = Math.max(0, Math.floor((PIX[p] - W * (0.1 - c * 0.03)) / W * NS)), k1 = Math.min(NS, Math.ceil((PIX[p] + W * (0.1 - c * 0.03)) / W * NS));
-        const off = H * (0.02 + 0.016 * c);
-        ctx.beginPath();
-        for (let k = k0; k <= k1; k++) { if (k > k0) ctx.lineTo(k / NS * W, SH[k] + off); else ctx.moveTo(k / NS * W, SH[k] + off); }
-        ctx.stroke();
-      }
-    }
-    // long thin sheen streaks drifting sideways, shorter with depth
-    ctx.fillStyle = "rgb(50,56,54)";
-    for (let k = 0; k < STREAK.length; k++) {
-      const a = STREAK[k], sp = W * 1.3;
-      for (let d = 0; d < 2; d++) {
-        const x = ((a.u * sp + d * sp * 0.37 - t * a.sp * 0.5 - camOff * 0.6) % sp + sp) % sp - sp * 0.1;
-        const w = a.w * W * (d ? 1.6 : 2.4) * (d ? 0.55 : 1);
+    // sheen streaks drifting steadily left: each is a tapered run of segments that follows the surface wave (so it
+    // curves and tilts), some broken into dashes; the shape holds while it drifts and fades only at the ends of its life
+    ctx.fillStyle = "rgb(150,164,160)";
+    const sp = W * 1.3, ef = W * 0.08;
+    for (let d = 0; d < 2; d++) {   // one path and one fill per depth: each streak a smooth lens on the surface wave
+      ctx.globalAlpha = d ? 0.6 : 0.85;
+      ctx.beginPath();
+      for (let k = 0; k < STREAK.length; k++) {
+        const a = STREAK[k];
+        const ph = ((t / (7 + a.sp * 1.5) + a.u * 7 + d * 0.5) % 1 + 1) % 1, env = clamp(Math.min(ph, 1 - ph) / 0.15, 0, 1);
+        const x = ((a.u * sp + d * sp * 0.37 - t * W * (0.025 + a.sp * 0.008) - camOff * 0.6) % sp + sp) % sp - sp * 0.1;
+        const w = a.w * W * (d ? 1.6 : 2.4) + 40;
         if (x < -w || x > W) continue;
-        ctx.fillRect(Math.round(x), Math.round(shAt(clamp(x, 0, W), W) + H * (a.y * (1 + d * 3) + 0.01)), Math.round(w), 2);
+        const hm = (d ? 1.6 : 2.8) * env * clamp(Math.min(x + w, W - x) / ef, 0, 1);
+        if (hm < 0.25) continue;
+        const oy = H * (a.y * (1 + d * 3) + 0.01);
+        for (let i = 0; i <= 6; i++) {
+          const xs = x + w * i / 6, h = hm * Math.sin(Math.PI * i / 6);
+          LNX[i] = xs; LNY[i] = shAt(clamp(xs, 0, W), W) + oy; LNH[i] = h;
+        }
+        ctx.moveTo(LNX[0], LNY[0]);
+        for (let i = 1; i <= 6; i++) ctx.lineTo(LNX[i], LNY[i] - LNH[i]);
+        for (let i = 5; i >= 0; i--) ctx.lineTo(LNX[i], LNY[i] + LNH[i]);
+        ctx.closePath();
       }
+      ctx.fill();
+    }
+    // small curved ripple arcs at several depths: far ones smaller, slower and dimmer, near ones larger and faster
+    ctx.fillStyle = "rgb(165,178,174)";
+    const rsp = W * 1.2;
+    for (let k = 0; k < RIP.length; k++) {
+      const r = RIP[k], dp = r.d;
+      const ph = ((t / (r.per + 3) + r.u * 5) % 1 + 1) % 1, env = clamp(Math.min(ph, 1 - ph) / 0.15, 0, 1);
+      const x = ((r.u * rsp - t * W * (0.01 + dp * 0.035) - camOff * (0.3 + dp * 0.4)) % rsp + rsp) % rsp - rsp * 0.1;
+      const sg = Math.round(2 + dp * 3), len = sg * 3;
+      if (x < -len || x > W) continue;
+      const al = env * (0.25 + dp * 0.55) * clamp(Math.min(x + len, W - x) / ef, 0, 1);
+      if (al < 0.03) continue;
+      ctx.globalAlpha = al;
+      const rx = Math.round(x), ry = Math.round(shAt(clamp(x, 0, W), W) + H * (0.02 + dp * 0.08 + r.y));
+      ctx.fillRect(rx, ry + 1, sg, 1);
+      ctx.fillRect(rx + sg, ry, sg, 1);
+      ctx.fillRect(rx + 2 * sg, ry + 1, sg, 1);
     }
     ctx.globalAlpha = 1;
-    // fallen junk piled on each heap: seeded by the foot, a flat shard each, lit left / shade right
-    const hk = clamp(H * 0.75 / 900, 0.45, 1.1), R = W * 0.08;
-    for (let p = 0; p < PIN; p++) {
-      if (PIH[p] < 6) continue;
-      for (let q = 0; q < 26; q++) {
-        const sd = PIB[p] * 977 + q * 31, u = (hash1(sd + 1) - 0.5) * 1.7, x = PIX[p] + u * R;
-        const hs = (10 + 16 * hash1(sd + 2)) * hk * (1.15 - Math.abs(u) * 0.4), w = hs * (0.25 + 0.3 * hash1(sd + 3)), fam = FAM[Math.floor(hash1(sd + 4) * FAM.length)];
-        const y = shAt(clamp(x, 0, W), W) + hs * 0.25 * hash1(sd + 5), lean = (hash1(sd + 6) - 0.5) * w * 1.4;
-        ctx.fillStyle = fam[0];
-        ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x + lean, y - hs); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = fam[1];
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + lean, y - hs); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
-      }
+    OBN = 0;
+    drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, 2);
+    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, 2);
+    drawSlicks(ctx, W, H, camOff, t);
+    // a clear hole in the tar round each piece where it meets the surface (lower half only: the piece covers the rest)
+    for (let i = 0; i < OBN; i++) {
+      const rx = OBR[i] + 5, ry = Math.min(rx * 0.28, H * 0.025);
+      ctx.beginPath();
+      ctx.ellipse(OBX[i], OBY[i], rx, ry, 0, 0, Math.PI);
+      ctx.closePath();
+      ctx.fillStyle = "rgb(42,48,46)";
+      ctx.fill();
+      ctx.strokeStyle = "rgb(56,62,60)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
     drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, true);
     drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, false);
@@ -697,6 +729,86 @@
       if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
     }
     if (s >= 10.2) drawAirDrift(ctx, W, H);   // the air rides with the bed, over the land
+  }
+
+  // dark tar slicks on the surface: lobes drift apart and together; all rims first, then all tar, so overlaps read as one blob
+  // floating pieces at the waterline (x, half width, y), collected each frame for the slick bend and the clear ring
+  const LNX = new Float64Array(7), LNY = new Float64Array(7), LNH = new Float64Array(7);
+  const OBX = new Float64Array(32), OBR = new Float64Array(32), OBY = new Float64Array(32);
+  let OBN = 0;
+  const ANX = new Float64Array(2), ANR = new Float64Array(2), ANV = new Uint8Array(2);   // the pieces the first two slicks ride on
+  const SLK = [], SLP = 14, SLX = new Float64Array(SLP), SLY = new Float64Array(SLP);
+  let SLRIM = "", SLTAR = "";
+  function drawSlicks(ctx, W, H, camOff, t) {
+    if (!SLK.length) {
+      const r = mulberry(7731);
+      SLRIM = seaTone(1, 0, 0.3); SLTAR = seaTone(1, 0, 0.19);
+      for (let i = 0; i < 9; i++) {
+        const sl = { u: (i + r() * 0.7) / 9, d: r(), sz: 0.035 + r() * 0.03, sp: 6 + r() * 7, lb: [] };
+        let n = 3 + Math.floor(r() * 2);
+        if (i < 2) { n = 4; sl.d = 0.45; }   // the first two ride a piece: two lobes each side of it
+        for (let j = 0; j < n; j++) {
+          const lb = { ax: (j / (n - 1) - 0.5) * 0.1 + (r() - 0.5) * 0.02, amp: 0.04 + r() * 0.04, w: 1.05 + r() * 0.45, ph: r() * TAU, k: 0.5 + r() * 0.5, sq: 0.34 + r() * 0.14, wp: [] };
+          for (let k = 0; k < SLP; k++) lb.wp.push(r() * TAU);
+          sl.lb.push(lb);
+        }
+        SLK.push(sl);
+      }
+    }
+    const span = W * 1.5;   // wide wrap: a slick jumps only while fully off screen, so none pops
+    // the first two slicks ride on a piece (the one nearest the middle, then the next), eased so a change of piece slides
+    let near = -1;
+    for (let m = 0; m < OBN; m++) if (OBX[m] > 0 && OBX[m] < W && (near < 0 || Math.abs(OBX[m] - W * 0.5) < Math.abs(OBX[near] - W * 0.5))) near = m;
+    for (let i = 0; i < 2; i++) {
+      if (near < 0) { ANV[i] = 0; continue; }
+      const m = (near + i) % OBN;
+      if (!ANV[i]) { ANX[i] = OBX[m]; ANR[i] = OBR[m]; ANV[i] = 1; }
+      else { ANX[i] += (OBX[m] - ANX[i]) * 0.08; ANR[i] += (OBR[m] - ANR[i]) * 0.08; }
+    }
+    for (let tier = 0; tier < 2; tier++) {
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.globalAlpha = tier ? 1 : 0.55;
+        ctx.fillStyle = pass ? SLTAR : SLRIM;
+        ctx.beginPath();
+        for (let i = 0; i < SLK.length; i++) {
+          const sl = SLK[i];
+          if ((sl.d > 0.4 ? 1 : 0) !== tier) continue;
+          const cx = ((sl.u * span + -t * sl.sp - camOff * 0.6) % span + span) % span - span * 0.17;
+          const sc = 0.45 + 0.55 * sl.d, base = sl.sz * W * sc;
+          for (let j = 0; j < sl.lb.length; j++) {
+            const lb = sl.lb[j];
+            let lx = cx + (lb.ax + lb.amp * Math.sin(t * lb.w + lb.ph)) * W * sc;
+            if (i < 2 && ANV[i]) {
+              const hn = sl.lb.length >> 1;
+              lx = ANX[i] + (j < hn ? -1 : 1) * (ANR[i] + 5 + base * lb.k * (0.9 + 1.1 * (j % hn)) + base * 0.55 * Math.sin(t * lb.w + lb.ph));
+            }
+            if (lx < -base * 2 || lx > W + base * 2) continue;
+            const sh0 = shAt(clamp(lx, 0, W), W);
+            let rad = base * lb.k * (0.85 + 0.15 * Math.sin(t * 0.8 * lb.w + lb.ph * 2)) * (1 + 0.2 * swellS((lx + camOff) / W, t));
+            // pinch: a lobe necks down smoothly as it nears a piece (nothing at the piece, whole again far from it)
+            for (let m = 0; m < OBN; m++) {
+              const u = clamp((Math.abs(lx - OBX[m]) - OBR[m] - 5) / (rad * 1.5), 0, 1);
+              rad *= u * u * (3 - 2 * u);
+            }
+            rad += pass ? 0 : 1.5;
+            // sit low enough that the round top stays under the sea line
+            const ly = Math.max(sh0 + H * (0.01 + sl.d * 0.05) + Math.sin(t * lb.w * 0.7 + lb.ph) * H * 0.002 * sc, sh0 + rad * lb.sq * 1.45 + 3);
+            for (let k = 0; k < SLP; k++) {
+              const a = k / SLP * TAU, rr = rad * (1 + 0.26 * Math.sin(t * 0.5 * lb.w + lb.wp[k]) + 0.1 * Math.sin(a * 2 + lb.ph) + 0.1 * Math.sin(a * 3 + t * 0.3 * lb.w + lb.ph));
+              SLX[k] = lx + Math.cos(a) * rr; SLY[k] = ly + Math.sin(a) * rr * lb.sq;
+            }
+            ctx.moveTo((SLX[0] + SLX[SLP - 1]) / 2, (SLY[0] + SLY[SLP - 1]) / 2);
+            for (let k = 0; k < SLP; k++) {
+              const k2 = (k + 1) % SLP;
+              ctx.quadraticCurveTo(SLX[k], SLY[k], (SLX[k] + SLX[k2]) / 2, (SLY[k] + SLY[k2]) / 2);
+            }
+            ctx.closePath();
+          }
+        }
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   // the sea-bound particles' heaps fade as the formed shapes rise through them
@@ -740,8 +852,7 @@
   const CURL = new Float32Array(CUR_N * CUR_P * 2);
   const CLN_MAX = 48, CLX = new Float32Array(CLN_MAX), CLY = new Float32Array(CLN_MAX), CLW = new Float32Array(CLN_MAX), CLH = new Float32Array(CLN_MAX), CLD = new Float32Array(CLN_MAX), CLV = new Uint8Array(CLN_MAX);
   const WAV = new Float32Array([0, 0, 0.35, 0.15, 0.72, 0.6, 0.98, 1, 1.14, 0.82, 0.97, 0.66, 1, 0]);   // one breaking crest: long rise, hook, sharp drop
-  const PIX = new Float32Array(8), PIH = new Float32Array(8), PID = new Float32Array(8), PIB = new Int32Array(8);
-  let CLN = 0, PIN = 0;
+  let CLN = 0;
   (function seedCurls() {
     const T = [-1, 0, -0.62, 0.2, -0.3, 0.55, 0, 0.92, 0.35, 1, 0.72, 0.88, 0.95, 0.6, 0.9, 0.32, 0.68, 0.24, 0.6, 0.4, 0.72, 0.55, 0.58, 0.68, 0.38, 0.56, 0.3, 0];
     const r = mulberry(6203);
@@ -754,7 +865,7 @@
       }
     }
   })();
-  const WV = new Float32Array(13), STREAK = new Array(5), SY2 = new Float32Array(13);
+  const WV = new Float32Array(13), STREAK = new Array(11), RIP = new Array(36),SY2 = new Float32Array(13);
   const RFX = new Float32Array(48), RFH = new Float32Array(48), RFW = new Float32Array(48), RFP = new Float32Array(48);
   let RFN = 0;
   // the strange objects rising out of the water: 7 per screen width, spaced apart; each a seeded Path2D in local
@@ -1082,14 +1193,23 @@
       poly(ctx, "#9db0b2", [-w, -bh * 0.2, w, -bh * 0.2, w, -bh * 0.62, -w, -bh * 0.62]);
       poly(ctx, "#8a9ca0", [-nk * 0.95, -hh, nk * 0.95, -hh, nk * 0.8, -hh - h * 0.07, -nk * 0.8, -hh - h * 0.07]);
     },
-    function chair(ctx, o, t, h, rv) {   // a chair seen from the front: two posts, top rail, spindles (one gone), seat
-      const w = h * (0.3 + rv[0] * 0.08), lw = h * 0.07, top = h * (0.92 + rv[1] * 0.08), sy = -h * (0.4 + rv[5] * 0.08), n = 3 + Math.floor(rv[3] * 2), gone = Math.floor(rv[4] * n);
-      ctx.rotate((rv[2] - 0.5) * 0.3);
-      for (let k = 0; k < n; k++) if (k !== gone) { ctx.fillStyle = k * 2 >= n ? "#4d5f64" : "#74878c"; ctx.fillRect(-w + lw + (k + 0.5) * (2 * w - 2 * lw) / n - lw * 0.25, -top, lw * 0.5, top + sy); }
-      ctx.fillStyle = "#74878c"; ctx.fillRect(-w, -top, lw, top + 10);
-      ctx.fillStyle = "#4d5f64"; ctx.fillRect(w - lw, -top, lw, top + 10);
-      ctx.fillStyle = "#74878c"; ctx.fillRect(-w, -top, w * 2, lw * 1.2);
-      ps(ctx, "#74878c", "#4d5f64", [-w * 1.2, sy, w * 1.2, sy, w * 1.2, sy + h * 0.08, -w * 1.2, sy + h * 0.08], 0, h);
+    function chunk(ctx, o, t, h, rv) {   // a lumpy broken slab, small and half sunk: only its low top clears the water
+      const w = h * (0.2 + rv[0] * 0.05), th = h * (0.2 + rv[1] * 0.03), by = -h * 0.02, wl = -h * 0.14;   // by: the base; wl: the water line, so only the top third clears it
+      ctx.rotate((rv[2] - 0.5) * 0.2);
+      // one uneven ridge: a single peak, a broken slope each side, no notch
+      ps(ctx, "#74878c", "#4d5f64", [-w, by, -w * 1.02, by - th * 0.34, -w * 0.72, by - th * 0.5, -w * 0.52, by - th * 0.6, -w * 0.3, by - th * 0.66, -w * 0.08, by - th, w * 0.16, by - th * 0.9, w * 0.4, by - th * 0.68, w * 0.58, by - th * 0.74, w * 0.92, by - th * 0.36, w * 0.88, by], 0, h * 0.6);
+      // the water over its foot: a short ragged line that follows the ripple, a thin lighter wavelet edge on top
+      const n = 9, x0 = -w * 1.45, dx = w * 2.9 / n, wy = [];
+      for (let i = 0; i <= n; i++) wy.push(wl + (rv[3 + i % 6] - 0.5) * h * 0.035 + Math.sin(t * 0.8 + o.ph + i * 1.3) * h * 0.012);
+      wy[0] = h * 0.03; wy[n] = h * 0.03; wy[1] = (wy[1] + wl) / 2 + h * 0.03; wy[n - 1] = (wy[n - 1] + wl) / 2 + h * 0.03;   // the ends ease down to the sea
+      ctx.fillStyle = "rgb(38,44,42)";
+      ctx.beginPath(); ctx.moveTo(x0, by + h * 0.3);
+      for (let i = 0; i <= n; i++) ctx.lineTo(x0 + dx * i, wy[i]);
+      ctx.lineTo(x0 + dx * n, by + h * 0.3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgb(50,56,54)"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x0, wy[0]);
+      for (let i = 1; i <= n; i++) if (i % 4) ctx.lineTo(x0 + dx * i, wy[i]); else ctx.moveTo(x0 + dx * i, wy[i]);
+      ctx.stroke();
     },
     function mask(ctx, o, t, h, rv) {   // a blank flat mask, eye and mouth holes cut through
       const w = h * (0.28 + rv[0] * 0.08), fh = h * (0.75 + rv[1] * 0.15), ey = -fh * 0.62, ew = w * (0.22 + rv[2] * 0.1), sk = (rv[3] - 0.5) * w * 0.3;
@@ -1143,19 +1263,23 @@
         if (bad) continue;
       }
       // a few stand half out of the first water; the rest rise from nothing, all at full size
-      const g0 = o.i % 7 === 0 || o.i % 7 === 2 || o.i % 7 === 4 ? 0.55 : 0;
+      const g0 = !o.rare && (o.i % 7 === 0 || o.i % 7 === 2 || o.i % 7 === 4) ? 0.55 : 0;
       const g = G.reduced ? 1 : g0 + (1 - g0) * smooth(clamp((s - (g0 ? 2 : o.rs)) / (o.small ? 4 : 10), 0, 1));
       if (g <= 0) continue;
       const yl = shAt(clamp(sx, 0, W), W) + (o.front ? H * 0.012 : 2) + o.dy * H;
+      if (post === 2) {
+        if (!o.small && OBN < 32) { OBX[OBN] = o.rare ? sx : sx + (o.xl + o.xr) * 0.5 * k; OBR[OBN] = (o.rare ? o.hw : (o.xr - o.xl) * 0.5) * k; OBY[OBN++] = yl; }
+        continue;
+      }
       if (!post) {
-        const sink = (1 - g) * o.bh * k * 0.9 + (G.reduced ? 0 : Math.sin(t * 0.6 + o.ph) * 2.5 * k) + o.dep * o.bh * k;
+        const sink = (1 - g) * o.bh * k * (o.rare ? 1.15 : 0.9) + (G.reduced ? 0 : Math.sin(t * 0.6 + o.ph) * 2.5 * k) + o.dep * o.bh * k;
         // clipped at the waterline: the part under it is not drawn
         ctx.save();
         ctx.beginPath();
-        if (o.rare) ctx.rect(sx - o.hw * k, 0, o.hw * 2 * k, Math.min(yl, H * 0.935 - 8));   // a wide box: only the waterline cuts
+        if (o.rare) ctx.rect(sx - o.hw * k, 0, o.hw * 2 * k, Math.min(yl, H - 8));   // a wide box: only the waterline cuts
         else ctx.rect(sx + o.xl * k - 6, 0, (o.xr - o.xl) * k + 12, yl);
         ctx.clip();
-        ctx.translate(sx, o.rare ? Math.min(yl + sink, H * 0.935 - 80 * k) : yl + sink);   // rare pieces stay above the letterbox
+        ctx.translate(sx, o.rare ? Math.min(yl, H - 80 * k) + sink : yl + sink);   // rare pieces stay above the bottom edge
         ctx.rotate(o.tilt);
         ctx.scale(k, k);
         ctx.fillStyle = o.c;
@@ -1284,7 +1408,8 @@
     }
     const rw = mulberry(6203);
     for (let i = 0; i < WV.length; i++) WV[i] = rw() - 0.5;
-    for (let i = 0; i < STREAK.length; i++) STREAK[i] = { u: rw(), y: 0.012 + rw() * 0.07, w: 0.02 + rw() * 0.05, sp: 2 + rw() * 4, a: 0.25 + rw() * 0.2 };
+    for (let i = 0; i < STREAK.length; i++) STREAK[i] = { u: rw(), y: 0.012 + rw() * 0.07, w: 0.02 + rw() * 0.05, sp: 2 + rw() * 4, a: 0.25 + rw() * 0.2, br: rw() < 0.4 };
+    for (let i = 0; i < RIP.length; i++) RIP[i] = { u: rw(), d: rw(), y: rw() * 0.01, per: 3 + rw() * 4 };
     for (let i = 0; i < 900 * 5; i++) ra();   // the air keeps the draws it had when the bed dots shared this stream
     for (let i = 0; i < 320; i++) {
       AIR.push({ i, u: ra(), y: 0.04 + ra() * 0.9, par: 0.1 + ra() * 0.15, hue: Math.floor(ra() * 8), arr: 10.2 + ra() * 4.5, sz: ra() < 0.5 ? 4 : 3 });

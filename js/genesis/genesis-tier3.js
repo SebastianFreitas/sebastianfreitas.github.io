@@ -176,8 +176,14 @@ window.GenTier3 = (function () {
 
   const cache = { key: null, paths: null, clip: null };
 
+  // the liquid first draws at secs("break") >= 4.1 (drawSea: secs - 2.1 >= 2); the sky fades in over 1.5 s from there
+  function seaFade() { return clamp((G.secs("break") - 4.1) / 1.5, 0, 1); }
+
   function draw(ctx, W, H, z, sx, sy) {
     if (W <= 0 || H <= 0) return;
+    // owner's call: hidden in the opening beats, faded in over 1.5 s from the moment the sea arrives
+    const seaIn = seaFade();
+    if (seaIn <= 0) return;
     const pal = window.GenEldPal && window.GenEldPal.TIER3;
     if (!pal) return;
     const pose = currentPose();
@@ -223,7 +229,7 @@ window.GenTier3 = (function () {
       const pvx = W / 2, pvy = levelled ? pose.lintel.y * H : 0;
       ctx.save();
       ctx.translate(m.dx, m.dy);
-      ctx.globalAlpha = m.a;
+      ctx.globalAlpha = m.a * seaIn;
       if (levelled) {
         ctx.translate(pvx, pvy);
         ctx.rotate(ang);
@@ -358,6 +364,8 @@ window.GenTier3 = (function () {
     if (!G || !G.W || !G.H) return false;
     const pose = currentPose();
     if (!pose) return false;
+    const fade = seaFade();
+    if (fade <= 0) return false;
     const beatId = G.BEATS[G.beat].id;
     const list = visibleList(pose);
     const key = beatId + "|" + G.W + "|" + G.H + "|" + list.join(",");
@@ -378,7 +386,7 @@ window.GenTier3 = (function () {
       else if (k === "arc") b = arcBottom(p, X, G.H);
       if (b !== null) {
         const margin = (k === "lintel" || k === "arc") ? 0.10 * G.H : 0.04 * G.H;
-        if (Y < b + margin) return true;
+        if (Y < (b + margin) * fade) return true;
       }
     }
     return false;
@@ -388,7 +396,11 @@ window.GenTier3 = (function () {
     const pose = currentPose();
     if (!pose || !pose[k]) return null;
     if (!visibleList(pose).includes(k)) return null;
-    return motion(pose[k], G.W, G.H);
+    const fade = seaFade();
+    if (fade <= 0) return null;
+    const m = motion(pose[k], G.W, G.H);
+    m.dx *= fade; m.dy *= fade;
+    return m;
   }
 
   function tines(k) {

@@ -453,7 +453,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | The entry gate: boot log, then the two paths. index only |
-| `css/bridge.css` | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay, letterbox bars. index only |
+| `css/bridge.css` | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, claim ceremony, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Case pages only |
 | `css/folder.css` | The four case folders on index: inline body, hidden/clip states |
@@ -595,7 +595,7 @@ Project pages (`projects/*.html`) are redirect stubs and load no scripts.
 - Cutscene: cast painters `genesis-figures.js` + `genesis-titans.js`, the five gods `genesis-gods.js`, Obrokxus's later forms `genesis-obrok.js`; the old ones `genesis-oldones.js`;
 - Cutscene: the birth waves `genesis-elements.js` (wave one + permanent residue), `genesis-matter.js` (matter, insects, storms), `genesis-trade.js` (the travelling stream); the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`;
 - Cutscene: the war `genesis-armies.js`, the war's figures `genesis-hosts.js`; the warlock births and the Hound's ritual `genesis-ritual.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`;
-- Cutscene: zoom/captions/letterbox `genesis.js` + `css/bridge.css` genesis block
+- Cutscene: zoom/captions `genesis.js` + `css/bridge.css` genesis block
 - Plan phase state (one phase per session): first line `Status: phase-done\|partial\|questions\|blocked\|plan-done` (read by `tools/autoplan.py` and `session-start.py`); `## Questions` holds deferred phase questions, answered with `go` in the app; format in `.claude/skills/plan/SKILL.md`;
 - Plan phase state (one phase per session): headless sessions follow `.claude/skills/plan/unattended.md`
 - Shared workflow (synced with the owner's other projects): synced paths and hashes in `.claude/workflow.lock`; the shared rules are `.claude/rules/workflow.md`; `session-start.py` `workflow_sync_lines` prints `WORKFLOW SYNC:` on drift;
