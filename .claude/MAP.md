@@ -295,7 +295,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 |---|---|---|
 | `genesis-state.js` | `BEATS` (34 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex dot–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
-| `genesis-eldpal.js` | the eldritch palette (plan phase 4): 21 named tokens (cloth, leather, fur, metal, snow) as `{lit, mid, shade}`, tier-3 sky steps; `tone report contrast swatchSheet`; data only, read by the tier-3, old-one and kin painters | `window.GenEldPal` |
+| `genesis-eldpal.js` | the eldritch palette: 21 named tokens as `{lit, mid, shade}`, tier-3 sky steps, `SEA` (five sea families, read by genesis-elements.js); `tone report contrast swatchSheet` | `window.GenEldPal` |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
 | `genesis-void.js` | Far realms, motes, the monumental span | `window.GenVoid` |
 | `genesis-flesh.js` | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
@@ -347,7 +347,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-rexin.js`: Rex tears the level-1 ring into two arcs, grows over held zoom-outs (field shrinks, roof band thins) until only part of him fits, then the chains settle round him as braided dark-red rivers;
 - `genesis-rexin.js`: `draw(...,reach)` bends the right arm, `rexGeom(W,H,reach).hand`: `draw`, `rexGeom`
 - `genesis-elements.js`: dust, air, wind, sound, colour, light; 460 particles, rage events; `drawResidue` = the permanent void traces (dust, wind, colour stains, lights, sound rings) drawn every frame after the far realms; stains and rings are out from `walk` through `root`, back over `land`;
-- `genesis-elements.js`: late in `elements` each particle freezes and snaps in held steps to the sea, the rail top or the sky (`posAt`, `drawSplit`), and `drawSea`/`seaK` draw the tier-1 sea strata at the frame bottom (plan phase 21)
+- `genesis-elements.js`: late in `elements` each particle freezes and snaps in held steps to the sea, the rail top or the sky (`posAt`, `drawSplit`) (plan phase 21).
+- `genesis-elements.js`: `drawSea` draws the crooked waste at the frame bottom: debris falls and heaps, then forms (spires, ledges, loops, stairs, self-contradicting kinds) rise out of the heaps; colours are `GenEldPal.SEA` families keyed to world x.
 - `genesis-matter.js`: 100 flesh/stone/meld chunks (float, fall, break, meld pairs) that fly briefly then gather into one mass (`MASS`, slot per chunk, `gatherK`) resting on the span;
 - `genesis-matter.js`: through trade it opens where an old one climbs out (`GenOld.activeVents`) and crumbles from the outside in (`massScale`); 150 insects hatching (deformed, most die; storm deaths), 7 lawless storms (air, rain, fire, lightning)
 - `genesis-oldones.js`: one each of the ten old kinds (slot 0 the headless gentleman, east, bare until a `dress` beat, then a GenAttire suit: `dressNow gentlemanBare gentlemanDressed`; eye, mass, blinker and roller switch the same way;

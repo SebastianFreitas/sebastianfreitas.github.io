@@ -35,6 +35,16 @@ window.GenEldPal = (() => {
     under: "#0a0d10",
   };
 
+  // the formed sea (tier 1): dark, washed-out families that drift with world x
+  // (ash violet, sickly teal, rust, bone, bruise rose), each deep / mid / pale
+  const SEA = [
+    ["#3a3150", "#5d4f7c", "#8b79ae"],
+    ["#1f4744", "#306d66", "#4c8c82"],
+    ["#4d2b1d", "#7d4930", "#b4704c"],
+    ["#5a5645", "#8a8366", "#c2b994"],
+    ["#4a2339", "#74395b", "#aa6188"],
+  ];
+
   function hexRgb(h) {
     return [
       parseInt(h.slice(1, 3), 16),
@@ -172,5 +182,5 @@ window.GenEldPal = (() => {
     });
   }
 
-  return { BG, CHAOS, MID, SHADE, LIT, TONES, TIER3, tone, contrast, report, swatchSheet };
+  return { BG, CHAOS, MID, SHADE, LIT, TONES, TIER3, SEA, tone, contrast, report, swatchSheet };
 })();

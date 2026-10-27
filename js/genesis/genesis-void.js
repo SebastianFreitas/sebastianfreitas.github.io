@@ -598,6 +598,6 @@
   }
 
   window.GenVoid = Object.assign(window.GenVoid || {}, {
-    fillBg, drawMotes, drawChaos, drawPoint, drawSpan, drawSpanLife,
+    fillBg, drawMotes, drawChaos, drawPoint, drawSpan, drawSpanLife, SPAN_BAY_U,
   });
 })();
