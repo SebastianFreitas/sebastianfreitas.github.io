@@ -75,7 +75,9 @@
   }
   B.atRest = atRest;
 
-  B.pacer = Pacer.create({ paint: render, atRest, alive: () => B.visible && !B.portrait && !document.hidden });
+  B.pacer = Pacer.create({ paint: render, atRest, alive: () => B.visible && !B.portrait && !document.hidden && !B.held });
+  // the folder opening holds the hero loop from the click to the end of the sweep
+  B.hold = (on) => { B.held = !!on; if (!on) B.startLoop(); };
 
   window.pacingReport = () => B.pacer.report();
   window.shipReport = () => B.ship ? Voidship.stats(B.ship) : null;

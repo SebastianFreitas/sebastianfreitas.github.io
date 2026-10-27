@@ -108,6 +108,11 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker,
 .folder-body.is-closing .folder-bar, .folder-body.is-closing .folder-scan, .folder-body.is-closing .folder-kicker { will-change: transform, opacity; }
 
+/* the open sweep (caseAnim) promotes exactly what it animates, and only while is-sweeping is on: rows and footer ride translateY, the body wipes with clip-path, its content fades */
+.is-sweeping:not(.folder-body) { will-change: transform; }
+.folder-body.is-sweeping, .folder-body.is-closing { will-change: clip-path; }
+.folder-body > .is-sweeping { will-change: opacity, clip-path; }
+
 /* a long button close hides its scroll jump behind this: js fades it in, jumps, fades it out over the close wipe */
 .folder-veil { position: fixed; inset: 0; z-index: 90; background: var(--petrol); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {

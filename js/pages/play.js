@@ -234,8 +234,9 @@
       }
     }
 
-    let fL = 0, fT = 0, fW = 0, fH = 0, panelB = -1;
+    let fL = 0, fT = 0, fW = 0, fH = 0, panelB = -1, frames = 0;
     function frame(dt) {
+      frames++;
       dt = Math.max(0, dt);
       V.dt = dt; V.t += dt;
       V.sy = syCache;
@@ -275,7 +276,7 @@
     let pacer;
     if (window.Pacer) pacer = Pacer.create({ paint: frame, atRest: () => !!spec.atRest(V), alive: () => on && !document.hidden, scrollWake: !!spec.doc });
 
-    const handle = { V, canvas, pacer, measure, tiles: tiles ? tiles.el : null,
+    const handle = { V, canvas, pacer, measure, tiles: tiles ? tiles.el : null, painted: () => frames >= 2 || reduced,
       stop() { on = false; canvas.hidden = true; if (tiles) tiles.el.hidden = true; } };
     const toy = toys[name];
     // later opens: show again and remeasure
@@ -439,5 +440,8 @@
     if (window.XP && !XP.has(id)) XP.award(id, 1, label, x, y);
   }
 
-  window.Play = { register, start: register, open, close, mount, handle, get current() { return current; }, sprite, blit, glow, award, MIN_W };
+  // true once the toy `name` has painted two frames (or has no built toy to wait for)
+  function painted(name) { const h = handle(name); return !h || h.painted(); }
+
+  window.Play = { register, start: register, open, close, mount, handle, painted, get current() { return current; }, sprite, blit, glow, award, MIN_W };
 })();

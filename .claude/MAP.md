@@ -100,9 +100,11 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
-| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP; every open wipes an empty window first, defers the resize dispatch and toy start until the wipe ends, then fades the case content in (300 ms, once the first images have decoded or 1.2 s); no loading line | `window.Folders {open, close, current, KEYS}` |
+| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; first open awards XP | `window.Folders {open, close, current, KEYS}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
+- `folders.js`: every open wipes an empty window first, defers the resize dispatch and toy start until the wipe ends, then fades the case content in (300 ms, once the first images have decoded or 2.5 s; warm opens skip the wait).
+- `folders.js`: holds the hero loop (`B.hold`) and scroll anchoring from the click; measures each case at idle (cache keyed on window width and height) so the first click does no full layout.
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue), cross-tab sync, `?reset=1`
 - `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` per level, `xp:rankup` once per rank crossed
 
@@ -139,7 +141,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
-| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce` |
+| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer; folders.js holds it through an open) |
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
@@ -390,7 +392,7 @@ only ever read `V` from `Play` and never reach into the bridge.
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `play.js` | Shared play layer, now a registry: canvas, view `V`, tiles, sprites, XP award | `window.Play {register (start alias), open, close, mount, handle, current, sprite, blit, glow, award, MIN_W}` |
+| `play.js` | Shared play layer, now a registry: canvas, view `V`, tiles, sprites, XP award | `window.Play {register (start alias), open, close, mount, handle, current, painted(toy), sprite, blit, glow, award, MIN_W}` |
 | `heavylight.js` | The case-page toy; registers `heavylight` instead of starting | `window.PlayHeavyLight {play, on, report}` |
 | `conclusus.js` | Document-space case-page toy; registers `conclusus` | `window.PlayConclusus {report}` |
 | `sector-zero.js` | Viewport space; registers `zero` | `window.PlayZero {report, thunder}` |
@@ -467,6 +469,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-folder toy in seconds (loads `/#<name>`) |
 | `tools/scrollperf.py` | Scroll-jank measure |
+| `tools/folderperf.py` | Frame meter for the first open of a game folder (gate, wheel to Work, click; per-phase frame times, longtasks): `py -3 tools/folderperf.py [--folder k] [--slow] [--cpu N (default 6)] [--phone] [--json p]` |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
 | `tools/try_project.py` | Portfolio hooks for the shared `try.py`/`try_commit.py` |
