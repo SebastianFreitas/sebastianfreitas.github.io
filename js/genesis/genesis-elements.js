@@ -561,9 +561,9 @@
     let n = 0;
     for (let i = 0; i < SEA_LT.length; i++) if (SEA_LT[i] <= s) n++;
     SRISE = smooth(Math.pow(clamp(n / (0.6 * SEA_LT.length), 0, 1), 0.75));
-    SBASE = H * (0.785 + (1 - SRISE) * (0.095 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));   // a ~50 px strip from s 2, rising to ~15% of the frame above the letterbox
+    SBASE = H * (0.86 + (1 - SRISE) * (0.095 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));   // a ~50 px strip from s 2, rising to ~15% of the frame above the letterbox
     const wp = camOff / W, nw = WV.length - 1;
-    for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.4 * (0.007 * Math.sin(k * 0.8 + t * 0.3 + wp * 2) + 0.004 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7) + 0.008 * WV[k]);
+    for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.0015 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7);   // between the feet: flat, only a ripple
     seaSurf(W, H, camOff, t, nw);
   }
 
@@ -582,25 +582,14 @@
     for (let b = Math.floor((G.cam - 0.5) / U) - 1, e = Math.ceil((G.cam + 0.5) / U) + 1; b <= e && PIN < 8; b++) {
       const xb = G.sx(b * U);
       if (xb < -W * 0.1 || xb > W * 1.1) continue;
-      PIX[PIN] = xb; PIH[PIN] = SRISE * H * (0.022 + 0.011 * hash1(b * 131 + 97)); PID[PIN] = b % 2 ? 1 : -1; PIN++;
+      PIB[PIN] = b; PIX[PIN] = xb; PIH[PIN] = SRISE * H * (0.06 + 0.02 * hash1(b * 131 + 97)); PID[PIN] = b % 2 ? 1 : -1; PIN++;
     }
-    const R = W * 0.12;
+    const R = W * 0.08;
     for (let k = 0; k <= NS; k++) {
-      const x = k / NS * W, sf = (x + camOff) / segW, si = Math.floor(sf), u = sf - si, j = si - i0;
-      const A = SGA[j], env = Math.sin(Math.PI * u), d = SGD[j];
-      let lift = 0;
-      switch (SGT[j]) {
-        case 0: { const w = d > 0 ? u : 1 - u; lift = A * Math.pow(w, 1.6) * (1 - w) / 0.177; break; }
-        case 1: lift = A * env * env; break;
-        case 2: lift = A * 0.6 * Math.abs((u * SGK[j] + SGP[j]) % 1 - 0.5) * 2 * env; break;
-        case 3: lift = A * 0.4 * env * (0.6 + 0.4 * Math.sin(u * TAU + SGP[j])); break;
-        case 4: lift = A * 0.5 * env * env; break;
-        default: lift = A * 0.25 * env;
-      }
-      lift += 0.0035 * env * Math.sin(t * 0.5 + sf * 5 + SGP[j]);
-      lift *= SRISE * 0.15;   // a gentle swell of a few px; the piers carry the height
+      const x = k / NS * W;
+      // flat between the piers and a little lower; only the heaps under the bridge feet rise
       const uu = k / NS * nw, kk = Math.min(nw - 1, Math.floor(uu));
-      let y = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) - H * lift;
+      let y = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) + H * 0.014 * SRISE;
       for (let p = 0; p < PIN; p++) {
         const dx = Math.abs(x - PIX[p]) / R;
         if (dx < 1) y -= PIH[p] * 0.5 * (1 + Math.cos(Math.PI * dx));   // a smooth rounded bulge
@@ -678,6 +667,20 @@
       }
     }
     ctx.globalAlpha = 1;
+    // fallen junk piled on each heap: seeded by the foot, a flat shard each, lit left / shade right
+    const hk = clamp(H * 0.75 / 900, 0.45, 1.1), R = W * 0.08;
+    for (let p = 0; p < PIN; p++) {
+      if (PIH[p] < 6) continue;
+      for (let q = 0; q < 26; q++) {
+        const sd = PIB[p] * 977 + q * 31, u = (hash1(sd + 1) - 0.5) * 1.7, x = PIX[p] + u * R;
+        const hs = (10 + 16 * hash1(sd + 2)) * hk * (1.15 - Math.abs(u) * 0.4), w = hs * (0.25 + 0.3 * hash1(sd + 3)), fam = FAM[Math.floor(hash1(sd + 4) * FAM.length)];
+        const y = shAt(clamp(x, 0, W), W) + hs * 0.25 * hash1(sd + 5), lean = (hash1(sd + 6) - 0.5) * w * 1.4;
+        ctx.fillStyle = fam[0];
+        ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x + lean, y - hs); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = fam[1];
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + lean, y - hs); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
+      }
+    }
     drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, true);
     drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, false);
     drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, true);
@@ -737,7 +740,7 @@
   const CURL = new Float32Array(CUR_N * CUR_P * 2);
   const CLN_MAX = 48, CLX = new Float32Array(CLN_MAX), CLY = new Float32Array(CLN_MAX), CLW = new Float32Array(CLN_MAX), CLH = new Float32Array(CLN_MAX), CLD = new Float32Array(CLN_MAX), CLV = new Uint8Array(CLN_MAX);
   const WAV = new Float32Array([0, 0, 0.35, 0.15, 0.72, 0.6, 0.98, 1, 1.14, 0.82, 0.97, 0.66, 1, 0]);   // one breaking crest: long rise, hook, sharp drop
-  const PIX = new Float32Array(8), PIH = new Float32Array(8), PID = new Float32Array(8);
+  const PIX = new Float32Array(8), PIH = new Float32Array(8), PID = new Float32Array(8), PIB = new Int32Array(8);
   let CLN = 0, PIN = 0;
   (function seedCurls() {
     const T = [-1, 0, -0.62, 0.2, -0.3, 0.55, 0, 0.92, 0.35, 1, 0.72, 0.88, 0.95, 0.6, 0.9, 0.32, 0.68, 0.24, 0.6, 0.4, 0.72, 0.55, 0.58, 0.68, 0.38, 0.56, 0.3, 0];
@@ -922,7 +925,7 @@
     o.xl = x0 - 240; o.xr = x1 + 1 - 240; o.bh = 300 - y0;
   }
   // the drawn scale of an object: H / 900, but its drawn height is held to 50-150 px; small bits stay at 1:1
-  const objK = (o, H) => o.small ? 1 : o.rare ? clamp(H / 900, 0.6, 1.5) : clamp(H / 900, 44 / o.bh, 215 / o.bh);
+  const objK = (o, H) => o.small ? 1 : o.rare ? clamp(H * 0.75 / 900, 0.45, 1.1) : clamp(H * 0.75 / 900, 33 / o.bh, 130 / o.bh);
   // world x of each object: its site along the span plus a scatter (in object heights and px), so clusters overlap
   // and stretches between them stay empty; the wrap period is 3 screens
   let objW = 0, objH = 0, objSpan = 0;
@@ -1122,7 +1125,7 @@
   function drawObjects(ctx, list, s, W, H, camOff, t, post) {
     objLayout(W, H);
     // rare pieces: screen x and clear radius, so ordinary debris keeps off them (RARE_SPAN screens round)
-    const rsp = objSpan * RARE_SPAN / OBJ_SPAN, rk = clamp(H / 900, 0.6, 1.5);
+    const rsp = objSpan * RARE_SPAN / OBJ_SPAN, rk = clamp(H * 0.75 / 900, 0.45, 1.1);
     for (let j = 0; j < OBJ_RARE.length; j++) {
       const ro = OBJ_RARE[j];
       let rx = ((ro.x - camOff) % rsp + rsp) % rsp;
@@ -1149,10 +1152,10 @@
         // clipped at the waterline: the part under it is not drawn
         ctx.save();
         ctx.beginPath();
-        if (o.rare) ctx.rect(sx - o.hw * k, 0, o.hw * 2 * k, yl);   // a wide box: only the waterline cuts
+        if (o.rare) ctx.rect(sx - o.hw * k, 0, o.hw * 2 * k, Math.min(yl, H * 0.935 - 8));   // a wide box: only the waterline cuts
         else ctx.rect(sx + o.xl * k - 6, 0, (o.xr - o.xl) * k + 12, yl);
         ctx.clip();
-        ctx.translate(sx, yl + sink);
+        ctx.translate(sx, o.rare ? Math.min(yl + sink, H * 0.935 - 80 * k) : yl + sink);   // rare pieces stay above the letterbox
         ctx.rotate(o.tilt);
         ctx.scale(k, k);
         ctx.fillStyle = o.c;
