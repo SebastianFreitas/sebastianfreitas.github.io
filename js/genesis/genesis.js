@@ -593,7 +593,7 @@ window.Genesis = (function () {
       // the far-realm blobs read as one flat ellipse behind the walkers: dim them through walk and root, back to full once the womb beat begins
       const farDim = 1 - 0.75 * uWalk * (1 - since("enter"));
       const amt = clamp((uBreak * 0.4 + uWalk * 0.55) * (1 - uLand * 0.7) * farDim, 0, 1);
-      drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
+      if (G.sceneOf(G.beat) !== "birth") drawChaos(ctx, lurched && G.local < 2.5 ? Math.min(1, amt + 0.14) : amt);
       const streak = uWalk * (1 - uRoot) * 52
         + uFlee * (1 - since("war")) * 70
         + since("eternity") * 84;
@@ -630,6 +630,7 @@ window.Genesis = (function () {
       GenVoid.drawSpan(ctx, uDrawn);
       GenVoid.drawSpanLife(ctx, uDrawn);
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
+      GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
       GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
       const tTrade = G.secs("trade");
       const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace

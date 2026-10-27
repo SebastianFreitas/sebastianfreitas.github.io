@@ -314,7 +314,7 @@
     if (typeof G.secs !== "function") return;
     const W = G.W, H = G.H;
     if (!W || !H) return;
-    const s = G.secs("break") - 2.1;
+    const s = eclock();
     if (s < 0) return;
     surfFrame(s, W, H);   // the sea plan reads the surface; drawSea may run after
 
@@ -411,7 +411,17 @@
   // what a landed sea-bound particle leaves: a faint ripple and a dark blob that sinks and fades into the water within a second
   function drawLanded(ctx, pt, s, W, H, fade) {
     const k = s - PLAN.tl, lx = PLAN.lx;
-    if (lx < -0.1 * W || lx > W * 1.1 || k > 0.6 || G.reduced) return;
+    if (lx < -0.1 * W || lx > W * 1.1 || G.reduced) return;
+    if (k > 0.6) {   // it merges: a low swell of the sea's own tone stays on the surface where it landed
+      const zz = (0.004 + pt.size * 0.0025) * H, sw = zz * 6, sy = shAt(clamp(lx, 0, W), W);
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.fillStyle = pt.dc;
+      ctx.beginPath();
+      ctx.ellipse(lx, sy + 1, sw, zz * (0.5 + 0.25 * Math.sin(s * 1.3 + pt.jit * 40)), 0, Math.PI, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
     // a splash where it enters the water: a few short upward flecks and an expanding flat ring, about 0.6 s
     const z = (0.004 + pt.size * 0.0025) * H, q = k / 0.6, yl = shAt(clamp(lx, 0, W), W) + 1;
     ctx.globalAlpha = 0.6 * (1 - q) * fade;
@@ -430,7 +440,7 @@
   }
 
   // a sea-bound particle in the elements draw: flight and fall in its family look; before the liquid is
-  // drawn (s < 10.2) its landed heap is drawn here too, so the sea rises out of them
+  // drawn (before the sea is drawn) its landed heap is drawn here too, so the sea rises out of them
   function drawSeaPart(ctx, pt, s, originX, W, H, sl, gate, band) {
     const a = s - pt.birth;
     if (a < 0) return;
@@ -478,6 +488,7 @@
 
   // frozen-then-snapping fate of a split particle: sink, settle or rise, in held steps
   function drawSplit(ctx, pt, s, originX, W, H) {
+    if (pt.kind === "light") return;
     const P0 = posAt(pt, pt.splitT, originX, W, H);
     const x0 = P0.x, y0 = P0.y, angle0 = P0.angle, rg0 = P0.rg, a0 = P0.a, q0 = P0.q;
     if (x0 < -40 || x0 > W + 40 || y0 < -40 || y0 > H + 40) return;
@@ -490,22 +501,15 @@
     let sizeMul0 = pt.size * (1 + 0.6 * rg0);
     if (pt.settle && q0 >= 0.8) sizeMul0 *= (1 - (q0 - 0.8) / 0.2);
 
-    let fate = pt.fate;
-    if (fate === 1) {
-      const ux = G.cam + (x0 - W / 2) / W;
-      if (ux < G.SPAN_START_U + 0.02 || ux > G.ROOT_U + 0.2) fate = 0;
-    }
+    const fate = pt.fate === 1 ? (hash1(pt.i * 7 + 19) < 0.5 ? 0 : 2) : pt.fate;   // nothing stays on the deck: down into the sea or up into the sky
 
     let tx, ty;
-    if (fate === 1) {
-      tx = x0;
-      ty = G.DECK * H - 0.012 * H - 1 - pt.gy * 1.5;
-    } else if (fate === 0) {
+    if (fate === 0) {
       tx = x0;
       ty = H * (1 - SEA_H * (0.2 + 0.7 * pt.gy));
     } else {
       tx = x0 + (hash1(pt.i * 7 + 17) - 0.5) * 0.04 * W;
-      ty = H * (0.12 + 0.03 * pt.gy);   // rises and fades inside the frame
+      ty = H * (0.06 + 0.26 * pt.gy);   // ends inside the sky art, which fills the frame above the horizon
     }
 
     const u = s - pt.splitT;
@@ -513,12 +517,13 @@
     const k = G.reduced ? n : (u < pt.hold ? 0 : Math.min(n, Math.floor((u - pt.hold) / pt.stepDur) + 1));
 
     const f = k / n;
-    const x = mix(x0, tx, f);
-    const y = mix(y0, ty, f);
+    const fe = fate === 2 ? 1 - (1 - f) * (1 - f) : f;   // risers slow as they reach the sky
+    const x = mix(x0, tx, fe);
+    const y = mix(y0, ty, fe);
 
     if (k < n) {
       let alpha = alpha0, sizeMul = sizeMul0;
-      if (fate === 2) alpha *= (1 - f);
+      if (fate === 2) alpha *= 1 - smooth(clamp((f - 0.45) / 0.55, 0, 1));   // melts into the sky's glow only at the top
       else sizeMul *= mix(1, 0.5, f);
 
       switch (pt.kind) {
@@ -607,9 +612,11 @@
     if (typeof G.secs !== "function") return;
     const W = G.W, H = G.H;
     if (!W || !H) return;
-    const s = G.secs("break") - 2.1;
+    const s = eclock();
     if (s < 2) return;
     surfFrame(s, W, H);
+    const outer = ctx, dim = dimK();
+    if (dim < 1) ctx = layerBegin(outer);   // from matter on the sea stays, dimmed: drawn on its own layer, darkened, then laid down
 
     const camOff = G.cam * W;
     const t = G.reduced ? 0 : G.t;
@@ -728,7 +735,7 @@
       seaPlan(pt, s, ox, W, H, camOff, spW);
       if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
     }
-    if (s >= 10.2) drawAirDrift(ctx, W, H);   // the air rides with the bed, over the land
+    if (dim < 1) { layerEnd(outer, ctx, dim); ctx = outer; }
   }
 
   // dark tar slicks on the surface: lobes drift apart and together; all rims first, then all tar, so overlaps read as one blob
@@ -1300,9 +1307,49 @@
       ctx.fillRect(Math.round(sx - dw), Math.round(yl), Math.round(dw * 2), 2);
     }
   }
-  const AIR = [];
+  // the air: three stars, fixed apart in the upper frame (fractions of the screen), clear of the centre and the sea
+  const AIR = [{ u: 0.2, y: 0.16, par: 0.12, hue: 2, sz: 3 }, { u: 0.78, y: 0.27, par: 0.2, hue: 5, sz: 4 }, { u: 0.6, y: 0.1, par: 0.16, hue: 0, sz: 3 }];
+  const BURST_T = 0, BURST_D = 5;   // the flash, and how long the air takes to reach its resting places
+  // the sea and sky flow once ran about 26 s of its own clock; it now plays from the flash (secs("break") 0.4) to the end of elements
+  const TS = 2.6;
+  function eclock() { return (G.secs("break") - 0.4) * TS; }
+  // in the birth scene, from matter on, the sea and sky stay as the background, dimmed to half so the old ones read clearly
+  function dimK() {
+    if (G.sceneOf(G.beat) !== "birth") return 1;
+    const im = G.idxOf("matter");
+    const it = G.idxOf("trade");
+    if (G.beat > it) return 0.3;   // down to 0.3 by the start of the old ones' walk
+    if (G.beat === it) return 0.5 - 0.2 * smooth(clamp(G.linear("trade"), 0, 1));
+    return G.beat === im ? 1 - 0.5 * smooth(clamp(G.linear("matter") / 0.5, 0, 1)) : 1;
+  }
+  let LAY = null;
+  function layerBegin(outer) {
+    const cv = outer.canvas;
+    if (!LAY) LAY = document.createElement("canvas");
+    if (LAY.width !== cv.width || LAY.height !== cv.height) { LAY.width = cv.width; LAY.height = cv.height; }
+    const c = LAY.getContext("2d");
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, LAY.width, LAY.height);
+    c.setTransform(outer.getTransform());
+    return c;
+  }
+  function layerEnd(outer, c, dim) {
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = "source-atop";
+    c.globalAlpha = 1 - dim;
+    c.fillStyle = "rgb(13,17,20)";
+    c.fillRect(0, 0, LAY.width, LAY.height);
+    c.restore();
+    outer.save();
+    outer.setTransform(1, 0, 0, 1, 0, 0);
+    outer.globalAlpha = 1;
+    outer.drawImage(LAY, 0, 0);
+    outer.restore();
+  }
+  function burstE(s) { if (G.reduced) return 1; const u = clamp((s - BURST_T) / BURST_D, 0, 1); return 1 - (1 - u) * (1 - u) * (1 - u); }
   (function seedBed() {
-    const r = mulberry(7717), ra = mulberry(9301), rd = mulberry(8807);
+    const r = mulberry(7717), rd = mulberry(8807);
     // every kind recurs only after 1.5 screen widths (the wrap seam counted), the rare ones (loops, arches,
     // hourglasses, stairs) only after 2.5: each kind gets 3 (or 2) evenly spread copies, a seeded phase apart
     const LAYK = [0.72, 0.84, 0.94], LAYS = [0.6, 0.85, 1.15], rf = mulberry(3301), plan = [];
@@ -1410,42 +1457,38 @@
     for (let i = 0; i < WV.length; i++) WV[i] = rw() - 0.5;
     for (let i = 0; i < STREAK.length; i++) STREAK[i] = { u: rw(), y: 0.012 + rw() * 0.07, w: 0.02 + rw() * 0.05, sp: 2 + rw() * 4, a: 0.25 + rw() * 0.2, br: rw() < 0.4 };
     for (let i = 0; i < RIP.length; i++) RIP[i] = { u: rw(), d: rw(), y: rw() * 0.01, per: 3 + rw() * 4 };
-    for (let i = 0; i < 900 * 5; i++) ra();   // the air keeps the draws it had when the bed dots shared this stream
-    for (let i = 0; i < 320; i++) {
-      AIR.push({ i, u: ra(), y: 0.04 + ra() * 0.9, par: 0.1 + ra() * 0.15, hue: Math.floor(ra() * 8), arr: 10.2 + ra() * 4.5, sz: ra() < 0.5 ? 4 : 3 });
-    }
   })();
 
-  // the air: the risers, a thin sparse drift in the upper frame, stepping very slowly
-  function drawAirDrift(ctx, W, H) {
-    const s = G.secs("break") - 2.1;
-    if (s < 10.2) return;
-    const span = 1.6 * W;
+  // the air: the three stars ride the burst out of the explosion's point, then hang and drift very slowly
+  function drawAirDrift(ctx) {
+    if (typeof G.secs !== "function" || G.sceneOf(G.beat) !== "birth") return;
+    const W = G.W, H = G.H;
+    if (!W || !H) return;
+    const s = eclock();
+    if (s < BURST_T) return;
+    const e = burstE(s), ox = G.sx(0), oy = 0.46 * H;
     const camOff = G.cam * W;
-    const stepX = G.reduced ? 0 : Math.floor(G.t / 4) * 3;
-    ctx.globalAlpha = 0.5;   // a dark edge first, so the specks read over blue-grey
-    ctx.fillStyle = "rgb(6,8,12)";
+    const dr = G.reduced ? 0 : G.t;
+    const dim = dimK();
     for (let n = 0; n < AIR.length; n++) {
       const a = AIR[n];
-      if (s < a.arr) continue;
-      const x = Math.round(((a.u * span - camOff * a.par - stepX * (0.5 + a.par)) % span + span) % span - span * 0.1);
+      const rx = a.u * W - camOff * a.par + 3 * Math.sin(dr * 0.11 + n * 2);
+      const ry = a.y * H + 2 * Math.sin(dr * 0.09 + n * 3);
+      const x = Math.round(ox + (rx - ox) * e), y = Math.round(oy + (ry - oy) * e);
       if (x < -2 || x > W + 2) continue;
-      if (a.y * H > shAt(clamp(x, 0, W), W) - 2) continue;   // the sky's specks stop at the surface
-      ctx.fillRect(x - 1, Math.round(a.y * H) - 1, a.sz + 2, a.sz + 2);
-    }
-    ctx.globalAlpha = 0.95;
-    for (let h = 0; h < 8; h++) {
-      ctx.fillStyle = AIR_LIGHT[h];
-      for (let n = 0; n < AIR.length; n++) {
-        const a = AIR[n];
-        if (a.hue !== h || s < a.arr) continue;
-        const x = Math.round(((a.u * span - camOff * a.par - stepX * (0.5 + a.par)) % span + span) % span - span * 0.1);
-        if (x < -2 || x > W + 2) continue;
-        if (a.y * H > shAt(clamp(x, 0, W), W) - 2) continue;
-        ctx.fillRect(x, Math.round(a.y * H), a.sz, a.sz);
-      }
+      ctx.globalAlpha = 0.5 * dim;
+      ctx.fillStyle = "rgb(6,8,12)";
+      ctx.fillRect(x - 1, y - 1, a.sz + 2, a.sz + 2);
+      ctx.globalAlpha = 0.3 * dim;
+      ctx.fillStyle = AIR_LIGHT[a.hue];
+      ctx.fillRect(x - 2, y - 2, a.sz + 4, a.sz + 4);
+      ctx.globalAlpha = dim;
+      ctx.fillRect(x, y, a.sz, a.sz);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x + 1, y + 1, Math.max(1, a.sz - 2), Math.max(1, a.sz - 2));
     }
     ctx.globalAlpha = 1;
+    window.GenesisSky && GenesisSky.draw(ctx, s, ox, oy, W, H, dim);   // hook for the next specs: the air's own art, over the stars; dim is the last arg
   }
 
   // permanent residue: what the first wave left in the void background
@@ -1475,10 +1518,11 @@
     if (typeof G.secs !== "function") return;
     const W = G.W, H = G.H;
     if (!W || !H) return;
-    const grow = smooth(clamp((G.secs("break") - 3.5) / 16, 0, 1));
+    const bs = eclock();
     const keep = 1 - G.since("land") * 0.6;
-    const k = grow * keep;
+    const k = smooth(clamp((bs - BURST_T) / 0.3, 0, 1)) * keep * dimK();
     if (k < 0.02) return;
+    const e = burstE(bs), bx = G.sx(0), by = 0.46 * H;   // every piece flies out of the explosion's point to its place
 
     const span = 3.2 * W;
     const camOff = G.cam * W;
@@ -1488,31 +1532,31 @@
       const x = ((it.u * span - camOff * it.par - G.t * it.drift) % span + span) % span - span * 0.1;
       if (x < -200 || x > W + 200) continue;
       ctx.globalAlpha = 0.35 * k * (0.6 + 0.4 * Math.sin(G.t * 0.9 + it.ph));
-      ctx.beginPath(); ctx.arc(x, it.y * H, it.r, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx + (x - bx) * e, by + (it.y * H - by) * e, it.r, 0, TAU); ctx.fill();
     }
 
     ctx.strokeStyle = "#cfd6d3"; ctx.lineWidth = 1; ctx.globalAlpha = 0.07 * k;
     for (const it of RES.wind) {
       const x = ((it.u * span - camOff * it.par - G.t * it.drift) % span + span) % span - span * 0.1;
       if (x < -200 || x > W + 200) continue;
-      const y = it.y * H;
+      const y = by + (it.y * H - by) * e, xb = bx + (x - bx) * e, ln = it.len * e;
       const cy = y + 12 * Math.sin(G.t * 0.35 + it.ph);
-      ctx.beginPath(); ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + it.len * 0.5, cy, x + it.len, y);
+      ctx.beginPath(); ctx.moveTo(xb, y);
+      ctx.quadraticCurveTo(xb + ln * 0.5, cy, xb + ln, y);
       ctx.stroke();
     }
 
     // the flat colour stains and the sound rings read as stray ellipses in the first segment: they are gone by the end of trade, stay out through walk and root, and are back at full after enter (covered, so the step is unseen)
     const quiet = G.beat > G.idxOf("enter") ? 1 : 1 - clamp((G.linear("trade") - 0.5) * 2, 0, 1);
-    for (const it of (quiet < 0.01 ? [] : RES.stains)) {
+    for (const it of (quiet < 0.01 || G.sceneOf(G.beat) === "birth" ? [] : RES.stains)) {
       const x = ((it.u * span - camOff * it.par - G.t * it.drift) % span + span) % span - span * 0.1;
       if (x < -200 || x > W + 200) continue;
       const swap = Math.floor((G.t + it.ph * 3) / (5 + it.ph)) % 2;
       ctx.fillStyle = HUE_FILL[swap === 0 ? it.hueA : it.hueB];
       ctx.globalAlpha = 0.07 * k * quiet;
       ctx.save();
-      ctx.translate(x, it.y * H);
-      ctx.beginPath(); ctx.ellipse(0, 0, it.rx, it.ry, 0, 0, TAU); ctx.fill();
+      ctx.translate(bx + (x - bx) * e, by + (it.y * H - by) * e);
+      ctx.beginPath(); ctx.ellipse(0, 0, it.rx * e, it.ry * e, 0, 0, TAU); ctx.fill();
       ctx.restore();
     }
 
@@ -1522,7 +1566,8 @@
       if (x < -200 || x > W + 200) continue;
       if (Math.sin(G.t * (1.2 + it.freqR) * 2 + it.ph) <= 0.2) continue;
       ctx.globalAlpha = 0.8 * k;
-      ctx.fillRect(x - it.size * 0.5, it.y * H - it.size * 0.5, it.size, it.size);
+      const lx = bx + (x - bx) * e, ly = by + (it.y * H - by) * e;
+      ctx.fillRect(lx - it.size * 0.5, ly - it.size * 0.5, it.size, it.size);
     }
 
     ctx.strokeStyle = "#9fb4c8"; ctx.lineWidth = 1;
@@ -1531,11 +1576,11 @@
       if (x < -200 || x > W + 200) continue;
       const frac = ((G.t + it.ph * 4) % 5) / 5;
       ctx.globalAlpha = 0.10 * k * quiet * (1 - frac);
-      ctx.beginPath(); ctx.arc(x, it.y * H, frac * 110, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx + (x - bx) * e, by + (it.y * H - by) * e, frac * 110, 0, TAU); ctx.stroke();
     }
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
-  window.GenElem = { draw, drawResidue, drawSea, rage };
+  window.GenElem = { draw, drawResidue, drawSea, drawAirDrift, rage };
 })();

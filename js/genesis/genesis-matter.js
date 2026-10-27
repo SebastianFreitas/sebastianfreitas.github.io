@@ -600,7 +600,9 @@
   function draw(ctx) {
     if (typeof G.secs !== "function") return;
     if (G.W === 0) return;
-    const s = G.secs("matter") + 0.8;
+    // the 2.5 s beat plays the old 8 s timeline (x3.2), so the mass is whole by its end; trade runs on at 1:1
+    const ms = G.secs("matter");
+    const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
     if (s < 0 || s > 20.6) return;
 
     drawStormsLayer(ctx, s, false); // air, rain: behind

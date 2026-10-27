@@ -176,11 +176,12 @@ window.GenTier3 = (function () {
 
   const cache = { key: null, paths: null, clip: null };
 
-  // the liquid first draws at secs("break") >= 4.1 (drawSea: secs - 2.1 >= 2); the sky fades in over 1.5 s from there
+  // tier 3 is held back until well after the flash (secs("break") 4.1) because the owner disliked it there; it fades in over 1.5 s from there
   function seaFade() { return clamp((G.secs("break") - 4.1) / 1.5, 0, 1); }
 
   function draw(ctx, W, H, z, sx, sy) {
     if (W <= 0 || H <= 0) return;
+    if (G.sceneOf(G.beat) === "birth") return;   // owner's call: no tier-3 old one in birth
     // owner's call: hidden in the opening beats, faded in over 1.5 s from the moment the sea arrives
     const seaIn = seaFade();
     if (seaIn <= 0) return;
