@@ -410,11 +410,10 @@
     // a splash where it enters the water: a few short upward flecks and an expanding flat ring, about 0.6 s
     const z = (0.004 + pt.size * 0.0025) * H, q = k / 0.6, yl = shAt(clamp(lx, 0, W), W) + 1;
     ctx.globalAlpha = 0.6 * (1 - q) * fade;
-    ctx.strokeStyle = "rgb(96,104,100)";
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "rgb(62,68,66)";
     ctx.beginPath();
     ctx.ellipse(lx, yl, z * (1.5 + 5 * q), z * (0.3 + 0.9 * q), 0, 0, TAU);
-    ctx.stroke();
+    ctx.fill();
     ctx.fillStyle = "rgb(120,128,124)";
     const rise = z * 5 * Math.sin(Math.PI * Math.min(1, q * 1.3));
     for (let f = 0; f < 4; f++) {
@@ -648,15 +647,6 @@
     ctx.strokeStyle = "rgb(62,68,66)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.strokeStyle = "rgb(50,56,54)";
-    ctx.lineWidth = 1.5;
-    for (let p = 0; p < PIN; p++) {   // curved ripple dashes on each swell's flanks
-      if (PIH[p] < 6) continue;
-      for (let f = 0; f < 4; f++) {
-        const x = PIX[p] + (f < 2 ? -1 : 1) * W * (0.025 + 0.035 * (f & 1)), y = shAt(clamp(x, 0, W), W) + 6 + 5 * (f & 1);
-        ctx.beginPath(); ctx.arc(x, y + 10, 10, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
-      }
-    }
     // a soft lighter band just under the surface line
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { if (k) ctx.lineTo(k / NS * W, SH[k] + H * 0.012); else ctx.moveTo(0, SH[0] + H * 0.012); }
@@ -674,12 +664,6 @@
         ctx.beginPath();
         for (let k = k0; k <= k1; k++) { if (k > k0) ctx.lineTo(k / NS * W, SH[k] + off); else ctx.moveTo(k / NS * W, SH[k] + off); }
         ctx.stroke();
-      }
-      // a broken reflection under the pier: stacked dashes, darker than the water
-      ctx.fillStyle = "rgb(26,30,30)";
-      for (let j = 0; j < 4; j++) {
-        const w = W * 0.05 * (1 - j * 0.18), wob = G.reduced ? 0 : Math.sin(t * 1.1 + j * 1.7 + p) * 4;
-        ctx.fillRect(Math.round(PIX[p] - w / 2 + wob), Math.round(shAt(clamp(PIX[p], 0, W), W) + H * (0.03 + 0.03 * j)), Math.round(w), 3);
       }
     }
     // long thin sheen streaks drifting sideways, shorter with depth
@@ -773,64 +757,150 @@
   // the strange objects rising out of the water: 7 per screen width, spaced apart; each a seeded Path2D in local
   // units (base at 0,0, 62-120 high, y up is negative), built once, then moved, tilted and scaled per frame
   // washed-out bridge values (lit, shade): the bridge's greys pushed toward the murky water, a little lighter
-  const FAM = [["#7e8886", "#565e5c"], ["#85877b", "#5b5d53"], ["#7a858c", "#525b61"]];
-  const OBJ_N = 21, OBJ_SPAN = 3, OBJ = [], OBJ_BACK = [], OBJ_FRONT = [];
+  // each object takes its own pair, all pale and washed out: blue-greys light and dark, ash, bone, sand, rust, olive, mauve
+  const FAM = [["#7e8886", "#565e5c"], ["#a9b4b8", "#737e83"], ["#5f6c72", "#3f4a4f"], ["#a39d88", "#6e6a5a"], ["#8f7466", "#5e4a42"], ["#9aa0a0", "#646a6a"],
+    ["#b3a88f", "#7a705d"], ["#6f8a90", "#485c62"], ["#80866a", "#565a45"], ["#8a8090", "#5c5463"], ["#b8bfc0", "#818a8c"], ["#7a6a60", "#4d423c"]];
+  const OBJ_N = 33, OBJ_SM = 170, OBJ_SPAN = 3, OBJ = [], OBJ_ALL = [], OBJ_BACK = [], OBJ_FRONT = [];
+  // rare slots: all 11 kinds, one each, over RARE_SPAN screens (twice the common wrap, so 1-3 show per screen); the kind
+  // order is a seeded shuffle of the creatures (0-4) and mundane kinds (5-11) in the pattern below
+  const RARE_N = 11, RARE_SPAN = 6, RARE_PAT = "mcmcmcmcmcm", OBJ_RARE = [];
+  const RFAM = [1, 3, 6, 10, 5, 9, 4];   // the lighter pairs, so the rare pieces stand off the dark water
+  const RCX = new Float32Array(RARE_N), RCR2 = new Float32Array(RARE_N);
   let boxCv = null;
   (function seedObjects() {
     const r = mulberry(5521);
+    // sites along the span with uneven gaps; the first few are clusters of 2-5, the rest loners
+    const NSITE = 10, sites = [], sizes = [4, 3, 5, 3, 2, 1, 1, 1, 1];
+    let tot = 0;
+    for (let i = 0; i < NSITE; i++) { sites.push(0.15 + Math.pow(r(), 2.2) * 2.4); tot += sites[i]; }
+    for (let i = 0, c = r(); i < NSITE; i++) { c += sites[i] / tot; sites[i] = c % 1; }
+    sizes.push(1);
+    for (let i = sizes.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)), x = sizes[i]; sizes[i] = sizes[j]; sizes[j] = x; }
+    const slots = [];   // [site u, offset in object heights] per big object
+    for (let i = 0; i < NSITE; i++) for (let k = 0; k < sizes[i]; k++) slots.push([sites[i], sizes[i] === 1 ? (r() - 0.5) * 0.6 : (k - (sizes[i] - 1) / 2) * (0.5 + r() * 0.5) + (r() - 0.5) * 0.4]);
+    while (slots.length < OBJ_N) {   // the rest spread evenly along the span so no stretch stays bare
+      if (slots.length % 2) slots.push([r(), 0]);
+      else { const s0 = sites[Math.floor(r() * NSITE)]; slots.push([s0, (r() - 0.5) * 3]); }
+    }
+    // kinds by position along the span: sticks and blocks alternate, each cycling through its own shuffled list, so no
+    // two neighbours share a kind and every screen holds several block kinds
+    const order = slots.map((sl, i) => i).sort((a, b) => (slots[a][0] + slots[a][1] * 0.01) - (slots[b][0] + slots[b][1] * 0.01)), rank = [];
+    order.forEach((i, k) => { rank[i] = k; });
+    const shuf = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
+    const KST = shuf([0, 1, 2, 3, 4]), KBL = shuf([5, 6, 7, 8, 9, 10, 11, 12, 13]), FSH = shuf(FAM.map((f, k) => k));
     for (let i = 0; i < OBJ_N; i++) {
-      const fam = FAM[i % 3], kind = Math.floor(r() * 5), h = 62 + r() * 58, p = new Path2D();
-      const o = { i, u: (i + 0.5 + (r() - 0.5) * 0.5) / OBJ_N * OBJ_SPAN, front: i % 5 === 2, p, rule: "nonzero", hw: 0.18 * h,
-        tilt: (8 + r() * 32) * (i % 2 ? 1 : -1) * Math.PI / 180, ph: r() * TAU, rs: 6 + r() * 2, c: fam[0], cs: fam[1], split: 0 };
-      // a polygon from flat points, left side up, jagged top, right side down (one winding for every piece)
-      const poly = a => { p.moveTo(a[0], a[1]); for (let k = 2; k < a.length; k += 2) p.lineTo(a[k], a[k + 1]); p.closePath(); };
+      const fam = FAM[FSH[(i * 5) % FAM.length]], h = r() < 0.18 ? 125 + r() * 45 : 50 + r() * 60, p0 = new Path2D(), p = p0;
+      const flat = rank[i] % 3 === 1;   // some lie almost flat, the rest stand
+      const o = { i, u: slots[i][0], dxr: slots[i][1], dpx: 0, dy: r() * 0.014, dep: r() < 0.3 ? 0.35 + r() * 0.1 : r() * 0.25, front: r() < 0.3, p, rule: "nonzero", hw: 0.18 * h,
+        tilt: (flat ? 50 + r() * 30 : 4 + r() * 30) * (i % 2 ? 1 : -1) * Math.PI / 180, ph: r() * TAU, rs: 6 + r() * 2, c: fam[0], cs: fam[1], split: 0 };
+      let xl = 0, xr = 0;
+      const rg = (a, b) => a + r() * (b - a), sg = () => (r() < 0.5 ? -1 : 1);
+      // every piece is a straight-edged polygon (left side up, top left to right, right side down); extents tracked for the hit box
+      const poly = a => { p.moveTo(a[0], a[1]); for (let k = 0; k < a.length; k += 2) { if (k) p.lineTo(a[k], a[k + 1]); if (a[k] < xl) xl = a[k]; if (a[k] > xr) xr = a[k]; } p.closePath(); };
       // a broken edge from xa to xb near height y: n - 1 teeth of random depth
       const jag = (xa, xb, y, n, amp) => { const a = []; for (let k = 1; k < n; k++) a.push(xa + (xb - xa) * k / n + (r() - 0.5) * amp * 0.5, y - r() * amp); return a; };
-      let xl = 0, xr = 0;
-      if (kind === 0) {   // a curved slab chunk with a deck ledge
-        const w0 = h * (0.1 + r() * 0.07), bend = (r() - 0.5) * h * 0.5, L = [], R = [];
-        for (let k = 0; k <= 8; k++) { const t = k / 8, c = bend * t * t, w = w0 * (1 - t * 0.3); L.push(c - w, -h * t); R.push(c + w, -h * t); }
-        const a = L.slice();
-        a.push(...jag(L[16], R[16], -h, 4 + Math.floor(r() * 3), h * 0.1));
-        for (let k = 8; k >= 0; k--) a.push(R[k * 2], R[k * 2 + 1]);
+      // a post: base centre x0, half-width w, height hh, top shifted by lean, top half-width w * wt, jagged top
+      const post = (x0, w, hh, lean, wt, n, amp) => poly([x0 - w, 0, x0 - w * wt + lean, -hh, ...jag(x0 - w * wt + lean, x0 + w * wt + lean, -hh, n, amp), x0 + w * wt + lean, -hh * rg(0.82, 0.97), x0 + w, 0]);
+      // a rectangle turned by rot about its bottom centre, cut from (cx, base y by)
+      const rect = (cx, by, w, ht, rot) => { const c = Math.cos(rot), s = Math.sin(rot), q = [-w, 0, -w, -ht, w, -ht, w, 0], o2 = []; for (let k = 0; k < 8; k += 2) o2.push(cx + q[k] * c - q[k + 1] * s, by + q[k] * s + q[k + 1] * c); return o2; };
+      const kind = rank[i] % 2 === 0 ? KST[(rank[i] >> 1) % 5] : KBL[(rank[i] >> 1) % 9];
+      if (kind === 0) {   // a single broken post
+        post(0, h * rg(0.05, 0.12), h * rg(0.7, 1), h * rg(-0.18, 0.18), rg(0.55, 1), 2 + Math.floor(r() * 6), h * rg(0.04, 0.2));
+      } else if (kind === 1) {   // a double stick: two posts side by side, leaning differently
+        const d = h * rg(0.09, 0.2), w1 = h * rg(0.04, 0.09), w2 = h * rg(0.04, 0.09), sd = sg();
+        post(-d, w1, h * rg(0.6, 0.95), sd * h * rg(0.05, 0.25), rg(0.5, 1), 2 + Math.floor(r() * 4), h * 0.1);
+        post(d, w2, h * rg(0.75, 1), -sd * h * rg(0.02, 0.2), rg(0.5, 1), 2 + Math.floor(r() * 4), h * 0.12);
+      } else if (kind === 2) {   // a crossed pair, an X
+        const s = h * rg(0.1, 0.2), kk = rg(0.8, 1.3), sd = sg();
+        post(-s * sd, h * rg(0.04, 0.08), h * rg(0.75, 1), 2 * s * sd * kk, rg(0.5, 0.9), 3, h * 0.08);
+        post(s * sd, h * rg(0.04, 0.08), h * rg(0.6, 0.95), -2 * s * sd * rg(0.8, 1.3), rg(0.5, 0.9), 3, h * 0.08);
+      } else if (kind === 3) {   // a post with a short cross-bar, a broken T
+        const w = h * rg(0.05, 0.1), hh = h * rg(0.75, 1), by = -hh * rg(0.55, 0.88), bt = h * rg(0.07, 0.14), bl = h * rg(0.15, 0.32), br = h * rg(0.1, 0.3), dl = h * rg(-0.06, 0.06);
+        post(0, w, hh, h * rg(-0.05, 0.05), rg(0.6, 0.9), 3, h * 0.08);
+        poly([-bl, by + dl, -bl - h * 0.04, by - bt * 0.5 + dl, -bl, by - bt + dl, ...jag(-bl, br, by - bt, 3, h * 0.06), br, by - bt - dl, br + h * 0.03, by - bt * 0.4 - dl, br, by - dl]);
+      } else if (kind === 4) {   // a splintered post forking at its top
+        const w = h * rg(0.06, 0.11), fy = h * rg(0.4, 0.62), fl = h * rg(0.08, 0.3), fr = h * rg(0.08, 0.3), hl = fy + h * rg(0.2, 0.42), hr = fy + h * rg(0.12, 0.45), pw = w * rg(0.5, 0.9), gap = h * rg(0.04, 0.12);
+        poly([-w, 0, -w * 0.9, -fy, -fl - pw, -hl, -fl + pw * 0.3, -hl - h * 0.05, -fl * 0.2 + pw * 0.3, -fy - gap, fr * 0.2 - pw * 0.3, -fy - gap * 0.6, fr - pw * 0.3, -hr - h * 0.04, fr + pw, -hr, w * 0.9, -fy, w, 0]);
+      } else if (kind === 5) {   // a tilted square crate, one corner chipped
+        const w = h * rg(0.18, 0.34), ht = w * rg(1.2, 2.1), a = rect(0, 0, w, ht, rg(-0.3, 0.3)), ch = h * rg(0.04, 0.1);
+        poly([a[0], a[1], a[2], a[3], a[4] - ch * 1.5, a[5], a[4], a[5] + ch, a[6], a[7]]);
+      } else if (kind === 6) {   // a stepped block: 2 or 3 stacked rectangles, offset
+        const n = 2 + Math.floor(r() * 2);
+        let y = 0, wd = h * rg(0.2, 0.34), cx = 0;
+        for (let k = 0; k < n; k++) { const bh = h * rg(0.18, 0.34); poly([cx - wd, y, cx - wd, y - bh, cx + wd, y - bh - rg(-0.03, 0.03) * h, cx + wd, y]); y -= bh * 0.9; wd *= rg(0.5, 0.82); cx += sg() * wd * rg(0.2, 0.7); }
+      } else if (kind === 7) {   // an L-shaped beam
+        const t = h * rg(0.08, 0.15), H = h * rg(0.65, 1), W = h * rg(0.25, 0.5), t2 = t * rg(0.8, 1.4), a = h * 0.1;
+        poly([-a, 0, -a, -H, ...jag(-a, -a + t, -H, 3, h * 0.08), -a + t, -H + h * 0.04, -a + t, -t2, W, -t2 - h * 0.03, W, 0]);
+      } else if (kind === 8) {   // a slab with a notch cut out of its top
+        const w = h * rg(0.2, 0.38), ht = h * rg(0.35, 0.6), nx = w * rg(-0.4, 0.4), nw = w * rg(0.2, 0.4), nd = ht * rg(0.35, 0.65);
+        poly([-w, 0, -w, -ht, nx - nw, -ht, nx - nw * 0.6, -ht + nd, nx + nw * 0.8, -ht + nd * 0.8, nx + nw, -ht, w, -ht * rg(0.8, 1), w, 0]);
+      } else if (kind === 9) {   // a broken frame: a square with one side missing
+        const W = h * rg(0.35, 0.6), H = h * rg(0.5, 0.85), t = h * rg(0.07, 0.12), m = sg(), x0 = -W * 0.5;
+        if (r() < 0.5) {
+          const sh = H * rg(0.25, 0.6);
+          poly([x0, 0, x0, -H, x0 + W, -H, x0 + W, -H + t, x0 + t, -H + t, x0 + t, -t, x0 + W * rg(0.5, 0.9), -t - h * 0.02, x0 + W * rg(0.5, 0.9), 0]);
+          if (m > 0) poly([x0 + W, -H + t, x0 + W - t * 0.6, -H + t + sh * 0.5, x0 + W, -H + t + sh]);
+        } else {
+          const sh = H * rg(0.3, 0.6);
+          poly([x0, 0, x0, -H, x0 + t, -H, x0 + t, -t, x0 + W - t, -t, x0 + W - t, -sh, x0 + W, -sh - h * 0.05, x0 + W, 0]);
+        }
+      } else if (kind === 11) {   // a tall pillar, top chipped
+        const w = h * rg(0.08, 0.14), ht = h * rg(0.85, 1.15), ch = w * rg(0.5, 1.2);
+        poly([-w, 0, -w, -ht, w - ch, -ht, w, -ht + ch * 1.4, w, 0]);
+      } else if (kind === 12) {   // a flat slab, wide and low, one end cut slanted
+        const w = h * rg(0.4, 0.65), ht = h * rg(0.1, 0.18);
+        poly([-w, 0, -w, -ht, w * 0.7, -ht * rg(1, 1.3), w, -ht * 0.3, w, 0]);
+      } else if (kind === 13) {   // a plain cube
+        const w = h * rg(0.2, 0.3);
+        poly(rect(0, 0, w, w * 2 * rg(0.9, 1.05), rg(-0.06, 0.06)));
+      } else {   // a wedge
+        const w = h * rg(0.18, 0.36), hl = h * rg(0.5, 1), hr = h * rg(0.04, 0.25), a = [-w, 0, -w, -hl];
+        const n = 2 + Math.floor(r() * 2);
+        for (let k = 1; k < n; k++) { const f = k / n; a.push(-w + 2 * w * f + (r() - 0.5) * h * 0.06, -hl + (hl - hr) * f - r() * h * 0.08); }
+        a.push(w, -hr, w, 0);
         poly(a);
-        const ly = -h * (0.35 + r() * 0.25), lc = bend * 0.25, ll = h * (0.2 + r() * 0.15), lr = h * (0.12 + r() * 0.15);
-        poly([lc - w0 - ll, ly, lc - w0 - ll * 0.8, ly - h * 0.07, ...jag(lc - w0 - ll * 0.8, lc + w0 + lr, ly - h * 0.07, 3, h * 0.03), lc + w0 + lr, ly - h * 0.05, lc + w0 + lr * 0.9, ly + h * 0.03]);
-        xl = Math.min(bend - w0, -w0 - ll); xr = Math.max(bend + w0, w0 + lr);
-      } else if (kind === 1) {   // a snapped pier with its knee
-        const w = h * (0.08 + r() * 0.04), kn = h * (0.3 + r() * 0.15), kf = 1.5 + r() * 0.6, top = -h * (0.7 + r() * 0.3);
-        poly([-w, 0, -w, -kn, -w * kf, -kn - h * 0.05, -w * kf, -kn - h * 0.13, -w * 0.8, -kn - h * 0.2, -w * 0.8, top * 0.8, ...jag(-w * 0.8, w * 0.7, top, 4, h * 0.12),
-          w * 0.7, top * 0.85, w * 0.8, -kn - h * 0.15, w * kf * 0.9, -kn - h * 0.1, w * kf * 0.9, -kn + h * 0.02, w, -kn + h * 0.06, w, 0]);
-        xl = -w * kf; xr = w * kf;
-      } else if (kind === 2) {   // a leaning tower stub, stepped, with a cap block
-        const w = h * (0.12 + r() * 0.05), sk = (r() - 0.5) * h * 0.2, ty = -h * (0.7 + r() * 0.3), sy = ty * (0.45 + r() * 0.1);
-        poly([-w, 0, -w * 0.9 + sk * 0.4, sy, -w * 1.3 + sk * 0.4, sy, -w * 1.3 + sk * 0.4, sy - h * 0.05, -w * 0.7 + sk, ty * 0.9, ...jag(-w * 0.7 + sk, w * 0.6 + sk, ty, 3, h * 0.1),
-          w * 0.6 + sk, ty * 0.92, w * 1.3 + sk * 0.4, sy - h * 0.05, w * 1.3 + sk * 0.4, sy, w * 0.9 + sk * 0.4, sy, w, 0]);
-        const cx = sk + w * 0.1, cw = w * 0.5;
-        poly([cx - cw, ty, cx - cw, ty - h * 0.12, cx + cw * 0.3, ty - h * 0.17, cx + cw, ty - h * 0.1, cx + cw, ty]);
-        xl = -w * 1.3 + Math.min(0, sk); xr = w * 1.3 + Math.max(0, sk);
-      } else if (kind === 3) {   // a nest fragment on a broken stem
-        const sw = h * 0.07, sy = -h * 0.42, bw = h * (0.22 + r() * 0.1), bx = (r() - 0.5) * h * 0.12;
-        poly([-sw * 1.3, 0, -sw, sy, ...jag(-sw, sw, sy, 2, h * 0.05), sw, sy, sw * 1.3, 0]);
-        poly([bx - bw, sy - h * 0.22, bx - bw * 0.7, sy - h * 0.04, bx - bw * 0.2, sy + h * 0.04, bx + bw * 0.4, sy + h * 0.02, bx + bw * 0.85, sy - h * 0.08, bx + bw, sy - h * 0.2,
-          ...jag(bx + bw, bx - bw, sy - h * 0.2, 5, h * 0.12)]);
-        xl = bx - bw; xr = bx + bw;
-      } else {   // a curved limb rib, tapering to a jagged tip, with a spur
-        const w0 = h * (0.06 + r() * 0.03), bend = (r() < 0.5 ? -1 : 1) * h * (0.25 + r() * 0.25), L = [], R = [];
-        for (let k = 0; k <= 8; k++) { const t = k / 8, c = bend * Math.sin(t * 1.5) * 0.7, w = w0 * (1 - t * 0.75) + 1.5; L.push(c - w, -h * t); R.push(c + w, -h * t); }
-        const a = L.slice();
-        a.push(...jag(L[16], R[16], -h, 3, h * 0.08));
-        for (let k = 8; k >= 0; k--) a.push(R[k * 2], R[k * 2 + 1]);
-        poly(a);
-        const sp = bend > 0 ? -1 : 1, sx0 = L[12], sy0 = L[13];
-        poly([sx0, sy0 + h * 0.06, sx0 + sp * h * 0.18, sy0 - h * 0.1, sx0 + sp * h * 0.1 + w0 * 2, sy0 - h * 0.12, sx0 + w0 * 2, sy0 - h * 0.02]);
-        xl = Math.min(0, bend * 0.7) - w0 - h * 0.18; xr = Math.max(0, bend * 0.7) + w0 + h * 0.18;
       }
+      // width-to-height varies widely (about 0.15 to 1.6): the unit shape is stretched across
+      const ax = kind < 5 ? rg(0.6, 1.6) : kind >= 11 ? rg(0.9, 1.1) : rg(0.5, 2.3);
+      o.p = new Path2D();
+      o.p.addPath(p0, new DOMMatrix([ax, 0, 0, 1, 0, 0]));
+      xl *= ax; xr *= ax;
       o.hw = Math.max(Math.abs(xl), Math.abs(xr));
       o.split = xl + (xr - xl) * 0.3;
       o.h = h;
       objBox(o);
       OBJ.push(o);
+      OBJ_ALL.push(o);
+      (o.front ? OBJ_FRONT : OBJ_BACK).push(o);
+    }
+    // many much smaller bits (6-30 px): a stick tip, a block corner or a splinter, one flat polygon each; about two
+    // thirds gather round a big site, the rest lie alone
+    const clumps = [];   // loose clumps of small bits away from the big sites
+    for (let k = 0; k < 9; k++) clumps.push((k + r()) / 9);
+    for (let i = OBJ_N; i < OBJ_N + OBJ_SM; i++) {
+      const hs = 14 + r() * 30, c = r() < 0.8, fam = FAM[Math.floor(r() * FAM.length)], p = new Path2D();
+      const mode = (i - OBJ_N) % 5, near = mode < 2, clump = mode === 2, kd = Math.floor(r() * 3), w = hs * (kd === 2 ? 0.1 + r() * 0.08 : 0.2 + r() * 0.3);
+      if (kd === 0) { p.moveTo(-w, 0); p.lineTo(-w * 0.8, -hs); p.lineTo(-w * 0.1, -hs * (0.8 + r() * 0.15)); p.lineTo(w * 0.5, -hs * 0.95); p.lineTo(w, 0); }
+      else if (kd === 1) { p.moveTo(-w, 0); p.lineTo(-w, -hs); p.lineTo(w * (0.4 + r() * 0.5), -hs * 0.85); p.lineTo(w * 0.9, -hs * 0.3); p.lineTo(w, 0); }
+      else { p.moveTo(-w, 0); p.lineTo(w * 0.2, -hs); p.lineTo(w, 0); }
+      p.closePath();
+      const o = { i, u: near ? sites[Math.floor(r() * NSITE)] : clump ? clumps[Math.floor(r() * clumps.length)] : (Math.floor((i - OBJ_N) / 5) + r()) / (OBJ_SM / 5), dxr: 0, dpx: near ? (r() - 0.5) * 260 : clump ? (r() - 0.5) * 110 : 0, dy: r() * 0.014, dep: r() * 0.1, front: r() < 0.4, p, rule: "nonzero",
+        tilt: (r() - 0.5) * 1.3, ph: r() * TAU, rs: 1 + r() * 1.5, c: c ? fam[0] : fam[1], cs: fam[1], split: 0, small: true, bh: hs, xl: -w - hs * 0.7, xr: w + hs * 0.7 };
+      OBJ_ALL.push(o);
+      (o.front ? OBJ_FRONT : OBJ_BACK).push(o);
+    }
+    // rare things peeking out of the water: about 2 per screen width, one stratified slot each so none touch; each has
+    // a seeded list of randoms (rv) that its RK drawer reads; spec 24's mundane kinds can join RK the same way
+    const rsh = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
+    const RCR = rsh([0, 1, 2, 3, 4]), RMU = rsh([5, 6, 7, 8, 9, 10]);
+    for (let j = 0, ci = 0, mi = 0; j < RARE_N; j++) {
+      const rv = [], fam = FAM[RFAM[Math.floor(r() * RFAM.length)]], h = (62 + r() * 34) * 1.9, p = new Path2D();
+      for (let k = 0; k < 24; k++) rv.push(r());
+      const o = { i: OBJ_N + OBJ_SM + j, u: (j + 0.2 + r() * 0.6) / RARE_N, dxr: 0, dpx: 0, dy: r() * 0.014, dep: 0.03 + r() * 0.05, front: r() < 0.3, p, rule: "nonzero",
+        tilt: (r() - 0.5) * 0.2, ph: r() * TAU, rs: 6 + r() * 2, c: fam[0], cs: fam[1], split: 0, h, hw: h * 1.4, xl: -h * 1.4, xr: h * 1.4, bh: h * 1.1,
+        rare: { kd: RARE_PAT[j] === "c" ? RCR[ci++] : RMU[mi++], rv, j } };
+      OBJ_ALL.push(o);
+      OBJ_RARE.push(o);
       (o.front ? OBJ_FRONT : OBJ_BACK).push(o);
     }
   })();
@@ -851,61 +921,252 @@
     for (let y = 0; y < 300; y++) for (let x = 0; x < 480; x++) if (d[(y * 480 + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; }
     o.xl = x0 - 240; o.xr = x1 + 1 - 240; o.bh = 300 - y0;
   }
-  // the drawn scale of an object: H / 900, but its drawn height is held to 50-150 px
-  const objK = (o, H) => clamp(H / 900, 50 / o.bh, 150 / o.bh);
-  // world x of each object's base, laid end to end from the drawn extents (lean included) with an even gap, so
-  // none overlap at any viewport; the wrap period is at least 3 screens
-  const OBJ_X = new Float32Array(OBJ_N);
+  // the drawn scale of an object: H / 900, but its drawn height is held to 50-150 px; small bits stay at 1:1
+  const objK = (o, H) => o.small ? 1 : o.rare ? clamp(H / 900, 0.6, 1.5) : clamp(H / 900, 44 / o.bh, 215 / o.bh);
+  // world x of each object: its site along the span plus a scatter (in object heights and px), so clusters overlap
+  // and stretches between them stay empty; the wrap period is 3 screens
   let objW = 0, objH = 0, objSpan = 0;
   function objLayout(W, H) {
     if (objW === W && objH === H) return;
     objW = W; objH = H;
-    let sum = 0;
-    for (let i = 0; i < OBJ_N; i++) { const o = OBJ[i], k = objK(o, H); sum += (o.xr - o.xl) * k; }
-    const span = Math.max(OBJ_SPAN * W, sum + OBJ_N * 24), gap = (span - sum) / OBJ_N;
-    let cur = gap / 2;
-    for (let i = 0; i < OBJ_N; i++) { const o = OBJ[i], k = objK(o, H); OBJ_X[i] = cur - o.xl * k; cur += (o.xr - o.xl) * k + gap; }
-    objSpan = span;
+    objSpan = OBJ_SPAN * W;
+    for (let i = 0; i < OBJ_ALL.length; i++) { const o = OBJ_ALL[i]; o.x = o.u * (o.rare ? objSpan * RARE_SPAN / OBJ_SPAN : objSpan) + o.dxr * o.bh * objK(o, H) + o.dpx; }
+  }
+  // rare creatures, drawn each frame in local units (base at 0,0, y up negative, h about 60-95): flat angular shapes,
+  // o.c lit, o.cs shade; a tapering angular stalk from (x0, y0), turning da per segment plus a slow sway
+  function stalk(ctx, x0, y0, a0, da, len, w0, n, sw) {
+    const L = [], R = [];
+    let x = x0, y = y0, a = a0;
+    for (let j = 0; j < n; j++) {
+      const w = w0 * (1 - j / (n + 0.6)), c = Math.cos(a), s = Math.sin(a);
+      L.push(x - c * w, y - s * w); R.push(x + c * w, y + s * w);
+      a += da + sw; x += Math.sin(a) * len / n; y -= Math.cos(a) * len / n;
+    }
+    ctx.beginPath();
+    ctx.moveTo(L[0], L[1]);
+    for (let k = 2; k < L.length; k += 2) ctx.lineTo(L[k], L[k + 1]);
+    ctx.lineTo(x, y);
+    for (let k = R.length - 2; k >= 0; k -= 2) ctx.lineTo(R[k], R[k + 1]);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const poly = (ctx, c, a) => { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) ctx.lineTo(a[i], a[i + 1]); ctx.closePath(); ctx.fill(); };
+  // a polygon in lit tone c with the right of x0 in shade cs (a hard split, clipped to the shape)
+  const ps = (ctx, c, cs, a, x0, h) => { poly(ctx, c, a); ctx.save(); ctx.clip(); ctx.fillStyle = cs; ctx.fillRect(x0, -h * 2, h * 3, h * 3); ctx.restore(); };
+  // a thick tentacle from (x0, 0): wide at the base, tapering, curling at the tip; the right half shaded, suckers on the inner side
+  function tent(ctx, x0, len, w0, curl, lean, sw, c, cs) {
+    const n = 12, L = [], R = [], X = [], Y = [];
+    let x = x0, y = 0;
+    for (let j = 0; j <= n; j++) {
+      const u = j / n, a = lean + curl * u * u + sw * u, w = w0 * Math.pow(1 - u, 0.8) + 1, co = Math.cos(a), si = Math.sin(a);
+      L.push(x - co * w, y - si * w); R.push(x + co * w, y + si * w); X.push(x); Y.push(y);
+      x += Math.sin(a) * len / n; y -= Math.cos(a) * len / n;
+    }
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.moveTo(L[0], L[1] + 10);
+    for (let k = 0; k < L.length; k += 2) ctx.lineTo(L[k], L[k + 1]);
+    for (let k = R.length - 2; k >= 0; k -= 2) ctx.lineTo(R[k], R[k + 1]);
+    ctx.lineTo(R[0], R[1] + 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = cs;
+    ctx.beginPath(); ctx.moveTo(X[0], Y[0] + 10);
+    for (let j = 0; j <= n; j++) ctx.lineTo(X[j], Y[j]);
+    for (let k = R.length - 2; k >= 0; k -= 2) ctx.lineTo(R[k], R[k + 1]);
+    ctx.lineTo(R[0], R[1] + 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#a9bcc0";
+    const E = curl > 0 ? R : L;
+    for (let j = 2; j < n - 1; j++) { const d = Math.max(2, w0 * Math.pow(1 - j / n, 0.8) * 0.3); ctx.fillRect((X[j] + E[j * 2]) / 2 - d / 2, (Y[j] + E[j * 2 + 1]) / 2 - d / 2, d, d); }
+  }
+  // a clawed finger: two jointed segments, claw at the tip
+  function finger(ctx, x, y, a, len, w, bend, c) {
+    const s1 = Math.sin(a), c1 = Math.cos(a), kx = x + s1 * len * 0.55, ky = y - c1 * len * 0.55, a2 = a + bend, s2 = Math.sin(a2), c2 = Math.cos(a2), ex = kx + s2 * len * 0.45, ey = ky - c2 * len * 0.45;
+    poly(ctx, c, [x - c1 * w, y - s1 * w, kx - c1 * w * 0.85, ky - s1 * w * 0.85, ex - c2 * w * 0.6, ey - s2 * w * 0.6, ex + c2 * w * 0.6, ey + s2 * w * 0.6, kx + c1 * w * 0.85, ky + s1 * w * 0.85, x + c1 * w, y + s1 * w]);
+    poly(ctx, "#a9bcc0", [ex - c2 * w * 0.6, ey - s2 * w * 0.6, ex + s2 * w * 3 + c2 * w * 0.4, ey - c2 * w * 3 + s2 * w * 0.4, ex + c2 * w * 0.6, ey + s2 * w * 0.6]);
+  }
+  // flat, one tone pair per kind (never the shard palette): lit left, shade right
+  const RK = [
+    function tentacle(ctx, o, t, h, rv) {   // 1-3 thick curling arms, slow sway
+      const cnt = 1 + Math.floor(rv[0] * 3);
+      for (let c = cnt - 1; c >= 0; c--) {
+        const sg = c % 2 ? -1 : 1;
+        tent(ctx, (c - (cnt - 1) / 2) * h * 0.36, h * (0.8 + rv[11 + c] * 0.35) * (c ? 0.8 : 1), h * (0.11 + rv[14 + c] * 0.03), sg * (1.9 + rv[8 + c] * 0.9), (rv[5 + c] - 0.5) * 0.3, Math.sin(t * 1.5 + o.ph + c * 1.3) * 0.25,
+          c % 2 ? "#6a8288" : "#7a9298", c % 2 ? "#44575d" : "#506268");
+      }
+    },
+    function crocEyes(ctx, o, t, h, rv) {   // two scaly bumps on the waterline, yellow eyes with slit pupils, a bob and a blink
+      const gap = h * (0.42 + rv[0] * 0.1), bw = h * (0.26 + rv[1] * 0.05), bh = h * (0.4 + rv[2] * 0.1), per = 1800 + rv[3] * 1800;
+      const bp = (t * 1000 + o.ph * 700) % per, blink = bp < 260 ? Math.sin(bp / 260 * Math.PI) : 0, look = Math.sin(t * 0.8 + o.ph) * bw * 0.2;
+      ctx.translate(0, Math.sin(t * 1.1 + o.ph) * h * 0.025);
+      // the snout ridge between the bumps, just breaking the waterline
+      ps(ctx, "#4a5a52", "#2f3b36", [-gap, 10, -gap, -bh * 0.3, -gap * 0.4, -bh * 0.42, gap * 0.4, -bh * 0.42, gap, -bh * 0.3, gap, 10], 0, h);
+      poly(ctx, "#2f3b36", [-gap * 0.12, -bh * 0.42, gap * 0.12, -bh * 0.42, gap * 0.08, -bh * 0.55, -gap * 0.08, -bh * 0.55]);
+      for (let e = -1; e <= 1; e += 2) {
+        const cx = e * gap, ey = -bh * 0.55, ew = bw * 0.72, eh = bh * 0.2;
+        ps(ctx, "#4a5a52", "#2f3b36", [cx - bw, 10, cx - bw, -bh * 0.45, cx - bw * 0.7, -bh * 0.85, cx - bw * 0.25, -bh, cx + bw * 0.25, -bh, cx + bw * 0.7, -bh * 0.85, cx + bw, -bh * 0.45, cx + bw, 10], cx + bw * 0.15, h);
+        poly(ctx, "#a9bcc0", [cx - ew, ey, cx - ew * 0.5, ey - eh, cx + ew * 0.5, ey - eh, cx + ew, ey, cx + ew * 0.5, ey + eh, cx - ew * 0.5, ey + eh]);
+        ctx.fillStyle = "#0c100e"; ctx.fillRect(cx + look - 3, ey - eh, 6, eh * 2);
+        poly(ctx, "#2f3b36", [cx - ew * 1.25, ey - eh * 0.4, cx - ew * 0.6, ey - eh * 1.7, cx + ew * 0.6, ey - eh * 1.7, cx + ew * 1.25, ey - eh * 0.4, cx + ew * 0.6, ey - eh * 0.9, cx - ew * 0.6, ey - eh * 0.9]);
+        if (blink > 0) { ctx.fillStyle = "#4a5a52"; ctx.fillRect(cx - ew * 1.05, ey - eh * 0.9, ew * 2.1, eh * 1.9 * blink + 1); }
+      }
+    },
+    function hand(ctx, o, t, h, rv) {   // a palm with a thumb and fingers with claws breaking the surface, slow flex
+      const pw = h * (0.2 + rv[1] * 0.05), n = 4, fw = h * 0.05;
+      ps(ctx, "#6f8a90", "#485c62", [-pw, 10, -pw, -h * 0.2, -pw * 0.5, -h * 0.28, pw * 0.5, -h * 0.28, pw, -h * 0.2, pw, 10], pw * 0.1, h);
+      finger(ctx, -pw * 0.85, -h * 0.2, -1.0, h * 0.3, fw * 1.15, 0.35 + Math.sin(t * 1.4 + o.ph + 2) * 0.2, "#6f8a90");
+      for (let f = 0; f < n; f++) {
+        const u = f / (n - 1) * 2 - 1, len = h * (0.46 + rv[2 + f] * 0.14) * (1 - Math.abs(u) * 0.12);
+        finger(ctx, u * pw * 0.78, -h * 0.26, u * 0.28, len, fw, 0.25 + Math.sin(t * 1.4 + o.ph + f * 0.8) * 0.22, f < 2 ? "#6f8a90" : "#485c62");
+      }
+    },
+    function batWing(ctx, o, t, h, rv) {   // an arm bone, four ribs and a scalloped membrane, flutter
+      const lean = (rv[0] - 0.5) * 0.4, sd = rv[2] < 0.5 ? -1 : 1, wx = Math.sin(lean) * h * 0.85, wy = -Math.cos(lean) * h * 0.85, tx = [], ty = [], pts = [0, 10, wx, wy];
+      ctx.rotate(Math.sin(t * 2 + o.ph) * 0.07);
+      for (let k = 0; k < 4; k++) {
+        const a = 0.45 + k * 0.35 + Math.sin(t * 2 + o.ph + k * 0.5) * 0.06, len = h * (0.95 - k * 0.1) * (0.92 + rv[3 + k] * 0.16);
+        tx.push(wx + sd * Math.sin(a) * len); ty.push(wy + Math.cos(a) * len * 0.7);
+        if (k) pts.push((tx[k] + tx[k - 1]) / 2 + (wx - (tx[k] + tx[k - 1]) / 2) * 0.3, (ty[k] + ty[k - 1]) / 2 + (wy - (ty[k] + ty[k - 1]) / 2) * 0.3);
+        pts.push(tx[k], ty[k]);
+      }
+      ps(ctx, "#66777e", "#44535a", pts, 0, h);
+      ctx.strokeStyle = "#2c3a40"; ctx.lineWidth = 3;
+      ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.moveTo(wx, wy); ctx.lineTo(tx[k], ty[k]); } ctx.stroke();
+      ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(wx, wy); ctx.stroke();
+      poly(ctx, "#a9bcc0", [wx - 5, wy, wx + 5, wy, wx - sd * 4, wy - 18]);
+    },
+    function oldPeek(ctx, o, t, h, rv) {   // a rough dome with one big eye (iris, slit pupil, lid) that looks about and blinks
+      const w = h * (0.5 + rv[1] * 0.15), dh = h * (0.55 + rv[2] * 0.15), pts = [-w, 10];
+      for (let i = 0; i <= 10; i++) { const a = Math.PI * i / 10, j = 1 + (rv[10 + i % 8] - 0.5) * 0.1; pts.push(-w * Math.cos(a) * j, -dh * Math.sin(a) * j); }
+      pts.push(w, 10);
+      ctx.translate(0, Math.sin(t * 0.9 + o.ph) * h * 0.02);
+      ps(ctx, "#46535c", "#2c373f", pts, w * 0.15, h);
+      const er = Math.min(h * 0.2, w * 0.35), ex = (rv[4] - 0.5) * w * 0.3, ey = -dh * 0.5, look = Math.sin(t * 0.9 + o.ph * 1.3) * er * 0.35, bp = (t * 1000 + o.ph * 900) % 3500, lid = bp < 400 ? Math.sin(bp / 400 * Math.PI) : 0;
+      ctx.fillStyle = "#a9bcc0"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#5f7a80"; ctx.beginPath(); ctx.arc(ex + look, ey, er * 0.6, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#151a17"; ctx.fillRect(ex + look - 2, ey - er * 0.6, 4, er * 1.2);
+      if (lid > 0) { ctx.save(); ctx.beginPath(); ctx.arc(ex, ey, er + 1, 0, TAU); ctx.clip(); ctx.fillStyle = "#46535c"; ctx.fillRect(ex - er - 1, ey - er - 1, er * 2 + 2, (er * 2 + 2) * lid); ctx.restore(); }
+      if (rv[6] < 0.7) { ctx.fillStyle = "#a9bcc0"; ctx.beginPath(); ctx.arc(-w * 0.62, -dh * 0.28, er * 0.25, 0, TAU); ctx.arc(w * 0.6, -dh * 0.3, er * 0.2, 0, TAU); ctx.fill(); }
+    },
+    // mundane drowned-world kinds: flat polygons
+    function shoe(ctx, o, t, h, rv) {   // an upright boot: cuff, shaft, instep, toe, sole
+      const a = h * (0.17 + rv[1] * 0.04), hh = h * (0.7 + rv[2] * 0.2), toe = h * (0.36 + rv[3] * 0.1), ft = h * 0.2;
+      ctx.scale(rv[4] < 0.5 ? -1 : 1, 1);
+      ps(ctx, "#6a7c80", "#475a5f", [-a, 10, -a, -hh, a, -hh, a, -hh * 0.35, a + toe * 0.6, -ft * 1.25, a + toe, -ft * 0.85, a + toe * 1.04, -ft * 0.3, a + toe, 10], a * 0.1, h);
+      poly(ctx, "#8a9ca0", [-a * 1.05, -hh, a * 1.05, -hh, a * 1.05, -hh + h * 0.09, -a * 1.05, -hh + h * 0.09]);
+      poly(ctx, "#27343a", [-a * 1.06, 10, -a * 1.06, -h * 0.07, a + toe * 1.08, -h * 0.07, a + toe * 1.08, 10]);
+      poly(ctx, "#27343a", [-a * 1.06, -h * 0.07, -a * 0.2, -h * 0.07, -a * 0.2, -h * 0.13, -a * 1.06, -h * 0.13]);
+    },
+    function hat(ctx, o, t, h, rv) {   // a top hat, a bent wizard hat or a bowler, each with a brim
+      const kd = Math.floor(rv[0] * 3), bw = h * (0.5 + rv[1] * 0.12), cw = bw * 0.55, ch = h * (0.45 + rv[3] * 0.15), by = -h * 0.1;
+      if (kd === 1) {
+        const tx = (rv[4] - 0.5) * h * 0.2;
+        ps(ctx, "#5f7479", "#3f5156", [-cw * 1.1, by, -cw * 0.35, -h * 0.5, tx, -h * 0.85, tx + h * 0.16, -h * 0.8, tx + h * 0.06, -h * 0.66, cw * 0.35, -h * 0.5, cw * 1.1, by], 0, h);
+        poly(ctx, "#8a9ca0", [-cw * 1.08, by, cw * 1.08, by, cw * 1.0, by - h * 0.07, -cw * 1.0, by - h * 0.07]);
+      } else if (kd === 0) {
+        ps(ctx, "#566b72", "#384a50", [-cw, by, -cw * 0.95, by - ch, cw * 0.95, by - ch, cw, by], 0, h);
+        poly(ctx, "#8a9ca0", [-cw, by, -cw, by - h * 0.09, cw, by - h * 0.09, cw, by]);
+      } else {
+        const p = [-cw * 1.1, by];
+        for (let i = 1; i < 8; i++) { const a = Math.PI * i / 8; p.push(-cw * 1.1 * Math.cos(a), by - ch * 0.9 * Math.sin(a)); }
+        p.push(cw * 1.1, by);
+        ps(ctx, "#6d7e80", "#4a5a5c", p, 0, h);
+        poly(ctx, "#27343a", [-cw * 1.1, by, -cw * 1.08, by - h * 0.07, cw * 1.08, by - h * 0.07, cw * 1.1, by]);
+      }
+      ps(ctx, kd === 1 ? "#5f7479" : kd === 0 ? "#566b72" : "#6d7e80", kd === 1 ? "#3f5156" : kd === 0 ? "#384a50" : "#4a5a5c", [-bw, 10, -bw, 0, -bw * 0.9, by, bw * 0.9, by, bw, 0, bw, 10], 0, h);
+    },
+    function bottle(ctx, o, t, h, rv) {   // a corked bottle, leaning
+      const w = h * (0.17 + rv[0] * 0.05), nk = w * (0.38 + rv[1] * 0.1), bh = h * (0.5 + rv[2] * 0.12), hh = h * (0.9 + rv[3] * 0.08);
+      ctx.rotate((rv[4] - 0.5) * 0.5);
+      ps(ctx, "#5d7f80", "#3c5758", [-w, 10, -w, -bh, -w * 0.85, -bh - h * 0.1, -nk, -bh - h * 0.22, -nk, -hh, -nk * 1.3, -hh, nk * 1.3, -hh, nk, -hh, nk, -bh - h * 0.22, w * 0.85, -bh - h * 0.1, w, -bh, w, 10], w * 0.15, h);
+      poly(ctx, "#9db0b2", [-w, -bh * 0.2, w, -bh * 0.2, w, -bh * 0.62, -w, -bh * 0.62]);
+      poly(ctx, "#8a9ca0", [-nk * 0.95, -hh, nk * 0.95, -hh, nk * 0.8, -hh - h * 0.07, -nk * 0.8, -hh - h * 0.07]);
+    },
+    function chair(ctx, o, t, h, rv) {   // a chair seen from the front: two posts, top rail, spindles (one gone), seat
+      const w = h * (0.3 + rv[0] * 0.08), lw = h * 0.07, top = h * (0.92 + rv[1] * 0.08), sy = -h * (0.4 + rv[5] * 0.08), n = 3 + Math.floor(rv[3] * 2), gone = Math.floor(rv[4] * n);
+      ctx.rotate((rv[2] - 0.5) * 0.3);
+      for (let k = 0; k < n; k++) if (k !== gone) { ctx.fillStyle = k * 2 >= n ? "#4d5f64" : "#74878c"; ctx.fillRect(-w + lw + (k + 0.5) * (2 * w - 2 * lw) / n - lw * 0.25, -top, lw * 0.5, top + sy); }
+      ctx.fillStyle = "#74878c"; ctx.fillRect(-w, -top, lw, top + 10);
+      ctx.fillStyle = "#4d5f64"; ctx.fillRect(w - lw, -top, lw, top + 10);
+      ctx.fillStyle = "#74878c"; ctx.fillRect(-w, -top, w * 2, lw * 1.2);
+      ps(ctx, "#74878c", "#4d5f64", [-w * 1.2, sy, w * 1.2, sy, w * 1.2, sy + h * 0.08, -w * 1.2, sy + h * 0.08], 0, h);
+    },
+    function mask(ctx, o, t, h, rv) {   // a blank flat mask, eye and mouth holes cut through
+      const w = h * (0.28 + rv[0] * 0.08), fh = h * (0.75 + rv[1] * 0.15), ey = -fh * 0.62, ew = w * (0.22 + rv[2] * 0.1), sk = (rv[3] - 0.5) * w * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(-w, -fh * 0.15); ctx.lineTo(-w * 0.9, -fh * 0.8); ctx.lineTo(-w * 0.3, -fh); ctx.lineTo(w * 0.5, -fh * 0.97); ctx.lineTo(w, -fh * 0.7); ctx.lineTo(w * 0.85, -fh * 0.2); ctx.lineTo(0, 0); ctx.closePath();
+      ctx.moveTo(-w * 0.65, ey); ctx.lineTo(-w * 0.15, ey - ew * 0.3); ctx.lineTo(-w * 0.2, ey + ew * 0.5); ctx.closePath();
+      ctx.moveTo(w * 0.15 + sk, ey - ew * 0.3); ctx.lineTo(w * 0.65 + sk, ey); ctx.lineTo(w * 0.2 + sk, ey + ew * 0.5); ctx.closePath();
+      ctx.moveTo(-w * 0.2, -fh * 0.28); ctx.lineTo(w * 0.2, -fh * 0.28); ctx.lineTo(w * 0.1, -fh * 0.18); ctx.lineTo(-w * 0.1, -fh * 0.18); ctx.closePath();
+      ctx.fillStyle = "#6f8a90"; ctx.fill("evenodd");
+      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#485c62"; ctx.fillRect(w * 0.1, -fh * 1.2, w, fh * 1.4); ctx.restore();
+    },
+    function lantern(ctx, o, t, h, rv) {   // an unlit cage lantern: cap, ring handle, panes cut through
+      const w = h * (0.2 + rv[0] * 0.08), bh = h * (0.5 + rv[1] * 0.15), hr = w * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(-w, 10); ctx.lineTo(-w, 0); ctx.lineTo(-w * 0.85, -bh); ctx.lineTo(-w * 0.35, -bh - h * 0.1); ctx.lineTo(w * 0.35, -bh - h * 0.1); ctx.lineTo(w * 0.85, -bh); ctx.lineTo(w, 0); ctx.lineTo(w, 10); ctx.closePath();
+      ctx.moveTo(-w * 0.55, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.8); ctx.lineTo(-w * 0.5, -bh * 0.8); ctx.closePath();
+      ctx.moveTo(w * 0.1, -bh * 0.15); ctx.lineTo(w * 0.55, -bh * 0.15); ctx.lineTo(w * 0.5, -bh * 0.8); ctx.lineTo(w * 0.1, -bh * 0.8); ctx.closePath();
+      ctx.fillStyle = "#a9a49a"; ctx.fill("evenodd");
+      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#7d7a74"; ctx.fillRect(0, -h * 2, w * 2, h * 2); ctx.restore();
+      ctx.fillStyle = "#9cb2b4";   // the lit panes, a flat warm glow
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.55, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.8); ctx.lineTo(-w * 0.5, -bh * 0.8); ctx.closePath();
+      ctx.moveTo(w * 0.1, -bh * 0.15); ctx.lineTo(w * 0.55, -bh * 0.15); ctx.lineTo(w * 0.5, -bh * 0.8); ctx.lineTo(w * 0.1, -bh * 0.8); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#7d7a74"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(-hr, -bh - h * 0.09); ctx.lineTo(-hr * 0.5, -bh - h * 0.3); ctx.lineTo(hr * 0.5, -bh - h * 0.3); ctx.lineTo(hr, -bh - h * 0.09); ctx.stroke();
+    }
+  ];
+  function drawRare(ctx, o, t) {
+    RK[window.__seaKinds ? window.__seaKinds[o.rare.j] : o.rare.kd](ctx, o, t, o.h, o.rare.rv);   // __seaKinds: a proof hook, unset in play
   }
   // one list of objects; back ones go under the water body (it covers their base), front ones over it
   function drawObjects(ctx, list, s, W, H, camOff, t, post) {
     objLayout(W, H);
-    const spW = objSpan;
-    for (let q = 0; q < list.length; q++) {
-      const o = list[q], k = objK(o, H);
-      let sx = ((OBJ_X[o.i] - camOff) % spW + spW) % spW;
+    // rare pieces: screen x and clear radius, so ordinary debris keeps off them (RARE_SPAN screens round)
+    const rsp = objSpan * RARE_SPAN / OBJ_SPAN, rk = clamp(H / 900, 0.6, 1.5);
+    for (let j = 0; j < OBJ_RARE.length; j++) {
+      const ro = OBJ_RARE[j];
+      let rx = ((ro.x - camOff) % rsp + rsp) % rsp;
+      if (rx + ro.xl * rk > W) rx -= rsp;
+      RCX[j] = rx; RCR2[j] = ro.h * rk * 0.8;
+    }    for (let q = 0; q < list.length; q++) {
+      const o = list[q], k = objK(o, H), spW = o.rare ? rsp : objSpan;
+      let sx = ((o.x - camOff) % spW + spW) % spW;
       if (sx + o.xl * k > W) sx -= spW;
       if (sx + o.xr * k < 0) continue;
+      if (!o.rare) {
+        const hw = o.small ? o.xr : o.hw * k;
+        let bad = false;
+        for (let j = 0; j < OBJ_RARE.length; j++) if (Math.abs(sx - RCX[j]) < RCR2[j] + hw) { bad = true; break; }
+        if (bad) continue;
+      }
       // a few stand half out of the first water; the rest rise from nothing, all at full size
       const g0 = o.i % 7 === 0 || o.i % 7 === 2 || o.i % 7 === 4 ? 0.55 : 0;
-      const g = G.reduced ? 1 : g0 + (1 - g0) * smooth(clamp((s - (g0 ? 2 : o.rs)) / 10, 0, 1));
+      const g = G.reduced ? 1 : g0 + (1 - g0) * smooth(clamp((s - (g0 ? 2 : o.rs)) / (o.small ? 4 : 10), 0, 1));
       if (g <= 0) continue;
-      const yl = shAt(clamp(sx, 0, W), W) + (o.front ? H * 0.012 : 2);
-      const sink = (1 - g) * o.bh * k * 0.9 + (G.reduced ? 0 : Math.sin(t * 0.6 + o.ph) * 2.5 * k);
+      const yl = shAt(clamp(sx, 0, W), W) + (o.front ? H * 0.012 : 2) + o.dy * H;
       if (!post) {
+        const sink = (1 - g) * o.bh * k * 0.9 + (G.reduced ? 0 : Math.sin(t * 0.6 + o.ph) * 2.5 * k) + o.dep * o.bh * k;
         // clipped at the waterline: the part under it is not drawn
         ctx.save();
         ctx.beginPath();
-        ctx.rect(sx + o.xl * k - 6, 0, (o.xr - o.xl) * k + 12, yl);
+        if (o.rare) ctx.rect(sx - o.hw * k, 0, o.hw * 2 * k, yl);   // a wide box: only the waterline cuts
+        else ctx.rect(sx + o.xl * k - 6, 0, (o.xr - o.xl) * k + 12, yl);
         ctx.clip();
         ctx.translate(sx, yl + sink);
         ctx.rotate(o.tilt);
         ctx.scale(k, k);
         ctx.fillStyle = o.c;
-        ctx.fill(o.p, o.rule);
-        ctx.clip(o.p, o.rule);   // the bridge's hard split: lit left, shade right
-        ctx.fillStyle = o.cs;
-        ctx.fillRect(o.split, -1000, 2000, 2000);
+        if (o.rare) drawRare(ctx, o, G.reduced ? 0 : t);
+        else ctx.fill(o.p, o.rule);
+        if (!o.small && !o.rare) {
+          ctx.clip(o.p, o.rule);   // the bridge's hard split: lit left, shade right
+          ctx.fillStyle = o.cs;
+          ctx.fillRect(o.split, -1000, 2000, 2000);
+        }
         ctx.restore();
         continue;
       }
-      // a short broken reflection: 3-5 stacked dashes in the object's colour, darkened, wobbling a little
-      ctx.fillStyle = "rgb(26,30,30)";
-      const rw = Math.min(o.xr - o.xl, 2 * o.bh * 0.3) * k * 0.6;
-      for (let j = 0, n = 3 + o.i % 3; j < n; j++) {
-        const w = rw * (1 - j * 0.15), wob = G.reduced ? 0 : Math.sin(t * 1.3 + j * 1.9 + o.ph) * 3;
-        ctx.fillRect(Math.round(sx - w / 2 + wob), Math.round(yl + 6 + j * 9 * k + j), Math.round(w), 3);
-      }
+      if (o.small) continue;
       // a flat lighter-water dash at the waterline
       ctx.fillStyle = "rgb(50,56,54)";
       const dw = Math.min(o.xr - o.xl, 2 * o.bh * 0.3) * k * 0.5 + 6;

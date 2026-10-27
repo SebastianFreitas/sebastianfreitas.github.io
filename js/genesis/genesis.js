@@ -475,7 +475,7 @@ window.Genesis = (function () {
     const zk = (cur && ZOOM[cur.id]) || [1, 1];
     const zoom = G.reduced ? 1
       : G.beat === G.idxOf("enter") ? ENTER_ZOOM[enterStep()]
-      : mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1)));
+      : Math.max(1, mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1))));   // never below 1: a pulled-back frame shows dark strips beside the sea and bridge
     return { target, rate: camRate, zoom };
   }
 
