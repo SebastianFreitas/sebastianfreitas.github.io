@@ -32,7 +32,6 @@ window.BridgeMotifs = (function () {
 
   function seed() {
     const r = mulberry(5);
-    S.planet = { ph: r() * 6.28 };
     S.embers = [];
     for (let i = 0; i < 18; i++) S.embers.push({
       bx: (r() * 2 - 1) * 1.0, sway: 0.03 + r() * 0.08, ph: r(), sp: 0.05 + r() * 0.07,
@@ -51,20 +50,6 @@ window.BridgeMotifs = (function () {
     S.flick = 0.7;
   }
   seed();
-
-  // the Game Dev beacon: the planet's four theme colours as small bits circling it, no body
-  function drawPlanet(ctx, x, y, u, t, A) {
-    ctx.save();
-    for (let i = 0; i < THEMES.length; i++) {
-      const a = t * (0.16 + i * 0.03) * (i % 2 ? -1 : 1) + i * 1.57 + S.planet.ph;
-      const rad = u * (0.5 + 0.08 * i);
-      ctx.globalAlpha = A * 0.3;
-      ctx.fillStyle = THEMES[i].core[0];
-      const s = Math.max(3, Math.round(u * 0.035));
-      ctx.fillRect(Math.round(x + Math.cos(a) * rad), Math.round(y + Math.sin(a) * rad * 0.45), s, s);
-    }
-    ctx.restore();
-  }
 
   function drawVoidscape(ctx, x, y, u, t, A) {
     const w = u * 0.9, top = y - u * 0.9, L = u * 1.8;
@@ -178,8 +163,7 @@ window.BridgeMotifs = (function () {
     const dt = Number.isFinite(o.dt) ? Math.min(o.dt, 0.1) : 0.016;
     const base = Math.min(o.W || 1440, o.H || 900);
     const u = Math.max(80, Math.min(240, base * 0.2));   // ~ 1.5 to 2 beacon heights across
-    if (art === "gamedev") drawPlanet(ctx, x, y, u, t, A);
-    else if (art === "voidscape") drawVoidscape(ctx, x, y, u, t, A);
+    if (art === "voidscape") drawVoidscape(ctx, x, y, u, t, A);
     else if (art === "heavylight") drawLamp(ctx, x, y, u, t, A);
     else if (art === "conclusus") drawConclusus(ctx, x, y, u, t, A);
     else if (art === "sector-zero") drawZero(ctx, x, y, u, t, dt, A);

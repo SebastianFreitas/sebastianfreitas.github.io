@@ -31,8 +31,6 @@ window.Marks = (function () {
       name: "Rex",            sub: "Three masses, three layers, one war" },
     { id: "bnote-root",    cam: CAM.max,       off: -0.10, oy: 0.24, par: 0.70, xp: 1,
       name: "The Root",       sub: "Every arm of it is still climbing" },
-    { id: "bnote-gamedev", cam: LAND.voidmark - 1540, off: 0, oy: 0.34, par: 0.30, xp: 1,
-      name: "Game Dev",       sub: "Four files, one engine room", art: "gamedev" },
   ];
   MARKS.forEach((m, i) => {
     m.x = m.cam + (m.off * CAM.viewUnits) / m.par;
@@ -42,8 +40,7 @@ window.Marks = (function () {
   });
   /* the reveal order: The Void alone, Rex once birth has been seen, the rest
      once Rex's segment has been seen. Anything not named here (depth nodes) shows. */
-  const SEEN = { "bnote-rex": ["genesis-seg-birth", "beacon-bnote-void"],
-                 "bnote-gamedev": ["beacon-bnote-void"] };
+  const SEEN = { "bnote-rex": ["genesis-seg-birth", "beacon-bnote-void"] };
   ["bnote-root", "bnote-watcher", "bnote-land", "bnote-bridge", "bnote-future"]
     .forEach(id => SEEN[id] = ["genesis-seg-rex", "beacon-bnote-rex"]);
   /* the Void's depth nodes (root "bnote-void") wait for the Mainland */

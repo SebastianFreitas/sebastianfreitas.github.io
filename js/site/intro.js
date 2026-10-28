@@ -32,7 +32,7 @@
   /* the heavy first-time work, four tasks; onStep(done, total) after each one */
   const WARM_CAP_MS = 8000;
   function warmUp(onStep) {
-    const total = 4;
+    const total = 5;
     let n = 0;
     const step = () => { n++; if (onStep) onStep(n, total); };
     const run = (fn) => Promise.resolve().then(fn).catch(() => {}).then(step);
@@ -47,7 +47,28 @@
         if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce();
         res();
       })))),
-    ]);
+      run(() => loaded.then(() => new Promise(res => setTimeout(res, 0))).then(() => window.Genesis && Genesis.warm && Genesis.warm())),
+    ]).then(warmClips);
+  }
+
+  /* the index page's game clips, one at a time and last, outside the gate's count; a slow or small connection keeps them lazy */
+  function warmClips() {
+    const c = navigator.connection;
+    if (reduced || touch || (c && (c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || "")))) return;
+    const clips = Array.from(document.querySelectorAll("video[data-lazy]"));
+    const next = () => {
+      const v = clips.shift();
+      if (!v) return;
+      if (v.preload !== "none") { next(); return; }
+      let over = false;
+      const done = () => { if (over) return; over = true; v.removeEventListener("canplaythrough", done); v.removeEventListener("error", done); next(); };
+      v.addEventListener("canplaythrough", done);
+      v.addEventListener("error", done);
+      setTimeout(done, 9000);
+      v.preload = "auto";
+      v.load();
+    };
+    next();
   }
 
   function finish() {

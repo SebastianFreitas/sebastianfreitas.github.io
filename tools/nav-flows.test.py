@@ -450,6 +450,85 @@ def flow_genesis_segment(browser, base):
     ctx.close()
 
 
+def flow_glimpse(browser, base):
+    """The Void beacon's segment ends on the glimpse card; a wheel closes it and the page scrolls; the Root beacon shows none."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base, "#gate-world")
+    claim = "(id) => { const m = Bridge.MARKS.find(m => m.id === id); Bridge.camX = m.cam; Bridge.selectMark(m); }"
+    card = "!!document.querySelector('.glimpse-veil.open')"
+    page.evaluate(claim, "bnote-void")
+    page.wait_for_function("Genesis.active === true", timeout=12000)
+    page.wait_for_timeout(1500)
+    page.evaluate("Genesis.skip()")
+    page.wait_for_function(card, timeout=12000)
+    check("glimpse: card shows after the Void segment", page.evaluate(card) is True, None)
+    check("glimpse: title text", page.evaluate("document.querySelector('.glimpse-title').textContent") == "A glimpse of my world", None)
+    y0 = page.evaluate("scrollY")
+    page.wait_for_timeout(600)
+    page.mouse.move(700, 450)
+    page.mouse.wheel(0, 400)
+    page.wait_for_timeout(900)
+    check("glimpse: a wheel closes it", page.evaluate("!document.querySelector('.glimpse-veil')") is True, None)
+    check("glimpse: the page scrolled", page.evaluate("scrollY") > y0, [y0, page.evaluate("scrollY")])
+    ctx.close()
+
+    for how in ("line", "veil"):
+        ctx, page = new_page(browser)
+        enter_via_gate(page, base, "#gate-world")
+        page.evaluate(claim, "bnote-void")
+        page.wait_for_function("Genesis.active === true", timeout=12000)
+        page.wait_for_timeout(1500)
+        page.evaluate("Genesis.skip()")
+        page.wait_for_function(card, timeout=12000)
+        page.wait_for_timeout(700)
+        y0 = page.evaluate("scrollY")
+        if how == "line":
+            page.screenshot(path="C:/Users/Traff/AppData/Local/Temp/glimpse5-1440.png")
+            page.click(".glimpse-game")
+            page.wait_for_timeout(2500)
+            top = page.evaluate("document.getElementById('work').getBoundingClientRect().top")
+            check("glimpse: game line closes the card", page.evaluate("!document.querySelector('.glimpse-veil')") is True, None)
+            check("glimpse: game line lands #work near the top", abs(top) <= 80, top)
+        else:
+            page.mouse.click(60, 60)
+            page.wait_for_timeout(900)
+            check("glimpse: veil click closes the card", page.evaluate("!document.querySelector('.glimpse-veil')") is True, None)
+            check("glimpse: veil click stays put", abs(page.evaluate("scrollY") - y0) < 5, [y0, page.evaluate("scrollY")])
+        ctx.close()
+
+    ctx, page = new_page(browser, PHONE)
+    enter_via_gate(page, base, "#gate-world")
+    page.evaluate(claim, "bnote-void")
+    page.wait_for_function("Genesis.active === true", timeout=12000)
+    page.wait_for_timeout(1500)
+    page.evaluate("Genesis.skip()")
+    page.wait_for_function(card, timeout=12000)
+    page.wait_for_timeout(1000)
+    page.screenshot(path="C:/Users/Traff/AppData/Local/Temp/glimpse5-phone.png")
+    ctx.close()
+
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base, "#gate-world")
+    page.evaluate(claim, "bnote-root")
+    page.wait_for_function("Genesis.active === true", timeout=12000)
+    page.wait_for_timeout(1500)
+    page.evaluate("Genesis.skip()")
+    page.wait_for_timeout(4500)
+    check("glimpse: Root segment shows no card", page.evaluate("!document.querySelector('.glimpse-veil')") is True, None)
+    ctx.close()
+
+    ctx, page = new_page(browser)
+    page.goto(base + "/?gscene=birth")
+    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.click("#gate-world")
+    page.wait_for_function("Genesis.active === true", timeout=12000)
+    page.wait_for_timeout(1500)
+    page.evaluate("Genesis.skip()")
+    page.wait_for_timeout(4500)
+    check("glimpse: ?gscene=birth shows no card", page.evaluate("!document.querySelector('.glimpse-veil')") is True, None)
+    ctx.close()
+
+
 def flow_genesis_scenes(browser, base):
     """Each of the four cutscene beacons plays its own whole scene; the full Genesis joins scenes with a fade."""
     veil_op = "parseFloat(getComputedStyle(document.querySelector('.genesis-veil')).opacity)"
@@ -1187,53 +1266,6 @@ def flow_stub_redirect(browser, base):
     ctx.close()
 
 
-def claim_gamedev(page, base):
-    """Pass the gate, skip any cutscene, claim the Game Dev beacon and replay its reveal."""
-    page.goto(base + "/?reset=1")
-    enter_via_gate(page, base, "#gate-world")
-    page.keyboard.press("Escape")
-    page.wait_for_timeout(400)
-    page.keyboard.press("Escape")
-    page.wait_for_timeout(1500)
-    return page.evaluate("""() => {
-      XP.award('beacon-bnote-gamedev', 1, 'Game Dev');
-      window.depthsReveal();
-      return window.depthsReport().filter(n => n.root === 'bnote-gamedev');
-    }""")
-
-
-def flow_gamedev_reveal(browser, base):
-    """Claiming the Game Dev beacon reveals the four games as depth nodes rooted on it."""
-    ctx, page = new_page(browser)
-    report = claim_gamedev(page, base)
-    ids = {n["id"] for n in report}
-    check("gamedev-reveal: four root=bnote-gamedev lines", len(report) == 4, report)
-    check("gamedev-reveal: the four games",
-          ids == {"gd-sector-zero", "gd-voidscape", "gd-heavylight", "gd-conclusus"}, ids)
-    text = page.evaluate("window.beaconReport()")
-    check("gamedev-reveal: beaconReport names them", all(i in text for i in ids), text)
-    ctx.close()
-
-
-def flow_card_open(browser, base):
-    """A Game Dev node's card shows with its clip playing, and 'Open case file' opens the folder."""
-    ctx, page = new_page(browser)
-    claim_gamedev(page, base)
-    page.wait_for_timeout(1500)
-    page.evaluate("Bridge.showNote(Marks.MARKS.find(m => m.id === 'gd-conclusus'))")
-    page.wait_for_timeout(1500)
-    r = page.evaluate("""() => { const el = document.getElementById('gd-conclusus');
-      const v = el && el.querySelector('video');
-      return { show: !!el && el.classList.contains('show'), paused: v ? v.paused : null }; }""")
-    check("card-open: the card has .show", r["show"], r)
-    check("card-open: its video is not paused", r["paused"] is False, r)
-    page.evaluate("document.querySelector('#gd-conclusus .open-case').click()")
-    page.wait_for_timeout(SETTLE)
-    r = page.evaluate("({ hash: location.hash, open: document.getElementById('conclusus').classList.contains('open') })")
-    check("card-open: Open case file opens #conclusus", r["hash"] == "#conclusus" and r["open"], r)
-    ctx.close()
-
-
 def flow_loop_pause(browser, base):
     """The hero loop stops once the hero is off screen and resumes, in place, when it returns."""
     ctx, page = new_page(browser)
@@ -1256,13 +1288,13 @@ FLOWS = {
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
-    "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "genesis-scenes": flow_genesis_scenes,"twotabs": flow_twotabs, "header": flow_header,
+    "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "glimpse": flow_glimpse,"genesis-scenes": flow_genesis_scenes,"twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "rex": flow_rex,
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,
     "cc-win": flow_cc_win,
     "work-open": flow_work_open, "one-open": flow_one_open, "stub-redirect": flow_stub_redirect,
-    "gamedev-reveal": flow_gamedev_reveal, "card-open": flow_card_open, "loop-pause": flow_loop_pause,
+    "loop-pause": flow_loop_pause,
 }
 
 

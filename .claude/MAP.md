@@ -29,7 +29,6 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
 - case folder: `div.case-folder` under its game's row in section#work on index.html (js/site/folders.js, css/folder.css)
-- Game Dev beacon: `bnote-gamedev`; the game beacons: the `gamedev` cluster (js/depths/gamedev.js)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
 - the case pages, a page's toy: folders on index.html (`projects/*.html` are redirect stubs); toy js/pages/<page>.js registers on js/pages/play.js, css/play.css
 - the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
@@ -97,8 +96,8 @@ shares `Gen`:
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously | uses `SiteEntry`, `XP` |
-| `surge.js` | Level burst at the chip (rings, seeded sparks, label, edge glow; grows with the pip count) on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s) | `window.Surge {play, rankUp}` |
+| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; `warmClips` preloads index clips after | uses `SiteEntry`, `XP` |
+| `surge.js` | Level burst at the chip on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
@@ -137,7 +136,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge.js` | Core | `window.Bridge` |
 | `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
-| `bridge-motifs.js` | The five motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
+| `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
 | `bridge-panel.js` | Setting panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
@@ -176,7 +175,6 @@ does not — it is pure data, no dependency on `B`.
 |---|---|
 | `depths.js` | Core: `CLUSTERS` registry, `add`, `waveOf`, `LAYOUTS` (`rows arc chain branch`), `nodes()` | `window.Depths {nodes, clusters, add}` |
 | `lore.js` | The four lore-beacon clusters in order: `bnote-rex` (10), `bnote-watcher` (2), `bnote-void` (3, `bnote-bridge-*`), `bnote-land` (5); mostly pinned with `at:` |
-| `gamedev.js` | The `gamedev` cluster: four `gd-*` game beacons (sector-zero, voidscape, conclusus, heavylight) under `bnote-gamedev`, each card with an Open case file button | registers into `Depths` |
 
 ### js/ship
 
@@ -333,7 +331,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga-state.js` | `sagaAt` | extends `window.GenSaga` |
 | `genesis-ritual.js` | the warlock births and the Hound's ritual | `window.GenRitual` |
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
-| `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw | `window.Genesis` |
+| `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw; `warm` pre-paints beat starts offscreen | `window.Genesis` |
 
 - `genesis-state.js`: world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`;
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
@@ -508,7 +506,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 `js/site/xp.js`, `js/site/entry.js` (blocking, on purpose), then the inline
 SW purge. Body tail, in this order:
 
-`site/surge → bridge/lamp → depths/depths → depths/lore → depths/gamedev →
+`site/surge → bridge/lamp → depths/depths → depths/lore →
 hud/instruments → hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/* →
 world/world → world/* → ship/voidship-art → ship/voidship-prow →
 ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →

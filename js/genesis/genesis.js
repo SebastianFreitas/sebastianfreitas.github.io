@@ -57,9 +57,10 @@ window.Genesis = (function () {
     return hitG;
   }
   let broke = false;
+  let warming = false;   // warm() draws on a throwaway canvas: no caption, no bar
   function paintCopy(immediate) {
     const b = BEATS[G.beat];
-    if (!b || !copyEl) return;
+    if (warming || !b || !copyEl) return;
     if (overlay) overlay.dataset.beat = b.id || "";
     clearTimeout(copyTimer);
     if (!b.line) {
@@ -84,7 +85,7 @@ window.Genesis = (function () {
   }
 
   function paintTicks() {
-    if (!trackEl) return;
+    if (warming || !trackEl) return;
     let bar = trackEl.querySelector(".genesis-prog");
     if (!bar) {
       trackEl.innerHTML = '<span class="genesis-prog"><i></i></span>';
@@ -225,7 +226,7 @@ window.Genesis = (function () {
     const doneSeg = seg;
     seg = null;
     document.dispatchEvent(new CustomEvent("site:genesis-done", {
-      detail: { mode: G.thenMode, camX: G.thenCamX, segment: doneSeg },
+      detail: { mode: G.thenMode, camX: G.thenCamX, segment: doneSeg, url: segUrl },
     }));
   }
 
@@ -271,9 +272,11 @@ window.Genesis = (function () {
   }
 
   /* true when the segment started or is fading in */
-  function playScene(id) {
+  let segUrl = false;   // the running segment came from ?gscene, not a beacon click
+  function playScene(id, fromUrl) {
     const s = G.SCENES[id];
     if (G.active || segBusy || !s) return false;
+    segUrl = !!fromUrl;
     if (reduced && !FORCE) return false;
     if (reduced) return startScene(id, s);
     segBusy = true;
@@ -281,7 +284,7 @@ window.Genesis = (function () {
       segBusy = false;
       // a failed start still signals done, so the waiting note opens
       if (!startScene(id, s))
-        document.dispatchEvent(new CustomEvent("site:genesis-done", { detail: { segment: id } }));
+        document.dispatchEvent(new CustomEvent("site:genesis-done", { detail: { segment: id, url: segUrl } }));
       veilTo(0, 900);
     });
     return true;
@@ -296,6 +299,41 @@ window.Genesis = (function () {
     const i = j >= 0 ? j : idxOf(s.from);
     if (i > 0) seek(i, 0);
     return true;
+  }
+
+  /* build the lazy canvases and caches ahead of the first cutscene: paint the first segment's
+     opening frames on a throwaway canvas, then put the state back; nothing shows. Safe twice. */
+  let warmed = false;
+  function warm() {
+    if (warmed || G.active || reduced) return;
+    warmed = true;
+    const keep = { active: G.active, beat: G.beat, local: G.local, W: G.W, H: G.H, cam: G.cam, camTarget: G.camTarget, zoom: G.zoom, paused: G.paused };
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(2, innerWidth);
+    cv.height = Math.max(2, innerHeight);
+    const ctx = cv.getContext("2d");
+    const nSparks = G.sparks ? G.sparks.length : 0, nRings = G.rings ? G.rings.length : 0;
+    warming = true;
+    try {
+      G.active = true;
+      G.cam = 0; G.camTarget = 0; G.zoom = 1;
+      G.W = cv.width; G.H = cv.height;
+      for (const b of ["point", "drawn", "break", "walk"]) {
+        go(idxOf(b));
+        draw(ctx, { W: G.W, H: G.H });
+      }
+    } catch (e) {
+    } finally {
+      G.active = keep.active;
+      G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
+      G.cam = keep.cam; G.camTarget = keep.camTarget; G.zoom = keep.zoom; G.paused = keep.paused;
+      if (G.sparks) G.sparks.length = Math.min(G.sparks.length, nSparks);
+      if (G.rings) G.rings.length = Math.min(G.rings.length, nRings);
+      if (window.GenArmies) GenArmies.reset();
+      broke = false;
+      resetFX();
+      warming = false;
+    }
   }
 
   function segmentSeen(id) {
@@ -881,7 +919,7 @@ window.Genesis = (function () {
     if (G.active) return;
     const segId = G.SCENE;
     if (segId) {
-      setTimeout(() => { if (!G.active) playScene(segId); }, 80);
+      setTimeout(() => { if (!G.active) playScene(segId, true); }, 80);
       return;
     }
     if (FORCE) {
@@ -894,6 +932,6 @@ window.Genesis = (function () {
     get active() { return G.active; },
     get pending() { return pending(); },
     get seaming() { return seaming; },
-    play, playScene, playSegment: playScene, segmentSeen, skip, seek, step, draw,
+    play, playScene, playSegment: playScene, warm, segmentSeen, skip, seek, step, draw,
   };
 })();

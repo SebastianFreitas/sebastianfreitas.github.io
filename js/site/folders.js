@@ -581,12 +581,6 @@ window.Folders = (function () {
       else open(key);
       return;
     }
-    const oc = t.closest(".open-case[data-case]");
-    if (oc) {
-      e.preventDefault();
-      open(oc.dataset.case);
-      return;
-    }
     if (t.closest('a.back[href="#work"]')) close();
   });
 

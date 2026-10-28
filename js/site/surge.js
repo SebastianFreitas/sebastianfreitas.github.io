@@ -280,11 +280,116 @@
     card = { close };
   }
 
+  /* the card after the Void beacon's cutscene: a message to read, so no auto-dismiss */
+  let glimpseOn = false;
+  function glimpse() {
+    if (glimpseOn) return;
+    // a rank-up card from the same segment goes first
+    if (card) {
+      const again = () => { document.removeEventListener("xp:card-closed", again); setTimeout(glimpse, 120); };
+      document.addEventListener("xp:card-closed", again);
+      return;
+    }
+    glimpseOn = true;
+
+    const veil = document.createElement("div");
+    veil.className = "rank-veil glimpse-veil";
+    veil.setAttribute("role", "dialog");
+    veil.setAttribute("aria-modal", "true");
+    veil.setAttribute("aria-label", "A glimpse of my world");
+
+    const cardEl = document.createElement("div");
+    cardEl.className = "rank-card glimpse-card";
+    veil.appendChild(cardEl);
+
+    const title = document.createElement("h2");
+    title.className = "rank-name glimpse-title";
+    title.textContent = "A glimpse of my world";
+    cardEl.appendChild(title);
+
+    const body = document.createElement("p");
+    body.className = "glimpse-body";
+    body.textContent = "That was a first look at my setting. Click anywhere to keep exploring the void.";
+    cardEl.appendChild(body);
+
+    const rule = document.createElement("hr");
+    rule.className = "glimpse-rule";
+    cardEl.appendChild(rule);
+
+    const game = document.createElement("a");
+    game.className = "glimpse-body glimpse-game";
+    game.href = "#work";
+    game.appendChild(document.createTextNode("Click here or scroll down for my game projects and more"));
+    const mouse = document.createElement("span");
+    mouse.className = "glimpse-mouse";
+    mouse.setAttribute("aria-hidden", "true");
+    mouse.appendChild(document.createElement("i"));
+    game.appendChild(mouse);
+    cardEl.appendChild(game);
+
+    document.body.appendChild(veil);
+    requestAnimationFrame(() => veil.classList.add("open"));
+
+    const openedAt = performance.now();
+    let closed = false;
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      glimpseOn = false;
+      document.removeEventListener("keydown", onKey);
+      removeEventListener("wheel", onScroll);
+      removeEventListener("touchmove", onScroll);
+      veil.classList.add("closing");
+      setTimeout(() => veil.remove(), 200);
+    }
+    function onKey(e) {
+      if (performance.now() - openedAt <= 450) return;
+      if (e.key === " " || e.key === "Spacebar" || e.key === "Enter" || e.key === "Escape") e.preventDefault();
+      close();
+    }
+    function onScroll() { close(); }   // passive: the page still scrolls
+
+    function toWork() {
+      close();
+      const work = document.getElementById("work");
+      if (!work) return;
+      const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      work.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+    }
+    game.addEventListener("click", e => { e.preventDefault(); toWork(); });
+    game.addEventListener("keydown", e => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      e.stopPropagation();
+      toWork();
+    });
+    veil.addEventListener("pointerdown", e => {
+      if (game.contains(e.target)) { e.stopPropagation(); return; }
+      e.preventDefault();
+      e.stopPropagation();
+      if (performance.now() - openedAt > 450) close();
+    });
+    document.addEventListener("keydown", onKey);
+    addEventListener("wheel", onScroll, { passive: true });
+    addEventListener("touchmove", onScroll, { passive: true });
+
+    try {
+      veil.tabIndex = -1;
+      veil.focus({ preventScroll: true });
+    } catch (e) {}
+  }
+
+  // only a Void-beacon segment ("birth"); the full Genesis by URL carries no segment
+  document.addEventListener("site:genesis-done", e => {
+    if (e.detail && e.detail.segment === "birth" && !e.detail.url) setTimeout(glimpse, 350);
+  });
+
   document.addEventListener("xp:surge", e => play(e.detail || {}));
   document.addEventListener("xp:rankup", e => {
     const d = e.detail || {};
     setTimeout(() => rankUp(d), 380);
   });
 
-  window.Surge = { play, rankUp };
+  window.Surge = { play, rankUp, glimpse };
 })();
