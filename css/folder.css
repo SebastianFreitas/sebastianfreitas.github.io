@@ -13,11 +13,13 @@
 
 .open-case {
   grid-area: open;
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  font-family: "Cormorant SC", var(--tab-serif);
+  font-weight: 500;
+  font-synthesis: none;
+  font-size: 0.86rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sage-dim);
+  color: var(--sage);
 }
 .folder-body[hidden] { display: none; }
 .folder-body.is-opening, .folder-body.is-closing { overflow: clip; } /* clip, not hidden: hidden makes the body a scroll container and the loader's sticky block stops following the viewport */
@@ -29,22 +31,25 @@
   width: 100%;
   margin: 2rem 0 0;
   padding: 0.9rem var(--gutter) var(--gutter);
-  background: none;
+  background: var(--petrol);
   border: 0;
-  border-top: 1px solid rgb(var(--lamp-rgb) / 0.55);
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  border-top: 1px solid var(--rule);
+  font-family: "Cormorant SC", var(--tab-serif);
+  font-weight: 500;
+  font-synthesis: none;
+  font-size: 0.86rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sage-dim);
+  color: var(--sage);
   cursor: pointer;
 }
 .folder-close::before {
   content: "END OF FILE //";
   color: var(--lamp);
-  font-size: 0.62rem;
+  font-family: "Cormorant SC", var(--tab-serif);
+  font-weight: 500;
+  font-size: 0.86rem;
   letter-spacing: 0.34em;
-  text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
 }
 .folder-close:hover, .folder-close:focus-visible { color: var(--lamp); }
 
@@ -62,18 +67,18 @@
 
 /* opened folder: the row's tab and outline carry on down around the case file */
 /* one opaque colour on every side, so the row and the case (over the see-through canvas) read as one outline */
-.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: color-mix(in srgb, var(--lamp) 55%, var(--petrol)); }
+.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: var(--rule); }
 /* hover/focus rules would repaint the open row's border translucent: name them here so the open colour wins; no bottom border, so no blended corner pixel at the join */
 .obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: var(--open-line); border-width: 2px 2px 0; margin-bottom: 0; }
 .obj[aria-expanded="true"]:hover > .obj-id, .obj[aria-expanded="true"]:focus-visible > .obj-id { border-color: var(--open-line); }
-.obj[aria-expanded="true"] > .obj-id { border-color: var(--open-line); border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); color: var(--lamp); }
+.obj[aria-expanded="true"] > .obj-id { border-color: var(--open-line); border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); }
 .case-folder:has(.folder-body:not([hidden])) { border: 2px solid var(--open-line); border-top: 0; }
 /* a page-colour gap (12px) just outside the gold line, same on both sides, so canvas squares never touch it */
 .obj[aria-expanded="true"] { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 -12px 0 var(--petrol); clip-path: inset(-3rem -12px 0 -12px); }
 .case-folder:has(.folder-body:not([hidden])) { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 12px 0 var(--petrol); }
 /* the gold frame fades in on open and out on close (200 ms); the class holds the frame for the fade after the body hides */
 .case-folder:has(.folder-body:not([hidden])) { animation: gold-edge 200ms ease-out backwards; }
-.case-folder.gold-out { border: 2px solid transparent; border-top: 0; animation: gold-edge-out 200ms ease-in forwards; --open-line: color-mix(in srgb, var(--lamp) 55%, var(--petrol)); }
+.case-folder.gold-out { border: 2px solid transparent; border-top: 0; animation: gold-edge-out 200ms ease-in forwards; --open-line: var(--rule); }
 @keyframes gold-edge { from { border-color: transparent; } to { border-color: var(--open-line); } }
 @keyframes gold-edge-out { from { border-color: var(--open-line); } to { border-color: transparent; } }
 /* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
@@ -83,7 +88,7 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 
 .folder-bar {
   left: 0; right: 0; top: 0; height: 2px; z-index: 2;
-  background: var(--lamp); box-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6);
+  background: var(--lamp); box-shadow: 0 0 6px rgb(var(--lamp-rgb) / 0.3);
   transform-origin: 0 50%;
 }
 .folder-body.is-open .folder-bar { opacity: 0; }
@@ -96,14 +101,14 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 
 .folder-kicker {
   left: var(--gutter); top: 0.9rem; z-index: 3; white-space: nowrap;
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase;
-  color: var(--lamp); text-shadow: 0 0 12px rgb(var(--lamp-rgb) / 0.6), 0 2px 12px rgba(0,0,0,0.9);
+  font-family: "Cormorant SC", var(--tab-serif); font-weight: 500; font-size: 0.86rem; letter-spacing: 0.34em; text-transform: uppercase;
+  color: var(--lamp); text-shadow: 0 0 6px rgb(var(--lamp-rgb) / 0.3), 0 2px 12px rgba(0,0,0,0.9);
 }
 
 /* glow: its own layer, js sets only its opacity (caseAnim in js/site/folders.js drives every open effect from one progress value) */
 .folder-glow {
   position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
-  box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.2);
+  box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.1);
 }
 .folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker,
 .folder-body.is-closing .folder-bar, .folder-body.is-closing .folder-scan, .folder-body.is-closing .folder-kicker { will-change: transform, opacity; }

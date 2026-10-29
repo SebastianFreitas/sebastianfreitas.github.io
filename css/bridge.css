@@ -344,6 +344,10 @@
   #bridge-modes { top: 4.8rem; }
   .modes-panel { padding: 0.55rem 0.85rem; }
 }
+/* the phone bar is ~122px tall (wordmark and tabs, then the level row): sit below it */
+@media (max-width: 640px) {
+  #bridge-modes { top: 8.2rem; }
+}
 #bridge-sys {
   right: 2rem; left: auto; bottom: var(--hud-floor);
   width: auto; max-width: 46vw;
