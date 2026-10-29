@@ -91,9 +91,24 @@
     Voidship.setThrusting(B.ship, true);
     B.thrustId = e.pointerId;
     host.classList.add("burning");
+    if (!root.classList.contains("genesis-on")) root.classList.add("bar-away");
     try { host.setPointerCapture(e.pointerId); } catch (err) {}
   }
   B.beginBurn = beginBurn;
+
+  /* the top bar slides away while the ship burns; the top edge or any scroll brings it back */
+  const root = document.documentElement;
+  function barBack() { root.classList.remove("bar-away"); }
+  window.addEventListener("mousemove", e => {
+    if (!root.classList.contains("bar-away")) return;
+    const bar = document.querySelector(".topbar");
+    if (e.clientY <= Math.max(24, bar ? bar.offsetHeight : 0)) barBack();
+  }, { passive: true });
+  window.addEventListener("wheel", barBack, { passive: true });
+  window.addEventListener("scroll", barBack, { passive: true });
+  window.addEventListener("touchmove", e => {
+    if (!host.contains(e.target)) barBack();
+  }, { passive: true });
 
   function endBurn(e) {
     if (B.thrustId == null) return;
@@ -139,7 +154,7 @@
     const inside = e.clientY >= r.top && e.clientY <= r.bottom;
 
     if (cursor) {
-      if (inside || B.thrustId != null) {
+      if ((inside && !(e.target.closest && e.target.closest(".topbar"))) || B.thrustId != null) {
         cursor.classList.add("on");
         cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
       } else cursor.classList.remove("on");

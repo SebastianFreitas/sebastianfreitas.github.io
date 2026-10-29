@@ -708,7 +708,7 @@ def flow_shell(browser, base):
     ctx, page = new_page(browser)
     page.goto(base + "/")
     page.wait_for_timeout(300)
-    for label, href in (("Work", "#work"), ("Experience", "#experience")):
+    for label, href in (("Bridge", "#bridge-hero"), ("Games", "#work")):
         has = page.locator(f"header.topbar nav a[href='{href}']").count() > 0
         check(f"top bar has {label}", has)
     for case in CASES:

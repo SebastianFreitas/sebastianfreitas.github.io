@@ -485,6 +485,14 @@ html.genesis-on .topbar {
   opacity: 0; pointer-events: none;
   transition: opacity 0.4s ease;
 }
+html.bar-away .topbar {
+  transform: translateY(-100%); pointer-events: none;
+  transition: transform 0.25s ease;
+}
+html:not(.bar-away):not(.genesis-on) .topbar { transition: transform 0.2s ease; }
+@media (prefers-reduced-motion: reduce) {
+  html.bar-away .topbar, html:not(.bar-away):not(.genesis-on) .topbar { transition: none; }
+}
 
 .bridge-hero.is-cinematic { cursor: default; }
 .bridge-hero.is-cinematic .bridge-hud,
