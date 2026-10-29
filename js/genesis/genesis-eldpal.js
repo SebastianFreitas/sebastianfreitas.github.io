@@ -45,6 +45,15 @@ window.GenEldPal = (() => {
     ["#4a2339", "#74395b", "#aa6188"],
   ];
 
+  // the ceiling mass (hangs from the top): the sea's grey-green (teal family SEA[1] pale to deep), opaque
+  const CEIL = ["#27332f", "#212b28", "#1b2422", "#151c1b", "#101514"];
+  // the drawn ceiling clouds (spec 45), flat washes: lilac-grey back, sea grey-green body (two variants), navy pools, lighter front patch
+  const CEILCLOUD = ["#061c48", "#164436", "#382b43"];   // back deep navy, middle dark sea green, front dark plum (25% darker than spec 47)
+  // muted greens, ochres and steel greys for the things hanging from the ceiling mass
+  const CEILOBJ = ["#66786a", "#7a8666", "#8b7d57", "#555e69", "#818a96", "#a3abb4", "#434a54"];
+  // washed tones for the ceiling object kinds (genesis-ceilkinds*.js): flat, nothing bright
+  const CEILKIND = ["#566a5c", "#7f8c74", "#a3ae94", "#6f6650", "#b2a584", "#7a5f50", "#9a7c6c", "#4f5863", "#8a93a0", "#a39a84", "#cfc9da", "#b3accb", "#a98c98", "#8a6a78", "#4d6f6c", "#86a8a2"];
+
   function hexRgb(h) {
     return [
       parseInt(h.slice(1, 3), 16),
@@ -182,5 +191,5 @@ window.GenEldPal = (() => {
     });
   }
 
-  return { BG, CHAOS, MID, SHADE, LIT, TONES, TIER3, SEA, tone, contrast, report, swatchSheet };
+  return { BG, CHAOS, MID, SHADE, LIT, TONES, TIER3, SEA, CEIL, CEILCLOUD, CEILOBJ, CEILKIND, tone, contrast, report, swatchSheet };
 })();

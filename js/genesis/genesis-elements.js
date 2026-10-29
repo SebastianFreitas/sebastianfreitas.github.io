@@ -608,7 +608,7 @@
   // the liquid's level follows the matter that has landed: a nominal landing time per sea-bound particle
   // (its fall start plus the fall), counted against s. Pure in s. SRISE is 0 with nothing landed, 1 at 95%
   const SEA_LT = [];
-  let SRISE = 0, SBASE = 0, SFALL = null;
+  let SRISE = 0, SLVL = 0, SBASE = 0, SFALL = null;
   const SK = new Float64Array(5).fill(-1);
   function surfFrame(s, W, H) {
     const camOff = G.cam * W, t = G.reduced ? 0 : G.t;
@@ -624,9 +624,10 @@
       let pk = 0;
       for (let r = 0; r <= 1; r += 0.001) if (r + 2.4 * r * Math.sin(Math.PI * r) > pk + 1e-9) { pk = r + 2.4 * r * Math.sin(Math.PI * r); SFALL = [r, pk]; }
       const lt = SEA_LT.slice().sort((x, y) => x - y), N = lt.length, at = r => lt[Math.max(0, Math.min(N - 1, Math.ceil(r * 0.95 * N) - 1))];
-      SFALL = [at(SFALL[0]), pk, at(SFALL[0]) + 10 * (at(1) - at(SFALL[0]))];
+      SFALL = [at(SFALL[0]), pk, at(SFALL[0]) + 10 * (at(1) - at(SFALL[0])), at(1)];
     }
     if (s >= SFALL[0]) lvl = 1 + (SFALL[1] - 1) * (1 - smooth(clamp((s - SFALL[0]) / (SFALL[2] - SFALL[0]), 0, 1)));   // after the peak: time-based, smooth to the final level
+    SLVL = lvl;
     SBASE = H * (0.86 + (1 - lvl) * (0.14 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));
     const wp = camOff / W, nw = WV.length - 1;
     for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.0015 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7) + H * 0.012 * swellS(k / nw + wp, t);   // between the feet: flat, only a ripple
@@ -671,28 +672,59 @@
     const t = G.reduced ? 0 : G.t;
     const spW = SEA_SPAN * W;
     ctx.globalAlpha = 1;
-    const sy = SBASE;
     drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, false);
+    const o = { W, H, t, camOff, dir: 1, sh: SH, bottom: H, pieces: [] };
+    o.mid = () => {
+      OBN = 0;
+      drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, 2);
+      drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, 2);
+      drawSlicks(ctx, W, H, camOff, t);
+      for (let i = 0; i < OBN; i++) o.pieces.push({ x: OBX[i], y: OBY[i], r: OBR[i] });
+    };
+    paintSea(ctx, o);
+    drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, true);
+    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, false);
+    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, true);
+    const fade = s < DEB_END ? 1 - smooth(clamp((s - 15.5) / 3.6, 0, 1)) : 0, ox = G.sx(0);
+    if (fade > 0) for (const pt of PARTS) {
+      if (!pt.sea || pt.birth > s) continue;
+      seaPlan(pt, s, ox, W, H, camOff, spW);
+      if (s >= PLAN.tl && !PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
+    }
+    // the splashes and heaps that land near the front objects
+    if (fade > 0) for (const pt of PARTS) {
+      if (!pt.sea || pt.birth > s) continue;
+      seaPlan(pt, s, ox, W, H, camOff, spW);
+      if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
+    }
+    if (dim < 1) { layerEnd(outer, ctx, dim); ctx = outer; }
+  }
+
+  // the sea body, surface line and floating-piece rings; o: W, H, t, camOff, sh (NS+1 surface ys), bottom (far edge y),
+  // dir (1 water below the line, -1 mirrored about y = H/2: water above), pieces [{x, y, r}], mid(ctx) (drawn after the ripples, may fill pieces)
+  function paintSea(ctx, o) {
+    const W = o.W, H = o.H, t = o.t, camOff = o.camOff, SH = o.sh, vb = o.bottom;
+    const shAt = (x, w) => { const u = clamp(x / w, 0, 1) * NS, k = Math.min(NS - 1, Math.floor(u)); return SH[k] + (SH[k + 1] - SH[k]) * (u - k); };
+    if (o.dir < 0) { ctx.save(); ctx.translate(0, H); ctx.scale(1, -1); }
     // the liquid: one dark murky slate body to the canvas bottom, in three flat bands (clipped to the surface), a
     // thin lighter scum line along the top and a few slow ripple dashes
     ctx.beginPath();
-    ctx.moveTo(0, H);
+    ctx.moveTo(0, vb);
     for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k]);
-    ctx.lineTo(W, H);
+    ctx.lineTo(W, vb);
     ctx.closePath();
     ctx.fillStyle = "rgb(38,44,42)";
     ctx.globalAlpha = 1;
     ctx.fill();
     ctx.save();
     ctx.clip();
-    const vb = H;   // the visible bottom: no letterbox bars
     for (let b = 0; b < 2; b++) {   // the bands follow the surface, so no straight edge
       const bf = b ? 0.8 : 0.45;
       ctx.fillStyle = b ? "rgb(24,27,27)" : "rgb(31,35,34)";
       ctx.beginPath();
-      ctx.moveTo(0, H);
+      ctx.moveTo(0, vb);
       for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k] + (vb - SH[k]) * bf);
-      ctx.lineTo(W, H);
+      ctx.lineTo(W, vb);
       ctx.closePath();
       ctx.fill();
     }
@@ -753,39 +785,41 @@
       ctx.fillRect(rx + 2 * sg, ry + 1, sg, 1);
     }
     ctx.globalAlpha = 1;
-    OBN = 0;
-    drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, 2);
-    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, 2);
-    drawSlicks(ctx, W, H, camOff, t);
+    ctx.globalAlpha = 1;
+    if (o.mid) o.mid(ctx);
     // a clear hole in the tar round each piece where it meets the surface (lower half only: the piece covers the rest)
-    for (let i = 0; i < OBN; i++) {
-      const rx = OBR[i] + 5, ry = Math.min(rx * 0.28, H * 0.025);
+    for (const pc of o.pieces) {
+      const rx = pc.r + 5, ry = Math.min(rx * 0.28, H * 0.025);
       ctx.beginPath();
-      ctx.ellipse(OBX[i], OBY[i], rx, ry, 0, 0, Math.PI);
+      ctx.ellipse(pc.x, pc.y, rx, ry, 0, 0, Math.PI);
       ctx.closePath();
       ctx.fillStyle = "rgb(42,48,46)";
       ctx.fill();
       ctx.strokeStyle = "rgb(56,62,60)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      if (!o.wet) continue;
+      // the ceiling's pieces get the floor's full treatment: a wet lip on the near side, wavelets running out along the surface, and ripple arcs spreading from the piece
+      ctx.beginPath();
+      ctx.ellipse(pc.x, pc.y, rx + 3, ry + 2, 0, 0.15, Math.PI - 0.15);
+      ctx.strokeStyle = "rgb(66,74,72)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "rgb(165,178,174)";
+      for (let sd = -1; sd <= 1; sd += 2) {
+        for (let n = 0; n < 3; n++) {
+          const ph = ((t * 0.35 + n / 3 + pc.x * 0.013) % 1 + 1) % 1, d = rx + 4 + ph * rx * 0.9, sg = Math.round(3 + n), wx = pc.x + sd * d - (sd < 0 ? sg * 2 : 0);
+          ctx.globalAlpha = 0.5 * Math.min(1, (1 - ph) * 2.5);
+          const wy = Math.round(shAt(clamp(pc.x + sd * d, 0, W), W) + 2 + n * 3);
+          ctx.fillRect(Math.round(wx), wy + 1, sg, 1);
+          ctx.fillRect(Math.round(wx) + sg, wy, sg, 1);
+        }
+      }
+      ctx.globalAlpha = 1;
     }
-    drawObjects(ctx, OBJ_BACK, s, W, H, camOff, t, true);
-    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, false);
-    drawObjects(ctx, OBJ_FRONT, s, W, H, camOff, t, true);
-    const fade = s < DEB_END ? 1 - smooth(clamp((s - 15.5) / 3.6, 0, 1)) : 0, ox = G.sx(0);
-    if (fade > 0) for (const pt of PARTS) {
-      if (!pt.sea || pt.birth > s) continue;
-      seaPlan(pt, s, ox, W, H, camOff, spW);
-      if (s >= PLAN.tl && !PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
-    }
-    // the splashes and heaps that land near the front objects
-    if (fade > 0) for (const pt of PARTS) {
-      if (!pt.sea || pt.birth > s) continue;
-      seaPlan(pt, s, ox, W, H, camOff, spW);
-      if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
-    }
-    if (dim < 1) { layerEnd(outer, ctx, dim); ctx = outer; }
+    if (o.dir < 0) ctx.restore();
   }
+
 
   // dark tar slicks on the surface: lobes drift apart and together; all rims first, then all tar, so overlaps read as one blob
   // floating pieces at the waterline (x, half width, y), collected each frame for the slick bend and the clear ring
@@ -1631,5 +1665,16 @@
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
-  window.GenElem = { draw, drawResidue, drawSea, drawAirDrift, rage };
+  // the floor's pieces for the ceiling to copy one for one: world x of the base centre, size, sink (fraction of height) and offset below the waterline
+  function objSlots(W, H) {
+    objLayout(W, H);
+    const out = [];
+    for (let i = 0; i < OBJ_ALL.length; i++) {
+      const o = OBJ_ALL[i];
+      const k = objK(o, H);
+      out.push({ small: !!o.small, x: o.x + (o.xl + o.xr) * 0.5 * k, w: (o.xr - o.xl) * k, h: o.bh * k, dep: o.dep, off: (o.front ? H * 0.012 : 2) + o.dy * H, rare: !!o.rare });
+    }
+    return out;
+  }
+  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SH; }, seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage };
 })();

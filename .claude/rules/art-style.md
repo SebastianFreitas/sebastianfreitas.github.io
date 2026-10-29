@@ -67,6 +67,15 @@ Nothing born of the Primordisentia's womb is eldritch: souls, Rex,
 Obrokxus and his brothers, the gods, the mainland and the city keep the
 rules above only.
 
+**Abstract.** Owner's call, 2026-10-28: everything eldritch is fully
+abstract. No shape may remind the viewer of a real thing (no leaves,
+flowers, mushrooms, chains, keys, bells, bones, eyes, teeth, feathers,
+shells, candles, crystals as gems). "Plant-like", "metallic" or
+"cloud-like" names a material and a way of moving, never an object:
+build from invented forms (folds, knots, ribbons, lattices, beads,
+splits, spirals with breaks, blobs that pinch) whose silhouettes have
+no name. If a viewer could name it, redraw it.
+
 **Three tiers.** Tier 1, the mortal realm, lies under a sea at the
 bottom of the frame. Tier 2 is the bridge and everything living on it:
 the bridge is so big that its thickness alone spans galaxies. Tier 3 is

@@ -669,6 +669,7 @@ window.Genesis = (function () {
       GenVoid.drawSpanLife(ctx, uDrawn);
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
+      if (window.GenCeiling) GenCeiling.draw(ctx, G.W, G.H, GenElem.seaRise(G.W, G.H), G.reduced ? 0 : G.t);   // the ceiling mass, grown on the sea's clock
       GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
       const tTrade = G.secs("trade");
       const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace

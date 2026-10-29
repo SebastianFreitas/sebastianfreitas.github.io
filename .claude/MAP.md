@@ -34,6 +34,8 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
 - the sea, the river (the banded strip at the genesis frame bottom): js/genesis/genesis-elements.js (seaK, drawSea; drawn every frame from genesis.js)
+- the ceiling mass (drifting clouds along the top, grow with the sea): js/genesis/genesis-ceiling.js (GenCeiling.draw: the floor sea mirrored overhead via GenElem.paintSea dir -1 and the floor's own water line (seaLine); objects sit in it as pieces, arrival = GenElem.seaLevel; drift + wobble)
+- genesis-ceiling.js resolveHangers (end of prep): hangers that cross a rock are shortened to the nearest hit or dropped (never across a rock's own eye), roots spaced in layout order, tips capped at 0.28 H; hangers hidden under another cloud body re-rooted onto it (farthest free anchor) or dropped; bare big front clouds keep their own hanger; tiny-cloud tails mirrored or cut when they cross a rock; the left rock slides to close a band sliver. drawSprites paints rocks, hangers and eyes before the cloud bodies (extras sit behind the clouds)
 - the womb, the flesh ball, Primordisentia: js/genesis/genesis-flesh.js (fleshGeom, drawFlesh, drawSeal)
 - the old ones: js/genesis/genesis-oldones.js (24 beings), painters in genesis-oldkin.js
 - the east-goers (dressed old ones): js/genesis/genesis-oldkin.js (Bare/Dressed painters), clothes in genesis-attire.js
@@ -294,6 +296,12 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-state.js` | `BEATS` (34 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex dot–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette: 21 named tokens as `{lit, mid, shade}`, tier-3 sky steps, `SEA` (five sea families, read by genesis-elements.js); `tone report contrast swatchSheet` | `window.GenEldPal` |
+| `genesis-ceilkinds.js` | registry of ceiling hanging objects; draws sprout, tuft, fin | `window.GenCeilKinds` (`add list pick deck palette hues`) |
+| `genesis-ceilclouds.js` | one opaque ceiling cloud design from the owner sketch: three flat stacked layers (CEILCLOUD tones), each swaying on its own, cached geometry, layer-tagged underside anchors for hanging objects | `window.GenCeilClouds` (`add list deck`) |
+| `genesis-ceilkinds-plant.js` / `-metal.js` / `-cloud.js` / `-odd.js` | family files, load after the registry and before genesis-ceiling.js; each calls `GenCeilKinds.add` (stubs until specs 9-12) | none |
+| `genesis-ceilshapes.js` | the ceiling's flat metal stones as Path2D: stepped slab and the -///- symbol, chipped edges, one sheen band; `glass` still exported but no longer drawn on the ceiling | `window.GenCeilShapes` (`metal`, `glass`) |
+| `genesis-ceilkinds3.js` | ceiling hanger worm (pale ringed, tapered, on metal rocks) and the eye drawer for metal rocks' eye sites (crack that opens into one of four looks, one open at a time via a module scheduler; no slit hanger) | `window.GenCeilHang3` (`kinds`, `eye`, `eyeSite`) |
+| `genesis-ceilkinds2.js` | extra ceiling hangers (bead chain, stepped bar, pointed teeth, pendulum), seeded; not in the GenCeilKinds deck | `window.GenCeilHang` (`kinds`) |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
 | `genesis-void.js` | Far realms, motes, the monumental span | `window.GenVoid` |
 | `genesis-flesh.js` | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
@@ -308,7 +316,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-clash.js` | `clash` beat inside: close view, Rex's fist drives the red dot into the womb wall in 4 blows (stepped octagon rings), the wall bulges and tears in held steps onto tier-1 strata: `draw` | `window.GenClash` (`draw(...,noActors)`, `geom`) |
 | `genesis-death.js` | `death` beat: clash backdrop without actors, Rex's fist steps into the tear and curls over the red dot, the arm steps to dead grey. `window.GenDeath` |
 | `genesis-gods-beat.js` | `gods` beat opening: the death frame cut by a stepped octagon onto the live land. `window.GenGodsBeat` |
-| `genesis-elements.js` | wave one after the break | `window.GenElem {draw, drawResidue, drawSea, drawAirDrift, rage}` |
+| `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, chunkAt, MASS, massScale}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
@@ -470,6 +478,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-folder toy in seconds (loads `/#<name>`) |
+| `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/scrollperf.py` | Scroll-jank measure |
 | `tools/folderperf.py` | Frame meter for the first open of a game folder (gate, wheel to Work, click; per-phase frame times, longtasks): `py -3 tools/folderperf.py [--folder k] [--slow] [--cpu N (default 6)] [--phone] [--json p]` |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
@@ -482,6 +491,10 @@ Data read by both the bridge and a case page. No drawing, no state.
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);
 - `tools/snap.py`: imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js`
 - `tools/toyshot.py`: `py -3 tools/toyshot.py <page> [--out PATH.png] [--t MS] [--y PX\|FRAC] [--click-beat KIND]... [--show-beat KIND]` writes a viewport shot (default `snapshots/toys/<page>-<y>.png`, or `<page>-beat-<kind>[-after-<kinds>].png`), prints the inked px count;
+- `media/genesis-ceiling/`: owner-approved off-site ceiling cloud pictures (2026-10-28), not wired into the site yet: `back-cloud.png` (whole cloud, ocean #262c2a + bluish #425464), `back-cloud-gold.png` (navy/gold), `layers.png` (1440x900 layered try), `sprites/` (obj1-3, tiny1-4).
+  - `media/genesis-ceiling/`: since 2026-10-28 genesis-ceiling.js draws every cloud in code; `ceil72-tip1..6`, `ceil72-obj1..5`, `ceil72-tiny1..6` and back1..6 are no longer loaded.
+  - `ceil72.json` = {back,tip,obj,tiny} of {file,w,h,ax,ay,hang}; its boxes may still place the code-drawn clouds.
+  - `ceil72-*.webp` + `ceil72.json`: the chosen "layers72" ceiling exported as trimmed alpha sprites (back band, obj1-5, tiny1-6); json gives each sprite's size and x,y in the 1440x900 frame, plus hang anchors (u,v) on object clouds.
 - `tools/toyshot.py`: beats come from `PlayConclusus.report().beats` (`play key1 key2 key3 door`): each click scrolls it to mid-viewport, runs 900 ms, re-reads, clicks, runs 1500 ms; a null beat exits 1; exits 1 on a blank/missing toy or a console error; imports `tools/snap.py`
 - `tools/scrollperf.py`: `py -3 tools/scrollperf.py <page> [--bar] [--runs N]`, headed Chromium 1440x900 DPR 1 in real time, wheel 120 px / 16 ms to the bottom and back; injected probe rAF loop (frame intervals), per-callback ms of the toy's rAF (stack in `pacer.js`/`js/pages/`),
 - `tools/scrollperf.py`: layout reads inside toy frames (+ sites in an extra attribution run), longtask / long-animation-frame / layout-shift, CDP Layout/RecalcStyle/Script deltas; median of runs to `snapshots/perf/<page>-<stamp>.json`; `--bar` prints D37 PASS/FAIL, exits 1 on a FAIL
