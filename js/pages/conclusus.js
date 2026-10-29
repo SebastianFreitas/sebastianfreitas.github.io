@@ -418,7 +418,7 @@
     if (has === undefined) has = hasXP();
     Beacon.draw(ctx, x, y, {
       t: V.t, phase: x * 0.013, alpha: a === undefined ? 1 : a, hover: !!hov,
-      claimed: !!(has && XP.has(id)), xp: 1,
+      claimed: !!(has && XP.has(id)), xp: 1, gold: true,
     });
   }
 

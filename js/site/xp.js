@@ -240,6 +240,7 @@ window.XP = (function () {
   function canPlay() {
     if (performance.now() - lastScroll < 250) return false;
     const h = document.getElementById("bridge-hero");
+    if (document.documentElement.classList.contains("genesis-on")) return false;
     if (!h) return true;
     const r = h.getBoundingClientRect();
     return r.bottom > 0 && r.top < innerHeight;
@@ -293,10 +294,11 @@ window.XP = (function () {
     };
     setTimeout(fallback, FLY + Math.max(240, FILL / n) * n + 1500 + (milestone ? 4600 : 0));
     paint(fromLevel, 0);          // the run-up always starts empty
+    if (window.Bridge && Bridge.barPeek) Bridge.barPeek(FLY + FILL + 2500);
 
     const target = chip.getBoundingClientRect();
-    const tx = target.left + target.width * 0.5;
-    const ty = target.top + target.height * 0.5;
+    let tx = target.left + target.width * 0.5;
+    let ty = target.top + target.height * 0.5;
     const sx = typeof x === "number" ? x : tx;
     const sy = typeof y === "number" ? y : ty - 60;
 
@@ -319,6 +321,8 @@ window.XP = (function () {
     let t0 = null;
     function fly(now) {
       if (t0 === null) t0 = now;
+      const tr = chip.getBoundingClientRect();
+      tx = tr.left + tr.width * 0.5; ty = tr.top + tr.height * 0.5;
       const u = Math.min(1, (now - t0) / FLY);
       const e = easeOut(u);
       const iv = 1 - e;

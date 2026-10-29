@@ -99,6 +99,7 @@
     const note = noteEls[id];
     if (!note || note._replay) return;
     const a = document.createElement("a");
+    a.className = "type-action";
     a.href = "#";
     a.textContent = "Watch again";
     a.addEventListener("click", e => {

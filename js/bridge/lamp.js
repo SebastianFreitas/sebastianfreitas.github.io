@@ -15,7 +15,8 @@
 
 window.Beacon = (function () {
 
-  const LAMP = "245,208,107";
+  const GOLD = "245,208,107";   // game pages pass gold: true
+  const LAMP = "228,221,198";   // bridge: cream (--lamp)
   const CORE = "255,245,220";
   const HIT  = 34;   // px radius for clicking one                 // px radius for a canvas hit test
 
@@ -33,6 +34,7 @@ window.Beacon = (function () {
     const A = Number.isFinite(o.alpha) ? o.alpha : (o.alpha == null ? 1 : 0);
     if (!(A >= 0.02)) return;
 
+    const LAMP_ = o.gold ? GOLD : LAMP;
     const active = !!o.active, hover = !!o.hover;
     const k = (o.k || 1) * (hover ? 1.35 : 1) * (active ? 1.2 : 1);
 
@@ -42,20 +44,20 @@ window.Beacon = (function () {
 
     // a wide soft halo, so it separates from the scene behind it
     const glow = ctx.createRadialGradient(x, y, 0, x, y, 38 * k);
-    glow.addColorStop(0, `rgba(${LAMP},${0.26 * blink * A})`);
-    glow.addColorStop(0.45, `rgba(${LAMP},${0.08 * blink * A})`);
-    glow.addColorStop(1, `rgba(${LAMP},0)`);
+    glow.addColorStop(0, `rgba(${LAMP_},${0.26 * blink * A})`);
+    glow.addColorStop(0.45, `rgba(${LAMP_},${0.08 * blink * A})`);
+    glow.addColorStop(1, `rgba(${LAMP_},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(x - 42 * k, y - 42 * k, 84 * k, 84 * k);
 
     // a ring that never goes out, so it reads as a thing you can click
-    ctx.strokeStyle = `rgba(${LAMP},${(0.26 + 0.14 * blink) * A})`;
+    ctx.strokeStyle = `rgba(${LAMP_},${(0.26 + 0.14 * blink) * A})`;
     ctx.lineWidth = 1;
     if (o.cutscene) {
       // a cutscene beacon: two thin arcs, ( ), gaps top and bottom,
       // standing clear outside the body (past the hover ring at 17)
       const R = 21 * k, g = 0.5;   // g: half-gap angle from vertical
-      ctx.strokeStyle = `rgba(${LAMP},${(0.6 + 0.2 * blink) * A})`;
+      ctx.strokeStyle = `rgba(${LAMP_},${(0.6 + 0.2 * blink) * A})`;
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.arc(x, y, R, -Math.PI / 2 + g, Math.PI / 2 - g);
@@ -81,14 +83,15 @@ window.Beacon = (function () {
     ctx.beginPath(); ctx.arc(x, y, 2.7 * k, 0, 6.283); ctx.fill();
 
     if (active || hover) {
-      ctx.strokeStyle = `rgba(${LAMP},${(active ? 0.85 : 0.6) * A})`;
+      ctx.strokeStyle = `rgba(${LAMP_},${(active ? 0.85 : 0.6) * A})`;
       ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.arc(x, y, 17 * k, 0, 6.283); ctx.stroke();
       ctx.lineWidth = 1;
     }
     // and its name, so it's obvious there's something to open
     if (o.label && (hover || !o.claimed)) {
-      ctx.font = `500 ${Math.round(9.5 * k)}px "IBM Plex Mono", monospace`;
+      ctx.font = o.gold ? `500 ${Math.round(9.5 * k)}px "IBM Plex Mono", monospace`
+        : `500 ${Math.round(11 * k)}px Oranienbaum, "IBM Plex Mono", serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       ctx.fillStyle = `rgba(198,204,198,${(hover ? 0.9 : 0.42) * A})`;
       ctx.fillText(o.label.toUpperCase(), x, y + 22 * k);
@@ -100,7 +103,7 @@ window.Beacon = (function () {
       const p = 1 - o.pop;                       // 0 at the instant of the click
       const ring = 10 + p * 90 * k;
       ctx.lineWidth = 2 * o.pop;
-      ctx.strokeStyle = `rgba(${LAMP},${o.pop * 0.45})`;
+      ctx.strokeStyle = `rgba(${LAMP_},${o.pop * 0.45})`;
       ctx.beginPath(); ctx.arc(x, y, ring, 0, 6.283); ctx.stroke();
 
       ctx.lineWidth = 1.5 * o.pop;
@@ -114,7 +117,7 @@ window.Beacon = (function () {
     if (!o.claimed && o.xp) {
       ctx.font = `600 ${Math.round(13 * k)}px "IBM Plex Mono", monospace`;
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillStyle = `rgba(${LAMP},${0.6 * A})`;
+      ctx.fillStyle = `rgba(${LAMP_},${0.6 * A})`;
       ctx.fillText("+" + o.xp, x + 20 * k, y - 15 * k);
       ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
     }

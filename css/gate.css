@@ -59,13 +59,13 @@ body.site-frozen > .topbar {
 }
 .gate-log .bl {
   font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.09em;
-  text-transform: lowercase; color: #58635f; line-height: 1.5;
+  text-transform: lowercase; color: var(--type-quiet); line-height: 1.5;
   white-space: pre-wrap; word-break: break-word;
   text-align: left;
   animation: blIn 0.3s ease both;
 }
-.gate-log .bl::before { content: "> "; color: #3d4644; }
-.gate-log .bl:last-child { color: var(--sage); }
+.gate-log .bl::before { content: "> "; color: var(--type-quiet); }
+.gate-log .bl:last-child { color: var(--type-cream); }
 @keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 
 /* ---- loading bar: a track and fill in the log's ink, with a mono label ---- */
@@ -86,18 +86,15 @@ body.site-frozen > .topbar {
 }
 .gate-bar-label {
   font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.09em;
-  text-transform: uppercase; color: #7d8985; line-height: 1.5; text-align: center;
+  text-transform: uppercase; color: var(--type-quiet); line-height: 1.5; text-align: center;
 }
-.gate-bar.full .gate-bar-label { color: var(--sage); }
+.gate-bar.full .gate-bar-label { color: var(--type-cream); }
 .gate-bar.out { opacity: 0; }
 
 /* the way in looks like it is waiting until the warm-up is done */
 .gate-btn.waiting,
 .gate-btn-primary.waiting {
   opacity: 0.45; box-shadow: none; animation: none; cursor: progress;
-}
-.gate-btn-primary.waiting:hover {
-  background: var(--lamp); border-color: var(--lamp); box-shadow: none;
 }
 
 /* ---- bio panel (replaces terminal) ---- */
@@ -111,48 +108,36 @@ body.site-frozen > .topbar {
 
 .gate-eyebrow {
   font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 0.85rem;
+  text-transform: uppercase; color: var(--type-quiet); margin: 0 0 0.85rem;
 }
 .gate-title {
   font-family: var(--display); font-weight: 800;
   font-size: clamp(1.75rem, 4.8vw, 2.55rem); line-height: 1.08;
   letter-spacing: -0.03em; margin: 0 0 1rem;
-  color: #fff;
+  color: var(--type-cream);
 }
 .gate-title em {
-  font-style: normal; color: var(--lamp);
+  font-style: normal; color: var(--type-key);
 }
 .gate-lede {
-  margin: 0 0 2rem; color: var(--sage);
+  margin: 0 0 2rem; color: var(--type-cream);
   font-size: 0.96rem; line-height: 1.65;
 }
 .gate-actions {
   display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap;
 }
 .gate-btn {
-  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em;
+  position: relative; isolation: isolate;
+  font-family: var(--type-serif); font-size: 0.95rem; letter-spacing: 0.06em;
   text-transform: uppercase; cursor: pointer;
   padding: 0.75rem 1.35rem;
-  color: var(--sage);
-  background: rgba(20, 26, 29, 0.65);
-  border: 1px solid rgb(var(--sage-rgb) / 0.32);
-  transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  color: var(--type-cream); background: none; border: 0;
+  transition: color 0.2s;
 }
-.gate-btn:hover {
-  color: var(--lamp);
-  border-color: rgb(var(--lamp-rgb) / 0.55);
-  background: rgba(27, 35, 39, 0.9);
+.gate-btn::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: transparent; clip-path: var(--btn-scrape);
+  transition: background-color 0.2s;
 }
-.gate-btn-primary {
-  color: var(--ink);
-  background: var(--lamp);
-  border-color: var(--lamp);
-  box-shadow: 0 0 18px rgb(var(--lamp-rgb) / 0.38);
-  font-weight: 500;
-}
-.gate-btn-primary:hover {
-  color: var(--ink);
-  background: #f8dc86;
-  border-color: #f8dc86;
-  box-shadow: 0 0 26px rgb(var(--lamp-rgb) / 0.55);
-}
+.gate-btn:hover, .gate-btn-primary { color: var(--type-red-text); }
+.gate-btn:hover::before, .gate-btn-primary::before { background: var(--type-red); }

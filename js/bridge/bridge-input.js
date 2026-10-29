@@ -99,6 +99,25 @@
   /* the top bar slides away while the ship burns; the top edge or any scroll brings it back */
   const root = document.documentElement;
   function barBack() { root.classList.remove("bar-away"); }
+  /* an XP gain peeks the bar back in, then hides it again only if the burn still has it away */
+  let peekTimer = 0, peekQueued = 0;
+  function barPeek(ms) {
+    if (root.classList.contains("genesis-on")) { peekQueued = Math.max(peekQueued, ms); return; }
+    if (!root.classList.contains("bar-away")) return;
+    root.classList.add("bar-peek");
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => {
+      root.classList.remove("bar-peek");
+      if (!host.classList.contains("burning")) barBack();
+    }, ms);
+  }
+  B.barPeek = barPeek;
+  document.addEventListener("site:genesis-done", () => {
+    if (!peekQueued) return;
+    const ms = peekQueued;
+    peekQueued = 0;
+    barPeek(ms);
+  });
   window.addEventListener("mousemove", e => {
     if (!root.classList.contains("bar-away")) return;
     const bar = document.querySelector(".topbar");

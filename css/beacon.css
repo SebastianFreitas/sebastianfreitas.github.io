@@ -17,6 +17,7 @@
   font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--sage-dim);
   transition: transform 0.3s cubic-bezier(.2,.8,.3,1);
+  --lamp: #e4ddc6; --lamp-rgb: 228 221 198;
 }
 .xp-chip.floating { position: fixed; right: 2rem; top: 4.4rem; z-index: 55; }
 .xp-chip.bump { transform: scale(1.09); }
@@ -31,11 +32,11 @@
 .xp-chip .xp-track i.on::after { transform: none; }
 .xp-chip .xp-track i.fresh::after { animation: pipIn 0.5s cubic-bezier(.2,.9,.3,1); }
 .xp-chip.row-done .xp-track i { animation: rowDone 0.7s ease-out both; animation-delay: calc(var(--k, 0) * 22ms); }
-@keyframes pipIn { 0% { background: #fff6dd; transform: scaleY(3); box-shadow: 0 0 10px 2px rgb(var(--lamp-rgb) / 0.9); }
+@keyframes pipIn { 0% { background: #e4ddc6; transform: scaleY(3); box-shadow: 0 0 10px 2px rgb(var(--lamp-rgb) / 0.9); }
                    100% { background: var(--lamp); transform: none; box-shadow: none; } }
-@keyframes rowDone { 0% { background: #fff6dd; box-shadow: 0 0 10px 2px rgb(var(--lamp-rgb) / 0.9); }
-                     100% { background: #1e262a; box-shadow: none; } }
-.xp-chip .xp-ref { color: #4e5956; white-space: nowrap; }
+@keyframes rowDone { 0% { background: #e4ddc6; box-shadow: 0 0 10px 2px rgb(var(--lamp-rgb) / 0.9); }
+                     100% { background: rgb(228 221 198 / 0.35); box-shadow: none; } }
+.xp-chip .xp-ref { color: var(--type-tag-ink); white-space: nowrap; }
 
 /* ---- the badge, and how it changes with rank ---- */
 .xp-badge { display: block; width: 15px; height: 15px; transform-origin: 50% 50%; }
@@ -54,9 +55,10 @@
 
 /* ---- the claim ---- */
 .xp-mote {
-  position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none;
   font-family: var(--mono); font-weight: 600; font-size: 0.95rem;
   color: var(--ink); will-change: transform;
+  --lamp: #e4ddc6; --lamp-rgb: 228 221 198;
 }
 .xp-mote b {
   display: block; padding: 0.28rem 0.55rem; background: var(--lamp);
@@ -66,7 +68,7 @@
   position: fixed; z-index: 89; pointer-events: none;
   transform: translate(-50%, 6px); opacity: 0;
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--sage);
+  text-transform: uppercase; color: var(--type-cream);
   text-shadow: 0 2px 16px rgba(0,0,0,0.95); white-space: nowrap;
   transition: opacity 0.35s ease, transform 0.7s cubic-bezier(.2,.7,.3,1);
 }
@@ -74,7 +76,7 @@
 
 /* while the level is landing */
 .xp-chip.landing .xp-track i::after { box-shadow: 0 0 8px 1px rgb(var(--lamp-rgb) / 0.7); }
-.xp-chip.landing .xp-lv b { color: #fff; }
+.xp-chip.landing .xp-lv b { color: var(--type-tag-ink); }
 .xp-chip.tick .xp-lv b { animation: lvTick 0.42s cubic-bezier(.2,.9,.3,1); }
 @keyframes lvTick {
   0%   { transform: translateY(0.5em) scale(0.7); opacity: 0; }
@@ -92,6 +94,7 @@
   position: fixed; z-index: 70; pointer-events: none;
   font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--lamp);
+  --lamp: #e4ddc6; --lamp-rgb: 228 221 198;
   transform: translate(-50%, 0); opacity: 0;
   transition: transform 1.5s cubic-bezier(.15,.7,.3,1), opacity 1.5s ease;
   white-space: nowrap;
@@ -120,6 +123,14 @@
                      60% { transform: scale(1.25) rotate(4deg); opacity: 1; }
                      100% { transform: none; opacity: 1; } }
 
+/* beacon cards wear the bar: black plate, cream, grey rules (tokens scoped, not on :root) */
+.rank-veil, .surge-layer {
+  --petrol: rgb(4, 4, 5); --petrol-up: rgb(4, 4, 5);
+  --sage: var(--type-cream); --sage-rgb: 228 221 198; --sage-dim: var(--type-quiet);
+  --lamp: #e4ddc6; --lamp-rgb: 228 221 198;
+  --line: #4a5257; --rule: #4a5257;
+  --tab-serif: "Oranienbaum", "Cormorant SC", Georgia, serif;
+}
 /* =========================================================
    SURGE — the burst at the chip.
 
@@ -139,7 +150,7 @@
   background: var(--lamp); box-shadow: 0 0 6px rgb(var(--lamp-rgb) / 0.8);
   pointer-events: none; will-change: transform, opacity;
 }
-.surge-spark.hot { width: 2px; height: 2px; margin: -1px 0 0 -1px; background: #fff6dd; }
+.surge-spark.hot { width: 2px; height: 2px; margin: -1px 0 0 -1px; background: #fff; }
 .surge-label {
   position: fixed; opacity: 0; pointer-events: none; white-space: nowrap;
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase;
@@ -155,7 +166,7 @@
    ========================================================= */
 .rank-veil {
   position: fixed; inset: 0; z-index: 98; display: grid; place-items: center; padding: 16px;
-  background: rgb(13 17 20 / 0.74); opacity: 0; transition: opacity 0.16s linear; cursor: pointer; outline: none;
+  background: rgb(0 0 0 / 0.78); opacity: 0; transition: opacity 0.16s linear; cursor: pointer; outline: none;
 }
 .rank-veil.open { opacity: 1; }
 .rank-veil.closing { opacity: 0; transition-duration: 0.18s; }
@@ -168,7 +179,7 @@
 .rank-veil.closing .rank-card { animation: rankCardOut 0.18s ease-in forwards; }
 @keyframes rankCardIn { 0% { transform: translateY(10px) scale(0.86); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes rankCardOut { to { transform: scale(0.96); opacity: 0; } }
-.rank-kicker { margin: 0; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.32em; text-transform: uppercase; color: var(--lamp); }
+.rank-kicker { margin: 0; font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--type-quiet); }
 .rank-badge { position: relative; width: 76px; height: 76px; margin: 1rem auto 0.9rem; }
 .rank-badge::before {
   content: ""; position: absolute; inset: -18px; border-radius: 50%;
@@ -185,29 +196,25 @@
 @keyframes rankDraw { to { stroke-dashoffset: 0; } }
 @keyframes rankFill { to { fill: rgb(var(--lamp-rgb) / 0.16); } }
 @keyframes rankGlow { from { opacity: 0.55; transform: scale(0.92); } to { opacity: 1; transform: scale(1.06); } }
-.rank-now { margin: 0; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--sage-dim); }
-.rank-name { margin: 0.25rem 0 0.55rem; font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.05; letter-spacing: -0.01em; color: var(--sage); }
+.rank-now { margin: 0; font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--type-cream); }
+.rank-name { margin: 0.25rem 0 0.55rem; font-family: var(--type-serif); font-weight: 400; font-size: var(--type-card); line-height: 1.15; letter-spacing: 0.02em; color: var(--type-cream); }
 .rank-word { display: inline-block; white-space: nowrap; }
 .rank-word span { display: inline-block; animation: rankLetter 0.42s cubic-bezier(.2,1.2,.3,1) both; animation-delay: calc(0.34s + var(--i, 0) * 0.03s); }
 @keyframes rankLetter { 0% { opacity: 0; transform: translateY(0.45em); color: var(--lamp); }
-                        60% { opacity: 1; color: #fff6dd; }
-                        100% { opacity: 1; transform: none; color: var(--sage); } }
-.rank-meta { margin: 0; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sage-dim); }
-.rank-meta b { color: var(--lamp); font-weight: 500; }
-.rank-next { margin: 0.35rem 0 0; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; color: #4e5956; }
-.rank-hint { margin: 1.1rem 0 0; font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.22em; text-transform: uppercase; color: #4e5956; opacity: 0; animation: rankHint 0.4s ease 0.9s forwards; }
+                        60% { opacity: 1; color: var(--type-cream); }
+                        100% { opacity: 1; transform: none; color: #e4ddc6; } }
+.rank-meta { margin: 0; font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--type-quiet); }
+.rank-meta b { color: var(--type-cream); font-weight: 500; }
+.rank-next { margin: 0.35rem 0 0; font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--type-cream); }
+.rank-hint { margin: 1.1rem 0 0; font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--type-quiet); opacity: 0; animation: rankHint 0.4s ease 0.9s forwards; }
 @keyframes rankHint { to { opacity: 1; } }
-.glimpse-veil { background: rgb(13 17 20 / 0.94); }
+.glimpse-veil { background: rgb(0 0 0 / 0.94); }
 .glimpse-card { width: min(420px, 100%); padding: 1.5rem 1.6rem 1.4rem; }
-.glimpse-title { margin: 0 0 0.9rem; font-size: 2rem; }
-.glimpse-body { margin: 0; font-family: var(--mono); font-size: 1.08rem; line-height: 1.6; letter-spacing: 0.02em; color: var(--sage); }
-.glimpse-rule { width: 65%; height: 2px; margin: 1.5rem auto; padding: 0; border: 0; background: #f5c518; color: #f5c518; opacity: 1; }
-.glimpse-game { display: block; color: #5fc6c0; text-decoration: none; cursor: pointer; }  /* the game-dev teal, set on the card */
-.glimpse-game:hover, .glimpse-game:focus-visible { color: #8fe3dd; text-decoration: underline; text-underline-offset: 4px; }
-.glimpse-mouse { display: inline-block; position: relative; box-sizing: border-box; width: 16px; height: 26px; margin-left: 0.55rem; vertical-align: middle; border: 2px solid currentColor; border-radius: 8px; }
-.glimpse-mouse i { position: absolute; left: 50%; top: 5px; width: 2px; height: 5px; margin-left: -1px; border-radius: 1px; background: currentColor; animation: glimpseWheel 1.5s ease-in infinite; }
-@keyframes glimpseWheel { 0% { transform: translateY(0); opacity: 1; } 80%, 100% { transform: translateY(8px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .glimpse-mouse i { animation: none; } }
+.glimpse-kicker { display: inline-block; margin: 0 0 0.5rem; padding: 3px 7px; background: var(--type-tag-bg); color: var(--type-tag-ink); clip-path: var(--btn-scrape); }
+.glimpse-title { margin: 0 0 0.9rem; }
+.glimpse-body { margin: 0 0 1.4rem; }
+.glimpse-card .choices { display: flex; flex-direction: column; gap: 0.6rem; }
+.glimpse-card .type-action, .glimpse-card .back { cursor: pointer; text-align: center; }
 @media (max-height: 520px) {
   .rank-card { padding: 0.9rem 1.2rem 0.8rem; }
   .rank-badge { width: 52px; height: 52px; margin: 0.5rem auto; }

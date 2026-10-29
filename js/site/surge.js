@@ -302,30 +302,36 @@
     cardEl.className = "rank-card glimpse-card";
     veil.appendChild(cardEl);
 
+    const kicker = document.createElement("p");
+    kicker.className = "type-kicker glimpse-kicker";
+    kicker.textContent = "The Void";
+    cardEl.appendChild(kicker);
+
     const title = document.createElement("h2");
-    title.className = "rank-name glimpse-title";
+    title.className = "type-title type-card glimpse-title";
     title.textContent = "A glimpse of my world";
     cardEl.appendChild(title);
 
     const body = document.createElement("p");
-    body.className = "glimpse-body";
-    body.textContent = "That was a first look at my setting. Click anywhere to keep exploring the void.";
+    body.className = "type-body glimpse-body";
+    body.textContent = "That was a first look at my setting. Keep exploring, or head down to my game projects and more.";
     cardEl.appendChild(body);
 
-    const rule = document.createElement("hr");
-    rule.className = "glimpse-rule";
-    cardEl.appendChild(rule);
+    const choices = document.createElement("div");
+    choices.className = "choices";
+    cardEl.appendChild(choices);
+
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.className = "type-action";
+    keep.textContent = "Keep exploring the void";
+    choices.appendChild(keep);
 
     const game = document.createElement("a");
-    game.className = "glimpse-body glimpse-game";
+    game.className = "back glimpse-game";
     game.href = "#work";
-    game.appendChild(document.createTextNode("Click here or scroll down for my game projects and more"));
-    const mouse = document.createElement("span");
-    mouse.className = "glimpse-mouse";
-    mouse.setAttribute("aria-hidden", "true");
-    mouse.appendChild(document.createElement("i"));
-    game.appendChild(mouse);
-    cardEl.appendChild(game);
+    game.textContent = "See my game projects";
+    choices.appendChild(game);
 
     document.body.appendChild(veil);
     requestAnimationFrame(() => veil.classList.add("open"));
@@ -344,6 +350,14 @@
       setTimeout(() => veil.remove(), 200);
     }
     function onKey(e) {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const btns = [keep, game];
+        const at = btns.indexOf(document.activeElement);
+        const next = at < 0 ? (e.shiftKey ? 1 : 0) : 1 - at;   // two buttons: both directions toggle
+        btns[next].focus({ preventScroll: true });
+        return;
+      }
       if (performance.now() - openedAt <= 450) return;
       if (e.key === " " || e.key === "Spacebar" || e.key === "Enter" || e.key === "Escape") e.preventDefault();
       close();
@@ -358,14 +372,15 @@
       work.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
     }
     game.addEventListener("click", e => { e.preventDefault(); toWork(); });
-    game.addEventListener("keydown", e => {
-      if (e.key !== "Enter") return;
+    keep.addEventListener("click", e => { e.preventDefault(); close(); });
+    [game, keep].forEach(btn => btn.addEventListener("keydown", e => {
+      if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
       e.stopPropagation();
-      toWork();
-    });
+      if (btn === game) toWork(); else close();
+    }));
     veil.addEventListener("pointerdown", e => {
-      if (game.contains(e.target)) { e.stopPropagation(); return; }
+      if (choices.contains(e.target)) { e.stopPropagation(); return; }
       e.preventDefault();
       e.stopPropagation();
       if (performance.now() - openedAt > 450) close();
@@ -375,8 +390,7 @@
     addEventListener("touchmove", onScroll, { passive: true });
 
     try {
-      veil.tabIndex = -1;
-      veil.focus({ preventScroll: true });
+      keep.focus({ preventScroll: true });
     } catch (e) {}
   }
 

@@ -19,7 +19,7 @@
   font-size: 0.86rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sage);
+  color: var(--type-cream);
 }
 .folder-body[hidden] { display: none; }
 .folder-body.is-opening, .folder-body.is-closing { overflow: clip; } /* clip, not hidden: hidden makes the body a scroll container and the loader's sticky block stops following the viewport */
@@ -40,18 +40,18 @@
   font-size: 0.86rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sage);
+  color: var(--type-cream);
   cursor: pointer;
 }
 .folder-close::before {
   content: "END OF FILE //";
-  color: var(--lamp);
+  color: var(--type-quiet);
   font-family: "Cormorant SC", var(--tab-serif);
   font-weight: 500;
   font-size: 0.86rem;
   letter-spacing: 0.34em;
 }
-.folder-close:hover, .folder-close:focus-visible { color: var(--lamp); }
+.folder-close:hover, .folder-close:focus-visible { color: var(--type-red-text); }
 
 /* open: the body is see-through so the toy canvas behind shows */
 .case-folder.open .folder-body,
@@ -83,7 +83,7 @@
 @keyframes gold-edge-out { from { border-color: var(--open-line); } to { border-color: transparent; } }
 /* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
 body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
-.obj[aria-expanded="true"] h3 { color: var(--lamp); }
+.obj[aria-expanded="true"] h3 { color: var(--type-cream); }
 .obj[aria-expanded="true"] .obj-shot, .obj[aria-expanded="true"]:hover .obj-shot { transform: none; transition: opacity 0.4s ease; } /* the hover zoom would poke into the 12px clip allowance past the gold line */
 
 .folder-bar {

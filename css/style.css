@@ -24,10 +24,10 @@
 :root {
   --petrol:    #141a1d;   /* page background — deep blue-grey, not black */
   --petrol-up: #1b2327;   /* raised surfaces (cards) */
-  --sage:      #c6ccc6;   /* body text */
-  --sage-dim:  #7d8783;   /* secondary text, labels */
+  --sage:      var(--type-cream);   /* body text */
+  --sage-dim:  var(--type-quiet);   /* secondary text, labels */
   --lamp:      #f5d06b;   /* the light. used sparingly, on purpose */
-  --brick:     #b0685a;   /* IDs, small accents */
+  --brick:     var(--type-red);   /* IDs, small accents */
   --line:      #2b3438;   /* hairlines */
 
   --lamp-rgb: 245 208 107;   /* --lamp as channels, for rgb(var(--lamp-rgb) / a) */
@@ -41,6 +41,31 @@
 
   --gutter: clamp(1.25rem, 5vw, 5rem);
   --measure: 62ch;
+
+  /* the site's one type hierarchy: kicker, title, subtitle, body, readout, action (classes follow the section furniture) */
+  --type-serif:      "Oranienbaum", "Cormorant SC", Georgia, serif;
+  --type-sc:         "Cormorant SC", "Oranienbaum", Georgia, serif;
+  --type-mono:       "IBM Plex Mono", ui-monospace, monospace;
+  --type-sans:       "IBM Plex Sans", system-ui, sans-serif;
+  --type-cream:      #e4ddc6;
+  --type-quiet:      #b0a78f;
+  --type-text:       var(--type-cream);
+  --type-dim:        var(--type-quiet);
+  --type-rule:       #4a5257;
+  --type-red:        #6e1a1a;
+  --type-red-text:   #f6f0da;
+  --type-key:        var(--type-red);
+  --type-soft:       var(--type-cream);
+  --type-tag-bg:     #e4ddc6;
+  --type-tag-ink:    #000;
+  --tab-scrape:      polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
+  /* the same torn block at button width: edge insets in px so a wide button is not notched like a ribbon */
+  --btn-scrape:      polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, calc(100% - 4px) 34%, 100% 62%, calc(100% - 5px) 100%, 45% 97%, 0% 100%, 1px 50%);
+  --btn-scrape-even: polygon(0% 0%, 55% 3%, 100% 1%, calc(100% - 3px) 40%, 100% 70%, calc(100% - 6px) 100%, 50% 98%, 0% 97%, 1px 45%);
+  --tab-scrape-even: polygon(0% 0%, 55% 3%, 100% 1%, 98% 40%, 100% 70%, 94% 100%, 50% 98%, 0% 97%, 1% 45%);
+  --type-page:       clamp(1.6rem, 5.5vw, 2.4rem);
+  --type-section:    clamp(1.4rem, 4.5vw, 1.9rem);
+  --type-card:       clamp(1.5rem, 5vw, 2rem);
 }
 
 * { box-sizing: border-box; }
@@ -59,7 +84,7 @@ body {
 }
 
 a { color: var(--lamp); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-a:hover { color: #fff; }
+a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 
 :focus-visible {
   outline: 2px solid var(--lamp);
@@ -69,7 +94,7 @@ a:hover { color: #fff; }
 /* ---------------- top bar ---------------- */
 
 /* keyboard users jump past the top bar and the hero */
-.skip { position: absolute; left: 1rem; top: -3rem; z-index: 200; padding: 0.5rem 0.8rem; background: var(--ink); color: var(--lamp); font-family: var(--mono); font-size: 0.8rem; border: 1px solid var(--lamp); }
+.skip { position: absolute; left: 1rem; top: -3rem; z-index: 200; padding: 0.5rem 0.8rem; background: var(--ink); color: var(--type-cream); font-family: var(--mono); font-size: 0.8rem; border: 1px solid var(--lamp); }
 .skip:focus { top: 0.6rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -121,8 +146,8 @@ a:hover { color: #fff; }
 /* keep the contents above the panel */
 .topbar > .wordmark, .topbar > .xp-slot { position: relative; }
 /* the level readout: bone, never gold */
-.topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-lv b { color: var(--bone); }
-.topbar .xp-chip .xp-ref { color: #8d9a9a; }
+.topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-lv b { color: var(--type-tag-ink); }
+.topbar .xp-chip .xp-ref { color: var(--type-tag-ink); }
 /* the lit trace: ONE long irregular stroke (a filled 2560px shape, thick and
    thin, bloom baked in, never repeated) masked to the progress, plus the rank
    ticks already passed. 8px of slack each side so no glow is clipped; the
@@ -206,7 +231,8 @@ a:hover { color: #fff; }
 }
 /* the level readout, scoped to the bar so the floating chip is untouched */
 .topbar .xp-chip { font-family: var(--tab-serif); font-size: 0.78rem; letter-spacing: 0.16em; gap: 0.8rem; }
-.topbar .xp-chip .xp-lv { color: rgb(230 225 207 / 0.72); }
+.topbar .xp-chip .xp-lv { color: var(--type-tag-ink); }
+.topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-ref { background: var(--type-tag-bg); padding: 3px 7px; clip-path: var(--btn-scrape); }
 .topbar .xp-chip .xp-lv b { font-family: var(--tab-serif); font-size: 1.2rem; font-weight: 400; margin-left: 0.35rem; }
 .topbar .xp-chip .xp-ref { font-family: "Cormorant SC", var(--tab-serif); font-weight: 500; font-size: 0.86rem; letter-spacing: 0.08em; }
 /* the bar is always one row: tabs never wrap, and the chip is capped so a long title ellipsises instead of
@@ -246,7 +272,7 @@ a:hover { color: #fff; }
   color: var(--bone);
   text-decoration: none;
 }
-.wordmark:hover { color: #fff; text-decoration: none; }
+.wordmark:hover { color: var(--type-red-text); text-decoration: none; }
 .wordmark { color: #e4ddc6; text-transform: uppercase; text-shadow: none; }
 /* desktop: the mark sits on a short vertical black band, a dark red hairline on its right edge, the lower end torn */
 @media (min-width: 641px) and (min-height: 521px) {
@@ -254,7 +280,7 @@ a:hover { color: #fff; }
   .wordmark::before {
     content: ""; position: absolute; z-index: -1; pointer-events: none;
     left: -10px; right: -10px; top: -0.4rem; bottom: calc(-1 * var(--bar-pb));
-    background: rgba(4, 4, 5, 0.92); border-right: 1px solid #6e1a1a;
+    background: rgba(4, 4, 5, 0.92); border-right: 1px solid var(--type-red);
     clip-path: polygon(0 0, 100% 0, 100% 94%, 70% 100%, 45% 95%, 20% 99%, 0 93%);
   }
 }
@@ -272,14 +298,14 @@ a:hover { color: #fff; }
 .topbar nav a::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   background: none;
-  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
+  clip-path: var(--tab-scrape);
   transition: background-color 0.2s ease;
 }
 .topbar nav a:nth-child(even)::before {
-  clip-path: polygon(0% 0%, 55% 3%, 100% 1%, 98% 40%, 100% 70%, 94% 100%, 50% 98%, 0% 97%, 1% 45%);
+  clip-path: var(--tab-scrape-even);
 }
-.topbar nav a:hover, .topbar nav a:focus-visible { color: #f6f0da; }
-.topbar nav a:hover::before, .topbar nav a:focus-visible::before { background: #6e1a1a; }
+.topbar nav a:hover, .topbar nav a:focus-visible { color: #000; opacity: 1; }
+.topbar nav a:hover::before, .topbar nav a:focus-visible::before { background: var(--type-tag-bg); }
 .topbar nav a:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
 .topbar nav a[aria-current], .topbar nav a.is-current, .topbar nav a.active { color: #1a1714; transform: rotate(-3deg); }
 .topbar nav a[aria-current]::before, .topbar nav a.is-current::before, .topbar nav a.active::before {
@@ -301,10 +327,10 @@ a:hover { color: #fff; }
 .work, .experience, footer, .page-case main.case, .folder-veil {
   --petrol:    rgb(4, 4, 5);
   --petrol-up: #0c0c0e;
-  --sage:      #d6d0bd;
-  --sage-rgb:  214 208 189;
-  --sage-dim:  #8d9a9a;
-  --brick:     #8d9a9a;
+  --sage:      #e4ddc6;
+  --sage-rgb:  228 221 198;
+  --sage-dim:  #a39d8a;
+  --brick:     var(--type-red);
   --line:      #272d31;
   --lamp:      #e4ddc6;
   --lamp-rgb:  228 221 198;
@@ -318,14 +344,58 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 
 /* ---------------- shared section furniture ---------------- */
 
+/* the type hierarchy: kicker, title (page, section, card), subtitle, body, readout, action */
+.type-kicker, .obj-id {
+  font-family: var(--type-mono); font-weight: 400; font-size: 0.62rem; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--type-dim);
+}
+.type-title, .section-title, .obj h3, .page-case .case h1, .case h2 {
+  font-family: var(--type-serif); font-weight: 400; font-synthesis: none; letter-spacing: 0.02em;
+  text-transform: none; line-height: 1.15; color: var(--type-cream);
+}
+.type-page, .page-case .case h1 { font-size: var(--type-page); }
+.type-section, .section-title, .case h2 { font-size: var(--type-section); }
+.type-card, .obj h3 { font-size: var(--type-card); }
+.type-subtitle {
+  font-family: var(--type-sc); font-weight: 500; font-synthesis: none; font-size: 0.95rem;
+  letter-spacing: 0.1em; color: var(--type-text);
+}
+.type-body { font-family: var(--type-sans); font-size: 1rem; line-height: 1.6; color: var(--type-text); }
+/* lead: the first paragraph of a note, a case intro, and after each case h2 */
+.type-lead, .case > p:first-of-type, .case h1 + p, .case h2 + p {
+  font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream);
+}
+/* body after the lead sits dimmer; key words go red */
+.case p:not(.caption), .case li { color: var(--type-soft); }
+.case > p:first-of-type, .case h1 + p, .case h2 + p { color: var(--type-cream); }
+.key, em.key { color: var(--type-key); font-style: normal; font-weight: 500; background: none; }
+.type-readout, .xp-when, .caption {
+  font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.12em;
+}
+/* action button: L4 cream text in the torn red box, only on .type-action; .back and .case-nav a are cream text that take the L2 cream plate on hover */
+.type-action, .back, .case-nav a {
+  position: relative; display: inline-block; isolation: isolate; padding: 0.5rem 0.9rem;
+  font-family: var(--type-serif); font-size: 0.95rem; line-height: 1; letter-spacing: 0.06em;
+  text-transform: uppercase; text-decoration: none;
+  color: var(--type-cream); background: none; border: 0;
+  transition: color 0.2s ease;
+}
+.type-action::before, .back::before, .case-nav a::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: transparent; clip-path: var(--btn-scrape);
+  transition: background-color 0.2s ease;
+}
+.case-nav a:nth-child(even)::before { clip-path: var(--btn-scrape-even); }
+.type-action { color: var(--type-red-text); }
+.type-action::before { background: var(--type-red); }
+.type-action:hover, .type-action:focus-visible { filter: brightness(1.2); }
+.back:hover, .back:focus-visible, .case-nav a:hover, .case-nav a:focus-visible { color: var(--type-tag-ink); }
+.back:hover::before, .back:focus-visible::before, .case-nav a:hover::before, .case-nav a:focus-visible::before {
+  background: var(--type-tag-bg);
+}
+.type-action:focus-visible, .back:focus-visible, .case-nav a:focus-visible { outline: 1px solid var(--type-cream); outline-offset: -1px; }
+
 .section-title {
-  font-family: var(--tab-serif);
-  font-size: 1.3rem;
-  font-weight: 400;
-  font-synthesis: none;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--lamp);
   border-top: 1px solid var(--line);
   padding-top: 0.75rem;
   margin: 0 0 2.5rem;
@@ -370,14 +440,6 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 }
 .obj:hover, .obj:focus-visible { background: var(--petrol-up); color: inherit; }
 
-.obj-id {
-  font-family: "Cormorant SC", var(--tab-serif);
-  font-weight: 500;
-  font-synthesis: none;
-  font-size: 0.86rem;
-  letter-spacing: 0.14em;
-  color: var(--brick);
-}
 /* the open row's tab wears the bar's active strip: tilted cream, torn right end, on the pseudo only */
 .obj > .obj-id::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
@@ -389,20 +451,28 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .obj[aria-expanded=true] > .obj-id { color: var(--on-cream); }
 .obj[aria-expanded=true] > .obj-id::before { display: block; }
 
-.obj h3 {
-  font-family: var(--tab-serif);
-  font-weight: 400;
-  font-synthesis: none;
-  text-transform: uppercase;
-  font-size: clamp(1.4rem, 3.4vw, 2.3rem);
-  letter-spacing: 0.04em;
-  line-height: 1.1;
-  margin: 0.4rem 0 0.75rem;
-  color: var(--lamp);
+/* closed: the tab is a cream plate with the torn edge (own layer, so the open state's border and lamp strip stay as they are) */
+.obj:not([aria-expanded=true]) > .obj-id,
+.obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id {
+  background: transparent; border-color: transparent; color: var(--type-tag-ink);
+  top: 0; transform: none; padding: 0.35rem 0.8rem 0.4rem;
+  font-size: 0.72rem; font-weight: 600;
 }
-.obj:hover h3 { color: #f6f0da; }
+.obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { padding-top: 0.5rem; }
+/* closed: the tab hangs from its own row's top line (flat top flush on the line, torn bottom and sides) */
+.obj > .obj-id::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--type-tag-bg);
+  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 4px) 34%, 100% 62%, calc(100% - 5px) 100%, 45% 96%, 0% 100%, 1px 50%);
+}
+.obj:nth-of-type(even) > .obj-id::after {
+  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 3px) 40%, 100% 70%, calc(100% - 6px) 97%, 50% 100%, 0% 96%, 1px 45%);
+}
+.obj[aria-expanded=true] > .obj-id::after { display: none; }
 
-.obj-line { margin: 0 0 1.25rem; max-width: var(--measure); color: var(--sage); }
+.obj h3 { margin: 0.4rem 0 0.75rem; }
+
+.obj-line { margin: 0 0 1.25rem; max-width: var(--measure); color: var(--type-text); }
 
 /* property readout — lifted from Sector Zero's inspect mechanic */
 .props {
@@ -410,13 +480,10 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   flex-wrap: wrap;
   gap: 0 2.5rem;
   margin: 0;
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
 }
 .props div { display: flex; gap: 0.5rem; }
-.props dt { font-family: "Cormorant SC", var(--tab-serif); font-weight: 500; font-synthesis: none; font-size: 0.9rem; letter-spacing: 0.08em; color: var(--brick); text-transform: uppercase; }
-.props dd { margin: 0; color: var(--sage); }
+.props dt { font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em; color: var(--type-dim); text-transform: uppercase; align-self: center; }
+.props dd { margin: 0; font-family: var(--type-sans); font-size: 1rem; line-height: 1.6; color: var(--type-text); }
 
 /* ---------------- experience ---------------- */
 
@@ -429,47 +496,27 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   border-top: 1px solid var(--line);
 }
 .xp-when {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  color: var(--sage-dim);
+  color: var(--type-dim);
   grid-row: span 2;
 }
 .experience { background: var(--petrol); }
 .xp-what strong { color: var(--lamp); font-weight: 500; }
 .xp-what a { color: var(--lamp); text-decoration: underline; }
-.xp-what a:hover { color: #f6f0da; }
-.xp-note { color: var(--sage-dim); font-size: 0.92rem; }
+.xp-what a:hover { text-decoration-thickness: 2px; }
+.xp-note { color: var(--type-dim); font-size: 0.92rem; }
 
 /* ---------------- project pages ---------------- */
 
 .case { padding: clamp(2rem, 6vh, 4rem) var(--gutter) 0; max-width: 72rem; overflow-wrap: break-word; }
 .case img, .case video, .case iframe, .case canvas { max-width: 100%; box-sizing: border-box; }
 
-.case { font-family: var(--body); color: var(--sage); }
-.page-case .case h1 {
-  font-family: var(--tab-serif);
-  font-weight: 400;
-  font-synthesis: none;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--lamp);
-}
-.case h2 {
-  font-family: var(--tab-serif);
-  font-size: 1.15rem;
-  font-weight: 400;
-  font-synthesis: none;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--lamp);
-  margin: 2.5rem 0 0.75rem;
-}
+.case { font-family: var(--type-sans); color: var(--type-text); }
+.case h2 { margin: 2.5rem 0 0.75rem; }
 
 .case p, .case ul { max-width: var(--measure); }
 .case ul { padding-left: 1.1rem; }
 .case li { margin-bottom: 0.4rem; }
-.case a:hover { color: #f6f0da; }
+.case a:hover { text-decoration-thickness: 2px; }
 /* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
 @media (min-width: 900px) {
   #conclusus .case { padding-top: 18vh; }
@@ -486,10 +533,7 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   border: 1px solid var(--line);
 }
 .caption {
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
-  color: var(--sage-dim);
+  color: var(--type-dim);
   margin: 0 0 2rem;
 }
 
@@ -533,7 +577,7 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   height: 100%;
   border: 0;
   background: rgb(var(--ink-rgb) / 0.58);
-  color: var(--lamp);
+  color: var(--type-red-text);
   font-family: "Cormorant SC", var(--tab-serif);
   font-weight: 500;
   font-size: 1rem;
@@ -542,73 +586,41 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   cursor: pointer;
   isolation: isolate;
 }
-/* the bar's torn cream strip, centred behind the label on hover */
+/* the torn red box, centred behind the label */
 .embed-play::before {
   content: ""; position: absolute; z-index: -1; left: 50%; top: 50%;
   width: 16rem; max-width: 90%; height: 2.6rem;
-  background: none;
-  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
-  transform: translate(-50%, -50%) rotate(-3deg);
+  background: var(--type-red);
+  clip-path: var(--btn-scrape);
+  transform: translate(-50%, -50%);
   transition: background-color 0.2s ease;
 }
 .embed-play:hover,
 .embed-play:focus-visible {
   background: rgb(var(--ink-rgb) / 0.36);
-  color: var(--on-cream);
 }
-.embed-play:hover::before,
-.embed-play:focus-visible::before { background: var(--lamp); }
 
-.back {
-  position: relative; isolation: isolate;
-  display: inline-block;
-  padding: 0.5rem 0.9rem;
-  font-family: "Cormorant SC", var(--tab-serif);
-  font-weight: 500;
-  font-size: 0.9rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--sage-dim);
-}
-.back::before,
-.case-nav a::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: none;
-  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
-  transform: rotate(-3deg);
-  transition: background-color 0.2s ease;
-}
-.back:hover, .back:focus-visible { color: var(--on-cream); }
-.back:hover::before, .back:focus-visible::before { background: var(--lamp); }
 
 /* bottom of a case page: back to the list, or on to the next one */
 .case-nav {
   display: flex; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap;
   margin-top: 3rem;
 }
-.case-nav a {
-  position: relative; isolation: isolate; padding: 0.5rem 0.9rem;
-  font-family: "Cormorant SC", var(--tab-serif); font-weight: 500; font-size: 0.9rem; letter-spacing: 0.1em;
-  text-transform: uppercase; text-decoration: none; color: var(--sage-dim);
-}
-.case-nav a.next { color: var(--lamp); }
-.case-nav a:hover, .case-nav a:focus-visible { color: var(--on-cream); }
-.case-nav a:hover::before, .case-nav a:focus-visible::before { background: var(--lamp); }
 
 /* ---------------- footer ---------------- */
 
 footer {
   padding: 3rem var(--gutter) 4rem;
   border-top: 1px solid var(--line);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--sage-dim);
+  font-family: var(--type-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--type-text);
 }
 footer p { margin: 0 0 0.4rem; }
 footer { background: var(--petrol); }
 footer a { color: var(--lamp); text-decoration: underline; }
-footer a:hover { color: #f6f0da; }
+footer a:hover { text-decoration-thickness: 2px; }
 
 /* ---------------- small screens ---------------- */
 
@@ -632,10 +644,7 @@ footer a:hover { color: #f6f0da; }
   .topbar nav { gap: 0.25rem; flex-wrap: nowrap; }
   .topbar nav a { padding: 4px 8px; font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; }
   /* serif capitals run wide: tighter tracking and sizes so nothing overflows at 390px, never under 1.05rem */
-  .section-title { font-size: 1.15rem; letter-spacing: 0.06em; overflow-wrap: anywhere; }
-  .obj h3 { font-size: clamp(1.25rem, 6vw, 1.6rem); letter-spacing: 0.03em; overflow-wrap: anywhere; }
-  .case h2 { font-size: 1.05rem; letter-spacing: 0.06em; overflow-wrap: anywhere; }
-  .page-case .case h1 { font-size: clamp(1.4rem, 7vw, 1.9rem); letter-spacing: 0.05em; overflow-wrap: anywhere; }
+  .section-title, .obj h3, .case h2, .page-case .case h1 { overflow-wrap: anywhere; }
 }
 
 /* a landscape phone has ~390px of height to spend — the topbar takes less of it */
@@ -655,7 +664,7 @@ footer a:hover { color: #f6f0da; }
    the animation outright would strand anything whose base style is invisible */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .embed-play::before, .back::before, .case-nav a::before, .obj > .obj-id::before { transition: none; }
+  .embed-play::before, .obj > .obj-id::before { transition: none; }
   * {
     transition: none !important;
     animation-duration: 0.01ms !important;

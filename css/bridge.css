@@ -107,8 +107,8 @@
 /* tiers: a reading that bent, and one that cannot be true.
    Same specificity as .tl:last-child above, so order decides. */
 #bridge-log .tl.warn { color: #c2954e; }
-#bridge-log .tl.err  { color: #bd7163; }
-#bridge-log .tl.crit { color: #cb6354; font-weight: 600; }
+#bridge-log .tl.err  { color: var(--type-red); }
+#bridge-log .tl.crit { color: var(--type-red); font-weight: 600; }
 #bridge-log .tl.rep  { color: #7fa8b4; }
 #bridge-log .tl.good::before { content: "+ "; color: inherit; }
 #bridge-log .tl.warn::before { content: "! "; color: inherit; }
@@ -121,15 +121,15 @@
   padding-left: 0.35rem; margin-left: -0.35rem;
 }
 #bridge-log .tl.err {
-  background: rgba(226,89,76,0.07);
-  box-shadow: inset 2px 0 0 rgba(226,89,76,0.5);
+  background: rgba(110,26,26,0.07);
+  box-shadow: inset 2px 0 0 rgba(110,26,26,0.5);
   padding-left: 0.35rem; margin-left: -0.35rem;
   animation: tlIn 0.45s ease both;
 }
 /* a strike: the hull actually lost something */
 #bridge-log .tl.crit {
-  background: rgba(255,81,64,0.09);
-  box-shadow: inset 2px 0 0 rgba(255,81,64,0.6);
+  background: rgba(110,26,26,0.09);
+  box-shadow: inset 2px 0 0 rgba(110,26,26,0.6);
   padding-left: 0.35rem; margin-left: -0.35rem;
   animation: tlIn 0.45s ease both;
 }
@@ -182,10 +182,13 @@
 .bridge-hero.live.moving #bridge-hint { opacity: 0; }
 /* ---- landmark notes: positioned next to their beacon by JS ---- */
 .bnote {
+  --sage: #d6d0bd; --sage-rgb: 214 208 189; --sage-dim: #8d9a9a; --brick: #8d9a9a;
+  --lamp: #e4ddc6; --lamp-rgb: 228 221 198; --rule: #4a5257;
+  --tab-serif: "Oranienbaum", "Cormorant SC", Georgia, serif;
   position: absolute; z-index: 14; left: 0; top: 0;
   width: min(25rem, 34vw); padding: 1.4rem 1.6rem;
-  background: rgb(var(--ink-rgb) / 0.92);
-  border: 1px solid rgb(var(--sage-rgb) / 0.13);
+  background: rgb(4, 4, 5);
+  border: 1px solid var(--rule);
   border-left: 2px solid var(--lamp);
   opacity: 0; visibility: hidden; pointer-events: none;
   transform: translate(-14px, 8px) scale(0.985);
@@ -194,26 +197,27 @@
 .bnote.from-left { border-left: none; border-right: 2px solid var(--lamp); transform: translate(14px, 8px) scale(0.985); }
 .bnote.show { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(0,0) scale(1); }
 .bnote .tag {
-  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--brick); margin: 0 0 0.5rem;
+  font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--type-dim); margin: 0 0 0.5rem;
 }
 .bnote h3 {
-  font-family: var(--display); font-size: 1.7rem; font-weight: 800;
-  letter-spacing: -0.02em; line-height: 1; margin: 0 0 0.8rem; color: #fff;
+  font-family: var(--type-serif); font-size: var(--type-card); font-weight: 400;
+  letter-spacing: 0.02em; line-height: 1.15; margin: 0 0 0.8rem; color: var(--type-cream);
 }
-.bnote p.body { font-size: 0.88rem; line-height: 1.6; color: var(--sage); margin: 0 0 1.1rem; }
+.bnote p.body { font-family: var(--type-sans); font-size: 1rem; line-height: 1.6; color: var(--type-soft); margin: 0 0 1.1rem; }
+.bnote p.body:not(p.body ~ p.body) { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream); }
 .bnote .stat {
-  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 1.1rem;
+  font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--type-dim); margin: 0 0 1.1rem;
   display: flex; gap: 1.2rem; flex-wrap: wrap;
 }
-.bnote .stat b { color: var(--sage); font-weight: 400; }
-.bnote a {
+.bnote .stat b { color: var(--type-cream); font-weight: 400; }
+.bnote a:not(.type-action) {
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--lamp); text-decoration: none;
+  text-transform: uppercase; color: var(--type-cream); text-decoration: none;
   border-bottom: 1px solid rgb(var(--lamp-rgb) / 0.4); padding-bottom: 3px;
 }
-.bnote a:hover { color: #fff; border-color: #fff; }
+.bnote a:not(.type-action):hover { color: var(--type-cream); border-color: var(--type-cream); text-decoration: underline; }
 /* ---- deep notes: the nodes that unfold around a project ----
    These carry the whole of a case page rather than a teaser, so they
    are wider, they scroll, and they hold a clip. Everything else about
@@ -241,7 +245,7 @@
 .bnote h3 + .sub { margin-top: 0; }
 .bnote .pts {
   margin: 0 0 1.1rem; padding-left: 1.1rem;
-  font-size: 0.84rem; line-height: 1.6; color: var(--sage);
+  font-size: 0.84rem; line-height: 1.6; color: var(--type-cream);
 }
 .bnote .pts li { margin: 0 0 0.4rem; }
 /* commands are the subject of half this prose — they should read as
@@ -260,7 +264,7 @@
 }
 .bnote .clipbox figcaption {
   font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
-  letter-spacing: 0.06em; color: var(--sage-dim); margin: 0.5rem 0 0;
+  letter-spacing: 0.06em; color: var(--type-quiet); margin: 0.5rem 0 0;
 }
 /* an empty clipbox is a placeholder: frame it so the missing media is obvious */
 .bnote .clipbox.todo {
@@ -298,26 +302,18 @@
 .modes-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .modes-label {
   font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--sage-dim);
+  text-transform: uppercase; color: var(--type-quiet);
 }
 .modes-btn {
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.09em;
   text-transform: uppercase; text-align: center; cursor: pointer;
   padding: 0.42rem 0.75rem;
-  color: var(--sage-dim);
-  background: rgba(20,26,29,0.55);
-  border: 1px solid rgb(var(--sage-rgb) / 0.24);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  color: var(--type-tag-ink);
+  background: var(--type-tag-bg); border: none; clip-path: var(--btn-scrape);
+  opacity: 0.78;
+  transition: opacity 0.2s;
 }
-.modes-btn:hover { color: var(--sage); border-color: rgb(var(--sage-rgb) / 0.45); }
-.modes-btn.active {
-  color: var(--ink); background: var(--lamp); border-color: var(--lamp);
-}
-.modes-btn-story {
-  color: var(--sage);
-  border-color: rgb(var(--lamp-rgb) / 0.32);
-}
-.modes-btn-story:hover { color: var(--lamp); border-color: var(--lamp); }
+.modes-btn:hover, .modes-btn:focus-visible, .modes-btn.active { opacity: 1; }
 /* on a phone the setting bar folds into this; desktop never sees it */
 .modes-gear {
   display: none;
@@ -490,6 +486,8 @@ html.bar-away .topbar {
   transition: transform 0.25s ease;
 }
 html:not(.bar-away):not(.genesis-on) .topbar { transition: transform 0.2s ease; }
+/* an XP gain slides the bar down for a moment, above the veils, so the +xp has a level square to land in */
+html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; transition: transform 0.25s ease; }
 @media (prefers-reduced-motion: reduce) {
   html.bar-away .topbar, html:not(.bar-away):not(.genesis-on) .topbar { transition: none; }
 }
@@ -549,7 +547,7 @@ html:not(.bar-away):not(.genesis-on) .topbar { transition: transform 0.2s ease; 
 
 .genesis-tag {
   font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.22em; opacity: 0.85;
-  text-transform: uppercase; color: var(--sage-dim); margin: 0 0 0.85rem;
+  text-transform: uppercase; color: var(--type-quiet); margin: 0 0 0.85rem;
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
 }
 .genesis-line {
