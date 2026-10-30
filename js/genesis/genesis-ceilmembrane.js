@@ -47,13 +47,13 @@
     const N = 6, X = [], ops = [], creases = [], sil = new Path2D(), WY = 140, YE = 215;   // the pinch sits low in the body so the flared blades, not just their tips, hang below the band
     for (let i = 0; i <= N; i++) X.push(-140 + i * 280 / N);
     const ex = (i, y) => {
-      if (y < WY) return 4 + (X[i] - 4) * (1 - 0.92 * sm((y + 10) / (WY + 10)));
-      const v = (y - WY) / (YE - WY); return 4 + X[i] * (0.08 + 0.92 * Math.pow(v, 1.4)) + 5 * Math.sin(v * 4 + i);
+      if (y < WY) return 4 + (X[i] - 4) * (1 - 0.82 * sm((y + 10) / (WY + 10)));
+      const v = (y - WY) / (YE - WY); return 4 + X[i] * (0.18 + 0.82 * Math.pow(v, 1.25)) + 5 * Math.sin(v * 4 + i);
     };
     for (let i = 0; i < N; i++) {
       const len = 176 + (i % 3) * 14 + 8 * Math.sin(i * 3.1 + r()), l = [], rr = [];
       for (let s = 0; s <= 34; s++) { const y = -10 + (len + 10) * s / 34; l.push(M(ex(i, y), y)); rr.push(M(ex(i + 1, y), y)); }
-      const tip = M((ex(i, len) + ex(i + 1, len)) / 2 + (i % 2 ? 3 : -3), len + 30 + 8 * (i % 2));
+      const tip = M((ex(i, len) + ex(i + 1, len)) / 2 + (i % 2 ? 1.5 : -1.5), len + 30 + 8 * (i % 2));
       const body = poly(l.concat([tip], rr.slice().reverse()), true), rim = new Path2D();
       addLine(rim, l); addLine(rim, [tip]);
       sil.addPath(body); ops.push({ fill: body, rim, color: i % 3 === 1 ? D2 : (i % 2 ? D0 : D1), clip: null });
@@ -74,7 +74,7 @@
       pts.unshift(M(o[0][0], -12)); pts.push(M(o[o.length - 1][0], -12));
       lobes.push(pts);
       full.push(poly(pts, true));
-      const rim = new Path2D(); addLine(rim, pts.slice(2, -2)); rims.push(rim);
+      const rim = new Path2D(); addLine(rim, pts); rims.push(rim);   // the sides run up with the lobe
       sil.addPath(full[k]);
     }
     const at = (k, clip) => ops.push({ fill: full[k], rim: rims[k], color: fills[k], clip });
@@ -137,6 +137,7 @@
     return { p: c.sil, ops: c.ops, creases };
   }
 
+  const RUN = 1800;   // how far the bodies' top rows run up (px), well past the band's highest edge at any zoom
   const KINDS = { bundle, B4, strand, slab, split };
   // design-px box of each body; y1 is set past the drawn depth where needed so the lowest row stays within the old cloud's reach at the sea surge
   const DIMS = {
@@ -148,10 +149,13 @@
     const r = rng(Math.floor(seed * 7919) + 11);
     const dims = DIMS[kind];
     const kx = w / (dims.x1 - dims.x0), ky = h / (dims.y1 - dims.y0), xc = (dims.x0 + dims.x1) * 0.5;
-    const m = KINDS[kind](r, (px, py) => [x + w * 0.5 + (px - xc) * kx * (0.55 + 0.45 * sm((py - dims.y0) / (dims.y1 - dims.y0) / 0.5)), y + (py - dims.y0) * ky]);
+    const m = KINDS[kind](r, (px, py) => [x + w * 0.5 + (px - xc) * kx * (0.55 + 0.45 * sm((py - dims.y0) / (dims.y1 - dims.y0) / 0.5)), y + (py - dims.y0) * ky - (py <= dims.y0 ? RUN : 0)]);   // the top row runs RUN px up: the band alone cuts the body
     m.k = Math.max(0.7, Math.min(1.4, h / 140));
     m.g = null;
-    for (let i = 0; i < m.creases.length; i++) m.creases[i].path = poly(m.creases[i].pts, false);
+    for (let i = 0; i < m.creases.length; i++) {
+      const c = m.creases[i], a = c.pts[0], b = c.pts[1], s = Math.max(1, b[1] - a[1]), q = [a[0] + (a[0] - b[0]) * 50 / s, a[1] - 50], e = [q[0], a[1] - RUN];   // the fold line carries on up past the band: a short run on its own slope, then straight up, so no long slanted ruled line
+      c.path = poly([e, q].concat(c.pts), false);
+    }
     return m;
   }
 

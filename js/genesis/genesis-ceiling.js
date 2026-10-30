@@ -159,6 +159,10 @@
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (d[(y * cw + x) * 4 + 3] > 0) { if (y < r0) r0 = y; if (y > r1) r1 = y; if (x < c0) c0 = x; if (x > c1) c1 = x; }
     if (r1 < 0) return;
     it.bt = r0 - oy; it.bh = r1 + 1 - r0; it.bx0 = c0 - ox; it.bx1 = c1 + 1 - ox;
+    if (it.metal) {   // the rock's lower outline: per column, how far its lowest painted row sits above the bottom row (what the band's bulge must cover)
+      it.pro = new Float32Array(c1 - c0 + 1);
+      for (let x = c0; x <= c1; x++) { let y = r1; while (y > r0 && d[(y * cw + x) * 4 + 3] === 0) y--; it.pro[x - c0] = r1 - y; }
+    }
     if (it.mk) it.mem = window.GenCeilMembrane.build(it.mk, it.bx0, it.bt, it.bx1 - it.bx0, it.bh, it.ms);   // the membrane fills the old cloud's painted box
   }
 
@@ -686,7 +690,8 @@
     if (hp) return;   // the hanger pass: nothing hangs any more
     if (it.tip) return;   // the tip sprites are no longer drawn: the code band is the back layer
     ctx.save();
-    if (!it.tiny && !it.metal) cutClip(ctx, it, x, y, H);   // a rock is whole (the air band hides it); a tiny cloud is drawn whole, never cut
+    if (it.mem && BELOW) ctx.clip(BELOW);   // a membrane body runs up past the band: only the band's live lower edge cuts it
+    else if (!it.tiny && !it.metal) cutClip(ctx, it, x, y, H);   // a rock is whole (the air band hides it); a tiny cloud is drawn whole, never cut
     if (it.m) { ctx.translate(x + it.w, y); ctx.scale(-1, 1); } else { ctx.translate(x, y); }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     if (it.tiny) {
@@ -723,6 +728,7 @@
           const r0 = it.m ? it.w - it.bx1 : it.bx0, r1 = it.m ? it.w - it.bx0 : it.bx1; let lw = 0;
           for (let k = 0; k < 5; k++) lw += shc(xx + (r0 + (r1 - r0) * k / 4), pW) / 5;
           RKX[RKN] = xx + (r0 + r1) / 2; RKW[RKN] = (r1 - r0) / 2; RKB[RKN] = Math.min(lw + ROCKLO * H, 0.27 * H); RKV[RKN] = it.eyes && it.eyes.length ? RKB[RKN] - it.bh - it.bt + it.eyes[0].y - it.eyes[0].size * 0.6 - 0.015 * H : RKB[RKN] - 0.055 * H;   // the peek line: just above the eye's top, so only the rock's lower part shows
+          rockR(it, xx, RKN, H);
           RKP[RKN] = 12 + 8 * hash(i * 3.3 + 9); RKO[RKN] = 0.08 - (3.5 + 3.5 * RKN) / RKP[RKN]; RKN++;   // the first peek starts 3.5 s in, the next rocks every 3.5 s after
         }
         if (!all) { drawOne(ctx, it, xx, y, H, t, kd, sc, pal, hp); continue; }
@@ -871,33 +877,50 @@
   function airEdge(i, k, W, H, g, t) {
     const cap = Math.max(SHC[k] - BAND_UP * H, 0.35 * SHC[k]), base = Math.max(cap - 0.02 * H, 0.085 * H);
     const u = k / NS - W * (0.012 + 0.012 * i) * g / W;   // world position in widths, streaming right
-    const m0 = 0.6 + 0.4 * Math.sin(t * 0.23 + i * 2.1), m1 = 0.6 + 0.4 * Math.sin(t * 0.37 + i * 1.3 + 2), m2 = 0.6 + 0.4 * Math.sin(t * 0.51 + i * 0.7 + 4);
+    const m0 = 0.8 + 0.2 * Math.sin(t * 0.23 + i * 2.1), m1 = 0.8 + 0.2 * Math.sin(t * 0.37 + i * 1.3 + 2), m2 = 0.6 + 0.4 * Math.sin(t * 0.51 + i * 0.7 + 4);
     const w = ((u * 6 % AJN) + AJN) % AJN, j = Math.floor(w), jt = AJ[j] + (AJ[j + 1] - AJ[j]) * (w - j);
-    const off = H * (0.024 * m0 * Math.sin(TAU * 4.1 * u + i * 1.7) + 0.016 * m1 * Math.sin(TAU * 9.7 * u + i * 3.1 + 1) + 0.007 * m2 * Math.sin(TAU * 17.3 * u + i * 2.3 + 3) + 0.018 * jt);
-    let e = Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds
-    e = Math.max(0.005 * H, e - 0.016 * H * (1 + Math.sin(TAU * 2.3 * u + i * 1.9)) * (0.6 + 0.4 * i / 3));   // a slow long-wave lift only upward: no stretch of about 300 px stays level, the 0.28 H limit and the rocks' bulges are kept
+    const off = H * (0.03 * m0 * Math.sin(TAU * 4.1 * u + i * 1.7) + 0.022 * m1 * Math.sin(TAU * 9.7 * u + i * 3.1 + 1) + 0.007 * m2 * Math.sin(TAU * 17.3 * u + i * 2.3 + 3) + 0.018 * jt);
+    let e = Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6 - 0.035 * H, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds; the mean sits 0.035 H up so the waves rarely reach the cap, where the clamp would flatten them
+    e = Math.max(0.005 * H, e - 0.016 * H * (1 + Math.sin(TAU * 3.6 * u + i * 1.9)) * (0.6 + 0.4 * i / 3));   // a slow long-wave lift only upward: no stretch of about 300 px stays level, the 0.28 H limit and the rocks' bulges are kept
     const sx = k / NS * W;
     for (let r = 0; r < RKN; r++) {   // over a rock every layer's edge blends between two lines: rest just below the rock's bottom row (the rock wholly covered), peek showing its lower part; the pouch rises and sinks on the rock's own cycle, the rock never moves
       const d = Math.abs(sx - RKX[r]) / RKW[r];
-      if (d >= 2.2) continue;
+      const RKR = sx < RKX[r] ? RKL[r] : RKQ[r];
+      if (d >= RKR) continue;
       const ph = ((t / RKP[r] + RKO[r]) % 1 + 1) % 1, a = Math.min(1, Math.max(0, (ph - 0.08) / 0.1)), b = Math.min(1, Math.max(0, (ph - 0.34) / 0.1));
-      const s = a * a * (3 - 2 * a) * (1 - b * b * (3 - 2 * b)), wx = Math.sqrt(1 - d * d / 4.84);   // a round bulge: deepest under the rock, falling away smoothly, no flat core
-      const st = (3 - i) * 0.002 * H, rest = Math.min(RKB[r] + 0.014 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
-      const L = rest + (peek - rest) * s + off * 0.5 * (1 - wx);   // the layer's own wobble rides on the blended line, damped to nothing at the rock's core so rest never shows a tip
-      e += (Math.min(L, 0.28 * H) - e) * wx;
+      const s = a * a * (3 - 2 * a) * (1 - b * b * (3 - 2 * b)), wx = Math.sqrt(1 - d * d / (RKR * RKR));   // a round bulge: deepest under the rock, falling away smoothly, no flat core
+      const st = 0.006 * H - i * 0.03 * H, rest = Math.min(RKB[r] + 0.006 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
+      const L = rest + (peek - rest) * s + off * 0.5 * (1 - wx) + 0.014 * H * (1 - Math.sin(TAU * 3.6 * u + i * 1.9));   // the layer's own wobble rides on the blended line, damped to nothing at the rock's core so rest never shows a tip; the band's long wave (sag only, never toward the rock, so rest stays covered) runs through the whole bulge
+      e += (Math.max(Math.min(L, 0.28 * H), e) - e) * wx;   // each layer's bulge hangs from its own height (layer gaps stay about as wide as the band's) so the pale layers do not fill the pouch; never above the band's own line
     }
     return e;
   }
-  const ROCKLO = 0.08;
-  const RKM = 8, RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
-  let RKN = 0, TNY = 0;   // TNY: 1 skips the tiny clouds, 2 draws only them
+  const ROCKLO = -0.005;
+  const RKM = 8, RKL = new Float32Array(RKM), RKQ = new Float32Array(RKM),RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
+  // each rock's bulge half-width (left and right of its centre, in rock widths): the smallest at which the rest line, at its worst, still passes below every column of the rock's lower
+  // outline. The band's own line at a rock is taken RKE H above the rock's bottom row, its wobble term as large as it gets; rest is the airEdge rest line of the lowest layer
+  const RKE = 0.085, RKJ = 0.033, RKMIN = 0.5;
+  function rockR(it, xx, n, H) {
+    const A = RKE * H + 0.006 * H + 0.006 * H, B = RKJ * H, pr = it.pro, ctr = RKX[n], wid = RKW[n];
+    let L = RKMIN, Q = RKMIN;
+    if (pr) for (let j = 0; j < pr.length; j++) {
+      const lx = it.bx0 + j + 0.5, dx = xx + (it.m ? it.w - lx : lx) - ctr, Y = RKE * H - pr[j];   // Y: this column's lowest point below the band's line
+      if (Y <= 0) continue;
+      const wx = Math.min(0.999, (-(A - B) + Math.sqrt((A - B) * (A - B) + 4 * B * Y)) / (2 * B)), R = Math.abs(dx) / wid / Math.sqrt(1 - wx * wx) * 1.03;
+      if (dx < 0) L = Math.max(L, R); else Q = Math.max(Q, R);
+    }
+    RKL[n] = L; RKQ[n] = Q;
+  }
+  let RKN = 0, TNY = 0, BELOW = null;  // TNY: 1 skips the tiny clouds, 2 draws only them
   function paintAir(g, W, H, t) {
     const gt = t + 0.25 * Math.sin(0.7 * t) + 0.15 * Math.sin(1.9 * t + 1);   // surges and lulls, never backwards
     for (let i = 0; i < 4; i++) {
       g.fillStyle = AIRC[i];
       g.beginPath();
       g.moveTo(0, -0.1 * H);
-      for (let k = 0; k <= NS; k++) g.lineTo(k / NS * W, airEdge(i, k, W, H, gt, t));
+      if (i === 0) BELOW = new Path2D();   // the lowest layer's live edge, kept as the one clip every membrane body paints under (the band alone cuts it)
+      for (let k = 0; k <= NS; k++) { const ey = airEdge(i, k, W, H, gt, t); g.lineTo(k / NS * W, ey); if (i === 0) BELOW[k ? 'lineTo' : 'moveTo'](k / NS * W, ey); }
+      if (i === 0) { BELOW.lineTo(W, 4 * H); BELOW.lineTo(0, 4 * H); BELOW.closePath(); }
       g.lineTo(W, -0.1 * H);
       g.closePath();
       g.fill();
