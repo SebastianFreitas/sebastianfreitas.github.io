@@ -146,6 +146,7 @@
     for (let n = 0; n < L.length; n++) { p.moveTo(L[n][0] + L[n][2], L[n][1]); p.arc(L[n][0], L[n][1], L[n][2], 0, 6.283); }
     for (let n = 0; n < 2; n++) { const l = L[Math.floor(hs(n + 50) * L.length)]; pt.moveTo(l[0] + l[2] * 0.55, l[1] - l[2] * 0.15); pt.arc(l[0], l[1] - l[2] * 0.15, l[2] * 0.55, 0, 6.283); }
     for (let n = 1 + Math.floor(hs(6) * 3); n > 0; n--) { const l = L[Math.floor(hs(n + 60) * L.length)]; spiral(sw, l[0], l[1], l[2] * 0.5, 1.5 + hs(n + 70), hs(n + 80) * 6.283); }
+    it.mk = hs(8) < 0.5 ? 'B2' : 'B4'; it.ms = seed;   // the lobes above are only the cloud's outline (roots, hit tests, painted bounds); the body painted is the membrane built in paint()
     it.p = p; it.pt = pt; it.sw = sw;
   }
 
@@ -160,6 +161,7 @@
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (d[(y * cw + x) * 4 + 3] > 0) { if (y < r0) r0 = y; if (y > r1) r1 = y; if (x < c0) c0 = x; if (x > c1) c1 = x; }
     if (r1 < 0) return;
     it.bt = r0 - oy; it.bh = r1 + 1 - r0; it.bx0 = c0 - ox; it.bx1 = c1 + 1 - ox;
+    if (it.mk) it.mem = window.GenCeilMembrane.build(it.mk, it.bx0, it.bt, it.bx1 - it.bx0, it.bh, it.ms);   // the membrane fills the old cloud's painted box
   }
 
   // the layout, built once per size: ITEMS in draw order { im, x (in the span), y, w, h, m (mirrored), v (drift), wa, wf, wp (wobble), hs: [{ o, u, v }] }
@@ -683,7 +685,7 @@
       }
       ctx.restore(); return;
     }
-    if (hp) { hang(false); hang(true); return; }   // the hanger pass: every stem after every body, so no body covers one
+    if (hp) return;   // the hanger pass: nothing hangs any more
     if (it.tip) return;   // the tip sprites are no longer drawn: the code band is the back layer
     ctx.save();
     if (!it.tiny) cutClip(ctx, it, x, y, H);   // a tiny cloud is drawn whole, never cut
@@ -699,12 +701,7 @@
       ctx.strokeStyle = it.edge; ctx.lineWidth = 1.2; ctx.stroke(it.cr);
       ctx.globalAlpha = 0.6; ctx.fillStyle = '#a89660'; ctx.fill(it.pt); ctx.globalAlpha = 1;
     } else {
-      ctx.strokeStyle = it.edge; ctx.lineWidth = 3; ctx.stroke(it.p);   // lobe outline: half of it is covered by the fill
-      ctx.shadowColor = "rgba(0,4,16,0.55)"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 5 * sc;   // the hard flat shadow it throws on the cloud behind (no gradient)
-      ctx.fillStyle = it.fill; ctx.fill(it.p);
-      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      ctx.fillStyle = it.hi; ctx.fill(it.pt);
-      ctx.strokeStyle = it.mark; ctx.lineWidth = Math.max(1.2, it.lw * 0.6); ctx.stroke(it.sw);
+      if (it.mem) window.GenCeilMembrane.draw(ctx, it.mem, (window.GenEldPal && window.GenEldPal.CEILCLOUD || ['#061c48'])[0]);
     }
     ctx.restore();
     ctx.restore();
