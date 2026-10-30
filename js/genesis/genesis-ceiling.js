@@ -1,11 +1,11 @@
 /* The ceiling (Genesis first segment): big overlapping copies of the one sketched cloud drifting left to right across the top of the frame.
    Copies sit in three height lanes, 0.35-0.5 W wide, their tops above the screen edge so only the layered underside shows (the front
    layer's lowest sag reaches 0.19 / 0.21 / 0.225 H by lane, plus a little per copy). Each copy has its own seed and width; all drift at the same
-   speed (14 px/s at 1440 W), evenly spaced with about 25-30% overlap so the top edge stays covered; each has a small bob at the sea's rhythm; its three layers also sway on their own (GenCeilClouds).
+   speed (14 px/s at 1440 W), evenly spaced with about 25-30% overlap so the top edge stays covered; each has a small bob; its three layers also sway on their own (GenCeilClouds).
    A cloud's place is a pure function of (index, t, camera): world x = start + speed * t, wrapped over a span of several screens
    (it leaves the right edge of the span and re-enters on the left), screen x = world x - Gen.cam * W. Each cloud hangs 4 objects (one per layer at least; a sprout or metal arc on the back and middle, a long tuft and
    a second front one that is rarely a dealt extra) from its anchors(seed); they are drawn each frame from the cloud's current
-   position (with their layer's sway) just before their layer, so it covers the root, and the root never leaves the anchor. The water above them is the floor sea mirrored (GenElem.paintSea at dir -1, on the floor's own water line, so it rises, surges and settles frame for frame with the floor); the objects sit in it with their upper third sunk, each a piece of that water (clear hole, wet lip, wavelets). No gradients, no glow.
+   position (with their layer's sway) just before their layer, so it covers the root, and the root never leaves the anchor. The band above them is symbolic wind, not water (paintGas): a flat navy base with irregular gusts of pale strokes over it (they draw on, curl, then erase from the tail, half behind the objects and half over them, with calm gaps between gusts); its lower edge rises, surges and settles with the floor sea's level; the objects sit in it with their upper third sunk. No wave bob, no ripples.
    draw(ctx, W, H, k, t): k is the sea's rise (the "started" gate); the ceiling's arrival follows GenElem.seaLevel, the floor's own level; t is 0 when reduced (still, fully grown). */
 (function () {
   "use strict";
@@ -723,9 +723,8 @@
     }
   }
 
-  // the back layer: the genesis sea turned upside down (GenElem.paintSea at dir -1): a murky body hangs from the top edge to a wavy surface (built in
-  // world x, screen x + cam * W, so it scrolls with the scene). The objects hang out of it, their tops sunk in it, and each is a piece of that sea
-  // (clear hole, wet lip) where it breaks the surface
+  // the back layer's lower edge (SHC, built in world x, screen x + cam * W, so it scrolls with the scene): a still, slow uneven line under the
+  // wind band (paintGas). The objects hang out of the band, their tops sunk in it, and are cut at their own lines
   const NS = 120, SHC = new Float32Array(NS + 1), TAU = 6.2832;
   function shcNow(x) { return shc(x, pW); }
   function shc(x, W) {
@@ -773,7 +772,107 @@
   }
 
   let OFF = null, SEA = null;
-  const SHM = new Float32Array(NS + 1);
+
+  // the back band as symbolic wind: a flat navy base, and over it gusts of short fat pale strokes. A gust comes every 2.5-4 s (one per 3.25 s slot, start
+  // hashed +-0.4 s) and spawns 3-6 strokes staggered over 1 s; two more trickle strokes per slot keep 1-2 alive between gusts. A stroke is a precomputed path (a
+  // wave, then a curl at its head) that draws on from its head (eased), then its tail erases it (trim: only the [tail, head] slice of the point list is
+  // filled, as one polygon tapering to a point at both ends). Half are drawn in the band pass (behind the objects), half over them. A pool is reused: a
+  // slot's strokes are rebuilt when its index changes
+  const GN = 64, GSLOT = 3.25, GJ = 8, GPOOL = 4 * GJ;
+  const GP = [];
+  for (let i = 0; i < GPOOL; i++) GP.push({ key: -1e9, xy: new Float32Array(GN * 2), sp: 0, life: 1, w: 1, a: 1 });
+  function gustStart(s) { return s === 0 ? 0.3 : s * GSLOT + (hash(s * 3.7 + 1) * 2 - 1) * 0.4; }   // slot 0 is seeded near the ceiling's start
+  function narrBox(W, H) {   // [left, right, top] of the narration copy box in canvas px (x padded); a default where it is not laid out
+    const el = document.querySelector('.genesis-copy'), r = el && el.getBoundingClientRect(), vw = window.innerWidth || W, vh = window.innerHeight || H;
+    const pad = 0.02 * W;
+    if (!r || r.width < 10) return [0.35 * W - pad, 0.65 * W + pad, 0.07 * H];
+    return [r.left / vw * W - pad, r.right / vw * W + pad, r.top / vh * H];
+  }
+  function buildStroke(e, s, j, W, H) {
+    const h = (n) => hash(s * 31.7 + j * 5.3 + n), xy = e.xy;
+    const Lx = (0.15 + 0.2 * h(1)) * W, b = (j * 3 + s * 5) % GJ;   // a slot's strokes take distinct eighths of the width (3 is coprime with 8), the start eighth turning each slot: even spread
+    let x0 = ((b + 0.8 * h(2)) / GJ - 0.15) * W;
+    let y0 = H * (0.04 + 0.19 * h(3));   // inside the ceiling: the lowest point (y0 + amp, plus half the width) stays above 0.28 H
+    let amp = H * (0.014 + 0.014 * h(4));
+    const k = TAU / (Lx * (0.45 + 0.3 * h(5))), ph = h(6) * TAU;
+    let R = H * (0.025 + 0.02 * h(7));
+    const turns = 1 + 0.5 * h(8), nl = 40, nc = GN - nl, sl = 0.7 * Lx;
+    // over the narration span (the copy box, top centre): the stroke rides above the box, compact (curl and wave scaled down to the room between the frame top and the box)
+    const bx = narrBox(W, H), hw = 0.011 * H;
+    if (x0 - R < bx[1] && x0 - R + Lx + 2 * R > bx[0]) {
+      const room = Math.max(0.03 * H, bx[2] - 0.006 * H);   // the lowest edge of the stroke stays this far from the frame top
+      R = 0.2 * room; amp = 0.08 * room;
+      y0 = room * (0.92 + 0.08 * h(3)) - amp - hw;
+    }
+    for (let i = 0; i < nl; i++) { const u = i / nl; xy[i * 2] = x0 + sl * u; xy[i * 2 + 1] = y0 + amp * Math.sin(k * sl * u + ph); }
+    const cx = x0 + sl, cy = y0 + amp * Math.sin(k * sl + ph);
+    for (let i = 0; i < nc; i++) {
+      const u = (i + 1) / nc, th = turns * TAU * u, r = R * (1 - 0.4 * u);
+      xy[(nl + i) * 2] = cx + 0.3 * Lx * u + r * Math.sin(th); xy[(nl + i) * 2 + 1] = cy - r + r * Math.cos(th);
+    }
+    e.life = 2.4 + 1.2 * h(10); e.w = H * (0.014 + 0.008 * h(11)); e.a = 0.8 + 0.15 * h(12);
+    e.sp = j < 6 ? j * 1.0 / 5 * (0.8 + 0.4 * h(9)) : (j - 5) * 1.1 + 0.4 * h(9);   // gust strokes staggered; the two trickle strokes later in the slot
+  }
+  function paintGusts(g, W, H, u, front, yS) {   // yS squeezes the strokes toward the top so none falls below the lowest cloud bottom
+    g.fillStyle = 'rgb(215,236,245)';
+    const s1 = Math.floor(u / GSLOT);
+    for (let s = Math.max(0, s1 - 2); s <= s1 + 1; s++) {
+      const st = gustStart(s), n = 3 + Math.floor(hash(s * 9.1 + 4) * 4);
+      for (let j = (front ? 1 : 0); j < GJ; j += 2) {
+        if (j >= n && j < 6) continue;
+        const e = GP[(s % 4) * GJ + j], key = s * 8 + j;
+        if (e.key !== key) { e.key = key; buildStroke(e, s, j, W, H); }
+        const p = (u - st - e.sp) / e.life;
+        if (p <= 0 || p >= 1) continue;
+        const hd = 1 - Math.pow(1 - clamp01(p / 0.6), 2.2), tl = smooth(clamp01((p - 0.4) / 0.6));
+        const i0 = Math.floor(tl * (GN - 1)), i1 = Math.floor(hd * (GN - 1));
+        if (i1 - i0 < 2) continue;
+        const xy = e.xy, cn = i1 - i0;
+        g.globalAlpha = e.a * Math.min(1, (1 - p) * 4);
+        g.beginPath();
+        for (let side = 0; side < 2; side++) {
+          for (let q = 0; q <= cn; q++) {
+            const i = side ? i1 - q : i0 + q, ia = Math.max(i0, i - 1), ib = Math.min(i1, i + 1);
+            let nx = xy[ib * 2 + 1] - xy[ia * 2 + 1], ny = xy[ia * 2] - xy[ib * 2];
+            const nl = Math.hypot(nx, ny) || 1, t = (i - i0) / cn;   // width by place in the visible slice: a point at each end, widest 35% from the head
+            const wd = 0.5 * e.w * (t < 0.65 ? Math.sin(Math.PI / 2 * t / 0.65) : Math.cos(Math.PI / 2 * (t - 0.65) / 0.35)) * (side ? -1 : 1) / nl;
+            const px = xy[i * 2] + nx * wd, py = (xy[i * 2 + 1] + ny * wd) * yS;
+            if (side === 0 && q === 0) g.moveTo(px, py); else g.lineTo(px, py);
+          }
+        }
+        g.closePath(); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+  }
+  const BAND_UP = 0.04;   // the band's wave line sits this share of H above the clouds' painted bottoms: about half the visible height of a lobe cloud
+  // the band as air: four flat storm-slate layers (back darkest) hung from the top, each lower edge the clouds' line (SHC - BAND_UP H, a share of it per
+  // layer) plus an erratic offset (three unrelated frequencies, each swelling and fading on its own slow clock, plus seeded jitter). The offsets stream
+  // one way at a layer's own speed, the clock surging and lulling (always forward), so the edge reshapes as it travels; nothing bobs
+  const AIRC = ['rgb(36,43,53)', 'rgb(45,53,65)', 'rgb(53,63,76)', 'rgb(66,77,91)'], AIRF = [1, 0.74, 0.52, 0.3];
+  const AJN = 48, AJ = new Float32Array(AJN + 1);
+  for (let i = 0; i < AJN; i++) AJ[i] = hash(i * 7.7 + 2) * 2 - 1;
+  AJ[AJN] = AJ[0];
+  function airEdge(i, k, W, H, g, t) {
+    const cap = Math.max(SHC[k] - BAND_UP * H, 0.35 * SHC[k]), base = Math.max(cap - 0.02 * H, 0.085 * H);
+    const u = k / NS - W * (0.012 + 0.012 * i) * g / W;   // world position in widths, streaming right
+    const m0 = 0.6 + 0.4 * Math.sin(t * 0.23 + i * 2.1), m1 = 0.6 + 0.4 * Math.sin(t * 0.37 + i * 1.3 + 2), m2 = 0.6 + 0.4 * Math.sin(t * 0.51 + i * 0.7 + 4);
+    const w = ((u * 6 % AJN) + AJN) % AJN, j = Math.floor(w), jt = AJ[j] + (AJ[j + 1] - AJ[j]) * (w - j);
+    const off = H * (0.024 * m0 * Math.sin(TAU * 4.1 * u + i * 1.7) + 0.016 * m1 * Math.sin(TAU * 9.7 * u + i * 3.1 + 1) + 0.007 * m2 * Math.sin(TAU * 17.3 * u + i * 2.3 + 3) + 0.018 * jt);
+    return Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds
+  }
+  function paintAir(g, W, H, t) {
+    const gt = t + 0.25 * Math.sin(0.7 * t) + 0.15 * Math.sin(1.9 * t + 1);   // surges and lulls, never backwards
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle = AIRC[i];
+      g.beginPath();
+      g.moveTo(0, -0.1 * H);
+      for (let k = 0; k <= NS; k++) g.lineTo(k / NS * W, airEdge(i, k, W, H, gt, t));
+      g.lineTo(W, -0.1 * H);
+      g.closePath();
+      g.fill();
+    }
+  }
   function draw(ctx, W, H, k, t) {
     if (!(k > 0)) { t0 = null; drawFan(ctx, W, H, 0, t); return; }
     if (t && (t0 === null || t < lastT || t < t0)) t0 = t;
@@ -796,13 +895,15 @@
     ctx = oc;
     const x0 = cam * W;
     const fl = window.GenElem.seaLine(W, H);
-    for (let k = 0; k <= NS; k++) SHC[k] = H - fl[k];   // the floor's own water line (its wave shape, level and surge) mirrored about the middle
+    let low = 0;
+    for (let k = 0; k <= NS; k++) { SHC[k] = H - fl[k]; if (SHC[k] > low) low = SHC[k]; }   // the floor's own water line (its wave shape, level and surge) mirrored about the middle
+    const yS = Math.min(1, (low + 0.02 * H) / (0.27 * H));   // the strokes stay above the clouds' lowest painted bottom (their bottoms sit on this line, plus their bob)
     oc.setTransform(1, 0, 0, 1, 0, 0);
     const sx = SEA.getContext('2d');
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.clearRect(0, 0, ow, oh); sx.setTransform(a, 0, 0, a, 0, H * 0.1 * a);
-    const o = { W, H, t, camOff: x0, dir: -1, sh: SHM, bottom: H * 1.1, wet: true, pieces: [] };   // mirrored about H / 2: the surface y becomes H - y
-    for (let k = 0; k <= NS; k++) SHM[k] = H - SHC[k];
-    window.GenElem.paintSea(sx, o);   // under the scene's own zoom and pan, like the sea
+    const gu = t0 === null ? t : t - t0;   // the ceiling's own clock: a gust is alive at its first frame
+    paintAir(sx, W, H, t);   // the storm-slate band under the scene's own zoom and pan: erratic edges streaming sideways in gusts, not the sea's painter
+    paintGusts(sx, W, H, gu, false, yS);   // the strokes behind the objects
     real.drawImage(SEA, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);   // the band first, then the objects over it (each cut at its own line): the rocks, every hanger and the rocks' eyes behind, the clouds over them, the ones behind first
     oc.setTransform(a, 0, 0, a, 0, H * 0.1 * a);   // under the same zoom and offset
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 0, true);   // the rocks
@@ -810,6 +911,7 @@
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 2);   // the rocks' eyes, before the clouds
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false);
     drawSprites(oc, W, H, t, kd, sc, pal, cam, true);
+    paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
     oc.setTransform(1, 0, 0, 1, 0, 0);
     real.drawImage(OFF, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);
     real.restore();
