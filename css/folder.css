@@ -31,9 +31,9 @@
   width: 100%;
   margin: 2rem 0 0;
   padding: 0.9rem var(--gutter) var(--gutter);
-  background: var(--petrol);
+  position: relative; isolation: isolate;
+  background: transparent;
   border: 0;
-  border-top: 1px solid var(--rule);
   font-family: "Cormorant SC", var(--tab-serif);
   font-weight: 500;
   font-synthesis: none;
@@ -51,6 +51,12 @@
   font-size: 0.86rem;
   letter-spacing: 0.34em;
 }
+/* a straight torn stroke behind the bar (no tilt) */
+.folder-close::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--stroke);
+  clip-path: polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px));
+}
 .folder-close:hover, .folder-close:focus-visible { color: var(--type-red-text); }
 
 /* open: the body is see-through so the toy canvas behind shows */
@@ -67,24 +73,43 @@
 
 /* opened folder: the row's tab and outline carry on down around the case file */
 /* one opaque colour on every side, so the row and the case (over the see-through canvas) read as one outline */
-.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: var(--rule); }
+.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: var(--type-red); }
 /* hover/focus rules would repaint the open row's border translucent: name them here so the open colour wins; no bottom border, so no blended corner pixel at the join */
-.obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: var(--open-line); border-width: 2px 2px 0; margin-bottom: 0; }
-.obj[aria-expanded="true"]:hover > .obj-id, .obj[aria-expanded="true"]:focus-visible > .obj-id { border-color: var(--open-line); }
-.obj[aria-expanded="true"] > .obj-id { border-color: var(--open-line); border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); }
-.case-folder:has(.folder-body:not([hidden])) { border: 2px solid var(--open-line); border-top: 0; }
-/* a page-colour gap (12px) just outside the gold line, same on both sides, so canvas squares never touch it */
-.obj[aria-expanded="true"] { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 -12px 0 var(--petrol); clip-path: inset(-3rem -12px 0 -12px); }
-.case-folder:has(.folder-body:not([hidden])) { box-shadow: -12px 0 0 var(--petrol), 12px 0 0 var(--petrol), 0 12px 0 var(--petrol); }
-/* the gold frame fades in on open and out on close (200 ms); the class holds the frame for the fade after the body hides */
-.case-folder:has(.folder-body:not([hidden])) { animation: gold-edge 200ms ease-out backwards; }
-.case-folder.gold-out { border: 2px solid transparent; border-top: 0; animation: gold-edge-out 200ms ease-in forwards; --open-line: var(--rule); }
-@keyframes gold-edge { from { border-color: transparent; } to { border-color: var(--open-line); } }
-@keyframes gold-edge-out { from { border-color: var(--open-line); } to { border-color: transparent; } }
+/* no red box (dp-9a): the borders stay as transparent 2px so the layout holds; the red is one short hairline under the open row (::after) */
+.obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: transparent; border-width: 2px 2px 0; margin-bottom: 0; }
+.obj[aria-expanded="true"]:hover > .obj-id, .obj[aria-expanded="true"]:focus-visible > .obj-id { border-color: transparent; }
+.obj[aria-expanded="true"] > .obj-id { border-color: transparent; border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); }
+.case-folder:has(.folder-body:not([hidden])) { border: 2px solid transparent; border-top: 0; }
+.obj[aria-expanded="true"] { clip-path: inset(-3rem -14px -14px -14px); }
+/* the clicked row: a plain, even 5px mitred red frame all around, 7px off the row (the sheet's rect); no layout space */
+.obj[aria-expanded="true"]::after { content: ""; position: absolute; inset: -12px; border: 5px solid var(--type-red); z-index: 1; pointer-events: none; }
+.obj[aria-expanded="true"] > .redlines { display: none; }
+/* closed rows above the open one stay on the wash: the section's own wash goes see-through while a file is open, so a pseudo repaints it over the grid rows from the top down to the open row (title = row 1, then obj, folder pairs) */
+.work:has(.case-folder.open)::after {
+  content: ""; position: absolute; z-index: -2; pointer-events: none;
+  grid-column: 1 / -1; grid-row: 1 / 3;
+  top: calc(-1 * clamp(7.5rem, 16vh, 9.5rem)); left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); bottom: 0;
+  background: var(--dirt-a) 40% top / var(--dirt-size) repeat-y, var(--smoke), linear-gradient(180deg, #605c55, #57534c);
+}
+.work:has(#voidscape.open)::after { grid-row: 1 / 5; }
+.work:has(#conclusus.open)::after { grid-row: 1 / 7; }
+.work:has(#heavylight.open)::after { grid-row: 1 / 9; }
+/* and the closed rows below it: the wall-paint pseudo moves to the grid rows under the open folder and carries the wash too */
+.work:has(.case-folder.open)::before {
+  inset: auto; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: 0; bottom: 0;
+  grid-column: 1 / -1; grid-row: 4 / auto;
+  background: var(--dirt-b) 60% top / var(--dirt-size) repeat-y, var(--smoke), linear-gradient(180deg, #605c55, #57534c);
+}
+.work:has(#voidscape.open)::before { grid-row: 6 / auto; }
+.work:has(#conclusus.open)::before { grid-row: 8 / auto; }
+.work:has(#heavylight.open)::before { display: none; }
 /* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
 body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .obj[aria-expanded="true"] h3 { color: var(--type-cream); }
-.obj[aria-expanded="true"] .obj-shot, .obj[aria-expanded="true"]:hover .obj-shot { transform: none; transition: opacity 0.4s ease; } /* the hover zoom would poke into the 12px clip allowance past the gold line */
+/* the case header band: opaque wash over the toy (D36) */
+.obj[aria-expanded="true"] { background: rgb(4 4 5); } /* black as the sheet draws the clicked row, opaque over the toy */
+.obj[aria-expanded="true"]::before { display: none; } /* the open row is the opaque wash band: the black slab stroke (0.92, see-through) would darken it and let the toy show (D36) */
+.obj[aria-expanded="true"] .obj-shot, .obj[aria-expanded="true"]:hover .obj-shot { opacity: 0.08; transform: none; transition: opacity 0.4s ease; } /* the open row's artwork stays level, inside the 12px clip allowance past the gold line */
 
 .folder-bar {
   left: 0; right: 0; top: 0; height: 2px; z-index: 2;
@@ -104,6 +129,7 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
   font-family: "Cormorant SC", var(--tab-serif); font-weight: 500; font-size: 0.86rem; letter-spacing: 0.34em; text-transform: uppercase;
   color: var(--lamp); text-shadow: 0 0 6px rgb(var(--lamp-rgb) / 0.3), 0 2px 12px rgba(0,0,0,0.9);
 }
+@media (max-width: 420px) { .folder-kicker { letter-spacing: 0.26em; } }
 
 /* glow: its own layer, js sets only its opacity (caseAnim in js/site/folders.js drives every open effect from one progress value) */
 .folder-glow {

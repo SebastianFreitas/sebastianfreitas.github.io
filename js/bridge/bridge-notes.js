@@ -37,6 +37,7 @@
       const e = noteEls[k];
       if (e && e.classList.contains("show") && k !== (mark && mark.id)) stopNoteMedia(e);
       if (e) e.classList.remove("show");
+      if (e && e._red) e._red.classList.remove("show");
     }
     if (!mark) return;
     const el2 = noteEls[mark.id];
@@ -46,6 +47,8 @@
       measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
+      /* the red pieces ride the plate's edge at the size it opened at; they sit beside the note (its clip and scroll would cut them) */
+      if (window.RedLines && RedLines.draw(el2, { self: true, host: el2.parentNode, kind: "item" })) el2._red.classList.add("show");
       el2.querySelectorAll("video").forEach(v => { v.play().catch(() => {}); });
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(B.catalogued);
     }, 280);
@@ -79,14 +82,32 @@
     const p = B.markScreen(mark);
     const pw = el2._pw, ph = el2._ph;
     const pad = 50, edge = 20;   // clear of the beacon's hover label
-    const right = p.x + pad + pw < B.W - edge;
-    let left = right ? p.x + pad : p.x - pad - pw;
-    left = Math.min(B.W - pw - edge, Math.max(edge, left));
+    /* the right instrument bank is painted over the hero's right edge: the plate ends left of it */
+    const bankW = parseFloat(host.style.getPropertyValue("--inst-w")) || 0;
+    const rMax = B.W - bankW - edge;
+    let gap = pad, right = p.x + pad + pw < rMax;
+    if (!right && p.x - pad - pw < edge) {
+      /* neither side fits: take the one with more room and drop the pad, so the plate sits as clear of the beacon as it can */
+      right = rMax - p.x >= p.x - edge;
+      gap = 0;
+    }
+    let left = right ? p.x + gap : p.x - gap - pw;
+    left = Math.min(rMax - pw, Math.max(edge, left));
     let top = p.y - ph * 0.45;
-    top = Math.min(B.H - ph - edge, Math.max(edge + 40, top));
+    /* torn on all four sides: stay a tear-depth clear of the top bar and the bottom edge */
+    const topMin = 100, botGap = 28;
+    top = Math.min(B.H - ph - botGap, Math.max(topMin, top));
+    /* keep off the HUD prompt: slide above it (or below) when the two overlap */
+    const hr = hintEl && !hintEl.classList.contains("retired") ? hintEl.getBoundingClientRect() : null;
+    if (hr && hr.width && left < hr.right + 12 && left + pw > hr.left - 12 && top < hr.bottom + 12 && top + ph > hr.top - 12) {
+      if (hr.top - 14 - ph >= topMin) top = hr.top - 14 - ph;
+      else if (hr.bottom + 14 + ph <= B.H - botGap) top = hr.bottom + 14;
+      else if (hr.right + 14 + pw < rMax) left = hr.right + 14;
+      else left = Math.max(edge, Math.min(rMax - pw, hr.left - 14 - pw));
+    }
     left = Math.round(left); top = Math.round(top);
-    if (el2._left !== left) { el2.style.left = left + "px"; el2._left = left; }
-    if (el2._top  !== top)  { el2.style.top  = top + "px";  el2._top  = top; }
+    if (el2._left !== left) { el2.style.left = left + "px"; el2._left = left; if (el2._red) el2._red.style.left = left + "px"; }
+    if (el2._top  !== top)  { el2.style.top  = top + "px";  el2._top  = top; if (el2._red) el2._red.style.top = top + "px"; }
     el2.classList.toggle("from-left", !right);
   }
   B.placeNote = placeNote;

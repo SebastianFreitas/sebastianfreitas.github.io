@@ -268,7 +268,7 @@
   function begin() {
     if (B.started) return;
     B.started = true;
-    B.visible = true;
+    B.visible = B.coversViewport ? B.coversViewport() : true;
     host.classList.add("live");
     resize();
     if (B.ship) {

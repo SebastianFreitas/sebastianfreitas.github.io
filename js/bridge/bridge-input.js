@@ -215,13 +215,24 @@
     else startLoop();
   });
 
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(es => {
-      B.visible = es[0].isIntersecting;
-      if (!B.visible) { endBurn(); stopSteering(); }
-      else startLoop();
-    }, { threshold: 0.02 }).observe(host);
-  }
+  /* The loop lives only while the hero covers the viewport: the moment any
+     other part of the page (top bar aside) could be on screen, it pauses. */
+  const coversViewport = () => {
+    const r = host.getBoundingClientRect();
+    return r.top <= 1 && r.bottom >= (innerHeight - 1) && r.width > 0;
+  };
+  B.coversViewport = coversViewport;
+  const syncCover = () => {
+    const v = coversViewport();
+    document.documentElement.classList.toggle("bridge-live", v);
+    if (v === B.visible) return;
+    B.visible = v;
+    if (!v) { endBurn(); stopSteering(); }
+    else startLoop();
+  };
+  addEventListener("scroll", syncCover, { passive: true });
+  addEventListener("resize", syncCover);
+  syncCover();
 
   /* Rotating out of portrait: the hero has a new size and a loop to restart.
      Rotating in: drop any burn or steer in progress so nothing is still held

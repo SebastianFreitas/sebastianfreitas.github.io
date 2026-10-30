@@ -93,7 +93,7 @@ window.Beacon = (function () {
       ctx.font = o.gold ? `500 ${Math.round(9.5 * k)}px "IBM Plex Mono", monospace`
         : `500 ${Math.round(11 * k)}px Oranienbaum, "IBM Plex Mono", serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "top";
-      ctx.fillStyle = `rgba(198,204,198,${(hover ? 0.9 : 0.42) * A})`;
+      ctx.fillStyle = `rgba(228,221,198,${(hover ? 0.9 : 0.42) * A})`;
       ctx.fillText(o.label.toUpperCase(), x, y + 22 * k);
       ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
     }

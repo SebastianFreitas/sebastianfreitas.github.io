@@ -155,7 +155,7 @@
     veil.setAttribute("aria-label", "Rank up: you are now " + to.name);
 
     const cardEl = document.createElement("div");
-    cardEl.className = "rank-card";
+    cardEl.className = "rank-card slab";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
@@ -227,6 +227,8 @@
     cardEl.appendChild(hint);
 
     document.body.appendChild(veil);
+    cardEl.dataset.redlines = "rank";
+    if (window.RedLines) window.RedLines.draw(cardEl, { kind: "item" });
     requestAnimationFrame(() => veil.classList.add("open"));
 
     document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: true } }));
@@ -299,7 +301,7 @@
     veil.setAttribute("aria-label", "A glimpse of my world");
 
     const cardEl = document.createElement("div");
-    cardEl.className = "rank-card glimpse-card";
+    cardEl.className = "rank-card glimpse-card slab";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
@@ -334,6 +336,8 @@
     choices.appendChild(game);
 
     document.body.appendChild(veil);
+    cardEl.dataset.redlines = "glimpse";
+    if (window.RedLines) window.RedLines.draw(cardEl, { kind: "item" });
     requestAnimationFrame(() => veil.classList.add("open"));
 
     const openedAt = performance.now();

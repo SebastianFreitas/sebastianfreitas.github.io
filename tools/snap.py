@@ -139,7 +139,12 @@ def watch_errors(page):
             and ERRORS.append(msg.text))
 
 
+REDUCED_MOTION = False   # --reduced-motion: every scene that doesn't set its own
+
+
 def new_ctx(browser, viewport=None, **opts):
+    if REDUCED_MOTION:
+        opts.setdefault("reduced_motion", "reduce")
     ctx = browser.new_context(viewport=viewport or nav.DESKTOP, **opts)
     ctx.set_default_timeout(15000)
     ctx.clock.install(time=CLOCK_START)
@@ -334,6 +339,12 @@ def close_shared():
 # ------------------------------------------------------------------ scenes
 
 
+def open_note(page, mid):
+    """Open the beacon popup `mid` the way a claim does (Bridge.showNote), once it has settled."""
+    page.evaluate("id => { const B = window.Bridge; const m = B.MARKS.concat(B.PLANETS).find(e => e.id === id); B.activeMark = m; B.camX = m.cam; B.showNote(m); }", mid)
+    settle(page, 1500)
+
+
 def bridge_camera(mode, label, pick):
     def fn(browser, base, out_dir):
         page = bridge_page(browser, base)
@@ -345,6 +356,8 @@ def bridge_camera(mode, label, pick):
         page.reload()
         page.wait_for_load_state("load")
         settle(page, 2500)
+        if label.startswith("bnote-"):
+            open_note(page, label)
         shot(page, out_dir, f"bridge-{mode}-{label}")
     return fn
 
@@ -368,26 +381,44 @@ def scene_bridge_unclaimed(browser, base, out_dir):
     ctx.close()
 
 
+def bridge_phone(name, viewport, mark=None):
+    """The bridge on a phone: the first mark's void view, or the mark `mark`'s.
+    Portrait shows #bridge-rotate; landscape shows the bridge."""
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, viewport, is_mobile=True,
+                            has_touch=True, device_scale_factor=2)
+        enter_via_gate(page, base, "#gate-world")
+        m = world_map(page)
+        x = m["marks"][0]["x"] if mark is None else mark_x(mark)(m)
+        set_view(page, "void", x)
+        page.reload()
+        page.wait_for_load_state("load")
+        settle(page, 2500)
+        if mark:
+            open_note(page, mark)
+        shot(page, out_dir, name)
+        ctx.close()
+    return fn
+
+
 def scene_bridge_phone_landscape(browser, base, out_dir):
-    ctx, page = new_ctx(browser, nav.PHONE_LANDSCAPE, is_mobile=True,
-                        has_touch=True, device_scale_factor=2)
-    enter_via_gate(page, base, "#gate-world")
-    set_view(page, "void", world_map(page)["marks"][0]["x"])
-    page.reload()
-    page.wait_for_load_state("load")
-    settle(page, 2500)
-    shot(page, out_dir, "bridge-phone-landscape")
-    ctx.close()
+    bridge_phone("bridge-phone-landscape", nav.PHONE_LANDSCAPE)(browser, base, out_dir)
+
+
+def gate_scene(name, viewport):
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, viewport)
+        page.goto(base + "/")
+        settle(page, GATE_BOOT)
+        page.wait_for_selector("#gate-panel.on", timeout=15000)
+        settle(page, 500)
+        shot(page, out_dir, name)
+        ctx.close()
+    return fn
 
 
 def scene_gate(browser, base, out_dir):
-    ctx, page = new_ctx(browser)
-    page.goto(base + "/")
-    settle(page, GATE_BOOT)
-    page.wait_for_selector("#gate-panel.on", timeout=15000)
-    settle(page, 500)
-    shot(page, out_dir, "gate-first-visit")
-    ctx.close()
+    gate_scene("gate-first-visit", nav.DESKTOP)(browser, base, out_dir)
 
 
 def genesis_beat(bid):
@@ -435,6 +466,30 @@ def project_page(name, label, viewport):
     return fn
 
 
+def page_404(label, viewport):
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, viewport)
+        page.goto(f"{base}/404.html")
+        page.wait_for_load_state("load")
+        settle(page, 1000)
+        shot(page, out_dir, f"page-404-{label}", full_page=True)
+        ctx.close()
+    return fn
+
+
+def card_scene(name, label, viewport, call, selector):
+    """Enter, fire a Surge card, shoot the viewport with the card up."""
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, viewport)
+        enter_via_gate(page, base, "#gate-world")
+        page.evaluate(call)
+        page.wait_for_selector(selector)
+        settle(page, 800)
+        shot(page, out_dir, f"{name}-{label}")
+        ctx.close()
+    return fn
+
+
 def toy_page(name):
     """The case-page toy, desktop only (play.js skips anything under 900 px):
     viewport shots at each of TOY_STOPS. Fails when the toy is missing or blank."""
@@ -460,13 +515,17 @@ def toy_page(name):
     return fn
 
 
-def index_section(section, label, viewport):
+def index_section(section, label, viewport, bottom=False):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
         enter_via_gate(page, base, "#gate-world")
         page.evaluate(f"location.hash='#{section}'")
         rest(page)
         settle(page, 800)
+        if bottom:
+            page.evaluate("scrollTo(0, document.body.scrollHeight)")
+            rest(page)
+            settle(page, 800)
         shot(page, out_dir, f"index-{section}-{label}")
         ctx.close()
     return fn
@@ -495,6 +554,18 @@ def scenes():
     for section in ("work", "experience"):
         out.append((f"index-{section}-desktop", index_section(section, "desktop", nav.DESKTOP)))
         out.append((f"index-{section}-phone", index_section(section, "phone", nav.PHONE)))
+    for label, vp in (("desktop", nav.DESKTOP), ("phone", nav.PHONE)):
+        out.append((f"page-404-{label}", page_404(label, vp)))
+        out.append((f"glimpse-card-{label}", card_scene(
+            "glimpse-card", label, vp, "Surge.glimpse()", ".glimpse-card")))
+        out.append((f"rank-card-{label}", card_scene(
+            "rank-card", label, vp,
+            "Surge.rankUp({from: XP.rankOf(0), to: XP.rankOf(10)})", ".rank-card")))
+        out.append((f"index-footer-{label}", index_section("footer", label, vp, bottom=True)))
+    out.append(("gate-phone", gate_scene("gate-phone", nav.PHONE)))
+    out.append(("bridge-phone-portrait", bridge_phone("bridge-phone-portrait", nav.PHONE)))
+    out.append(("bridge-phone-landscape-bnote",
+                bridge_phone("bridge-phone-landscape-bnote", nav.PHONE_LANDSCAPE, "bnote-void")))
     return out
 
 # ------------------------------------------------------------------ capture
@@ -576,7 +647,7 @@ def compare(a, b, threshold):
 # ------------------------------------------------------------------ cli
 
 USAGE = """usage:
-  py -3 tools/snap.py capture <name> [--only <substring>]
+  py -3 tools/snap.py capture <name> [--only <substring>] [--phone-width <px>] [--reduced-motion]
   py -3 tools/snap.py compare <a> <b> [--threshold 0.5]
   py -3 tools/snap.py list"""
 
@@ -590,7 +661,15 @@ def main():
             print(n)
         return 0
     if cmd == "capture" and rest:
+        global REDUCED_MOTION
         only = None
+        if "--reduced-motion" in rest:
+            REDUCED_MOTION = True
+            rest.remove("--reduced-motion")
+        if "--phone-width" in rest:
+            i = rest.index("--phone-width")
+            nav.PHONE = {"width": int(rest[i + 1]), "height": 667}
+            del rest[i:i + 2]
         if "--only" in rest:
             i = rest.index("--only")
             only = rest[i + 1] if len(rest) > i + 1 else None

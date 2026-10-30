@@ -589,6 +589,9 @@ window.Folders = (function () {
   function fromHash() {
     const key = location.hash.replace(/^#/, "");
     if (KEYS.indexOf(key) !== -1 && key !== current) open(key, { scroll: true, hash: false, instant: firstLoad });
+    /* the first paint waits for the load-time re-landing too, so nothing visible shifts under the reader */
+    const lift = () => document.documentElement.classList.remove("case-hold");
+    if (document.readyState === "complete") lift(); else window.addEventListener("load", lift, { once: true });
   }
 
   window.addEventListener("hashchange", () => { firstLoad = false; fromHash(); });

@@ -40,5 +40,8 @@ window.SiteEntry = (function () {
 
   if (kind !== "first") document.documentElement.classList.add("gate-done");
 
+  /* a case link holds the first paint until folders.js has opened it (css/gate.css) */
+  if (SECTIONS.indexOf(hash) !== -1 && hash !== "work" && hash !== "experience") document.documentElement.classList.add("case-hold");
+
   return { kind, sector, view };
 })();

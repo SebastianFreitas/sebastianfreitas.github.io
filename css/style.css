@@ -66,7 +66,67 @@
   --type-page:       clamp(1.6rem, 5.5vw, 2.4rem);
   --type-section:    clamp(1.4rem, 4.5vw, 1.9rem);
   --type-card:       clamp(1.5rem, 5vw, 2rem);
+  /* the Dishonored restyle: wash ground, torn black stroke (.slab), px insets so the notches measure --tear */
+  --wash:            linear-gradient(170deg, #605c55, #44403a);
+  --smoke:
+    radial-gradient(ellipse 60% 30% at 18% 24%, rgb(214 206 188 / 0.195), transparent 70%),
+    radial-gradient(ellipse 50% 22% at 78% 18%, rgb(0 0 0 / 0.24), transparent 72%),
+    radial-gradient(ellipse 70% 30% at 62% 72%, rgb(206 198 180 / 0.15), transparent 70%),
+    radial-gradient(ellipse 45% 18% at 10% 85%, rgb(0 0 0 / 0.21), transparent 70%),
+    radial-gradient(ellipse 35% 40% at 45% 45%, rgb(0 0 0 / 0.12), transparent 70%);
+  --stroke:          rgb(4 4 5 / 0.86);
+  --tear:            25px;
+  /* the wall's dirt as static transparent tiles (css/art/, 1440x1280, repeat-y): dry-brush, scratches and big ink marks; two tiles so no two places stamp the same picture */
+  --dirt-a:          url("/css/art/dirt-a.webp");
+  --dirt-b:          url("/css/art/dirt-b.webp");
+  --dirt-size:       1440px auto;
+  /* pale dry-brush scrapes dragged in from the torn ends of a stroke or plate; the end lengths ride --tear, so they stay out of running text */
+  --paint-streaks:
+    linear-gradient(90deg, rgb(176 168 150 / 0.34), transparent) 0 16% / calc(var(--tear) * 2.4) 3px no-repeat,
+    linear-gradient(90deg, rgb(176 168 150 / 0.26), transparent) 0 44% / calc(var(--tear) * 1.5) 2px no-repeat,
+    linear-gradient(90deg, rgb(176 168 150 / 0.3), transparent) 0 78% / calc(var(--tear) * 2.9) 4px no-repeat,
+    linear-gradient(270deg, rgb(176 168 150 / 0.32), transparent) 100% 28% / calc(var(--tear) * 2.6) 3px no-repeat,
+    linear-gradient(270deg, rgb(176 168 150 / 0.24), transparent) 100% 58% / calc(var(--tear) * 1.4) 5px no-repeat,
+    linear-gradient(270deg, rgb(176 168 150 / 0.3), transparent) 100% 86% / calc(var(--tear) * 2.2) 2px no-repeat,
+    linear-gradient(98deg, transparent 30%, rgb(176 168 150 / 0.05) 36% 44%, transparent 50%);
 }
+
+/* the section walls: stroke and tear one step up there only (the bridge tiles read the :root values); the polygons resolve --tear on each element */
+:root {
+  --slab-scrape:      polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 91% 0, 100% 0, calc(100% - var(--tear)) 18%, 100% 34%, calc(100% - calc(var(--tear) * 0.5)) 50%, 100% 64%, calc(100% - calc(var(--tear) * 0.4)) 82%, calc(100% - 3px) 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%, calc(var(--tear) * 0.6) 82%, 2px 68%, var(--tear) 48%, 0 32%, calc(var(--tear) * 0.4) 14%);
+  --slab-scrape-even: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, calc(100% - calc(var(--tear) * 0.4)) 14%, 100% 32%, calc(100% - var(--tear)) 48%, calc(100% - 2px) 68%, calc(100% - calc(var(--tear) * 0.6)) 82%, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 3px 100%, calc(var(--tear) * 0.4) 82%, 0 64%, calc(var(--tear) * 0.5) 50%, 0 34%, var(--tear) 18%);
+  --slab-scrape-tall: polygon(0 0, 14% min(var(--tear), 24px), 30% 2px, 48% calc(min(var(--tear), 24px) * 0.5), 70% 1px, 84% calc(min(var(--tear), 24px) * 0.4), 100% 0, 100% 50%, 100% 100%, 78% calc(100% - calc(min(var(--tear), 24px) * 0.45)), 58% calc(100% - 2px), 38% calc(100% - min(var(--tear), 24px)), 20% calc(100% - calc(min(var(--tear), 24px) * 0.6)), 0 100%, 0 50%);
+}
+
+.work, .experience, footer {
+  --slab-scrape:      polygon(0 5px, 6% 0, 9% 6px, 21% 2px, 23% 9px, 38% 1px, 47% 5px, 66% 0, 71% 8px, 90% 3px, 100% 0, calc(100% - var(--tear) * 0.9) 9%, calc(100% - var(--tear) * 0.2) 17%, calc(100% - var(--tear) * 0.7) 31%, 100% 38%, calc(100% - var(--tear) * 0.1) 47%, calc(100% - var(--tear)) 58%, calc(100% - var(--tear) * 0.4) 66%, 100% 79%, calc(100% - var(--tear) * 0.8) 90%, calc(100% - 4px) 100%, 81% calc(100% - 6px), 77% calc(100% - 1px), 59% calc(100% - 9px), 52% calc(100% - 2px), 33% calc(100% - 5px), 30% 100%, 12% calc(100% - 7px), 5% calc(100% - 1px), 0 100%, calc(var(--tear) * 0.7) 88%, calc(var(--tear) * 0.1) 77%, var(--tear) 66%, 3px 55%, calc(var(--tear) * 0.8) 44%, 0 36%, calc(var(--tear) * 0.4) 24%, calc(var(--tear) * 0.9) 13%);
+  --slab-scrape-even: polygon(0 0, 11% 4px, 14% 0, 30% 7px, 41% 2px, 44% 6px, 58% 0, 83% 5px, 87% 1px, 100% 3px, calc(100% - var(--tear) * 0.6) 11%, 100% 21%, calc(100% - var(--tear) * 0.3) 29%, calc(100% - var(--tear) * 0.95) 41%, calc(100% - 3px) 55%, calc(100% - var(--tear) * 0.5) 63%, calc(100% - var(--tear) * 0.1) 74%, calc(100% - var(--tear) * 0.7) 85%, 100% 100%, 90% calc(100% - 5px), 71% calc(100% - 1px), 68% calc(100% - 7px), 46% calc(100% - 2px), 24% calc(100% - 8px), 19% calc(100% - 1px), 6px 100%, calc(var(--tear) * 0.3) 91%, calc(var(--tear) * 0.8) 80%, 0 69%, calc(var(--tear) * 0.45) 58%, calc(var(--tear) * 0.1) 47%, calc(var(--tear) * 0.95) 35%, 0 27%, calc(var(--tear) * 0.6) 16%, calc(var(--tear) * 0.2) 7%);
+  --slab-scrape-tall: polygon(0 0, 9% min(var(--tear), 24px), 12% 3px, 31% calc(min(var(--tear), 24px) * 0.7), 36% 1px, 55% calc(min(var(--tear), 24px) * 0.3), 73% 2px, 80% calc(min(var(--tear), 24px) * 0.55), 100% 0, calc(100% - var(--tear) * 0.5) 22%, 100% 40%, calc(100% - var(--tear) * 0.8) 63%, calc(100% - 5px) 100%, 85% calc(100% - min(var(--tear), 24px) * 0.3), 66% calc(100% - 3px), 61% calc(100% - min(var(--tear), 24px) * 0.8), 40% calc(100% - 1px), 33% calc(100% - min(var(--tear), 24px) * 0.5), 14% calc(100% - 6px), 0 100%, calc(var(--tear) * 0.6) 70%, 4px 48%, calc(var(--tear) * 0.9) 27%);
+}
+.work, .experience, footer { --stroke: rgb(4 4 5 / 0.92); --tear: 31.25px; }
+
+/* torn black stroke behind an element's text; the tilt is on the pseudo only */
+.slab { position: relative; isolation: isolate; }
+.slab::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--stroke);
+  clip-path: var(--slab-scrape);
+  transform: rotate(-3deg);
+}
+.slab:nth-of-type(even)::before { clip-path: var(--slab-scrape-even); }
+.slab.straight::before { transform: none; }
+@media (prefers-reduced-motion: reduce) { .slab::before { transform: none; } }
+.ink { position: absolute; width: 340px; height: 151px; opacity: 0.8; pointer-events: none; }
+
+/* the wall's paint: broad dry-brush streaks and pale scratches (tile, repeats down), then a soft vignette; behind the slabs */
+.work::before, .experience::before, footer::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 75% at 50% 50%, transparent 45%, rgb(0 0 0 / 0.4) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900'%3E%3Cfilter id='b' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.5' numOctaves='2' seed='4' result='n'/%3E%3CfeColorMatrix in='n' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -7 4.1' result='h'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.09' numOctaves='2' seed='9' result='e'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='e' scale='24' xChannelSelector='R' yChannelSelector='G' result='r'/%3E%3CfeComposite in='r' in2='h' operator='in'/%3E%3C/filter%3E%3Cg filter='url(%23b)'%3E%3Cg transform='translate(120 60) rotate(18)' opacity='.28'%3E%3Cpath fill='rgb(4,4,5)' d='M0,6L450,0L900,5L873,66L450,74L0,66Z'/%3E%3C/g%3E%3Cg transform='translate(640 540) rotate(-22)' opacity='.26'%3E%3Cpath fill='rgb(4,4,5)' d='M0,5L410,0L820,6L800,58L410,64L0,56Z'/%3E%3C/g%3E%3Cg transform='translate(260 350) rotate(28)' opacity='.12'%3E%3Cpath fill='rgb(236,228,208)' d='M0,4L350,0L700,4L680,44L350,48L0,42Z'/%3E%3C/g%3E%3Cg transform='translate(780 150) rotate(-30)' opacity='.1'%3E%3Cpath fill='rgb(236,228,208)' d='M0,3L300,0L600,4L585,38L300,42L0,36Z'/%3E%3C/g%3E%3C/g%3E%3Cg fill='none' stroke='rgb(236,228,208)' stroke-linecap='round'%3E%3Cpath d='M90,520Q420,560 760,470' stroke-width='1.5' stroke-opacity='.28' stroke-dasharray='180 14 90 30'/%3E%3Cpath d='M820,640Q1100,560 1330,380' stroke-width='1' stroke-opacity='.26' stroke-dasharray='140 20 60 36'/%3E%3Cpath d='M980,90Q1180,190 1360,300' stroke-width='1.5' stroke-opacity='.22' stroke-dasharray='120 18 70 40'/%3E%3C/g%3E%3C/svg%3E")
+    center top / 1440px 900px repeat-y;
+}
+footer { isolation: isolate; }
 
 * { box-sizing: border-box; }
 
@@ -202,6 +262,9 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
     0%, 82%, 100% { transform: translateX(0); }
     91% { transform: translateX(2px); }
   }
+  /* the endless ones run only while the hero covers the viewport (they keep the compositor awake otherwise) */
+  .topbar::after, .topbar .xp-chip .xp-badge, .xp-needle::before { animation-play-state: paused; }
+  html.bridge-live .topbar::after, html.bridge-live .topbar .xp-chip .xp-badge, html.bridge-live .xp-needle::before { animation-play-state: running; }
   /* a gain: the bright layer flares behind the needle, the badge flashes once */
   .topbar:has(.xp-chip.tick) .xp-gauge::before { animation: xp-sweep 0.9s ease-out; }
   .topbar:has(.xp-chip.tick)::after { filter: drop-shadow(0 0 8px #e4ddc6); }
@@ -339,6 +402,19 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   --tab-serif: "Oranienbaum", "Cormorant SC", Georgia, serif;
   color: var(--sage);
 }
+/* 404: the case shell on the wash, the note one straight stroke */
+.page-404 main.case { position: relative; isolation: isolate; max-width: none; min-height: 60vh; padding-bottom: 4rem; background: var(--dirt-b) 62% top / 1200px auto repeat-y, var(--smoke), linear-gradient(170deg, #605c55, #4e4a43); }
+/* the join to the footer is torn, not ruler-straight: a strip of the footer's own dark tone bites up into the wash */
+.page-404 main.case::after {
+  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: 7.5rem; pointer-events: none;
+  background: linear-gradient(180deg, #47433d, #3c3933);   /* ends on the footer's top tone (its vignette makes it darker than the wash) */
+  clip-path: polygon(0 62%, 4% 38%, 9% 55%, 15% 20%, 22% 46%, 27% 8%, 35% 40%, 41% 24%, 49% 58%, 56% 14%, 63% 44%, 70% 30%, 77% 64%, 84% 18%, 91% 48%, 96% 26%, 100% 52%, 100% 100%, 0 100%);
+}
+.page-404 .void-note { max-width: 44rem; padding: 1.5rem 2rem; }
+.page-404 .void-note h1 { margin: 0.6rem 0 1rem; }
+.page-404 .void-note p:last-of-type { margin-bottom: 0; }
+.page-404 .case-nav a::before { background: rgb(4,4,5); }
+.page-404 .case-nav a:hover::before, .page-404 .case-nav a:focus-visible::before { background: var(--type-tag-bg); }
 /* behind the see-through open folder the page paints the body: black there, not the old blue-grey (toy layers sit on body, untouched) */
 body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 
@@ -368,7 +444,8 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 /* body after the lead sits dimmer; key words go red */
 .case p:not(.caption), .case li { color: var(--type-soft); }
 .case > p:first-of-type, .case h1 + p, .case h2 + p { color: var(--type-cream); }
-.key, em.key { color: var(--type-key); font-style: normal; font-weight: 500; background: none; }
+.case strong:not(.key), .case b:not(.key) { font-weight: 700; color: inherit; text-decoration: none; }
+.key, em.key { color: var(--type-cream); font-style: normal; font-weight: 500; background: none; text-decoration: underline 1px var(--type-red); text-underline-offset: 0.12em; }
 .type-readout, .xp-when, .caption {
   font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.12em;
 }
@@ -385,7 +462,8 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   background: transparent; clip-path: var(--btn-scrape);
   transition: background-color 0.2s ease;
 }
-.case-nav a:nth-child(even)::before { clip-path: var(--btn-scrape-even); }
+.case-nav a::before { clip-path: polygon(0% 6%, 30% 0%, 65% 5%, 100% 0%, 100% 100%, 60% 94%, 30% 100%, 0% 95%); }
+.case-nav a:nth-child(even)::before { clip-path: polygon(0% 0%, 35% 5%, 70% 0%, 100% 6%, 100% 96%, 55% 100%, 25% 94%, 0% 100%); }
 .type-action { color: var(--type-red-text); }
 .type-action::before { background: var(--type-red); }
 .type-action:hover, .type-action:focus-visible { filter: brightness(1.2); }
@@ -396,32 +474,38 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .type-action:focus-visible, .back:focus-visible, .case-nav a:focus-visible { outline: 1px solid var(--type-cream); outline-offset: -1px; }
 
 .section-title {
-  border-top: 1px solid var(--line);
-  padding-top: 0.75rem;
+  display: inline-block; justify-self: start;
+  padding: 0.2em 0.6em;
   margin: 0 0 2.5rem;
 }
 
 .work, .experience {
-  padding: clamp(3rem, 10vh, 7rem) var(--gutter);
+  padding: clamp(7.5rem, 16vh, 9.5rem) var(--gutter) clamp(3rem, 10vh, 7rem);
 }
 
 /* ---------------- project objects ---------------- */
 
 .work { display: grid; gap: 0; }
-.work .section-title { background: var(--petrol); margin-bottom: 0; padding: 0 0 0.75rem; border-top: 0; }
+.work .section-title { margin-bottom: 0; }
 
 .obj {
   display: block;
   position: relative;
-  background: var(--petrol);
+  isolation: isolate;
   color: inherit;
   text-decoration: none;
   /* side padding = the case's own --gutter, so row text and case text share one left edge */
   padding: 2rem var(--gutter) 2.25rem;
   margin: 3.4rem 0 0;
-  border: 1px solid var(--line);
-  transition: background 0.25s, border-color 0.25s;
+  border: 0;
 }
+/* seeded red line pieces on a plate (js/site/redlines.js): out of flow, one flat red path */
+.redlines { position: absolute; overflow: visible; pointer-events: none; z-index: 1; will-change: transform; } /* own cached surface: cheap under software compositing */
+.redlines path { fill: var(--type-red); }
+/* the row is a .slab stroke its full width (D39); later rows paint over earlier, staggered inset */
+.obj:nth-of-type(4n+2)::before { left: 0.6rem; }
+.obj:nth-of-type(4n+3)::before { left: 0.2rem; }
+.obj:nth-of-type(4n+4)::before { left: 0.9rem; }
 /* folder tab: the OBJ label sits on the row's top edge (bottom flush, covering the top border), its text on the shared left edge */
 .obj > .obj-id {
   position: absolute;
@@ -432,20 +516,18 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   background: var(--petrol);
   border: 1px solid var(--line);
   border-bottom: 0;
-  transition: padding 0.25s, border-color 0.25s, color 0.25s;
 }
-.obj:hover, .obj:focus-visible { border-color: var(--rule); }
 .obj:hover > .obj-id, .obj:focus-visible > .obj-id {
   padding-top: 0.65rem; border-color: var(--rule); color: var(--lamp);
 }
-.obj:hover, .obj:focus-visible { background: var(--petrol-up); color: inherit; }
+.obj:hover, .obj:focus-visible { color: inherit; }
 
 /* the open row's tab wears the bar's active strip: tilted cream, torn right end, on the pseudo only */
 .obj > .obj-id::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   display: none;
   background: var(--lamp);
-  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
+  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 96% 100%, 45% 97%, 0% 100%);
   transform: rotate(-3deg);
 }
 .obj[aria-expanded=true] > .obj-id { color: var(--on-cream); }
@@ -454,7 +536,7 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 /* closed: the tab is a cream plate with the torn edge (own layer, so the open state's border and lamp strip stay as they are) */
 .obj:not([aria-expanded=true]) > .obj-id,
 .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id {
-  background: transparent; border-color: transparent; color: var(--type-tag-ink);
+  background: transparent; border-color: transparent; color: var(--type-cream);
   top: 0; transform: none; padding: 0.35rem 0.8rem 0.4rem;
   font-size: 0.72rem; font-weight: 600;
 }
@@ -462,12 +544,14 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 /* closed: the tab hangs from its own row's top line (flat top flush on the line, torn bottom and sides) */
 .obj > .obj-id::after {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: var(--type-tag-bg);
-  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 4px) 34%, 100% 62%, calc(100% - 5px) 100%, 45% 96%, 0% 100%, 1px 50%);
+  background: var(--stroke);
+  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 5px) 100%, 45% 96%, 0% 100%);
 }
 .obj:nth-of-type(even) > .obj-id::after {
-  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 3px) 40%, 100% 70%, calc(100% - 6px) 97%, 50% 100%, 0% 96%, 1px 45%);
+  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 6px) 97%, 50% 100%, 0% 96%);
 }
+.obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { color: var(--type-tag-ink); }
+.obj:not([aria-expanded=true]):hover > .obj-id::after, .obj:not([aria-expanded=true]):focus-visible > .obj-id::after { background: var(--type-tag-bg); }
 .obj[aria-expanded=true] > .obj-id::after { display: none; }
 
 .obj h3 { margin: 0.4rem 0 0.75rem; }
@@ -492,15 +576,24 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   display: grid;
   grid-template-columns: 10rem 1fr;
   gap: 0.25rem 2rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--line);
+  padding: 1.25rem 2rem;
+  max-width: 48rem;
+  margin-bottom: 1rem;
 }
+.xp li:nth-of-type(3n+1)::before { inset: 0 -0.6rem 0 -1.2rem; }
+.xp li:nth-of-type(3n+2)::before { inset: 0 -1.2rem 0 -0.6rem; }
+.xp li:nth-of-type(3n+3)::before { inset: 0 -0.9rem 0 -0.9rem; }
 .xp-when {
   color: var(--type-dim);
   grid-row: span 2;
 }
-.experience { background: var(--petrol); }
-.xp-what strong { color: var(--lamp); font-weight: 500; }
+.experience { background: var(--smoke), linear-gradient(180deg, #57534c, #4e4a43); }
+.xp-what { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.3; color: var(--type-cream); }
+.xp-what strong { color: var(--type-cream); font-weight: 400; font-synthesis: none; }
+/* rough top and bottom, straight sides; the edge differs down the stack */
+.xp li:nth-of-type(1)::before { clip-path: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px)); }
+.xp li:nth-of-type(2)::before, .work .section-title::before, .experience .section-title::before { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
+.xp li:nth-of-type(3)::before, .obj.slab::before, .obj.slab:nth-of-type(even)::before, .void-note.slab::before { clip-path: polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px)); }
 .xp-what a { color: var(--lamp); text-decoration: underline; }
 .xp-what a:hover { text-decoration-thickness: 2px; }
 .xp-note { color: var(--type-dim); font-size: 0.92rem; }
@@ -516,7 +609,46 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .case p, .case ul { max-width: var(--measure); }
 .case ul { padding-left: 1.1rem; }
 .case li { margin-bottom: 0.4rem; }
-.case a:hover { text-decoration-thickness: 2px; }
+.case a:not(.back):not(.case-nav a) { color: var(--type-quiet); text-decoration: underline dotted 1px var(--type-cream); text-underline-offset: 3px; }
+.case a:not(.back):not(.case-nav a):hover, .case a:not(.back):not(.case-nav a):focus-visible { color: var(--type-cream); text-decoration-style: solid; }
+/* case body on the wash (dp-9a): each block is a torn black stroke, its long sides notched (side padding >= the tear, so no cut text);
+   each h2 sits after a wide wash gap that breaks the column into sections */
+.folder-body > .case { position: relative; isolation: isolate; }
+/* the painted wash under the strokes, its long sides torn; the toy's strip lies right of the article, so it stays visible */
+.folder-body > .case::before {
+  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  /* the index wall's paint: smoke blotches over the wash; the long sides fall off in big irregular bites */
+  background: var(--smoke), var(--wash);
+}
+/* desktop: a toy draws behind the case, so the wash is half-clear and fades out toward the right */
+@media (min-width: 900px) {
+  .folder-body > .case::before {
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 30%, rgb(0 0 0 / 0.35) 62%, transparent 85%);
+    mask-image: linear-gradient(90deg, #000 0, #000 30%, rgb(0 0 0 / 0.35) 62%, transparent 85%);
+  }
+}
+.case > p:not(.todo), .case > ul, .case > h2 { position: relative; isolation: isolate; }
+.case > p:not(.todo)::before, .case > ul::before, .case > h2::before {
+  content: ""; position: absolute; z-index: -1; inset: -0.6rem calc(var(--tear) * -1);
+  background: var(--stroke);
+  clip-path: polygon(0 3px, 30% 0, 62% 3px, 100% 1px, 100% 100%, 70% calc(100% - 3px), 38% calc(100% - 1px), 0 calc(100% - 2px));
+}
+.case > p:nth-of-type(even)::before {
+  clip-path: polygon(0 1px, 35% 3px, 70% 0, 100% 2px, 100% 100%, 64% calc(100% - 2px), 30% calc(100% - 3px), 0 100%);
+}
+/* a few run long and a few stop short */
+.case > p:nth-of-type(5n+3), .case > ul:nth-of-type(2n) { max-width: calc(var(--measure) * 0.82); }
+.case > p:nth-of-type(7n+1) { max-width: calc(var(--measure) * 1.12); }
+.case > h2 { margin-top: 4.5rem; }
+/* phone: no toy, so the wash stays opaque; the tear is shallower than the gutter so each stroke stops short of the screen edge, and a clear wash gap lies between strokes */
+@media (max-width: 899px) {
+  .folder-body > .case { --tear: 14px; }
+  .case > p:not(.todo), .case > ul { margin-block: 2rem; }
+  .case > h2 { margin-bottom: 2rem; }
+  .case > p:not(.todo)::before, .case > ul::before, .case > h2::before { inset: -0.4rem calc(var(--tear) * -1); }
+  .case > p:nth-of-type(5n+3), .case > ul:nth-of-type(2n), .case > p:nth-of-type(7n+1) { max-width: none; }
+}
 /* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
 @media (min-width: 900px) {
   #conclusus .case { padding-top: 18vh; }
@@ -532,6 +664,8 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   background: #000;
   border: 1px solid var(--line);
 }
+/* a photo with a rough top and bottom and straight sides, no frame; toys and canvases keep theirs */
+.case img.clip, .case video.clip { --photo-scrape: 0 12px, 9% 3px, 18% 0, 27% 9px, 34% 14px, 43% 3px, 52% 2px, 61% 12px, 70% 11px, 79% 2px, 88% 0, 100% 9px, 100% calc(100% - 10px), 90% calc(100% - 2px), 80% 100%, 69% calc(100% - 9px), 58% calc(100% - 12px), 44% calc(100% - 1px), 30% calc(100% - 2px), 17% calc(100% - 10px), 0 calc(100% - 11px); border: 0; clip-path: polygon(var(--photo-scrape)); }
 .caption {
   color: var(--type-dim);
   margin: 0 0 2rem;
@@ -542,25 +676,31 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   padding: 2.4rem 1rem;
   margin: 1.5rem 0 2rem;
   max-width: 72rem;
-  border: 1px dashed rgb(var(--sage-rgb) / 0.32);
-  border-radius: 2px;
+  background: var(--stroke);
+  border: 0;
+  border-radius: 0;
   text-align: center;
 }
 
 .embed {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--line);
+  border: 0;
   margin: 1.5rem 0 0.5rem;
 }
 
 .embed-shell {
   position: relative;
-  overflow: hidden;
   padding: 0;
   background-color: var(--petrol-up);
   background-size: cover;
   background-position: center;
+}
+/* the torn mat behind the straight frame (z -1 reaches behind the shell's own background, so no isolation here) */
+.embed-shell::before {
+  content: ""; position: absolute; inset: -10px; z-index: -1; --tear: 7px;
+  background: #8d877a; /* lighter than the wash wall and the black frame, so the tear reads on every side */
+  clip-path: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px));
 }
 .embed-shell iframe {
   position: absolute;
@@ -610,22 +750,28 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 /* ---------------- footer ---------------- */
 
 footer {
+  position: relative;
   padding: 3rem var(--gutter) 4rem;
-  border-top: 1px solid var(--line);
   font-family: var(--type-sans);
   font-size: 1rem;
   line-height: 1.6;
   color: var(--type-text);
 }
+.foot-text { max-width: 48rem; padding: 1.5rem 2rem; }
 footer p { margin: 0 0 0.4rem; }
-footer { background: var(--petrol); }
-footer a { color: var(--lamp); text-decoration: underline; }
-footer a:hover { text-decoration-thickness: 2px; }
+footer { background: linear-gradient(180deg, #4e4a43, #44403a); }
+footer .foot-text::before { clip-path: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px)); }
+footer p:not(.rights) { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream); }
+footer .rights { font-family: var(--type-sans); font-size: 0.85rem; line-height: 1.5; color: var(--type-text); }
+footer a { color: var(--type-cream); text-decoration: underline dotted 1px var(--type-cream); text-underline-offset: 3px; }
+footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decoration: underline solid 1px var(--type-cream); text-underline-offset: 3px; }
+@media (max-width: 1100px) { footer { padding-bottom: 9rem; } }
 
 /* ---------------- small screens ---------------- */
 
 @media (max-width: 640px) {
   .xp li { grid-template-columns: 1fr; }
+  .xp li:nth-of-type(n)::before { inset: 0 -0.2rem 0 -0.4rem; }
   .xp-when { grid-row: auto; }
   /* the nav wraps to four lines here: a pinned bar would eat the screen, so it scrolls away */
   html { scroll-padding-top: 0; }
@@ -685,9 +831,6 @@ footer a:hover { text-decoration-thickness: 2px; }
    as the FIRST child of the <a class="obj">.
    ========================================================= */
 
-.obj {
-  clip-path: inset(-3rem 0 0 0); /* the artwork bleeds to the card edge; the folder tab rises above it */
-}
 
 .obj-shot {
   position: absolute;
@@ -700,6 +843,9 @@ footer a:hover { text-decoration-thickness: 2px; }
   z-index: 0;
   opacity: 0.55;
   background: var(--petrol);
+  clip-path: polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px));
+  transform: rotate(-3deg);
+  transform-origin: 19.4% 50%;
   pointer-events: none;
   user-select: none;
 
@@ -722,8 +868,8 @@ footer a:hover { text-decoration-thickness: 2px; }
 .obj:hover .obj-shot,
 .obj:focus-visible .obj-shot {
   opacity: 0.8;
-  transform: scale(1.03);
 }
+.obj:nth-of-type(even) .obj-shot { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
 
 /* text sits above the artwork */
 .obj h3, .obj-line, .obj .props {
@@ -736,11 +882,13 @@ footer a:hover { text-decoration-thickness: 2px; }
    artwork right back rather than fighting it */
 @media (max-width: 900px) {
   .obj-shot { width: 100%; opacity: 0.18; }
-  .obj:hover .obj-shot { opacity: 0.22; transform: none; }
+  .obj:hover .obj-shot { opacity: 0.22; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .obj-shot, .obj:hover .obj-shot { transition: none; transform: none; }
 }
 
-.work, .experience { position: relative; z-index: 1; background: var(--petrol); }
+.work, .experience { position: relative; z-index: 1; }
+/* one wall: each section's wash starts at the tone the one above ends on, and the smoke stays off the section edges */
+.work { background: linear-gradient(180deg, #605c55, #57534c); }

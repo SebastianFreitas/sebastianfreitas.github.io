@@ -38,7 +38,13 @@
   left: 2rem; bottom: var(--hud-floor); width: auto;
   overflow: visible;
 }
-.tinst-wrap { position: relative; display: flex; flex-direction: column; overflow: visible; }
+.tinst-wrap { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: visible; }
+.tinst-wrap::before {
+  content: ""; position: absolute; inset: -9px -12px; z-index: -1;
+  background: rgb(26 25 23); opacity: 0.94; clip-path: var(--slab-scrape);
+  transform: rotate(-3deg); pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .tinst-wrap::before { transform: none; } }
 .tinst-ctl {
   position: absolute; right: 0; top: -0.75rem; z-index: 2;
   display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
@@ -51,10 +57,10 @@
   color: var(--sage-dim); background: rgb(var(--ink-rgb) / 0.8);
   border: 1px solid rgba(255,255,255,0.09);
 }
-.tinst-ctl button:hover { color: var(--lamp); border-color: rgb(var(--lamp-rgb) / 0.5); }
+.tinst-ctl button:hover { color: var(--type-cream); border-color: rgb(228 221 198 / 0.5); }
 #bridge-term .tinst {
   display: block; width: auto; height: auto;
-  background: rgba(9,13,15,0.35);
+  background: transparent;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -84,40 +90,39 @@
   position: absolute;
   left: 0; right: 0; bottom: 0;
   height: 1px;
-  background: rgb(var(--sage-rgb) / 0.32);
+  background: var(--type-quiet);
 }
 #bridge-log .tlog::after {
   content: "";
   position: absolute; left: 0; bottom: -1px;
   width: 2.2rem; height: 2px;
   transform: none;
-  background: var(--lamp);
+  background: var(--type-cream);
 }
 #bridge-log .tl {
   font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
-  text-transform: lowercase; color: #58635f; line-height: 1.5;
+  text-transform: lowercase; color: var(--type-quiet); line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%;
   animation: tlIn 0.45s ease both;
 }
-#bridge-log .tl::before { content: "> "; color: #3d4644; }
+#bridge-log .tl::before { content: "> "; color: var(--type-quiet); }
 #bridge-log .tl:last-child { color: var(--sage); }
-#bridge-log .tl.loc:last-child  { color: var(--cold); }
-#bridge-log .tl.good { color: var(--lamp); }
+#bridge-log .tl.loc:last-child  { color: var(--type-quiet); }
+#bridge-log .tl.good { color: var(--type-cream); }
 /* tiers: a reading that bent, and one that cannot be true.
    Same specificity as .tl:last-child above, so order decides. */
-#bridge-log .tl.warn { color: #c2954e; }
-#bridge-log .tl.err  { color: var(--type-red); }
-#bridge-log .tl.crit { color: var(--type-red); font-weight: 600; }
-#bridge-log .tl.rep  { color: #7fa8b4; }
+#bridge-log .tl.warn { color: var(--type-cream); }
+#bridge-log .tl.err  { color: var(--type-cream); }
+#bridge-log .tl.crit { color: var(--type-cream); font-weight: 600; }
+#bridge-log .tl.rep  { color: var(--type-quiet); }
 #bridge-log .tl.good::before { content: "+ "; color: inherit; }
-#bridge-log .tl.warn::before { content: "! "; color: inherit; }
-#bridge-log .tl.err::before  { content: "!! "; color: inherit; }
-#bridge-log .tl.crit::before { content: "!!! "; color: inherit; }
+#bridge-log .tl.warn::before { content: "! "; color: var(--type-red); }
+#bridge-log .tl.err::before  { content: "!! "; color: var(--type-red); }
+#bridge-log .tl.crit::before { content: "!!! "; color: var(--type-red); }
 #bridge-log .tl.rep::before  { content: "~ "; color: inherit; }
 #bridge-log .tl.warn {
-  background: rgba(229,166,60,0.05);
-  box-shadow: inset 2px 0 0 rgba(229,166,60,0.4);
+  box-shadow: inset 1px 0 0 var(--type-red);
   padding-left: 0.35rem; margin-left: -0.35rem;
 }
 #bridge-log .tl.err {
@@ -129,7 +134,7 @@
 /* a strike: the hull actually lost something */
 #bridge-log .tl.crit {
   background: rgba(110,26,26,0.09);
-  box-shadow: inset 2px 0 0 rgba(110,26,26,0.6);
+  box-shadow: inset 1px 0 0 var(--type-red);
   padding-left: 0.35rem; margin-left: -0.35rem;
   animation: tlIn 0.45s ease both;
 }
@@ -147,7 +152,7 @@
 #bridge-log .tl.warn .n,
 #bridge-log .tl.err .n,
 #bridge-log .tl.crit .n { color: inherit; }
-#bridge-log .tl .caret { color: var(--lamp); opacity: 0.6; }
+#bridge-log .tl .caret { color: var(--type-cream); opacity: 0.6; }
 @keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 #bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
 .bridge-hero.live #bridge-map { pointer-events: auto; }
@@ -164,7 +169,7 @@
 #bridge-map .mk { position: absolute; top: 50%; margin-top: -3px; width: 1px; height: 7px; background: #46545a; }
 #bridge-map .you {
   position: absolute; top: 50%; margin-top: -7px;
-  width: 2px; height: 14px; background: var(--lamp);
+  width: 2px; height: 14px; background: var(--type-cream);
 }
 #bridge-map .ghost {
   position: absolute; top: 50%; margin-top: -7px;
@@ -178,6 +183,12 @@
   bottom: calc(var(--hud-stack) + 10.5rem); /* clears a full 6-line log (~9.8rem) */
   opacity: 0; transition: opacity 0.6s;
 }
+#bridge-hint { isolation: isolate; padding: 0.7rem 1.4rem; color: var(--type-cream); white-space: nowrap; }
+#bridge-hint::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape-even);
+  pointer-events: none;
+}
 .bridge-hero.live #bridge-hint { opacity: 1; }
 .bridge-hero.live.moving #bridge-hint { opacity: 0; }
 /* ---- landmark notes: positioned next to their beacon by JS ---- */
@@ -186,15 +197,27 @@
   --lamp: #e4ddc6; --lamp-rgb: 228 221 198; --rule: #4a5257;
   --tab-serif: "Oranienbaum", "Cormorant SC", Georgia, serif;
   position: absolute; z-index: 14; left: 0; top: 0;
-  width: min(25rem, 34vw); padding: 1.4rem 1.6rem;
-  background: rgb(4, 4, 5);
-  border: 1px solid var(--rule);
-  border-left: 2px solid var(--lamp);
+  width: min(25rem, 34vw);
+  /* a torn plate on all four sides, sized to its content. The tear depth (13px) lives in a transparent
+     border, not the padding: the scroll area ends above the tear, so a scrolled line never slides under it */
+  --note-tear: 13px;
+  padding: 0.9rem 1.7rem;
+  border: var(--note-tear) solid transparent; border-left-width: 0; border-right-width: 0;
+  --stroke: rgb(4 4 5 / 1);
+  background: var(--stroke);
+  clip-path: polygon(0 4px, 22% 0, 52% 5px, 78% 1px, 100% 4px,
+    100% calc(100% - 4px), 74% calc(100% - 1px), 45% calc(100% - 6px), 18% calc(100% - 2px), 0 calc(100% - 5px));
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  max-height: min(70vh, 30rem);
   opacity: 0; visibility: hidden; pointer-events: none;
   transform: translate(-14px, 8px) scale(0.985);
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(.2,.7,.3,1), visibility 0.5s;
 }
-.bnote.from-left { border-left: none; border-right: 2px solid var(--lamp); transform: translate(14px, 8px) scale(0.985); }
+.bnote.from-left { transform: translate(14px, 8px) scale(0.985); }
+/* the red line pieces (js/site/redlines.js) sit beside the plate, not in it: the plate's clip and scroll would cut them */
+.redlines.bnote-red { z-index: 14; opacity: 0; transition: opacity 0.5s ease; }
+.redlines.bnote-red.show { opacity: 1; }
+.bridge-hero.warping .redlines.bnote-red, .bridge-hero.is-cinematic .redlines.bnote-red { opacity: 0 !important; visibility: hidden !important; }
 .bnote.show { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(0,0) scale(1); }
 .bnote .tag {
   font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em;
@@ -228,16 +251,16 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgb(var(--sage-rgb) / 0.2) transparent;
+  scrollbar-color: var(--type-quiet) transparent;
 }
 .bnote.deep::-webkit-scrollbar { width: 6px; }
-.bnote.deep::-webkit-scrollbar-thumb { background: rgb(var(--sage-rgb) / 0.2); }
+.bnote.deep::-webkit-scrollbar-thumb { background: var(--type-quiet); }
 /* a node that holds a playable build needs the width a game frame reads at */
 .bnote.deep.wide { width: min(46rem, 58vw); max-height: min(78vh, 44rem); }
 .bnote.deep .embed { margin: 0.9rem 0 0.4rem; }
 .bnote .sub {
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--lamp);
+  text-transform: uppercase; color: var(--type-cream);
   margin: 1.4rem 0 0.6rem;
 }
 /* a sub-heading directly under the title doesn't need the 1.4rem
@@ -252,15 +275,15 @@
    commands, not as prose that lost its font */
 .bnote code {
   font-family: var(--mono); font-size: 0.92em;
-  color: var(--lamp); background: rgb(var(--lamp-rgb) / 0.08);
-  padding: 0 0.28em; border-radius: 2px;
+  color: var(--type-cream); background: rgb(var(--lamp-rgb) / 0.08);
+  padding: 0 0.28em;
 }
 /* the clip is opt-in: preload="none" in the markup, so nothing is
    fetched or decoded until it is actually asked for */
 .bnote .clipbox { margin: 0 0 1.1rem; }
 .bnote .clipbox .clip {
   display: block; width: 100%; height: auto;
-  background: #05090a; border: 1px solid rgb(var(--sage-rgb) / 0.12);
+  background: var(--stroke);
 }
 .bnote .clipbox figcaption {
   font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
@@ -269,8 +292,7 @@
 /* an empty clipbox is a placeholder: frame it so the missing media is obvious */
 .bnote .clipbox.todo {
   padding: 1.6rem 0.8rem;
-  border: 1px dashed rgb(var(--sage-rgb) / 0.32);
-  border-radius: 2px;
+  background: var(--stroke);
   text-align: center;
 }
 .bnote .clipbox.todo figcaption { margin: 0; }
@@ -281,10 +303,16 @@
   writing-mode: vertical-rl;
   transform: translateY(-50%);
   font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em;
-  text-transform: uppercase; color: var(--sage-dim); text-decoration: none;
+  text-transform: uppercase; color: var(--type-quiet); text-decoration: none;
   pointer-events: auto;
 }
-.bridge-scroll:hover { color: var(--lamp); }
+.bridge-scroll:hover { color: var(--type-cream); }
+.bridge-scroll { isolation: isolate; padding: 0.9rem 0.55rem; color: var(--type-cream); }
+.bridge-scroll::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape-tall);
+  pointer-events: none;
+}
 /* ---- setting panel: centered in the open span between the two
    instrument banks. Cosmetic switch only — no map logic wired yet. ---- */
 #bridge-modes {
@@ -296,12 +324,16 @@
   display: none;
   position: absolute; left: 0; top: 44px;
   flex-direction: column; gap: 0.15rem;
-  min-width: 11rem; max-height: 60vh; overflow-y: auto;
-  padding: 0.55rem 0.4rem 0.4rem;
-  background: #000;
-  border: 1px solid rgb(var(--sage-rgb) / 0.18);
-  border-top: 2px solid var(--type-red);
+  min-width: 11rem;
+  padding: 0.9rem 1.5rem 0.8rem;
+  isolation: isolate;
 }
+.modes-panel::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); opacity: 0.92; clip-path: var(--slab-scrape);
+  transform: rotate(-3deg); pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .modes-panel::before { transform: none; } }
 #bridge-modes.open .modes-panel { display: flex; }
 .modes-head {
   margin-bottom: 0.4rem; padding: 0 14px 0.5rem;
@@ -309,7 +341,7 @@
   font-family: "Oranienbaum", "Cormorant SC", Georgia, serif; font-size: 0.7rem; line-height: 1; letter-spacing: 0.14em;
   text-transform: uppercase; color: rgb(228 221 198 / 0.6);
 }
-.modes-list { display: flex; flex-direction: column; gap: 0.1rem; }
+.modes-list { display: flex; flex-direction: column; gap: 0.1rem; max-height: calc(60vh - 3rem); overflow-y: auto; }
 .modes-btn {
   display: flex; align-items: center; gap: 0.6rem;
   font-family: "Oranienbaum", "Cormorant SC", Georgia, serif; font-size: 1.15rem; line-height: 1; letter-spacing: 0.06em;
@@ -333,13 +365,19 @@
   align-items: center; justify-content: center;
   width: 40px; height: 40px; padding: 0;
   color: #e4ddc6;
-  background: #000;
-  border: none; border-bottom: 1px solid var(--type-red);
-  opacity: 0.18;
-  transition: color 0.2s, background-color 0.2s, opacity 0.2s ease;
+  background: none; position: relative; isolation: isolate;
+  border: none;
+  opacity: 0.6;
+  transition: color 0.2s, opacity 0.2s ease;
+}
+.modes-gear::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); clip-path: var(--slab-scrape-even);
+  transition: background-color 0.2s; pointer-events: none;
 }
 .modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { opacity: 1; }
-.modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { color: #000; background: var(--type-tag-bg); }
+.modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { color: #000; }
+.modes-gear:hover::before, .modes-gear:focus-visible::before, #bridge-modes.open .modes-gear::before { background: var(--type-tag-bg); }
 @media (prefers-reduced-motion: reduce) { .modes-gear { transition: none; } }
 .modes-gear svg { display: block; width: 24px; height: 24px; }
 /* phone only: says what the folder is until it is used */
@@ -350,7 +388,6 @@
 }
 @media (max-width: 900px) {
   #bridge-modes { top: 4.8rem; }
-  .modes-panel { padding: 0.55rem 0.85rem; }
 }
 /* the phone bar is ~122px tall (wordmark and tabs, then the level row): sit below it */
 @media (max-width: 640px) {
@@ -362,7 +399,7 @@
 }
 #bridge-sys .tinst {
   display: block; width: auto; height: auto;
-  background: rgba(9,13,15,0.35);
+  background: transparent;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -380,7 +417,7 @@
   border: 1px solid rgb(var(--lamp-rgb) / 0.45); border-radius: 50%;
   opacity: 0; transition: opacity 0.2s;
 }
-#bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--lamp); border-radius: 50%; }
+#bridge-cursor::after { content: ""; position: absolute; inset: 11px; background: var(--type-cream); border-radius: 50%; }
 #bridge-cursor.on { opacity: 1; }
 @media (max-width: 900px), (max-height: 520px) and (pointer: coarse) {
   .bridge-hero { cursor: auto; }
@@ -532,17 +569,21 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
 
 /* no bars: the controls sit in one row at the bottom centre */
 .genesis-skip {
-  position: absolute; bottom: 0.8rem; left: calc(50% + 15.7rem); z-index: 2;
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--lamp);
-  background: rgba(9,13,15,0.92);
-  border: 1px solid rgb(var(--lamp-rgb) / 0.45);
-  padding: 0.45rem 0.75rem; cursor: pointer;
+  position: absolute; bottom: 0.8rem; left: calc(50% + 18.4rem); z-index: 2;
+  font-family: var(--mono); font-size: 1.1rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--type-cream);
+  background: none; isolation: isolate;
+  border: none;
+  padding: 0.84rem 1.4rem; cursor: pointer;
   pointer-events: auto;
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
 }
-.genesis-skip:hover { color: var(--lamp); }
-.genesis-skip.genesis-pause { left: calc(50% + 10.55rem); min-width: 4.6rem; }
+.genesis-skip::before, .genesis-step::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); clip-path: var(--slab-scrape-even); pointer-events: none;
+}
+.genesis-skip:hover { color: var(--type-red-text); }
+.genesis-skip.genesis-pause { left: calc(50% + 10.55rem); min-width: 6rem; }
 
 .genesis-copy {
   max-width: min(44rem, 88vw);
@@ -563,15 +604,21 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   text-shadow: 0 1px 12px rgba(0,0,0,0.95);
 }
 .genesis-line {
-  font-family: var(--display); font-weight: 600;
+  font-family: var(--type-serif); font-weight: 400;
   font-size: clamp(1.18rem, 2.5vw, 1.72rem);
-  line-height: 1.48; color: #e8ece8; margin: 0;
+  line-height: 1.48; color: var(--type-cream); margin: 0;
   text-shadow: 0 2px 28px rgba(0,0,0,0.95);
+  position: relative; isolation: isolate;
+}
+.genesis-line::before {
+  content: ""; position: absolute; inset: -0.5rem -1.4rem; z-index: -1;
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape);
+  pointer-events: none;
 }
 
 .genesis-ticks {
   position: absolute; bottom: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 2;
-  width: min(20rem, 78vw);
+  width: min(24rem, 78vw);
   display: flex; align-items: center; gap: 0.55rem;
   pointer-events: auto;
 }
@@ -582,36 +629,31 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   touch-action: none;
 }
 .genesis-prog {
-  display: block; width: 100%; height: 3px;
-  background: rgb(var(--sage-rgb) / 0.18);
-  border-radius: 2px;
+  display: block; width: 100%; height: 9px;
+  background: var(--type-quiet);
   overflow: hidden;
   position: relative;
+  clip-path: polygon(0 2px, 1% 0, 3% 3px, 97% 1px, 99% 0, 100% 3px, 98% 45%, 100% 70%, 99% 100%, 96% calc(100% - 2px), 4% 100%, 1% calc(100% - 1px), 0 calc(100% - 3px), 2% 55%, 0 35%);
 }
 .genesis-prog i {
   display: block; width: 0; height: 100%;
-  background: var(--lamp);
-  border-radius: 2px;
-}
-.genesis-prog::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to right, transparent calc(100% - 1px), rgba(9,13,15,0.85) calc(100% - 1px)) 0 0 / calc(100% / 22) 100% repeat-x;
+  background: var(--type-cream);
 }
 .genesis-step {
   flex: none;
-  width: 1.6rem; height: 1.6rem; padding: 0;
-  font-family: var(--mono); font-size: 0.9rem; line-height: 1;
-  color: var(--lamp);
-  background: rgba(9,13,15,0.92);
-  border: 1px solid rgb(var(--lamp-rgb) / 0.45);
+  width: 2.9rem; height: 2.9rem; padding: 0;
+  font-family: var(--mono); font-size: 1.6rem; line-height: 1;
+  color: var(--type-cream);
+  background: none; position: relative; isolation: isolate;
+  border: none;
   cursor: pointer;
   text-shadow: 0 1px 10px rgba(0,0,0,0.9);
 }
-.genesis-step:hover { border-color: var(--lamp); }
+.genesis-step:hover { color: var(--type-red-text); }
 
 @media (max-width: 760px) {
   .genesis { padding-top: 3.4rem; }
-  .genesis-skip { bottom: 0.6rem; left: 5.65rem; }
+  .genesis-skip { bottom: 0.6rem; left: 8.7rem; }
   .genesis-skip.genesis-pause { left: 0.85rem; }
   .genesis-ticks { bottom: 3.2rem; left: 0.85rem; transform: none; width: calc(100vw - 1.7rem); }
 }
@@ -631,24 +673,29 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   background: var(--ink);
   text-align: center;
 }
-.rotate-inner { max-width: 22rem; }
+.rotate-inner { max-width: 22rem; position: relative; isolation: isolate; padding: 1.6rem 1.8rem; }
+.rotate-inner::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape);
+  pointer-events: none;
+}
 .rotate-glyph {
   width: 46px; height: 74px; margin: 0 auto 1.6rem;
-  border: 1px solid rgb(var(--lamp-rgb) / 0.5); border-radius: 7px;
+  border: 1px solid var(--type-cream); border-radius: 7px;
   animation: rotate-tip 2.6s ease-in-out infinite;
 }
 .rotate-say {
-  font-size: 1.02rem; line-height: 1.5; color: var(--sage);
+  font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream);
   margin: 0 0 0.5rem;
 }
 .rotate-sub {
   font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--lamp); margin: 0 0 1.8rem;
+  text-transform: uppercase; color: var(--type-cream); margin: 0 0 1.8rem;
 }
 .rotate-skip {
   font-family: var(--mono); font-size: 0.74rem;
-  color: var(--sage); text-decoration: none;
-  border-bottom: 1px solid rgb(var(--sage-rgb) / 0.3);
+  color: var(--type-cream); text-decoration: none;
+  border-bottom: 1px solid var(--type-quiet);
   padding-bottom: 2px;
 }
 @keyframes rotate-tip {
@@ -719,12 +766,24 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
      portrait notice's skip link both already reach it. */
   .bridge-scroll { display: none; }
 
+  /* the log is at the top and the banks fill both lower corners, so the note takes the open middle
+     between the banks, above the ruler and under the log; scrolls inside if long */
   .bnote {
-    bottom: calc(var(--hud-stack) + var(--inst-h, 9rem) + 0.3rem) !important;
-    max-height: 8rem; overflow: auto;
+    left: calc(var(--inst-w, 9rem) + 1rem) !important;
+    right: calc(var(--inst-w, 9rem) + 1rem) !important;
+    /* the whole height between the top bar and the ruler, less a tear-deep gap each end (the tear border is inside the room) */
+    --note-room: calc(100svh - var(--hud-stack) - 1.2rem - 9.6rem);   /* the extra 3rem keeps the plate under the beacon's label */
+    bottom: calc(var(--hud-stack) + 1.2rem) !important;
+    max-height: var(--note-room); overflow: auto;
   }
-  /* 8rem is a teaser's height; a deep note needs room for a clip */
-  .bnote.deep { max-height: 15rem; }
+  .bnote.deep { max-height: var(--note-room); }
+  /* the last visible line fades into the plate at the scroll edge instead of being sliced: a sticky plate-coloured fade over the text only, so the plate stays opaque (the 13px tear border stays whole).
+     The red line pieces are a svg beside the plate (bridge-notes.js), so they do not scroll */
+  .bnote { padding-bottom: 1.6rem; }
+  .bnote::after, .bnote.from-left::after {
+    content: ""; position: sticky; left: auto; right: auto; top: auto; bottom: 0; display: block; width: auto; height: 1.6rem; margin: -1.6rem 0 0;
+    background: linear-gradient(rgb(4 4 5 / 0), rgb(4 4 5 / 1));
+  }
   /* a 16:9 frame at sheet width would be taller than the sheet */
   .bnote.deep.wide .embed { aspect-ratio: auto; height: 11rem; }
 

@@ -530,11 +530,7 @@ window.Instruments = (function () {
   }
 
   function chrome(p) {
-    ctx.fillStyle = "rgba(9,13,15,0.86)";
-    ctx.fillRect(0, 0, p.w, p.h - 4);
-    ctx.strokeStyle = "rgba(198,204,198,0.18)";
     ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, 0.5, p.w - 1, p.h - 5);
     // corner ticks
     ctx.strokeStyle = `rgba(${LAMP},0.35)`;
     ctx.beginPath();
