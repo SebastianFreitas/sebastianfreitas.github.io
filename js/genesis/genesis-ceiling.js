@@ -714,13 +714,22 @@
     if (pW !== W || pH !== H) prep(W, H);
     camNow = cam;
     const mg = 150 * sc;
+    const all = front === null, q = [];   // front null: the front object clouds in one pass, the one sitting higher on screen painted last
     for (let i = 0; i < ITEMS.length; i++) {
       const it = ITEMS[i];
-      if (!hp && (!!it.metal !== !!rocks || (!rocks && !!it.front !== front))) continue;
+      if (!hp && (!!it.metal !== !!rocks || (!rocks && (all ? !it.front : !!it.front !== front)))) continue;
       const x = mod(it.x + mod(it.v * W * t - cam * W, SPAN), SPAN), y = it.y;
-      if (x < W + mg && x + it.w > -mg) drawOne(ctx, it, x, y, H, t, kd, sc, pal, hp);
-      if (x - SPAN + it.w > -mg && x - SPAN < W + mg) drawOne(ctx, it, x - SPAN, y, H, t, kd, sc, pal, hp);
+      for (let c = 0; c < 2; c++) {
+        const xx = c ? x - SPAN : x;
+        if (!(c ? xx + it.w > -mg && xx < W + mg : xx < W + mg && xx + it.w > -mg)) continue;
+        if (!all) { drawOne(ctx, it, xx, y, H, t, kd, sc, pal, hp); continue; }
+        const c0 = it.m ? it.w - it.bx1 : it.bx0, c1 = it.m ? it.w - it.bx0 : it.bx1; let low = 0;
+        for (let k = 0; k < 5; k++) low += shc(xx + (c0 + (c1 - c0) * k / 4), pW) / 5;
+        const bob = low + it.wa * sc * Math.sin(it.wf * t + it.wp); q.push({ it, x: xx, y, b: bob, tp: bob - it.bh * (1 - it.hf), i: q.length });
+      }
     }
+    q.sort((a, b) => (b.tp - a.tp) || (b.b - a.b) || (a.i - b.i));
+    for (let i = 0; i < q.length; i++) drawOne(ctx, q[i].it, q[i].x, q[i].y, H, t, kd, sc, pal, hp);
   }
 
   // the back layer's lower edge (SHC, built in world x, screen x + cam * W, so it scrolls with the scene): a still, slow uneven line under the
@@ -909,8 +918,8 @@
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 0, true);   // the rocks
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false, true);   // the hangers
     drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 2);   // the rocks' eyes, before the clouds
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, false);
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, true);
+    drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row and the tiny clouds, in seed order
+    drawSprites(oc, W, H, t, kd, sc, pal, cam, null);   // the front object clouds, higher ones on top
     paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
     oc.setTransform(1, 0, 0, 1, 0, 0);
     real.drawImage(OFF, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);
