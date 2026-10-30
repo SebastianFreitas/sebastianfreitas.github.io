@@ -104,7 +104,7 @@
     }
   }
   // a cloud's shape, built once per item in its own px (unmirrored): big = lumpy silhouette with lobes under its hang points, a flat top that
-  // tucks into the band, lighter inner patches, spiral swirls; tiny = a spiral curl with a tail trailing sideways
+  // tucks into the band, lighter inner patches, spiral swirls; tiny = a spiral curl
   function shape(it, q, seed, noMetal, force) {
     const w = it.w, h = it.h, hs = (n) => hash(seed + n * 1.7), P = (window.GenEldPal && window.GenEldPal.CEILCLOUD) || ["#061c48", "#164436", "#382b43"];
     const base = P[0];   // lobe clouds are the deep navy only: db1eeb0's pick, and a cloud whose pick is not navy is removed (it.gone) after dress
@@ -115,11 +115,8 @@
     it.type = 'cloud';
     if (it.tiny) {
       const R = h * 0.42, cy = h * 0.5, turns = 2 + hs(1);
-      const ph = hs(3) * 6.283, ea = ph + turns * 6.283;
-      spiral(sw, R + 2, cy, R, turns, ph);
-      it.sp = new Path2D(sw);   // the swirl alone; tp = the tail (from, control, to) and the swirl's centre x, kept so layout can mirror or drop the tail
-      it.tp = { x0: R + 2 + R * Math.cos(ea), y0: cy + R * Math.sin(ea), cx: w * 0.5, cy: cy + h * (hs(4) - 0.5) * 0.9, x1: w - 2, y1: cy + h * (hs(5) - 0.5) * 0.5, sx: R + 2 };
-      sw.quadraticCurveTo(it.tp.cx, it.tp.cy, it.tp.x1, it.tp.y1);
+      const ph = hs(3) * 6.283;
+      spiral(sw, R + 2, cy, R, turns, ph);   // the curl alone: no tail
       it.sw = sw;
       return;
     }
@@ -130,7 +127,8 @@
       it.fill = mc; it.edge = shade(mc, -0.45); it.hi = shade(mc, 0.3); it.mark = mc; it.metal = true; it.type = 'metal';
       const pits = new Path2D(), lips = new Path2D(), cr = new Path2D();
       it.eyes = window.GenCeilShapes.metal(w, h, hs, p, pt, pits, lips, cr, it.m);   // eye sites on the rock's face: each a crack that opens into an eye
-      for (let i = 0; i < it.eyes.length; i++) { it.eyes[i].look = Math.floor(hs(i + 600) * 4) % 4; it.eyes[i].size = h * (0.18 + 0.1 * hs(i + 610)); }
+      for (let i = 0; i < it.eyes.length; i++) { it.eyes[i].look = Math.floor(hs(i + 600) * 4) % 4; it.eyes[i].size = h / 3 * (0.18 + 0.1 * hs(i + 610)); }   // an eye keeps the size it had when a rock was a third as big
+      if (it.eyes.length > 1) it.eyes.length = 1;   // one eye per rock at most
       if (it.eyes.length) it.eyes[0].look = 1;   // the first eye is red and held open (drawOne) at the break beat, t 5.9
       it.p = p; it.pt = pt; it.pits = pits; it.lips = lips; it.cr = cr; it.sw = sw;
       return;
@@ -146,7 +144,7 @@
     for (let n = 0; n < L.length; n++) { p.moveTo(L[n][0] + L[n][2], L[n][1]); p.arc(L[n][0], L[n][1], L[n][2], 0, 6.283); }
     for (let n = 0; n < 2; n++) { const l = L[Math.floor(hs(n + 50) * L.length)]; pt.moveTo(l[0] + l[2] * 0.55, l[1] - l[2] * 0.15); pt.arc(l[0], l[1] - l[2] * 0.15, l[2] * 0.55, 0, 6.283); }
     for (let n = 1 + Math.floor(hs(6) * 3); n > 0; n--) { const l = L[Math.floor(hs(n + 60) * L.length)]; spiral(sw, l[0], l[1], l[2] * 0.5, 1.5 + hs(n + 70), hs(n + 80) * 6.283); }
-    it.mk = hs(8) < 0.5 ? 'B2' : 'B4'; it.ms = seed;   // the lobes above are only the cloud's outline (roots, hit tests, painted bounds); the body painted is the membrane built in paint()
+    it.mk = ['bundle', 'B4', 'strand', 'slab', 'split'][Math.min(4, Math.floor(hs(8) * 5))]; it.ms = seed;   // the lobes above are only the cloud's outline (roots, hit tests, painted bounds); the body painted is the membrane built in paint()
     it.p = p; it.pt = pt; it.sw = sw;
   }
 
@@ -430,7 +428,7 @@
       return 0.45 + 0.1 * rnd();   // every object is drawn in front of the band, 0.45-0.55 of its painted height above its own cut line (drawOne)
     };
     let clN = 0;
-    const fr = [], rw = 108 * H / 1009;   // the front clouds in x order; a rock is ~110 px wide at 2000x1009, sized by the viewport height alone
+    const fr = [], rw = 324 * H / 1009;   // the front clouds in x order; a rock is ~325 px wide at 2000x1009 (three times the old size), sized by the viewport height alone
     for (let row = 0; row < 3; row++) {
       let first = -1, prev = -1; const mine = [];
       cx = W * (row === 2 ? 0.03 * rnd() : row * 0.09 + 0.03 * rnd());   // rows staggered in x
@@ -488,7 +486,7 @@
       paint(fm);
       fm.hf = hidden(fm, 2);
       fm.front = true;   // every placed rock is drawn in the front pass, so no cloud ever covers an eye
-      if (fm.front) { fm.hf = 0.45 + 0.1 * rnd(); if (fm.eyes.length) fm.eyes[0].y = fm.bt + fm.bh * (0.62 + 0.13 * rnd()); }   // its eye sits in the lower body, well below the cut line
+      if (fm.front) { fm.hf = 0.45 + 0.1 * rnd(); if (fm.eyes.length) fm.eyes[0].y = fm.bt + fm.bh * (0.84 + 0.04 * rnd()); }   // its eye sits low on the body: the part that peeks out under the air band
       else { fm.hf = 0.45 + 0.1 * rnd(); }
       if (fm.eyes.length) {   // a rock keeps every eye (its top is y - 0.6 size, the almond is size tall) below the cut line: the cut line rises (hf down to 0.25) first, then eyes still too high are all moved down together
         const top0 = Math.min.apply(null, fm.eyes.map((e) => e.y - e.size * 0.6));
@@ -651,9 +649,10 @@
       // db1eeb0's full-size objects, drawn over the sea band and shifted so only their top overlaps it (no flat cut, no depth shrink)
       const c0 = it.m ? it.w - it.bx1 : it.bx0, c1 = it.m ? it.w - it.bx0 : it.bx1; let low = 0;   // the object is drawn over the band: its painted bottom sits on the band's mean lower edge under its span
       for (let k = 0; k < 5; k++) low += shc(x + (c0 + (c1 - c0) * k / 4), pW) / 5;
+      if (it.metal) low = Math.min(low + ROCKLO * H, 0.27 * H);   // a rock's bottom row sits below the band's mean lower edge, under the red line: the scene's zoom crops the top of the frame, so a rock above this shows nowhere
       y = low - it.bh - it.bt;
     }
-    y += it.wa * sc * Math.sin(it.wf * t + it.wp);
+    if (!it.metal) y += it.wa * sc * Math.sin(it.wf * t + it.wp);   // a rock never moves: the air passes round it
     const g = clamp01(kd);
     const hang = (over) => { for (let j = 0; j < it.hs.length; j++) {   // over: the metal's worms, drawn after the body so they crawl over it
       const q = it.hs[j];
@@ -675,9 +674,8 @@
     } };
     if (hp === 2) {   // the eyes' pass, after the hangers: nothing covers an eye
       if (it.tip || it.tiny || it.type !== 'metal') return;
-      ctx.save(); cutClip(ctx, it, x, y, H);
+      ctx.save();   // no cut line: the air band is painted over the rock and hides what it covers
       if (it.m) { ctx.translate(x + it.w, y); ctx.scale(-1, 1); } else { ctx.translate(x, y); }
-      for (let i = 0; i < it.eyes.length; i++) it.eyes[i].forceOpen = mod(t - 3.9, 8) < 5 ? 1 : 0;   // open from t 3.9 to 8.9 of every 8 s: always open at the break beat's 5.9
       for (let i = 0; i < it.eyes.length; i++) {   // the eye sites: cracks that open; the scheduler only counts the ones on screen
         const e = it.eyes[i], ex = x + (it.m ? it.w - e.x : e.x);
         const z = 1, ey = pH * 0.5 + z * (y + e.y - pH * 0.5);   // the scene's zoom is about the canvas centre
@@ -688,7 +686,7 @@
     if (hp) return;   // the hanger pass: nothing hangs any more
     if (it.tip) return;   // the tip sprites are no longer drawn: the code band is the back layer
     ctx.save();
-    if (!it.tiny) cutClip(ctx, it, x, y, H);   // a tiny cloud is drawn whole, never cut
+    if (!it.tiny && !it.metal) cutClip(ctx, it, x, y, H);   // a rock is whole (the air band hides it); a tiny cloud is drawn whole, never cut
     if (it.m) { ctx.translate(x + it.w, y); ctx.scale(-1, 1); } else { ctx.translate(x, y); }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     if (it.tiny) {
@@ -712,13 +710,21 @@
     camNow = cam;
     const mg = 150 * sc;
     const all = front === null, q = [];   // front null: the front object clouds in one pass, the one sitting higher on screen painted last
+    if (rocks && !hp) RKN = 0;   // the rocks pass tells the air band where each rock stands this frame
     for (let i = 0; i < ITEMS.length; i++) {
       const it = ITEMS[i];
       if (!hp && (!!it.metal !== !!rocks || (!rocks && (all ? !it.front : !!it.front !== front)))) continue;
+      if (!hp && !rocks && !all && ((TNY === 1 && it.tiny) || (TNY === 2 && !it.tiny))) continue;
       const x = mod(it.x + mod(it.v * W * t - cam * W, SPAN), SPAN), y = it.y;
       for (let c = 0; c < 2; c++) {
         const xx = c ? x - SPAN : x;
         if (!(c ? xx + it.w > -mg && xx < W + mg : xx < W + mg && xx + it.w > -mg)) continue;
+        if (rocks && !hp && RKN < RKM) {
+          const r0 = it.m ? it.w - it.bx1 : it.bx0, r1 = it.m ? it.w - it.bx0 : it.bx1; let lw = 0;
+          for (let k = 0; k < 5; k++) lw += shc(xx + (r0 + (r1 - r0) * k / 4), pW) / 5;
+          RKX[RKN] = xx + (r0 + r1) / 2; RKW[RKN] = (r1 - r0) / 2; RKB[RKN] = Math.min(lw + ROCKLO * H, 0.27 * H); RKV[RKN] = it.eyes && it.eyes.length ? RKB[RKN] - it.bh - it.bt + it.eyes[0].y - it.eyes[0].size * 0.6 - 0.015 * H : RKB[RKN] - 0.055 * H;   // the peek line: just above the eye's top, so only the rock's lower part shows
+          RKP[RKN] = 12 + 8 * hash(i * 3.3 + 9); RKO[RKN] = 0.08 - (3.5 + 3.5 * RKN) / RKP[RKN]; RKN++;   // the first peek starts 3.5 s in, the next rocks every 3.5 s after
+        }
         if (!all) { drawOne(ctx, it, xx, y, H, t, kd, sc, pal, hp); continue; }
         const c0 = it.m ? it.w - it.bx1 : it.bx0, c1 = it.m ? it.w - it.bx0 : it.bx1; let low = 0;
         for (let k = 0; k < 5; k++) low += shc(xx + (c0 + (c1 - c0) * k / 4), pW) / 5;
@@ -803,15 +809,18 @@
     const k = TAU / (Lx * (0.45 + 0.3 * h(5))), ph = h(6) * TAU;
     let R = H * (0.025 + 0.02 * h(7));
     const turns = 1 + 0.5 * h(8), nl = 40, nc = GN - nl, sl = 0.7 * Lx;
+    let tl = H * (0.02 + 0.015 * h(13)) * (h(14) < 0.5 ? -1 : 1);   // every stroke tilts: its head ends this far above or below its start, so none reads as a flat line
+    y0 -= Math.max(0, tl);
     // over the narration span (the copy box, top centre): the stroke rides above the box, compact (curl and wave scaled down to the room between the frame top and the box)
     const bx = narrBox(W, H), hw = 0.011 * H;
     if (x0 - R < bx[1] && x0 - R + Lx + 2 * R > bx[0]) {
       const room = Math.max(0.03 * H, bx[2] - 0.006 * H);   // the lowest edge of the stroke stays this far from the frame top
       R = 0.2 * room; amp = 0.08 * room;
-      y0 = room * (0.92 + 0.08 * h(3)) - amp - hw;
+      tl = Math.sign(tl) * 0.2 * room;
+      y0 = room * (0.92 + 0.08 * h(3)) - amp - hw - Math.max(0, tl);
     }
-    for (let i = 0; i < nl; i++) { const u = i / nl; xy[i * 2] = x0 + sl * u; xy[i * 2 + 1] = y0 + amp * Math.sin(k * sl * u + ph); }
-    const cx = x0 + sl, cy = y0 + amp * Math.sin(k * sl + ph);
+    for (let i = 0; i < nl; i++) { const u = i / nl; xy[i * 2] = x0 + sl * u; xy[i * 2 + 1] = y0 + amp * Math.sin(k * sl * u + ph) + tl * u - 1.5 * amp * Math.sin(Math.PI * u); }   // a bow upward on top of the tilt, so the stroke is never a near-flat strip
+    const cx = x0 + sl, cy = y0 + amp * Math.sin(k * sl + ph) + tl;
     for (let i = 0; i < nc; i++) {
       const u = (i + 1) / nc, th = turns * TAU * u, r = R * (1 - 0.4 * u);
       xy[(nl + i) * 2] = cx + 0.3 * Lx * u + r * Math.sin(th); xy[(nl + i) * 2 + 1] = cy - r + r * Math.cos(th);
@@ -865,8 +874,23 @@
     const m0 = 0.6 + 0.4 * Math.sin(t * 0.23 + i * 2.1), m1 = 0.6 + 0.4 * Math.sin(t * 0.37 + i * 1.3 + 2), m2 = 0.6 + 0.4 * Math.sin(t * 0.51 + i * 0.7 + 4);
     const w = ((u * 6 % AJN) + AJN) % AJN, j = Math.floor(w), jt = AJ[j] + (AJ[j + 1] - AJ[j]) * (w - j);
     const off = H * (0.024 * m0 * Math.sin(TAU * 4.1 * u + i * 1.7) + 0.016 * m1 * Math.sin(TAU * 9.7 * u + i * 3.1 + 1) + 0.007 * m2 * Math.sin(TAU * 17.3 * u + i * 2.3 + 3) + 0.018 * jt);
-    return Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds
+    let e = Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds
+    e = Math.max(0.005 * H, e - 0.016 * H * (1 + Math.sin(TAU * 2.3 * u + i * 1.9)) * (0.6 + 0.4 * i / 3));   // a slow long-wave lift only upward: no stretch of about 300 px stays level, the 0.28 H limit and the rocks' bulges are kept
+    const sx = k / NS * W;
+    for (let r = 0; r < RKN; r++) {   // over a rock every layer's edge blends between two lines: rest just below the rock's bottom row (the rock wholly covered), peek showing its lower part; the pouch rises and sinks on the rock's own cycle, the rock never moves
+      const d = Math.abs(sx - RKX[r]) / RKW[r];
+      if (d >= 2.2) continue;
+      const ph = ((t / RKP[r] + RKO[r]) % 1 + 1) % 1, a = Math.min(1, Math.max(0, (ph - 0.08) / 0.1)), b = Math.min(1, Math.max(0, (ph - 0.34) / 0.1));
+      const s = a * a * (3 - 2 * a) * (1 - b * b * (3 - 2 * b)), wx = Math.sqrt(1 - d * d / 4.84);   // a round bulge: deepest under the rock, falling away smoothly, no flat core
+      const st = (3 - i) * 0.002 * H, rest = Math.min(RKB[r] + 0.014 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
+      const L = rest + (peek - rest) * s + off * 0.5 * (1 - wx);   // the layer's own wobble rides on the blended line, damped to nothing at the rock's core so rest never shows a tip
+      e += (Math.min(L, 0.28 * H) - e) * wx;
+    }
+    return e;
   }
+  const ROCKLO = 0.08;
+  const RKM = 8, RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
+  let RKN = 0, TNY = 0;   // TNY: 1 skips the tiny clouds, 2 draws only them
   function paintAir(g, W, H, t) {
     const gt = t + 0.25 * Math.sin(0.7 * t) + 0.15 * Math.sin(1.9 * t + 1);   // surges and lulls, never backwards
     for (let i = 0; i < 4; i++) {
@@ -908,16 +932,16 @@
     const sx = SEA.getContext('2d');
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.clearRect(0, 0, ow, oh); sx.setTransform(a, 0, 0, a, 0, H * 0.1 * a);
     const gu = t0 === null ? t : t - t0;   // the ceiling's own clock: a gust is alive at its first frame
+    drawSprites(sx, W, H, t, kd, sc, pal, cam, false, 0, true);   // the rocks and their eyes first, under the band: the air passes over them, still
+    drawSprites(sx, W, H, t, kd, sc, pal, cam, false, 2);
     paintAir(sx, W, H, t);   // the storm-slate band under the scene's own zoom and pan: erratic edges streaming sideways in gusts, not the sea's painter
     paintGusts(sx, W, H, gu, false, yS);   // the strokes behind the objects
     real.drawImage(SEA, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);   // the band first, then the objects over it (each cut at its own line): the rocks, every hanger and the rocks' eyes behind, the clouds over them, the ones behind first
     oc.setTransform(a, 0, 0, a, 0, H * 0.1 * a);   // under the same zoom and offset
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 0, true);   // the rocks
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, false, true);   // the hangers
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, false, 2);   // the rocks' eyes, before the clouds
-    drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row and the tiny clouds, in seed order
+    TNY = 1; drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row, in seed order
     drawSprites(oc, W, H, t, kd, sc, pal, cam, null);   // the front object clouds, higher ones on top
     paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
+    TNY = 2; drawSprites(oc, W, H, t, kd, sc, pal, cam, false); TNY = 0;   // the tiny clouds last: no stroke ever touches a spiral
     oc.setTransform(1, 0, 0, 1, 0, 0);
     real.drawImage(OFF, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);
     real.restore();

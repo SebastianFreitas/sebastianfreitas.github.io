@@ -60,13 +60,13 @@
   const T_OPEN = 0.35, T_HOLD = 1.5, T_CLOSE = 0.3;
   function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
   function tick(t) {
-    if (nextAt < 0 || t < nextAt - 7 || t > nextAt + 60) { nextAt = t + 1 + 2 * hash(++ev); cur = null; }
+    if (nextAt < 0 || t < nextAt - 40 || t > nextAt + 60) { nextAt = t + 5 + 20 * hash(++ev); cur = null; }
     if (cur && t > openAt + T_OPEN + T_HOLD + T_CLOSE) cur = null;
     if (!cur && t >= nextAt) {
       let k = 0;
       for (let i = 0; i < cands.length; i++) if (t - cands[i]._seen < 0.5) cands[k++] = cands[i]; else cands[i]._in = false;
       cands.length = k;
-      if (k) { cur = cands[Math.floor(hash(++ev * 1.9) * k)]; openAt = t; nextAt = t + 3 + 3 * hash(++ev * 2.3); }
+      if (k) { cur = cands[Math.floor(hash(++ev * 1.9) * k)]; openAt = t; nextAt = t + 25 + 15 * hash(++ev * 2.3); }   // one eye opens at most once in 25-40 s
       else nextAt = t + 0.5;
     }
   }
@@ -77,15 +77,12 @@
     const hw = Math.max(size * 1.25, 15), hh = size / 2, o = open01;
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (o <= 0.02) {
-      const kx = [-hw], ky = [0];   // a jagged crack with a few kinks, seeded by the eye's angle
-      for (let i = 1; i < 6; i++) { kx.push(-hw + hw * 2 * (i + (hash(ang * 97 + i) - 0.5) * 0.5) / 6); ky.push((hash(ang * 53 + i * 3) - 0.5) * hw * 0.3); }
-      kx.push(hw); ky.push(0);
-      ctx.strokeStyle = ca(lip, 0.5); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(kx[0], ky[0] + 1.8);
-      for (let i = 1; i < kx.length; i++) ctx.lineTo(kx[i], ky[i] + 1.8);
-      ctx.stroke();
-      ctx.strokeStyle = ca(lid, 1); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(kx[0], ky[0]);
-      for (let i = 1; i < kx.length; i++) ctx.lineTo(kx[i], ky[i]);
-      ctx.stroke();
+      const sh = Math.max(2.5, hh * 0.3);   // a shut eye: a dark almond lid with a faint lit rim below and a thin dull glow in its slit
+      ctx.beginPath(); ctx.moveTo(-hw, 0); ctx.quadraticCurveTo(0, -2 * sh, hw, 0); ctx.quadraticCurveTo(0, 2 * sh, -hw, 0); ctx.closePath();
+      ctx.fillStyle = EYE_DARK; ctx.fill();
+      ctx.strokeStyle = ca(lid, 1); ctx.lineWidth = 2.2; ctx.stroke();
+      ctx.strokeStyle = ca(lip, 0.7); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-hw * 0.85, 3.4 + sh * 0.3); ctx.quadraticCurveTo(0, 2 * sh + 3.4, hw * 0.85, 3.4 + sh * 0.3); ctx.stroke();
+      ctx.strokeStyle = ca(RED_SHADE, 0.7); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-hw * 0.5, 0); ctx.lineTo(hw * 0.5, 0); ctx.stroke();
       ctx.restore(); return;
     }
     const ah = hh * o;
