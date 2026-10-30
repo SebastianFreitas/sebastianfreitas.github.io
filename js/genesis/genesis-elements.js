@@ -332,6 +332,12 @@
     const gate = window.GenOld && GenOld.figCover && G.BEATS[G.beat].id === "break";
     const band = gate && GenOld.captionBand ? GenOld.captionBand() : null;
 
+    // the wave's colours all go under the one deep shadow too; no layer on frames where nothing is alive
+    let live = false;
+    for (const pt of PARTS) if (s >= pt.birth && s <= pt.birth + pt.life) { live = true; break; }
+    if (!live) return;
+    const outer = ctx, dim = dimK();
+    ctx = layerBegin(outer);
     for (const pt of PARTS) {
       if (pt.sea) { drawSeaPart(ctx, pt, s, originX, W, H, sl, gate, band); continue; }
       if (pt.splits && s >= pt.splitT) {
@@ -360,6 +366,7 @@
       drawKind(ctx, pt, x, y, a, q, alpha, sizeMul, angle, rg);
     }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    layerEnd(outer, ctx, dim);
   }
 
   function drawKind(ctx, pt, x, y, a, q, alpha, sizeMul, angle, rg) {
@@ -464,9 +471,9 @@
 
   // dim sickly sea families for the fallers: [body, pale bone rim, dark mark, pale accent, limb]; dark teal, bruised green-grey, ash violet
   const FAMS = [
-    ["rgb(30,62,64)", "rgb(150,168,158)", "rgb(12,22,26)", "rgb(206,210,190)", "rgb(58,92,92)"],
-    ["rgb(52,66,54)", "rgb(160,168,148)", "rgb(16,24,20)", "rgb(206,210,190)", "rgb(80,98,82)"],
-    ["rgb(62,54,76)", "rgb(158,152,170)", "rgb(20,18,28)", "rgb(206,210,190)", "rgb(88,80,104)"]
+    ["rgb(18,34,35)", "rgb(48,54,51)", "rgb(10,14,16)", "rgb(58,60,54)", "rgb(30,46,46)"],
+    ["rgb(28,36,30)", "rgb(50,54,47)", "rgb(11,15,14)", "rgb(58,60,54)", "rgb(40,48,41)"],
+    ["rgb(34,30,41)", "rgb(50,48,54)", "rgb(13,13,18)", "rgb(58,60,54)", "rgb(44,40,52)"]
   ];
 
   // a sea-bound particle in the elements draw: flight and fall in its family look; before the liquid is
@@ -666,7 +673,7 @@
     if (s < 2) return;
     surfFrame(s, W, H);
     const outer = ctx, dim = dimK();
-    if (dim < 1) ctx = layerBegin(outer);   // from matter on the sea stays, dimmed: drawn on its own layer, darkened, then laid down
+    ctx = layerBegin(outer);   // the sea is always drawn on its own layer, then put under one deep shadow and laid down
 
     const camOff = G.cam * W;
     const t = G.reduced ? 0 : G.t;
@@ -697,7 +704,7 @@
       seaPlan(pt, s, ox, W, H, camOff, spW);
       if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
     }
-    if (dim < 1) { layerEnd(outer, ctx, dim); ctx = outer; }
+    layerEnd(outer, ctx, dim); ctx = outer;
   }
 
   // the sea body, surface line and floating-piece rings; o: W, H, t, camOff, sh (NS+1 surface ys), bottom (far edge y),
@@ -713,14 +720,14 @@
     for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k]);
     ctx.lineTo(W, vb);
     ctx.closePath();
-    ctx.fillStyle = "rgb(38,44,42)";
+    ctx.fillStyle = "rgb(24,28,27)";
     ctx.globalAlpha = 1;
     ctx.fill();
     ctx.save();
     ctx.clip();
     for (let b = 0; b < 2; b++) {   // the bands follow the surface, so no straight edge
       const bf = b ? 0.8 : 0.45;
-      ctx.fillStyle = b ? "rgb(24,27,27)" : "rgb(31,35,34)";
+      ctx.fillStyle = b ? "rgb(16,18,18)" : "rgb(20,23,22)";
       ctx.beginPath();
       ctx.moveTo(0, vb);
       for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k] + (vb - SH[k]) * bf);
@@ -731,18 +738,18 @@
     ctx.restore();
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { if (k) ctx.lineTo(k / NS * W, SH[k] + 1); else ctx.moveTo(0, SH[0] + 1); }
-    ctx.strokeStyle = "rgb(62,68,66)";
+    ctx.strokeStyle = "rgb(37,42,41)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     // a soft lighter band just under the surface line
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { const by = SH[k] + H * 0.012 + 1.6 * Math.sin(k * 0.45 + t * 0.5); if (k) ctx.lineTo(k / NS * W, by); else ctx.moveTo(0, by); }
-    ctx.strokeStyle = "rgb(66,74,72)";
+    ctx.strokeStyle = "rgb(36,41,40)";
     ctx.lineWidth = H * 0.016;
     ctx.stroke();
     // sheen streaks drifting steadily left: each is a tapered run of segments that follows the surface wave (so it
     // curves and tilts), some broken into dashes; the shape holds while it drifts and fades only at the ends of its life
-    ctx.fillStyle = "rgb(150,164,160)";
+    ctx.fillStyle = "rgb(44,50,48)";
     const sp = W * 1.3, ef = W * 0.08;
     for (let d = 0; d < 2; d++) {   // one path and one fill per depth: each streak a smooth lens on the surface wave
       ctx.globalAlpha = d ? 0.6 : 0.85;
@@ -768,7 +775,7 @@
       ctx.fill();
     }
     // small curved ripple arcs at several depths: far ones smaller, slower and dimmer, near ones larger and faster
-    ctx.fillStyle = "rgb(165,178,174)";
+    ctx.fillStyle = "rgb(58,64,62)";
     const rsp = W * 1.2;
     for (let k = 0; k < RIP.length; k++) {
       const r = RIP[k], dp = r.d;
@@ -793,19 +800,19 @@
       ctx.beginPath();
       ctx.ellipse(pc.x, pc.y, rx, ry, 0, 0, Math.PI);
       ctx.closePath();
-      ctx.fillStyle = "rgb(42,48,46)";
+      ctx.fillStyle = "rgb(27,31,30)";
       ctx.fill();
-      ctx.strokeStyle = "rgb(56,62,60)";
+      ctx.strokeStyle = "rgb(37,42,41)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
       if (!o.wet) continue;
       // the ceiling's pieces get the floor's full treatment: a wet lip on the near side, wavelets running out along the surface, and ripple arcs spreading from the piece
       ctx.beginPath();
       ctx.ellipse(pc.x, pc.y, rx + 3, ry + 2, 0, 0.15, Math.PI - 0.15);
-      ctx.strokeStyle = "rgb(66,74,72)";
+      ctx.strokeStyle = "rgb(36,41,40)";
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = "rgb(165,178,174)";
+      ctx.fillStyle = "rgb(58,64,62)";
       for (let sd = -1; sd <= 1; sd += 2) {
         for (let n = 0; n < 3; n++) {
           const ph = ((t * 0.35 + n / 3 + pc.x * 0.013) % 1 + 1) % 1, d = rx + 4 + ph * rx * 0.9, sg = Math.round(3 + n), wx = pc.x + sd * d - (sd < 0 ? sg * 2 : 0);
@@ -908,7 +915,7 @@
   // washed-out tone of one of the five GenEldPal.SEA families (fi), dimmed by k
   const hexN = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   function seaTone(fi, tone, k) {
-    k = (k || 1) * 0.82;
+    k = (k || 1) * 0.3;
     const a = hexN(GenEldPal.SEA[fi][tone]);
     return "rgb(" + Math.round(a[0] * k) + "," + Math.round(a[1] * k) + "," + Math.round(a[2] * k) + ")";
   }
@@ -964,6 +971,8 @@
   // each object takes its own pair, all pale and washed out: blue-greys light and dark, ash, bone, sand, rust, olive, mauve
   const FAM = [["#7e8886", "#565e5c"], ["#a9b4b8", "#737e83"], ["#5f6c72", "#3f4a4f"], ["#a39d88", "#6e6a5a"], ["#8f7466", "#5e4a42"], ["#9aa0a0", "#646a6a"],
     ["#b3a88f", "#7a705d"], ["#6f8a90", "#485c62"], ["#80866a", "#565a45"], ["#8a8090", "#5c5463"], ["#b8bfc0", "#818a8c"], ["#7a6a60", "#4d423c"]];
+  const dimHex = (f, k) => f.map(c => "#" + [1, 3, 5].map(j => Math.round(parseInt(c.slice(j, j + 2), 16) * k).toString(16).padStart(2, "0")).join(""));
+  const FAMB = FAM.map(p => dimHex(p, 0.28)), FAMS2 = FAM.map(p => dimHex(p, 0.55));   // big pieces sink under the deck (luminance about 54); small shards keep a little contrast
   const OBJ_N = 33, OBJ_SM = 170, OBJ_SPAN = 3, OBJ = [], OBJ_ALL = [], OBJ_BACK = [], OBJ_FRONT = [];
   // rare slots: all 11 kinds, one each, over RARE_SPAN screens (twice the common wrap, so 1-3 show per screen); the kind
   // order is a seeded shuffle of the creatures (0-4) and mundane kinds (5-11) in the pattern below
@@ -993,7 +1002,7 @@
     const shuf = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
     const KST = shuf([0, 1, 2, 3, 4]), KBL = shuf([5, 6, 7, 8, 9, 10, 11, 12, 13]), FSH = shuf(FAM.map((f, k) => k));
     for (let i = 0; i < OBJ_N; i++) {
-      const fam = FAM[FSH[(i * 5) % FAM.length]], h = r() < 0.18 ? 125 + r() * 45 : 50 + r() * 60, p0 = new Path2D(), p = p0;
+      const fam = FAMB[FSH[(i * 5) % FAM.length]], h = r() < 0.18 ? 125 + r() * 45 : 50 + r() * 60, p0 = new Path2D(), p = p0;
       const flat = rank[i] % 3 === 1;   // some lie almost flat, the rest stand
       const o = { i, u: slots[i][0], dxr: slots[i][1], dpx: 0, dy: r() * 0.014, dep: r() < 0.3 ? 0.35 + r() * 0.1 : r() * 0.25, front: r() < 0.3, p, rule: "nonzero", hw: 0.18 * h,
         tilt: (flat ? 50 + r() * 30 : 4 + r() * 30) * (i % 2 ? 1 : -1) * Math.PI / 180, ph: r() * TAU, rs: 6 + r() * 2, c: fam[0], cs: fam[1], split: 0 };
@@ -1082,7 +1091,7 @@
     const clumps = [];   // loose clumps of small bits away from the big sites
     for (let k = 0; k < 9; k++) clumps.push((k + r()) / 9);
     for (let i = OBJ_N; i < OBJ_N + OBJ_SM; i++) {
-      const hs = 14 + r() * 30, c = r() < 0.8, fam = FAM[Math.floor(r() * FAM.length)], p = new Path2D();
+      const hs = 14 + r() * 30, c = r() < 0.8, fam = FAMS2[Math.floor(r() * FAM.length)], p = new Path2D();
       const mode = (i - OBJ_N) % 5, near = mode < 2, clump = mode === 2, kd = Math.floor(r() * 3), w = hs * (kd === 2 ? 0.1 + r() * 0.08 : 0.2 + r() * 0.3);
       if (kd === 0) { p.moveTo(-w, 0); p.lineTo(-w * 0.8, -hs); p.lineTo(-w * 0.1, -hs * (0.8 + r() * 0.15)); p.lineTo(w * 0.5, -hs * 0.95); p.lineTo(w, 0); }
       else if (kd === 1) { p.moveTo(-w, 0); p.lineTo(-w, -hs); p.lineTo(w * (0.4 + r() * 0.5), -hs * 0.85); p.lineTo(w * 0.9, -hs * 0.3); p.lineTo(w, 0); }
@@ -1098,7 +1107,7 @@
     const rsh = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
     const RCR = rsh([0, 1, 2, 3, 4]), RMU = rsh([5, 6, 7, 8, 9, 10]);
     for (let j = 0, ci = 0, mi = 0; j < RARE_N; j++) {
-      const rv = [], fam = FAM[RFAM[Math.floor(r() * RFAM.length)]], h = (62 + r() * 34) * 1.9, p = new Path2D();
+      const rv = [], fam = FAMB[RFAM[Math.floor(r() * RFAM.length)]], h = (62 + r() * 34) * 1.9, p = new Path2D();
       for (let k = 0; k < 24; k++) rv.push(r());
       const o = { i: OBJ_N + OBJ_SM + j, u: (j + 0.2 + r() * 0.6) / RARE_N, dxr: 0, dpx: 0, dy: r() * 0.014, dep: 0.03 + r() * 0.05, front: r() < 0.3, p, rule: "nonzero",
         tilt: (r() - 0.5) * 0.2, ph: r() * TAU, rs: 6 + r() * 2, c: fam[0], cs: fam[1], split: 0, h, hw: h * 1.4, xl: -h * 1.4, xr: h * 1.4, bh: h * 1.1,
@@ -1193,7 +1202,7 @@
       for (let c = cnt - 1; c >= 0; c--) {
         const sg = c % 2 ? -1 : 1;
         tent(ctx, (c - (cnt - 1) / 2) * h * 0.36, h * (0.8 + rv[11 + c] * 0.35) * (c ? 0.8 : 1), h * (0.11 + rv[14 + c] * 0.03), sg * (1.9 + rv[8 + c] * 0.9), (rv[5 + c] - 0.5) * 0.3, Math.sin(t * 1.5 + o.ph + c * 1.3) * 0.25,
-          c % 2 ? "#6a8288" : "#7a9298", c % 2 ? "#44575d" : "#506268");
+          c % 2 ? "#202729" : "#252c2e", c % 2 ? "#141a1c" : "#181d1f");
       }
     },
     function crocEyes(ctx, o, t, h, rv) {   // two scaly bumps on the waterline, yellow eyes with slit pupils, a bob and a blink
@@ -1201,24 +1210,24 @@
       const bp = (t * 1000 + o.ph * 700) % per, blink = bp < 260 ? Math.sin(bp / 260 * Math.PI) : 0, look = Math.sin(t * 0.8 + o.ph) * bw * 0.2;
       ctx.translate(0, Math.sin(t * 1.1 + o.ph) * h * 0.025);
       // the snout ridge between the bumps, just breaking the waterline
-      ps(ctx, "#4a5a52", "#2f3b36", [-gap, 10, -gap, -bh * 0.3, -gap * 0.4, -bh * 0.42, gap * 0.4, -bh * 0.42, gap, -bh * 0.3, gap, 10], 0, h);
-      poly(ctx, "#2f3b36", [-gap * 0.12, -bh * 0.42, gap * 0.12, -bh * 0.42, gap * 0.08, -bh * 0.55, -gap * 0.08, -bh * 0.55]);
+      ps(ctx, "#161b19", "#0e1210", [-gap, 10, -gap, -bh * 0.3, -gap * 0.4, -bh * 0.42, gap * 0.4, -bh * 0.42, gap, -bh * 0.3, gap, 10], 0, h);
+      poly(ctx, "#0e1210", [-gap * 0.12, -bh * 0.42, gap * 0.12, -bh * 0.42, gap * 0.08, -bh * 0.55, -gap * 0.08, -bh * 0.55]);
       for (let e = -1; e <= 1; e += 2) {
         const cx = e * gap, ey = -bh * 0.55, ew = bw * 0.72, eh = bh * 0.2;
-        ps(ctx, "#4a5a52", "#2f3b36", [cx - bw, 10, cx - bw, -bh * 0.45, cx - bw * 0.7, -bh * 0.85, cx - bw * 0.25, -bh, cx + bw * 0.25, -bh, cx + bw * 0.7, -bh * 0.85, cx + bw, -bh * 0.45, cx + bw, 10], cx + bw * 0.15, h);
-        poly(ctx, "#a9bcc0", [cx - ew, ey, cx - ew * 0.5, ey - eh, cx + ew * 0.5, ey - eh, cx + ew, ey, cx + ew * 0.5, ey + eh, cx - ew * 0.5, ey + eh]);
-        ctx.fillStyle = "#0c100e"; ctx.fillRect(cx + look - 3, ey - eh, 6, eh * 2);
-        poly(ctx, "#2f3b36", [cx - ew * 1.25, ey - eh * 0.4, cx - ew * 0.6, ey - eh * 1.7, cx + ew * 0.6, ey - eh * 1.7, cx + ew * 1.25, ey - eh * 0.4, cx + ew * 0.6, ey - eh * 0.9, cx - ew * 0.6, ey - eh * 0.9]);
-        if (blink > 0) { ctx.fillStyle = "#4a5a52"; ctx.fillRect(cx - ew * 1.05, ey - eh * 0.9, ew * 2.1, eh * 1.9 * blink + 1); }
+        ps(ctx, "#161b19", "#0e1210", [cx - bw, 10, cx - bw, -bh * 0.45, cx - bw * 0.7, -bh * 0.85, cx - bw * 0.25, -bh, cx + bw * 0.25, -bh, cx + bw * 0.7, -bh * 0.85, cx + bw, -bh * 0.45, cx + bw, 10], cx + bw * 0.15, h);
+        poly(ctx, "#33383a", [cx - ew, ey, cx - ew * 0.5, ey - eh, cx + ew * 0.5, ey - eh, cx + ew, ey, cx + ew * 0.5, ey + eh, cx - ew * 0.5, ey + eh]);
+        ctx.fillStyle = "#040504"; ctx.fillRect(cx + look - 3, ey - eh, 6, eh * 2);
+        poly(ctx, "#0e1210", [cx - ew * 1.25, ey - eh * 0.4, cx - ew * 0.6, ey - eh * 1.7, cx + ew * 0.6, ey - eh * 1.7, cx + ew * 1.25, ey - eh * 0.4, cx + ew * 0.6, ey - eh * 0.9, cx - ew * 0.6, ey - eh * 0.9]);
+        if (blink > 0) { ctx.fillStyle = "#161b19"; ctx.fillRect(cx - ew * 1.05, ey - eh * 0.9, ew * 2.1, eh * 1.9 * blink + 1); }
       }
     },
     function hand(ctx, o, t, h, rv) {   // a palm with a thumb and fingers with claws breaking the surface, slow flex
       const pw = h * (0.2 + rv[1] * 0.05), n = 4, fw = h * 0.05;
-      ps(ctx, "#6f8a90", "#485c62", [-pw, 10, -pw, -h * 0.2, -pw * 0.5, -h * 0.28, pw * 0.5, -h * 0.28, pw, -h * 0.2, pw, 10], pw * 0.1, h);
-      finger(ctx, -pw * 0.85, -h * 0.2, -1.0, h * 0.3, fw * 1.15, 0.35 + Math.sin(t * 1.4 + o.ph + 2) * 0.2, "#6f8a90");
+      ps(ctx, "#21292b", "#161c1d", [-pw, 10, -pw, -h * 0.2, -pw * 0.5, -h * 0.28, pw * 0.5, -h * 0.28, pw, -h * 0.2, pw, 10], pw * 0.1, h);
+      finger(ctx, -pw * 0.85, -h * 0.2, -1.0, h * 0.3, fw * 1.15, 0.35 + Math.sin(t * 1.4 + o.ph + 2) * 0.2, "#21292b");
       for (let f = 0; f < n; f++) {
         const u = f / (n - 1) * 2 - 1, len = h * (0.46 + rv[2 + f] * 0.14) * (1 - Math.abs(u) * 0.12);
-        finger(ctx, u * pw * 0.78, -h * 0.26, u * 0.28, len, fw, 0.25 + Math.sin(t * 1.4 + o.ph + f * 0.8) * 0.22, f < 2 ? "#6f8a90" : "#485c62");
+        finger(ctx, u * pw * 0.78, -h * 0.26, u * 0.28, len, fw, 0.25 + Math.sin(t * 1.4 + o.ph + f * 0.8) * 0.22, f < 2 ? "#21292b" : "#161c1d");
       }
     },
     function batWing(ctx, o, t, h, rv) {   // an arm bone, four ribs and a scalloped membrane, flutter
@@ -1230,73 +1239,73 @@
         if (k) pts.push((tx[k] + tx[k - 1]) / 2 + (wx - (tx[k] + tx[k - 1]) / 2) * 0.3, (ty[k] + ty[k - 1]) / 2 + (wy - (ty[k] + ty[k - 1]) / 2) * 0.3);
         pts.push(tx[k], ty[k]);
       }
-      ps(ctx, "#66777e", "#44535a", pts, 0, h);
-      ctx.strokeStyle = "#2c3a40"; ctx.lineWidth = 3;
+      ps(ctx, "#1f2426", "#14191b", pts, 0, h);
+      ctx.strokeStyle = "#0d1113"; ctx.lineWidth = 3;
       ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.moveTo(wx, wy); ctx.lineTo(tx[k], ty[k]); } ctx.stroke();
       ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(wx, wy); ctx.stroke();
-      poly(ctx, "#a9bcc0", [wx - 5, wy, wx + 5, wy, wx - sd * 4, wy - 18]);
+      poly(ctx, "#33383a", [wx - 5, wy, wx + 5, wy, wx - sd * 4, wy - 18]);
     },
     function oldPeek(ctx, o, t, h, rv) {   // a rough dome with one big eye (iris, slit pupil, lid) that looks about and blinks
       const w = h * (0.5 + rv[1] * 0.15), dh = h * (0.55 + rv[2] * 0.15), pts = [-w, 10];
       for (let i = 0; i <= 10; i++) { const a = Math.PI * i / 10, j = 1 + (rv[10 + i % 8] - 0.5) * 0.1; pts.push(-w * Math.cos(a) * j, -dh * Math.sin(a) * j); }
       pts.push(w, 10);
       ctx.translate(0, Math.sin(t * 0.9 + o.ph) * h * 0.02);
-      ps(ctx, "#46535c", "#2c373f", pts, w * 0.15, h);
+      ps(ctx, "#15191c", "#0d1013", pts, w * 0.15, h);
       const er = Math.min(h * 0.2, w * 0.35), ex = (rv[4] - 0.5) * w * 0.3, ey = -dh * 0.5, look = Math.sin(t * 0.9 + o.ph * 1.3) * er * 0.35, bp = (t * 1000 + o.ph * 900) % 3500, lid = bp < 400 ? Math.sin(bp / 400 * Math.PI) : 0;
-      ctx.fillStyle = "#a9bcc0"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, TAU); ctx.fill();
-      ctx.fillStyle = "#5f7a80"; ctx.beginPath(); ctx.arc(ex + look, ey, er * 0.6, 0, TAU); ctx.fill();
-      ctx.fillStyle = "#151a17"; ctx.fillRect(ex + look - 2, ey - er * 0.6, 4, er * 1.2);
-      if (lid > 0) { ctx.save(); ctx.beginPath(); ctx.arc(ex, ey, er + 1, 0, TAU); ctx.clip(); ctx.fillStyle = "#46535c"; ctx.fillRect(ex - er - 1, ey - er - 1, er * 2 + 2, (er * 2 + 2) * lid); ctx.restore(); }
-      if (rv[6] < 0.7) { ctx.fillStyle = "#a9bcc0"; ctx.beginPath(); ctx.arc(-w * 0.62, -dh * 0.28, er * 0.25, 0, TAU); ctx.arc(w * 0.6, -dh * 0.3, er * 0.2, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = "#33383a"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#1c2526"; ctx.beginPath(); ctx.arc(ex + look, ey, er * 0.6, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#060807"; ctx.fillRect(ex + look - 2, ey - er * 0.6, 4, er * 1.2);
+      if (lid > 0) { ctx.save(); ctx.beginPath(); ctx.arc(ex, ey, er + 1, 0, TAU); ctx.clip(); ctx.fillStyle = "#15191c"; ctx.fillRect(ex - er - 1, ey - er - 1, er * 2 + 2, (er * 2 + 2) * lid); ctx.restore(); }
+      if (rv[6] < 0.7) { ctx.fillStyle = "#33383a"; ctx.beginPath(); ctx.arc(-w * 0.62, -dh * 0.28, er * 0.25, 0, TAU); ctx.arc(w * 0.6, -dh * 0.3, er * 0.2, 0, TAU); ctx.fill(); }
     },
     // mundane drowned-world kinds: flat polygons
     function shoe(ctx, o, t, h, rv) {   // an upright boot: cuff, shaft, instep, toe, sole
       const a = h * (0.17 + rv[1] * 0.04), hh = h * (0.7 + rv[2] * 0.2), toe = h * (0.36 + rv[3] * 0.1), ft = h * 0.2;
       ctx.scale(rv[4] < 0.5 ? -1 : 1, 1);
-      ps(ctx, "#6a7c80", "#475a5f", [-a, 10, -a, -hh, a, -hh, a, -hh * 0.35, a + toe * 0.6, -ft * 1.25, a + toe, -ft * 0.85, a + toe * 1.04, -ft * 0.3, a + toe, 10], a * 0.1, h);
-      poly(ctx, "#8a9ca0", [-a * 1.05, -hh, a * 1.05, -hh, a * 1.05, -hh + h * 0.09, -a * 1.05, -hh + h * 0.09]);
-      poly(ctx, "#27343a", [-a * 1.06, 10, -a * 1.06, -h * 0.07, a + toe * 1.08, -h * 0.07, a + toe * 1.08, 10]);
-      poly(ctx, "#27343a", [-a * 1.06, -h * 0.07, -a * 0.2, -h * 0.07, -a * 0.2, -h * 0.13, -a * 1.06, -h * 0.13]);
+      ps(ctx, "#202526", "#151b1c", [-a, 10, -a, -hh, a, -hh, a, -hh * 0.35, a + toe * 0.6, -ft * 1.25, a + toe, -ft * 0.85, a + toe * 1.04, -ft * 0.3, a + toe, 10], a * 0.1, h);
+      poly(ctx, "#292f30", [-a * 1.05, -hh, a * 1.05, -hh, a * 1.05, -hh + h * 0.09, -a * 1.05, -hh + h * 0.09]);
+      poly(ctx, "#0c1011", [-a * 1.06, 10, -a * 1.06, -h * 0.07, a + toe * 1.08, -h * 0.07, a + toe * 1.08, 10]);
+      poly(ctx, "#0c1011", [-a * 1.06, -h * 0.07, -a * 0.2, -h * 0.07, -a * 0.2, -h * 0.13, -a * 1.06, -h * 0.13]);
     },
     function hat(ctx, o, t, h, rv) {   // a top hat, a bent wizard hat or a bowler, each with a brim
       const kd = Math.floor(rv[0] * 3), bw = h * (0.5 + rv[1] * 0.12), cw = bw * 0.55, ch = h * (0.45 + rv[3] * 0.15), by = -h * 0.1;
       if (kd === 1) {
         const tx = (rv[4] - 0.5) * h * 0.2;
-        ps(ctx, "#5f7479", "#3f5156", [-cw * 1.1, by, -cw * 0.35, -h * 0.5, tx, -h * 0.85, tx + h * 0.16, -h * 0.8, tx + h * 0.06, -h * 0.66, cw * 0.35, -h * 0.5, cw * 1.1, by], 0, h);
-        poly(ctx, "#8a9ca0", [-cw * 1.08, by, cw * 1.08, by, cw * 1.0, by - h * 0.07, -cw * 1.0, by - h * 0.07]);
+        ps(ctx, "#1c2324", "#13181a", [-cw * 1.1, by, -cw * 0.35, -h * 0.5, tx, -h * 0.85, tx + h * 0.16, -h * 0.8, tx + h * 0.06, -h * 0.66, cw * 0.35, -h * 0.5, cw * 1.1, by], 0, h);
+        poly(ctx, "#292f30", [-cw * 1.08, by, cw * 1.08, by, cw * 1.0, by - h * 0.07, -cw * 1.0, by - h * 0.07]);
       } else if (kd === 0) {
-        ps(ctx, "#566b72", "#384a50", [-cw, by, -cw * 0.95, by - ch, cw * 0.95, by - ch, cw, by], 0, h);
-        poly(ctx, "#8a9ca0", [-cw, by, -cw, by - h * 0.09, cw, by - h * 0.09, cw, by]);
+        ps(ctx, "#1a2022", "#111618", [-cw, by, -cw * 0.95, by - ch, cw * 0.95, by - ch, cw, by], 0, h);
+        poly(ctx, "#292f30", [-cw, by, -cw, by - h * 0.09, cw, by - h * 0.09, cw, by]);
       } else {
         const p = [-cw * 1.1, by];
         for (let i = 1; i < 8; i++) { const a = Math.PI * i / 8; p.push(-cw * 1.1 * Math.cos(a), by - ch * 0.9 * Math.sin(a)); }
         p.push(cw * 1.1, by);
-        ps(ctx, "#6d7e80", "#4a5a5c", p, 0, h);
-        poly(ctx, "#27343a", [-cw * 1.1, by, -cw * 1.08, by - h * 0.07, cw * 1.08, by - h * 0.07, cw * 1.1, by]);
+        ps(ctx, "#212626", "#161b1c", p, 0, h);
+        poly(ctx, "#0c1011", [-cw * 1.1, by, -cw * 1.08, by - h * 0.07, cw * 1.08, by - h * 0.07, cw * 1.1, by]);
       }
-      ps(ctx, kd === 1 ? "#5f7479" : kd === 0 ? "#566b72" : "#6d7e80", kd === 1 ? "#3f5156" : kd === 0 ? "#384a50" : "#4a5a5c", [-bw, 10, -bw, 0, -bw * 0.9, by, bw * 0.9, by, bw, 0, bw, 10], 0, h);
+      ps(ctx, kd === 1 ? "#1c2324" : kd === 0 ? "#1a2022" : "#212626", kd === 1 ? "#13181a" : kd === 0 ? "#111618" : "#161b1c", [-bw, 10, -bw, 0, -bw * 0.9, by, bw * 0.9, by, bw, 0, bw, 10], 0, h);
     },
     function bottle(ctx, o, t, h, rv) {   // a corked bottle, leaning
       const w = h * (0.17 + rv[0] * 0.05), nk = w * (0.38 + rv[1] * 0.1), bh = h * (0.5 + rv[2] * 0.12), hh = h * (0.9 + rv[3] * 0.08);
       ctx.rotate((rv[4] - 0.5) * 0.5);
-      ps(ctx, "#5d7f80", "#3c5758", [-w, 10, -w, -bh, -w * 0.85, -bh - h * 0.1, -nk, -bh - h * 0.22, -nk, -hh, -nk * 1.3, -hh, nk * 1.3, -hh, nk, -hh, nk, -bh - h * 0.22, w * 0.85, -bh - h * 0.1, w, -bh, w, 10], w * 0.15, h);
-      poly(ctx, "#9db0b2", [-w, -bh * 0.2, w, -bh * 0.2, w, -bh * 0.62, -w, -bh * 0.62]);
-      poly(ctx, "#8a9ca0", [-nk * 0.95, -hh, nk * 0.95, -hh, nk * 0.8, -hh - h * 0.07, -nk * 0.8, -hh - h * 0.07]);
+      ps(ctx, "#1c2626", "#121a1a", [-w, 10, -w, -bh, -w * 0.85, -bh - h * 0.1, -nk, -bh - h * 0.22, -nk, -hh, -nk * 1.3, -hh, nk * 1.3, -hh, nk, -hh, nk, -bh - h * 0.22, w * 0.85, -bh - h * 0.1, w, -bh, w, 10], w * 0.15, h);
+      poly(ctx, "#2f3535", [-w, -bh * 0.2, w, -bh * 0.2, w, -bh * 0.62, -w, -bh * 0.62]);
+      poly(ctx, "#292f30", [-nk * 0.95, -hh, nk * 0.95, -hh, nk * 0.8, -hh - h * 0.07, -nk * 0.8, -hh - h * 0.07]);
     },
     function chunk(ctx, o, t, h, rv) {   // a lumpy broken slab, small and half sunk: only its low top clears the water
       const w = h * (0.2 + rv[0] * 0.05), th = h * (0.2 + rv[1] * 0.03), by = -h * 0.02, wl = -h * 0.14;   // by: the base; wl: the water line, so only the top third clears it
       ctx.rotate((rv[2] - 0.5) * 0.2);
       // one uneven ridge: a single peak, a broken slope each side, no notch
-      ps(ctx, "#74878c", "#4d5f64", [-w, by, -w * 1.02, by - th * 0.34, -w * 0.72, by - th * 0.5, -w * 0.52, by - th * 0.6, -w * 0.3, by - th * 0.66, -w * 0.08, by - th, w * 0.16, by - th * 0.9, w * 0.4, by - th * 0.68, w * 0.58, by - th * 0.74, w * 0.92, by - th * 0.36, w * 0.88, by], 0, h * 0.6);
+      ps(ctx, "#23282a", "#171c1e", [-w, by, -w * 1.02, by - th * 0.34, -w * 0.72, by - th * 0.5, -w * 0.52, by - th * 0.6, -w * 0.3, by - th * 0.66, -w * 0.08, by - th, w * 0.16, by - th * 0.9, w * 0.4, by - th * 0.68, w * 0.58, by - th * 0.74, w * 0.92, by - th * 0.36, w * 0.88, by], 0, h * 0.6);
       // the water over its foot: a short ragged line that follows the ripple, a thin lighter wavelet edge on top
       const n = 9, x0 = -w * 1.45, dx = w * 2.9 / n, wy = [];
       for (let i = 0; i <= n; i++) wy.push(wl + (rv[3 + i % 6] - 0.5) * h * 0.035 + Math.sin(t * 0.8 + o.ph + i * 1.3) * h * 0.012);
       wy[0] = h * 0.03; wy[n] = h * 0.03; wy[1] = (wy[1] + wl) / 2 + h * 0.03; wy[n - 1] = (wy[n - 1] + wl) / 2 + h * 0.03;   // the ends ease down to the sea
-      ctx.fillStyle = "rgb(38,44,42)";
+      ctx.fillStyle = "rgb(7,8,8)";
       ctx.beginPath(); ctx.moveTo(x0, by + h * 0.3);
       for (let i = 0; i <= n; i++) ctx.lineTo(x0 + dx * i, wy[i]);
       ctx.lineTo(x0 + dx * n, by + h * 0.3); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgb(50,56,54)"; ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "rgb(10,12,11)"; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(x0, wy[0]);
       for (let i = 1; i <= n; i++) if (i % 4) ctx.lineTo(x0 + dx * i, wy[i]); else ctx.moveTo(x0 + dx * i, wy[i]);
       ctx.stroke();
@@ -1308,8 +1317,8 @@
       ctx.moveTo(-w * 0.65, ey); ctx.lineTo(-w * 0.15, ey - ew * 0.3); ctx.lineTo(-w * 0.2, ey + ew * 0.5); ctx.closePath();
       ctx.moveTo(w * 0.15 + sk, ey - ew * 0.3); ctx.lineTo(w * 0.65 + sk, ey); ctx.lineTo(w * 0.2 + sk, ey + ew * 0.5); ctx.closePath();
       ctx.moveTo(-w * 0.2, -fh * 0.28); ctx.lineTo(w * 0.2, -fh * 0.28); ctx.lineTo(w * 0.1, -fh * 0.18); ctx.lineTo(-w * 0.1, -fh * 0.18); ctx.closePath();
-      ctx.fillStyle = "#6f8a90"; ctx.fill("evenodd");
-      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#485c62"; ctx.fillRect(w * 0.1, -fh * 1.2, w, fh * 1.4); ctx.restore();
+      ctx.fillStyle = "#21292b"; ctx.fill("evenodd");
+      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#161c1d"; ctx.fillRect(w * 0.1, -fh * 1.2, w, fh * 1.4); ctx.restore();
     },
     function lantern(ctx, o, t, h, rv) {   // an unlit cage lantern: cap, ring handle, panes cut through
       const w = h * (0.2 + rv[0] * 0.08), bh = h * (0.5 + rv[1] * 0.15), hr = w * 0.9;
@@ -1317,14 +1326,14 @@
       ctx.moveTo(-w, 10); ctx.lineTo(-w, 0); ctx.lineTo(-w * 0.85, -bh); ctx.lineTo(-w * 0.35, -bh - h * 0.1); ctx.lineTo(w * 0.35, -bh - h * 0.1); ctx.lineTo(w * 0.85, -bh); ctx.lineTo(w, 0); ctx.lineTo(w, 10); ctx.closePath();
       ctx.moveTo(-w * 0.55, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.8); ctx.lineTo(-w * 0.5, -bh * 0.8); ctx.closePath();
       ctx.moveTo(w * 0.1, -bh * 0.15); ctx.lineTo(w * 0.55, -bh * 0.15); ctx.lineTo(w * 0.5, -bh * 0.8); ctx.lineTo(w * 0.1, -bh * 0.8); ctx.closePath();
-      ctx.fillStyle = "#a9a49a"; ctx.fill("evenodd");
-      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#7d7a74"; ctx.fillRect(0, -h * 2, w * 2, h * 2); ctx.restore();
-      ctx.fillStyle = "#9cb2b4";   // the lit panes, a flat warm glow
+      ctx.fillStyle = "#33312e"; ctx.fill("evenodd");
+      ctx.save(); ctx.clip("evenodd"); ctx.fillStyle = "#262523"; ctx.fillRect(0, -h * 2, w * 2, h * 2); ctx.restore();
+      ctx.fillStyle = "#2f3536";   // the lit panes, a flat warm glow
       ctx.beginPath();
       ctx.moveTo(-w * 0.55, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.15); ctx.lineTo(-w * 0.1, -bh * 0.8); ctx.lineTo(-w * 0.5, -bh * 0.8); ctx.closePath();
       ctx.moveTo(w * 0.1, -bh * 0.15); ctx.lineTo(w * 0.55, -bh * 0.15); ctx.lineTo(w * 0.5, -bh * 0.8); ctx.lineTo(w * 0.1, -bh * 0.8); ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "#7d7a74"; ctx.lineWidth = 4;
+      ctx.strokeStyle = "#262523"; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(-hr, -bh - h * 0.09); ctx.lineTo(-hr * 0.5, -bh - h * 0.3); ctx.lineTo(hr * 0.5, -bh - h * 0.3); ctx.lineTo(hr, -bh - h * 0.09); ctx.stroke();
     }
   ];
@@ -1396,14 +1405,14 @@
   // the sea and sky flow once ran about 26 s of its own clock; it now plays from the flash (secs("break") 0.4) to the end of elements
   const TS = 2.6;
   function eclock() { return (G.secs("break") - 0.4) * TS; }
-  // in the birth scene, from matter on, the sea and sky stay as the background, dimmed to half so the old ones read clearly
+  // in the birth scene, from matter on, the sea and sky stay as the background, dimmed to 0.6 so the old ones read clearly and the sea stays above the void
   function dimK() {
     if (G.sceneOf(G.beat) !== "birth") return 1;
     const im = G.idxOf("matter");
     const it = G.idxOf("trade");
-    if (G.beat > it) return 0.3;   // down to 0.3 by the start of the old ones' walk
-    if (G.beat === it) return 0.5 - 0.2 * smooth(clamp(G.linear("trade"), 0, 1));
-    return G.beat === im ? 1 - 0.5 * smooth(clamp(G.linear("matter") / 0.5, 0, 1)) : 1;
+    if (G.beat > it) return 0.6;   // down to 0.6 by the start of the old ones' walk
+    if (G.beat === it) return 0.75 - 0.15 * smooth(clamp(G.linear("trade"), 0, 1));
+    return G.beat === im ? 1 - 0.25 * smooth(clamp(G.linear("matter") / 0.5, 0, 1)) : 1;
   }
   let LAY = null;
   function layerBegin(outer) {
@@ -1413,6 +1422,7 @@
     const c = LAY.getContext("2d");
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, LAY.width, LAY.height);
+    c.globalAlpha = 1;
     c.setTransform(outer.getTransform());
     return c;
   }
@@ -1420,8 +1430,8 @@
     c.save();
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = "source-atop";
-    c.globalAlpha = 1 - dim;
-    c.fillStyle = "rgb(13,17,20)";
+    c.globalAlpha = Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
+    c.fillStyle = "rgb(11,13,13)";
     c.fillRect(0, 0, LAY.width, LAY.height);
     c.restore();
     outer.save();
@@ -1552,7 +1562,8 @@
     const e = burstE(s), ox = G.sx(0), oy = 0.46 * H;
     const camOff = G.cam * W;
     const dr = G.reduced ? 0 : G.t;
-    const dim = dimK();
+    const dim = dimK(), outer = ctx;
+    ctx = layerBegin(outer);
     for (let n = 0; n < AIR.length; n++) {
       const a = AIR[n];
       const rx = a.u * W - camOff * a.par + 3 * Math.sin(dr * 0.11 + n * 2);
@@ -1572,6 +1583,7 @@
     }
     ctx.globalAlpha = 1;
     window.GenesisSky && GenesisSky.draw(ctx, s, ox, oy, W, H, dim);   // hook for the next specs: the air's own art, over the stars; dim is the last arg
+    layerEnd(outer, ctx, dim);
   }
 
   // permanent residue: what the first wave left in the void background
@@ -1606,6 +1618,8 @@
     const k = smooth(clamp((bs - BURST_T) / 0.3, 0, 1)) * keep * dimK();
     if (k < 0.02) return;
     const e = burstE(bs), bx = G.sx(0), by = 0.46 * H;   // every piece flies out of the explosion's point to its place
+    const outer = ctx;
+    ctx = layerBegin(outer);
 
     const span = 3.2 * W;
     const camOff = G.cam * W;
@@ -1663,6 +1677,7 @@
     }
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    layerEnd(outer, ctx, dimK());
   }
 
   // the floor's pieces for the ceiling to copy one for one: world x of the base centre, size, sink (fraction of height) and offset below the waterline
@@ -1676,5 +1691,5 @@
     }
     return out;
   }
-  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SH; }, seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage };
+  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SH; }, seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK };
 })();

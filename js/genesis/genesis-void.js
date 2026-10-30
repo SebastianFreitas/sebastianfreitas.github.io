@@ -16,6 +16,9 @@
     if (amt < 0.02) return;
     const span = G.W * 2.2;
     const off = G.t * 12 + G.cam * G.W * 0.35;
+    // in the birth scene the air's ticks go under the same deep shadow as the rest of the sky
+    const outer = ctx, shade = G.sceneOf(G.beat) === "birth" && window.GenElem;
+    if (shade) ctx = GenElem.layerBegin(outer);
     ctx.fillStyle = "#c6ccc6";
     ctx.strokeStyle = "#c6ccc6";
     for (const m of motes) {
@@ -33,6 +36,7 @@
       }
     }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    if (shade) GenElem.layerEnd(outer, ctx, GenElem.dimK());
   }
 
   // the far realms: three parallax layers of slow blobs, built once at load

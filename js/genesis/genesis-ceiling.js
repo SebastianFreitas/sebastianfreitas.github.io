@@ -653,7 +653,7 @@
       // db1eeb0's full-size objects, drawn over the sea band and shifted so only their top overlaps it (no flat cut, no depth shrink)
       const c0 = it.m ? it.w - it.bx1 : it.bx0, c1 = it.m ? it.w - it.bx0 : it.bx1; let low = 0;   // the object is drawn over the band: its painted bottom sits on the band's mean lower edge under its span
       for (let k = 0; k < 5; k++) low += shc(x + (c0 + (c1 - c0) * k / 4), pW) / 5;
-      if (it.metal) low = Math.min(low + ROCKLO * H, 0.27 * H);   // a rock's bottom row sits below the band's mean lower edge, under the red line: the scene's zoom crops the top of the frame, so a rock above this shows nowhere
+      if (it.metal) low = Math.min(low * RKS + ROCKLO * H, 0.27 * H);   // a rock's bottom row sits below the band's mean lower edge, under the red line: the scene's zoom crops the top of the frame, so a rock above this shows nowhere
       y = low - it.bh - it.bt;
     }
     if (!it.metal) y += it.wa * sc * Math.sin(it.wf * t + it.wp);   // a rock never moves: the air passes round it
@@ -727,7 +727,7 @@
         if (rocks && !hp && RKN < RKM) {
           const r0 = it.m ? it.w - it.bx1 : it.bx0, r1 = it.m ? it.w - it.bx0 : it.bx1; let lw = 0;
           for (let k = 0; k < 5; k++) lw += shc(xx + (r0 + (r1 - r0) * k / 4), pW) / 5;
-          RKX[RKN] = xx + (r0 + r1) / 2; RKW[RKN] = (r1 - r0) / 2; RKB[RKN] = Math.min(lw + ROCKLO * H, 0.27 * H); RKV[RKN] = it.eyes && it.eyes.length ? RKB[RKN] - it.bh - it.bt + it.eyes[0].y - it.eyes[0].size * 0.6 - 0.015 * H : RKB[RKN] - 0.055 * H;   // the peek line: just above the eye's top, so only the rock's lower part shows
+          RKX[RKN] = xx + (r0 + r1) / 2; RKW[RKN] = (r1 - r0) / 2; RKB[RKN] = Math.min(lw * RKS + ROCKLO * H, 0.27 * H); RKV[RKN] = it.eyes && it.eyes.length ? RKB[RKN] - it.bh - it.bt + it.eyes[0].y - it.eyes[0].size * 0.6 - 0.015 * H : RKB[RKN] - 0.055 * H;   // the peek line: just above the eye's top, so only the rock's lower part shows
           rockR(it, xx, RKN, H);
           RKP[RKN] = 12 + 8 * hash(i * 3.3 + 9); RKO[RKN] = 0.08 - (3.5 + 3.5 * RKN) / RKP[RKN]; RKN++;   // the first peek starts 3.5 s in, the next rocks every 3.5 s after
         }
@@ -870,7 +870,7 @@
   // the band as air: four flat storm-slate layers (back darkest) hung from the top, each lower edge the clouds' line (SHC - BAND_UP H, a share of it per
   // layer) plus an erratic offset (three unrelated frequencies, each swelling and fading on its own slow clock, plus seeded jitter). The offsets stream
   // one way at a layer's own speed, the clock surging and lulling (always forward), so the edge reshapes as it travels; nothing bobs
-  const AIRC = ['rgb(36,43,53)', 'rgb(45,53,65)', 'rgb(53,63,76)', 'rgb(66,77,91)'], AIRF = [1, 0.74, 0.52, 0.3];
+  const AIRC = ['rgb(20,25,31)', 'rgb(24,30,37)', 'rgb(28,35,43)', 'rgb(34,41,50)'], AIRF = [1, 0.74, 0.52, 0.3];
   const AJN = 48, AJ = new Float32Array(AJN + 1);
   for (let i = 0; i < AJN; i++) AJ[i] = hash(i * 7.7 + 2) * 2 - 1;
   AJ[AJN] = AJ[0];
@@ -889,22 +889,23 @@
       if (d >= RKR) continue;
       const ph = ((t / RKP[r] + RKO[r]) % 1 + 1) % 1, a = Math.min(1, Math.max(0, (ph - 0.08) / 0.1)), b = Math.min(1, Math.max(0, (ph - 0.34) / 0.1));
       const s = a * a * (3 - 2 * a) * (1 - b * b * (3 - 2 * b)), wx = Math.sqrt(1 - d * d / (RKR * RKR));   // a round bulge: deepest under the rock, falling away smoothly, no flat core
-      const st = 0.006 * H - i * 0.03 * H, rest = Math.min(RKB[r] + 0.006 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
+      const sd = (sx - RKX[r]) / RKW[r], st = 0.006 * H - i * 0.03 * H * (1 + 0.55 * Math.sin((1.1 + 0.9 * i) * sd * 2.4 + i * 2.1 + r * 1.3)), rest = Math.min(RKB[r] + 0.006 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
       const L = rest + (peek - rest) * s + off * 0.5 * (1 - wx) + 0.014 * H * (1 - Math.sin(TAU * 3.6 * u + i * 1.9));   // the layer's own wobble rides on the blended line, damped to nothing at the rock's core so rest never shows a tip; the band's long wave (sag only, never toward the rock, so rest stays covered) runs through the whole bulge
       e += (Math.max(Math.min(L, 0.28 * H), e) - e) * wx;   // each layer's bulge hangs from its own height (layer gaps stay about as wide as the band's) so the pale layers do not fill the pouch; never above the band's own line
     }
     return e;
   }
-  const ROCKLO = -0.005;
+  const ROCKLO = -0.005, RKS = 0.5;   // RKS: a rock's bottom row sits RKS of the way down the band's mean lower edge, so a deep surge (break) does not hang a deep bulge under it; the bulge's depth is the rock's bottom row, the band beside it sits near the top
   const RKM = 8, RKL = new Float32Array(RKM), RKQ = new Float32Array(RKM),RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
   // each rock's bulge half-width (left and right of its centre, in rock widths): the smallest at which the rest line, at its worst, still passes below every column of the rock's lower
   // outline. The band's own line at a rock is taken RKE H above the rock's bottom row, its wobble term as large as it gets; rest is the airEdge rest line of the lowest layer
   const RKE = 0.085, RKJ = 0.033, RKMIN = 0.5;
   function rockR(it, xx, n, H) {
-    const A = RKE * H + 0.006 * H + 0.006 * H, B = RKJ * H, pr = it.pro, ctr = RKX[n], wid = RKW[n];
+    const re = Math.min(RKE * H, RKB[n] - 0.005 * H);   // the band's line cannot sit higher than the top clamp, so a raised rock has less of it to cover
+    const A = re + 0.006 * H + 0.006 * H, B = RKJ * H, pr = it.pro, ctr = RKX[n], wid = RKW[n];
     let L = RKMIN, Q = RKMIN;
     if (pr) for (let j = 0; j < pr.length; j++) {
-      const lx = it.bx0 + j + 0.5, dx = xx + (it.m ? it.w - lx : lx) - ctr, Y = RKE * H - pr[j];   // Y: this column's lowest point below the band's line
+      const lx = it.bx0 + j + 0.5, dx = xx + (it.m ? it.w - lx : lx) - ctr, Y = re - pr[j];   // Y: this column's lowest point below the band's line
       if (Y <= 0) continue;
       const wx = Math.min(0.999, (-(A - B) + Math.sqrt((A - B) * (A - B) + 4 * B * Y)) / (2 * B)), R = Math.abs(dx) / wid / Math.sqrt(1 - wx * wx) * 1.03;
       if (dx < 0) L = Math.max(L, R); else Q = Math.max(Q, R);
@@ -925,6 +926,15 @@
       g.closePath();
       g.fill();
     }
+  }
+  function shadow(c, w, h) {   // the deep shadow: one fill over what is painted (alpha kept), so every colour in the layer ends near black
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = 'source-atop';
+    c.globalAlpha = 0.96;
+    c.fillStyle = 'rgb(6,7,7)';
+    c.fillRect(0, 0, w, h);
+    c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 1;
   }
   function draw(ctx, W, H, k, t) {
     if (!(k > 0)) { t0 = null; drawFan(ctx, W, H, 0, t); return; }
@@ -959,6 +969,7 @@
     drawSprites(sx, W, H, t, kd, sc, pal, cam, false, 2);
     paintAir(sx, W, H, t);   // the storm-slate band under the scene's own zoom and pan: erratic edges streaming sideways in gusts, not the sea's painter
     paintGusts(sx, W, H, gu, false, yS);   // the strokes behind the objects
+    shadow(sx, ow, oh);
     real.drawImage(SEA, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);   // the band first, then the objects over it (each cut at its own line): the rocks, every hanger and the rocks' eyes behind, the clouds over them, the ones behind first
     oc.setTransform(a, 0, 0, a, 0, H * 0.1 * a);   // under the same zoom and offset
     TNY = 1; drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row, in seed order
@@ -966,6 +977,7 @@
     paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
     TNY = 2; drawSprites(oc, W, H, t, kd, sc, pal, cam, false); TNY = 0;   // the tiny clouds last: no stroke ever touches a spiral
     oc.setTransform(1, 0, 0, 1, 0, 0);
+    shadow(oc, ow, oh);
     real.drawImage(OFF, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);
     real.restore();
   }

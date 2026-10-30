@@ -117,6 +117,8 @@ window.GenTrade = (function () {
     const rootSince = G.since ? G.since("root") : 0;
     const W = G.W, H = G.H;
     if (W === 0) return;
+    const shade = G.sceneOf(G.beat) === "birth" && window.GenElem;
+    let lay = null;
     for (const tv of TRAV) {
       const tsince = base - 7.2 - tv.delay;
       if (tsince < 0) continue;
@@ -130,8 +132,10 @@ window.GenTrade = (function () {
       const y = G.DECK * H - 3 - tv.air * H + Math.sin(G.t * 2 + tv.ph) * (tv.air > 0.03 ? 6 : 1.5);
       const alpha = Math.min(1, tsince / 0.6) * (1 - swarmSince) * (1 - landSince) * (1 - rootSince * 0.6) * edge;
       if (alpha < 0.02) continue;
-      drawTraveller(ctx, tv, x, y, alpha);
+      if (shade && !lay) lay = GenElem.layerBegin(ctx);   // in the birth scene they go under the same deep shadow as the sky; no layer when none shows
+      drawTraveller(lay || ctx, tv, x, y, alpha);
     }
+    if (lay) { lay.globalAlpha = 1; GenElem.layerEnd(ctx, lay, GenElem.dimK()); }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 

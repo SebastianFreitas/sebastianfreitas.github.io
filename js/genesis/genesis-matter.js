@@ -605,6 +605,8 @@
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
     if (s < 0 || s > 20.6) return;
 
+    const outer = ctx;
+    ctx = GenElem.layerBegin(outer);   // all of it goes under the same deep shadow as the sea
     drawStormsLayer(ctx, s, false); // air, rain: behind
     for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, s);
     drawInsects(ctx, s);
@@ -613,6 +615,7 @@
 
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
+    GenElem.layerEnd(outer, ctx, GenElem.dimK());
   }
 
   window.GenMatter = { draw, chunkAt, MASS, massScale };
