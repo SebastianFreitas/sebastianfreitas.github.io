@@ -971,11 +971,9 @@
       frontPoly(pa, W, H, add, 0); frontPoly(pb, W, H, add, bw);
       po.rect(-2 * W, -H, 5 * W, 3 * H); po.addPath(pa);
       pr.addPath(pa); pr.addPath(pb);
-      c.fillStyle = 'rgba(6,7,7,0.96)'; c.fill(po, 'evenodd');
-      c.fillStyle = 'rgba(6,7,7,' + (0.96 - lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');
-      c.fillStyle = 'rgba(6,7,7,' + (0.96 - lb).toFixed(3) + ')'; c.fill(pb);
-      c.fillStyle = 'rgba(56,70,80,' + (0.56 * lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');   // then a flat slate tone over the gas's own shape: lighter while it swells, gone with the lift
-      c.fillStyle = 'rgba(56,70,80,' + (0.56 * lb).toFixed(3) + ')'; c.fill(pb);
+      c.fillStyle = 'rgba(6,7,7,0.96)'; c.fill(po, 'evenodd'); c.fill(pr, 'evenodd'); c.fill(pb);   // the full shadow everywhere, so no colour beneath shows
+      c.fillStyle = 'rgba(60,60,60,' + (0.5 * lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');   // then a flat neutral grey over the gas's own shape: lighter while it swells, gone with the lift
+      c.fillStyle = 'rgba(60,60,60,' + (0.5 * lb).toFixed(3) + ')'; c.fill(pb);
       c.setTransform(1, 0, 0, 1, 0, 0);
     } else {
       c.globalAlpha = 0.96;

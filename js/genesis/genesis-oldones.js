@@ -77,6 +77,8 @@ window.GenOld = (function () {
     return `${Math.round(f(0) * 255)},${Math.round(f(8) * 255)},${Math.round(f(4) * 255)}`;
   }
 
+  const OLD_DIM = 0.72;   // value drop on every roster grey (owner: a bit darker); eyes are not scaled
+
   const ROSTER = (function build() {
     const rnd = mulberry(9001);
     const list = [];
@@ -93,7 +95,7 @@ window.GenOld = (function () {
       const t = greys[i]; greys[i] = greys[j]; greys[j] = t;
     }
     list.forEach((o, i) => {
-      const g = greys[i], sg = Math.round(g * 0.45);
+      const g = Math.max(Math.round(greys[i] * OLD_DIM), 90), sg = Math.round(g * 0.45);
       o.g = g; o.lit = `rgb(${g},${g},${g})`; o.shade = `rgb(${sg},${sg},${sg})`;
       o.hue = i < 6 ? HUES[i] : hslStr((i * 0.41) % 1, 0.65, 0.6);
     });
@@ -1126,7 +1128,7 @@ window.GenOld = (function () {
         const fx = p.rimX + (h1 - 0.5) * 0.08 * H + (h2 - 0.5) * 0.03 * H * aq * 2;
         const fy = p.rimY + 0.3 * H * aq * aq + 0.004 * H * h2;
         const sz = Math.max(1.5, (0.003 + 0.003 * h1) * H);
-        ctx.fillStyle = j === 0 ? "#8d918c" : "#4b4f4c";
+        ctx.fillStyle = j === 0 ? "#656965" : "#4b4f4c";
         ctx.fillRect(fx - sz / 2, fy - sz * 0.8 / 2, sz, sz * 0.8);
       }
     }
@@ -1602,5 +1604,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawTraces, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR, dressNow, windAt, frostNow };
+  return { OLD_DIM, ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, drawTraces, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR, dressNow, windAt, frostNow };
 })();

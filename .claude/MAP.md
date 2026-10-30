@@ -323,7 +323,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, chunkAt, MASS, massScale}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
-| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT litSplit eyeDot figCover captionBand updateFigs drawFigs drawTraces`) |
+| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT litSplit eyeDot figCover captionBand updateFigs drawFigs drawTraces OLD_DIM`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |

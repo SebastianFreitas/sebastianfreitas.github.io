@@ -137,7 +137,6 @@
         pt.spd = 0.7 + hash1(h + 35) * 0.5;   // a band of speeds kept off the centre, so a pulse reads as a ring
         pt.ang = hash1(h + 36) * TAU;   // launch over the whole circle, with about 45% pushed into the upper half
         if (hash1(h + 37) < 0.45) pt.ang = Math.PI * (1 + hash1(h + 36));
-        pt.fi = Math.min(4, Math.floor(hash1(h + 91) * 5));   // the sea family (tones in FAMS)
       }
       pt.splits = !pt.sea && pt.birth <= pt.splitT && pt.birth + pt.life > pt.splitT;
       pt.fall = pt.sea ? 0.75 + hash1(h + 22) * 0.6 : 1.6 + hash1(h + 22) * 1.4;   // the sea third slams down: a short, hard fall
@@ -339,7 +338,7 @@
     const outer = ctx, dim = dimK();
     ctx = layerBegin(outer);
     for (const pt of PARTS) {
-      if (pt.sea) { drawSeaPart(ctx, pt, s, originX, W, H, sl, gate, band); continue; }
+      if (pt.sea) { drawSeaPart(ctx, pt, s, originX, W, H); continue; }
       if (pt.splits && s >= pt.splitT) {
         drawSplit(ctx, pt, s, originX, W, H);
         continue;
@@ -381,18 +380,15 @@
   }
 
   // a sea-bound particle: it flies its own path to 0.55 of its life, then arcs down (gravity-like, from
-  // its heading) to the liquid beside the nearest form. Pure in s. PLAN holds the fall start (x1, y1)
-  // and velocity, the landing (lx, yl), the fall start tf, the landing time tl and the fall length T
-  const PLAN = { px: 0, py: 0, p: 0, tf: 0, tl: 0, T: 0, x1: 0, y1: 0, vx: 0, vy: 0, lx: 0, yl: 0, fr: false };
+  // its heading) to the liquid beside the nearest form. Pure in s. PLAN holds the landing x (lx),
+  // the landing time tl and whether the heap it falls to is a form (fr)
+  const PLAN = { tl: 0, lx: 0, fr: false };
   function seaPlan(pt, s, originX, W, H, camOff, spW) {
     const tf = pt.birth + pt.life * 0.2;
     let P = posAt(pt, tf, originX, W, H);
     const x1 = P.x, y1raw = P.y;
     // a fall starts inside the picture: at least 0.14 H, plus a small per-particle extra so streams do not bunch on one line
     const y1 = Math.max(y1raw, H * (0.05 + 0.04 * (((pt.jit * 97) % 1 + 1) % 1)));
-    P = posAt(pt, tf - 0.1, originX, W, H);
-    PLAN.vx = clamp((x1 - P.x) * 10, -0.3 * W, 0.3 * W); PLAN.vy = (y1raw - P.y) * 10;
-    if (y1raw < y1) PLAN.vy = Math.max(PLAN.vy, 0);
     // the nearest form (world x, wrapped) is the heap it falls to
     const uw = (x1 + camOff) / W;
     let bd = 0, bm = 1e9, bf = false;
@@ -412,21 +408,10 @@
     const lvl = Math.min(shAt(lx, W) + (bf ? H * 0.036 : 0), H * 0.96);   // the drawn surface, or the pile floor while it is still low
     const yland = Math.max(lvl + H * (0.004 - 0.016 * pt.gy), y1raw + 2);   // the landing is unchanged by the lower start
     const drop = Math.max(yland - y1, 2);
-    PLAN.x1 = x1; PLAN.y1 = y1; PLAN.lx = lx; PLAN.yl = y1 + drop;
-    PLAN.T = pt.fall + drop / H * 0.6;
-    if (tf + PLAN.T < 2.1) PLAN.T = 2.1 - tf;   // nothing lands before the sea is drawn (s 2), so every splash shows
-    PLAN.tf = tf; PLAN.tl = tf + PLAN.T;
-  }
-
-  // the falling part at s (tf < s < tl): a curve from the fall start with its heading, ending on the landing
-  function seaFallAt(s) {
-    const T = PLAN.T, tau = s - PLAN.tf, p = tau / T;
-    const drop = PLAN.yl - PLAN.y1;
-    const vy0 = Math.min(PLAN.vy, 0.8 * drop / T);
-    const g = 2 * (drop - vy0 * T) / (T * T);
-    PLAN.px = PLAN.x1 + PLAN.vx * tau + (PLAN.lx - PLAN.x1 - PLAN.vx * T) * p * p;
-    PLAN.py = PLAN.y1 + vy0 * tau + 0.5 * g * tau * tau;   // a launch upward climbs, slows, then gravity turns it down
-    PLAN.p = p;
+    PLAN.lx = lx;
+    let T = pt.fall + drop / H * 0.6;
+    if (tf + T < 2.1) T = 2.1 - tf;   // nothing lands before the sea is drawn (s 2), so every splash shows
+    PLAN.tl = tf + T;
   }
 
   // what a landed sea-bound particle leaves: a faint ripple and a dark blob that sinks and fades into the water within a second
@@ -473,68 +458,11 @@
     ctx.globalAlpha = 1;
   }
 
-  // dim sickly sea families for the fallers: [body, pale bone rim, dark mark, pale accent, limb]; dark teal, bruised green-grey, ash violet
-  const FAMS = [
-    ["rgb(18,34,35)", "rgb(48,54,51)", "rgb(10,14,16)", "rgb(58,60,54)", "rgb(30,46,46)"],
-    ["rgb(28,36,30)", "rgb(50,54,47)", "rgb(11,15,14)", "rgb(58,60,54)", "rgb(40,48,41)"],
-    ["rgb(34,30,41)", "rgb(50,48,54)", "rgb(13,13,18)", "rgb(58,60,54)", "rgb(44,40,52)"]
-  ];
-
-  // a sea-bound particle in the elements draw: flight and fall in its family look; before the liquid is
-  // drawn (before the sea is drawn) its landed heap is drawn here too, so the sea rises out of them
-  function drawSeaPart(ctx, pt, s, originX, W, H, sl, gate, band) {
-    const a = s - pt.birth;
-    if (a < 0) return;
+  // a sea-bound particle in the elements draw: it only poses the plan (the landed heap is drawn by drawSea)
+  function drawSeaPart(ctx, pt, s, originX, W, H) {
+    if (s - pt.birth < 0) return;
     seaPlan(pt, s, originX, W, H, G.cam * W, SEA_SPAN * W);
     slosh(s);   // the plan posed other times
-    const hj = hash1(pt.i * 29 + 7), hs = hash1(pt.i * 17 + 3);
-    if (s >= PLAN.tl) return;   // what landed is drawn by drawSea (drawLanded), on the liquid
-    let x, y, tx = 0, ty = 0, rg = 0, angle = pt.ang, alpha = Math.min(1, a / 0.25);
-    if (s < PLAN.tf) {
-      const P = posAt(pt, s, originX, W, H, sl);
-      x = P.x; y = P.y; angle = P.angle; rg = P.rg;
-      const P2 = posAt(pt, Math.max(s - 0.12, pt.birth), originX, W, H, sl);
-      tx = P2.x; ty = P2.y;
-      if (a > 0.39 && Math.hypot(x - originX, y - 0.46 * H) < 0.1 * H) return;   // thinned at the centre after its first 0.15 s (real), so pulses read as rings; flight only, never mid-fall
-    } else {
-      // the fall continues the flight's heading (no blend back to the flight path), so an upward launch climbs and turns
-      seaFallAt(Math.max(s - 0.12, PLAN.tf));
-      tx = PLAN.px; ty = PLAN.py;
-      seaFallAt(s);
-      x = PLAN.px; y = PLAN.py;
-    }
-    if (x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
-    if (gate && (GenOld.figCover(x, y) > 0 || (band && y > band.y0 && y < band.y1))) return;
-    if (y < 0.06 * H) return;   // everything visibly comes from the hole, never in from the top edge
-    if (alpha < 0.02) return;
-    if (!pt.fc) pt.fc = FAMS[pt.fi % 3];
-    // out of the centre: full only beyond 0.18 H, so the burst orbs keep it
-    const cd = smooth(clamp(Math.hypot(x - originX, y - 0.46 * H) / (0.18 * H), 0, 1));
-    const dx = x - tx, dy = y - ty, fadeJ = alpha * cd * (s < PLAN.tf ? 1 : 1 - 0.5 * PLAN.p);
-    const sL = H * (0.03 + 0.03 * hj), sn = Math.hypot(dx, dy) || 1, topY = 0.06 * H;
-    const tailY = y - dy / sn * sL, lo = Math.min(y, tailY), hi = Math.max(y, tailY);
-    const clipB = gate && band && hi > band.y0 && lo < band.y1, clipT = lo < topY;
-    if (clipB || clipT) {   // nothing enters from the top edge or crosses the caption: the streak is clipped to the open rows
-      ctx.save();
-      ctx.beginPath();
-      if (clipB) { ctx.rect(0, topY, W, band.y0 - topY); ctx.rect(0, band.y1, W, H - band.y1); } else ctx.rect(0, topY, W, H - topY);
-      ctx.clip();
-    }
-    drawStreak(ctx, x, y, dx, dy, sL, Math.max(1.5, H * (0.0022 + 0.0018 * hs)), pt.fc[4], pt.fc[0], fadeJ);
-    if (clipB || clipT) ctx.restore();
-  }
-
-  // a flat tapered trail from the head (x, y) back against its velocity (dx, dy): the family's limb tone, a darker head
-  function drawStreak(ctx, x, y, dx, dy, L, w, c1, c2, al) {
-    const n = Math.hypot(dx, dy);
-    if (n < 0.01 || al < 0.02) return;
-    const ux = -dx / n, uy = -dy / n, px = -uy, py = ux;
-    ctx.globalAlpha = al;
-    ctx.fillStyle = c1;
-    ctx.beginPath(); ctx.moveTo(x + px * w, y + py * w); ctx.lineTo(x + ux * L, y + uy * L); ctx.lineTo(x - px * w, y - py * w); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = c2;
-    ctx.fillRect(x - w, y - w, w * 2, w * 2);
-    ctx.globalAlpha = 1;
   }
 
   // frozen-then-snapping fate of a split particle: sink, settle or rise, in held steps
@@ -1520,22 +1448,16 @@
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = "source-atop";
     const base = Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
-    if (lift) {   // lift: stops [screen x, lift]; the shadow's alpha thins along x, so the front's band shows the sea's own colours
-      const m = outer.getTransform(), g = c.createLinearGradient(0, 0, LAY.width, 0);
-      for (let i = 0; i < lift.length; i++) g.addColorStop(clamp((m.a * lift[i][0] + m.e) / LAY.width, 0, 1), "rgba(11,13,13," + (base - lift[i][1]).toFixed(3) + ")");
-      c.globalAlpha = 1;
-      c.fillStyle = g;
-    } else {
-      c.globalAlpha = base;
-      c.fillStyle = "rgb(11,13,13)";
-    }
+    c.globalAlpha = base;
+    c.fillStyle = "rgb(11,13,13)";
     c.fillRect(0, 0, LAY.width, LAY.height);
-    if (lift) {   // then a flat slate tone over the sea's own shape, on the same stops: hard-edged, strongest at the front and lip, gone with the lift
+    if (lift) {   // then a flat neutral grey over the sea's own shape, on the lift stops: hard-edged, strongest at the front and lip, gone with the lift
       const m = outer.getTransform(), g = c.createLinearGradient(0, 0, LAY.width, 0);
       for (let i = 0; i < lift.length; i++) {   // a hard stop (equal x) becomes a slope 0.07 of the width long, so no vertical line shows
         const sl = i && lift[i][0] === lift[i - 1][0] ? 0.07 * LAY.width : 0;
-        g.addColorStop(clamp((m.a * lift[i][0] + m.e + sl) / LAY.width, 0, 1), "rgba(62,78,76," + (0.4 * lift[i][1]).toFixed(3) + ")");
+        g.addColorStop(clamp((m.a * lift[i][0] + m.e + sl) / LAY.width, 0, 1), "rgba(60,60,60," + (0.5 * lift[i][1]).toFixed(3) + ")");
       }
+      c.globalAlpha = 1;
       c.fillStyle = g;
       c.fillRect(0, 0, LAY.width, LAY.height);
     }

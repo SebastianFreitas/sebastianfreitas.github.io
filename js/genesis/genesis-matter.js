@@ -8,8 +8,9 @@
   const { flatGlow } = GenPaint;
 
   /* ---- palette (built once) ------------------------------------------ */
-  const FLESH_LIT = "#b0525c", FLESH_SHADE = "#6e2a33", FLESH_RAW = "#d27a7f";
-  const STONE_LIT = "#8d918c", STONE_SHADE = "#4b4f4c", STONE_DARK = "#3a3d3b";
+  // the rocks are neutral dark greys (flesh too), painted straight on the scene, lighter than the shadowed air and sea
+  const FLESH_LIT = "#484848", FLESH_SHADE = "#2e2e2e", FLESH_RAW = "#565656";
+  const STONE_LIT = "#464646", STONE_SHADE = "#2c2c2c", STONE_DARK = "#202020";
   const INSECT_BODY = "#2a2622", INSECT_WING = "rgba(207,214,211,0.5)", INSECT_DEFORM = "#b0525c";
   const AIR_COLOR = "#e8eef0", RAIN_COLOR = "#8fb6d8";
   const FIRE_LIT = "#f08a2a", FIRE_CORE = "#ffd36a", FIRE_DARK = "#b8321e";
@@ -328,7 +329,7 @@
   }
 
   /* ---- draw a single chunk (with meld + trade + storm shudder) -------- */
-  function drawOneChunk(ctx, i, s) {
+  function drawOneChunk(ctx, i, s, ss) {   // ss: the storm clock (the rock clock runs 7.6 ahead of it)
     const c = CHUNKS[i];
     const p = chunkAt(i, s);
     if (!p.alive && !(c.mode === "break" && s - c.birth > c.tb)) return;
@@ -339,8 +340,8 @@
     // storm shudder: chunks inside an active air or fire storm jitter
     for (let k = 0; k < STORMS.length; k++) {
       const st = STORMS[k];
-      if ((st.type === "air" || st.type === "fire") && inStorm(st, x, y, s)) {
-        const e = stormEnv(st, s);
+      if ((st.type === "air" || st.type === "fire") && inStorm(st, x, y, ss)) {
+        const e = stormEnv(st, ss);
         x += e * 10 * Math.sin(G.t * 40);
       }
     }
@@ -603,12 +604,16 @@
     // the 2.5 s beat plays the old 8 s timeline (x3.2), so the mass is whole by its end; trade runs on at 1:1
     const ms = G.secs("matter");
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
-    if (s < 0 || s > 20.6) return;
+    if (s > 20.6) return;
+    // the rocks gather during elements (break clock 6 to 9.5), with the air and sea; from the matter beat they carry on from where they were
+    const tb = G.secs("break");
+    const sr = ms < 0 ? Math.max(0, tb - 6) * 1.9 + 0.8 : s + 7.6;
+    if (tb >= 6) for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, sr, sr - 7.6);   // straight on the scene, not under the sea's shadow
+    if (s < 0) return;
 
     const outer = ctx;
-    ctx = GenElem.layerBegin(outer);   // all of it goes under the same deep shadow as the sea
+    ctx = GenElem.layerBegin(outer);   // all the rest goes under the same deep shadow as the sea
     drawStormsLayer(ctx, s, false); // air, rain: behind
-    for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, s);
     drawInsects(ctx, s);
     drawStormsLayer(ctx, s, true); // fire: in front
     drawMatterEvent(ctx, s);

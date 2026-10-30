@@ -133,7 +133,7 @@
     ctx.stroke();
     ctx.beginPath();
     ctx.ellipse(cx - 0.35 * r, cy - 0.35 * r, 0.22 * r, 0.12 * r, 0, 0, TAU);
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillStyle = "rgba(184,184,184,0.6)";   // white x OLD_DIM (0.72)
     ctx.fill();
     const back = -o.side;
     circle(ctx, x + back * 0.65 * r, y, 0.06 * h, o.lit);
@@ -477,7 +477,7 @@
       if (k === nearK) br *= 1.6;
       circSplit(ctx, () => { ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); },
         bx - 0.2 * br, o.lit, o.shade, br * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillStyle = "rgba(184,184,184,0.6)";   // white x OLD_DIM (0.72)
       ctx.fillRect(bx - 0.35 * br, by - 0.35 * br, 1, 1);
     }
   }
@@ -835,7 +835,7 @@
     }
     ctx.beginPath();
     ctx.ellipse(x, cy, rx, ry, 0, 0, TAU);
-    ctx.fillStyle = "#96404a";
+    ctx.fillStyle = "#6c2e35";   // #96404a x OLD_DIM (0.72), hue kept
     ctx.fill();
     const gap = 0.06;
     for (let k = 0; k < 4; k++) {
