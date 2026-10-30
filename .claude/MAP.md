@@ -22,7 +22,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
 - the gate, first-visit gate: js/site/entry.js (decision), js/site/intro.js (UI), css/gate.css
 - the level chip, rank card, level burst: js/site/xp.js (chip, ranks), js/site/surge.js (burst, card), css/beacon.css
-- the setting panel, Setting/Tier toggle: js/bridge/bridge-panel.js
+- the cutscene journal (gear/folder button and its panel): js/bridge/bridge-panel.js
 - the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
 - the places that bend the instruments: js/bridge/bridge-sites.js (SITES, GD_SITES), bridge-env.js
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
@@ -140,7 +140,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels` |
 | `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
-| `bridge-panel.js` | Setting panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
+| `bridge-panel.js` | Cutscene journal panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
@@ -161,7 +161,7 @@ does not — it is pure data, no dependency on `B`.
 - `bridge.js` publishes: `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin`
 - `bridge-input.js`: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, IntersectionObserver, `onPortrait`; minimap `rebuildTrack`/`syncLabels`
 - `bridge-panel.js`: `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins;
-- `bridge-panel.js`: setting panel: `applyPendingView`, `saveView`, genesis/gear buttons, `site:genesis-start`/`-done`, `drawIris`
+- `bridge-panel.js`: cutscene journal (Full intro + seen scenes, rebuilt on open and `site:genesis-done`): `applyPendingView`, `saveView`, journal/folder button, `site:genesis-start`/`-done`, `drawIris`
 - `bridge-panel.js` publishes: `B.applyPendingView saveView`; `window.__bridgeRefit`
 - `bridge-env.js`: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t}`;
 - `bridge-env.js`: `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases;
@@ -584,7 +584,7 @@ Project pages (`projects/*.html`) are redirect stubs and load no scripts.
 | Landmarks / beacons | `js/bridge/marks.js` `MARKS`; gated extras `js/depths/*` |
 | Depth node spawn / reveal / fly-in | `js/bridge/bridge-depths.js`; timing consts `FLY_*` in `bridge.js` |
 | Notes and hints | `js/bridge/bridge-notes.js` |
-| View persistence, iris FX, setting panel | `js/bridge/bridge-panel.js` |
+| View persistence, iris FX, cutscene journal | `js/bridge/bridge-panel.js` |
 | Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`) |
 | Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |

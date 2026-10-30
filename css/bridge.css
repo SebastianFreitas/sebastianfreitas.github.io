@@ -288,49 +288,61 @@
 /* ---- setting panel: centered in the open span between the two
    instrument banks. Cosmetic switch only — no map logic wired yet. ---- */
 #bridge-modes {
-  left: 50%; top: 5.6rem; transform: translateX(-50%);
+  left: var(--gutter); top: 5.6rem; transform: none;
   right: auto; bottom: auto;
 }
 .modes-panel {
   pointer-events: auto;
-  display: flex; align-items: center; gap: 1.2rem;
-  padding: 0.65rem 1.1rem;
-  background: rgba(9,13,15,0.86);
-  border: 1px solid rgb(var(--sage-rgb) / 0.18);
-  border-top: 2px solid var(--lamp);
-}
-.modes-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.modes-label {
-  font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--type-quiet);
-}
-.modes-btn {
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.09em;
-  text-transform: uppercase; text-align: center; cursor: pointer;
-  padding: 0.42rem 0.75rem;
-  color: var(--type-tag-ink);
-  background: var(--type-tag-bg); border: none; clip-path: var(--btn-scrape);
-  opacity: 0.78;
-  transition: opacity 0.2s;
-}
-.modes-btn:hover, .modes-btn:focus-visible, .modes-btn.active { opacity: 1; }
-/* on a phone the setting bar folds into this; desktop never sees it */
-.modes-gear {
   display: none;
+  position: absolute; left: 0; top: 44px;
+  flex-direction: column; gap: 0.15rem;
+  min-width: 11rem; max-height: 60vh; overflow-y: auto;
+  padding: 0.55rem 0.4rem 0.4rem;
+  background: #000;
+  border: 1px solid rgb(var(--sage-rgb) / 0.18);
+  border-top: 2px solid var(--type-red);
+}
+#bridge-modes.open .modes-panel { display: flex; }
+.modes-head {
+  margin-bottom: 0.4rem; padding: 0 14px 0.5rem;
+  border-bottom: 1px solid var(--type-red);
+  font-family: "Oranienbaum", "Cormorant SC", Georgia, serif; font-size: 0.7rem; line-height: 1; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgb(228 221 198 / 0.6);
+}
+.modes-list { display: flex; flex-direction: column; gap: 0.1rem; }
+.modes-btn {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: "Oranienbaum", "Cormorant SC", Georgia, serif; font-size: 1.15rem; line-height: 1; letter-spacing: 0.06em;
+  text-transform: uppercase; text-align: left; cursor: pointer; white-space: nowrap;
+  padding: 8px 14px;
+  color: #e4ddc6;
+  background: none; border: none;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.modes-btn::before {
+  content: ""; flex: none; width: 0; height: 0;
+  border-left: 0.5em solid #e4ddc6; border-top: 0.3em solid transparent; border-bottom: 0.3em solid transparent;
+}
+.modes-btn:hover::before, .modes-btn:focus-visible::before { border-left-color: #000; }
+.modes-btn:hover, .modes-btn:focus-visible { color: #000; background: var(--type-tag-bg); }
+.modes-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
+/* the cutscene journal: a folder button that opens the list below it */
+.modes-gear {
+  display: flex;
   pointer-events: auto; cursor: pointer;
   align-items: center; justify-content: center;
-  width: 32px; height: 32px; padding: 0;
-  color: var(--sage-dim);
-  background: rgba(9,13,15,0.62);
-  border: 1px solid rgb(var(--lamp-rgb) / 0.38);
-  opacity: 0.8;
-  transition: opacity 0.2s, color 0.2s, border-color 0.2s;
+  width: 40px; height: 40px; padding: 0;
+  color: #e4ddc6;
+  background: #000;
+  border: none; border-bottom: 1px solid var(--type-red);
+  opacity: 0.18;
+  transition: color 0.2s, background-color 0.2s, opacity 0.2s ease;
 }
-.modes-gear svg { display: block; width: 17px; height: 17px; }
-#bridge-modes.open .modes-gear {
-  opacity: 1; color: var(--lamp); border-color: rgb(var(--lamp-rgb) / 0.5);
-}
-/* hidden everywhere but the phone, where the gear is the only way in */
+.modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { opacity: 1; }
+.modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { color: #000; background: var(--type-tag-bg); }
+@media (prefers-reduced-motion: reduce) { .modes-gear { transition: none; } }
+.modes-gear svg { display: block; width: 24px; height: 24px; }
+/* phone only: says what the folder is until it is used */
 .modes-tip { display: none; }
 @keyframes modes-tip-pulse {
   0%, 100% { opacity: 0.55; }
@@ -716,38 +728,26 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   /* a 16:9 frame at sheet width would be taller than the sheet */
   .bnote.deep.wide .embed { aspect-ratio: auto; height: 11rem; }
 
-  /* the setting bar folds into a gear and drops down from it */
+  /* the journal drops down from the folder, flush to the left edge */
   #bridge-modes {
-    left: auto; right: 0.75rem; top: 2.4rem; bottom: auto;
+    left: var(--gutter); right: auto; top: 2.4rem; bottom: auto;
     transform: none;
   }
-  #bridge-modes .modes-gear { display: flex; }
-  /* a gear alone in a corner is furniture — say what it is until it is used */
+  /* a folder alone in a corner is furniture — say what it is until it is used */
   #bridge-modes .modes-tip {
     display: flex; align-items: center;
-    position: absolute; right: 2.5rem; top: 0; height: 32px;
+    position: absolute; left: 3rem; top: 0; height: 40px;
     pointer-events: none; white-space: nowrap;
     font-family: var(--mono); font-size: 0.55rem;
     letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--lamp);
+    color: var(--type-cream);
     animation: modes-tip-pulse 2.6s ease-in-out infinite;
   }
   #bridge-modes.open .modes-tip,
   #bridge-modes.tip-done .modes-tip { display: none; }
-  /* the bar is the desktop bar, unfolded sideways out of the gear — going
-     down would run it into the instruments and off the clipped hero */
   #bridge-modes .modes-panel {
-    display: none;
-    position: absolute; right: 2.5rem; top: 0;
-    align-items: center; min-height: 32px;
-    gap: 0.6rem; padding: 0.3rem 0.55rem;
-    max-width: calc(100vw - 4rem);
-  }
-  #bridge-modes.open .modes-panel { display: flex; }
-  #bridge-modes .modes-row { flex-wrap: nowrap; gap: 0.45rem; }
-  #bridge-modes .modes-label { font-size: 0.5rem; letter-spacing: 0.12em; }
-  #bridge-modes .modes-btn {
-    padding: 0.32rem 0.55rem; font-size: 0.55rem; white-space: nowrap;
+    left: 0; right: auto; transform: none;
+    max-width: calc(100vw - 1.5rem);
   }
 }
 

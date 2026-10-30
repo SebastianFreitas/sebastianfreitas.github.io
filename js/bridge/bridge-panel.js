@@ -100,21 +100,40 @@
   B.saveView = saveView;
   addEventListener("pagehide", saveView);
 
-  const genesisBtn = document.getElementById("mode-genesis");
-  if (genesisBtn) {
-    genesisBtn.addEventListener("pointerdown", e => e.stopPropagation());
-    genesisBtn.addEventListener("click", () => {
+  /* The cutscene journal: "Full intro" always, then one row per scene whose
+     seen flag is set (XP.has reads it without setting it). Rebuilt on open
+     and when a cutscene ends; rows do nothing while one is running. */
+  const SCENE_NAMES = { birth: "Birth", root: "Root", rex: "Rex", valkhar: "Valkhar", mainland: "Mainland" };
+  const modesList = document.getElementById("modes-list");
+  let closeJournal = () => {};
+  function journalRow(label, play) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "modes-btn";
+    b.textContent = label;
+    b.addEventListener("pointerdown", e => e.stopPropagation());
+    b.addEventListener("click", () => {
       if (!window.Genesis || Genesis.active) return;
-      Genesis.play({
-        thenMode: "void",
-        thenCamX: LAND.bridge,
-      });
+      closeJournal();
+      play();
+    });
+    modesList.appendChild(b);
+  }
+  function buildJournal() {
+    if (!modesList) return;
+    modesList.textContent = "";
+    journalRow("Full intro", () => Genesis.play({ thenMode: "void", thenCamX: LAND.bridge }));
+    const order = (window.Gen && Gen.SCENE_ORDER) || Object.keys(SCENE_NAMES);
+    order.forEach(id => {
+      if (window.Genesis && Genesis.segmentSeen(id))
+        journalRow(SCENE_NAMES[id] || id, () => Genesis.playScene(id));
     });
   }
+  buildJournal();
+  document.addEventListener("site:genesis-done", buildJournal);
 
-  /* On a phone the setting bar is folded away behind a gear (see bridge.css).
-     The buttons stay in the DOM at all times — modeBtns was queried once at
-     load — so this only ever toggles a class. */
+  /* The journal is folded away behind a folder button on every width (see
+     bridge.css); this only ever toggles a class. */
   const gearBtn = document.getElementById("modes-gear");
   if (gearBtn && modesPanel) {
     /* the gear is unlabelled furniture until someone uses it once — the tip
@@ -131,16 +150,15 @@
     const setOpen = on => {
       modesPanel.classList.toggle("open", on);
       gearBtn.setAttribute("aria-expanded", on ? "true" : "false");
-      if (on) retireTip();
+      if (on) { buildJournal(); retireTip(); }
     };
+    closeJournal = () => setOpen(false);
     gearBtn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); });
     gearBtn.addEventListener("click", e => {
       e.stopPropagation();
       setOpen(!modesPanel.classList.contains("open"));
     });
-    // picking anything inside closes it, and so does a tap anywhere else
-    modesPanel.querySelectorAll(".modes-btn").forEach(b =>
-      b.addEventListener("click", () => setOpen(false)));
+    // picking a row closes it (journalRow), and so does a tap anywhere else
     document.addEventListener("pointerdown", e => {
       if (!modesPanel.contains(e.target)) setOpen(false);
     });
