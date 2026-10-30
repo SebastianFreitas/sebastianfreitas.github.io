@@ -647,6 +647,11 @@
     ctx.lineTo(x + it.w * 2, H * 3); ctx.lineTo(x - it.w, H * 3); ctx.closePath(); ctx.clip();
   }
 
+  function slideP(it, x) {   // how far the object has slid into place (0 to 1): 1 once the gas front has no reach left
+    const cx = x + it.w / 2, fr = cx < AF[4] ? AF[1] : AF[2];
+    return fr < 1e8 ? clamp01((fr - Math.abs(cx - AF[4])) / (0.1 * pW) - 0.35 * hash(it.x * 0.013 + 4.1)) : 1;
+  }
+
   function drawOne(ctx, it, x, y, H, t, kd, sc, pal, hp) {
     let wy = -H, dn = 0;
     if (!it.tip) {   // depth, the floor's view flipped: the screen top is near (1x, no tint, drawn last), the wave line is far (0.55x, water-tinted, drawn first); the object's own waterline wy sits at its depth in the band, its top sunk there and its body hangs down out of the water
@@ -657,6 +662,15 @@
       y = low - it.bh - it.bt;
     }
     if (!it.metal) y += it.wa * sc * Math.sin(it.wf * t + it.wp);   // a rock never moves: the air passes round it
+    const y0 = y;   // the resting row: a cloud's cut line stays here while it slides down into place behind the band
+    let raised = false;
+    if (!it.tip) {   // emergence: hidden until the gas front reaches the object's centre, then it slides down from behind the band (its own stagger, a small overshoot to settle)
+      const p = slideP(it, x), u = p - 1;
+      if (p < 1 || AF[1] < 1e8 || AF[2] < 1e8) {
+        y -= (1 - (1 + 2.2 * u * u * u + 1.2 * u * u)) * (it.bh + it.bt + 0.04 * H);   // easeOutBack
+        raised = (x + it.w / 2 < AF[4] ? AF[1] : AF[2]) < 1e8;
+      }
+    }
     const g = clamp01(kd);
     const hang = (over) => { for (let j = 0; j < it.hs.length; j++) {   // over: the metal's worms, drawn after the body so they crawl over it
       const q = it.hs[j];
@@ -670,7 +684,7 @@
         if (cap <= 0) continue;
         ctx.save();   // a hanger is in the water above its own waterline and the wave line: nothing of it shows there
         const ln = q.o.len; q.o.len = Math.min(ln, cap) * HANG_SCALE;   // every hanger is HANG_SCALE of its original length
-        if (q.o.kd.name === 'fin') cutClip(ctx, it, x, y, H);   // a fin shows only below its body's cut line, like the body
+        if (q.o.kd.name === 'fin') cutClip(ctx, it, x, y0, H);   // a fin shows only below its body's cut line, like the body
         q.o.kd.draw(ctx, q.o, hx, hy, H, g, t, sc, pal);
         q.o.len = ln;
         ctx.restore();
@@ -691,7 +705,8 @@
     if (it.tip) return;   // the tip sprites are no longer drawn: the code band is the back layer
     ctx.save();
     if (it.mem && BELOW) ctx.clip(BELOW);   // a membrane body runs up past the band: only the band's live lower edge cuts it
-    else if (!it.tiny && !it.metal) cutClip(ctx, it, x, y, H);   // a rock is whole (the air band hides it); a tiny cloud is drawn whole, never cut
+    else if (it.tiny) { if (raised && BELOW) ctx.clip(BELOW); }   // a tiny cloud is drawn whole, never cut; while it slides in from behind the band, only below the band's edge
+    else if (!it.metal) cutClip(ctx, it, x, y0, H);   // a rock is whole (the air band hides it)
     if (it.m) { ctx.translate(x + it.w, y); ctx.scale(-1, 1); } else { ctx.translate(x, y); }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     if (it.tiny) {
@@ -728,6 +743,7 @@
           const r0 = it.m ? it.w - it.bx1 : it.bx0, r1 = it.m ? it.w - it.bx0 : it.bx1; let lw = 0;
           for (let k = 0; k < 5; k++) lw += shc(xx + (r0 + (r1 - r0) * k / 4), pW) / 5;
           RKX[RKN] = xx + (r0 + r1) / 2; RKW[RKN] = (r1 - r0) / 2; RKB[RKN] = Math.min(lw * RKS + ROCKLO * H, 0.27 * H); RKV[RKN] = it.eyes && it.eyes.length ? RKB[RKN] - it.bh - it.bt + it.eyes[0].y - it.eyes[0].size * 0.6 - 0.015 * H : RKB[RKN] - 0.055 * H;   // the peek line: just above the eye's top, so only the rock's lower part shows
+          RKS_[RKN] = slideP(it, xx);
           rockR(it, xx, RKN, H);
           RKP[RKN] = 12 + 8 * hash(i * 3.3 + 9); RKO[RKN] = 0.08 - (3.5 + 3.5 * RKN) / RKP[RKN]; RKN++;   // the first peek starts 3.5 s in, the next rocks every 3.5 s after
         }
@@ -753,15 +769,15 @@
   // the fan: thin lines racing out of the horizon centre in the 1.2 s before the ceiling's gate opens (sea level k > 0 at
   // secs("break") 1.21, found by probing SRISE), held, then faded over the first 0.8 s of the ceiling's own clock
   const FAN_N = 14, FAN_LEAD = 1.2, FAN_OUT = 0.6, FAN_FADE = 0.8;
-  function drawFan(ctx, W, H, k, t) {
+  function drawFan(ctx, W, H, k, t, sh) {   // sh: secs("break") at which the air starts (the fan leads into it by 1.21 s, then fades)
     const G = window.Gen;
     if (!t || !G || typeof G.secs !== "function") return;   // t === 0 is the reduced-motion still: no intro
     let grow, a;
     if (k > 0) {
-      a = 1 - clamp01((t - t0) / FAN_FADE); grow = 1;
+      a = 1 - clamp01((G.secs("break") - sh) / FAN_FADE); grow = 1;
       if (!(a > 0)) return;
     } else {
-      const s = G.secs("break");
+      const s = G.secs("break") - sh + 1.21;
       if (s < 0 || s > FAN_LEAD + 0.05) return;
       grow = clamp01(s / FAN_OUT); a = 1;
     }
@@ -882,7 +898,7 @@
     const off = H * (0.03 * m0 * Math.sin(TAU * 4.1 * u + i * 1.7) + 0.022 * m1 * Math.sin(TAU * 9.7 * u + i * 3.1 + 1) + 0.007 * m2 * Math.sin(TAU * 17.3 * u + i * 2.3 + 3) + 0.018 * jt);
     let e = Math.max(0.005 * H, Math.min(base * AIRF[i] + off * 1.6 - 0.035 * H, cap));   // never below the old band line: the band must not cover the scene's orbs and rocks under the clouds; the mean sits 0.035 H up so the waves rarely reach the cap, where the clamp would flatten them
     e = Math.max(0.005 * H, e - 0.016 * H * (1 + Math.sin(TAU * 3.6 * u + i * 1.9)) * (0.6 + 0.4 * i / 3));   // a slow long-wave lift only upward: no stretch of about 300 px stays level, the 0.28 H limit and the rocks' bulges are kept
-    const sx = k / NS * W;
+    const sx = k / NS * W, eb = e;
     for (let r = 0; r < RKN; r++) {   // over a rock every layer's edge blends between two lines: rest just below the rock's bottom row (the rock wholly covered), peek showing its lower part; the pouch rises and sinks on the rock's own cycle, the rock never moves
       const d = Math.abs(sx - RKX[r]) / RKW[r];
       const RKR = sx < RKX[r] ? RKL[r] : RKQ[r];
@@ -891,12 +907,18 @@
       const s = a * a * (3 - 2 * a) * (1 - b * b * (3 - 2 * b)), wx = Math.sqrt(1 - d * d / (RKR * RKR));   // a round bulge: deepest under the rock, falling away smoothly, no flat core
       const sd = (sx - RKX[r]) / RKW[r], st = 0.006 * H - i * 0.03 * H * (1 + 0.55 * Math.sin((1.1 + 0.9 * i) * sd * 2.4 + i * 2.1 + r * 1.3)), rest = Math.min(RKB[r] + 0.006 * H + st, 0.28 * H), peek = Math.max(0.005 * H, RKV[r] + st);
       const L = rest + (peek - rest) * s + off * 0.5 * (1 - wx) + 0.014 * H * (1 - Math.sin(TAU * 3.6 * u + i * 1.9));   // the layer's own wobble rides on the blended line, damped to nothing at the rock's core so rest never shows a tip; the band's long wave (sag only, never toward the rock, so rest stays covered) runs through the whole bulge
-      e += (Math.max(Math.min(L, 0.28 * H), e) - e) * wx;   // each layer's bulge hangs from its own height (layer gaps stay about as wide as the band's) so the pale layers do not fill the pouch; never above the band's own line
+      e += (Math.max(Math.min(L, 0.28 * H), e) - e) * wx * Math.max(AF[5] * (0.2 + 0.8 * AF[5] * AF[5]), RKS_[r]);   // each layer's bulge hangs from its own height (layer gaps stay about as wide as the band's) so the pale layers do not fill the pouch; never above the band's own line; it swells down to its shape as its rock slides in (or after the front has passed, if later), so the rock arrives covered
+    }
+    const dx = sx - AF[4], R = dx < 0 ? AF[1] : AF[2], lw = AF[3];
+    if (R < Math.abs(dx) + lw * 1.3) {   // the front's lip: irregular, a different line per layer, bulging below the band where it rolls on, nothing at all beyond it
+      const dd = Math.abs(dx) + lw * 0.3 * (Math.sin(k * 0.31 + i * 1.9 + t * 0.4) + 0.6 * Math.sin(k * 0.83 + i * 3.1 - t * 0.3)), q = smooth(clamp01((dd - R) / lw)), uu = clamp01((R - dd) / (0.1 * W));
+      e += (-0.1 * H - e) * q + (uu < 1 ? 0.16 * H * Math.sin(Math.PI * uu) * (1 - q) : 0);
     }
     return e;
   }
+  let AF = [1, 1e9, 1e9, 1, 0, 1];   // the gas front (GenElem.airFront)
   const ROCKLO = -0.005, RKS = 0.5;   // RKS: a rock's bottom row sits RKS of the way down the band's mean lower edge, so a deep surge (break) does not hang a deep bulge under it; the bulge's depth is the rock's bottom row, the band beside it sits near the top
-  const RKM = 8, RKL = new Float32Array(RKM), RKQ = new Float32Array(RKM),RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
+  const RKM = 8, RKS_ = new Float32Array(RKM), RKL =new Float32Array(RKM), RKQ = new Float32Array(RKM),RKX = new Float32Array(RKM), RKW = new Float32Array(RKM), RKB = new Float32Array(RKM), RKV = new Float32Array(RKM), RKP = new Float32Array(RKM), RKO = new Float32Array(RKM);
   // each rock's bulge half-width (left and right of its centre, in rock widths): the smallest at which the rest line, at its worst, still passes below every column of the rock's lower
   // outline. The band's own line at a rock is taken RKE H above the rock's bottom row, its wobble term as large as it gets; rest is the airEdge rest line of the lowest layer
   const RKE = 0.085, RKJ = 0.033, RKMIN = 0.5;
@@ -927,21 +949,57 @@
       g.fill();
     }
   }
-  function shadow(c, w, h) {   // the deep shadow: one fill over what is painted (alpha kept), so every colour in the layer ends near black
+  // the gas front's line: a rolling, bulging curve out each way from the hole (uneven lobes along y, a hash of y, phases carried by the reach so they move with the front);
+  // the clip and the tone's two zones all take it, so there is one line. add widens the outer line, bw pulls the inner (tone) line back
+  function frontOff(y, H, side, R, W) {
+    const q = y / H + 0.1, ph = R * 0.004 + side * 2.3, w = ((q * 14 % AJN) + AJN) % AJN, j = Math.floor(w), jt = AJ[j] + (AJ[j + 1] - AJ[j]) * (w - j);
+    return W * Math.min(1, R / (0.2 * W)) * (0.05 * Math.sin(q * 7.1 + ph) + 0.035 * Math.sin(q * 15.3 - ph * 1.3 + 1) + 0.02 * jt);
+  }
+  function frontPoly(p, W, H, add, bw) {
+    const hx = AF[4], rl = AF[1], rr = AF[2], n = 24;
+    for (let j = 0; j <= n; j++) { const y = -0.1 * H + j / n * 0.9 * H; const x = hx - (rl < 1e8 ? Math.max(rl + add - bw + frontOff(y, H, 0, rl, W), 0) : 1e5); p[j ? 'lineTo' : 'moveTo'](x, y); }
+    for (let j = n; j >= 0; j--) { const y = -0.1 * H + j / n * 0.9 * H; p.lineTo(hx + (rr < 1e8 ? Math.max(rr + add - bw + frontOff(y, H, 1, rr, W), 0) : 1e5), y); }
+    p.closePath();
+  }
+  function shadow(c, w, h, lift, W, H) {   // the deep shadow: one fill over what is painted (alpha kept), so every colour in the layer ends near black; lift eases its alpha down while the gas forms
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = 'source-atop';
-    c.globalAlpha = 0.96;
-    c.fillStyle = 'rgb(6,7,7)';
-    c.fillRect(0, 0, w, h);
+    if (lift) {   // lift: [front-band lift, lift behind it]; the zones are the front's own rolling line and the same line pulled back, so no cut is straight
+      const a = w / W, lf = lift[1][1], lb = lift[3][1], add = AF[3] * 0.2, bw = 0.16 * W;
+      c.setTransform(a, 0, 0, a, 0, 0.1 * H * a);
+      const pa = new Path2D(), pb = new Path2D(), po = new Path2D(), pr = new Path2D();
+      frontPoly(pa, W, H, add, 0); frontPoly(pb, W, H, add, bw);
+      po.rect(-2 * W, -H, 5 * W, 3 * H); po.addPath(pa);
+      pr.addPath(pa); pr.addPath(pb);
+      c.fillStyle = 'rgba(6,7,7,0.96)'; c.fill(po, 'evenodd');
+      c.fillStyle = 'rgba(6,7,7,' + (0.96 - lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');
+      c.fillStyle = 'rgba(6,7,7,' + (0.96 - lb).toFixed(3) + ')'; c.fill(pb);
+      c.fillStyle = 'rgba(56,70,80,' + (0.56 * lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');   // then a flat slate tone over the gas's own shape: lighter while it swells, gone with the lift
+      c.fillStyle = 'rgba(56,70,80,' + (0.56 * lb).toFixed(3) + ')'; c.fill(pb);
+      c.setTransform(1, 0, 0, 1, 0, 0);
+    } else {
+      c.globalAlpha = 0.96;
+      c.fillStyle = 'rgb(6,7,7)';
+      c.fillRect(0, 0, w, h);
+    }
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
   }
+  function frontClip(c, W, H, t) {   // everything but the gas stays behind the front: the rolling line out each way from the hole, inside the band's own lip so nothing shows ahead of it
+    c.save();
+    c.beginPath();
+    frontPoly(c, W, H, AF[3] * 0.2, 0);
+    c.clip();
+  }
   function draw(ctx, W, H, k, t) {
-    if (!(k > 0)) { t0 = null; drawFan(ctx, W, H, 0, t); return; }
-    if (t && (t0 === null || t < lastT || t < t0)) t0 = t;
-    const kd = window.GenElem.seaLevel(W, H);   // the floor sea's own level, surge and settle included: one motion (reduced motion too)
+    const GE = window.GenElem;
+    AF = GE.airFront(W, H);   // the air's own progress, not the sea's: it starts as the first riser arrives
+    if (!(k > 0)) { t0 = null; drawFan(ctx, W, H, 0, t, GE.airStart()); return; }
+    if (t && (t0 === null || t < lastT || t < t0)) t0 = t;   // the gust clock keeps starting with the sea's gate, so the settled sky is unchanged
     lastT = t;
-    drawFan(ctx, W, H, k, t);
+    if (!AF[0]) { drawFan(ctx, W, H, 0, t, GE.airStart()); return; }
+    const kd = GE.seaLevel(W, H);   // the floor sea's own level, surge and settle included: the rocks and clouds grow with it (reduced motion too)
+    drawFan(ctx, W, H, k, t, GE.airStart());
     if (!(kd > 0)) return;
     const pal = window.GenCeilKinds.palette(), sc = Math.max(0.6, W / 1440);
     const cam = window.Gen && window.Gen.cam || 0;   // screen x = world x - cam * W, the sea's rate; negative too
@@ -957,7 +1015,7 @@
     oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, ow, oh); oc.setTransform(a, 0, 0, a, 0, H * 0.1 * a);
     ctx = oc;
     const x0 = cam * W;
-    const fl = window.GenElem.seaLine(W, H);
+    const fl = GE.seaLineRest(W, H);   // the floor's line at rest, wherever its water is: the air rolls out to this shape on its own progress
     let low = 0;
     for (let k = 0; k <= NS; k++) { SHC[k] = H - fl[k]; if (SHC[k] > low) low = SHC[k]; }   // the floor's own water line (its wave shape, level and surge) mirrored about the middle
     const yS = Math.min(1, (low + 0.02 * H) / (0.27 * H));   // the strokes stay above the clouds' lowest painted bottom (their bottoms sit on this line, plus their bob)
@@ -965,19 +1023,25 @@
     const sx = SEA.getContext('2d');
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.clearRect(0, 0, ow, oh); sx.setTransform(a, 0, 0, a, 0, H * 0.1 * a);
     const gu = t0 === null ? t : t - t0;   // the ceiling's own clock: a gust is alive at its first frame
+    const clipped = AF[1] < 1e8 || AF[2] < 1e8;
+    if (clipped) frontClip(sx, W, H, t);
     drawSprites(sx, W, H, t, kd, sc, pal, cam, false, 0, true);   // the rocks and their eyes first, under the band: the air passes over them, still
     drawSprites(sx, W, H, t, kd, sc, pal, cam, false, 2);
     paintAir(sx, W, H, t);   // the storm-slate band under the scene's own zoom and pan: erratic edges streaming sideways in gusts, not the sea's painter
     paintGusts(sx, W, H, gu, false, yS);   // the strokes behind the objects
-    shadow(sx, ow, oh);
+    const lift = GE.airLift(W, H);
+    shadow(sx, ow, oh, lift, W, H);
+    if (clipped) sx.restore();
     real.drawImage(SEA, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);   // the band first, then the objects over it (each cut at its own line): the rocks, every hanger and the rocks' eyes behind, the clouds over them, the ones behind first
     oc.setTransform(a, 0, 0, a, 0, H * 0.1 * a);   // under the same zoom and offset
+    if (clipped) frontClip(oc, W, H, t);
     TNY = 1; drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row, in seed order
     drawSprites(oc, W, H, t, kd, sc, pal, cam, null);   // the front object clouds, higher ones on top
     paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
     TNY = 2; drawSprites(oc, W, H, t, kd, sc, pal, cam, false); TNY = 0;   // the tiny clouds last: no stroke ever touches a spiral
     oc.setTransform(1, 0, 0, 1, 0, 0);
-    shadow(oc, ow, oh);
+    shadow(oc, ow, oh, lift, W, H);
+    if (clipped) oc.restore();
     real.drawImage(OFF, 0, 0, ow, oh, 0, -H * 0.1, W, H * 0.8);
     real.restore();
   }

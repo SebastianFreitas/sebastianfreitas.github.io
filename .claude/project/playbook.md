@@ -17,6 +17,11 @@ Local tools run with `py -3`; the cloud container has only `python3`.
 - **Cutscene frames:** `py -3 tools/gframes.py <run> [beat ...]` writes
   `snapshots/frames/<run>/<beat>.png`; `--scene <id>` takes that scene's
   beats and writes `<scene>-<beat>.png`.
+- **Cutscene end-state baseline:** `py -3 tools/gframes.py --full
+  10,11,12.5,14 <dir>` shoots 2000x1009 PNGs into `snapshots/<dir>/` at
+  those `secs("break")` times (shake off; the sea settles at 9.49, the
+  matter beat starts at 10). `py -3 tools/gframes.py --compare <dirA>
+  <dirB>` prints changed pixels per frame. Baseline: `snapshots/end-baseline`.
 - **JS check:** `py -3 tools/jscheck.py <files> --eval "<js>" [--shot
   out.png]` loads files in a headless page.
 - **Toy check:** `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]`

@@ -317,7 +317,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-clash.js` | `clash` beat inside: close view, Rex's fist drives the red dot into the womb wall in 4 blows (stepped octagon rings), the wall bulges and tears in held steps onto tier-1 strata: `draw` | `window.GenClash` (`draw(...,noActors)`, `geom`) |
 | `genesis-death.js` | `death` beat: clash backdrop without actors, Rex's fist steps into the tear and curls over the red dot, the arm steps to dead grey. `window.GenDeath` |
 | `genesis-gods-beat.js` | `gods` beat opening: the death frame cut by a stepped octagon onto the live land. `window.GenGodsBeat` |
-| `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
+| `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, chunkAt, MASS, massScale}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |

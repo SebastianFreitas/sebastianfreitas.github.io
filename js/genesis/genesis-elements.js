@@ -405,6 +405,10 @@
     let lx = ((uw + bd + pt.jit) * W - camOff + (pt.lump[1] - 0.5) * 0.16 * W) % spW;
     lx = (lx + spW) % spW;
     if (lx > spW - 0.2 * W) lx -= spW;
+    if (!G.reduced && SPR[3] > 1) {   // while the front runs out, the matter lands under it (a fixed reach per particle, from its nominal landing time)
+      const tn = Math.max(2.1, pt.birth + pt.life * 0.2 + pt.fall + 0.3), al = Math.max(frontR(tn) - SPR[4], 0.03 * W);
+      if (Math.abs(lx - SPR[2]) > al) lx = SPR[2] + Math.sign(lx - SPR[2]) * al;
+    }
     const lvl = Math.min(shAt(lx, W) + (bf ? H * 0.036 : 0), H * 0.96);   // the drawn surface, or the pile floor while it is still low
     const yland = Math.max(lvl + H * (0.004 - 0.016 * pt.gy), y1raw + 2);   // the landing is unchanged by the lower start
     const drop = Math.max(yland - y1, 2);
@@ -556,12 +560,16 @@
       ty = H * (1 - SEA_H * (0.2 + 0.7 * pt.gy));
     } else {
       tx = x0 + (hash1(pt.i * 7 + 17) - 0.5) * 0.04 * W;
-      ty = H * (0.06 + 0.26 * pt.gy);   // ends inside the sky art, which fills the frame above the horizon
+      ty = H * (0.01 + 0.05 * pt.gy);   // ends inside the gas at the top, which the front rolls out over it
     }
 
     const u = s - pt.splitT;
     const n = pt.steps;
-    const k = G.reduced ? n : (u < pt.hold ? 0 : Math.min(n, Math.floor((u - pt.hold) / pt.stepDur) + 1));
+    let k = G.reduced ? n : (u < pt.hold ? 0 : Math.min(n, Math.floor((u - pt.hold) / pt.stepDur) + 1));
+    if (fate === 2 && k === n && !G.reduced) {   // the last step waits, held, until the gas front has rolled out to it
+      surfFrame(s, W, H);
+      if (AIRP[x0 < AIRP[4] ? 1 : 2] < Math.abs(tx - AIRP[4])) k = n - 1;
+    }
 
     const f = k / n;
     const fe = fate === 2 ? 1 - (1 - f) * (1 - f) : f;   // risers slow as they reach the sky
@@ -570,8 +578,7 @@
 
     if (k < n) {
       let alpha = alpha0, sizeMul = sizeMul0;
-      if (fate === 2) alpha *= 1 - smooth(clamp((f - 0.45) / 0.55, 0, 1));   // melts into the sky's glow only at the top
-      else sizeMul *= mix(1, 0.5, f);
+      if (fate !== 2) sizeMul *= mix(1, 0.5, f);   // a riser stays whole until the gas takes it
 
       switch (pt.kind) {
         case "dust": drawDust(ctx, pt, x, y, a0, q0, alpha, sizeMul, angle0); break;
@@ -638,14 +645,95 @@
     SBASE = H * (0.86 + (1 - lvl) * (0.14 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));
     const wp = camOff / W, nw = WV.length - 1;
     for (let k = 0; k <= nw; k++) SY2[k] = SBASE + H * 0.0015 * Math.sin(k * 1.9 - t * 0.2 + wp * 3.7) + H * 0.012 * swellS(k / nw + wp, t);   // between the feet: flat, only a ripple
-    seaSurf(W, H, camOff, t, nw);
+    seaSurf(W, H, camOff, t, nw, SHA, 0, SRISE);   // the air's line (seaLine): today's level, unchanged
+    // the drawn sea: the water first runs out from the hole as a wave front (the first third of the sea's timing), then
+    // the whole surface rises on the rest of it and sloshes; from the fall on it is exactly today's line
+    const T1 = SFALL[3], Tk = SFALL[0], t0 = SPR[0] = Math.min.apply(null, SEA_LT), tsp = SPR[1] = Math.min(t0 + (T1 - t0) / 3, Tk - 0.01);
+    const hx = SPR[2] = G.sx(0), Lw = SPR[4] = 0.12 * W;
+    SPR[3] = Math.max(hx, W - hx) + Lw;
+    SPR[5] = Math.max(t0 + 1, (3.45 - 0.4) * TS);   // the edges at secs("break") 3.45
+    if (G.reduced) {   // still and visible: today's line, no front, lip or slosh
+      SCV.fill(0);
+      seaSurf(W, H, camOff, t, nw, SH, 0, SRISE);
+    } else {
+    const se = s >= Tk ? s : s < tsp ? t0 : t0 + (s - tsp) * (Tk - t0) / (Tk - tsp);
+    let nd = 0;
+    for (let i = 0; i < SEA_LT.length; i++) if (SEA_LT[i] <= se) nd++;
+    const srd = clamp(nd / (0.95 * SEA_LT.length), 0, 1);
+    let lvlD = srd + 2.4 * srd * Math.sin(Math.PI * srd);
+    if (s >= Tk) lvlD = lvl;
+    const sbd = H * (0.86 + (1 - lvlD) * (0.14 + 0.04 * (1 - smooth(clamp((s - 2) / 1.5, 0, 1)))));
+    seaSurf(W, H, camOff, t, nw, SH, sbd - SBASE, srd);
+    const R = frontR(s), Cw = 0.08 * W, env = s < tsp || s >= T1 ? 0 : Math.sin(Math.PI * (s - tsp) / (T1 - tsp));
+    const mnd = 1 - smooth(clamp((s - t0) / (Math.min(SPR[5], Tk - 0.01) - t0), 0, 1));   // gone by the time the front has run out
+    for (let k = 0; k <= NS; k++) {
+      const x = k / NS * W, d = Math.abs(x - hx), q = smooth(clamp((d - R) / Lw, 0, 1)), u = clamp((R - d) / Cw, 0, 1);
+      SCV[k] = q;
+      if (q > 0) SH[k] += (H * 1.03 - SH[k]) * q;   // ahead of the front: no water yet
+      if (u > 0 && u < 1) SH[k] -= H * 0.05 * Math.sin(Math.PI * u) * (1 - 0.5 * clamp((s - t0) / (SPR[5] - t0), 0, 1));   // the wedge at the front, standing well above the water behind it
+      if (q < 1 && mnd > 0) SH[k] -= H * 0.07 * mnd * Math.pow(clamp(1 - d / Math.max(R, 1), 0, 1), 0.7) * (1 - q);   // a mound under the hole, the water's start
+      if (env > 0) SH[k] += H * 0.018 * env * Math.cos(Math.PI * x / W) * Math.sin(TAU * (s - tsp) / 1.7);   // the slosh between the edges
+    }
+    }
+    // the air's own progress: the sea's line at rest (the level the mirrored band ends on), the gas front's reach each way, and how far the bulges have swelled
+    seaSurf(W, H, camOff, t, nw, SHR, H * 0.86 - SBASE, 1);
+    if (SAIR === null) {
+      SAIR = 1e9;
+      for (const pt of PARTS) if (pt.splits && pt.kind !== "light" && riseFate(pt)) SAIR = Math.min(SAIR, pt.splitT + pt.hold + (pt.steps - 1) * pt.stepDur);
+    }
+    AIRP[0] = G.reduced || s >= SAIR ? 1 : 0;
+    AIRP[3] = 0.12 * W; AIRP[4] = hx;
+    AIRP[1] = airReach(s, hx, AIR_DL);
+    AIRP[2] = airReach(s, W - hx, AIR_DR);
+    AIRP[5] = G.reduced ? 1 : smooth(clamp((s - SAIR - 0.5 * AIR_DR) / (SFALL[2] - SAIR - 0.5 * AIR_DR), 0, 1));
+  }
+
+  // the gas front out of the air above the hole: it starts when the first riser arrives and runs out each way (left quicker than right), reaching its edge at
+  // different moments; the lip is AIRP[3] wide. AIRP: on, reach left, reach right, lip, hole x, bulge swell (0 to 1)
+  const AIRP = [0, 0, 0, 1, 0, 1], SHR = new Float32Array(121), AIR_DL = 6, AIR_DR = 8.4;
+  let SAIR = null;
+  function riseFate(pt) { return (pt.fate === 1 ? (hash1(pt.i * 7 + 19) < 0.5 ? 0 : 2) : pt.fate) === 2; }
+  // the grade's lift while matter forms: the shadow thins where the front is (its band and lip, hard-edged) and less behind it, then back to today's by SFALL[2].
+  // Returns null or stops [screen x, lift] left to right (equal x = a hard edge); layerEnd and the ceiling's shadow turn them into one gradient fill
+  const LIFT_SEA = 0.8, LIFT_AIR = 0.8, LIFT_BEHIND = 0.5;
+  function liftStops(R, hx, lip, bw, lf, lb) {
+    R = Math.min(R, 4 * G.W);
+    const a = R - bw, b = R + lip;
+    return [[hx - b, 0], [hx - b, lf], [hx - Math.max(a, 0), lf], [hx - Math.max(a, 0), lb], [hx + Math.max(a, 0), lb], [hx + Math.max(a, 0), lf], [hx + b, lf], [hx + b, 0]];
+  }
+  function seaLift(W, H) {
+    if (G.reduced) return null;
+    const s = eclock(); surfFrame(s, W, H);
+    const e = smooth(clamp((s - SPR[0]) / 0.4, 0, 1)) * (1 - smooth(clamp((s - SFALL[0]) / (SFALL[2] - SFALL[0]), 0, 1)));
+    if (!(e > 0)) return null;
+    return liftStops(frontR(s), SPR[2], 0.4 * SPR[4], 0.16 * W, LIFT_SEA * e, LIFT_SEA * LIFT_BEHIND * e);
+  }
+  function airLift(W, H) {
+    if (G.reduced) return null;
+    const s = eclock(); surfFrame(s, W, H);
+    const e = SAIR + 0.5 * AIR_DR, k = smooth(clamp((s - SAIR) / 0.6, 0, 1)) * (1 - smooth(clamp((s - e) / (SFALL[2] - e), 0, 1)));
+    if (!(k > 0)) return null;
+    const hx = AIRP[4], rl = Math.min(AIRP[1], 4 * W), rr = Math.min(AIRP[2], 4 * W), lip = 0.5 * AIRP[3], bw = 0.16 * W, lf = LIFT_AIR * k, lb = lf * LIFT_BEHIND;
+    const al = Math.max(rl - bw, 0), ar = Math.max(rr - bw, 0);
+    return [[hx - rl - lip, 0], [hx - rl - lip, lf], [hx - al, lf], [hx - al, lb], [hx + ar, lb], [hx + ar, lf], [hx + rr + lip, lf], [hx + rr + lip, 0]];
+  }
+  function airReach(s, dist, dur) {
+    if (G.reduced || s - SAIR >= dur) return 1e9;
+    return 1.15 * (dist + 0.12 * G.W) * (1 - Math.pow(1 - clamp((s - SAIR) / dur, 0, 1), 2.2));
+  }
+
+  // the wave front's reach from the hole at s (px): it overshoots the far edge, so both edges are covered by the spread's end
+  const SPR = [0, 0, 0, 1, 1, 1], SCV = new Float32Array(121), SHA = new Float32Array(121);   // SPR[5]: s at which the front has reached both edges
+  function frontR(s) {
+    const p = clamp((s - SPR[0]) / ((SPR[5] - SPR[0]) / 0.61), 0, 1);   // 0.61: the share of the run at which the 1.15 overshoot reaches the far edge
+    return 1.15 * SPR[3] * (1 - Math.pow(1 - p, 2.2));
   }
 
   // the slow swell: a long low wave travelling along the sea line (wx in screen widths of world x), -1..1
   function swellS(wx, t) { return Math.sin(TAU * wx / 1.1 - t * 0.9); }
 
   // fills SH (the engraved surface: a seeded kind per world segment, swells against the piers) and the curl list
-  function seaSurf(W, H, camOff, t, nw) {
+  function seaSurf(W, H, camOff, t, nw, out, dy, rise) {
     const segW = W * 0.22, i0 = Math.floor(camOff / segW);
     for (let j = 0; j < SGN_; j++) {
       const i = i0 + j;
@@ -660,7 +748,7 @@
       // a low line, gently uneven: three slow seeded waves over the world x (wide scales), no relation to the bridge feet
       const uu = k / NS * nw, kk = Math.min(nw - 1, Math.floor(uu)), wx = (x + camOff) / W;
       const und = 0.004 * Math.sin(wx * TAU / 1.7 + 1.3) + 0.003 * Math.sin(wx * TAU / 0.83 + 4.1) + 0.0018 * Math.sin(wx * TAU / 0.41 + 2.2);
-      SH[k] = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) + H * (0.014 + und) * SRISE;
+      out[k] = SY2[kk] + (SY2[kk + 1] - SY2[kk]) * (uu - kk) + dy + H * (0.014 + und) * rise;
     }
   }
 
@@ -704,7 +792,7 @@
       seaPlan(pt, s, ox, W, H, camOff, spW);
       if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
     }
-    layerEnd(outer, ctx, dim); ctx = outer;
+    layerEnd(outer, ctx, dim, seaLift(W, H)); ctx = outer;
   }
 
   // the sea body, surface line and floating-piece rings; o: W, H, t, camOff, sh (NS+1 surface ys), bottom (far edge y),
@@ -1365,6 +1453,7 @@
       const g0 = !o.rare && (o.i % 7 === 0 || o.i % 7 === 2 || o.i % 7 === 4) ? 0.55 : 0;
       const g = G.reduced ? 1 : g0 + (1 - g0) * smooth(clamp((s - (g0 ? 2 : o.rs)) / (o.small ? 4 : 10), 0, 1));
       if (g <= 0) continue;
+      if (!G.reduced && SCV[Math.round(clamp(sx / W, 0, 1) * NS)] > 0.5) continue;   // the front has not reached it yet
       const yl = shAt(clamp(sx, 0, W), W) + (o.front ? H * 0.012 : 2) + o.dy * H;
       if (post === 2) {
         if (!o.small && OBN < 32) { OBX[OBN] = o.rare ? sx : sx + (o.xl + o.xr) * 0.5 * k; OBR[OBN] = (o.rare ? o.hw : (o.xr - o.xl) * 0.5) * k; OBY[OBN++] = yl; }
@@ -1426,13 +1515,30 @@
     c.setTransform(outer.getTransform());
     return c;
   }
-  function layerEnd(outer, c, dim) {
+  function layerEnd(outer, c, dim, lift) {
     c.save();
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = "source-atop";
-    c.globalAlpha = Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
-    c.fillStyle = "rgb(11,13,13)";
+    const base = Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
+    if (lift) {   // lift: stops [screen x, lift]; the shadow's alpha thins along x, so the front's band shows the sea's own colours
+      const m = outer.getTransform(), g = c.createLinearGradient(0, 0, LAY.width, 0);
+      for (let i = 0; i < lift.length; i++) g.addColorStop(clamp((m.a * lift[i][0] + m.e) / LAY.width, 0, 1), "rgba(11,13,13," + (base - lift[i][1]).toFixed(3) + ")");
+      c.globalAlpha = 1;
+      c.fillStyle = g;
+    } else {
+      c.globalAlpha = base;
+      c.fillStyle = "rgb(11,13,13)";
+    }
     c.fillRect(0, 0, LAY.width, LAY.height);
+    if (lift) {   // then a flat slate tone over the sea's own shape, on the same stops: hard-edged, strongest at the front and lip, gone with the lift
+      const m = outer.getTransform(), g = c.createLinearGradient(0, 0, LAY.width, 0);
+      for (let i = 0; i < lift.length; i++) {   // a hard stop (equal x) becomes a slope 0.07 of the width long, so no vertical line shows
+        const sl = i && lift[i][0] === lift[i - 1][0] ? 0.07 * LAY.width : 0;
+        g.addColorStop(clamp((m.a * lift[i][0] + m.e + sl) / LAY.width, 0, 1), "rgba(62,78,76," + (0.4 * lift[i][1]).toFixed(3) + ")");
+      }
+      c.fillStyle = g;
+      c.fillRect(0, 0, LAY.width, LAY.height);
+    }
     c.restore();
     outer.save();
     outer.setTransform(1, 0, 0, 1, 0, 0);
@@ -1691,5 +1797,5 @@
     }
     return out;
   }
-  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SH; }, seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK };
+  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SHA; }, seaLineRest(W, H) { surfFrame(eclock(), W, H); return SHR; }, airFront(W, H) { surfFrame(eclock(), W, H); return AIRP; }, airLift, airStart() { return SAIR / TS + 0.4; },seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK };
 })();
