@@ -152,15 +152,13 @@ window.XP = (function () {
     let pips = "";
     for (let k = 0; k < RANK_STEP; k++) pips += '<i style="--k:' + k + '"></i>';
     chip.innerHTML =
-      '<span class="xp-stack">' +
-        '<span class="xp-lv">LEVEL <b>0</b></span>' +
-        '<span class="xp-ref"></span>' +
-      '</span>' +
+      '<span class="xp-lv">LEVEL <b>0</b></span>' +
       '<span class="xp-badge">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="" vector-effect="non-scaling-stroke"/></svg>' +
       '</span>' +
       '<span class="xp-name"></span>' +
-      '<span class="xp-track">' + pips + '</span>';
+      '<span class="xp-track">' + pips + '</span>' +
+      '<span class="xp-ref"></span>';
     // the level belongs to the whole site, so it lives in the top bar
     const slot = document.getElementById("xp-slot");
     if (slot) slot.appendChild(chip);
