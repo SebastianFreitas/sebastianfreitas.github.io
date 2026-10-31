@@ -96,15 +96,17 @@ window.RedLines = (function () {
 
   // top row on the LEFT half, bottom row on the RIGHT half; the first piece overshoots its corner by 14-47 px (capped to the room left on screen).
   // Both rows end at or before 0.47 of the width; a closed row's bottom run is short and ends well clear of mid (gate keeps the long run).
-  function genPieces(W, seed, s, gate, lim) {
+  function genPieces(W, seed, s, gate, lim, minL) {
     const r = rng(seed * 3 + 1);
     const row = (n, mir, cap) => {
       const a = [], Ls = [], F = [];
+      const fl = minL ? minL / W : 0; // case plates: no piece shorter than minL px
       let x = -Math.min((14 + r() * 33) * s, cap) / W;
       const short = mir && !gate, e = short ? 0.33 + r() * 0.09 : 0.43 + r() * 0.04;
-      for (let i = 0; i < n; i++) Ls.push((0.06 + r() * 0.11 + (n === 2 ? 0.03 : 0)) * (short ? 0.7 : 1) * (n === 3 ? 0.8 : 1));
+      if (fl && n === 3 && 3 * fl > 0.45 * (e - x)) n = 2;
+      for (let i = 0; i < n; i++) Ls.push(Math.max(fl, (0.06 + r() * 0.11 + (n === 2 ? 0.03 : 0)) * (short ? 0.7 : 1) * (n === 3 ? 0.8 : 1)));
       for (let i = 0; i < n; i++) F.push(0.5 + r());
-      const gap = (e - x - Ls.reduce((u, v) => u + v, 0)) / F.slice(0, n - 1).reduce((u, v) => u + v, 0);
+      const gap = Math.max(fl ? 0.02 : -Infinity, (e - x - Ls.reduce((u, v) => u + v, 0)) / F.slice(0, n - 1).reduce((u, v) => u + v, 0));
       Ls.forEach((L, i) => {
         a.push(mir ? [W * (1 - x - L), W * (1 - x)] : [W * x, W * (x + L)]);
         x += L + gap * F[i];
@@ -116,11 +118,12 @@ window.RedLines = (function () {
 
   // one-sided stroke, as polygon points in plate coordinates; o 'h'/'v', out -1 = outside the box top/left, 1 = bottom/right;
   // sq = [start, end] square cut (else taper to 1.5 px); about 1/6 thin mid-way to 30-50% over 25-45% of the length, never break
-  function taper(o, x, y, L, t, out, ang, sd, sq, fin, fd) {
+  function taper(o, x, y, L, t, out, ang, sd, sq, fin, fd, ddMin) {
     const k = 0.15, R = rng((sd || 1) * 7919 + 13);
     let dm = R() < 1 / 6, dw = 0.25 + R() * 0.20, dc = 0.15 + dw / 2 + R() * (0.7 - dw), dd = 0.3 + R() * 0.2;
     const iL = fin || R() < 0.5, iR = fin || R() < 0.5;
     if (fd) { dm = true; dc = fd[0]; dw = fd[1]; dd = fd[2]; }
+    if (ddMin) dd = Math.max(dd, ddMin); // case plates: damage never thins past this, so it cannot read as a break
     const ps = [0, k, 1 - k, 1];
     if (dm) ps.push(dc - dw / 2, dc - dw / 6, dc + dw / 6, dc + dw / 2);
     ps.sort((a, b) => a - b);
@@ -172,7 +175,11 @@ window.RedLines = (function () {
   function build(W, H, E, c, seed, lim) {
     const s = Math.min(1, Math.max(c.smin || 0, W / (c.ref * 0.9)));
     const polys = [];
-    const sq = cornerSq(W, H, seed), r = rng(seed + 7), g = genPieces(W, seed, s, c.gate, lim);
+    // a case plate from 900 px up: the wash fades out at c.textR (the mask's last stop), so every piece is laid out in Wx, the right side ends there and has no vertical
+    const Wx = c.case && c.textR ? Math.min(W, c.textR) : W, cut = rng(seed * 19 + 4), cOff = Math.floor(cut() * 6), CP = [1, 0, 0, 1, 1, 0];
+    let ck = 0;
+    const sq = c.case ? (x, y, rr) => CP[(ck++ + cOff) % 6] === 1 : cornerSq(W, H, seed), r = rng(seed + 7);
+    const g = genPieces(Wx, seed, s, c.gate, c.case && Wx < W ? [lim[0], 0] : lim, c.case ? 40 : 0);
     const seg = (P, xm) => { const u = xm / W; let i = 1; while (i < P.length - 1 && u > P[i][0]) i++; return [P[i - 1][0] * W, P[i - 1][1], P[i][0] * W, P[i][1]]; };
     // angle = the edge segment under the piece's midpoint; the line passes through the edge at the midpoint
     const place = (p, P, base) => {
@@ -196,7 +203,7 @@ window.RedLines = (function () {
       const fr = rng(seed * 13 + 9), fw = 0.25 + fr() * 0.2, fd = [0.15 + fw / 2 + fr() * (0.7 - fw), fw, 0.3 + fr() * 0.2];
       const kv = rng(seed * 31 + 5), cap = innerHeight * 0.9;
       const lL = Math.min(H * (0.6 + kv() * 0.3), cap), rL = Math.min(H * (0.6 + kv() * 0.3), cap), ly = -(10 + kv() * 20) * s;
-      const ry = H + c.rover * s - rL, rOn = ry < innerHeight;
+      const ry = H + c.rover * s - rL, rOn = !(c.case && Wx < W) && (c.far || ry < innerHeight); // c.far: a case plate is many screens tall, its bottom corner is far below the first screen
       const cand = [["l", 0, lL]];
       if (rOn) cand.push(["r", 0, rL]);
       g.top.forEach((p, i) => cand.push(["t", i, p[1] - p[0]]));
@@ -205,18 +212,18 @@ window.RedLines = (function () {
       const thin = (k, i) => (pk[0] === k && pk[1] === i ? fd : undefined);
       g.top.forEach((p, i) => {
         const q = place(p, E.t, 0);
-        polys.push(taper("h", p[0], q[0], q[1], (4 + Math.round(r() * 2)) * s, -1, q[2], seed * 100 + i, [sq(p[0], 0, r), sq(p[1], 0, r)], 0, thin("t", i)));
+        polys.push(taper("h", p[0], q[0], q[1], (4 + Math.round(r() * 2)) * s, -1, q[2], seed * 100 + i, [sq(p[0], 0, r), sq(p[1], 0, r)], 0, thin("t", i), c.case ? 0.6 : 0));
       });
       g.bot.forEach((p, i) => {
         const q = place(p, E.b, H);
-        polys.push(taper("h", p[0], q[0], q[1], (4 + Math.round(r())) * s, 1, q[2], seed * 100 + 20 + i, [sq(p[0], H, r), sq(p[1], H, r)], 0, thin("b", i)));
+        polys.push(taper("h", p[0], q[0], q[1], (4 + Math.round(r())) * s, 1, q[2], seed * 100 + 20 + i, [sq(p[0], H, r), sq(p[1], H, r)], 0, thin("b", i), c.case ? 0.6 : 0));
       });
       // long verticals down both sides, 60-90% of the plate (one viewport at most); the right one hangs past the bottom corner
-      const rr = rng(seed * 29 + 11), ve = (x, y) => (y < 70 || y > H - 70 ? sq(x, y, rr, true) : rr() < 0.5);
-      const lt = c.left[0][2] * s, rt = c.rt * s;
+      const rr = rng(seed * 29 + 11), ve = (x, y) => (c.case ? rr() < 0.5 : y < 70 || y > H - 70 ? sq(x, y, rr, true) : rr() < 0.5);
+      const lt = c.left[0][2] * s, rt = c.case ? Math.max(1.5, lt * 0.5) : c.rt * s; // a case's right vertical is the quiet one
       const lx = Math.max(0, lt + 1 - lim[0]), rx = W - Math.max(0, rt + 1 - lim[1]);
-      polys.push(taper("v", lx, ly, lL, lt, -1, 0, seed * 100 + 50, [ve(0, ly), ve(0, ly + lL)], 0, thin("l", 0)));
-      if (rOn) polys.push(taper("v", rx, ry, rL, rt, 1, 0, seed * 100 + 90, [ve(W, ry), ve(W, ry + rL)], 0, thin("r", 0)));
+      polys.push(taper("v", lx, ly, lL, lt, -1, 0, seed * 100 + 50, [ve(0, ly), ve(0, ly + lL)], 0, thin("l", 0), c.case ? 0.6 : 0));
+      if (rOn) polys.push(taper("v", rx, ry, rL, rt, 1, 0, seed * 100 + 90, [ve(W, ry), ve(W, ry + rL)], 0, thin("r", 0), c.case ? 0.6 : 0));
       return pathOf(polys);
     }
     // gate: long verticals; an end within 70 px of a corner takes that corner's cut, else a coin flip
@@ -243,6 +250,7 @@ window.RedLines = (function () {
     if (cs.display === "none") { skipped.add(el); return false; }
     skipped.delete(el);
     const W = self ? W0 : parseFloat(cs.width) || W0, H = self ? H0 : parseFloat(cs.height) || H0;
+    if (el.matches("article.case")) { o.far = true; o.case = true; o.textR = innerWidth < 900 ? 0 : W * 0.81; } // 0.81: where the .case::before mask (css/style.css, clear at 85%) has faded out to the eye
     const seed = o.seed || hash(el.dataset.redlines || el.id || "plate");
     let svg = self ? el._red : el.querySelector(":scope > svg.redlines");
     if (!svg) {

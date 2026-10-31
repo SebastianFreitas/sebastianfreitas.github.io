@@ -1,4 +1,4 @@
-Status: blocked
+Status: phase-done
 # Plan state: dishonored-pass
 
 ## Plan
@@ -19,7 +19,29 @@ dishonored-pass, `.claude/plans/dishonored-pass.md`. Branch `claude/website-visu
 - Red lines (phase 14): js/site/redlines.js, `window.RedLines`, one `svg.redlines` per `[data-redlines]` plate, edge read from the plate's `::before` clip-path, seeded per plate, `kind` presets (`item` for cards and notes), shared debounced ResizeObserver. Notes: the svg is a sibling of `.bnote`, kept in step by `placeNote`. 404 draws on `.void-note` and `.foot-text`; surge.js calls `RedLines.draw` on the cards. Open row: `.obj[aria-expanded=true]` plain frame on black, neighbours within 60 px of it hide their pieces at the toggle and 700 ms later.
 
 ## Completed phase
-15 (rest, D79) · D79 fix landed on the branch, judge-d79 FAIL, stopped (D80). js/site/redlines.js: `sync()` skips `article.case`, `init` calls `sync()`.
+15 (rest, D85) · Desktop cut on the branch as 83a017c, judge-d85 FAIL on the phone set only, stopped (D86). The brief named phase 11 again; row 11 stays blocked (D65), so it was ignored.
+- Shots for the owner: `%TEMP%/dp-pass/p15/d85/` (`<case>-bottom-1440`, `-375`, `-crop-bottom-1440`, `-crop-bottom-375`, for sector-zero, heavylight, conclusus). Reports `p15/judge-d85.md`, `p15/d85/verify.md`.
+- js/site/redlines.js: `textLimit` deleted, from 900 up `o.textR` is `W * 0.81`, which also turns the right vertical off, so no corner or stub. 0.81, not the mask's 85% stop: 85% ended 43 px past the visible fade at 1440. Reds end at the fade at x 778, 1007, 1015 at 1000, 1440, 1920. Top pieces uncapped: they never reach the fade. CSS not edited.
+- Phone: path `d` identical before and after at 375 on all three cases. Red pixels on body text at 1440: 0.
+- Checks: capture `dp-d85` 79/79. `snap.py compare dp-d83 dp-d85`: 82 same, 5 ok (`page-*-desktop` 0.02-0.04%, `bridge-void-bnote-land` 0.00%), no console errors. `page-voidscape-desktop` 0.02% is on the list although voidscape is not one of the three cases shot; not looked into, the size is noise level. Flows `deeplink`, `back`, `reload`, `work-open` pass; `worklink` only the known failure. Toyshot all three exit 0. Pagecheck `index.html#sector-zero` exit 0 at desktop and phone.
+- Open: the implementer saw failed resource loads as console noise; the URLs were not named and snap.py does not log them, so they are unidentified. Not compared against d8101d4.
+- Judge: 1440 passes all three statements on all three cases (no vertical or stub, ends at the fade, off the toy, mixed ends). 375: no tiny ticks 3 of 3; mixed ends visible 0 of 3 (pieces too thin to show end shapes, even at 3x); corner 0 of 3 (small even crosshair, a plain plus although both edges overshoot). No change from d83 at 375, as expected: D85 kept the phone set.
+
+Earlier in phase 15: 15 (rest, D83) · Tuning on the branch as d8101d4, judge-d83 FAIL, stopped (D84).
+- Shots for the owner: `%TEMP%/dp-pass/p15/d83/` (`<case>-bottom-1440`, `-375`, `-crop-corner-1440`, `-crop-vert-1440`, `-crop-bottom-375`, for sector-zero, heavylight, conclusus). Report `p15/judge-d83.md`. No verify or implementer report file: those notes went in the replies, numbers below.
+- js/site/redlines.js, case plates only: right vertical half the left (3 and 6 px at 1440, 1.5 and 2.6 at 375), 40 px floor on pieces, seeded square and tapered ends, damage stops at 60% of the stroke, from 900 up the reds lay out to the widest text child's right edge plus 20 px (1100 of 1152). The first build stopped at the mask's 30% stop and cut through body text, so a second spec moved the limit before judging.
+- Checks: `snap.py compare dp-d81 dp-d83`: 74 same, 13 ok (12 `page-*` 0.03-0.08%, `bridge-void-bnote-land` 0.00%), no console errors. Flows `deeplink`, `back`, `reload`, `work-open` pass; `worklink` only the known failure. Toyshot both exit 0. Pagecheck exit 0 at desktop and 375, no overflow.
+- Judge: rod gone (S1 3 of 3), ticks gone (S3 3 of 3). Fails: 375 no visible taper, 1440 HeavyLight's vertical runs through the left end of the blue toy, every 1440 case the vertical and corner stand about 160 px past where the plate visibly fades, corner reads as a T at 1440 and a plain plus at 375.
+- Disagreement: the implementer's red-on against red-off toy measure gave 0 hits on HeavyLight, the judge sees contact in the 1:1 shot at the top of the viewport. The measure was not re-run; the judge's reading stands.
+- Not exercised: no damage landed on a horizontal piece for the seeds shot.
+
+Earlier in phase 15: 15 (rest, D81) · D81 fix on the branch as 71b97fd, judge-d81 FAIL, stopped (D82). Main 84ad4c3 merged at c5a79a5 at the start hook's order.
+- Shots for the owner: `%TEMP%/dp-pass/p15/d81/` (`case-bottom-*`, `corner-*-x3`, `bottom-*-x3` at 1440 and 375). Reports `p15/d81/measure.md`, `p15/judge-d81.md`.
+- Cause measured: no clip. Every ancestor is overflow visible once open, nothing paints above the reds, and toggling each suspect left the red pixel count below the plate unchanged (1440: 682, 375: 57). The bottom pieces were whole (bbox bottom 8675 against H 8670.5). `build` skipped the right vertical because `ry` (about 8500 at 1440, 11000 at 375) is past `innerHeight`. Fix: `draw` sets `o.far` for `article.case`, `build` uses `rOn = c.far || ry < innerHeight`.
+- Checks: `snap.py compare dp-d81-before dp-d81`: 79 same, 8 `page-*` 0.02-0.06%, no console errors. Flows `deeplink`, `back`, `reload`, `work-open` pass; `worklink` only the known failure. Toyshot both exit 0. Pagecheck exit 0, no overflow at 375.
+- Judge: right vertical and corner crossing show (2 of 2). Fails: 375 first two bottom pieces tiny ticks, the notched one reads broken in two; 1440 right vertical a heavy solid rod, the strongest mark in frame, every end square, a plain plus sign, reds float past the faded wash and touch the monitor toy. d79's shots were Conclusus, d81's Sector Zero, so "lozenges" is neither cleared nor confirmed.
+
+Earlier in phase 15: 15 (rest, D79) · D79 fix landed on the branch, judge-d79 FAIL, stopped (D80). js/site/redlines.js: `sync()` skips `article.case`, `init` calls `sync()`.
 - Shots for the owner: `%TEMP%/dp-pass/p15/d79/` (`case-head-*`, `case-bottom-*`, `deeplink-*` at 1440 and 375, `sheet.png`, `corners.png`). Report `p15/judge-d79.md`.
 - Case plate 1 s after the open: visible, one path, at 1440 and 375, by click and by deep link. Close rows hidden 1 of 1 on click; 0 near on a deep link, so the hide was not exercised there.
 - Flows `deeplink`, `back`, `reload`, `work-open` pass; `worklink` only the known failure. Toyshot sector-zero `--y 0.4`, heavylight `--y 0.2` exit 0. Pagecheck `index.html#sector-zero` exit 0.
@@ -35,7 +57,7 @@ Earlier in phase 15: 15 · Final check four: checks run, look check FAIL, no fal
 - Judge-15 FAIL: 13 of 18 crops pass (7 of them with D77's known gaps); fails row-open and case-head at both widths, note-375. Reviewer: 3 gaps (Blocker).
 
 ## Next phase
-15 · Stopped for the owner (Blocker). Only the answer to Q2 restarts it. Row 11 stays `blocked` (D65): never take it. The runner's brief named phase 11 on this session; that row is not runnable, so it was ignored.
+None runnable: phase 15 closed by D87, nothing left but row 11. Row 11 stays `blocked` (D65): never take it.
 
 ## Requirements / gotchas
 - Never edit `:root` `--slab-scrape*`/`--tear`/`--stroke`; scopes declare their own.
@@ -46,11 +68,10 @@ Earlier in phase 15: 15 · Final check four: checks run, look check FAIL, no fal
 - pagecheck `tilted` counts transformed elements: it must be 0 only under reduced motion.
 
 ## Questions
-Q2 · Phase 15, D79's re-judge. The case plate's bottom corner fails: no right vertical, bottom pieces cut flat. Options: (a, recommended) one more fix spec: find what clips the case svg at the plate's bottom and right, fix it, re-judge `case-bottom-*`; (b) accept as built like D77, Stage done; (c) stop the reds on case plates at the top and left by design and accept.
-(The sheet question was answered: sheet 26 gate B, D72.)
+none
 
 ## Blocker
-Look check still FAIL after D79's one fix spec (D80): `case-bottom-1440`, `case-bottom-375`. The phase has no fallback and no fix spec left; Q2 is the owner's. Q1 was answered on 2026-10-30: (c), D79.
+none
 
 ## Carry forward
 - The next judge needs crops made for it: it has no crop tool, so enlarge thin runs and row frames into their own PNGs. Prompt implementers with one half of a spec at a time: p14-1 ran 74k against a 60k line, p14-2b 62k; the reviewer ran 93k against 80k.

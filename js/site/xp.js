@@ -142,7 +142,7 @@ window.XP = (function () {
   }
 
   /* ---- the chip ---- */
-  let chip, chipLevel, chipName, chipPips, chipBadge, chipPath;
+  let chip, chipLevel, chipName, chipRef, chipPips, chipBadge, chipPath;
   let rankKey = "";
   let swapOut = 0, swapIn = 0;
   function buildChip() {
@@ -152,18 +152,22 @@ window.XP = (function () {
     let pips = "";
     for (let k = 0; k < RANK_STEP; k++) pips += '<i style="--k:' + k + '"></i>';
     chip.innerHTML =
-      '<span class="xp-badge">' +
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d=""/></svg>' +
+      '<span class="xp-stack">' +
+        '<span class="xp-lv">LEVEL <b>0</b></span>' +
+        '<span class="xp-ref"></span>' +
       '</span>' +
-      '<span class="xp-lv">LEVEL <b>0</b></span>' +
-      '<span class="xp-track">' + pips + '</span>' +
-      '<span class="xp-ref"></span>';
+      '<span class="xp-badge">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="" vector-effect="non-scaling-stroke"/></svg>' +
+      '</span>' +
+      '<span class="xp-name"></span>' +
+      '<span class="xp-track">' + pips + '</span>';
     // the level belongs to the whole site, so it lives in the top bar
     const slot = document.getElementById("xp-slot");
     if (slot) slot.appendChild(chip);
     else { chip.classList.add("floating"); document.body.appendChild(chip); }
 
-    chipName  = chip.querySelector(".xp-ref");
+    chipName  = chip.querySelector(".xp-name");
+    chipRef   = chip.querySelector(".xp-ref");
     chipLevel = chip.querySelector(".xp-lv b");
     chipPips  = Array.from(chip.querySelectorAll(".xp-track i"));
     chipBadge = chip.querySelector(".xp-badge");
@@ -175,7 +179,8 @@ window.XP = (function () {
   function paint(levelOverride, fillOverride) {
     if (!chip || !chipName || !chipLevel || !chipPips.length) return;
     const lv = levelOverride == null ? state.level : levelOverride;
-    chipName.textContent = state.name + " · " + state.ref;
+    chipName.textContent = state.name;
+    chipRef.textContent = state.ref;
     chipLevel.textContent = lv;
     const rk = rankFor(lv);
     if (chipPath && chipBadge && rankKey !== rk.key) {
