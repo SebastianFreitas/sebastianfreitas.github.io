@@ -27,6 +27,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the places that bend the instruments: js/bridge/bridge-sites.js (SITES, GD_SITES), bridge-env.js
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
+- Eroded banners (rejected worn box ends): archive/eroded-banners/ (tools/worn.py, its caps, CSS diff, README.md); open only when the owner names it
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
 - case folder: `div.case-folder` under its game's row in section#work on index.html (js/site/folders.js, css/folder.css)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js

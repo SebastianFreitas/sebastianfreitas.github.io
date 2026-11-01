@@ -55,7 +55,7 @@ in those areas.
 
 `cv.pdf`, `media/`, `Temporary VoidScape Media/` and `__pycache__/`:
 list them for names only. In `snapshots/`, open only the PNGs you are
-reviewing.
+reviewing. `archive/eroded-banners/`: only when the owner names it.
 
 ## Scratch files
 

@@ -323,8 +323,8 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .topbar .xp-chip .xp-badge.swapping { animation: rankOut 0.2s ease-in forwards; }
 .topbar .xp-chip .xp-badge.arrived { animation: rankIn 0.55s cubic-bezier(.2,.9,.3,1); }
 /* centre group, left to right: LEVEL over ref, red outline rank symbol, the name on a worn white mark, exp track.
-   #c42b2b is for the symbol only; the mark's two worn ends are fixed-size masks, the clean middle is a solid layer that flexes */
-.topbar .xp-chip { position: relative; --rank-red: #c42b2b; gap: 14px; letter-spacing: 0; text-transform: none; }
+   the symbol takes the site red (--type-red); the mark's two worn ends are fixed-size masks, the clean middle is a solid layer that flexes */
+.topbar .xp-chip { position: relative; --rank-red: var(--type-red); gap: 14px; letter-spacing: 0; text-transform: none; }
 @media (min-width: 890px) and (pointer: fine) { .topbar .xp-chip { min-height: 35px; } }
 .topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-ref { font: 500 11px/1 "IBM Plex Mono", monospace; letter-spacing: 0.14em; color: #a8a89c; text-transform: uppercase; flex: none; }
 .topbar .xp-chip .xp-lv b { font: inherit; margin: 0; color: inherit; }
