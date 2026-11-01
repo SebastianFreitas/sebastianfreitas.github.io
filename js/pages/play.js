@@ -59,7 +59,7 @@
   // build one toy on first open (the old start body)
   function build(spec, rootEl) {
     const name = spec.name;
-    let mainEl = rootEl.querySelector(".case");
+    let mainEl = rootEl.matches("main.case") ? rootEl : rootEl.querySelector(".case");
     const topbar = document.querySelector(".topbar");
     if (!mainEl) return null;
 
@@ -124,6 +124,16 @@
       ctx.imageSmoothingEnabled = false;
     }
 
+    // the frame the toy paints inside: the open folder's inner box, or the whole viewport when rootEl is a game page's main.case
+    function frameBox() {
+      if (rootEl.matches("main.case")) return { l: 0, t: 0, r: V.W, b: V.H, pb: 0 };
+      const fr = rootEl.getBoundingClientRect();
+      return {
+        l: fr.left + rootEl.clientLeft, t: fr.top + rootEl.clientTop, r: fr.right - rootEl.clientLeft, b: fr.bottom - rootEl.clientTop,
+        pb: Math.max(0, Math.round(V.H - (fr.bottom - (rootEl.offsetHeight - rootEl.clientHeight - rootEl.clientTop)))),
+      };
+    }
+
     // document-space: main's content box, the free band to its right, and every child's rect
     function measure() {
       V.top = topbar ? Math.max(0, topbar.getBoundingClientRect().bottom) : 0;
@@ -139,8 +149,8 @@
       };
       V.band.x0 = Math.round(V.main.x + V.main.w + 16);
       // the open folder's inner box: toys lay out between L and R, not the viewport edges
-      const fr = rootEl.getBoundingClientRect();
-      V.L = Math.max(0, fr.left + rootEl.clientLeft); V.R = Math.min(V.W, fr.right - rootEl.clientLeft);
+      const fb = frameBox();
+      V.L = Math.max(0, fb.l); V.R = Math.min(V.W, fb.r);
       V.band.x1 = V.R - 16;
       document.documentElement.style.setProperty('--play-r', (V.W - V.R + 16) + 'px');   // panels and hints stay inside the frame
       V.band.w = V.band.x1 - V.band.x0;
@@ -258,11 +268,10 @@
       V.vis.length = n;
       spec.step(dt, V);
       // read the open folder's inner box before any style write; nothing the toy paints may leave it
-      const fr = rootEl.getBoundingClientRect();
-      fL = fr.left + rootEl.clientLeft; fT = fr.top + rootEl.clientTop;
-      fW = fr.right - rootEl.clientLeft - fL; fH = fr.bottom - rootEl.clientTop - fT;
+      const fb = frameBox();
+      fL = fb.l; fT = fb.t; fW = fb.r - fb.l; fH = fb.b - fb.t;
       // fixed panels and hints ride up with the frame's bottom edge near the folder's end
-      const pb = Math.max(0, Math.round(V.H - (fr.bottom - (rootEl.offsetHeight - rootEl.clientHeight - rootEl.clientTop))));
+      const pb = fb.pb;
       if (pb !== panelB) { panelB = pb; document.documentElement.style.setProperty('--play-b', pb + 'px'); }
       ctx.clearRect(0, 0, V.W, V.H);
       ctx.save(); ctx.beginPath(); ctx.rect(fL, fT, fW, fH); ctx.clip();
@@ -282,7 +291,7 @@
     // later opens: show again and remeasure
     toy.resume = function (root) {
       rootEl = root; panelB = -1;
-      mainEl = root.querySelector(".case") || mainEl;
+      mainEl = (root.matches("main.case") ? root : root.querySelector(".case")) || mainEl;
       V.mainEl = mainEl;
       for (const el of toy.panels) delete el.dataset.off;
       canvas.hidden = false; if (tiles) tiles.el.hidden = false;

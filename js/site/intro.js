@@ -32,7 +32,7 @@
   /* the heavy first-time work, four tasks; onStep(done, total) after each one */
   const WARM_CAP_MS = 8000;
   function warmUp(onStep) {
-    const total = 5;
+    const total = 4;
     let n = 0;
     const step = () => { n++; if (onStep) onStep(n, total); };
     const run = (fn) => Promise.resolve().then(fn).catch(() => {}).then(step);
@@ -42,7 +42,6 @@
     return Promise.all([
       run(() => Promise.all([loaded, document.fonts && document.fonts.ready])),
       run(() => loaded.then(() => window.Folders && Folders.warm())),
-      run(() => loaded.then(() => window.Folders && Folders.decodeImages())),
       run(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
         if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce();
         res();

@@ -178,9 +178,9 @@ def enter_via_gate(page, base, button="#gate-world"):
 
 
 def goto_cc(page, base):
-    """Open the Conclusus folder on the one-page site and wait until it is open."""
-    page.goto(base + "/#conclusus")
-    page.wait_for_selector("#conclusus.open")
+    """Load the Conclusus page and let its play layer start."""
+    page.goto(base + "/projects/conclusus.html")
+    page.wait_for_selector("#cc-taught")
     page.wait_for_timeout(1500)
 
 # ------------------------------------------------------------------ flows
@@ -712,9 +712,13 @@ def flow_shell(browser, base):
         has = page.locator(f"header.topbar nav a[href='{href}']").count() > 0
         check(f"top bar has {label}", has)
     for case in CASES:
-        nxt = page.locator(f"#{case} a[rel='next']")
-        href = nxt.first.get_attribute("href") if nxt.count() else None
-        check(f"{case}: rel=next points to {NEXT[case]}", href == f"#{NEXT[case]}", href)
+        link = page.locator(f"#{case} a.next")
+        href = link.first.get_attribute("href") if link.count() else None
+        check(f"{case}: folder links to its page", href == f"projects/{case}.html", href)
+        page.goto(f"{base}/projects/{case}.html")
+        href = page.evaluate("(document.querySelector('a[rel=next]') || {}).href")
+        check(f"{case}: page rel=next points to {NEXT[case]}", (href or "").endswith(f"/projects/{NEXT[case]}.html"), href)
+        page.goto(base + "/")
     ctx.close()
 
 
@@ -930,7 +934,7 @@ def flow_land_depths(browser, base):
 def flow_links(browser, base):
     """Every internal link and asset on every page answers 200, and #anchors exist."""
     ctx, page = new_page(browser)
-    pages = ["/"]
+    pages = ["/"] + [f"/projects/{c}.html" for c in CASES]
     seen: dict[str, int] = {}
     ids_on: dict[str, list] = {}
     broken: list[str] = []
@@ -964,10 +968,6 @@ def flow_links(browser, base):
     check(f"internal links and assets answer 200 ({len(seen)} checked)", not broken, broken)
     check("every #anchor points at an element that exists", not missing, missing)
     check("the four folder ids exist", all(c in ids_on["/"] for c in CASES), CASES)
-    for c in CASES:
-        page.goto(f"{base}/projects/{c}.html")
-        page.wait_for_url(f"**/#{c}")
-        check(f"stub {c}.html ends at /#{c}", page.url.endswith(f"/#{c}"), page.url)
     ctx.close()
 
 
@@ -1209,7 +1209,7 @@ def flow_cc_win(browser, base):
 
 
 def flow_work_open(browser, base):
-    """A Work row opens its case file inline under it: hash set, no page load, body right after the row, row panned to the top; clicking the row again closes it."""
+    """A Work row opens its teaser (clip, pitch, page link) inline under it: hash set, no page load, body right after the row, row panned to the top; clicking the row again closes it."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     page.click("a.obj[href='projects/conclusus.html']")
@@ -1232,37 +1232,55 @@ def flow_work_open(browser, base):
 
 
 def flow_one_open(browser, base):
-    """Opening a second folder closes the first: one .case-folder.open, one visible canvas.play."""
+    """Opening a second folder closes the first: one .case-folder.open."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     page.evaluate("Folders.open('voidscape')")
     page.wait_for_timeout(1000)
     page.evaluate("Folders.open('heavylight')")
     page.wait_for_timeout(1200)
-    # the toy starts only after the window wipe: poll for its canvas (up to ~4 s)
-    for _ in range(8):
-        if page.evaluate("document.querySelectorAll('canvas.play:not([hidden])').length") >= 1:
-            break
-        page.wait_for_timeout(500)
     r = page.evaluate("""() => ({
       open: document.querySelectorAll('.case-folder.open').length,
-      id: (document.querySelector('.case-folder.open') || {}).id,
-      canvases: Array.from(document.querySelectorAll('canvas.play')).filter(c => !c.hidden).length })""")
+      id: (document.querySelector('.case-folder.open') || {}).id })""")
     check("one-open: exactly one folder open", r["open"] == 1 and r["id"] == "heavylight", r)
-    check("one-open: exactly one canvas.play not hidden", r["canvases"] == 1, r)
     ctx.close()
 
 
-def flow_stub_redirect(browser, base):
-    """Each /projects/<game>.html stub lands on /#<game> with that folder open."""
+def flow_game_page_loads(browser, base):
+    """Each /projects/<game>.html loads as itself: no redirect, its own title, a Back to Work link."""
     ctx, page = new_page(browser)
     for c in CASES:
         page.goto(f"{base}/projects/{c}.html")
-        page.wait_for_url(f"**/#{c}")
         page.wait_for_timeout(600)
-        check(f"stub-redirect: {c} ends at /#{c}", page.url.endswith(f"/#{c}"), page.url)
-        check(f"stub-redirect: {c} folder is open", page.evaluate(
-            f"document.getElementById('{c}').classList.contains('open')"))
+        check(f"game-page: {c} stays on its page", page.url.endswith(f"/projects/{c}.html"), page.url)
+        back = page.locator("a.back")
+        check(f"game-page: {c} has Back to Work to /#{c}", back.count() == 1 and back.first.get_attribute("href") == f"../#{c}",
+              back.first.get_attribute("href") if back.count() else None)
+    ctx.close()
+
+
+def flow_game_page_roundtrip(browser, base):
+    """Row, folder, link, page, Back to Work, folder open, and the gate does not replay."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    scroll_to(page, "work")
+    page.click("a.obj[href='projects/voidscape.html']")
+    page.wait_for_timeout(SETTLE)
+    check("roundtrip: the folder opened", page.evaluate("document.getElementById('voidscape').classList.contains('open')"))
+    page.click("#voidscape a.next")
+    page.wait_for_url("**/projects/voidscape.html")
+    check("roundtrip: the link leads to the game page", page.url.endswith("/projects/voidscape.html"), page.url)
+    page.click("a.back")
+    page.wait_for_url("**/#voidscape")
+    seen = {"shown": False, "panel": False}
+    for _ in range(12):                     # sample the gate's real element across the first seconds
+        r = page.evaluate("""() => { const g = document.getElementById('site-gate'), p = document.getElementById('gate-panel');
+          return { shown: !!g && getComputedStyle(g).display !== 'none', panel: !!p && p.classList.contains('on') }; }""")
+        seen["shown"] = seen["shown"] or r["shown"]
+        seen["panel"] = seen["panel"] or r["panel"]
+        page.wait_for_timeout(250)
+    check("roundtrip: Back to Work does not replay the gate", not seen["shown"] and not seen["panel"], seen)
+    check("roundtrip: the folder is open", page.evaluate("document.getElementById('voidscape').classList.contains('open')"))
     ctx.close()
 
 
@@ -1293,7 +1311,7 @@ FLOWS = {
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,
     "cc-win": flow_cc_win,
-    "work-open": flow_work_open, "one-open": flow_one_open, "stub-redirect": flow_stub_redirect,
+    "work-open": flow_work_open, "one-open": flow_one_open, "game-page-loads": flow_game_page_loads, "game-page-roundtrip": flow_game_page_roundtrip,
     "loop-pause": flow_loop_pause,
 }
 

@@ -250,7 +250,7 @@ window.RedLines = (function () {
     if (cs.display === "none") { skipped.add(el); return false; }
     skipped.delete(el);
     const W = self ? W0 : parseFloat(cs.width) || W0, H = self ? H0 : parseFloat(cs.height) || H0;
-    if (el.matches("article.case")) { o.far = true; o.case = true; o.textR = innerWidth < 900 ? 0 : W * 0.81; } // 0.81: where the .case::before mask (css/style.css, clear at 85%) has faded out to the eye
+    if (el.matches("article.case, main.case")) { o.far = true; o.case = true; o.textR = innerWidth < 900 ? 0 : W * 0.81; } // 0.81: where the .case::before mask (css/style.css, clear at 85%) has faded out to the eye
     const seed = o.seed || hash(el.dataset.redlines || el.id || "plate");
     let svg = self ? el._red : el.querySelector(":scope > svg.redlines");
     if (!svg) {
@@ -300,7 +300,7 @@ window.RedLines = (function () {
     const open = document.querySelector(".obj[aria-expanded=true]"), fr = open && open.getBoundingClientRect();
     document.querySelectorAll("[data-redlines] > svg.redlines").forEach((svg) => {
       const el = svg.parentNode;
-      if (el.matches("article.case")) return;
+      if (el.matches("article.case, main.case")) return;
       let hide = false;
       if (open && el !== open) {
         const pr = el.getBoundingClientRect();

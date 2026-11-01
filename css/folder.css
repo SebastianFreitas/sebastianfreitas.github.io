@@ -103,8 +103,6 @@
 .work:has(#voidscape.open)::before { grid-row: 6 / auto; }
 .work:has(#conclusus.open)::before { grid-row: 8 / auto; }
 .work:has(#heavylight.open)::before { display: none; }
-/* the toy's fixed hint would cross the open folder's border: it waits until the folder closes */
-body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 .obj[aria-expanded="true"] h3 { color: var(--type-cream); }
 /* the case header band: opaque wash over the toy (D36) */
 .obj[aria-expanded="true"] { background: rgb(4 4 5); } /* black as the sheet draws the clicked row, opaque over the toy */
@@ -149,4 +147,14 @@ body:has(.obj[aria-expanded="true"]) .play-hint { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .folder-scan, .folder-kicker, .folder-glow { display: none; }
   .folder-bar { opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
+}
+
+/* the teaser leads with its clip, stacked (clip, pitch, link) below 900px; from 900px the clip takes the left two thirds and the pitch and link sit beside it, top-aligned. The row, the folder's top padding and the clip's margin take ~410px above the clip (~435px under Conclusus' taller row), so its height is capped only to keep its bottom in the viewport, ratio kept, uncropped */
+.folder-body > .case > video.clip { width: auto; max-width: 100%; margin-inline: auto; }
+@media (min-width: 900px) {
+  .folder-body > .case { display: grid; max-width: none; grid-template-columns: 5fr 2fr; grid-template-rows: auto 1fr; column-gap: clamp(1.5rem, 3vw, 3rem); align-items: start; }
+  .folder-body > .case > video.clip { grid-column: 1; grid-row: 1 / span 2; margin-inline: 0; max-height: max(8rem, calc(100vh - var(--clip-top, 415px))); }
+  #conclusus .folder-body > .case > video.clip { --clip-top: 440px; }
+  .folder-body > .case > p { grid-column: 2; grid-row: 1; margin-top: 0; }
+  .folder-body > .case > .case-nav { grid-column: 2; grid-row: 2; }
 }

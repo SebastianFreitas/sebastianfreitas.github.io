@@ -119,8 +119,7 @@ def main(argv):
         with sync_playwright() as p:
             browser = p.chromium.launch(args=snap.CHROME)
             ctx, page = snap.new_ctx(browser, snap.nav.DESKTOP, reduced_motion="no-preference")
-            page.goto(f"{base}/#{page_name}")
-            page.wait_for_selector(f"#{page_name}.open")
+            page.goto(f"{base}/projects/{page_name}.html")
             page.wait_for_load_state("load")
             snap.settle(page, 1000)
 
@@ -148,8 +147,7 @@ def main(argv):
             elif failure is None:
                 if "." in ys and 0 <= float(ys) <= 1:
                     lo, hi = page.evaluate(
-                        f"(() => {{ const s = document.getElementById('{page_name}'); "
-                        "return [s.offsetTop, Math.max(s.offsetTop, s.offsetTop + s.offsetHeight - innerHeight)]; })()"
+                        "[0, Math.max(0, document.documentElement.scrollHeight - innerHeight)]"
                     )
                     y = round(lo + float(ys) * (hi - lo))
                 else:

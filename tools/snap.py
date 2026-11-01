@@ -457,11 +457,23 @@ def genesis_scene(sid):
 def project_page(name, label, viewport):
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, viewport)
+        page.goto(f"{base}/projects/{name}.html")
+        page.wait_for_load_state("load")
+        settle(page, 1000)
+        shot(page, out_dir, f"page-{name}-{label}", full_page=True)
+        ctx.close()
+    return fn
+
+
+def folder_scene(name):
+    """The Work folder for a game, open from a deep link: lead clip, pitch, page link."""
+    def fn(browser, base, out_dir):
+        ctx, page = new_ctx(browser, nav.DESKTOP)
         page.goto(f"{base}/#{name}")
         page.wait_for_selector(f"#{name}.open")
         page.wait_for_load_state("load")
         settle(page, 1000)
-        shot(page, out_dir, f"page-{name}-{label}", full_page=True)
+        shot(page, out_dir, f"folder-{name}")
         ctx.close()
     return fn
 
@@ -495,14 +507,10 @@ def toy_page(name):
     viewport shots at each of TOY_STOPS. Fails when the toy is missing or blank."""
     def fn(browser, base, out_dir):
         ctx, page = new_ctx(browser, nav.DESKTOP, reduced_motion="no-preference")
-        page.goto(f"{base}/#{name}")
-        page.wait_for_selector(f"#{name}.open")
+        page.goto(f"{base}/projects/{name}.html")
         page.wait_for_load_state("load")
         settle(page, 1000)
-        lo, hi = page.evaluate(
-            f"(() => {{ const s = document.getElementById('{name}'); "
-            "const t = s.getBoundingClientRect().top + window.scrollY; "
-            "return [t, Math.max(t, t + s.offsetHeight - innerHeight)]; })()")
+        lo, hi = 0, page.evaluate("Math.max(0, document.documentElement.scrollHeight - innerHeight)")
         for label, frac in TOY_STOPS:
             toy_frame(page, round(lo + frac * (hi - lo)))
             ink = toy_ink(page)
@@ -551,6 +559,7 @@ def scenes():
         out.append((f"page-{name}-desktop", project_page(name, "desktop", nav.DESKTOP)))
         out.append((f"page-{name}-phone", project_page(name, "phone", nav.PHONE)))
         out.append((f"page-{name}-toy", toy_page(name)))
+        out.append((f"folder-{name}", folder_scene(name)))
     for section in ("work", "experience"):
         out.append((f"index-{section}-desktop", index_section(section, "desktop", nav.DESKTOP)))
         out.append((f"index-{section}-phone", index_section(section, "phone", nav.PHONE)))

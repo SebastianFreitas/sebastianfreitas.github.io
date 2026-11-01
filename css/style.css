@@ -104,6 +104,7 @@
   --slab-scrape-tall: polygon(0 0, 9% min(var(--tear), 24px), 12% 3px, 31% calc(min(var(--tear), 24px) * 0.7), 36% 1px, 55% calc(min(var(--tear), 24px) * 0.3), 73% 2px, 80% calc(min(var(--tear), 24px) * 0.55), 100% 0, calc(100% - var(--tear) * 0.5) 22%, 100% 40%, calc(100% - var(--tear) * 0.8) 63%, calc(100% - 5px) 100%, 85% calc(100% - min(var(--tear), 24px) * 0.3), 66% calc(100% - 3px), 61% calc(100% - min(var(--tear), 24px) * 0.8), 40% calc(100% - 1px), 33% calc(100% - min(var(--tear), 24px) * 0.5), 14% calc(100% - 6px), 0 100%, calc(var(--tear) * 0.6) 70%, 4px 48%, calc(var(--tear) * 0.9) 27%);
 }
 .work, .experience, footer { --stroke: rgb(4 4 5 / 0.92); --tear: 31.25px; }
+.page-case .folder-body { --stroke: rgb(4 4 5 / 0.92); --tear: 31.25px; }
 
 /* torn black stroke behind an element's text; the tilt is on the pseudo only */
 .slab { position: relative; isolation: isolate; }
@@ -438,6 +439,8 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 
 /* case pages have no hero: the bar sits in the flow and sticks, solid from the start */
 .page-case .topbar { position: sticky; }
+/* the gap the article has under its row in the folder: 54px of padding and the pitch's 1.2rem top margin */
+.page-case :where(.folder-body) main.case { padding-top: calc(clamp(2rem, 6vh, 4rem) + 1.2rem); }
 
 /* ---------------- sections wear the bar: black plate, cream, grey rules ---------------- */
 /* tokens re-pointed here only, never on :root (the bridge, gate and toys read the old ones) */
@@ -706,8 +709,8 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 }
 /* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
 @media (min-width: 900px) {
-  #conclusus .case { padding-top: 18vh; }
-  #conclusus .case h2 { margin-top: 5rem; }
+  .page-case main.case[data-redlines="case-conclusus"] { padding-top: 18vh; }
+  .page-case main.case[data-redlines="case-conclusus"] h2 { margin-top: 5rem; }
 }
 
 .clip {
