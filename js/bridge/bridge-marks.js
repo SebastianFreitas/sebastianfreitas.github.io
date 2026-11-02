@@ -100,10 +100,11 @@
         t: B.t, phase: m.phase, alpha: m.vis,
         active: B.activeMark === m, hover: B.hoverMark === m,
         claimed: window.XP && XP.has("beacon-" + m.id),
-        xp: m.xp, pop: m.pop, label: m.name,
+        xp: m.xp, pop: m.pop, label: m.poi > 0 || B.activeMark === m ? null : m.name,
         cutscene: !!(B.beaconSegment && B.beaconSegment[m.id]),
       });
     }
+    if (B.drawPoi) B.drawPoi(dt);
     // if none ever appear, say so once — beaconReport() has the detail
     if (!shown && markDebug < 4 && (markDebug += dt) >= 4)
       console.warn("no marks drawn in 4s — run beaconReport() for why");

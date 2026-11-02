@@ -51,7 +51,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the Watcher's alien: js/world/serus.js (Serus), inside js/world/watcher.js
 - the ship, the wedge hull, the shard: js/ship/voidship*.js (art, prow = the shard)
 - v bump, cache bust: tools/bump.py
-- the top bar, topbar: css/style.css (topbar rules); pinned on scroll
+- the top bar, topbar: css/style.css (topbar rules); pinned on scroll; its centre XP (chip, gauge, scale, trace) is hidden on `.topbar.is-solid` and `.page-case .topbar`, so it shows only over the bridge
 
 ## Shared state conventions
 
@@ -100,7 +100,7 @@ shares `Gen`:
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; index clips are not preloaded (lazy-video.js loads one when its folder is open and on screen) | uses `SiteEntry`, `XP` |
-| `surge.js` | Level burst at the chip on `xp:surge`; the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
+| `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
@@ -109,9 +109,9 @@ shares `Gen`:
 - `folders.js`: every open wipes an empty window first, defers the resize dispatch until the wipe ends, then fades the teaser in (300 ms, once the first images have decoded or 2.5 s; warm opens skip the wait).
 - `folders.js`: holds the hero loop (`B.hold`) and scroll anchoring from the click; measures each case at idle (cache keyed on window width and height) so the first click does no full layout.
 - `folders.js`: `warm()` measures every shut case (run by the gate's warm-up in intro.js); the opening push matches the closed layout (`body._y0`); fires `folder-settled` when the slide ends, and lazy-video.js holds a folder's videos until then.
-- `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), claim ceremony (never freezes the world; claims queue); only the bridge awards XP, cross-tab sync, `?reset=1`
-- `xp.js` queue: FIFO, one at a time, waits for no scroll and the bridge on screen; a rank-up waits for `xp:card-closed` (surge.js); `busy` while any wait; a hidden tab pauses the fallback timer.
-- `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` per level, `xp:rankup` once per rank crossed
+- `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), bar growth on a claim (no flying box or tag, never freezes the world); only the bridge awards XP, cross-tab sync, `?reset=1`
+- `xp.js` growth: `award` adds at once, `ceremony` walks the bar up one level per 600 ms (`B.barPeek` first, fill starts 400 ms later), extra awards just raise the target; `busy` while it walks; `xp:ceremony-done` at the end; `onRankUp` is the hook for ship upgrades.
+- `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` once per level filled and `xp:rankup` once per rank crossed
 
 ### js/hud
 
@@ -139,10 +139,11 @@ does not — it is pure data, no dependency on `B`.
 | File | Purpose | Publishes on `B` / `window` |
 |---|---|---|
 | `bridge.js` | Core | `window.Bridge` |
-| `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
+| `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `fileMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels coversViewport` |
 | `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
+| `bridge-poi.js` | Beacon detect-then-scan beat: brackets + POINT OF INTEREST label at range, 1 s SCANNING plate (name, percent, fill) above the ship on contact, then `fileMark` awards; cancels if the ship leaves; colour from `--hud-lamp-rgb` | `B.poiScan poiStep drawPoi` |
 | `bridge-panel.js` | Cutscene journal panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
@@ -157,6 +158,7 @@ does not — it is pure data, no dependency on `B`.
 - `bridge-notes.js`: `BEACON_SEGMENT` maps four beacons (void→birth, root, rex, rex-valkhar→valkhar) to Genesis scenes; its first claim plays it (`Genesis.playScene`) and after `xp:ceremony-done` (xp.js, 4.5 s fallback) plus a 500 ms beat.
 - `bridge-notes.js`: the note opens on `site:genesis-done`; once seen it carries a "Watch again" link.
 - `bridge-notes.js`: beacon XP keys stay `genesis-seg-<id>` so saved progress survives the scene split.
+- `bridge-notes.js`: `selectMark` hints, stops the ship and starts the scan (`B.poiScan`); `fileMark` awards, logs, reveals and shows the note. `showNote` adds a `.nhead` strip (beacon name + READING COMPLETE) and no longer draws the site's red line pieces.
 - `genesis.js`: segment plays fade a black `.genesis-veil` (css/bridge.css) in and out via `veilTo`; full plays cut.
 
 - `bridge.js`: `host`/`cv`/`ctx`, map consts (`SLOT LAND BOUNDS CAM VOID_MIN VOID_MAX HIT`), canvas `resize`, phone/portrait queries + `syncPhone`, gate deferral `readyBridge`/`startLoop`/`repaintUnderGate` + `site:preload`/`site:enter`, state,
@@ -465,8 +467,8 @@ Data read by both the bridge and a case page. No drawing, no state.
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | The entry gate: boot log, then the two paths. index only |
-| `css/bridge.css` | Everything hero/cockpit: HUD, notes, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
-| `css/beacon.css` | Level chip and pips, claim ceremony, surge burst, rank card |
+| `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
+| `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/folder.css` | The four Work folder teasers on index: inline body, hidden/clip states |
 | `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils, `.work` washes, 404), never a plate |
@@ -530,7 +532,7 @@ hud/instruments → hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/
 world/world → world/* → ship/voidship-art → ship/voidship-prow →
 ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
 bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,
-bridge-input, bridge-motifs, bridge-marks, bridge-panel, bridge-depths,
+bridge-input, bridge-motifs, bridge-marks, bridge-poi, bridge-panel, bridge-depths,
 bridge-env, bridge-readout, bridge-loop} → genesis/* → site/lazy-video →
 site/embed → shared/heavylight-sprites → site/folders → site/redlines →
 site/intro`.
@@ -605,7 +607,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Eldritch lore (tiers 1–3, old ones, why they dress, where clothes come from) | `.claude/lore/eldritch.md`; art rules `.claude/rules/art-style.md` "Eldritch"; plan `.claude/plans/genesis-eldritch.md`; new beats after `womb` `.claude/plans/genesis-eldritch-beats.md` |
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
-| Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
+| Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`/`onRankUp`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1`, `?gbeat=<name>` and `?gscene=<id>` in `genesis-state.js` |
 | Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js` |
 

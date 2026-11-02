@@ -112,15 +112,6 @@ window.Beacon = (function () {
 
       ctx.lineWidth = 1;
     }
-
-    // what it's worth, until it's been taken
-    if (!o.claimed && o.xp) {
-      ctx.font = `600 ${Math.round(13 * k)}px "IBM Plex Mono", monospace`;
-      ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillStyle = `rgba(${LAMP_},${0.6 * A})`;
-      ctx.fillText("+" + o.xp, x + 20 * k, y - 15 * k);
-      ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
-    }
   }
 
   return { draw, HIT };

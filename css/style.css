@@ -972,3 +972,16 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 .work, .experience { position: relative; z-index: 1; }
 /* one wall: each section's wash starts at the tone the one above ends on, and the smoke stays off the section edges */
 .work { background: linear-gradient(180deg, #605c55, #57534c); }
+
+/* the centre XP (chip, scale, trace, needle) belongs to the bridge: gone once the bar goes solid below the hero and on every case page */
+.topbar.is-solid > .xp-slot, .page-case .topbar > .xp-slot,
+.topbar.is-solid .xp-gauge, .page-case .topbar .xp-gauge,
+.topbar.is-solid::after, .page-case .topbar::after { display: none; }
+.topbar.is-solid::before, .page-case .topbar::before { background: linear-gradient(rgb(4, 4, 5), rgb(4, 4, 5)); }
+@media (min-width: 641px) {
+  /* the nav keeps the last column now that the centre cell is gone */
+  .topbar.is-solid > nav, .page-case .topbar > nav { grid-column: 3; }
+}
+@media (max-width: 640px) {
+  .topbar.is-solid, .page-case .topbar { grid-template-areas: "mark nav"; --bar-pb: 0.4rem; row-gap: 0; }
+}

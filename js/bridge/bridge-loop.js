@@ -42,6 +42,7 @@
         }
       }
 
+      if (B.scan) B.poiStep(dt);
       if (B.activeMark && Math.abs(B.camX - B.activeMark.cam) > SLOT * 0.9) B.clearMark();
       if (B.ship.thrustAmt > 0.15) B.hintDone("fuel");
       if (!B.ship.infinite && B.ship.fuel <= 0.05) {
@@ -69,7 +70,7 @@
   function atRest() {
     if (B.frozen || B.thrustId != null || B.vel !== 0) return false;
     if (window.Genesis && Genesis.active) return false;
-    if (!B.marksSettled()) return false;
+    if (B.scan || !B.marksSettled()) return false;
     if (!B.ship) return true;
     return Voidship.settled(B.ship);
   }

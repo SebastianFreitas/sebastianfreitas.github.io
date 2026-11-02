@@ -222,193 +222,99 @@ window.XP = (function () {
   /* =========================================================
      THE CLAIM
 
-     The world keeps moving; the level flies from wherever it was
-     taken up to the chip, and the pip being earned fills — slow at
-     first, then snapping shut. Crossing into a new rank also opens
+     Gaining a level only grows the bar: it peeks in, the gauge
+     fills smoothly one pip at a time (the number turns over as
+     each fills), and it leaves. Crossing into a new rank also opens
      the rank card (surge.js), which is the only thing that holds
      the world still.
      ========================================================= */
 
-  const easeIn  = u => u * u * u * u;                    // slow, then sharp
-  const easeOut = Util.easeOut;
+  const easeIn = u => u * u * u * u;                     // slow, then sharp
+  const PER_LEVEL = 600;                                 // ms of gauge per level gained
+  const PEEK_LEAD = 400;                                 // ms the bar takes to slide in before the gauge starts
 
   let ceremonyBusy = false;
-  const queue = [];   // claims that landed while another was still playing
+  let shown = 0;      // the level the bar has reached so far; it catches up to state.level
   let rowTimer = 0;
-  let pumpTimer = 0;
-  let lastScroll = -1e9;
-  addEventListener("scroll", () => { lastScroll = performance.now(); }, { passive: true, capture: true });
 
-  // a claim plays only while the page is still and the bridge is on screen
-  function canPlay() {
-    if (performance.now() - lastScroll < 250) return false;
-    const h = document.getElementById("bridge-hero");
-    if (document.documentElement.classList.contains("genesis-on")) return false;
-    if (!h) return true;
-    const r = h.getBoundingClientRect();
-    return r.bottom > 0 && r.top < innerHeight;
+  // a rank was crossed: the one place ship upgrades can attach to a level later
+  function onRankUp(from, to) {
+    chip.classList.add("rankup");
+    setTimeout(() => chip.classList.remove("rankup"), 1400);
+    try {
+      document.dispatchEvent(new CustomEvent("xp:rankup", {
+        detail: { level: to, count: RANKS.length, from: rankOf(from), to: rankOf(to) },
+      }));
+    } catch (e) { console.warn("rankup:", e); }
   }
 
-  // the only thing that starts a queued claim: one at a time, in order
-  function pump(delay) {
-    clearTimeout(pumpTimer);
-    pumpTimer = setTimeout(() => {
-      if (!queue.length || ceremonyBusy) return;
-      if (!canPlay()) return pump(200);
-      play(...queue.shift());
-    }, delay == null ? 200 : delay);
-  }
-
-  // every claim goes through the queue, first in first out
-  function ceremony(n, label, x, y, fromLevel) {
+  // awards add to state.level at once; one loop walks the bar up to it, however many land
+  function ceremony(fromLevel) {
     if (!chip) { paint(); return; }
-    queue.push([n, label, x, y, fromLevel]);
-    if (!ceremonyBusy) pump(0);
-  }
-
-  function play(n, label, x, y, fromLevel) {
-    const toLevel = fromLevel + n;
-    const milestone = rankIndex(fromLevel) !== rankIndex(toLevel);
-
+    if (window.Bridge && Bridge.barPeek) Bridge.barPeek((state.level - (ceremonyBusy ? shown : fromLevel)) * PER_LEVEL + PEEK_LEAD + 1500);
+    if (ceremonyBusy) return;
     ceremonyBusy = true;
+    shown = fromLevel;
+    paint(shown, 0);
 
-    // whatever happens next, the claim ends
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      ceremonyBusy = false;
-      window.dispatchEvent(new CustomEvent("xp:ceremony-done"));
-      if (queue.length) pump(120);
-    };
-    const FLY = milestone ? 1150 : 780;
-    const FILL = milestone ? 1250 : 820;
-    // a rank-up holds the queue until its card has closed (card opens 380 ms late, auto-closes at 3.8 s)
-    // (a hidden tab freezes the animation, so the timer waits for the tab to come back)
-    const fallback = () => {
-      if (document.hidden) {
-        const back = () => {
-          if (document.hidden) return;
-          document.removeEventListener("visibilitychange", back);
-          setTimeout(release, 1500);
-        };
-        document.addEventListener("visibilitychange", back);
-      } else release();
-    };
-    setTimeout(fallback, FLY + Math.max(240, FILL / n) * n + 1500 + (milestone ? 4600 : 0));
-    paint(fromLevel, 0);          // the run-up always starts empty
-    if (window.Bridge && Bridge.barPeek) Bridge.barPeek(FLY + FILL + 2500);
+    let f0 = null;
+    let crossed = false;
+    function run(now) {
+      if (f0 === null) f0 = now;
+      const u = Math.min(1, (now - f0) / PER_LEVEL);
+      paint(shown, easeIn(u));
+      if (u < 1) return requestAnimationFrame(step);
 
-    const target = chip.getBoundingClientRect();
-    let tx = target.left + target.width * 0.5;
-    let ty = target.top + target.height * 0.5;
-    const sx = typeof x === "number" ? x : tx;
-    const sy = typeof y === "number" ? y : ty - 60;
+      shown++;
+      f0 = null;
+      const rowDone = rankIndex(shown) !== rankIndex(shown - 1);
+      paint(shown, 0);
+      tick();
+      if (rowDone) flashRow(); else lightPip((shown % RANK_STEP) - 1);
+      try {
+        document.dispatchEvent(new CustomEvent("xp:surge", {
+          detail: { level: shown, total: TOTAL, milestone: rankIndex(fromLevel) !== rankIndex(state.level),
+                    rank: rankIndex(shown), pip: shown % RANK_STEP, rankUp: rowDone },
+        }));
+      } catch (e) { console.warn("surge:", e); }
+      if (rowDone) { crossed = true; onRankUp(shown - 1, shown); }
+      if (shown < state.level) return requestAnimationFrame(step);
 
-    // the token that carries it
-    const mote = document.createElement("div");
-    mote.className = "xp-mote";
-    mote.innerHTML = `<b>+${n}</b>`;
-    document.body.appendChild(mote);
-
-    const tag = document.createElement("div");
-    tag.className = "xp-tag";
-    tag.textContent = label || "";
-    tag.style.left = sx + "px"; tag.style.top = sy + "px";
-    if (label) document.body.appendChild(tag);
-    requestAnimationFrame(() => tag.classList.add("go"));
-
-    const arcX = (sx + tx) / 2;
-    const arcY = Math.min(sy, ty) - 130;      // lifts before it lands
-
-    let t0 = null;
-    function fly(now) {
-      if (t0 === null) t0 = now;
-      const tr = chip.getBoundingClientRect();
-      tx = tr.left + tr.width * 0.5; ty = tr.top + tr.height * 0.5;
-      const u = Math.min(1, (now - t0) / FLY);
-      const e = easeOut(u);
-      const iv = 1 - e;
-      const px = iv * iv * sx + 2 * iv * e * arcX + e * e * tx;
-      const py = iv * iv * sy + 2 * iv * e * arcY + e * e * ty;
-      mote.style.transform =
-        `translate(${px}px, ${py}px) translate(-50%,-50%) scale(${1 + (1 - e) * 0.9})`;
-      mote.style.opacity = u > 0.86 ? String((1 - u) / 0.14) : "1";
-      if (u < 1) return requestAnimationFrame(step2);
-      mote.remove(); tag.remove(); fill();
-    }
-    const step2 = now2 => { try { fly(now2); } catch (e) { console.warn("claim:", e); release(); } };
-    requestAnimationFrame(step2);
-
-    function fill() {
-      chip.classList.add("landing");
-      if (milestone) chip.classList.add("rankup");
-
-      /* one sweep of the bar per level gained: it fills to the top, and
-         only at the moment it's full does the number turn over */
-      const per = Math.max(240, FILL / n);
-      let step = 0, f0 = null;
-
-      function run(now) {
-        if (f0 === null) f0 = now;
-        const u = Math.min(1, (now - f0) / per);
-        paint(fromLevel + step, easeIn(u));
-        if (u < 1) return requestAnimationFrame(run);
-
-        step++;
-        const lvNow = fromLevel + step;
-        const rowDone = rankIndex(lvNow) !== rankIndex(lvNow - 1);
-        paint(lvNow, 0);
-        tick();
-        if (rowDone) flashRow(); else lightPip((lvNow % RANK_STEP) - 1);
-        try {
-          document.dispatchEvent(new CustomEvent("xp:surge", {
-            detail: { level: lvNow, total: TOTAL, milestone, rank: rankIndex(lvNow),
-                      pip: lvNow % RANK_STEP, rankUp: rowDone },
-          }));
-        } catch (e) { console.warn("surge:", e); }
-        if (step < n) { f0 = null; return requestAnimationFrame(run); }
-
-        chip.classList.remove("landing");
+      const finish = () => {
+        ceremonyBusy = false;
         paint();
         bump();
-        setTimeout(() => chip.classList.remove("rankup"), 1400);
-        if (milestone) {
-          try {
-            document.dispatchEvent(new CustomEvent("xp:rankup", {
-              detail: { level: toLevel, count: RANKS.length, from: rankOf(fromLevel), to: rankOf(toLevel) },
-            }));
-          } catch (e) { console.warn("rankup:", e); }
-          document.addEventListener("xp:card-closed", () => setTimeout(release, 250), { once: true });
-          return;
-        }
-        release();
-      }
-      requestAnimationFrame(now2 => { try { run(now2); } catch (e) { console.warn("claim:", e); release(); } });
+        window.dispatchEvent(new CustomEvent("xp:ceremony-done"));
+      };
+      // a rank crossed: the rank card is open or about to be, so the ceremony ends when it closes
+      if (crossed) document.addEventListener("xp:card-closed", () => setTimeout(finish, 250), { once: true });
+      else finish();
     }
+    const step = now => { try { run(now); } catch (e) { console.warn("claim:", e); ceremonyBusy = false; paint(); } };
+    setTimeout(() => requestAnimationFrame(step), PEEK_LEAD);
+  }
 
-    function tick() {
-      chip.classList.remove("tick");
-      void chip.offsetWidth;
-      chip.classList.add("tick");
-    }
+  function tick() {
+    chip.classList.remove("tick");
+    void chip.offsetWidth;
+    chip.classList.add("tick");
+  }
 
-    function lightPip(k) {
-      if (k < 0 || k >= chipPips.length) return;
-      const p = chipPips[k];
-      p.classList.remove("fresh");
-      void p.offsetWidth;
-      p.classList.add("fresh");
-      setTimeout(() => p.classList.remove("fresh"), 520);
-    }
+  function lightPip(k) {
+    if (k < 0 || k >= chipPips.length) return;
+    const p = chipPips[k];
+    p.classList.remove("fresh");
+    void p.offsetWidth;
+    p.classList.add("fresh");
+    setTimeout(() => p.classList.remove("fresh"), 520);
+  }
 
-    function flashRow() {
-      chip.classList.remove("row-done");
-      void chip.offsetWidth;
-      chip.classList.add("row-done");
-      clearTimeout(rowTimer);
-      rowTimer = setTimeout(() => chip.classList.remove("row-done"), 900);
-    }
+  function flashRow() {
+    chip.classList.remove("row-done");
+    void chip.offsetWidth;
+    chip.classList.add("row-done");
+    clearTimeout(rowTimer);
+    rowTimer = setTimeout(() => chip.classList.remove("row-done"), 900);
   }
 
   function bump() {
@@ -435,12 +341,12 @@ window.XP = (function () {
       state.claimed[id] = true;
       state.level += n;
       save();
-      ceremony(n, label, x, y, before);
+      ceremony(before);
       document.dispatchEvent(new CustomEvent("xp:award", { detail: { id, n, label } }));
       return true;
     },
 
-    get busy() { return ceremonyBusy || queue.length > 0; },
+    get busy() { return ceremonyBusy; },
 
     seen() { sync(); fresh = false; state.seen = true; save(); },
     /* claim without a level — flags like genesis, not beacons */

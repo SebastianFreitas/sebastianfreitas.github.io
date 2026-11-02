@@ -337,6 +337,42 @@ html[data-hud="violet"] {
   text-align: center;
 }
 .bnote .clipbox.todo figcaption { margin: 0; }
+/* ---- reading window: a readings monitor, in the HUD's own palette and type (--hud-* only, so h / ?hud= restyle it) ---- */
+.bnote {
+  --note-tear: 0px;
+  clip-path: none;
+  padding: 0 1.3rem 1rem;
+  border: 1px solid var(--hud-rule);
+  background: #040405;
+  box-shadow: inset 0 0 0 3px #040405, inset 0 0 0 4px var(--hud-rule), 0 0 18px rgb(var(--hud-lamp-rgb) / 0.08);
+  font-family: var(--type-mono); color: var(--hud-main);
+}
+.bnote .nhead {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  margin: 0 -1.3rem 1rem; padding: 0.55rem 1.3rem;
+  background: #040405; border-bottom: 1px solid var(--hud-rule);
+  font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+}
+.bnote .nhead .nname { color: var(--hud-main); }
+.bnote .nhead .nstat { color: var(--hud-label); white-space: nowrap; }
+.bnote .nhead .nstat::before {
+  content: ""; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.5rem;
+  background: rgb(var(--hud-lamp-rgb)); box-shadow: 0 0 6px rgb(var(--hud-lamp-rgb) / 0.7);
+}
+.bnote .tag, .bnote .stat { color: var(--hud-label); }
+.bnote h3 { font-family: var(--type-mono); font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hud-main); }
+.bnote p.body, .bnote p.body:not(p.body ~ p.body) {
+  font-family: var(--type-mono); font-size: 0.8rem; line-height: 1.65; color: var(--hud-main);
+}
+.bnote .stat b, .bnote .sub, .bnote .pts, .bnote code, .bnote a:not(.type-action), .bnote a:not(.type-action):hover { color: var(--hud-main); }
+.bnote a:not(.type-action) { font-family: var(--type-mono); border-bottom-color: rgb(var(--hud-lamp-rgb) / 0.4); }
+.bnote a:not(.type-action):hover { border-bottom-color: var(--hud-hover); }
+.bnote code { background: rgb(var(--hud-lamp-rgb) / 0.08); }
+.bnote .clipbox figcaption { color: var(--hud-label); }
+.bnote.deep { scrollbar-color: var(--hud-mk) transparent; }
+.bnote.deep::-webkit-scrollbar-thumb { background: var(--hud-mk); }
+.bnote .key, .bnote em.key { color: var(--hud-main); text-decoration: underline 1px rgb(var(--hud-lamp-rgb) / 0.4); }
 /* ---- scroll cue ---- */
 .bridge-scroll {
   position: absolute; z-index: 12;

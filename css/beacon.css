@@ -53,30 +53,6 @@
 .xp-chip[data-rank="sun"] .xp-badge path,
 .xp-chip[data-rank="crest"] .xp-badge path { stroke-width: 1.2; }
 
-/* ---- the claim ---- */
-.xp-mote {
-  position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none;
-  font-family: var(--mono); font-weight: 600; font-size: 0.95rem;
-  color: var(--ink); will-change: transform;
-  --lamp: #e4ddc6; --lamp-rgb: 228 221 198;
-}
-.xp-mote b {
-  display: block; padding: 0.28rem 0.55rem; background: var(--lamp);
-  box-shadow: 0 0 26px 8px rgb(var(--lamp-rgb) / 0.45);
-}
-.xp-tag {
-  position: fixed; z-index: 89; pointer-events: none;
-  transform: translate(-50%, 6px); opacity: 0;
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--type-cream);
-  text-shadow: 0 2px 16px rgba(0,0,0,0.95); white-space: nowrap;
-  transition: opacity 0.35s ease, transform 0.7s cubic-bezier(.2,.7,.3,1);
-}
-.xp-tag.go { opacity: 1; transform: translate(-50%, 22px); }
-
-/* while the level is landing */
-.xp-chip.landing .xp-track i::after { box-shadow: 0 0 8px 1px rgb(var(--lamp-rgb) / 0.7); }
-.xp-chip.landing .xp-lv b { color: var(--type-tag-ink); }
 .xp-chip.tick .xp-lv b { animation: lvTick 0.42s cubic-bezier(.2,.9,.3,1); }
 @keyframes lvTick {
   0%   { transform: translateY(0.5em) scale(0.7); opacity: 0; }

@@ -126,7 +126,7 @@
       if (pip >= 5) ring(layer, x, y, 120 + 80 * p, 90, 680);
       sparks(layer, x, y, Math.round(8 + 14 * p), 60 + 50 * p, level * 7919 + 1);
       glow(0.25 + 0.45 * p);
-      label(x, y + 24, "Level " + level);
+      if (!document.documentElement.classList.contains("bar-peek")) label(x, y + 24, "Level " + level);
     }
   }
 

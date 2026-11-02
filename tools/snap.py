@@ -172,12 +172,11 @@ def park(page):
 
 
 def clear_ceremony(page):
-    """Take the XP mote and its label out of the shot. A claim is set off by an
-    observer, which fires on a real frame rather than on one of ours, so a mote
-    caught in flight is at a different point every run."""
+    """Let a pending XP claim finish growing the bar. A claim is set off by an
+    observer, which fires on a real frame rather than on one of ours, so a bar
+    caught mid-fill is at a different point every run."""
     page.wait_for_timeout(150)   # let a pending observer land first
-    page.evaluate("document.querySelectorAll('.xp-mote, .xp-tag')"
-                  ".forEach(el => el.remove())")
+    page.wait_for_function("!window.XP || !XP.busy", timeout=5000)
 
 
 def still(page, tries=20):

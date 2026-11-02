@@ -43,12 +43,18 @@
     const el2 = noteEls[mark.id];
     if (!el2) return;
     noteTimer = setTimeout(() => {
+      /* the monitor's header strip: the beacon's name and a status line, built once from the note's own title */
+      if (!el2.querySelector(".nhead")) {
+        const h = el2.querySelector("h3"), hd = document.createElement("div");
+        hd.className = "nhead";
+        hd.innerHTML = '<span class="nname"></span><span class="nstat">Reading complete</span>';
+        hd.firstChild.textContent = h ? h.textContent : "";
+        el2.insertBefore(hd, el2.firstChild);
+      }
       if (BEACON_SEGMENT[mark.id]) paintReplay(mark.id);
       measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
-      /* the red pieces ride the plate's edge at the size it opened at; they sit beside the note (its clip and scroll would cut them) */
-      if (window.RedLines && RedLines.draw(el2, { self: true, host: el2.parentNode, kind: "item" })) el2._red.classList.add("show");
       el2.querySelectorAll("video").forEach(v => { v.play().catch(() => {}); });
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(B.catalogued);
     }, 280);
@@ -149,6 +155,20 @@
   function selectMark(m) {
     B.begin();
     hintDone("beacon");
+    if (B.ship) {
+      Voidship.setThrusting(B.ship, false);
+      Voidship.clearCourse(B.ship);
+      // a real stop, not just the mirrored HUD value — otherwise residual
+      // ship.vel survives the claim and the hull keeps drifting for a beat
+      B.ship.vel = 0;
+      B.ship.vy = 0;
+    }
+    B.vel = 0;
+    // an unread beacon is scanned first; the note and the XP land when it ends
+    if (B.poiScan && B.poiScan(m, () => fileMark(m))) return;
+    fileMark(m);
+  }
+  function fileMark(m) {
     if (!(window.XP && XP.has("beacon-" + m.id))) m.pop = 1;
     if (window.XP) {
       const p = B.markScreen(m), r = hostBox();
@@ -187,21 +207,12 @@
             setTimeout(go, 500);
           };
           window.addEventListener("xp:ceremony-done", beat);
-          setTimeout(beat, 4500);
+          setTimeout(beat, 6000);
         }
       }
     } else {
       showNote(m);
     }
-    if (B.ship) {
-      Voidship.setThrusting(B.ship, false);
-      Voidship.clearCourse(B.ship);
-      // a real stop, not just the mirrored HUD value — otherwise residual
-      // ship.vel survives the claim and the hull keeps drifting for a beat
-      B.ship.vel = 0;
-      B.ship.vy = 0;
-    }
-    B.vel = 0;
   }
   B.selectMark = selectMark;
   function clearMark() { if (B.activeMark) { B.activeMark = null; showNote(null); } }
