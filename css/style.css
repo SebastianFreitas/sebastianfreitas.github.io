@@ -598,9 +598,11 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   border: 1px solid var(--line);
   border-bottom: 0;
 }
-:where(html:not(.is-scrolling)) .obj:hover > .obj-id, .obj:focus-visible > .obj-id {
-  padding-top: 0.65rem; border-color: var(--rule); color: var(--lamp);
+:where(.work:not(.is-scrolling)) .obj:hover > .obj-id, .obj:focus-visible > .obj-id {
+  border-color: var(--rule); color: var(--lamp);
 }
+/* the hovered tab grows by transform only (no padding, so no layout): the open tab's lamp strip stretches up, the closed tab's plate stretches down */
+:where(.work:not(.is-scrolling)) .obj[aria-expanded=true]:hover > .obj-id::before, .obj[aria-expanded=true]:focus-visible > .obj-id::before { transform: translateY(-0.125rem) rotate(-3deg) scaleY(1.135); }
 .obj:hover, .obj:focus-visible { color: inherit; }
 
 /* the open row's tab wears the bar's active strip: tilted cream, torn right end, on the pseudo only */
@@ -616,12 +618,13 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 
 /* closed: the tab is a cream plate with the torn edge (own layer, so the open state's border and lamp strip stay as they are) */
 .obj:not([aria-expanded=true]) > .obj-id,
-:where(html:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id {
+:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id {
   background: transparent; border-color: transparent; color: var(--type-cream);
   top: 0; transform: none; padding: 0.35rem 0.8rem 0.4rem;
   font-size: 0.72rem; font-weight: 600;
 }
-:where(html:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { padding-top: 0.5rem; }
+:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { transform: translateY(0.15rem); }
+:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id::after, .obj:not([aria-expanded=true]):focus-visible > .obj-id::after { transform: translateY(-0.15rem) scaleY(1.08); transform-origin: 50% 0; }
 /* closed: the tab hangs from its own row's top line (flat top flush on the line, torn bottom and sides) */
 .obj > .obj-id::after {
   content: ""; position: absolute; inset: 0; z-index: -1;
@@ -631,8 +634,8 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .obj:nth-of-type(even) > .obj-id::after {
   clip-path: polygon(0% 0%, 100% 0%, calc(100% - 6px) 97%, 50% 100%, 0% 96%);
 }
-:where(html:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { color: var(--type-tag-ink); }
-:where(html:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id::after,.obj:not([aria-expanded=true]):focus-visible > .obj-id::after { background: var(--type-tag-bg); }
+:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { color: var(--type-tag-ink); }
+:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id::after,.obj:not([aria-expanded=true]):focus-visible > .obj-id::after { background: var(--type-tag-bg); }
 .obj[aria-expanded=true] > .obj-id::after { display: none; }
 
 .obj h3 { margin: 0.4rem 0 0.75rem; }
@@ -945,12 +948,13 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
       #000 100%);
 
   transition: opacity 0.4s ease, transform 0.6s ease;
+  will-change: opacity; /* own layer: the mask and clip raster once, the hover only fades it */
 }
 
 /* the card lights up on hover — the artwork comes with it */
-/* not while the page scrolls (html.is-scrolling, folders.js): a hover starting under the wheel would raster the masked, clipped artwork */
-:where(html:not(.is-scrolling)) .obj:hover .obj-shot,
-:where(html:not(.is-scrolling)) .obj:focus-visible .obj-shot {
+/* not while the page scrolls (.work.is-scrolling, folders.js): a hover starting under the wheel would raster the masked, clipped artwork */
+:where(.work:not(.is-scrolling)) .obj:hover .obj-shot,
+:where(.work:not(.is-scrolling)) .obj:focus-visible .obj-shot {
   opacity: 0.8;
 }
 .obj:nth-of-type(even) .obj-shot { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
@@ -966,7 +970,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
    artwork right back rather than fighting it */
 @media (max-width: 900px) {
   .obj-shot { width: 100%; opacity: 0.18; }
-  :where(html:not(.is-scrolling)) .obj:hover .obj-shot { opacity: 0.22; }
+  :where(.work:not(.is-scrolling)) .obj:hover .obj-shot { opacity: 0.22; }
 }
 
 @media (prefers-reduced-motion: reduce) {

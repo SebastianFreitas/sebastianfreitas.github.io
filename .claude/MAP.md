@@ -104,6 +104,7 @@ shares `Gen`:
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe, eased camera pan) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
+| `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
 - `folders.js`: every open wipes an empty window first, defers the resize dispatch until the wipe ends, then fades the teaser in (300 ms, once the first images have decoded or 2.5 s; warm opens skip the wait).
@@ -472,6 +473,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/folder.css` | The four Work folder teasers on index: inline body, hidden/clip states |
 | `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils, `.work` washes, 404), never a plate |
+| `css/art/wash.webp`, `folder-glow.webp` | Baked smoke and wash behind an open folder, and its nine-sliced inner glow; images so the sweep does not repaint gradients each frame; used by folder.css |
 | `index.html` | Homepage; holds the four case folders (`div.case-folder`). Inline head script is only the service-worker purge |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
@@ -633,6 +635,12 @@ INST_SCALE, GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
 `?reset=1` wipes every key with the PREFIX. Exception: `hudPalette`
 (instruments.js, sessionStorage) is a deliberate literal outside `KEYS`, so the
 temporary palette switch lifts in one edit.
+
+## Future work briefs
+
+Ready-to-paste starting prompts for work not begun yet, in `.claude/briefs/`.
+
+- `lite-mode.md`: automatic lite mode for visitors whose browser draws on the CPU.
 
 ## Roadmap: rank boons (not built yet)
 

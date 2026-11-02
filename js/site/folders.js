@@ -132,13 +132,14 @@ window.Folders = (function () {
   // what the opening wipe needs from layout (the open body's height and offset, the next row's extra gap), measured at idle
   // so the click itself forces no full layout; the body is shown and hidden again inside one task, so nothing paints
   let lastScroll = 0, measureTimer = 0;
-  // html.is-scrolling holds the row artwork's hover (css/style.css) while the page scrolls, so no hover raster starts under the wheel; back 150 ms after the last scroll
+  // .work.is-scrolling holds the row artwork's hover (css/style.css) while the page scrolls, so no hover raster starts under the wheel; back 150 ms after the last scroll
   let scrollEnd = 0;
+  const workEl = document.querySelector(".work") || document.documentElement; // the class sits on the rows' own section, so toggling it restyles that subtree, not the whole page
   window.addEventListener("scroll", () => {
     lastScroll = performance.now();
-    document.documentElement.classList.add("is-scrolling");
+    workEl.classList.add("is-scrolling");
     clearTimeout(scrollEnd);
-    scrollEnd = setTimeout(() => document.documentElement.classList.remove("is-scrolling"), 150);
+    scrollEnd = setTimeout(() => workEl.classList.remove("is-scrolling"), 150);
   }, { passive: true });
   function flowAfter(body) {
     const sib = [];

@@ -89,16 +89,17 @@
   content: ""; position: absolute; z-index: -2; pointer-events: none;
   grid-column: 1 / -1; grid-row: 1 / 3;
   top: calc(-1 * clamp(7.5rem, 16vh, 9.5rem)); left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); bottom: 0;
-  background: var(--dirt-a) 40% top / var(--dirt-size) repeat-y, var(--smoke), linear-gradient(180deg, #605c55, #57534c);
+  background: var(--dirt-a) 40% top / var(--dirt-size) repeat-y, url("/css/art/wash.webp") 0 0 / 100% 100% no-repeat;
 }
 .work:has(#voidscape.open)::after { grid-row: 1 / 5; }
 .work:has(#conclusus.open)::after { grid-row: 1 / 7; }
 .work:has(#heavylight.open)::after { grid-row: 1 / 9; }
+/* the smoke and the wash gradient are baked once into css/art/wash.webp (256x512, stretched to the box: the smoke's ellipses are percentages of it), so no gradient is painted per frame while the folder sweeps */
 /* and the closed rows below it: the wall-paint pseudo moves to the grid rows under the open folder and carries the wash too */
 .work:has(.case-folder.open)::before {
   inset: auto; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: 0; bottom: 0;
   grid-column: 1 / -1; grid-row: 4 / auto;
-  background: var(--dirt-b) 60% top / var(--dirt-size) repeat-y, var(--smoke), linear-gradient(180deg, #605c55, #57534c);
+  background: var(--dirt-b) 60% top / var(--dirt-size) repeat-y, url("/css/art/wash.webp") 0 0 / 100% 100% no-repeat;
 }
 .work:has(#voidscape.open)::before { grid-row: 6 / auto; }
 .work:has(#conclusus.open)::before { grid-row: 8 / auto; }
@@ -132,7 +133,8 @@
 /* glow: its own layer, js sets only its opacity (caseAnim in js/site/folders.js drives every open effect from one progress value) */
 .folder-glow {
   position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
-  box-shadow: inset 0 0 90px rgb(var(--lamp-rgb) / 0.1);
+  /* the inset 90px lamp shadow baked once into css/art/folder-glow.webp and nine-sliced, so no blur is painted per frame */
+  border: 100px solid transparent; border-image: url("/css/art/folder-glow.webp") 100 / 100px stretch;
 }
 .folder-body.is-opening .folder-bar, .folder-body.is-opening .folder-scan, .folder-body.is-opening .folder-kicker,
 .folder-body.is-closing .folder-bar, .folder-body.is-closing .folder-scan, .folder-body.is-closing .folder-kicker { will-change: transform, opacity; }
