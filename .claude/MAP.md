@@ -123,6 +123,7 @@ shares `Gen`:
 
 - `instruments.js`: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once,
 - `instruments.js`: one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object)
+- `instruments.js`: `PALETTES` table (current, site, verdigris, violet) + `setPalette`; the `F` kit carries the active roles and `onPalette(fn)`; css/bridge.css `--hud-*` per `html[data-hud]`; temporary key `h` cycles, `?hud=<name>` picks, `sessionStorage` key `hudPalette`
 - `instruments.js` publishes: `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}`
 - `tiles-nav.js`: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, a second contact (our echo) from `env.twin`, glow bitmaps cached per colour;
 - `tiles-nav.js`: `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS (`max(r.chaos, env.chaos)`)/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`;
@@ -627,7 +628,9 @@ All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
 (xp.js), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
 INST_SCALE, GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
-`?reset=1` wipes every key with the PREFIX.
+`?reset=1` wipes every key with the PREFIX. Exception: `hudPalette`
+(instruments.js, sessionStorage) is a deliberate literal outside `KEYS`, so the
+temporary palette switch lifts in one edit.
 
 ## Roadmap: rank boons (not built yet)
 

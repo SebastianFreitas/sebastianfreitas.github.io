@@ -7,7 +7,9 @@
   const { approach, clamp, wrapPi } = Util;
 
   window.Instruments.registerTiles(function (F) {
-    const { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, spark, meter, lvCol, blink } = F;
+    const { setFont, mono, spark, meter, lvCol, blink } = F;
+    let { LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD } = F;
+    F.onPalette(() => ({ LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD } = F));
 
     const radStrip = [];
     let radAcc = 0;
@@ -168,7 +170,7 @@
         meter(barX, row.y, barW, 5, row.v, row.col);
         setFont(mono(10, "600"));
         ctx.textAlign = "right";
-        ctx.fillStyle = `rgba(${row.col},0.95)`;
+        ctx.fillStyle = `rgba(${row.col === LAMP ? READ : row.col},0.95)`;
         ctx.fillText(row.val, p.w - 6, row.y);
       });
 
@@ -202,7 +204,8 @@
       const evCol = sys.dose > 0.50 ? BAD : WARN;
       setFont(mono(18, "600"));
       ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = `rgba(${lvCol(sys.dose, 0.16, 0.5)},0.95)`;
+      const doseCol = lvCol(sys.dose, 0.16, 0.5);
+      ctx.fillStyle = `rgba(${doseCol === LAMP ? READ : doseCol},0.95)`;
       ctx.fillText(sys.dose < 0.1 ? sys.dose.toFixed(3) : sys.dose.toFixed(2), 5, 22);
 
       ctx.textAlign = "right";
@@ -365,7 +368,7 @@
       if (lastImpact) {
         setFont(mono(9, "600"));
         ctx.textAlign = "right";
-        ctx.fillStyle = live ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.9)`;
+        ctx.fillStyle = live ? `rgba(${BAD},0.95)` : `rgba(${READ},0.9)`;
         ctx.fillText(lastImpact.g.toFixed(2) + "g", p.w - 6, labelY);
       }
 
@@ -391,19 +394,19 @@
       meter(30, intY, p.w - 40 - 30, 5, hullInt, intCol);
       setFont(mono(9, "600"));
       ctx.textAlign = "right";
-      ctx.fillStyle = `rgba(${intCol},0.95)`;
+      ctx.fillStyle = `rgba(${intCol === LAMP ? READ : intCol},0.95)`;
       ctx.fillText(Math.round(hullInt * 100) + "%", p.w - 6, inner - 23);
 
       const rowBY = inner - 4;
       setFont(mono(9, "600"));
       ctx.textAlign = "left";
-      ctx.fillStyle = `rgba(${LAMP},0.95)`;
+      ctx.fillStyle = `rgba(${READ},0.95)`;
       ctx.fillText(Math.round(sys.hullT) + "°", 6, rowBY);
       const wearTxt = wear > 0.05 ? "×" + (1 + 14 * wear).toFixed(1) : wear < -0.05 ? "REGEN" : "×1.0";
-      const wearCol = wear > 0.05 ? lvCol(wear, 0.3, 0.65) : wear < -0.05 ? GOOD : LAMP;
+      const wearCol = wear > 0.05 ? lvCol(wear, 0.3, 0.65) : wear < -0.05 ? GOOD : READ;
       ctx.fillStyle = `rgba(${wearCol},0.95)`;
       ctx.fillText(wearTxt, 62, rowBY);
-      ctx.fillStyle = `rgba(${LAMP},0.95)`;
+      ctx.fillStyle = `rgba(${READ},0.95)`;
       ctx.fillText(Math.round(sys.hx * 100) + "%", 118, rowBY);
 
       void r;
@@ -453,7 +456,7 @@
         ctx.fillStyle = `rgba(${COLD},0.95)`;
         ctx.fillText("UPLINK", p.w - 17, 12);
       } else {
-        ctx.fillStyle = vBus < 26.5 ? `rgba(${BAD},0.95)` : `rgba(${LAMP},0.9)`;
+        ctx.fillStyle = vBus < 26.5 ? `rgba(${BAD},0.95)` : `rgba(${READ},0.9)`;
         ctx.fillText(vBus.toFixed(1) + " V", p.w - 17, 12);
       }
 
@@ -463,20 +466,20 @@
         const n = clamp(l.n + jitterN, 0, 1);
         ctx.fillStyle = `rgba(${DIM},0.22)`;
         ctx.fillRect(barX, y, barW, 7);
-        ctx.fillStyle = `rgba(${l.name === "DRV" && burning ? LAMP : COLD},0.85)`;
+        ctx.fillStyle = `rgba(${l.name === "DRV" && burning ? LAMP : BAR},0.85)`;
         ctx.fillRect(barX, y, barW * n, 7);
         setFont(mono(7));
         ctx.textAlign = "right";
-        ctx.fillStyle = `rgba(${LAMP},0.85)`;
+        ctx.fillStyle = `rgba(${READ},0.85)`;
         ctx.fillText((n * 8.4).toFixed(1), p.w - 5, y + 6);
       });
 
       const imuY = row0 + 4 * rowH + 11;
       const colW = (p.w - 10) / 3;
       const imu = [
-        ["P", (pitch >= 0 ? "+" : "") + pitch.toFixed(1), LAMP],
+        ["P", (pitch >= 0 ? "+" : "") + pitch.toFixed(1), READ],
         ["Y", yawDeg.toFixed(0), COLD],
-        ["R", (roll >= 0 ? "+" : "") + roll.toFixed(1), LAMP],
+        ["R", (roll >= 0 ? "+" : "") + roll.toFixed(1), READ],
       ];
       imu.forEach(([lab, val, col], i) => {
         const x = 5 + i * colW;
@@ -492,10 +495,10 @@
       const py = inner - 4;
       setFont(mono(8));
       ctx.textAlign = "left";
-      ctx.fillStyle = burning ? `rgba(${LAMP},0.95)` : `rgba(${DIM},0.9)`;
+      ctx.fillStyle = burning ? `rgba(${READ},0.95)` : `rgba(${DIM},0.9)`;
       ctx.fillText(pc.toFixed(2) + " MPa", 5, py);
       ctx.textAlign = "center";
-      ctx.fillStyle = burning ? `rgba(${LAMP},0.95)` : `rgba(${DIM},0.9)`;
+      ctx.fillStyle = burning ? `rgba(${READ},0.95)` : `rgba(${DIM},0.9)`;
       ctx.fillText(flow.toFixed(1) + " kg/s", p.w * 0.5, py);
       ctx.textAlign = "right";
       ctx.fillStyle = `rgba(${COLD},0.95)`;

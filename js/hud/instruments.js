@@ -24,12 +24,35 @@
 
 window.Instruments = (function () {
 
-  const LAMP = "245,208,107";
-  const COLD = "143,176,184";
-  const DIM  = "125,135,131";
-  const BAD  = "196,74,68";
-  const WARN = "229,166,60";
-  const GOOD = "120,170,140";
+  /* the HUD's colours, "r,g,b" strings. The roles below are the active
+     palette: setPalette() (at the bottom) swaps them and the tiles re-read
+     them through F.onPalette. LAMP is the main readout colour, READ the
+     tile numbers and readings, COLD the
+     locked / label colour, DIM the quiet one; PLATE is the tile fill,
+     CLAIMED a claimed contact, GLINT the radar head, VEIL the glare wash. */
+  const PALETTES = {
+    current: {
+      LAMP: "245,208,107", READ: "245,208,107", COLD: "143,176,184", BAR: "143,176,184", DIM: "125,135,131",
+      BAD: "196,74,68", WARN: "229,166,60", GOOD: "120,170,140",
+      PLATE: "9,13,15", CLAIMED: "150,164,160", GLINT: "255,255,255", VEIL: "214,222,226",
+    },
+    site: {
+      LAMP: "228,221,198", READ: "228,221,198", COLD: "176,167,143", BAR: "176,167,143", DIM: "176,167,143",
+      BAD: "196,74,68", WARN: "214,140,70", GOOD: "228,221,198",
+      PLATE: "9,13,15", CLAIMED: "150,160,158", GLINT: "246,240,218", VEIL: "228,221,198",
+    },
+    verdigris: {
+      LAMP: "86,170,146", READ: "222,214,190", COLD: "222,214,190", BAR: "86,170,146", DIM: "112,138,128",
+      BAD: "205,78,70", WARN: "229,166,60", GOOD: "160,200,150",
+      PLATE: "9,13,15", CLAIMED: "140,160,150", GLINT: "255,255,250", VEIL: "214,226,220",
+    },
+    violet: {
+      LAMP: "190,158,220", READ: "226,214,242", COLD: "214,200,232", BAR: "190,158,220", DIM: "150,140,166",
+      BAD: "204,72,84", WARN: "229,166,60", GOOD: "190,158,220",
+      PLATE: "9,13,15", CLAIMED: "150,142,164", GLINT: "255,252,255", VEIL: "222,214,232",
+    },
+  };
+  let LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, PLATE, CLAIMED, GLINT, VEIL;
 
   const CELL_W = 168, CELL_H = 122, GAP = 16, GAP_C = 8;
   const PANELS = [
@@ -224,7 +247,7 @@ window.Instruments = (function () {
     if (s !== 1) ctx.scale(s, s);
     const q = cellPanel(p);
     // the chrome is in the static layer; leave the context as chrome() left it
-    ctx.fillStyle = "rgba(9,13,15,0.86)";
+    ctx.fillStyle = `rgba(${PLATE},0.86)`;
     ctx.strokeStyle = `rgba(${LAMP},0.5)`; ctx.lineWidth = 1;
     paintFn(q, r, dt);
     alarmOverlay(q, p.key);
@@ -630,7 +653,48 @@ window.Instruments = (function () {
 
   /* what a tile is allowed to reach for. `t` is read through now() so the
      clock stays this file's. */
-  const F = { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, spark, fit, meter, lvCol, blink, fmtK, now: () => t };
+  const F = { setFont, mono, spark, fit, meter, lvCol, blink, fmtK, now: () => t, onPalette };
+
+  /* tiles destructure the roles once, so they hand us a function that
+     re-reads them from F after every palette change */
+  const palHooks = [];
+  function onPalette(fn) { palHooks.push(fn); }
+  function setPalette(name) {
+    const p = PALETTES[name];
+    if (!p) return false;
+    ({ LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, PLATE, CLAIMED, GLINT, VEIL } = p);
+    Object.assign(F, p);
+    for (const fn of palHooks) fn();
+    document.documentElement.dataset.hud = name;
+    return true;
+  }
+  setPalette("current");
+
+  /* ---- TEMPORARY palette switch: lift this whole block out once the owner
+     picks. Key "h" cycles the palettes, ?hud=<name> picks one on load, the
+     choice rides sessionStorage "hudPalette" for this tab. Keep PALETTES
+     and setPalette(). ---- */
+  const PAL_NAMES = Object.keys(PALETTES);
+  let palIdx = 0;
+  function pickPalette(name, announce) {
+    if (!setPalette(name)) return;
+    palIdx = PAL_NAMES.indexOf(name);
+    Util.write(sessionStorage, "hudPalette", name);
+    statics.clear();
+    repaint();
+    if (announce && window.Bridge && Bridge.log) Bridge.log.push("hud palette: " + name, "loc");
+  }
+  addEventListener("keydown", e => {
+    if (e.key !== "h" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target && e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+    pickPalette(PAL_NAMES[(palIdx + 1) % PAL_NAMES.length], true);
+  });
+  {
+    let want = null;
+    try { want = new URLSearchParams(location.search).get("hud") || sessionStorage.getItem("hudPalette"); } catch (_) {}
+    if (want && PALETTES[want]) pickPalette(want, false);
+  }
+  /* ---- end temporary palette switch ---- */
 
   function registerTiles(factory) {
     const part = factory(F);

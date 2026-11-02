@@ -6,7 +6,9 @@
   const { approach } = Util;
 
   window.Instruments.registerTiles(function (F) {
-    const { LAMP, COLD, DIM, BAD, WARN, GOOD, setFont, mono, fit, fmtK, now, meter, lvCol, blink } = F;
+    const { setFont, mono, fit, fmtK, now, meter, lvCol, blink } = F;
+    let { LAMP, READ, COLD, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL } = F;
+    F.onPalette(() => ({ LAMP, READ, COLD, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL } = F));
 
     const BANDS = 28;
     const bars = new Float32Array(BANDS);
@@ -138,7 +140,7 @@
         blips.set(m.id, lit);
 
         const locked = r.ship && r.ship.courseMark === m.id;
-        const col = locked ? COLD : (m.claimed ? "150,164,160" : LAMP);
+        const col = locked ? COLD : (m.claimed ? CLAIMED : LAMP);
 
         const copies = 1 + Math.round(gl * 2);
         const div = copies * 0.8;
@@ -183,7 +185,7 @@
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(head) * 10, cy + Math.sin(head) * 10);
       ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillStyle = `rgba(${GLINT},0.9)`;
       ctx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
 
       const inRange = (r.marks || []).filter(m => Math.abs(m.cam - r.camX) < RANGE);
@@ -197,7 +199,7 @@
         ctx.fillStyle = `rgba(${lvCol(gl, 0.55, 0.8)},0.9)`;
         ctx.fillText(`WASH ${Math.round(gl * 100)}%`, p.w - 17, 12);
       } else {
-        ctx.fillStyle = unclaimed ? `rgba(${LAMP},0.9)` : `rgba(${DIM},1)`;
+        ctx.fillStyle = unclaimed ? `rgba(${READ},0.9)` : `rgba(${DIM},1)`;
         ctx.fillText(unclaimed ? unclaimed + " OPEN" : "FILED", p.w - 17, 12);
       }
 
@@ -219,7 +221,7 @@
 
       // glare washes the whole display in a pale veil, over everything else
       if (gl > 0.02) {
-        ctx.fillStyle = `rgba(214,222,226,${0.3 * gl})`;
+        ctx.fillStyle = `rgba(${VEIL},${0.3 * gl})`;
         ctx.fillRect(0, 0, p.w, p.h - 4);
       }
     }
@@ -344,8 +346,8 @@
         ctx.fillStyle = `rgba(${DIM},1)`;
         ctx.fillText(fit(v.name.toUpperCase(), p.w - 17 - strW - 12), 6, 12);
         ctx.textAlign = "right";
-        ctx.fillStyle = `rgba(${LAMP},0.9)`;
-        ctx.fillText(str, p.w - 17, 12);
+        ctx.fillStyle = `rgba(${READ},0.9)`;
+        ctx.fillText(str,p.w - 17, 12);
       }
     }
 
@@ -456,7 +458,7 @@
 
       setFont(mono(12, "600"));
       ctx.textAlign = "center";
-      ctx.fillStyle = `rgba(${LAMP},0.95)`;
+      ctx.fillStyle = `rgba(${READ},0.95)`;
       ctx.fillText(Math.round(thrustNeedle * 100) + "%", zoneCx, zoneCy + 2);
 
       // burn + power values — labels are static
@@ -466,7 +468,7 @@
       const secsLeft = (!infinite && burnRate > 0.1)
         ? (s.fuel / burnRate)
         : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
-      ctx.fillStyle = `rgba(${LAMP},0.9)`;
+      ctx.fillStyle = `rgba(${READ},0.9)`;
       if (infinite) ctx.fillText("∞", zoneCx - zoneW * 0.22, statValY);
       else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", zoneCx - zoneW * 0.22, statValY);
       else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", zoneCx - zoneW * 0.22, statValY);
@@ -497,7 +499,7 @@
       } else {
         ctx.fillStyle = low ? `rgba(${col},1)` : `rgba(${DIM},1)`;
         ctx.fillText(low ? "LOW" : "FUEL", tankX, headerY);
-        ctx.fillStyle = `rgba(${col},0.95)`;
+        ctx.fillStyle = `rgba(${col === LAMP ? READ : col},0.95)`;
         ctx.fillText(Math.round(fuelNeedle * 100) + "%", tankX + 30, headerY);
       }
 
@@ -549,7 +551,7 @@
       setFont(mono(18, "600"));
       ctx.textAlign = "left";
       const speedStr = Math.round(Math.abs(r.vel)).toLocaleString("en-US");
-      ctx.fillStyle = `rgba(${LAMP},0.95)`;
+      ctx.fillStyle = `rgba(${READ},0.95)`;
       ctx.fillText(speedStr, 5, 22);
 
       // right column — camera position, gravity, medium; yields if the speed number runs wide. U/S label is static
