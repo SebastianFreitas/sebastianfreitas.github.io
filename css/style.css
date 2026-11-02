@@ -344,8 +344,8 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   font: 800 24px/28px Fraunces, var(--bar-serif); letter-spacing: 0; text-transform: uppercase; color: #0b0b0b; background: #f1ecd8;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   --ml: 37px; --mr: 32px; --mh: 28px;
-  -webkit-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left var(--ml) top 0 /calc(100% - var(--ml) - var(--mr)) 100% no-repeat;
-  mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left var(--ml) top 0 /calc(100% - var(--ml) - var(--mr)) 100% no-repeat;
+  -webkit-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
+  mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
 }
 .wordmark {
   font-family: var(--tab-serif);
@@ -451,6 +451,10 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   .topbar .xp-chip .xp-name { font-size: 15px; padding: 0 12px; --ml: 12px; --mr: 12px; }
 }
 @media (min-width: 641px) and (pointer: fine) and (max-width: 889px) { .topbar .xp-chip { min-height: 35px; } .topbar .xp-chip .xp-name { display: none; } }
+/* the name plate keeps its slim size, tilted a hair like the tab strips */
+@media (min-width: 890px) and (pointer: fine) {
+  .topbar .xp-chip .xp-name { transform: rotate(-1.2deg); }
+}
 @media (min-width: 641px) and (pointer: fine) and (max-width: 728px) {
   .topbar .xp-chip .xp-badge { display: none; }
   .topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-ref { letter-spacing: 0.06em; }
