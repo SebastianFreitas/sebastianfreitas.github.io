@@ -33,7 +33,7 @@ window.Voidship = (function () {
     yBand: 0.24,
     farUnits: 600,    // a held pointer further than this = cruise, nearer = arrive
     limpSpeed: 0.25,  // cruise fraction with dry tanks
-    turnTime: 0.6,    // s for a full 180° yaw
+    turnTime: 0.72,   // s for a full 180° yaw
     pitchMax: 0.08,   // rad, nose angle cap
     pitchRef: 4000,   // px/s of virtual headway: sets how much the nose lifts at rest
     pitchLead: 0.03,  // rad the nose leads a climb (and flares when levelling off)
@@ -385,8 +385,13 @@ window.Voidship = (function () {
     // streamers (phase 3): a short ribbon off three hull tips, sampled on a fixed clock
     {
       const bobY = Math.sin(ship.bob * 0.6) * 1.5, c = Math.cos(ship.pitch), sn = Math.sin(ship.pitch);
+      // the wing tip sits at depth z: screen x = x*c - z*s, as drawn
+      const fsign = ship.face !== 0 ? (ship.face > 0 ? 1 : -1) : (ship.yaw <= Math.PI / 2 ? 1 : -1);
+      const fs = Math.sqrt(Math.max(0, 1 - ship.face * ship.face));
       for (let i = 0; i < ship.trails.length && i < TSEATS.length; i++) {
-        const fx = TSEATS[i].x * L * ship.face, fy = TSEATS[i].y * L;
+        // the near wing tip (the seat with a depth) rises to y 0.05 head-on (art WY0 + WDR) as the wing swings round
+        const fx = (TSEATS[i].x * ship.face - fsign * (TSEATS[i].z || 0) * fs) * L,
+          fy = (TSEATS[i].z ? TSEATS[i].y + fs * (0.05 - TSEATS[i].y) : TSEATS[i].y) * L;
         ship.heads[i][0] = env.W * 0.5 + fx * c - fy * sn;
         ship.heads[i][1] = ship.y + bobY + fx * sn + fy * c;
       }
@@ -531,16 +536,12 @@ window.Voidship = (function () {
     ctx.translate(p.x + sh * 1.1 * Math.sin(t * 73.0), p.y + bobY + sh * 0.8 * Math.sin(t * 59.0));
     ctx.rotate(ship.pitch);
     const d = Math.abs(ship.face);                        // 1 side-on … 0 front-on
-    const fk = clamp((0.35 - d) / 0.12, 0, 1);            // front view weight
     const sign = ship.face !== 0 ? (ship.face > 0 ? 1 : -1) : (ship.yaw <= Math.PI / 2 ? 1 : -1);
-    if (fk < 1 && window.VoidshipArt) {
-      ctx.save();
-      ctx.globalAlpha *= 1 - fk;
-      ctx.scale(Math.max(d, 0.30) * sign, 1);
-      VoidshipArt.drawHull(ctx, ship, L, t);
-      ctx.restore();
+    if (window.VoidshipArt) {
+      // mid-turn the hull is built part by part at this yaw; at rest it is the plain side view
+      ctx.scale(sign, 1);
+      VoidshipArt.drawHull(ctx, ship, L, t, d < 1 ? { c: d, s: Math.sqrt(1 - d * d) } : null);
     }
-    if (fk > 0.01 && window.VoidshipArt) VoidshipArt.drawFront(ctx, ship, L, t, fk);
     ctx.restore();
 
     ctx.restore();

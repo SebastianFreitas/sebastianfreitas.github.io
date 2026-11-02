@@ -15,10 +15,10 @@
    "screen-right" is local-left when ship.face < 0 — the block() helper
    below is the one place that distinction is handled.
 
-   drawFront's frame is unscaled (translate + rotate only), so there
-   "screen-right" is simply +x.
+   Mid-turn drawHull gets a turn {c, s} (cos, sin of the yaw) and builds the
+   hull part by part at that yaw; at rest the turn is null (plain side view).
 
-   The shard lives in voidship-prow.js and is painted from drawHull/drawFront
+   The shard lives in voidship-prow.js and is painted from drawHull
    via VoidshipArt.drawProwBack/drawProw/drawProwFront.
 
    Published as window.VoidshipArt. */
@@ -26,13 +26,13 @@ window.VoidshipArt = (function () {
   const { clamp, mix, hash1 } = window.Util;
   const Paint = window.Paint;
 
-  const LIT = [150, 164, 176];
-  const MID = [100, 112, 122];
-  const SHADE = [62, 72, 80];
+  const LIT = [133, 147, 160];
+  const MID = [92, 104, 114];
+  const SHADE = [54, 63, 71];
   const DEEP = [30, 36, 42];
-  const EDGE = [190, 202, 212];
-  const ORANGE = [240, 124, 32];
-  const ORANGE_D = [168, 74, 18];
+  const EDGE = [180, 192, 200];
+  const ORANGE = [184, 102, 42];
+  const ORANGE_D = [110, 58, 24];
   const LAMP = [245, 208, 107];
   const COLD = [143, 176, 184];
   const RED = [255, 84, 70];
@@ -73,44 +73,162 @@ window.VoidshipArt = (function () {
   // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent)
   const JETS = { belly: [{ x: 0.32, y: 0.083 }, { x: -0.30, y: 0.115 }], top: [{ x: 0.32, y: -0.101 }, { x: -0.34, y: -0.125 }] };
   // streamer roots: shard top-front corner, far wing tip, mast tip, near wing tip
-  const TRAIL_SEATS = [{ x: 0.74, y: -0.19 }, { x: -0.36, y: -0.28 }, { x: -0.239, y: -0.27 }, { x: -0.30, y: 0.37 }];
+  // the lower wing seen head-on: span coordinate u = (y - A_RY) / SPH along the wing, screen
+  // depth WING_Z(u) off the centre line; the near wing tip (y 0.37) is at u = WING_UT
+  const A_RY = 0.10, SPH = 0.574, WZ0 = 0.10, WZS = 0.43;
+  const WING_UT = (0.37 - A_RY) / SPH;
+  const WING_Z = (u) => WZ0 + WZS * u;
+  const TRAIL_SEATS = [{ x: 1.14, y: 0.02 }, { x: -0.47, y: -0.31 }, { x: -0.239, y: -0.27 }, { x: -0.48, y: 0.37, z: WING_Z(WING_UT) }];
   const TRAIL_COL = [LAMP, COLD, DRIVE_A, DRIVE_A];
 
-  const W_FAR = [[0.10, -0.10], [-0.16, -0.28], [-0.36, -0.28], [-0.36, -0.10]];
+  const W_FAR = [[0.10, -0.10], [-0.16, -0.28], [-0.47, -0.31], [-0.38, -0.17], [-0.36, -0.10]];
   const ENGINE = [[-0.34, -0.13], [-0.38, -0.17], [-0.55, -0.17], [-0.58, -0.13], [-0.58, 0.13], [-0.55, 0.17], [-0.38, 0.17], [-0.34, 0.13]];
-  const HULL = [[0.46, -0.04], [0.46, -0.08], [0.26, -0.11], [-0.04, -0.125], [-0.36, -0.125], [-0.36, 0.115], [-0.04, 0.115], [0.26, 0.09], [0.46, 0.05]];
-  const BELLY = [[0.46, 0.05], [0.26, 0.09], [-0.04, 0.115], [-0.36, 0.115], [-0.36, 0.075], [-0.04, 0.08], [0.26, 0.055], [0.46, 0.02]];
-  const TOP_EDGE = [[0.46, -0.08], [0.26, -0.11], [-0.04, -0.125], [-0.36, -0.125]];
+  const HULL = [[0.46, -0.17], [0.34, -0.16], [0.26, -0.13], [-0.04, -0.125], [-0.36, -0.125], [-0.36, 0.115], [-0.04, 0.115], [0.26, 0.10], [0.34, 0.14], [0.46, 0.15]];
+  const BELLY = [[0.46, 0.15], [0.34, 0.14], [0.26, 0.10], [-0.04, 0.115], [-0.36, 0.115], [-0.36, 0.075], [-0.04, 0.08], [0.26, 0.055], [0.34, 0.07], [0.46, 0.07]];
+  const TOP_EDGE = [[0.46, -0.17], [0.34, -0.16], [0.26, -0.13], [-0.04, -0.125], [-0.36, -0.125]];
   const OPANEL = [[0.06, -0.065], [0.20, -0.085], [0.17, 0.03], [0.03, 0.03]];
-  const W_NEAR = [[0.16, 0.08], [-0.14, 0.35], [-0.30, 0.37], [-0.38, 0.31], [-0.38, 0.10]];
-  const OWING = [[0.00, 0.12], [0.10, 0.12], [-0.03, 0.24], [-0.13, 0.24]];
+  const W_NEAR = [[0.16, 0.08], [-0.14, 0.35], [-0.30, 0.355], [-0.48, 0.37], [-0.38, 0.19], [-0.38, 0.10]];
+  const OWING = [[0.015, 0.125], [0.115, 0.115], [-0.15, 0.285], [-0.10, 0.225]];
+  // the wing's weight sits at the root: a heavy doubler plate, cut hard from the thin outer plate
+  const W_ROOT = [[0.09, 0.125], [-0.03, 0.235], [-0.405, 0.235], [-0.38, 0.10], [0.0, 0.10]];
   const POD = [[0.44, 0.05], [0.44, 0.12], [0.36, 0.135], [0.20, 0.135], [0.20, 0.09]];
+  // the keel under the pod, ahead of the wing root, with the intake let into it
+  const KEEL = [[0.34, 0.135], [0.335, 0.17], [0.195, 0.17], [0.135, 0.125], [0.20, 0.125]];
   const BRIDGE = [[-0.02, -0.125], [-0.08, -0.205], [-0.28, -0.205], [-0.32, -0.125]];
+  // the cockpit: a hard framed slit, small human work next to the blade
+  const CANOPY = [[-0.082, -0.192], [-0.195, -0.192], [-0.195, -0.158], [-0.056, -0.158]];
+  const CANOPY_F = [[-0.074, -0.202], [-0.205, -0.202], [-0.205, -0.148], [-0.038, -0.148]];
   const T1 = [[0.30, -0.13], [0.36, -0.13], [0.36, -0.095], [0.30, -0.104]];
   const T2 = [[0.10, -0.15], [0.16, -0.15], [0.16, -0.115], [0.10, -0.118]];
 
-  const FV_WING = [[-0.46, 0.09], [-0.14, 0.02], [0.14, 0.02], [0.46, 0.09], [0.46, 0.135], [0.14, 0.075], [-0.14, 0.075], [-0.46, 0.135]];
   const FV_BODY = [[0, -0.135], [0.13, -0.08], [0.13, 0.06], [0, 0.12], [-0.13, 0.06], [-0.13, -0.08]];
   const FV_BELLY = [[0, 0.12], [0.13, 0.06], [-0.13, 0.06]];
   const FV_BRIDGE = [[-0.07, -0.205], [0.07, -0.205], [0.07, -0.125], [-0.07, -0.125]];
-  const FV_POD = [[-0.05, 0.115], [0.05, 0.115], [0.05, 0.16], [-0.05, 0.16]];
+  const FV_POD = [[-0.05, 0.115], [0.05, 0.115], [0.05, 0.15], [0.02, 0.175], [-0.02, 0.175], [-0.05, 0.15]];
 
-  function drawHull(g, ship, L, t) {
+  // The turn (yaw 0..90 deg, mirrored past 90): `turn` = {c: cos, s: sin}. Hull volumes are
+  // prisms half HW wide: the near side face is squeezed by c and slides left by HW*s, the
+  // cross-section ends open up by s. The plates are real 3D: a dorsal fin on the centre line
+  // (half thickness FT) and two lower wings. Head-on each is a short swept wedge rooted on the
+  // hull's side at mid height (top face WY0), reaching out first and drooping WDR second,
+  // TV thick at the root and tapering to TT of that at the tip. Identity at yaw 0.
+  const HW = 0.13, TV = 0.14, FT = 0.05, WY0 = -0.07, WDR = 0.12, TT = 0.2;
+  const W_FAR5 = [[0.10, -0.10], [-0.16, -0.28], [-0.315, -0.295], [-0.47, -0.31], [-0.38, -0.17], [-0.36, -0.10]];
+  const FAR_TIP = [[-0.47, -0.31], [-0.40, -0.303], [-0.435, -0.255]];
+  const FAR_EDGE = [[0.10, -0.10], [-0.16, -0.28]];
+  const NEAR_EDGE = [[0.15, 0.095], [-0.145, 0.36]];
+
+  function drawHull(g, ship, L, t, turn) {
     const dir = (ship.face || 1) >= 0 ? 1 : -1;
     const px = Math.max(1, 0.012 * L);
     const th = clamp(ship.thrustAmt || 0, 0, 1);
     const flare = clamp(ship.flare || 0, 0, 1), strain = clamp(ship.strain || 0, 0, 1);
     const tf = Math.min(1, th + 0.8 * flare);
+    // mid-turn: run a block on a volume's near face (w = its half width); gone when edge-on
+    const open = (w) => {
+      if (!turn) return;
+      g.save();
+      if (turn.c < 0.04) { g.beginPath(); g.rect(0, 0, 0, 0); g.clip(); return; }
+      g.transform(turn.c, 0, 0, 1, -w * turn.s * L, 0);
+    };
+    const close = () => { if (turn) g.restore(); };
+    // mid-turn plates in 3D, screen x = x*c - z*s. A lower wing point (a, y) sits at span
+    // (y - A_RY) / SPH along the droop; k = 0 is its top face, 1 its underside.
+    // The dorsal fin sits on the centre line, half thickness FT either side.
+    let wing = null, fin = null;
+    if (turn) {
+      wing = (zs, k) => (p) => {
+        const u = (p[1] - A_RY) / SPH, f = Math.max(0, Math.min(1, u / WING_UT));
+        const top = p[1] + turn.s * (WY0 + WDR * f * f - p[1]);
+        return [p[0] * turn.c - zs * WING_Z(u) * turn.s, top + k * TV * (1 - (1 - TT) * f) * turn.s];
+      };
+      fin = (zz) => (p) => [p[0] * turn.c - zz * FT * turn.s, Math.min(p[1], -0.12)];
+    }
+    // a plate seen from its near side: underside and rim strips dark, then the top face on it
+    const slab = (pts, top, under, lit, shade, tip) => {
+      const a = pts.map(under), b = pts.map(top);
+      fillPoly(g, a, L, rgba(SHADE, 1));
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        fillPoly(g, [b[i], b[j], a[j], a[i]], L, rgba(i === tip ? ORANGE : SHADE, 1));
+      }
+      vol(g, b, L, lit, shade, dir);
+    };
+    // the near wing's plates and slash; m maps a flat point onto the wing mid-turn
+    const breakW = Math.max(1.5, 0.018 * L);
+    const nearPanels = (m) => {
+      vol(g, W_ROOT.map(m), L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
+      seg(g, [[-0.03, 0.235], [-0.405, 0.235]].map(m), L, rgba(EDGE, 0.45), px);
+      seg(g, [[-0.27, 0.235], [-0.27, 0.345]].map(m), L, rgba(DEEP, 1), breakW);
+      seg(g, [[-0.14, 0.11], [-0.14, 0.235]].map(m), L, rgba(MID, 0.6), px);
+      vol(g, OWING.map(m), L, rgba(ORANGE, 1), rgba(ORANGE_D, 1), dir);
+      seg(g, [[-0.48, 0.37], [-0.38, 0.19]].map(m), L, rgba(EDGE, 0.5), px);
+    };
+    const farPanels = (m) => {
+      seg(g, [[-0.105, -0.235], [-0.40, -0.235]].map(m), L, rgba(DEEP, 1), breakW);
+      seg(g, [[-0.30, -0.235], [-0.33, -0.295]].map(m), L, rgba(DEEP, 1), px);
+    };
+    const wingOf = (zs) => {
+      slab(W_NEAR, wing(zs, 0), wing(zs, 1), rgba(MID, 1), rgba(SHADE, 1), -1);
+      seg(g, NEAR_EDGE.map(wing(zs, 0)), L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
+      nearPanels(wing(zs, 0));
+      // head-on the slash has no width on the screen: give it one that grows with the turn
+      seg(g, [[0.06, 0.12], [-0.15, 0.285]].map(wing(zs, 0)), L, rgba(ORANGE, 1), 0.03 * L * turn.s * turn.s);
+      // panel ribs across the thickness: seen head-on they break the wing into plates
+      for (const ry of [0.185, 0.30]) {
+        const rp = [[-0.10, ry]];
+        seg(g, [rp.map(wing(zs, 0))[0], rp.map(wing(zs, 1))[0]], L, rgba(DEEP, 0.6), Math.max(1.5, 0.02 * L));
+      }
+    };
+
+    // the drive glow and the sustainer rings, on the axis, only foreshortened
+    const drive = () => {
+      const shim = 0.85 + 0.15 * Math.sin(t * 9);
+      if (tf > 0.05) {
+        const k = 1 + 1.1 * flare;
+        Paint.poly(g, [[-0.625, -0.11], [-0.595, 0], [-0.625, 0.11], [-0.67, 0]]
+          .map(([x, y]) => [-0.625 + (x + 0.625) * k, y * k])
+          .map(([x, y]) => [x * L, y * L]));
+        g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * tf);
+        g.fill();
+      }
+      Paint.poly(g, [[-0.625, -0.075], [-0.605, 0], [-0.625, 0.075], [-0.655, 0]].map(([x, y]) => [x * L, y * L]));
+      g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * tf);
+      g.fill();
+      g.lineWidth = 1;
+      g.strokeStyle = rgba(DRIVE_A, Math.min(1, (0.25 + 0.65 * th) * shim + 0.35 * strain));
+      g.stroke();
+      const su = clamp(ship.sustain || 0, 0, 1);
+      if (su > 0.02) for (const s of SUST) {
+        Paint.circle(g, s.x * L, s.y * L, Math.max(0.016 * L, 2) * (0.6 + 0.4 * su), rgba(DRIVE_B, 0.35 * su));
+        Paint.circle(g, s.x * L, s.y * L, Math.max(0.006 * L, 1), rgba(DRIVE_A, 0.9 * su));
+      }
+    };
 
     // 1. shard glow, behind everything
+    open(0);
     if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
+    close();
+    // mid-turn the drive sits behind the hull, so the engine and hull cover it
+    if (turn) { open(0); drive(); close(); }
 
     // 2. far wing
-    vol(g, W_FAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
-    seg(g, [[0.10, -0.10], [-0.16, -0.28]], L, rgba(EDGE, 0.7), px);
-    fillPoly(g, [[-0.36, -0.28], [-0.29, -0.28], [-0.29, -0.25], [-0.36, -0.25]], L, rgba(ORANGE, 1));
+    if (turn) {
+      // the far lower wing, then the dorsal fin (back face, rim, front face)
+      wingOf(-1);
+      slab(W_FAR5, fin(1), fin(-1), rgba(MID, 1), rgba(SHADE, 1));
+      farPanels(fin(1));
+      seg(g, FAR_EDGE.map(fin(1)), L, rgba(EDGE, 0.7), px);
+      fillPoly(g, FAR_TIP.map(fin(1)), L, rgba(ORANGE, 1));
+    } else {
+      vol(g, W_FAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+      farPanels(p => p);
+      seg(g, FAR_EDGE, L, rgba(EDGE, 0.7), px);
+      fillPoly(g, FAR_TIP, L, rgba(ORANGE, 1));
+    }
 
     // 3. engine block
+    open(HW);
     vol(g, ENGINE, L, rgba(MID, 1), rgba(SHADE, 1), dir);
     seg(g, [[-0.38, -0.17], [-0.55, -0.17]], L, rgba(EDGE, 0.8), px);
     box(g, -0.53, -0.17, -0.45, -0.14, L, rgba(ORANGE, 1));
@@ -119,14 +237,19 @@ window.VoidshipArt = (function () {
       box(g, -0.615, cy - 0.02, -0.575, cy + 0.02, L, rgba(DEEP, 1));
       box(g, -0.61, cy - 0.011, -0.588, cy + 0.011, L, rgba(DRIVE_A, 0.25 + 0.75 * tf));
     }
+    close();
 
     // 4. fuselage
+    open(HW);
     vol(g, HULL, L, rgba(LIT, 1), rgba(MID, 1), dir);
     fillPoly(g, BELLY, L, rgba(SHADE, 1));
     seg(g, TOP_EDGE, L, rgba(EDGE, 0.9), px);
     seg(g, [[0.20, -0.105], [0.20, 0.095]], L, rgba(DEEP, 0.35), px);
     seg(g, [[-0.14, -0.125], [-0.14, 0.115]], L, rgba(DEEP, 0.35), px);
     seg(g, [[-0.36, -0.02], [0.30, -0.02]], L, rgba(DEEP, 0.35), px);
+    // the belly plates: one hard seam along the top, heavy breaks across
+    seg(g, [[-0.36, 0.075], [-0.04, 0.08], [0.26, 0.055]], L, rgba(DEEP, 1), Math.max(1.5, 0.016 * L));
+    for (const b of [[0.11, 0.073, 0.114], [0.19, 0.066, 0.106]]) seg(g, [[b[0], b[1]], [b[0], b[2]]], L, rgba(DEEP, 1), Math.max(1.5, 0.018 * L));
     vol(g, OPANEL, L, rgba(ORANGE, 1), rgba(ORANGE_D, 1), dir);
     box(g, 0.30, -0.05, 0.315, -0.01, L, rgba(WHITE, 0.85));
     box(g, 0.335, -0.05, 0.35, -0.01, L, rgba(WHITE, 0.85));
@@ -141,60 +264,85 @@ window.VoidshipArt = (function () {
     seg(g, [[0.42, 0.04], [-0.34, 0.04]], L, rgba(ORANGE_D, 0.9), px);
     const ember = window.VoidshipArt.emberOf ? window.VoidshipArt.emberOf(ship, t) : 0.5;
     seg(g, [[0.42, 0.04], [-0.34, 0.04]], L, rgba(RED, 0.6 * ember), px);
+    close();
 
     // 5. near wing
-    vol(g, W_NEAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
-    seg(g, [[0.15, 0.095], [-0.145, 0.36]], L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
-    vol(g, OWING, L, rgba(ORANGE, 1), rgba(ORANGE_D, 1), dir);
-    seg(g, [[-0.27, 0.11], [-0.27, 0.34]], L, rgba(DEEP, 0.4), px);
-    seg(g, [[-0.30, 0.37], [-0.38, 0.31]], L, rgba(EDGE, 0.5), px);
+    if (turn) {
+      wingOf(1);
+    } else {
+      vol(g, W_NEAR, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+      nearPanels(p => p);
+      seg(g, NEAR_EDGE, L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
+    }
 
     // 6. belly pod
+    open(0.05);
     vol(g, POD, L, rgba(SHADE, 1), rgba(DEEP, 1), dir);
     box(g, 0.24, 0.10, 0.34, 0.115, L, rgba(DEEP, 1));
+    vol(g, KEEL, L, rgba(MID, 1), rgba(SHADE, 1), dir);
+    seg(g, [[0.135, 0.125], [0.195, 0.17], [0.335, 0.17]], L, rgba(COLD, 0.55), px);
+    box(g, 0.215, 0.138, 0.31, 0.157, L, rgba(DEEP, 1));
+    for (const x of [0.245, 0.28]) box(g, x - 0.005, 0.138, x + 0.005, 0.157, L, rgba(MID, 1));
+    close();
 
     // 7. bridge block
+    open(0.07);
     vol(g, BRIDGE, L, rgba(LIT, 1), rgba(MID, 1), dir);
     seg(g, [[-0.08, -0.205], [-0.28, -0.205]], L, rgba(EDGE, 0.9), px);
-    seg(g, [[-0.035, -0.14], [-0.075, -0.195]], L, rgba(COLD, 0.9), Math.max(1, 0.014 * L));
+    fillPoly(g, CANOPY_F, L, rgba(SHADE, 1));
+    fillPoly(g, CANOPY, L, rgba(DEEP, 1));
+    box(g, -0.15, -0.187, -0.118, -0.163, L, rgba(LAMP, 1));
+    for (const x of [-0.11, -0.158]) box(g, x - 0.005, -0.192, x + 0.005, -0.158, L, rgba(MID, 1));
     box(g, -0.26, -0.195, -0.20, -0.17, L, rgba(ORANGE, 1));
-    box(g, -0.245, -0.27, -0.233, -0.205, L, rgba(SHADE, 1));
-    if ((t % 1.3) < 0.12) Paint.circle(g, -0.239 * L, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
+    if (!turn) {
+      box(g, -0.245, -0.27, -0.233, -0.205, L, rgba(SHADE, 1));
+      if ((t % 1.3) < 0.12) Paint.circle(g, -0.239 * L, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
+    }
+
+    close();
+    if (turn) {
+      // the one mast, on the centre line, not clipped so it survives head-on
+      g.save();
+      g.translate(-0.239 * turn.c * L, 0);
+      box(g, -0.006, -0.27, 0.006, -0.205, L, rgba(SHADE, 1));
+      if ((t % 1.3) < 0.12) Paint.circle(g, 0, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
+      g.restore();
+    }
 
     // 8. deck turrets
+    open(0.05);
     vol(g, T1, L, rgba(MID, 1), rgba(SHADE, 1), dir);
     seg(g, [[0.30, -0.13], [0.36, -0.13]], L, rgba(EDGE, 0.7), px);
     seg(g, [[0.36, -0.118], [0.42, -0.122]], L, rgba(SHADE, 1), px);
     vol(g, T2, L, rgba(MID, 1), rgba(SHADE, 1), dir);
     seg(g, [[0.10, -0.15], [0.16, -0.15]], L, rgba(EDGE, 0.7), px);
     seg(g, [[0.16, -0.138], [0.23, -0.142]], L, rgba(SHADE, 1), px);
+    close();
+
+    // the cross-section ends open up as the nose comes round
+    if (turn && turn.s > 0.03) drawEnds(g, ship, L, t, turn, dir, px);
 
     // 9. shard
+    // mid-turn the blade is foreshortened less than the hull (up to 30% longer at 45 deg), so it stays a slab
+    if (turn) {
+      g.save();
+      if (turn.c < 0.04) { g.beginPath(); g.rect(0, 0, 0, 0); g.clip(); }
+      else g.transform(turn.c * (1 + 0.3 * turn.s), 0, 0, 1, -0.09 * turn.s * L, 0);
+    }
     if (window.VoidshipArt && window.VoidshipArt.drawProw) window.VoidshipArt.drawProw(g, ship, L, t);
-
-    // 10. drive glow
-    const shim = 0.85 + 0.15 * Math.sin(t * 9);
-    if (tf > 0.05) {
-      const k = 1 + 1.1 * flare;
-      Paint.poly(g, [[-0.625, -0.11], [-0.595, 0], [-0.625, 0.11], [-0.67, 0]]
-        .map(([x, y]) => [-0.625 + (x + 0.625) * k, y * k])
-        .map(([x, y]) => [x * L, y * L]));
-      g.fillStyle = rgba(DRIVE_B, 0.08 + 0.25 * tf);
-      g.fill();
+    close();
+    if (turn && turn.s > 0.03) {
+      g.save();
+      g.translate(0.76 * turn.c * L, 0); g.scale(dir * turn.s, 1);
+      // the edge-on blade stays inside the blade's height until the real blade is gone (c < 0.04)
+      const tall = 0.42 + 0.58 * Math.max(0, Math.min(1, (0.12 - turn.c) / 0.08));
+      if (window.VoidshipArt && window.VoidshipArt.drawProwFront) window.VoidshipArt.drawProwFront(g, ship, L, t, tall);
+      g.restore();
     }
-    Paint.poly(g, [[-0.625, -0.075], [-0.605, 0], [-0.625, 0.075], [-0.655, 0]].map(([x, y]) => [x * L, y * L]));
-    g.fillStyle = rgba(DRIVE_B, 0.10 + 0.45 * tf);
-    g.fill();
-    g.lineWidth = 1;
-    g.strokeStyle = rgba(DRIVE_A, Math.min(1, (0.25 + 0.65 * th) * shim + 0.35 * strain));
-    g.stroke();
 
-    // 11. sustainers
-    const su = clamp(ship.sustain || 0, 0, 1);
-    if (su > 0.02) for (const s of SUST) {
-      Paint.circle(g, s.x * L, s.y * L, Math.max(0.016 * L, 2) * (0.6 + 0.4 * su), rgba(DRIVE_B, 0.35 * su));
-      Paint.circle(g, s.x * L, s.y * L, Math.max(0.006 * L, 1), rgba(DRIVE_A, 0.9 * su));
-    }
+    // 10. drive glow, sustainers (mid-turn they were painted behind the hull, above)
+    open(0);
+    if (!turn) drive();
 
     // 12. RCS jets
     const jet = ship.jet || 0, ja = Math.abs(jet);
@@ -216,45 +364,37 @@ window.VoidshipArt = (function () {
       const fl = 0.8 + 0.2 * Math.sin(t * 41);
       g.lineWidth = 1;
       g.strokeStyle = rgba(DRIVE_A, 0.45 * strain * fl);
-      g.beginPath(); g.moveTo(0.68 * L, -0.24 * L); g.lineTo(0.94 * L, -0.02 * L); g.lineTo(0.68 * L, 0.20 * L); g.stroke();
+      g.beginPath(); g.moveTo(0.84 * L, -0.22 * L); g.lineTo(1.10 * L, 0.02 * L); g.lineTo(0.84 * L, 0.20 * L); g.stroke();
       g.strokeStyle = rgba(WHITE, 0.22 * strain * fl);
-      g.beginPath(); g.moveTo(0.74 * L, -0.19 * L); g.lineTo(0.98 * L, -0.02 * L); g.lineTo(0.74 * L, 0.15 * L); g.stroke();
+      g.beginPath(); g.moveTo(0.90 * L, -0.17 * L); g.lineTo(1.16 * L, 0.02 * L); g.lineTo(0.90 * L, 0.14 * L); g.stroke();
     }
+    close();
   }
 
-  function drawFront(g, ship, L, t, k) {
-    if (k < 0.01) return;
-    g.save();
-    g.globalAlpha *= k;
-    const px = Math.max(1, 0.012 * L);
-
-    // 1. wings
-    Paint.litShade(g, () => tracePts(g, FV_WING, L), 0, rgba(SHADE, 1), rgba(DEEP, 1));
-    seg(g, [[-0.45, 0.095], [-0.14, 0.025]], L, rgba(COLD, 0.85), px);
-    seg(g, [[0.14, 0.025], [0.45, 0.095]], L, rgba(COLD, 0.85), px);
-    box(g, -0.46, 0.09, -0.40, 0.135, L, rgba(ORANGE, 1));
-    box(g, 0.40, 0.09, 0.46, 0.135, L, rgba(ORANGE, 1));
-
-    // 2. body
-    Paint.litShade(g, () => tracePts(g, FV_BODY, L), 0, rgba(LIT, 1), rgba(MID, 1));
-    fillPoly(g, FV_BELLY, L, rgba(SHADE, 1));
-    seg(g, [[-0.13, -0.08], [0, -0.135], [0.13, -0.08]], L, rgba(EDGE, 0.8), px);
-    box(g, -0.13, -0.03, -0.10, 0.03, L, rgba(ORANGE, 1));
-    box(g, 0.10, -0.03, 0.13, 0.03, L, rgba(ORANGE_D, 1));
-
-    // 3. bridge
-    Paint.litShade(g, () => tracePts(g, FV_BRIDGE, L), 0, rgba(LIT, 1), rgba(MID, 1));
-    box(g, -0.055, -0.175, 0.055, -0.16, L, rgba(COLD, 0.9));
-    box(g, -0.006, -0.27, 0.006, -0.205, L, rgba(SHADE, 1));
-    if ((t % 1.3) < 0.12) Paint.circle(g, 0, -0.275 * L, Math.max(1, 0.012 * L), rgba(RED, 1));
-
-    // 4. pod
-    Paint.litShade(g, () => tracePts(g, FV_POD, L), 0, rgba(SHADE, 1), rgba(DEEP, 1));
-
-    // 5. shard
-    if (window.VoidshipArt && window.VoidshipArt.drawProwFront) window.VoidshipArt.drawProwFront(g, ship, L, t);
-
-    g.restore();
+  // The cross-section faces of the hull volumes, drawn unmirrored about their own centres
+  // (light stays on the left), each at the hull station it belongs to.
+  function drawEnds(g, ship, L, t, turn, dir, px) {
+    const at = (a, fn) => {
+      g.save();
+      g.translate(a * turn.c * L, 0); g.scale(dir * turn.s, 1);
+      fn();
+      g.restore();
+    };
+    at(-0.02, () => {
+      Paint.litShade(g, () => tracePts(g, FV_BRIDGE, L), 0, rgba(LIT, 1), rgba(MID, 1));
+      box(g, -0.062, -0.188, 0.062, -0.148, L, rgba(SHADE, 1));
+      box(g, -0.052, -0.18, 0.052, -0.156, L, rgba(DEEP, 1));
+      box(g, -0.044, -0.175, -0.016, -0.161, L, rgba(LAMP, 1));
+      box(g, -0.005, -0.18, 0.005, -0.156, L, rgba(MID, 1));
+    });
+    at(0.34, () => {
+      Paint.litShade(g, () => tracePts(g, FV_BODY, L), 0, rgba(LIT, 1), rgba(MID, 1));
+      fillPoly(g, FV_BELLY, L, rgba(SHADE, 1));
+      seg(g, [[-0.13, -0.08], [0, -0.135], [0.13, -0.08]], L, rgba(EDGE, 0.8), px);
+      box(g, -0.13, -0.03, -0.10, 0.03, L, rgba(ORANGE, 1));
+      box(g, 0.10, -0.03, 0.13, 0.03, L, rgba(ORANGE_D, 1));
+    });
+    at(0.44, () => Paint.litShade(g, () => tracePts(g, FV_POD, L), 0, rgba(SHADE, 1), rgba(DEEP, 1)));
   }
 
   function drawFumes(g, fumes, env) {
@@ -327,5 +467,5 @@ window.VoidshipArt = (function () {
 
   const COLORS = { LIT, MID, SHADE, DEEP, EDGE, ORANGE, ORANGE_D, LAMP, COLD, RED, WHITE, DRIVE_A, DRIVE_B, DRIVE_C };
 
-  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFront, drawFumes, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
+  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawFumes, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
 })();
