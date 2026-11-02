@@ -265,12 +265,18 @@
     ctx.fillStyle = "#6e1a1a";
     for (let i = 0; i < RAIL_GAPS.length; i++) {
       const R = RAIL_GAPS[i], a = s - R.t;
-      if (a < 0 || a >= R.life) continue;
-      const x0 = sx((R.u0 + R.u1) / 2) + R.vx * a;
-      if (x0 < -80 || x0 > W + 80) continue;
-      const w = Math.max(2, Math.round(R.sz * W * (R.med ? 0.8 : 0.6)));
-      const y = railY(H) + R.vy * a + 0.5 * 320 * a * a;
-      ctx.fillRect(Math.round(x0 - w / 2), Math.round(y), w, R.rows === 0 ? 2 : 1);
+      if (a < 0 || a >= (R.med ? 1.2 : 0.7)) continue;
+      const cx = sx((R.u0 + R.u1) / 2);
+      if (cx < -80 || cx > W + 80) continue;
+      const w = Math.max(2, Math.round(R.sz * W * (R.med ? 0.8 : 0.6))), n = R.med ? 20 + Math.floor(hh(i, 0, 70) * 9) : Math.max(2, Math.round(w / 2)), ry = Math.round(railY(H)), bx = sx(0);
+      // the piece breaks up in place: each speck is blown from the blast centre (bx), then snaps out at its own moment
+      for (let j = 0; j < n; j++) {
+        const L = R.med ? 0.25 * hh(i, j, 79) : 0, tb = L + (R.med ? 0.3 + 0.9 * hh(i, j, 71) : 0.25 + 0.45 * hh(i, j, 71)), x = cx + (hh(i, j, 72) - 0.5) * w * 1.8;
+        if (a < L || a >= tb) continue;
+        const dx = x - bx, v = (80 + 180 * hh(i, j, 73)) * (1 + 0.5 * Math.max(0, 1 - Math.abs(dx) / W)), vx = (dx < 0 ? -1 : 1) * v * (0.5 + 0.5 * hh(i, j, 77)), vy = -Math.max(60, v * (0.05 + 0.7 * hh(i, j, 75))), u = a - L;
+        const up = 2 + 8 * hh(i, j, 78) - vy * u, f = (a - L) / (tb - L), sz = Math.min(f < 0.4 ? 2 + (hh(i, j, 74) < 0.5 ? 1 : 0) : f < 0.75 ? 2 : 1, up < 6 ? 2 : 3);
+        ctx.fillRect(Math.round(x + vx * u), ry - Math.round(up), sz, sz);
+      }
     }
   }
   function drawSpan(ctx, grow) {
