@@ -42,7 +42,7 @@
  
   const reduced = Util.reduced();
   if (!("IntersectionObserver" in window) || reduced) {
-    videos.forEach((v) => { v.controls = true; v.preload = "metadata"; });
+    videos.forEach((v) => { v.controls = true; if (!v.closest(".folder-body[hidden]")) v.preload = "metadata"; });
     return;
   }
  
@@ -93,16 +93,18 @@
  
   // ---- one download at a time ----------------------------------
   const queue = [];
+  const seen = new Set();   // clips the observer last reported in view
   let loading = null;
  
   function pump() {
     if (loading || !queue.length) return;
     const v = queue.shift();
-    if (!v.isConnected) return pump();
- 
+    if (!v.isConnected || v.closest(".folder-body[hidden]")) return pump(); // gone or its folder closed while queued: skip, it queues again when seen
+
     loading = v;
     v.preload = "auto";
     v.load();
+    if (seen.has(v)) v.play().catch(() => {});   // load() pauses a clip the observer already started
  
     const done = () => {
       v.removeEventListener("canplaythrough", done);
@@ -121,6 +123,7 @@
       for (const entry of entries) {
         const v = entry.target;
         if (entry.isIntersecting && v.closest(".folder-body.is-opening")) continue; // a case still opening: folders.js fires folder-settled and these are looked at again
+        if (entry.isIntersecting) seen.add(v); else seen.delete(v);
         if (entry.isIntersecting) {
           if (v.preload === "none" && !queue.includes(v) && loading !== v) {
             queue.unshift(v);            // what you're looking at goes first
