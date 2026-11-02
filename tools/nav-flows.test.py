@@ -1302,7 +1302,45 @@ def flow_loop_pause(browser, base):
     ctx.close()
 
 
+def flow_bridge_return(browser, base):
+    """Pressing the paused, half-shown bridge scrolls back up to it and the ship plays on the way."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    half = "window.scrollTo({ top: Math.round(innerHeight / 2), behavior: 'instant' })"
+    page.evaluate(half)
+    page.wait_for_timeout(500)
+    r = page.evaluate("({ visible: Bridge.visible, running: Bridge.pacer.running })")
+    check("bridge-return: paused while half shown", r["visible"] is False and r["running"] is False, r)
+    vp = page.viewport_size
+    page.evaluate("""() => { window.__rs = { run: false, y: scrollY, tr: Bridge.travelled };
+      const f = () => { if (Bridge.pacer.running && scrollY > 0) window.__rs.run = true; window.__rs.f = requestAnimationFrame(f); }; f(); }""")
+    page.mouse.move(vp["width"] * 0.8, 120)
+    page.mouse.down()
+    page.wait_for_timeout(120)
+    mid = page.evaluate("({ y: scrollY, running: Bridge.pacer.running, visible: Bridge.visible })")
+    check("bridge-return: loop runs mid-scroll", mid["running"] is True and mid["visible"] is True and mid["y"] > 0, mid)
+    page.wait_for_timeout(600)
+    page.mouse.up()
+    r = page.evaluate("({ y: scrollY, run: __rs.run, moved: Bridge.travelled - __rs.tr, covers: Bridge.coversViewport() })")
+    check("bridge-return: scroll reached the top", r["y"] <= 1 and r["covers"] is True, r)
+    check("bridge-return: loop ran during the scroll", r["run"] is True, r)
+    check("bridge-return: the ship moved", r["moved"] > 0, r)
+    page.evaluate("cancelAnimationFrame(__rs.f)")
+    page.evaluate(half)
+    page.wait_for_timeout(500)
+    page.mouse.move(vp["width"] * 0.8, 120)
+    page.mouse.down()
+    page.wait_for_timeout(60)
+    page.mouse.wheel(0, 300)
+    page.wait_for_timeout(300)
+    r = page.evaluate("({ y: scrollY, running: Bridge.pacer.running, visible: Bridge.visible, thrust: Bridge.thrustId })")
+    check("bridge-return: wheel mid-scroll cancels, loop stops, burn ended", r["visible"] is False and r["thrust"] is None and r["y"] > 1, r)
+    page.mouse.up()
+    ctx.close()
+
+
 FLOWS = {
+    "bridge-return": flow_bridge_return,
     "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,

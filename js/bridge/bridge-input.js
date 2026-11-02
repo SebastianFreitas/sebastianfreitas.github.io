@@ -222,9 +222,54 @@
     return r.top <= 1 && r.bottom >= (innerHeight - 1) && r.width > 0;
   };
   B.coversViewport = coversViewport;
+  /* A press on the paused hero (page scrolled, Work below) eases the page back
+     up to it, and the loop stays open for that short scroll so the ship plays
+     on the way. Wheel, scroll keys or a touch hand the page back at once. */
+  let returning = 0;              // rAF id of the scroll-back in progress, 0 when none
+  const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"]);
+  function endReturn() {
+    if (!returning) return;
+    cancelAnimationFrame(returning);
+    returning = 0;
+    syncCover();
+  }
+  function startReturn() {
+    const from = scrollY;
+    const to = Math.max(0, from + host.getBoundingClientRect().top);
+    const dist = Math.abs(to - from);
+    if (!dist) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      scrollTo({ top: to, behavior: "instant" });
+      return;
+    }
+    const dur = Math.min(350, 100 + dist * 0.3);
+    const t0 = performance.now();
+    const tick = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      scrollTo({ top: from + (to - from) * (1 - Math.pow(1 - k, 3)), behavior: "instant" });
+      if (B.thrustId != null) retargetFromPointer();
+      if (k < 1) { returning = requestAnimationFrame(tick); return; }
+      returning = 0;
+      syncCover();
+    };
+    returning = requestAnimationFrame(tick);
+    syncCover();
+  }
+  /* touch is left as it was: a finger on the partly shown hero only scrolls the page */
+  host.addEventListener("pointerdown", e => {
+    if (e.pointerType === "touch" || returning || B.frozen || document.body.classList.contains("site-frozen")) return;
+    if (B.visible || coversViewport() || B.portrait) return;
+    startReturn();
+  });
+  addEventListener("wheel", endReturn, { passive: true });
+  addEventListener("touchstart", endReturn, { passive: true });
+  addEventListener("touchmove", endReturn, { passive: true });
+  addEventListener("keydown", e => { if (SCROLL_KEYS.has(e.key)) endReturn(); });
+
   const syncCover = () => {
-    const v = coversViewport();
-    document.documentElement.classList.toggle("bridge-live", v);
+    const real = coversViewport();
+    const v = real || !!returning;
+    document.documentElement.classList.toggle("bridge-live", real);
     if (v === B.visible) return;
     B.visible = v;
     if (!v) { endBurn(); stopSteering(); }
