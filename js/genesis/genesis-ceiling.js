@@ -785,7 +785,7 @@
     const cx = G.sx(0), sc = Math.max(0.6, W / 1440), reach = Math.hypot(W, H);
     const cy = (G.DECK || 0.64) * H;   // the visible horizon in the break beat is the span's deck line, not the 0.46 H air
     ctx.save();
-    ctx.strokeStyle = "rgba(170,178,190," + (0.7 * a).toFixed(3) + ")";
+    ctx.strokeStyle = "rgba(72,72,72," + (0.7 * a).toFixed(3) + ")";
     ctx.lineWidth = Math.max(1.4, (1.6 + 0.6 * hash(5.5)) * sc);
     ctx.lineCap = "round";
     for (let i = 0; i < FAN_N; i++) {

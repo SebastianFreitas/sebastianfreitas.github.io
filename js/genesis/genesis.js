@@ -40,9 +40,8 @@ window.Genesis = (function () {
   const host    = document.getElementById("bridge-hero");
 
   let copyTimer = 0;
-  let copyInk = false;
   let hitG = null, hitW = 0, hitH = 0, hitCx = 0, hitCy = 0;
-  /* the hit's flash: opaque near-white core round the point, falling to about half alpha at the corners; cached per size */
+  /* the hit's flash: opaque dark grey round the point, a little darker toward the corners; cached per size */
   function hitGrad(ctx, cx, cy) {
     const ix = cx | 0, iy = cy | 0;
     if (!hitG || hitW !== G.W || hitH !== G.H || hitCx !== ix || hitCy !== iy) {
@@ -50,9 +49,9 @@ window.Genesis = (function () {
       const far = Math.hypot(Math.max(cx, G.W - cx), Math.max(cy, G.H - cy)) + 160;
       const core = Math.min(0.9, 0.25 * Math.hypot(G.W, G.H) / far);
       hitG = ctx.createRadialGradient(cx, cy, 0, cx, cy, far);
-      hitG.addColorStop(0, "rgba(255,250,232,1)");
-      hitG.addColorStop(core, "rgba(255,238,196,1)");
-      hitG.addColorStop(1, "rgba(226,184,128,1)");
+      hitG.addColorStop(0, "rgba(46,46,46,1)");
+      hitG.addColorStop(core, "rgba(40,40,40,1)");
+      hitG.addColorStop(1, "rgba(28,28,28,1)");
     }
     return hitG;
   }
@@ -663,10 +662,9 @@ window.Genesis = (function () {
       if (breakLin > 0.20 && !broke) {
         broke = true;
         G.zoomKick = Math.max(G.zoomKick, 0.05);
-        G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1 });
+        G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1, grey: true });
       }
       GenVoid.drawSpan(ctx, uDrawn);
-      GenVoid.drawSpanLife(ctx, uDrawn);
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
       if (window.GenCeiling) GenCeiling.draw(ctx, G.W, G.H, GenElem.seaRise(G.W, G.H), G.reduced ? 0 : G.t);   // the ceiling mass, grown on the sea's clock
@@ -753,7 +751,7 @@ window.Genesis = (function () {
       ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
     }
     if (tb >= 0.5 && tb < 1.6) {
-      /* the bang: a warm full-frame flash at full strength for 0.1 s (the peak, tb 0.5), then held step-downs */
+      /* the bang: a dark grey full-frame wash at full strength for 0.1 s (the peak, tb 0.5), then held step-downs */
       const fa = tb < 0.8 ? 1 : tb < 0.95 ? 0.7 : tb < 1.1 ? 0.34 : tb < 1.4 ? 0.18 : 0.08;
       ctx.globalAlpha = fa;
       ctx.fillStyle = hitGrad(ctx, sx(0), 0.46 * G.H);
@@ -767,51 +765,37 @@ window.Genesis = (function () {
         const lw = m * (rp < 0.2 ? 0.05 : rp < 0.5 ? 0.04 : rp < 0.8 ? 0.028 : 0.016);
         ctx.globalAlpha = 1;
         ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        ctx.shadowColor = "rgba(255,200,90,0.9)";
-        ctx.shadowBlur = lw * 0.9;
-        ctx.strokeStyle = tb < 0.9 ? "#fffbea" : "#fff2c8";
+        ctx.strokeStyle = tb < 0.9 ? "#3c3c3c" : "#363636";
         ctx.lineWidth = lw;
         ctx.beginPath();
         ctx.arc(rx, ry, Math.max(1, (far + lw) * rp), 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
-      /* the white-hot core in the point's warm light: three held sizes */
+      /* the dark grey core disc at the point: two held sizes */
       if (tb < 0.9) {
         const cr = m * (tb < 0.75 ? 0.13 : 0.09);
         ctx.globalAlpha = 1;
         const cg = ctx.createRadialGradient(rx, ry, 0, rx, ry, cr * 1.5);
-        cg.addColorStop(0, "#ffffff"); cg.addColorStop(0.66, "#ffffff");   // the pure-white disc
-        cg.addColorStop(0.75, "#fff3a0"); cg.addColorStop(1, "rgba(255,226,120,0)");   // the hot yellow-white falloff
+        cg.addColorStop(0, "#404040"); cg.addColorStop(0.66, "#404040");   // the dark grey disc
+        cg.addColorStop(0.75, "#3a3a3a"); cg.addColorStop(1, "rgba(58,58,58,0)");
         ctx.fillStyle = cg;
         ctx.beginPath();
         ctx.arc(rx, ry, cr * 1.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      GenVoid.drawSpan(ctx, uDrawn);   // the bridge stays through the wash: drawn again over it
     }
     if (tb >= 0 && !underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // over the flash, so they read from their first step
 
     ctx.restore();
 
     /* the cut is screen-fixed: drawn outside the camera transform */
-    if (tb >= 0.9 && tb < 1.2) {   // not before 0.9: nothing dark may sit on the white core's peak
+    if (tb >= 0.9 && tb < 1.2) {   // not before 0.9: nothing dark may sit on the core disc's peak
       const fa = tb < 0.8 ? 0.78 : tb < 0.95 ? 0.5 : tb < 1.08 ? 0.28 : 0.11;
       if (window.GenTier3 && GenTier3.drawCut) {
         GenTier3.drawCut(ctx, G.W, G.H, fa / 0.78, tb + 0.7);   // the cut's own clock still starts at 1.2
-      }
-    }
-    /* the caption is DOM text: dark ink while the flash is up (tag and line set their own colour) */
-    {
-      /* dark while the flash is light (to 0.8), light once it has dropped to 0.34 or less */
-      const inkOn = tb >= 0.5 && tb < 0.8;
-      if (inkOn !== copyInk) {
-        copyInk = inkOn;
-        /* the overlay's dark centre vignette (bridge.css) would grey the flash heart */
-        if (overlay) overlay.style.background = inkOn ? "none" : "";
-        if (tagEl) { tagEl.style.color = inkOn ? "#1a1626" : ""; tagEl.style.textShadow = inkOn ? "none" : ""; }
-        if (lineEl) { lineEl.style.color = inkOn ? "#1a1626" : ""; lineEl.style.textShadow = inkOn ? "none" : ""; }
       }
     }
 

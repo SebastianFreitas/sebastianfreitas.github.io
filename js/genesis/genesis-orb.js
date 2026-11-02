@@ -210,9 +210,9 @@
   function drawRings(ctx) {
     if (!G.rings.length) return;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
     for (const r of G.rings) {
-      ctx.strokeStyle = `rgba(255,180,140,${0.7 * r.a})`;
+      ctx.globalCompositeOperation = r.grey ? "source-over" : "lighter";
+      ctx.strokeStyle = r.grey ? `rgba(58,58,58,${r.a})` : `rgba(255,180,140,${0.7 * r.a})`;
       ctx.lineWidth = 2.2;
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.283); ctx.stroke();
     }

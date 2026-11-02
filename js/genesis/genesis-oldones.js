@@ -1199,7 +1199,7 @@ window.GenOld = (function () {
     return Math.floor(G.local * 3) % 7 !== 3;
   }
 
-  function riftBand(ctx, cx, cy, h, paintFn) {
+  function riftBand(ctx, cx, cy, h, paintFn, color) {
     if (!window.GenEldPal) return;
     const t = GenEldPal.tone("rift");
     if (!t) return;
@@ -1229,7 +1229,7 @@ window.GenOld = (function () {
     riftCtx.globalCompositeOperation = "source-in";
     riftCtx.setTransform(1, 0, 0, 1, 0, 0);
     riftCtx.globalAlpha = 1;
-    riftCtx.fillStyle = t.lit;
+    riftCtx.fillStyle = color || t.lit;
     riftCtx.fillRect(0, 0, w, hh);
 
     riftCtx.globalCompositeOperation = "source-over";
@@ -1314,7 +1314,7 @@ window.GenOld = (function () {
   const FIG_AT = [[-0.30, 0.42], [0.36, 0.50], [0.02, 0.58]];   // x in widths, y in heights from the point's x
   const RIM_FLAT = "rgb(78,86,92)";   // clearly above the body fill, on the lit side only
   const RIM_TONE = ["rgb(30,36,40)", "rgb(20,25,29)"];
-  const SHARD_TONES = [["rgb(150,156,150)", "rgb(70,74,70)"], ["rgb(122,128,124)", "rgb(56,60,58)"], ["rgb(178,182,176)", "rgb(92,96,92)"]];
+  const SHARD_TONES = [["rgb(92,92,92)", "rgb(48,48,48)"], ["rgb(80,80,80)", "rgb(42,42,42)"], ["rgb(104,104,104)", "rgb(56,56,56)"]];
 
   const SHARDS = (function build() {
     const rnd = mulberry(9002);
@@ -1413,10 +1413,11 @@ window.GenOld = (function () {
   const BANG_T = T_HIT;   // the bang peaks here (break tb); the traces key off it
   const TR_ON = BANG_T + 0.1, TR_HOLD = 2.8, TR_STEP = 0.5, TR_SINK = TR_ON + TR_HOLD;   // on at 0.6, ghosts to 0.8, sink from 3.4 to 5.4
   // owner-approved exception to the tier-3 "1-2 steps" rule (2026-10-26): about 5 flat steps off #0d1114, still dim and cool
-  const TRACE_TINT = ["#222a2f", "#232b30", "#242c31", "#222a2f"];
-  const TRACE_CV = [null, null, null, null];
+  const TRACE_TINT_COOL = ["#222a2f", "#232b30", "#242c31", "#222a2f"], TRACE_TINT_GREY = ["#2c2c2c", "#2e2e2e", "#2f2f2f", "#2c2c2c"];   // the break beat paints its pieces neutral dark grey (owner), the later beats keep the cool ones
+  let TRACE_TINT = TRACE_TINT_COOL, TRACE_RIM = "#2e373d", TRACE_IRIS = ["#192024", "#12171a"];
+  const COOL_SET = { cv: [null, null, null, null], sh: [null, null, null, null] }, GREY_SET = { cv: [null, null, null, null], sh: [null, null, null, null] };
+  let TRACE_CV = COOL_SET.cv;
   // a thin lighter rim (about 1.75 px on screen) round a tinted body, painted once with the shape
-  const TRACE_RIM = "#2e373d";
   function rimmed(src, sc) {
     const pad = Math.max(1, Math.ceil(1.75 / sc)), o = document.createElement("canvas");
     o.width = src.width + pad * 2; o.height = src.height + pad * 2;
@@ -1444,7 +1445,7 @@ window.GenOld = (function () {
     return (TRACE_CV[f] = rimmed(o, FIG_SIZE[f] * G.H / FIG_M[f]));
   }
   // the foot and eye traces are drawn shapes (flat greys), painted once into small canvases
-  const TR_SHAPE = [null, null, null, null];
+  let TR_SHAPE = COOL_SET.sh;
   function traceShape(f) {
     if (TR_SHAPE[f]) return TR_SHAPE[f];
     const o = document.createElement("canvas"), c = o.getContext("2d");
@@ -1466,9 +1467,9 @@ window.GenOld = (function () {
       c.fillStyle = TRACE_TINT[f];
       c.beginPath();
       c.moveTo(8, 84); c.quadraticCurveTo(128, 0, 248, 84); c.quadraticCurveTo(128, 168, 8, 84); c.closePath(); c.fill();
-      c.fillStyle = "#192024";
+      c.fillStyle = TRACE_IRIS[0];
       c.beginPath(); c.arc(128, 80, 40, 0, 6.2832); c.fill();
-      c.fillStyle = "#12171a";
+      c.fillStyle = TRACE_IRIS[1];
       c.beginPath(); c.arc(128, 80, 17, 0, 6.2832); c.fill();
       c.strokeStyle = TRACE_TINT[f]; c.lineWidth = 7; c.lineCap = "round";
       c.beginPath(); c.moveTo(34, 56); c.quadraticCurveTo(128, -22, 222, 56); c.stroke();
@@ -1506,6 +1507,12 @@ window.GenOld = (function () {
     if (BREAK_IDX < 0) BREAK_IDX = G.idxOf("break");
     if (G.beat < BREAK_IDX) return;
     const red = G.reduced, T = G.beat === BREAK_IDX ? G.secs("break") : 1e9;
+    const gs = T < 1e9 ? GREY_SET : COOL_SET;
+    if (TRACE_CV !== gs.cv) {
+      TRACE_CV = gs.cv; TR_SHAPE = gs.sh; TR_W = 0;   // the box sizes come from the shapes: size them again
+      if (gs === GREY_SET) { TRACE_TINT = TRACE_TINT_GREY; TRACE_RIM = "#383838"; TRACE_IRIS = ["#202020", "#171717"]; }
+      else { TRACE_TINT = TRACE_TINT_COOL; TRACE_RIM = "#2e373d"; TRACE_IRIS = ["#192024", "#12171a"]; }
+    }
     if (T < TR_ON) return;
     if (!FIG_PTS) sampleFigures();
     const W = G.W, H = G.H;
@@ -1599,7 +1606,7 @@ window.GenOld = (function () {
     if (SH_NEAR.on) {
       ctx.globalAlpha = 0.95 * SH_NEAR.a;
       riftBand(ctx, SH_NEAR.qx, SH_NEAR.qy, SH_NEAR.sz,
-        (c) => paintShard(c, SH_NEAR.qx, SH_NEAR.qy, SH_NEAR.ang, SH_NEAR.sz, SH_NEAR.tone));
+        (c) => paintShard(c, SH_NEAR.qx, SH_NEAR.qy, SH_NEAR.ang, SH_NEAR.sz, SH_NEAR.tone), SHARD_TONES[0][0]);   // break band is the shard's own dark grey
     }
     ctx.restore();
   }

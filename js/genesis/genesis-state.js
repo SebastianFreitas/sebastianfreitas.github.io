@@ -27,7 +27,7 @@ window.Gen = (function () {
   G.BEATS = [
     { id: "point", dur: 2.0, tag: "I · Before the record",
       line: "Only a point, and all that would ever be inside it. Then the span, cold and straight: the first law." },
-    { id: "drawn", dur: 3.5, tag: "I · Before the record",
+    { id: "drawn", dur: 7.0, tag: "I · Before the record",
       line: "Only a point, and all that would ever be inside it. Then the span, cold and straight: the first law." },
     { id: "break", dur: 6.0, tag: "III · The breaking",
       line: "The point broke. What came out of it we cannot name. It had no colour of its own, and no shape that would hold." },

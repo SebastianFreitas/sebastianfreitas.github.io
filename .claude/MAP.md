@@ -355,8 +355,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-tier3.js`: the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset,
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
-- `genesis-void.js`: `drawSpanLife` (the `drawn` beat's moving rail: flicker, travelling heads, dust; drawn after `drawSpan`).
-- `genesis-void.js`: `drawSpan` (the monumental bridge: slab, piers, arches, gold rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
+- `genesis-void.js`: `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
 - `genesis-circle.js`: roles end state as backdrop; a grey thread rises from the pile and draws the ring in 8 held arcs from the bottom (pile shrinks a row per arc via `GenEye.setPileCut`), the rose thread + power point from P,
 - `genesis-circle.js`: then a living universe (flat disc + band, turning 2-arm speck spiral, rose sparks, blue souls): `draw`, `drawUniverse(ctx,W,H,t,C?,R?)` (chains' opening disc)
 - `genesis-rexin.js`: Rex tears the level-1 ring into two arcs, grows over held zoom-outs (field shrinks, roof band thins) until only part of him fits, then the chains settle round him as braided dark-red rivers;
