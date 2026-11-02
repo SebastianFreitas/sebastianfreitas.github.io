@@ -16,14 +16,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Fraunces:wght@800&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=221">
-<link rel="stylesheet" href="css/gate.css?v=221">
-<link rel="stylesheet" href="css/beacon.css?v=221">
-<link rel="stylesheet" href="css/bridge.css?v=221">
-<link rel="stylesheet" href="css/folder.css?v=221">
-<script src="js/lib/util.js?v=221"></script>
-<script src="js/site/xp.js?v=221"></script>
-<script src="js/site/entry.js?v=221"></script>
+<link rel="stylesheet" href="css/style.css?v=222">
+<link rel="stylesheet" href="css/gate.css?v=222">
+<link rel="stylesheet" href="css/beacon.css?v=222">
+<link rel="stylesheet" href="css/bridge.css?v=222">
+<link rel="stylesheet" href="css/folder.css?v=222">
+<script src="js/lib/util.js?v=222"></script>
+<script src="js/site/xp.js?v=222"></script>
+<script src="js/site/entry.js?v=222"></script>
 <script>
 /* Kill leftover Service Workers for this origin. file:// never had
    them; http://127.0.0.1:8000 often did, and they served ghost JS.
@@ -270,8 +270,7 @@
 
   <a class="obj slab" data-redlines="sector-zero" href="projects/sector-zero.html">
     <img class="obj-shot" src="media/sector-zero/frontPage.webp" alt="" loading="lazy" decoding="async">
-    <span class="obj-id">OBJ_0001</span>
-    <h3 id="sector-zero-title">Sector Zero</h3>
+    <div class="obj-head"><span class="obj-id">OBJ_0001</span><h3 id="sector-zero-title">Sector Zero</h3></div>
     <p class="obj-line">A horror game where the debug console is the main mechanic. Full in-game Linux-style
        terminal with command history; edit any object's properties at runtime — set weight negative and it
        leaves the floor.</p>
@@ -297,8 +296,7 @@
 
   <a class="obj slab" data-redlines="voidscape" href="projects/voidscape.html">
     <img class="obj-shot" src="media/voidscape/voidscapeFrontPage.webp" alt="" loading="lazy" decoding="async">
-    <span class="obj-id">OBJ_0002</span>
-    <h3 id="voidscape-title">VoidScape</h3>
+    <div class="obj-head"><span class="obj-id">OBJ_0002</span><h3 id="voidscape-title">VoidScape</h3></div>
     <p class="obj-line">First-person roguelike. The special run scales on player skill instead of stats,
        so a lucky build can't delete a boss in one shot. 50+ boons, craftable weapons that persist
        between runs.</p>
@@ -325,8 +323,7 @@
 
   <a class="obj slab" data-redlines="conclusus" href="projects/conclusus.html">
     <img class="obj-shot" src="media/conclusus/conclususFrontPage.webp" alt="" loading="lazy" decoding="async">
-    <span class="obj-id">OBJ_0003</span>
-    <h3 id="conclusus-title">Conclusus</h3>
+    <div class="obj-head"><span class="obj-id">OBJ_0003</span><h3 id="conclusus-title">Conclusus</h3></div>
     <p class="obj-line">A precision platformer on the HeavyLight base: thirty levels, pins, a shadow you plant and teleport back to, and silhouettes that switch between safe and deadly. Four new mechanics, built in less time than the original.</p>
     <dl class="props">
       <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
@@ -353,8 +350,7 @@
 
   <a class="obj slab" data-redlines="heavylight" href="projects/heavylight.html">
     <img class="obj-shot" src="media/heavylight/heavylightFrontPage.webp" alt="" loading="lazy" decoding="async">
-    <span class="obj-id">OBJ_0004</span>
-    <h3 id="heavylight-title">HeavyLight</h3>
+    <div class="obj-head"><span class="obj-id">OBJ_0004</span><h3 id="heavylight-title">HeavyLight</h3></div>
     <p class="obj-line">2D puzzle platformer built around one rule: light carries momentum. It pushes
        crates, and it pushes you. Shipped for WebGL and reused as the base for Conclusus.</p>
     <dl class="props">
@@ -421,114 +417,114 @@
   </div>
 </footer>
 
-<script src="js/site/surge.js?v=221"></script>
-<script src="js/bridge/lamp.js?v=221"></script>
-<script src="js/depths/depths.js?v=221"></script>
-<script src="js/depths/lore.js?v=221"></script>
-<script src="js/hud/instruments.js?v=221"></script>
-<script src="js/hud/tiles-nav.js?v=221"></script>
-<script src="js/hud/tiles-sys.js?v=221"></script>
-<script src="js/hud/side.js?v=221"></script>
-<script src="js/lib/paint.js?v=221"></script>
-<script src="js/world/art/rex-kit.js?v=221"></script>
-<script src="js/world/art/firstlight.js?v=221"></script>
-<script src="js/world/art/crimson.js?v=221"></script>
-<script src="js/world/art/bonespire.js?v=221"></script>
-<script src="js/world/art/titans.js?v=221"></script>
-<script src="js/world/art/valkhar.js?v=221"></script>
-<script src="js/world/art/law.js?v=221"></script>
-<script src="js/world/art/land-kit.js?v=221"></script>
-<script src="js/world/art/shattered.js?v=221"></script>
-<script src="js/world/art/libertech.js?v=221"></script>
-<script src="js/world/art/dawn.js?v=221"></script>
-<script src="js/world/art/accord.js?v=221"></script>
-<script src="js/world/art/gore.js?v=221"></script>
-<script src="js/world/world.js?v=221"></script>
-<script src="js/world/vortex.js?v=221"></script>
-<script src="js/world/void.js?v=221"></script>
-<script src="js/world/watcher.js?v=221"></script>
-<script src="js/world/serus.js?v=221"></script>
-<script src="js/world/nephilim.js?v=221"></script>
-<script src="js/world/admin-tear.js?v=221"></script>
-<script src="js/world/vikings.js?v=221"></script>
-<script src="js/world/rex.js?v=221"></script>
-<script src="js/world/city.js?v=221"></script>
-<script src="js/ship/voidship-art.js?v=221"></script>
-<script src="js/ship/voidship-prow.js?v=221"></script>
-<script src="js/ship/voidship.js?v=221"></script>
-<script src="js/lib/pacer.js?v=221"></script>
-<script src="js/bridge/marks.js?v=221"></script>
-<script src="js/bridge/bridge-sites.js?v=221"></script>
-<script src="js/bridge/bridge-log.js?v=221"></script>
-<script src="js/bridge/bridge-voice.js?v=221"></script>
-<script src="js/bridge/bridge.js?v=221"></script>
-<script src="js/bridge/bridge-notes.js?v=221"></script>
-<script src="js/bridge/bridge-input.js?v=221"></script>
-<script src="js/bridge/bridge-motifs.js?v=221"></script>
-<script src="js/bridge/bridge-marks.js?v=221"></script>
-<script src="js/bridge/bridge-poi.js?v=221"></script>
-<script src="js/bridge/bridge-panel.js?v=221"></script>
-<script src="js/bridge/bridge-depths.js?v=221"></script>
-<script src="js/bridge/bridge-env.js?v=221"></script>
-<script src="js/bridge/bridge-readout.js?v=221"></script>
-<script src="js/bridge/bridge-loop.js?v=221"></script>
-<script src="js/genesis/genesis-state.js?v=221"></script>
-<script src="js/genesis/genesis-paint.js?v=221"></script>
-<script src="js/genesis/genesis-eldpal.js?v=221"></script>
-<script src="js/genesis/genesis-tier3.js?v=221"></script>
-<script src="js/genesis/genesis-void.js?v=221"></script>
-<script src="js/genesis/genesis-flesh.js?v=221"></script>
-<script src="js/genesis/genesis-soup.js?v=221"></script>
-<script src="js/genesis/genesis-eye.js?v=221"></script>
-<script src="js/genesis/genesis-roles.js?v=221"></script>
-<script src="js/genesis/genesis-circle.js?v=221"></script>
-<script src="js/genesis/genesis-chains.js?v=221"></script>
-<script src="js/genesis/genesis-corrupt.js?v=221"></script>
-<script src="js/genesis/genesis-rexin.js?v=221"></script>
-<script src="js/genesis/genesis-dot.js?v=221"></script>
-<script src="js/genesis/genesis-clash.js?v=221"></script>
-<script src="js/genesis/genesis-death.js?v=221"></script>
-<script src="js/genesis/genesis-gods-beat.js?v=221"></script>
-<script src="js/genesis/genesis-elements.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds-plant.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds-metal.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds-cloud.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds-odd.js?v=221"></script>
-<script src="js/genesis/genesis-ceilclouds.js?v=221"></script>
-<script src="js/genesis/genesis-ceilshapes.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds2.js?v=221"></script>
-<script src="js/genesis/genesis-ceilkinds3.js?v=221"></script>
-<script src="js/genesis/genesis-ceilmembrane.js?v=221"></script>
-<script src="js/genesis/genesis-ceiling.js?v=221"></script>
-<script src="js/genesis/genesis-sky.js?v=221"></script>
-<script src="js/genesis/genesis-matter.js?v=221"></script>
-<script src="js/genesis/genesis-trade.js?v=221"></script>
-<script src="js/genesis/genesis-oldones.js?v=221"></script>
-<script src="js/genesis/genesis-oldkin.js?v=221"></script>
-<script src="js/genesis/genesis-attire.js?v=221"></script>
-<script src="js/genesis/genesis-figures.js?v=221"></script>
-<script src="js/genesis/genesis-titans.js?v=221"></script>
-<script src="js/genesis/genesis-obrok.js?v=221"></script>
-<script src="js/genesis/genesis-gods.js?v=221"></script>
-<script src="js/genesis/genesis-hosts.js?v=221"></script>
-<script src="js/genesis/genesis-seraphin.js?v=221"></script>
-<script src="js/genesis/genesis-malgrur.js?v=221"></script>
-<script src="js/genesis/genesis-vorgath.js?v=221"></script>
-<script src="js/genesis/genesis-mainland.js?v=221"></script>
-<script src="js/genesis/genesis-armies.js?v=221"></script>
-<script src="js/genesis/genesis-orb.js?v=221"></script>
-<script src="js/genesis/genesis-rex.js?v=221"></script>
-<script src="js/genesis/genesis-depths.js?v=221"></script>
-<script src="js/genesis/genesis-saga-state.js?v=221"></script>
-<script src="js/genesis/genesis-ritual.js?v=221"></script>
-<script src="js/genesis/genesis-saga.js?v=221"></script>
-<script src="js/genesis/genesis.js?v=221"></script>
-<script src="js/site/lazy-video.js?v=221"></script>
-<script src="js/shared/heavylight-sprites.js?v=221"></script>
-<script src="js/site/folders.js?v=221"></script>
-<script src="js/site/redlines.js?v=221"></script>
-<script src="js/site/devpanel.js?v=221"></script>
-<script src="js/site/intro.js?v=221"></script>
+<script src="js/site/surge.js?v=222"></script>
+<script src="js/bridge/lamp.js?v=222"></script>
+<script src="js/depths/depths.js?v=222"></script>
+<script src="js/depths/lore.js?v=222"></script>
+<script src="js/hud/instruments.js?v=222"></script>
+<script src="js/hud/tiles-nav.js?v=222"></script>
+<script src="js/hud/tiles-sys.js?v=222"></script>
+<script src="js/hud/side.js?v=222"></script>
+<script src="js/lib/paint.js?v=222"></script>
+<script src="js/world/art/rex-kit.js?v=222"></script>
+<script src="js/world/art/firstlight.js?v=222"></script>
+<script src="js/world/art/crimson.js?v=222"></script>
+<script src="js/world/art/bonespire.js?v=222"></script>
+<script src="js/world/art/titans.js?v=222"></script>
+<script src="js/world/art/valkhar.js?v=222"></script>
+<script src="js/world/art/law.js?v=222"></script>
+<script src="js/world/art/land-kit.js?v=222"></script>
+<script src="js/world/art/shattered.js?v=222"></script>
+<script src="js/world/art/libertech.js?v=222"></script>
+<script src="js/world/art/dawn.js?v=222"></script>
+<script src="js/world/art/accord.js?v=222"></script>
+<script src="js/world/art/gore.js?v=222"></script>
+<script src="js/world/world.js?v=222"></script>
+<script src="js/world/vortex.js?v=222"></script>
+<script src="js/world/void.js?v=222"></script>
+<script src="js/world/watcher.js?v=222"></script>
+<script src="js/world/serus.js?v=222"></script>
+<script src="js/world/nephilim.js?v=222"></script>
+<script src="js/world/admin-tear.js?v=222"></script>
+<script src="js/world/vikings.js?v=222"></script>
+<script src="js/world/rex.js?v=222"></script>
+<script src="js/world/city.js?v=222"></script>
+<script src="js/ship/voidship-art.js?v=222"></script>
+<script src="js/ship/voidship-prow.js?v=222"></script>
+<script src="js/ship/voidship.js?v=222"></script>
+<script src="js/lib/pacer.js?v=222"></script>
+<script src="js/bridge/marks.js?v=222"></script>
+<script src="js/bridge/bridge-sites.js?v=222"></script>
+<script src="js/bridge/bridge-log.js?v=222"></script>
+<script src="js/bridge/bridge-voice.js?v=222"></script>
+<script src="js/bridge/bridge.js?v=222"></script>
+<script src="js/bridge/bridge-notes.js?v=222"></script>
+<script src="js/bridge/bridge-input.js?v=222"></script>
+<script src="js/bridge/bridge-motifs.js?v=222"></script>
+<script src="js/bridge/bridge-marks.js?v=222"></script>
+<script src="js/bridge/bridge-poi.js?v=222"></script>
+<script src="js/bridge/bridge-panel.js?v=222"></script>
+<script src="js/bridge/bridge-depths.js?v=222"></script>
+<script src="js/bridge/bridge-env.js?v=222"></script>
+<script src="js/bridge/bridge-readout.js?v=222"></script>
+<script src="js/bridge/bridge-loop.js?v=222"></script>
+<script src="js/genesis/genesis-state.js?v=222"></script>
+<script src="js/genesis/genesis-paint.js?v=222"></script>
+<script src="js/genesis/genesis-eldpal.js?v=222"></script>
+<script src="js/genesis/genesis-tier3.js?v=222"></script>
+<script src="js/genesis/genesis-void.js?v=222"></script>
+<script src="js/genesis/genesis-flesh.js?v=222"></script>
+<script src="js/genesis/genesis-soup.js?v=222"></script>
+<script src="js/genesis/genesis-eye.js?v=222"></script>
+<script src="js/genesis/genesis-roles.js?v=222"></script>
+<script src="js/genesis/genesis-circle.js?v=222"></script>
+<script src="js/genesis/genesis-chains.js?v=222"></script>
+<script src="js/genesis/genesis-corrupt.js?v=222"></script>
+<script src="js/genesis/genesis-rexin.js?v=222"></script>
+<script src="js/genesis/genesis-dot.js?v=222"></script>
+<script src="js/genesis/genesis-clash.js?v=222"></script>
+<script src="js/genesis/genesis-death.js?v=222"></script>
+<script src="js/genesis/genesis-gods-beat.js?v=222"></script>
+<script src="js/genesis/genesis-elements.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds-plant.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds-metal.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds-cloud.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds-odd.js?v=222"></script>
+<script src="js/genesis/genesis-ceilclouds.js?v=222"></script>
+<script src="js/genesis/genesis-ceilshapes.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds2.js?v=222"></script>
+<script src="js/genesis/genesis-ceilkinds3.js?v=222"></script>
+<script src="js/genesis/genesis-ceilmembrane.js?v=222"></script>
+<script src="js/genesis/genesis-ceiling.js?v=222"></script>
+<script src="js/genesis/genesis-sky.js?v=222"></script>
+<script src="js/genesis/genesis-matter.js?v=222"></script>
+<script src="js/genesis/genesis-trade.js?v=222"></script>
+<script src="js/genesis/genesis-oldones.js?v=222"></script>
+<script src="js/genesis/genesis-oldkin.js?v=222"></script>
+<script src="js/genesis/genesis-attire.js?v=222"></script>
+<script src="js/genesis/genesis-figures.js?v=222"></script>
+<script src="js/genesis/genesis-titans.js?v=222"></script>
+<script src="js/genesis/genesis-obrok.js?v=222"></script>
+<script src="js/genesis/genesis-gods.js?v=222"></script>
+<script src="js/genesis/genesis-hosts.js?v=222"></script>
+<script src="js/genesis/genesis-seraphin.js?v=222"></script>
+<script src="js/genesis/genesis-malgrur.js?v=222"></script>
+<script src="js/genesis/genesis-vorgath.js?v=222"></script>
+<script src="js/genesis/genesis-mainland.js?v=222"></script>
+<script src="js/genesis/genesis-armies.js?v=222"></script>
+<script src="js/genesis/genesis-orb.js?v=222"></script>
+<script src="js/genesis/genesis-rex.js?v=222"></script>
+<script src="js/genesis/genesis-depths.js?v=222"></script>
+<script src="js/genesis/genesis-saga-state.js?v=222"></script>
+<script src="js/genesis/genesis-ritual.js?v=222"></script>
+<script src="js/genesis/genesis-saga.js?v=222"></script>
+<script src="js/genesis/genesis.js?v=222"></script>
+<script src="js/site/lazy-video.js?v=222"></script>
+<script src="js/shared/heavylight-sprites.js?v=222"></script>
+<script src="js/site/folders.js?v=222"></script>
+<script src="js/site/redlines.js?v=222"></script>
+<script src="js/site/devpanel.js?v=222"></script>
+<script src="js/site/intro.js?v=222"></script>
 </body>
 </html>

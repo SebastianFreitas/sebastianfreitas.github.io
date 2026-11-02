@@ -587,56 +587,49 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .obj:nth-of-type(4n+2)::before { left: 0.6rem; }
 .obj:nth-of-type(4n+3)::before { left: 0.2rem; }
 .obj:nth-of-type(4n+4)::before { left: 0.9rem; }
-/* folder tab: the OBJ label sits on the row's top edge (bottom flush, covering the top border), its text on the shared left edge */
-.obj > .obj-id {
-  position: absolute;
-  top: 1px;
-  left: calc(var(--gutter) - 0.75rem - 1px);
-  transform: translateY(-100%);
-  padding: 0.4rem 0.75rem 0.35rem;
-  background: var(--petrol);
-  border: 1px solid var(--line);
-  border-bottom: 0;
+/* the label: the OBJ tag and the title, tilted 14deg clockwise, just right of the description (the measure plus 0.9rem, about 2rem past the longest line); it keeps its slot in the left column (the offset is relative, so no layout moves) and sits over the rail (z 2 over the rail's 1) */
+.obj-head {
+  display: flow-root; position: relative; z-index: 2; width: fit-content; max-width: 26rem;
+  left: calc(min(var(--measure), 100%) + 2.4rem); top: 2.3rem;
+  transform: rotate(0deg); transition: transform 0.12s ease-out;
 }
-:where(.work:not(.is-scrolling)) .obj:hover > .obj-id, .obj:focus-visible > .obj-id {
-  border-color: var(--rule); color: var(--lamp);
+.obj-head h3 { position: relative; isolation: isolate; width: fit-content; }
+.obj-head > .obj-id { position: absolute; top: -0.95rem; left: 0; font-size: 0.72rem; font-weight: 600; line-height: 1; color: var(--type-cream); white-space: nowrap; }
+.obj-head, .obj-head > .obj-id { text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7); }
+/* the band: one torn paper strip behind the title only (the tag sits above it, unchanged in every state), the top bar tab's paper (same masks and clip); shown by opacity only */
+.obj-head h3::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: -0.15rem; bottom: -0.1rem; left: -0.9rem; right: -0.9rem;
+  background: #f1ecd8;
+  opacity: 0;
+  --ml: 18px; --mr: 16px; --mh: 100%;
+  -webkit-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
+  mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
+  clip-path: polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%);
+  transition: opacity 0.12s ease-out;
 }
-/* the hovered tab grows by transform only (no padding, so no layout): the open tab's lamp strip stretches up, the closed tab's plate stretches down */
-:where(.work:not(.is-scrolling)) .obj[aria-expanded=true]:hover > .obj-id::before, .obj[aria-expanded=true]:focus-visible > .obj-id::before { transform: translateY(-0.125rem) rotate(-3deg) scaleY(1.135); }
-.obj:hover, .obj:focus-visible { color: inherit; }
-
-/* the open row's tab wears the bar's active strip: tilted cream, torn right end, on the pseudo only */
-.obj > .obj-id::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  display: none;
-  background: var(--lamp);
-  clip-path: polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 96% 100%, 45% 97%, 0% 100%);
-  transform: rotate(-3deg);
+.obj:nth-of-type(even) .obj-head h3::before {
+  clip-path: polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%);
 }
-.obj[aria-expanded=true] > .obj-id { color: var(--on-cream); }
-.obj[aria-expanded=true] > .obj-id::before { display: block; }
-
-/* closed: the tab is a cream plate with the torn edge (own layer, so the open state's border and lamp strip stay as they are) */
-.obj:not([aria-expanded=true]) > .obj-id,
-:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id {
-  background: transparent; border-color: transparent; color: var(--type-cream);
-  top: 0; transform: none; padding: 0.35rem 0.8rem 0.4rem;
-  font-size: 0.72rem; font-weight: 600;
+/* white on pointer hover only (a tap would leave it stuck); red while focused by keyboard, pressed or open, with cream text */
+@media (hover: hover) {
+  :where(.work:not(.is-scrolling)) .obj:hover > .obj-head h3::before { opacity: 1; }
+  :where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-head h3 { color: #1a1714; text-shadow: none; }
 }
-:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { transform: translateY(0.15rem); }
-:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id::after, .obj:not([aria-expanded=true]):focus-visible > .obj-id::after { transform: translateY(-0.15rem) scaleY(1.08); transform-origin: 50% 0; }
-/* closed: the tab hangs from its own row's top line (flat top flush on the line, torn bottom and sides) */
-.obj > .obj-id::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: var(--stroke);
-  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 5px) 100%, 45% 96%, 0% 100%);
+/* the label rests straight and tilts 14deg with its paper on hover, press, focus and open (desktop only; the narrow block below sets its own tilt) */
+@media (min-width: 901px) {
+  .work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head { transform: rotate(14deg); }
 }
-.obj:nth-of-type(even) > .obj-id::after {
-  clip-path: polygon(0% 0%, 100% 0%, calc(100% - 6px) 97%, 50% 100%, 0% 96%);
+@media (min-width: 901px) and (hover: hover) {
+  :where(.work:not(.is-scrolling)) .obj:hover > .obj-head { transform: rotate(14deg); }
 }
-:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id, .obj:not([aria-expanded=true]):focus-visible > .obj-id { color: var(--type-tag-ink); }
-:where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-id::after,.obj:not([aria-expanded=true]):focus-visible > .obj-id::after { background: var(--type-tag-bg); }
-.obj[aria-expanded=true] > .obj-id::after { display: none; }
+.work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3::before { opacity: 1; background: var(--type-red); }
+.work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3 { color: #f6f0da; text-shadow: none; }
+/* narrow: the picture is no longer beside the text, so the label sits at the top of the row, right aligned, in flow */
+@media (max-width: 900px) {
+  .obj-head { left: 0; top: 0; margin-left: auto; margin-right: 0.9rem; margin-bottom: 1rem; transform: rotate(9deg); }
+}
+@media (prefers-reduced-motion: reduce) { .obj-head, .obj-head h3::before { transition: none; } }
 
 .obj h3 { margin: 0.4rem 0 0.75rem; }
 
@@ -964,7 +957,6 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   position: relative;
   z-index: 1;
 }
-.obj > .obj-id { z-index: 1; }
 
 /* narrow screens: the text runs the full width, so pull the
    artwork right back rather than fighting it */

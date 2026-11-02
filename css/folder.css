@@ -77,8 +77,6 @@
 /* hover/focus rules would repaint the open row's border translucent: name them here so the open colour wins; no bottom border, so no blended corner pixel at the join */
 /* no red box (dp-9a): the borders stay as transparent 2px so the layout holds; the red is one short hairline under the open row (::after) */
 .obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: transparent; border-width: 2px 2px 0; margin-bottom: 0; }
-.obj[aria-expanded="true"]:hover > .obj-id, .obj[aria-expanded="true"]:focus-visible > .obj-id { border-color: transparent; }
-.obj[aria-expanded="true"] > .obj-id { border-color: transparent; border-width: 2px 2px 0; top: 2px; left: calc(var(--gutter) - 0.75rem - 2px); }
 .case-folder:has(.folder-body:not([hidden])) { border: 2px solid transparent; border-top: 0; }
 .obj[aria-expanded="true"] { clip-path: inset(-3rem -14px -14px -14px); }
 /* the clicked row: a plain, even 5px mitred red frame all around, 7px off the row (the sheet's rect); no layout space */
