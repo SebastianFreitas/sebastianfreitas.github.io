@@ -49,9 +49,9 @@ window.Genesis = (function () {
       const far = Math.hypot(Math.max(cx, G.W - cx), Math.max(cy, G.H - cy)) + 160;
       const core = Math.min(0.9, 0.25 * Math.hypot(G.W, G.H) / far);
       hitG = ctx.createRadialGradient(cx, cy, 0, cx, cy, far);
-      hitG.addColorStop(0, "rgba(46,46,46,1)");
-      hitG.addColorStop(core, "rgba(40,40,40,1)");
-      hitG.addColorStop(1, "rgba(28,28,28,1)");
+      hitG.addColorStop(0, "rgba(30,30,30,1)");
+      hitG.addColorStop(core, "rgba(27,27,27,1)");
+      hitG.addColorStop(1, "rgba(18,18,18,1)");
     }
     return hitG;
   }
@@ -664,6 +664,7 @@ window.Genesis = (function () {
         G.zoomKick = Math.max(G.zoomKick, 0.05);
         G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1, grey: true });
       }
+      if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, G.secs("break"));   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
       GenVoid.drawSpan(ctx, uDrawn);
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
@@ -750,6 +751,11 @@ window.Genesis = (function () {
       ctx.fillStyle = `rgba(200,200,205,${0.18 * G.flash})`;
       ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
     }
+    if (tb >= 1.6 && tb < 3) {   // the clots outlast the wash: they hand over to the sea and the air
+      GenElem.drawClots(ctx, tb);
+      GenMatter.drawRocks(ctx, tb);   // in front of the clots, under the bridge
+      GenVoid.drawSpan(ctx, uDrawn);
+    }
     if (tb >= 0.5 && tb < 1.6) {
       /* the bang: a dark grey full-frame wash at full strength for 0.1 s (the peak, tb 0.5), then held step-downs */
       const fa = tb < 0.8 ? 1 : tb < 0.95 ? 0.7 : tb < 1.1 ? 0.34 : tb < 1.4 ? 0.18 : 0.08;
@@ -765,7 +771,7 @@ window.Genesis = (function () {
         const lw = m * (rp < 0.2 ? 0.05 : rp < 0.5 ? 0.04 : rp < 0.8 ? 0.028 : 0.016);
         ctx.globalAlpha = 1;
         ctx.save();
-        ctx.strokeStyle = tb < 0.9 ? "#3c3c3c" : "#363636";
+        ctx.strokeStyle = tb < 0.9 ? "#242424" : "#202020";
         ctx.lineWidth = lw;
         ctx.beginPath();
         ctx.arc(rx, ry, Math.max(1, (far + lw) * rp), 0, Math.PI * 2);
@@ -776,15 +782,14 @@ window.Genesis = (function () {
       if (tb < 0.9) {
         const cr = m * (tb < 0.75 ? 0.13 : 0.09);
         ctx.globalAlpha = 1;
-        const cg = ctx.createRadialGradient(rx, ry, 0, rx, ry, cr * 1.5);
-        cg.addColorStop(0, "#404040"); cg.addColorStop(0.66, "#404040");   // the dark grey disc
-        cg.addColorStop(0.75, "#3a3a3a"); cg.addColorStop(1, "rgba(58,58,58,0)");
-        ctx.fillStyle = cg;
+        ctx.fillStyle = "#262626";   // the dark grey disc: a hard edge, no halo
         ctx.beginPath();
-        ctx.arc(rx, ry, cr * 1.5, 0, Math.PI * 2);
+        ctx.arc(rx, ry, cr * 0.99, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      GenElem.drawClots(ctx, tb);   // the clots thrown from the hole, under the bridge
+      GenMatter.drawRocks(ctx, tb);   // the rocks in front of them, still under the bridge
       GenVoid.drawSpan(ctx, uDrawn);   // the bridge stays through the wash: drawn again over it
     }
     if (tb >= 0 && !underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // over the flash, so they read from their first step

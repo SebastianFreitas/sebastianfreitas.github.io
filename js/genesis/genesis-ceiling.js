@@ -766,45 +766,6 @@
     return SHC[k] + (SHC[k + 1] - SHC[k]) * (u - k);
   }
 
-  // the fan: thin lines racing out of the horizon centre in the 1.2 s before the ceiling's gate opens (sea level k > 0 at
-  // secs("break") 1.21, found by probing SRISE), held, then faded over the first 0.8 s of the ceiling's own clock
-  const FAN_N = 14, FAN_LEAD = 1.2, FAN_OUT = 0.6, FAN_FADE = 0.8;
-  function drawFan(ctx, W, H, k, t, sh) {   // sh: secs("break") at which the air starts (the fan leads into it by 1.21 s, then fades)
-    const G = window.Gen;
-    if (!t || !G || typeof G.secs !== "function") return;   // t === 0 is the reduced-motion still: no intro
-    let grow, a;
-    if (k > 0) {
-      a = 1 - clamp01((G.secs("break") - sh) / FAN_FADE); grow = 1;
-      if (!(a > 0)) return;
-    } else {
-      const s = G.secs("break") - sh + 1.21;
-      if (s < 0 || s > FAN_LEAD + 0.05) return;
-      grow = clamp01(s / FAN_OUT); a = 1;
-    }
-    grow = 1 - (1 - grow) * (1 - grow);
-    const cx = G.sx(0), sc = Math.max(0.6, W / 1440), reach = Math.hypot(W, H);
-    const cy = (G.DECK || 0.64) * H;   // the visible horizon in the break beat is the span's deck line, not the 0.46 H air
-    ctx.save();
-    ctx.strokeStyle = "rgba(72,72,72," + (0.7 * a).toFixed(3) + ")";
-    ctx.lineWidth = Math.max(1.4, (1.6 + 0.6 * hash(5.5)) * sc);
-    ctx.lineCap = "round";
-    for (let i = 0; i < FAN_N; i++) {
-      const f = (i + 0.5) / FAN_N;
-      // 15 to 165 degrees above the horizontal, none going down into the ground
-      const ang = (15 + 150 * f + (hash(i * 3.3 + 1) - 0.5) * 4) * Math.PI / 180;
-      const len = reach * (0.45 + 0.55 * hash(i * 5.9 + 4)) * grow;
-      const r0 = (0.02 + 0.03 * hash(i * 2.3 + 6)) * H;   // starts a little above the origin so the lines do not clump
-      const dx = Math.cos(ang), dy = -Math.sin(ang);
-      const wob = (hash(i * 9.7 + 3) - 0.5) * 0.05 * len;
-      const sx0 = cx + dx * r0, sy0 = cy + dy * r0;
-      ctx.beginPath();
-      ctx.moveTo(sx0, sy0);
-      ctx.quadraticCurveTo(cx + dx * len * 0.5 - dy * wob, cy + dy * len * 0.5 + dx * wob, cx + dx * (r0 + len), cy + dy * (r0 + len));
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   let OFF = null, SEA = null;
 
   // the back band as symbolic wind: a flat navy base, and over it gusts of short fat pale strokes. A gust comes every 2.5-4 s (one per 3.25 s slot, start
@@ -992,12 +953,11 @@
   function draw(ctx, W, H, k, t) {
     const GE = window.GenElem;
     AF = GE.airFront(W, H);   // the air's own progress, not the sea's: it starts as the first riser arrives
-    if (!(k > 0)) { t0 = null; drawFan(ctx, W, H, 0, t, GE.airStart()); return; }
+    if (!(k > 0)) { t0 = null; return; }
     if (t && (t0 === null || t < lastT || t < t0)) t0 = t;   // the gust clock keeps starting with the sea's gate, so the settled sky is unchanged
     lastT = t;
-    if (!AF[0]) { drawFan(ctx, W, H, 0, t, GE.airStart()); return; }
+    if (!AF[0]) return;
     const kd = GE.seaLevel(W, H);   // the floor sea's own level, surge and settle included: the rocks and clouds grow with it (reduced motion too)
-    drawFan(ctx, W, H, k, t, GE.airStart());
     if (!(kd > 0)) return;
     const pal = window.GenCeilKinds.palette(), sc = Math.max(0.6, W / 1440);
     const cam = window.Gen && window.Gen.cam || 0;   // screen x = world x - cam * W, the sea's rate; negative too

@@ -104,17 +104,21 @@ window.GenOld = (function () {
   const ORDER = ROSTER.map((o, i) => i).sort((a, b) => ROSTER[a].lane - ROSTER[b].lane);
 
   /* ---- emergence: one by one out of the mass of matter ------------- */
-  const VENT_DUR = 1.8, VENT_FIRST = 2.6, VENT_STEP = 0.2, GENT_T0 = 0.4, GENT_DUR = 2.4;
+  // each one's becoming is slow (long climb, tight stagger, so the last still ends at 8.8 s); the vent spots keep the old timing's mid-points (VENT_MID0)
+  const VENT_DUR = 3.1, VENT_FIRST = 2.6, VENT_STEP = 0.14, GENT_T0 = 0.4, GENT_DUR = 3.2;
+  const VENT_STEP0 = 0.2, VENT_DUR0 = 1.8, GENT_DUR0 = 2.4;
   const GENT_IDX = ROSTER.findIndex(o => o.kind === "gentleman");
+  const VENT_MID0 = [];
   const VENT_T0 = (function () {
     const rank = ROSTER.map((o, i) => i), sh = mulberry(9005);
     for (let i = rank.length - 1; i > 0; i--) { const j = Math.floor(sh() * (i + 1)); const t = rank[i]; rank[i] = rank[j]; rank[j] = t; }
     const t0 = [];
-    if (GENT_IDX >= 0) t0[GENT_IDX] = GENT_T0;
+    if (GENT_IDX >= 0) { t0[GENT_IDX] = GENT_T0; VENT_MID0[GENT_IDX] = GENT_T0 + GENT_DUR0 * 0.5; }
     let k = 0;
     rank.forEach((idx) => {
       if (idx === GENT_IDX) return;
       t0[idx] = VENT_FIRST + k * VENT_STEP;
+      VENT_MID0[idx] = VENT_FIRST + k * VENT_STEP0 + VENT_DUR0 * 0.5;
       k++;
     });
     return t0;
@@ -134,7 +138,7 @@ window.GenOld = (function () {
     const M = window.GenMatter && GenMatter.MASS;
     const cx = sx(0);
     const cy = (M ? M.yf : 0.52) * G.H;
-    const ms = window.GenMatter ? GenMatter.massScale(VENT_T0[o.idx] + ventDur(o.idx) * 0.5) : 1;
+    const ms = window.GenMatter ? GenMatter.massScale(VENT_MID0[o.idx]) : 1;
     const rx = (M ? M.rxH : 0.30) * G.H * ms;
     const ry = (M ? M.ryH : 0.12) * G.H * ms;
     const a = ventAng(o);
@@ -1411,7 +1415,7 @@ window.GenOld = (function () {
      faint after-image blinking in held steps, the foot and the eye a tiny absence of far lights where
      they shrank to. Silhouettes are tinted once and cached. */
   const BANG_T = T_HIT;   // the bang peaks here (break tb); the traces key off it
-  const TR_ON = BANG_T + 0.1, TR_HOLD = 2.8, TR_STEP = 0.5, TR_SINK = TR_ON + TR_HOLD;   // on at 0.6, ghosts to 0.8, sink from 3.4 to 5.4
+  const TR_ON = 3.2, TR_SINK = 3.4, TR_STEP = 0.5;   // old ones last: first shown once the rocks have settled (3.14), then sink from 3.4 to 5.4 as before
   // owner-approved exception to the tier-3 "1-2 steps" rule (2026-10-26): about 5 flat steps off #0d1114, still dim and cool
   const TRACE_TINT_COOL = ["#222a2f", "#232b30", "#242c31", "#222a2f"], TRACE_TINT_GREY = ["#2c2c2c", "#2e2e2e", "#2f2f2f", "#2c2c2c"];   // the break beat paints its pieces neutral dark grey (owner), the later beats keep the cool ones
   let TRACE_TINT = TRACE_TINT_COOL, TRACE_RIM = "#2e373d", TRACE_IRIS = ["#192024", "#12171a"];

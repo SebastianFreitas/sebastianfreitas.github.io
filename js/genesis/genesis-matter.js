@@ -73,6 +73,98 @@
     }
   })();
 
+  /* ---- the four rocks ---------------------------------------------------
+     what is left of the point: four big hard chunks of different shapes, thrown at the
+     blast (break clock 0.5) and settling into the mass the old ones climb out of.
+     f: where each rests (x, y as fractions of H from the mass centre), R: size as a fraction of H. */
+  const BLAST_TB = 0.5;
+  const ROCKS = [
+    { mat: "stone", n: 11, lo: 0.55, st: [1.25, 0.8], R: 0.076, fx: -0.20, fy: -0.04, ang: -2.6, dl: 0.00, dur: 1.9, spin: 0.9, r0: 0.4, seed: 4417, cut: 0 },
+    { mat: "flesh", n: 7, lo: 0.5, st: [0.85, 1.15], R: 0.060, fx: -0.04, fy: -0.11, ang: -1.3, dl: 0.08, dur: 2.3, spin: -1.4, r0: 1.1, seed: 4423, cut: 1 },
+    { mat: "meld", n: 9, lo: 0.6, st: [1.35, 0.7], R: 0.070, fx: 0.10, fy: -0.02, ang: 0.6, dl: 0.04, dur: 2.6, spin: 0.6, r0: -0.7, seed: 4441, cut: 2 },
+    { mat: "stone", n: 6, lo: 0.7, st: [1, 1], R: 0.045, fx: 0.27, fy: -0.06, ang: -0.3, dl: 0.12, dur: 1.6, spin: -2.2, r0: 1.3, seed: 4447, cut: 3 },
+  ];
+  ROCKS.forEach(function (k) {
+    // a rough outline, then every edge split twice and each new point pushed off the line, so no long straight edge is left
+    const base = [];
+    for (let j = 0; j < k.n; j++) {
+      const a = (j / k.n) * TAU + (hash1(k.seed + j * 7) - 0.5) * 0.5 * TAU / k.n, jit = k.lo + (1 - k.lo) * hash1(k.seed + j);
+      base.push([Math.cos(a) * jit * k.st[0], Math.sin(a) * jit * k.st[1]]);
+    }
+    k.verts = [];
+    for (let j = 0; j < k.n; j++) {
+      const p = base[j], q = base[(j + 1) % k.n], ex = q[0] - p[0], ey = q[1] - p[1];
+      k.verts.push(p);
+      for (let m = 1; m <= 2; m++) {
+        const u = m / 3 + (hash1(k.seed + j * 13 + m * 5) - 0.5) * 0.12, d = (hash1(k.seed + j * 17 + m * 3 + 50) - 0.5) * 0.3;
+        k.verts.push([p[0] + ex * u - ey * d, p[1] + ey * u + ex * d]);
+      }
+    }
+    k.size = 1;   // verts are unit; drawChunkAt scales by the size passed in (the ones that still use it)
+    k.ext = 0;
+    for (let j = 0; j < k.verts.length; j++) k.ext = Math.max(k.ext, Math.hypot(k.verts[j][0], k.verts[j][1]));
+    k.mr = Math.min(1, Math.hypot(k.fx / MASS.rxH, k.fy / MASS.ryH));
+  });
+  function drawRocks(ctx, tb) {
+    const a0 = tb - BLAST_TB;
+    if (a0 < 0) return;
+    const H = G.H, Ox = G.sx(0), Oy = 0.46 * H, Mx = G.sx(0), My = MASS.yf * H, trs = G.secs("trade");
+    for (let i = 0; i < ROCKS.length; i++) {
+      const k = ROCKS[i], a = a0 - k.dl;
+      if (a < 0) continue;
+      const u = clamp(a / k.dur, 0, 1), e = 1 - Math.pow(1 - u, 3), arc = Math.sin(Math.PI * u) * 0.05 * H;
+      let x = mix(Ox, Mx + k.fx * H, e) + Math.cos(k.ang) * arc, y = mix(Oy, My + k.fy * H, e) + Math.sin(k.ang) * arc;
+      let sk = 1;
+      if (trs > 0) {
+        const vents = window.GenOld && GenOld.activeVents ? GenOld.activeVents(trs) : null;
+        if (vents) {
+          const R = 0.14 * H;
+          for (let q = 0; q < vents.length; q++) {
+            const v = vents[q], dx = x - v.x, dy = y - v.y, d = Math.hypot(dx, dy);
+            if (d > 0.001 && d < R) { const push = (1 - d / R) * 0.06 * H * v.k; x += dx / d * push; y += dy / d * push; }
+          }
+        }
+        // the rocks wear away from the outside in, slower than the old ones climb out: they shrink in held steps, always opaque, then go
+        const keep = clamp((massScale(trs * 0.75) - k.mr * 0.6) / 0.2, 0, 1);
+        sk = trs >= 8.6 ? 0 : trs >= 8.2 ? 0.25 : keep > 0.75 ? 1 : keep > 0.5 ? 0.8 : keep > 0.25 ? 0.6 : 0.4;
+      }
+      if (sk === 0) continue;
+      const size = k.R * H * sk * (0.9 + 0.1 * smooth(clamp(a / 0.2, 0, 1)));
+      // never over the bridge: the rock's lowest reach stays above the span's top
+      y = Math.min(y, G.H * G.DECK - 0.06 * H - k.ext * size);
+      drawRockAt(ctx, k, x, y, k.r0 + k.spin * 1.2 * (1 - Math.exp(-a / 1.2)), size);
+    }
+  }
+  // each rock has its own break (or none), cut in its own turning frame, all darker than the bridge
+  const RK_LIT = "#2a2a2a", RK_MID = "#232323", RK_SHADE = "#1c1c1c", RK_DARK = "#141414";
+  function drawRockAt(ctx, k, x, y, rot, s) {
+    const v = k.verts, E = 1.8 * s;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    for (let j = 0; j < v.length; j++) { if (j === 0) ctx.moveTo(v[j][0] * s, v[j][1] * s); else ctx.lineTo(v[j][0] * s, v[j][1] * s); }
+    ctx.closePath();
+    ctx.fillStyle = RK_LIT; ctx.fill();
+    ctx.clip();
+    if (k.cut === 0) {   // a slanted break across
+      ctx.fillStyle = RK_SHADE;
+      ctx.beginPath(); ctx.moveTo(-E, 0.35 * s); ctx.lineTo(E, -0.8 * s); ctx.lineTo(E, E); ctx.lineTo(-E, E); ctx.closePath(); ctx.fill();
+    } else if (k.cut === 1) {   // no break: one soft-toned patch
+      ctx.fillStyle = RK_MID;
+      ctx.beginPath(); ctx.ellipse(-0.25 * s, -0.2 * s, 0.35 * s, 0.2 * s, 0.4, 0, 6.283); ctx.fill();
+    } else if (k.cut === 2) {   // a low band and two dark shards
+      ctx.fillStyle = RK_SHADE; ctx.fillRect(-E, 0.3 * s, 2 * E, E);
+      ctx.fillStyle = RK_DARK;
+      for (let q = 0; q < 2; q++) {
+        const px = s * (0.35 + q * 0.3), py = q === 0 ? -0.2 * s : 0.15 * s, r = 0.25 * s;
+        ctx.beginPath(); ctx.moveTo(px, py - r); ctx.lineTo(px + r, py + r); ctx.lineTo(px - r, py + r); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
   /* ---- insects ---------------------------------------------------------
      150 hatch out of chunks; most die almost at once, deformed or caught
      by the storms. */
@@ -163,43 +255,6 @@
     return scratch;
   }
 
-  /* melding: pairs (2j, 2j+1), j < 16, materials differ, are pulled
-     together between age 1.0-2.4 (of the later-born of the pair) */
-  const MELD_OFFSET = { x: 0, y: 0 };
-  function meldOffset(i, s) {
-    MELD_OFFSET.x = 0; MELD_OFFSET.y = 0;
-    if (i >= 32) return MELD_OFFSET;
-    const j = i >> 1;
-    const other = i % 2 === 0 ? i + 1 : i - 1;
-    const c = CHUNKS[i], co = CHUNKS[other];
-    if (c.mat === co.mat) return MELD_OFFSET;
-    const laterBirth = Math.max(c.birth, co.birth);
-    const a = s - laterBirth;
-    if (a < 1.0 || a > 2.4) return MELD_OFFSET;
-    const pull = a < 1.9 ? smooth((a - 1.0) / 0.7) : (1 - smooth((a - 1.9) / 0.5));
-    const me = chunkAtRaw(i, s), them = chunkAtRaw(other, s);
-    const mx = (me.x + them.x) * 0.5, my = (me.y + them.y) * 0.5;
-    const fade = 1 - gatherK(c, s);
-    MELD_OFFSET.x = (mx - me.x) * pull * fade;
-    MELD_OFFSET.y = (my - me.y) * pull * fade;
-    return MELD_OFFSET;
-  }
-  // raw position without meld/trade offsets, for meldOffset's own midpoint calc
-  const rawScratch = { x: 0, y: 0 };
-  function chunkAtRaw(i, s) {
-    const c = CHUNKS[i];
-    const Ox = G.sx(0), Oy = 0.46 * G.H, v = c.vf * G.H;
-    let a = Math.max(0, s - c.birth);
-    if (c.mode === "fall") {
-      rawScratch.x = Ox + Math.cos(c.ang) * v * a * 0.6;
-      rawScratch.y = Oy + Math.sin(c.ang) * v * a * 0.6 + 0.5 * 0.22 * G.H * a * a;
-    } else {
-      rawScratch.x = Ox + Math.cos(c.ang) * v * a * 0.55;
-      rawScratch.y = Oy + Math.sin(c.ang) * v * a * 0.55 + Math.sin(a * 1.3 + c.seed) * 8;
-    }
-    return rawScratch;
-  }
-
   // storm envelope 0..1 at time s
   function stormEnv(st, s) {
     return smooth(clamp((s - st.t) / 0.15, 0, 1)) *
@@ -283,98 +338,6 @@
     ctx.globalAlpha = 1;
   }
 
-  // "break" chunk fragments after tb: 3 triangles from consecutive thirds
-  // of the vertex list plus the centre, flying apart and falling
-  // module-level scratch for the current fragment's path, read by traceFragment
-  // (avoids allocating a closure per fragment per frame)
-  let fragC = null, fragCs = 0, fragSn = 0, fragThird = 0, fragK = 0, fragFx = 0, fragFy = 0, fragSize = 0;
-  function traceFragment() {
-    const n = fragC.verts.length;
-    ctx0.beginPath();
-    for (let m = 0; m <= 2; m++) {
-      let vx, vy;
-      if (m < 2) {
-        const vi = (fragK * fragThird + m) % n;
-        vx = fragC.verts[vi][0] * fragSize; vy = fragC.verts[vi][1] * fragSize;
-      } else { vx = 0; vy = 0; }
-      const px = fragFx + (vx * fragCs - vy * fragSn), py = fragFy + (vx * fragSn + vy * fragCs);
-      if (m === 0) ctx0.moveTo(px, py); else ctx0.lineTo(px, py);
-    }
-    ctx0.closePath();
-  }
-  let ctx0 = null;
-  function drawBreakFragments(ctx, c, i, s, alpha, scale) {
-    if (alpha < 0.02) return;
-    const Ox = G.sx(0), Oy = 0.46 * G.H, v = c.vf * G.H;
-    const breakX = Ox + Math.cos(c.ang) * v * c.tb * 0.55;
-    const breakY = Oy + Math.sin(c.ang) * v * c.tb * 0.55 + Math.sin(c.tb * 1.3 + c.seed) * 8;
-    const fa = s - c.birth - c.tb; // seconds since the break
-    const n = c.verts.length, third = Math.max(1, Math.floor(n / 3));
-    const sizePx = c.size * scale;
-    const fillLit = c.mat === "flesh" ? FLESH_LIT : STONE_LIT;
-    const fillShade = c.mat === "flesh" ? FLESH_SHADE : STONE_SHADE;
-    ctx0 = ctx;
-    fragC = c; fragThird = third; fragSize = sizePx;
-    ctx.globalAlpha = alpha;
-    for (let k = 0; k < 3; k++) {
-      const fang = c.ang + (k - 1) * 1.1;
-      const fx = breakX + Math.cos(fang) * v * 0.5 * fa;
-      const fy = breakY + Math.sin(fang) * v * 0.5 * fa + 0.5 * 0.22 * G.H * fa * fa;
-      const frot = c.spin * (1.5 + k) * fa;
-      fragCs = Math.cos(frot); fragSn = Math.sin(frot);
-      fragK = k; fragFx = fx; fragFy = fy;
-      litShade(ctx, traceFragment, fx, fillLit, fillShade);
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  /* ---- draw a single chunk (with meld + trade + storm shudder) -------- */
-  function drawOneChunk(ctx, i, s, ss) {   // ss: the storm clock (the rock clock runs 7.6 ahead of it)
-    const c = CHUNKS[i];
-    const p = chunkAt(i, s);
-    if (!p.alive && !(c.mode === "break" && s - c.birth > c.tb)) return;
-    let x = p.x, y = p.y, alpha = p.a;
-    const off = meldOffset(i, s);
-    x += off.x; y += off.y;
-
-    // storm shudder: chunks inside an active air or fire storm jitter
-    for (let k = 0; k < STORMS.length; k++) {
-      const st = STORMS[k];
-      if ((st.type === "air" || st.type === "fire") && inStorm(st, x, y, ss)) {
-        const e = stormEnv(st, ss);
-        x += e * 10 * Math.sin(G.t * 40);
-      }
-    }
-
-    const trs = G.secs("trade");
-    if (c.mode !== "break" && trs > 0) {
-      // the mass opens where an old one is climbing out
-      const vents = window.GenOld && GenOld.activeVents ? GenOld.activeVents(trs) : null;
-      if (vents) {
-        const R = 0.14 * G.H;
-        for (let k = 0; k < vents.length; k++) {
-          const v = vents[k], dx = x - v.x, dy = y - v.y, d = Math.hypot(dx, dy);
-          if (d > 0.001 && d < R) { const push = (1 - d / R) * 0.06 * G.H * v.k; x += dx / d * push; y += dy / d * push; }
-        }
-      }
-      // the mass crumbles from the outside in as they leave, then goes
-      const m = massScale(trs);
-      const keep = clamp((m - c.mr * 0.6) / 0.2, 0, 1);
-      y += (1 - keep) * 0.05 * G.H;
-      alpha *= keep * (1 - smooth(clamp((trs - 8.2) / 0.8, 0, 1)));
-    }
-
-    if (x < -c.size - 40 || x > G.W + c.size + 40 || y < -c.size - 40 || y > G.H + c.size + 40) return;
-    if (alpha < 0.01) return;
-
-    const rot = p.rot;
-    if (c.mode === "break" && s - c.birth > c.tb) {
-      drawBreakFragments(ctx, c, i, s, alpha, 1);
-    } else {
-      drawChunkAt(ctx, c, x, y, rot, alpha, 1);
-    }
-  }
-
   /* ---- insects ---------------------------------------------------------- */
   function drawInsects(ctx, s) {
     for (let i = 0; i < INSECTS.length; i++) {
@@ -383,7 +346,9 @@
       const parentAge = ins.hatch - CHUNKS[ins.parent].birth;
       const hatchPos = chunkAt(ins.parent, ins.hatch);
       if (!hatchPos.alive) continue; // parent dead at hatch time: never drawn
-      const hx = hatchPos.x, hy = hatchPos.y;
+      // they hatch from the rocks now, on the rock's near edge (the chunks they were born of are no longer drawn)
+      const rk = ROCKS[ins.parent % ROCKS.length], rr = rk.R * G.H * 0.8;
+      const hx = G.sx(0) + rk.fx * G.H + Math.cos(ins.ang) * rr, hy = MASS.yf * G.H + rk.fy * G.H + Math.sin(ins.ang) * rr * 0.7;
 
       let b = s - ins.hatch;
       // storm death: check position at each storm's start time
@@ -605,10 +570,7 @@
     const ms = G.secs("matter");
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
     if (s > 20.6) return;
-    // the rocks gather during elements (break clock 6 to 9.5), with the air and sea; from the matter beat they carry on from where they were
-    const tb = G.secs("break");
-    const sr = ms < 0 ? Math.max(0, tb - 6) * 1.9 + 0.8 : s + 7.6;
-    if (tb >= 6) for (let i = 0; i < CHUNKS.length; i++) drawOneChunk(ctx, i, sr, sr - 7.6);   // straight on the scene, not under the sea's shadow
+    // the four rocks are drawn by genesis.js, just under the bridge (drawRocks)
     if (s < 0) return;
 
     const outer = ctx;
@@ -623,5 +585,5 @@
     GenElem.layerEnd(outer, ctx, GenElem.dimK());
   }
 
-  window.GenMatter = { draw, chunkAt, MASS, massScale };
+  window.GenMatter = { draw, drawRocks, chunkAt, MASS, massScale };
 })();

@@ -576,7 +576,7 @@
     seaSurf(W, H, camOff, t, nw, SHA, 0, SRISE);   // the air's line (seaLine): today's level, unchanged
     // the drawn sea: the water first runs out from the hole as a wave front (the first third of the sea's timing), then
     // the whole surface rises on the rest of it and sloshes; from the fall on it is exactly today's line
-    const T1 = SFALL[3], Tk = SFALL[0], t0 = SPR[0] = Math.min.apply(null, SEA_LT), tsp = SPR[1] = Math.min(t0 + (T1 - t0) / 3, Tk - 0.01);
+    const T1 = SFALL[3], Tk = SFALL[0], t0 = SPR[0] = Math.min(Math.min.apply(null, SEA_LT), 0.3 * TS),   /* water and air start at blast +0.2 s (tb 0.7), with the burst; the end is unchanged */ tsp = SPR[1] = Math.min(t0 + (T1 - t0) / 3, Tk - 0.01);
     const hx = SPR[2] = G.sx(0), Lw = SPR[4] = 0.12 * W;
     SPR[3] = Math.max(hx, W - hx) + Lw;
     SPR[5] = Math.max(t0 + 1, (3.45 - 0.4) * TS);   // the edges at secs("break") 3.45
@@ -605,10 +605,7 @@
     }
     // the air's own progress: the sea's line at rest (the level the mirrored band ends on), the gas front's reach each way, and how far the bulges have swelled
     seaSurf(W, H, camOff, t, nw, SHR, H * 0.86 - SBASE, 1);
-    if (SAIR === null) {
-      SAIR = 1e9;
-      for (const pt of PARTS) if (pt.splits && pt.kind !== "light" && riseFate(pt)) SAIR = Math.min(SAIR, pt.splitT + pt.hold + (pt.steps - 1) * pt.stepDur);
-    }
+    if (SAIR === null) SAIR = t0;   // the air rolls out with the water's first landing (the shared start), not with the first riser
     AIRP[0] = G.reduced || s >= SAIR ? 1 : 0;
     AIRP[3] = 0.12 * W; AIRP[4] = hx;
     AIRP[1] = airReach(s, hx, AIR_DL);
@@ -620,7 +617,6 @@
   // different moments; the lip is AIRP[3] wide. AIRP: on, reach left, reach right, lip, hole x, bulge swell (0 to 1)
   const AIRP = [0, 0, 0, 1, 0, 1], SHR = new Float32Array(121), AIR_DL = 6, AIR_DR = 8.4;
   let SAIR = null;
-  function riseFate(pt) { return (pt.fate === 1 ? (hash1(pt.i * 7 + 19) < 0.5 ? 0 : 2) : pt.fate) === 2; }
   // the grade's lift while matter forms: the shadow thins where the front is (its band and lip, hard-edged) and less behind it, then back to today's by SFALL[2].
   // Returns null or stops [screen x, lift] left to right (equal x = a hard edge); layerEnd and the ceiling's shadow turn them into one gradient fill
   const LIFT_SEA = 0.8, LIFT_AIR = 0.8, LIFT_BEHIND = 0.5;
@@ -1708,6 +1704,106 @@
     layerEnd(outer, ctx, dimK());
   }
 
+  // the blast's clots: hard dark lumps thrown from the hole in every direction, fast then slowing, then handed to the sea (below) and the air (above).
+  // Sprites are baked once with a hard threshold (no soft rim); the layout is cached per frame size; a draw is only drawImage calls.
+  const CLOT_T0 = 0.5, CLOT_TONES = [48, 45, 42, 39], CLOT_N = 16, CLOT_SP = 128, CLOT_R = 34;
+  let CLOT_SPR = null, CLOT_LAY = null;
+  function clotBake() {
+    const r = mulberry(5531), out = [];
+    for (let v = 0; v < CLOT_N; v++) {
+      const n = 52, p1 = r() * TAU, p2 = r() * TAU, p3 = r() * TAU, bites = [], tail = 1 + 0.55 * r(), wide = 0.62 + 0.34 * r(), pts = [];
+      for (let i = 0, b = 2 + Math.floor(r() * 3); i < b; i++) bites.push([r() * TAU, 0.22 + 0.3 * r(), 0.3 + 0.4 * r()]);
+      for (let i = 0; i < n; i++) {   // one closed outline, a vertex every few px, wobbles, deep bites, a jag on each vertex: no straight edge
+        const a = (i + 0.7 * (r() - 0.5)) / n * TAU;
+        let q = 1 + 0.24 * Math.sin(2 * a + p1) + 0.18 * Math.sin(3 * a + p2) + 0.13 * Math.sin(5 * a + p3) + 0.3 * (r() - 0.5);
+        for (const b of bites) { const d = Math.abs(Math.atan2(Math.sin(a - b[0]), Math.cos(a - b[0]))); if (d < b[1]) q -= b[2] * (1 - d / b[1]); }
+        q = Math.max(0.24, q);
+        const c = Math.cos(a);
+        pts.push([q * c * CLOT_R * (c > 0 ? 0.86 : tail), q * Math.sin(a) * CLOT_R * wide]);
+      }
+      const cv = document.createElement("canvas"); cv.width = cv.height = CLOT_SP;
+      const o = cv.getContext("2d", { willReadFrequently: true }), res = o.createImageData(CLOT_SP, CLOT_SP), h = CLOT_SP / 2;
+      const pass = (k, sx, sy, val) => {
+        o.clearRect(0, 0, CLOT_SP, CLOT_SP);
+        o.fillStyle = "#fff"; o.beginPath();
+        pts.forEach((p, i) => { const x = h + sx + p[0] * k, y = h + sy + p[1] * k; if (i) o.lineTo(x, y); else o.moveTo(x, y); });
+        o.closePath(); o.fill();
+        const d = o.getImageData(0, 0, CLOT_SP, CLOT_SP).data, e = res.data;
+        for (let i = 3; i < d.length; i += 4) if (d[i] >= 128) { e[i - 3] = e[i - 2] = e[i - 1] = val; e[i] = 255; }
+      };
+      pass(1, 0, 0, CLOT_TONES[v % 4]);
+      pass(0.62, 0.3 * CLOT_R, 0.08 * CLOT_R, 26);
+      o.clearRect(0, 0, CLOT_SP, CLOT_SP); o.putImageData(res, 0, 0);
+      out.push(cv);
+    }
+    return out;
+  }
+  function clotLayout(W, H) {
+    const r = mulberry(6113), sc = H / 980, hx = G.sx(0), hy = 0.46 * H, L = [];
+    surfFrame(eclock(), W, H);
+    const surf = x => SHR[Math.max(0, Math.min(120, Math.round(x / W * 120)))] || H;
+    const clear = (x, y, R) => x > -0.5 * R && x < W + 0.5 * R && y - R > 0.02 * H && y + R < surf(x) - 4;   // the lower half is the same burst: no stop at the deck
+    const reach = th => { const c = Math.cos(th), s = Math.sin(th); let d = 40 * sc; for (; d < 2 * W; d += 10 * sc) if (!clear(hx + c * d, hy + s * d, 6 * sc)) break; return d; };
+    const tri = () => r() - r();
+    // 8 sectors, each with its own uneven handful of groups; the gaps between groups are heavy-tailed so nothing fans out evenly
+    const groups = [];
+    for (let s = 0; s < 8; s++) {
+      const k = 4 + Math.floor(r() * 2);
+      for (let i = 0; i < k; i++) groups.push((s + Math.pow(r(), 1.4 + i * 0.3) * 0.96 + 0.02) * Math.PI / 4);
+    }
+    const sd = [0, 0, 0, 0, 0, 0, 0, 0];
+    for (const th of groups) {
+      const rc = reach(th), r0 = 45 * sc + (rc - 45 * sc) * Math.pow(r(), 0.75), cx = hx + Math.cos(th) * r0, cy = hy + Math.sin(th) * r0;
+      const n = 2 + Math.floor(5 * r() * r()), gs = r() < 0.25 ? 1.4 + r() : 0.6 + 0.6 * r();
+      const E = (24 + 0.15 * r0 / sc) * sc * (0.7 + 0.9 * r()), ax = th + Math.PI / 2 + tri() * 0.9, ca = Math.cos(ax), sa = Math.sin(ax);
+      for (let j = 0; j < n; j++) for (let t = 0; t < 12; t++) {
+        const u = 1.4 * tri() * E * 1.6, v = 1.4 * tri() * E * 0.6, x = cx + u * ca - v * sa, y = cy + u * sa + v * ca, d = Math.hypot(x - hx, y - hy), f = 1 - Math.min(1, d / (1060 * sc));
+        const R = Math.min(60 * sc, (46 * Math.pow(f, 1.7) + 6) * sc * (0.55 + 0.7 * r()) * gs);
+        if (d < 40 * sc || !clear(x, y, R) || L.length >= 140) continue;
+        L.push({ dx: x - hx, dy: y - hy, R, v: Math.floor(r() * CLOT_N), D: 0.8 + 0.5 * r(), j: r(), te: -1 });
+        break;
+      }
+    }
+    return { W, H, hy, L };
+  }
+  function clotStats(tb) {   // lumps per compass sector (clockwise on screen from east) at break clock tb, and the total
+    const W = G.W, H = G.H, c = [0, 0, 0, 0, 0, 0, 0, 0];
+    if (!CLOT_LAY || CLOT_LAY.W !== W || CLOT_LAY.H !== H) CLOT_LAY = clotLayout(W, H);
+    const Y = CLOT_LAY;
+    for (const l of Y.L) {
+      const u = clamp((tb - CLOT_T0) / l.D, 0, 1), e = 1 - (1 - u) * (1 - u) * (1 - u), a = Math.atan2(l.dy, l.dx);
+      if (e > 0) c[Math.floor(((a + TAU) % TAU) / (Math.PI / 4)) % 8]++;
+    }
+    return { total: Y.L.length, sectors: c };
+  }
+  function drawClots(ctx, tb) {
+    const W = G.W, H = G.H;
+    if (!W || !H || tb < CLOT_T0) return;
+    if (!CLOT_SPR) CLOT_SPR = clotBake();
+    if (!CLOT_LAY || CLOT_LAY.W !== W || CLOT_LAY.H !== H) CLOT_LAY = clotLayout(W, H);
+    const hx = G.sx(0), hy = CLOT_LAY.hy, L = CLOT_LAY.L;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < L.length; i++) {
+      const l = L[i], u = clamp((tb - CLOT_T0) / l.D, 0, 1), e = 1 - (1 - u) * (1 - u) * (1 - u);
+      const m = e * (1 + 0.2 * Math.max(0, tb - CLOT_T0 - l.D)), x = hx + l.dx * m, y = hy + l.dy * m;   // they keep drifting outward after the throw
+      // the hand-over: a clot ends only where the air (above the hole's level) or the sea (below it) has reached it; it shrinks in two held steps, then is theirs
+      let hit = tb >= 2.9;
+      if (l.te >= 0 && tb >= l.te) hit = true;   // once handed over it stays handed over
+      if (!hit) {
+        if (l.dy < 0) hit = (l.dx < 0 ? AIRP[1] : AIRP[2]) >= Math.abs(x - hx) + AIRP[3];
+        else { const ix = Math.round(clamp(x / W, 0, 1) * NS); hit = SCV[ix] === 0 && SH[ix] <= y; }
+      }
+      if (hit) { if (l.te < 0 || tb < l.te) l.te = tb; } else l.te = -1;
+      let k = 1;
+      if (l.te >= 0) { if (tb >= l.te + 0.3) continue; k = tb >= l.te + 0.15 ? 0.4 : 0.7; }
+      const sz = CLOT_SP * (l.R / CLOT_R) * k * (0.45 + 0.55 * e);
+      ctx.drawImage(CLOT_SPR[l.v], Math.round(x - sz / 2), Math.round(y - sz / 2), Math.round(sz), Math.round(sz));
+    }
+    ctx.restore();
+  }
+
   // the floor's pieces for the ceiling to copy one for one: world x of the base centre, size, sink (fraction of height) and offset below the waterline
   function objSlots(W, H) {
     objLayout(W, H);
@@ -1719,5 +1815,5 @@
     }
     return out;
   }
-  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SHA; }, seaLineRest(W, H) { surfFrame(eclock(), W, H); return SHR; }, airFront(W, H) { surfFrame(eclock(), W, H); return AIRP; }, airLift, airStart() { return SAIR / TS + 0.4; },seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK };
+  window.GenElem = { objSlots, seaRise(W, H) { surfFrame(eclock(), W, H); return SRISE; },  seaLevel(W, H) { surfFrame(eclock(), W, H); return SLVL; },  seaLine(W, H) { surfFrame(eclock(), W, H); return SHA; }, seaLineRest(W, H) { surfFrame(eclock(), W, H); return SHR; }, airFront(W, H) { surfFrame(eclock(), W, H); return AIRP; }, airLift, airStart() { return SAIR / TS + 0.4; },seaRiseDone(W, H) { surfFrame(eclock(), W, H); return SFALL[3]; }, draw, drawResidue, drawSea, paintSea, drawAirDrift, drawClots, clotStats, rage, layerBegin, layerEnd, dimK };
 })();
