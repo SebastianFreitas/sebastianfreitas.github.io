@@ -14,7 +14,7 @@ window.RedLines = (function () {
   const PRESETS = {
     gate: { ref: 560, gate: true, left: [[-17, 150, 6], [200, 93, 4]], rover: 41, rlen: 143, rt: 6 },
     item: { ref: 460, gate: false, left: [[-31, 44, 5]], rover: 46, rlen: 67, rt: 4, smin: 0.75 }, // cards and notes: the sheet's stack plate; smin keeps the thinnest stroke at 3 px
-    obj: { ref: 860, gate: false, left: [[-14, 70, 6], [130, 50, 4]], rover: 22, rlen: 100, rt: 6 },
+    obj: { ref: 860, gate: false, left: [[-14, 70, 6], [130, 50, 4]], rover: 22, rlen: 100, rt: 6, lend: 0.78 },
   };
 
   const drawn = new WeakMap(); // plate -> "WxH" it was last drawn at
@@ -202,7 +202,8 @@ window.RedLines = (function () {
       // the one stroke that carries the long thin run: the longest, so it reads at this width
       const fr = rng(seed * 13 + 9), fw = 0.25 + fr() * 0.2, fd = [0.15 + fw / 2 + fr() * (0.7 - fw), fw, 0.3 + fr() * 0.2];
       const kv = rng(seed * 31 + 5), cap = innerHeight * 0.9;
-      const lL = Math.min(H * (0.6 + kv() * 0.3), cap), rL = Math.min(H * (0.6 + kv() * 0.3), cap), ly = -(10 + kv() * 20) * s;
+      const lL0 = Math.min(H * (0.6 + kv() * 0.3), cap), rL = Math.min(H * (0.6 + kv() * 0.3), cap), ly = -(10 + kv() * 20) * s;
+      const lL = c.lend ? Math.min(lL0, c.lend * H - ly) : lL0; // lend: the left line ends by this share of the plate, where an open row's page starts
       const ry = H + c.rover * s - rL, rOn = !(c.case && Wx < W) && (c.far || ry < innerHeight); // c.far: a case plate is many screens tall, its bottom corner is far below the first screen
       const cand = [["l", 0, lL]];
       if (rOn) cand.push(["r", 0, rL]);
@@ -295,25 +296,10 @@ window.RedLines = (function () {
     timer = setTimeout(flush, DEBOUNCE);
   }
 
-  // while a row is open its frame stays plain: the pieces of any plate whose reach touches or crosses the frame are hidden
-  function sync() {
-    const open = document.querySelector(".obj[aria-expanded=true]"), fr = open && open.getBoundingClientRect();
-    document.querySelectorAll("[data-redlines] > svg.redlines").forEach((svg) => {
-      const el = svg.parentNode;
-      if (el.matches("article.case, main.case")) return;
-      let hide = false;
-      if (open && el !== open) {
-        const pr = el.getBoundingClientRect();
-        hide = pr.bottom + 60 > fr.top - 20 && pr.top - 60 < fr.bottom + 20;
-      }
-      svg.style.visibility = hide ? "hidden" : "";
-    });
-  }
-
   function watch(el) {
     if (!draw(el)) drawn.delete(el);
     if (ro) ro.observe(el);
-    new MutationObserver(() => { if (skipped.has(el)) later(el); sync(); setTimeout(sync, 700); }).observe(el, { attributes: true, attributeFilter: ["aria-expanded"] });
+    new MutationObserver(() => { if (skipped.has(el)) later(el); }).observe(el, { attributes: true, attributeFilter: ["aria-expanded"] });
   }
 
   function init() {
@@ -328,7 +314,6 @@ window.RedLines = (function () {
       });
     }
     plates.forEach(watch);
-    sync();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

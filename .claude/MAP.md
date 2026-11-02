@@ -471,9 +471,9 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
-| `css/folder.css` | The four Work folder teasers on index: inline body, hidden/clip states |
+| `css/folder.css` | The four Work folder teasers on index: the body is a tilted black page under the row (clip, video 60% + pitch, close), hidden/clip states |
 | `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils, `.work` washes, 404), never a plate |
-| `css/art/wash.webp`, `folder-glow.webp` | Baked smoke and wash behind an open folder, and its nine-sliced inner glow; images so the sweep does not repaint gradients each frame; used by folder.css |
+| `css/art/wash.webp`, `folder-glow.webp` | Baked wash (no longer used by folder.css) and the open folder's nine-sliced inner glow; images so the sweep does not repaint gradients each frame; used by folder.css |
 | `index.html` | Homepage; holds the four case folders (`div.case-folder`). Inline head script is only the service-worker purge |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |

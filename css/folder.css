@@ -9,7 +9,13 @@
 
 /* closed folders stack like a filing drawer: each tab and top edge sits over the bottom padding of the folder before; an open folder keeps the full gap below it */
 .work > .case-folder + .obj { margin-top: -1px; }
-.work > .case-folder:has(.folder-body:not([hidden])) + .obj { margin-top: 2.8rem; }
+/* an open folder's page runs under the next row's torn top: margin-top is the 3deg rise across half the row (the page pivots at its left, the row's stroke at its centre) plus a 10px overlap, so no wall shows between them along the tilt (on narrow the page pivots at its centre: overlap only) */
+.work > .case-folder:has(.folder-body:not([hidden])) + .obj { margin-top: calc(-2.62% - 10px); }
+/* that pulled-up row's flat box lies over the page's bottom-left, so only its own painted parts take the pointer: its tilted stroke (clipped to the visible row) and its content; the page's close bar and link stay clickable */
+.work > .case-folder:has(.folder-body:not([hidden])) + .obj { pointer-events: none; }
+.work > .case-folder:has(.folder-body:not([hidden])) + .obj::before, .work > .case-folder:has(.folder-body:not([hidden])) + .obj > :not(.redlines, .obj-shot) { pointer-events: auto; }
+/* the open row and the row below it paint their stroke opaque in the row's measured near-black, so over the page's 11 11 11 ends it reads 11 with no darker line (0.92 black over 11 reads 5) */
+.work > .obj:has(+ .case-folder > .folder-body:not([hidden]))::before, .work > .case-folder:has(.folder-body:not([hidden])) + .obj::before { background: rgb(11 11 11); }
 
 .open-case {
   grid-area: open;
@@ -51,62 +57,84 @@
   font-size: 0.86rem;
   letter-spacing: 0.34em;
 }
-/* a straight torn stroke behind the bar (no tilt) */
-.folder-close::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: var(--stroke);
-  clip-path: polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px));
+/* the bar's strip layer: nothing painted at rest, so the page's bites show through to the bottom and the outline never changes; hover, focus and press paint it as the paper strip below */
+.folder-close::after { content: ""; position: absolute; inset: 0; z-index: -1; background: transparent; }
+
+/* the page link and the close button take the top bar tab's paper strip (style.css .topbar nav a): the same torn wear ends on a cream strip, tilted, dark text on a pointer hover, red strip while pressed or keyboard-focused. The close button's strip is its ::after, which stops being the torn stroke and shrinks to the label at the right */
+.case-folder .case-nav a, .folder-close { transition: color 0.12s ease-out, transform 0.12s ease-out; }
+.case-folder .case-nav a { --tilt: -2.2deg; outline: 0; }
+.case-folder .case-nav a:nth-child(even) { --tilt: 1.7deg; }
+/* one torn-end mask for both strips */
+.case-folder .case-nav a, .folder-close {
+  --ml: 18px; --mr: 16px; --mh: 100%;
+  --paper-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 / calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
 }
-.folder-close:hover, .folder-close:focus-visible { color: var(--type-red-text); }
-
-/* open: the body is see-through so the toy canvas behind shows */
-.case-folder.open .folder-body,
-.case-folder.open .folder-body .case { background: transparent; }
-
-/* the toy canvas (fixed, z -1) sits behind section.work, so the section turns see-through while a file is open */
-.work:has(.case-folder.open) { background: transparent; }
+.case-folder .case-nav a::before {
+  clip-path: var(--btn-scrape);
+  -webkit-mask: var(--paper-mask);
+  mask: var(--paper-mask);
+}
+.case-folder .case-nav a:hover { color: var(--type-cream); }
+.case-folder .case-nav a:hover::before { background: transparent; }
+.folder-close { outline: 0; }
+/* keyboard focus is the hover look (same strip, same size); press stays red */
+.case-folder .case-nav a:focus-visible, .folder-close:focus-visible { color: #1a1714; }
+.case-folder .case-nav a:focus-visible { transform: rotate(var(--tilt)); }
+.case-folder .case-nav a:focus-visible::before { background: #f1ecd8; }
+.case-folder .case-nav a:active, .folder-close:active { color: #f6f0da; }
+.case-folder .case-nav a:active::before { background: var(--type-red); }
+@media (hover: hover) {
+  .case-folder .case-nav a:hover, .folder-close:hover { color: #1a1714; }
+  .case-folder .case-nav a:hover::before { background: #f1ecd8; }
+  .case-folder .case-nav a:hover, .case-folder .case-nav a:active { transform: rotate(var(--tilt)); }
+  .case-folder .case-nav a:active::before { background: var(--type-red); }
+  .case-folder .case-nav a:active { color: #f6f0da; }
+}
+@media (prefers-reduced-motion: reduce) { .case-folder .case-nav a:hover, .case-folder .case-nav a:focus-visible, .case-folder .case-nav a:active { transform: none; } }
+.folder-close::after { transition: background-color 0.12s ease-out, transform 0.12s ease-out; }
+.folder-close:focus-visible::after { background: #f1ecd8; }
+.folder-close:active::after { background: var(--type-red); }
+@media (hover: hover) { .folder-close:hover::after { background: #f1ecd8; } .folder-close:active::after { background: var(--type-red); } }
+.folder-close:focus-visible::after, .folder-close:active::after { inset: auto; right: calc(var(--gutter) - 0.9rem); top: calc((100% - 0.9rem - var(--gutter)) / 2); width: 12em; height: 1.8rem; clip-path: var(--btn-scrape); transform: rotate(-1.6deg); -webkit-mask: var(--paper-mask); mask: var(--paper-mask); }
+@media (hover: hover) { .folder-close:hover::after { inset: auto; right: calc(var(--gutter) - 0.9rem); top: calc((100% - 0.9rem - var(--gutter)) / 2); width: 12em; height: 1.8rem; clip-path: var(--btn-scrape); transform: rotate(-1.6deg); -webkit-mask: var(--paper-mask); mask: var(--paper-mask); } }
 
 /* open: lamp-yellow energy-terminal sequence, every effect driven from one progress value by caseAnim in folders.js */
 .folder-body { position: relative; }
 
+/* the page: a black sheet pulled out from under the row, same -3deg tilt, its top tucked behind the row's bottom edge; the section's own background shows around it. The row stays as it is, open or closed (it only rises above the page) */
+.obj[aria-expanded="true"] { z-index: 1; }
+/* the row's art is see-through, so a page behind it would darken it: the sheet only paints from the row's bottom edge down. The row's stroke is tilted -3deg about its centre, the page the same, so the two edges are parallel: --tuck is the page's own distance from its top edge to the row's bottom edge (2.5rem of margin, plus the 3deg rise across half the row's width on desktop, where the page's origin is its left; 100cqw is the row's width) */
+.case-folder { container-type: inline-size; --tuck: calc((2.5rem + 2.62cqw) * 0.9986); }
+.case-folder:not(:has(+ .obj)) { --page-end: rgb(4 4 5); }
+.case-folder > .folder-body {
+  width: 60%; margin: -2.5rem 0 0;
+  transform: rotate(-3deg); transform-origin: 0 0;
+  -webkit-mask: linear-gradient(#000, #000) bottom / 100% calc(100% - var(--tuck) + 8px) no-repeat; mask: linear-gradient(#000, #000) bottom / 100% calc(100% - var(--tuck) + 8px) no-repeat;
+}
+/* the sheet's black is its own layer so the left and right edges can be eroded (js clips the body itself while it opens). Each page has its own hand-placed polygon of bites cut inward from both side edges: y is in % of the page height (placed at 584 px), so each side's points stay strictly increasing at any height and the bites scale with the page. Top and bottom stay straight */
+.case-folder > .folder-body::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  /* the page starts 8px up under the row's torn bottom (no wall sliver) and fades from the row's measured near-black (11 11 11) to its own black over 2rem at the top and bottom; the last row's page keeps its own bottom end */
+  background: linear-gradient(rgb(11 11 11) calc(var(--tuck) - 8px), rgb(4 4 5) calc(var(--tuck) + 2rem), rgb(4 4 5) calc(100% - 2rem), var(--page-end, rgb(11 11 11)) 100%); clip-path: var(--page-cut, none);
+}
+#sector-zero > .folder-body { --page-cut: polygon(0 0, 100% 0, 100% 2.397%, calc(100% - 4px) 2.911%, calc(100% - 4px) 3.596%, calc(100% - 12px) 4.11%, 100% 6.507%, 100% 14.041%, calc(100% - 3px) 14.897%, 100% 15.24%, 100% 16.61%, calc(100% - 5px) 16.952%, calc(100% - 5px) 17.637%, calc(100% - 14px) 17.979%, 100% 19.349%, 100% 20.719%, calc(100% - 3px) 21.404%, calc(100% - 3px) 21.747%, calc(100% - 8px) 22.432%, 100% 23.63%, 100% 25.486%, calc(100% - 12px) 33%, 100% 33.486%, 100% 34.76%, calc(100% - 5px) 35.103%, calc(100% - 5px) 35.788%, calc(100% - 13px) 36.13%, 100% 37.329%, 100% 41.267%, calc(100% - 11px) 43.151%, 100% 47.26%, 100% 48.63%, calc(100% - 3px) 49.315%, calc(100% - 3px) 50.171%, calc(100% - 8px) 50.856%, 100% 52.397%, 100% 58.171%, calc(100% - 41px) 58.829%, 100% 71.658%, 100% 77.055%, calc(100% - 17px) 85.103%, 100% 85.959%, 100% 89.897%, calc(100% - 15px) 92.123%, 100% 96.747%, 100% 100%, 0 100%, 0 93.493%, 4px 92.637%, 0 92.466%, 0 89.384%, 3px 89.041%, 0 88.014%, 0 82.705%, 15px 81.678%, 0 74.658%, 0 72.171%, 27px 71.514%, 0 63.342%, 0 60.445%, 15px 59.932%, 0 52.055%, 0 50.514%, 4px 49.829%, 0 49.658%, 0 46.575%, 2px 46.233%, 0 45.205%, 0 42.123%, 11px 39.726%, 4px 39.212%, 4px 38.356%, 0 38.014%, 0 35.616%, 4px 35.103%, 0 34.418%, 0 33.342%, 36px 24.829%, 0 24.342%, 0 23.116%, 7px 21.062%, 3px 20.377%, 3px 18.836%, 0 18.322%, 0 16.781%, 9px 14.384%, 2px 14.041%, 2px 12.842%, 0 12.329%, 0 4.795%, 3px 3.767%, 0 3.425%); }
+#voidscape > .folder-body { --page-cut: polygon(0 0, 100% 0, 100% 1.027%, calc(100% - 2px) 1.712%, calc(100% - 2px) 2.397%, calc(100% - 9px) 2.74%, 100% 4.623%, 100% 7.021%, calc(100% - 4px) 7.192%, 100% 7.705%, 100% 13.014%, calc(100% - 16px) 20.548%, 100% 21.062%, 100% 22.342%, calc(100% - 34px) 23%, 100% 33.486%, 100% 34.247%, calc(100% - 16px) 45.548%, 100% 46.062%, 100% 50%, calc(100% - 3px) 50.514%, calc(100% - 3px) 51.027%, calc(100% - 9px) 51.541%, 100% 53.082%, 100% 56.164%, calc(100% - 4px) 56.678%, calc(100% - 4px) 56.849%, calc(100% - 13px) 57.363%, 100% 58.904%, 100% 61.986%, calc(100% - 5px) 62.671%, calc(100% - 5px) 63.185%, calc(100% - 13px) 63.699%, 100% 65.753%, 100% 67%, calc(100% - 21px) 67.658%, 100% 76.171%, 100% 77.226%, calc(100% - 10px) 77.911%, 100% 82.534%, 100% 90.068%, calc(100% - 5px) 90.24%, 100% 91.267%, 100% 93.664%, calc(100% - 2px) 94.178%, calc(100% - 2px) 94.863%, calc(100% - 7px) 95.205%, 100% 97.089%, 100% 100%, 0 100%, 0 98.801%, 5px 98.288%, 0 97.945%, 0 96.062%, 12px 92.123%, 0 91.438%, 0 87.5%, 4px 86.986%, 0 86.644%, 0 85.103%, 3px 84.76%, 0 84.418%, 0 76.884%, 2px 76.37%, 0 76.199%, 0 74%, 44px 73.342%, 0 65.171%, 0 62.842%, 15px 58.048%, 0 56.849%, 0 52.911%, 5px 52.055%, 0 51.712%, 0 50.171%, 10px 47.774%, 3px 47.089%, 3px 45.89%, 0 45.548%, 0 44.178%, 3px 43.836%, 0 43.322%, 0 39.384%, 5px 38.87%, 0 38.699%, 0 37.158%, 8px 34.418%, 4px 34.075%, 4px 33.39%, 0 32.877%, 0 23.116%, 13px 22.603%, 0 14.041%, 0 12.158%, 7px 10.788%, 2px 10.445%, 2px 9.76%, 0 9.247%, 0 7.363%, 11px 5.651%, 4px 4.966%, 4px 3.596%, 0 3.253%); }
+#conclusus > .folder-body { --page-cut: polygon(0 0, 100% 0, 100% 1.712%, calc(100% - 5px) 1.884%, 100% 2.568%, 100% 3.938%, calc(100% - 14px) 14.041%, 100% 14.555%, 100% 22.089%, calc(100% - 3px) 22.26%, 100% 22.774%, 100% 24%, calc(100% - 23px) 32.658%, 100% 33.171%, 100% 33.562%, calc(100% - 12px) 41.438%, 100% 41.952%, 100% 43.836%, calc(100% - 2px) 44.007%, 100% 45.034%, 100% 48.973%, calc(100% - 4px) 49.658%, 100% 50.171%, 100% 52.055%, calc(100% - 5px) 52.74%, calc(100% - 5px) 53.425%, calc(100% - 11px) 53.767%, 100% 56.678%, 100% 59.76%, calc(100% - 2px) 60.103%, 100% 60.788%, 100% 61.829%, calc(100% - 39px) 62.514%, 100% 73%, 100% 73.973%, calc(100% - 11px) 74.658%, 100% 77.055%, 100% 78.938%, calc(100% - 2px) 79.623%, calc(100% - 2px) 79.795%, calc(100% - 7px) 80.137%, 100% 81.507%, 100% 84.589%, calc(100% - 3px) 84.76%, 100% 85.274%, 100% 92.808%, calc(100% - 4px) 93.322%, 100% 94.178%, 100% 100%, 0 100%, 0 98.288%, 11px 96.747%, 3px 96.575%, 3px 96.404%, 0 95.719%, 0 94.349%, 5px 94.007%, 0 93.322%, 0 85.788%, 13px 84.418%, 5px 84.075%, 5px 83.733%, 0 83.219%, 0 79.281%, 11px 76.541%, 3px 76.199%, 3px 74.829%, 0 74.486%, 0 67.637%, 14px 66.267%, 4px 65.753%, 4px 65.24%, 0 64.726%, 0 60.788%, 4px 59.932%, 0 59.589%, 0 57.192%, 5px 56.849%, 0 55.822%, 0 54.452%, 13px 53.425%, 0 45.548%, 0 43.664%, 2px 42.295%, 0 42.123%, 0 39.726%, 3px 39.041%, 0 38.699%, 0 36.301%, 14px 32.021%, 0 31.164%, 0 24.144%, 5px 23.63%, 0 22.774%, 0 21.404%, 2px 20.89%, 0 19.863%, 0 17.979%, 12px 13.87%, 0 11.986%, 0 10.103%, 17px 9.589%, 0 1.541%); }
+#heavylight > .folder-body { --page-cut: polygon(0 0, 100% 0, 100% 1.541%, calc(100% - 3px) 1.884%, 100% 2.568%, 100% 4.452%, calc(100% - 17px) 5.308%, 100% 11.13%, 100% 16.438%, calc(100% - 3px) 16.61%, 100% 17.123%, 100% 18.493%, calc(100% - 4px) 19.007%, calc(100% - 4px) 20.034%, calc(100% - 13px) 20.377%, 100% 22.774%, 100% 22.945%, calc(100% - 35px) 23.116%, 100% 33.514%, 100% 33.685%, calc(100% - 4px) 33.856%, 100% 34.028%, 100% 34.199%, calc(100% - 10px) 35.274%, 100% 39.897%, 100% 41.438%, calc(100% - 5px) 41.781%, calc(100% - 5px) 42.808%, calc(100% - 12px) 43.151%, 100% 46.062%, 100% 48.459%, calc(100% - 12px) 48.973%, 100% 51.884%, 100% 57.192%, calc(100% - 4px) 57.534%, 100% 58.733%, 100% 62.671%, calc(100% - 4px) 63.699%, 100% 64.212%, 100% 66.486%, calc(100% - 19px) 74.171%, 100% 74.486%, 100% 74.658%, calc(100% - 17px) 83.048%, 100% 83.733%, 100% 87.671%, calc(100% - 12px) 88.87%, 100% 90.925%, 100% 92.295%, calc(100% - 13px) 92.979%, 100% 97.432%, 100% 100%, 0 100%, 0 92.466%, 9px 88.014%, 0 85.616%, 0 83.733%, 7px 81.164%, 3px 80.822%, 3px 79.452%, 0 78.938%, 0 75.856%, 5px 75%, 0 74.315%, 0 73%, 43px 62%, 0 61.486%, 0 57.363%, 5px 56.849%, 0 56.678%, 0 54.795%, 13px 52.226%, 0 51.541%, 0 46.233%, 12px 45.548%, 0 35.103%, 0 32.021%, 3px 31.829%, 0 31.658%, 0 31.486%, 28px 31%, 0 26.884%, 0 26.712%, 10px 23.973%, 0 22.603%, 0 19.521%, 2px 18.836%, 0 18.151%, 0 16.781%, 11px 12.842%, 0 11.986%, 0 10.103%, 7px 8.219%, 2px 7.705%, 2px 7.363%, 0 6.678%, 0 3.596%, 5px 3.253%, 0 2.74%); }
+@media (max-width: 899px) {
+  .case-folder { --tuck: calc(2.5rem * 0.9986); }
+  .case-folder > .folder-body { width: calc(100% - 3.5rem); margin-left: 1.75rem; transform-origin: 50% 0; overflow: clip; }
+  /* narrow: END OF FILE // takes its own line above the label, so the label's paper strip never covers it */
+  .folder-close { flex-wrap: wrap; justify-content: flex-end; white-space: nowrap; row-gap: 0.9rem; padding-bottom: calc(var(--gutter) + 1.5rem); }
+  .folder-close::before { flex: 1 0 100%; text-align: left; }
+  .folder-close:focus-visible::after, .folder-close:active::after { top: auto; bottom: calc(var(--gutter) + 1.05rem); }
+}
+@media (max-width: 899px) and (hover: hover) {
+  .folder-close:hover::after { top: auto; bottom: calc(var(--gutter) + 1.05rem); }
+}
+
 .folder-bar, .folder-scan, .folder-kicker { position: absolute; pointer-events: none; opacity: 0; }
 
-/* opened folder: the row's tab and outline carry on down around the case file */
-/* one opaque colour on every side, so the row and the case (over the see-through canvas) read as one outline */
-.obj[aria-expanded="true"], .case-folder:has(.folder-body:not([hidden])) { --open-line: var(--type-red); }
-/* hover/focus rules would repaint the open row's border translucent: name them here so the open colour wins; no bottom border, so no blended corner pixel at the join */
-/* no red box (dp-9a): the borders stay as transparent 2px so the layout holds; the red is one short hairline under the open row (::after) */
-.obj[aria-expanded="true"], .obj[aria-expanded="true"]:hover, .obj[aria-expanded="true"]:focus-visible { border-color: transparent; border-width: 2px 2px 0; margin-bottom: 0; }
-.case-folder:has(.folder-body:not([hidden])) { border: 2px solid transparent; border-top: 0; }
-.obj[aria-expanded="true"] { clip-path: inset(-3rem -14px -14px -14px); }
-/* the clicked row: a plain, even 5px mitred red frame all around, 7px off the row (the sheet's rect); no layout space */
-.obj[aria-expanded="true"]::after { content: ""; position: absolute; inset: -12px; border: 5px solid var(--type-red); z-index: 1; pointer-events: none; }
-.obj[aria-expanded="true"] > .redlines { display: none; }
-/* closed rows above the open one stay on the wash: the section's own wash goes see-through while a file is open, so a pseudo repaints it over the grid rows from the top down to the open row (title = row 1, then obj, folder pairs) */
-.work:has(.case-folder.open)::after {
-  content: ""; position: absolute; z-index: -2; pointer-events: none;
-  grid-column: 1 / -1; grid-row: 1 / 3;
-  top: calc(-1 * clamp(7.5rem, 16vh, 9.5rem)); left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); bottom: 0;
-  background: var(--dirt-a) 40% top / var(--dirt-size) repeat-y, url("/css/art/wash.webp") 0 0 / 100% 100% no-repeat;
-}
-.work:has(#voidscape.open)::after { grid-row: 1 / 5; }
-.work:has(#conclusus.open)::after { grid-row: 1 / 7; }
-.work:has(#heavylight.open)::after { grid-row: 1 / 9; }
-/* the smoke and the wash gradient are baked once into css/art/wash.webp (256x512, stretched to the box: the smoke's ellipses are percentages of it), so no gradient is painted per frame while the folder sweeps */
-/* and the closed rows below it: the wall-paint pseudo moves to the grid rows under the open folder and carries the wash too */
-.work:has(.case-folder.open)::before {
-  inset: auto; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: 0; bottom: 0;
-  grid-column: 1 / -1; grid-row: 4 / auto;
-  background: var(--dirt-b) 60% top / var(--dirt-size) repeat-y, url("/css/art/wash.webp") 0 0 / 100% 100% no-repeat;
-}
-.work:has(#voidscape.open)::before { grid-row: 6 / auto; }
-.work:has(#conclusus.open)::before { grid-row: 8 / auto; }
-.work:has(#heavylight.open)::before { display: none; }
-.obj[aria-expanded="true"] h3 { color: var(--type-cream); }
-/* the case header band: opaque wash over the toy (D36) */
-.obj[aria-expanded="true"] { background: rgb(4 4 5); } /* black as the sheet draws the clicked row, opaque over the toy */
-.obj[aria-expanded="true"]::before { display: none; } /* the open row is the opaque wash band: the black slab stroke (0.92, see-through) would darken it and let the toy show (D36) */
-.obj[aria-expanded="true"] .obj-shot, .obj[aria-expanded="true"]:hover .obj-shot { opacity: 0.08; transform: none; transition: opacity 0.4s ease; } /* the open row's artwork stays level, inside the 12px clip allowance past the gold line */
 
 .folder-bar {
   left: 0; right: 0; top: 0; height: 2px; z-index: 2;
@@ -149,10 +177,12 @@
   .folder-bar { opacity: 1; height: 1px; box-shadow: none; background: rgb(var(--lamp-rgb) / 0.35); }
 }
 
-/* the teaser leads with its clip, stacked (clip, pitch, link) below 900px; from 900px the clip takes the left two thirds and the pitch and link sit beside it, top-aligned. The row, the folder's top padding and the clip's margin take ~410px above the clip (~435px under Conclusus' taller row), so its height is capped only to keep its bottom in the viewport, ratio kept, uncropped */
-.folder-body > .case > video.clip { width: auto; max-width: 100%; margin-inline: auto; }
+/* inside the page: the clip takes the left 60% and the pitch and link sit beside it, top-aligned; below 900px the clip leads, stacked. The black page needs no plate under the pitch */
+.case-folder .folder-body > .case { padding-top: calc(clamp(1rem, 3vh, 2rem) + var(--tuck) + 1.5rem); background: transparent; }
+.case-folder .folder-body > .case::before, .case-folder .folder-body > .case > p::before { display: none; }
+.folder-body > .case > video.clip { width: auto; max-width: 100%; margin-inline: auto; clip-path: none; } /* the global torn video edge is off: only the page's sides are cut */
 @media (min-width: 900px) {
-  .folder-body > .case { display: grid; max-width: none; grid-template-columns: 5fr 2fr; grid-template-rows: auto 1fr; column-gap: clamp(1.5rem, 3vw, 3rem); align-items: start; }
+  .folder-body > .case { display: grid; max-width: none; grid-template-columns: 3fr 2fr; grid-template-rows: auto 1fr; column-gap: clamp(1rem, 2vw, 2rem); align-items: start; }
   .folder-body > .case > video.clip { grid-column: 1; grid-row: 1 / span 2; margin-inline: 0; max-height: max(8rem, calc(100vh - var(--clip-top, 415px))); }
   #conclusus .folder-body > .case > video.clip { --clip-top: 440px; }
   .folder-body > .case > p { grid-column: 2; grid-row: 1; margin-top: 0; }
