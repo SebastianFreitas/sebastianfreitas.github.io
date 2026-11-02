@@ -13,7 +13,7 @@ sizes at read time).
 
 Owner's words → code names. Add a line when the owner uses a word the code does not.
 
-- the nav bank: js/hud/tiles-nav.js (radar, signal, drive, nav tiles)
+- the nav bank: js/hud/tiles-nav.js (radar, signal, pull, nav tiles)
 - the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
 - the navigation bar (beacon positions): the bridge minimap `#bridge-map` (bridge-input.js)
 - the sys bank, systems monitor: js/hud/tiles-sys.js (hull, repair, bus tiles); framework js/hud/instruments.js
@@ -121,13 +121,14 @@ shares `Gen`:
 | `instruments.js` | HUD framework | `window.Instruments` |
 | `tiles-nav.js` | The nav bank | registers `{paint, paintStatic}` |
 | `tiles-sys.js` | The sys bank and its shared state | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
+| `side.js` | Fuel instrument left of the bridge log (`#bridge-fuel`), nose resonance graph right of it (`#bridge-res`, reads `env.res`); fuel tile fallback when narrow | `HudSide` `{draw, tile}` |
 
 - `instruments.js`: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once,
 - `instruments.js`: one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object)
 - `instruments.js`: `PALETTES` table (current, site, verdigris, violet) + `setPalette`; the `F` kit carries the active roles and `onPalette(fn)`; css/bridge.css `--hud-*` per `html[data-hud]`; temporary key `h` cycles, `?hud=<name>` picks, `sessionStorage` key `hudPalette`
-- `instruments.js` publishes: `window.Instruments {mount, mountSys, draw, setScale, setCompact, focus, focusSys, impact, setRepair, alert, registerTiles, …}`
-- `tiles-nav.js`: every tile has a static layer (`radarStatic`/`signalStatic`/`driveStatic`/`navStatic`); `radar` wash + blip smear from `glare`, a second contact (our echo) from `env.twin`, glow bitmaps cached per colour;
-- `tiles-nav.js`: `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS (`max(r.chaos, env.chaos)`)/UNFORMED/NOMIC; `drive` (key `phase`) tank spans the tile height (`driveGeom`); `nav` (key `rec`) right column `X`/`G`/`ρ`;
+- `instruments.js` publishes: `window.Instruments {mount, mountSys, draw, setScale, setCompact, setDriveTile, alarmLevel, focus, focusSys, impact, setRepair, alert, registerTiles, …}`
+- `tiles-nav.js`: every tile has a static layer (`radarStatic`/`signalStatic`/`navStatic`); `radar` wash + blip smear from `glare`, a second contact (our echo) from `env.twin`, glow bitmaps cached per colour;
+- `tiles-nav.js`: `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS (`max(r.chaos, env.chaos)`)/UNFORMED/NOMIC; `nav` (key `rec`) right column `X`/`G`/`ρ`;
 - `tiles-nav.js`: `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus`
 - `tiles-sys.js`: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt` (integrity, cosmetic) and `sys.wear`; `eclss` rows are bars with nominal bands;
 - `tiles-sys.js`: `hull` has a STRESS/REGEN header, sector stress flicker, an INT bar and WEAR ×n; `bus` sags with `sway`, shows UPLINK on `link`; static layers `eclssStatic`/`radStatic`/`hullStatic`/`busStatic`
@@ -529,7 +530,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 SW purge. Body tail, in this order:
 
 `site/surge → bridge/lamp → depths/depths → depths/lore →
-hud/instruments → hud/tiles-nav → hud/tiles-sys → lib/paint → world/art/* →
+hud/instruments → hud/tiles-nav → hud/tiles-sys → hud/side → lib/paint → world/art/* →
 world/world → world/* → ship/voidship-art → ship/voidship-prow →
 ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
 bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,

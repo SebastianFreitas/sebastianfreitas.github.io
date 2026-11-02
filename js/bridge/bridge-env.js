@@ -16,7 +16,8 @@
        contained, link, frozen, echo,      0..1 (wear is -1..1: + corrodes, - restores)
        g, rho, gAnom,                      gravity multiple, medium density multiple, |g - expected| 0..1
        tag,                                "" or a short upper-case badge for the tile header
-       site, siteName, w,                  dominant site id ("" if none), its name, its weight 0..1
+       res,                                nose resonance 0..1: site weight x chaos, plus a small nomic flutter
+       site, siteName, w,                dominant site id ("" if none), its name, its weight 0..1
        n1, n2, n3,                         smoothed noise channels in -1..1, shared by the tiles
        t,                                  env clock, seconds
        twin,                               a second contact on the sweep, our own echo, 0..1
@@ -28,8 +29,8 @@
 
   B.env = {};
   for (const k of FIELDS) B.env[k] = 0;
-  Object.assign(B.env, { gAnom: 0, tag: "", site: "", siteName: "", w: 0, n1: 0, n2: 0, n3: 0, t: 0 });
-  let gRef = 0;
+  Object.assign(B.env, { gAnom: 0, tag: "", site: "", siteName: "", w: 0, res: 0.04, n1: 0, n2: 0, n3: 0, t: 0 });
+  let gRef = 0, resS = 0.04;
   const nT = [0, 0, 0];
   let nClock = 0;
 
@@ -97,6 +98,9 @@
     e.n1 = approach(e.n1, nT[0], 12, dt);
     e.n2 = approach(e.n2, nT[1], 12, dt);
     e.n3 = approach(e.n3, nT[2], 12, dt);
+
+    resS = approach(resS, Math.max(0.04, smooth(e.w) * (0.6 + 0.4 * e.chaos)), 4, dt);
+    e.res = clamp(resS + 0.05 * (e.n1 + e.n2 + e.n3) / 3 * 1.7, 0.02, 1);
   };
 
   window.envReport = () => Object.assign({}, B.env);

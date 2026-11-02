@@ -1,4 +1,4 @@
-/* tiles-nav.js — the NAV bank: radar, signal, drive, nav. instruments.js owns
+/* tiles-nav.js — the NAV bank: radar, signal, pull, nav. instruments.js owns
    the banks, the layout, the alarms and the paint loop; this file owns what
    each tile draws and the readings it integrates. Register with the
    framework, which calls back with `F`, the shared kit it needs. */
@@ -17,13 +17,9 @@
     const blips = new Map();
     const strip = [];
     let stripAcc = 0;
-    let fuelNeedle = 1;
-    let thrustNeedle = 0;
-    let cruiseNeedle = 0;
     let chaosNeedle = 0;
     let futureNeedle = 0;
     let nomicNeedle = 0;
-    let fuelGradKey = null, fuelGrad = null;
     const blipGlow = new Map();
 
     const VOICES = {
@@ -68,7 +64,7 @@
       ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
       ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
       ctx.stroke();
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.fillStyle = `rgba(${DIM},0.85)`;
       ctx.textAlign = "center";
       ctx.fillText("W", cx - R + 7, cy + 3);
@@ -112,7 +108,7 @@
         ctx.stroke();
       }
       ctx.strokeStyle = `rgba(${LAMP},${0.9 * wash})`;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R);
       ctx.stroke();
@@ -209,7 +205,7 @@
         const side = nearest.cam >= r.camX ? "E" : "W";
         const range = side + " " + fmtK(nearestD);
         const baseY = inner - 5;
-        setFont(mono(8));
+        setFont(mono(7));
         const rw = ctx.measureText(range).width;
         ctx.textAlign = "right";
         ctx.fillStyle = `rgba(${COLD},0.9)`;
@@ -352,166 +348,6 @@
     }
 
     /* =========================================================
-       DRIVE — tanks, thrust, cruise, burn budget, power.
-       ========================================================= */
-    /* shared geometry for the dynamic and static drive painters */
-    function driveGeom(p) {
-      const inner = p.h - 5;
-      const pad = 6;
-      const iconReserve = 14;          /* chrome expand glyph — keep text out of here */
-      const headerY = 11;
-      const cruiseBlock = 22;          /* label + bar + mode line */
-
-      const tankW = Math.max(14, Math.round(p.w * 0.11));
-      const tankX = pad;
-      const tankTop = headerY + 5;
-      const tankH = inner - tankTop - 6;
-
-      const zoneL = tankX + tankW + 8;
-      const zoneR = p.w - pad - iconReserve;
-      const zoneW = Math.max(40, zoneR - zoneL);
-      const zoneCx = zoneL + zoneW * 0.5;
-      const zoneTop = tankTop;
-      const zoneBot = inner - cruiseBlock;
-      const zoneCy = zoneTop + (zoneBot - zoneTop) * 0.42;
-      const R = Math.min(zoneW * 0.34, (zoneBot - zoneTop) * 0.32);
-
-      const statY = zoneCy + R + 6;
-      const statValY = statY + 9;
-
-      const bx = zoneL;
-      const by = inner - 9;
-
-      return { inner, pad, headerY, tankX, tankTop, tankW, tankH, zoneL, zoneR, zoneW, zoneCx, zoneTop, zoneBot, zoneCy, R, statY, statValY, bx, by };
-    }
-
-    /* tank rail + ticks, thrust-arc track and the labels that never move */
-    function driveStatic(ctx, p) {
-      const { tankX, tankTop, tankW, tankH, zoneCx, zoneCy, R, zoneW, statY, bx, by } = driveGeom(p);
-
-      ctx.strokeStyle = `rgba(${LAMP},0.3)`;
-      ctx.strokeRect(tankX + 0.5, tankTop + 0.5, tankW - 1, tankH - 1);
-      for (let i = 1; i < 4; i++) {
-        const y = tankTop + tankH * i / 4;
-        ctx.strokeStyle = `rgba(${DIM},0.3)`;
-        ctx.beginPath(); ctx.moveTo(tankX + 2, y); ctx.lineTo(tankX + tankW - 2, y); ctx.stroke();
-      }
-
-      ctx.strokeStyle = `rgba(${DIM},0.3)`;
-      ctx.lineWidth = 5;
-      ctx.lineCap = "round";
-      ctx.beginPath(); ctx.arc(zoneCx, zoneCy, R, 0.75 * Math.PI, 2.25 * Math.PI); ctx.stroke();
-      ctx.lineCap = "butt";
-      ctx.lineWidth = 1;
-
-      setFont(mono(7));
-      ctx.textAlign = "center";
-      ctx.fillStyle = `rgba(${DIM},1)`;
-      ctx.fillText("THRUST", zoneCx, zoneCy + 11);
-
-      setFont(mono(8));
-      ctx.fillStyle = `rgba(${DIM},0.95)`;
-      ctx.fillText("BURN", zoneCx - zoneW * 0.22, statY);
-      ctx.fillText("PWR", zoneCx + zoneW * 0.22, statY);
-
-      setFont(mono(7));
-      ctx.textAlign = "left";
-      ctx.fillStyle = `rgba(${DIM},1)`;
-      ctx.fillText("CRUISE BUILD", bx, by - 6);
-    }
-
-    function drive(ctx, p, r, dt) {
-      const s = r.ship;
-      const fuelN = s ? s.fuelN : 1;
-      const thrust = s ? s.thrust : 0;
-      const hold = s ? s.holdT : 0;
-      const infinite = s && s.infinite;
-      fuelNeedle = approach(fuelNeedle, fuelN, 8, dt);
-      thrustNeedle = approach(thrustNeedle, thrust, 10, dt);
-      cruiseNeedle = approach(cruiseNeedle, hold, 6, dt);
-
-      const { headerY, tankX, tankTop, tankW, tankH, zoneL, zoneR, zoneW, zoneCx, zoneCy, R, statValY, bx, by } = driveGeom(p);
-
-      // fuel tank — fill only; the rail and ticks are static
-      const fillH = tankH * (infinite ? (0.85 + 0.15 * Math.sin(now() * 2)) : fuelNeedle);
-      const low = !infinite && fuelNeedle < 0.22;
-      const col = low ? (fuelNeedle < 0.09 ? BAD : WARN) : LAMP;
-      const gradKey = tankTop + "/" + tankH + "/" + col;
-      if (gradKey !== fuelGradKey) {
-        fuelGradKey = gradKey;
-        fuelGrad = ctx.createLinearGradient(0, tankTop, 0, tankTop + tankH);
-        fuelGrad.addColorStop(0, `rgba(${col},0.95)`);
-        fuelGrad.addColorStop(1, `rgba(${col},0.3)`);
-      }
-      ctx.fillStyle = fuelGrad;
-      ctx.fillRect(tankX + 2, tankTop + tankH - fillH, tankW - 4, fillH);
-
-      // thrust arc — fill only; the track is static
-      ctx.strokeStyle = `rgba(${LAMP},0.9)`;
-      ctx.lineWidth = 5;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.arc(zoneCx, zoneCy, R, 0.75 * Math.PI, 0.75 * Math.PI + 1.5 * Math.PI * thrustNeedle);
-      ctx.stroke();
-      ctx.lineCap = "butt";
-      ctx.lineWidth = 1;
-
-      setFont(mono(12, "600"));
-      ctx.textAlign = "center";
-      ctx.fillStyle = `rgba(${READ},0.95)`;
-      ctx.fillText(Math.round(thrustNeedle * 100) + "%", zoneCx, zoneCy + 2);
-
-      // burn + power values — labels are static
-      setFont(mono(8));
-      ctx.textAlign = "center";
-      const burnRate = s && s.burning ? (7.5 * (s.power && s.power.burn || 1)) : 0;
-      const secsLeft = (!infinite && burnRate > 0.1)
-        ? (s.fuel / burnRate)
-        : (infinite ? Infinity : (s ? s.fuel / 7.5 : 0));
-      ctx.fillStyle = `rgba(${READ},0.9)`;
-      if (infinite) ctx.fillText("∞", zoneCx - zoneW * 0.22, statValY);
-      else if (s && s.burning) ctx.fillText("~" + secsLeft.toFixed(0) + "s", zoneCx - zoneW * 0.22, statValY);
-      else ctx.fillText((s ? s.fuel : 100).toFixed(0) + "u", zoneCx - zoneW * 0.22, statValY);
-      const pow = s && s.power ? s.power.accel : 1;
-      ctx.fillStyle = `rgba(${COLD},0.9)`;
-      ctx.fillText("×" + pow.toFixed(1), zoneCx + zoneW * 0.22, statValY);
-
-      // cruise — bar + percentage; the "CRUISE BUILD" label is static
-      const bw = zoneW;
-      ctx.textAlign = "right";
-      setFont(mono(7));
-      ctx.fillStyle = `rgba(${COLD},0.9)`;
-      ctx.fillText(Math.round(cruiseNeedle * 100) + "%", zoneR, by - 6);
-      ctx.fillStyle = `rgba(${DIM},0.22)`;
-      ctx.fillRect(bx, by, bw, 4);
-      const cg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-      cg.addColorStop(0, `rgba(${COLD},0.5)`);
-      cg.addColorStop(1, `rgba(${LAMP},0.9)`);
-      ctx.fillStyle = cg;
-      ctx.fillRect(bx, by, bw * cruiseNeedle, 4);
-
-      // header — fuel label + percent inline on the left (not under expand icon)
-      ctx.textAlign = "left";
-      setFont(mono(9));
-      if (infinite) {
-        ctx.fillStyle = `rgba(${LAMP},0.9)`;
-        ctx.fillText("OPEN", tankX, headerY);
-      } else {
-        ctx.fillStyle = low ? `rgba(${col},1)` : `rgba(${DIM},1)`;
-        ctx.fillText(low ? "LOW" : "FUEL", tankX, headerY);
-        ctx.fillStyle = `rgba(${col === LAMP ? READ : col},0.95)`;
-        ctx.fillText(Math.round(fuelNeedle * 100) + "%", tankX + 30, headerY);
-      }
-
-      const mode = s && s.burning ? "HARD BURN"
-        : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
-      ctx.textAlign = "right";
-      setFont(mono(8));
-      ctx.fillStyle = s && s.burning ? `rgba(${LAMP},0.9)` : `rgba(${DIM},0.9)`;
-      ctx.fillText(fit(mode, zoneR - (tankX + 70)), zoneR, headerY);
-    }
-
-    /* =========================================================
        NAV — speed history, bearing, span bar, course lock.
        ========================================================= */
     function navStatic(ctx, p) {
@@ -519,7 +355,7 @@
       const chartBot = inner - 28;
       const barY = chartBot + 10;
 
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.textAlign = "left";
       ctx.fillStyle = `rgba(${DIM},1)`;
       ctx.fillText("U/S", 5, 32);
@@ -579,7 +415,7 @@
       }
       const stepX = (p.w - 10) / Math.max(1, 159);
       ctx.strokeStyle = `rgba(${LAMP},0.8)`;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
       strip.forEach((sm, i) => {
         const x = 5 + i * stepX;
@@ -616,7 +452,7 @@
 
       // bottom line — RUN keeps its width, the status text gets what is left
       const baseY = inner - 4;
-      setFont(mono(8));
+      setFont(mono(7));
       const run = r.travelled != null ? fmtK(r.travelled) + " RUN" : "";
       const rw = run ? ctx.measureText(run).width + 6 : 0;
       if (run) {
@@ -635,9 +471,106 @@
       }
     }
 
+    /* =========================================================
+       PULL — a ball drawn toward the nearest beacon; chevrons on the
+       ring show the ship's real motion. One ring, no scale.
+       ========================================================= */
+    let ballX = 0, ballY = 0;
+    const PULL_R = 44;
+
+    function pullStatic(ctx, p) {
+      const cx = p.w / 2, cy = (p.h - 5) / 2;
+      ctx.strokeStyle = `rgba(${LAMP},0.3)`;
+      ctx.beginPath(); ctx.arc(cx, cy, PULL_R, 0, 6.283); ctx.stroke();
+    }
+
+    function pull(ctx, p, r, dt) {
+      const e = r.env || {};
+      const gl = e.glare || 0;
+      const jit = e.jitter || 0;
+      const inner = p.h - 5;
+      const cx = p.w / 2, cy = inner / 2, R = PULL_R;
+      const marks = r.marks || [];
+
+      // nearest beacon in range, and every one in range as a dot inside the ring
+      let nearest = null, nearestD = RANGE, nearA = 0;
+      for (let i = 0; i < marks.length; i++) {
+        const m = marks[i];
+        const d = m.cam - r.camX, ad = Math.abs(d);
+        if (ad >= RANGE) continue;
+        const a = (d >= 0 ? 0 : Math.PI) + Math.atan2((m.oy - 0.5) * 1.4, 0.001 + ad / RANGE) * (d >= 0 ? 1 : -1) * 0.5;
+        if (ad < nearestD) { nearestD = ad; nearest = m; nearA = a; }
+        const rr = ad / RANGE * (R - 6);
+        const dx = cx + Math.cos(a) * rr + (e.n1 || 0) * 2 * jit;
+        const dy = cy + Math.sin(a) * rr + (e.n2 || 0) * 2 * jit;
+        ctx.beginPath(); ctx.arc(dx, dy, 2, 0, 6.283);
+        if (m.claimed) {
+          ctx.strokeStyle = `rgba(${CLAIMED},0.8)`; ctx.stroke();
+        } else {
+          ctx.fillStyle = `rgba(${LAMP},0.8)`; ctx.fill();
+        }
+      }
+
+      // the ball is eased toward its pull: 0 at the range edge, 0.85 R on arrival
+      const mag = nearest ? (1 - nearestD / RANGE) * 0.85 * R : 0;
+      const tx = nearest ? Math.cos(nearA) * mag : 0;
+      const ty = nearest ? Math.sin(nearA) * mag : 0;
+      ballX += (tx - ballX) * 0.12;
+      ballY += (ty - ballY) * 0.12;
+      const bx = cx + ballX + (e.n1 || 0) * 3 * jit;
+      const by = cy + ballY + (e.n2 || 0) * 3 * jit;
+      const bl = Math.hypot(ballX, ballY) || 1;
+      const hx = ballX / bl, hy = ballY / bl;
+      ctx.strokeStyle = `rgba(${nearest ? COLD : LAMP},0.95)`;
+      ctx.fillStyle = `rgba(${LAMP},0.14)`;
+      ctx.beginPath(); ctx.arc(bx, by, 7, 0, 6.283); ctx.fill(); ctx.stroke();
+      if (nearest) {
+        ctx.beginPath();
+        ctx.moveTo(bx + hx * 7, by + hy * 7);
+        ctx.lineTo(bx + hx * 11, by + hy * 11);
+        ctx.stroke();
+      }
+
+      // chevrons: the ship's real velocity, count by speed, none when stopped
+      const s = r.ship;
+      const vy = s && s.vy ? s.vy : 0;
+      const sp = Math.max(Math.abs(r.vel || 0) / 30000, Math.abs(vy) / 600);
+      const n = sp < 0.04 ? 0 : sp < 0.3 ? 1 : sp < 0.65 ? 2 : 3;
+      if (n) {
+        const b = Math.atan2(vy / 600, (r.vel || 0) / 30000);
+        const ux = Math.cos(b), uy = Math.sin(b);
+        ctx.strokeStyle = `rgba(${READ},0.9)`;
+        for (let k = 0; k < n; k++) {
+          const rad = R + 5 + k * 4;
+          const tx2 = cx + ux * rad, ty2 = cy + uy * rad;
+          // wings sweep back from the tip, +-0.7 rad off the reverse direction
+          const w1 = b + Math.PI - 0.7, w2 = b + Math.PI + 0.7;
+          ctx.beginPath();
+          ctx.moveTo(tx2 + Math.cos(w1) * 4, ty2 + Math.sin(w1) * 4);
+          ctx.lineTo(tx2, ty2);
+          ctx.lineTo(tx2 + Math.cos(w2) * 4, ty2 + Math.sin(w2) * 4);
+          ctx.stroke();
+        }
+      }
+
+      setFont(mono(9));
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${DIM},1)`;
+      ctx.fillText("PULL", 5, 12);
+      ctx.textAlign = "right";
+      ctx.fillStyle = `rgba(${nearest ? LAMP : DIM},0.9)`;
+      ctx.fillText(nearest ? fit((nearest.name || nearest.id || "mark").toUpperCase(), p.w - 40) : "NONE", p.w - 5, inner - 5);
+
+      if (gl > 0.02) {
+        ctx.fillStyle = `rgba(${VEIL},${0.3 * gl})`;
+        ctx.fillRect(0, 0, p.w, p.h - 4);
+      }
+    }
+
     return {
-      paint: { radar, signal, phase: drive, rec: nav },
-      paintStatic: { radar: radarStatic, signal: signalStatic, phase: driveStatic, rec: navStatic },
+      paint: { radar, signal, rec: nav, pull },
+      paintStatic: { radar: radarStatic, signal: signalStatic, rec: navStatic, pull: pullStatic },
     };
   });
 })();

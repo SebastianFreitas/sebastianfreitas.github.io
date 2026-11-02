@@ -168,7 +168,7 @@
         ctx.fillStyle = `rgba(${COLD},0.25)`;
         ctx.fillRect(barX + row.bLo * barW, row.y - 0.5, (row.bHi - row.bLo) * barW, 6);
         meter(barX, row.y, barW, 5, row.v, row.col);
-        setFont(mono(10, "600"));
+        setFont(mono(9, "600"));
         ctx.textAlign = "right";
         ctx.fillStyle = `rgba(${row.col === LAMP ? READ : row.col},0.95)`;
         ctx.fillText(row.val, p.w - 6, row.y);
@@ -221,7 +221,7 @@
       spark(radStrip, 5, chartBot, p.w - 10, chartH, event ? evCol : LAMP, 0.85);
 
       const magHot = sys.mag < 14 || (r.future || 0) > 0.88 || (e.sway || 0) > 0.6;
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.textAlign = "left";
       ctx.fillStyle = magHot ? `rgba(${WARN},0.9)` : `rgba(${DIM},1)`;
       ctx.fillText("B " + sys.mag.toFixed(1) + " µT", 5, inner - 4);
@@ -256,7 +256,7 @@
 
     /* the unit label under the dose reading never changes: drawn once into the static layer */
     function radStatic(ctx, p) {
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
       ctx.fillStyle = `rgba(${DIM},1)`;
       ctx.fillText("mSv/h", 5, 32);
@@ -483,7 +483,7 @@
       ];
       imu.forEach(([lab, val, col], i) => {
         const x = 5 + i * colW;
-        setFont(mono(8));
+        setFont(mono(7));
         ctx.textAlign = "left";
         ctx.fillStyle = `rgba(${col},0.9)`;
         ctx.fillText(val, x + 11, imuY);
@@ -493,7 +493,7 @@
       const flow = thrust * 16.8;
       const tvc = roll * 0.85;
       const py = inner - 4;
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.textAlign = "left";
       ctx.fillStyle = burning ? `rgba(${READ},0.95)` : `rgba(${DIM},0.9)`;
       ctx.fillText(pc.toFixed(2) + " MPa", 5, py);
@@ -518,7 +518,7 @@
 
       const imuY = row0 + 4 * rowH + 11;
       const colW = (p.w - 10) / 3;
-      setFont(mono(8));
+      setFont(mono(7));
       ctx.fillStyle = `rgba(${DIM},0.85)`;
       ["P", "Y", "R"].forEach((lab, i) => {
         ctx.fillText(lab, 5 + i * colW, imuY);

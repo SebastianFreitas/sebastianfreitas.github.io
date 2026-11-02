@@ -39,12 +39,6 @@
   overflow: visible;
 }
 .tinst-wrap { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: visible; }
-.tinst-wrap::before {
-  content: ""; position: absolute; inset: -9px -12px; z-index: -1;
-  background: rgb(26 25 23); opacity: 0.94; clip-path: var(--slab-scrape);
-  transform: rotate(-3deg); pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) { .tinst-wrap::before { transform: none; } }
 .tinst-ctl {
   position: absolute; right: 0; top: -0.75rem; z-index: 2;
   display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
@@ -481,6 +475,8 @@ html[data-hud="violet"] {
   pointer-events: auto;
 }
 #bridge-sys .tinst-wrap { padding-top: 0; border-top: none; }
+/* the fuel and res canvases beside the log: js/hud/side.js sets left, bottom and height */
+.bridge-side { display: none; width: 240px; z-index: 11; }
 /* ---- cursor ----
    left/top must be set: a fixed element with no offsets keeps its
    static-flow position, so translate() would move it from wherever

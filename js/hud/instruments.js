@@ -28,37 +28,37 @@ window.Instruments = (function () {
      palette: setPalette() (at the bottom) swaps them and the tiles re-read
      them through F.onPalette. LAMP is the main readout colour, READ the
      tile numbers and readings, COLD the
-     locked / label colour, DIM the quiet one; PLATE is the tile fill,
-     CLAIMED a claimed contact, GLINT the radar head, VEIL the glare wash. */
+     locked / label colour, DIM the quiet one; CLAIMED a claimed contact, GLINT the radar head, VEIL the glare wash. */
   const PALETTES = {
     current: {
       LAMP: "245,208,107", READ: "245,208,107", COLD: "143,176,184", BAR: "143,176,184", DIM: "125,135,131",
       BAD: "196,74,68", WARN: "229,166,60", GOOD: "120,170,140",
-      PLATE: "9,13,15", CLAIMED: "150,164,160", GLINT: "255,255,255", VEIL: "214,222,226",
+      CLAIMED: "150,164,160", GLINT: "255,255,255", VEIL: "214,222,226",
     },
     site: {
       LAMP: "228,221,198", READ: "228,221,198", COLD: "176,167,143", BAR: "176,167,143", DIM: "176,167,143",
       BAD: "196,74,68", WARN: "214,140,70", GOOD: "228,221,198",
-      PLATE: "9,13,15", CLAIMED: "150,160,158", GLINT: "246,240,218", VEIL: "228,221,198",
+      CLAIMED: "150,160,158", GLINT: "246,240,218", VEIL: "228,221,198",
     },
     verdigris: {
       LAMP: "86,170,146", READ: "222,214,190", COLD: "222,214,190", BAR: "86,170,146", DIM: "112,138,128",
       BAD: "205,78,70", WARN: "229,166,60", GOOD: "160,200,150",
-      PLATE: "9,13,15", CLAIMED: "140,160,150", GLINT: "255,255,250", VEIL: "214,226,220",
+      CLAIMED: "140,160,150", GLINT: "255,255,250", VEIL: "214,226,220",
     },
     violet: {
       LAMP: "190,158,220", READ: "226,214,242", COLD: "214,200,232", BAR: "190,158,220", DIM: "150,140,166",
       BAD: "204,72,84", WARN: "229,166,60", GOOD: "190,158,220",
-      PLATE: "9,13,15", CLAIMED: "150,142,164", GLINT: "255,252,255", VEIL: "222,214,232",
+      CLAIMED: "150,142,164", GLINT: "255,252,255", VEIL: "222,214,232",
     },
   };
-  let LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, PLATE, CLAIMED, GLINT, VEIL;
+  let LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL;
 
   const CELL_W = 168, CELL_H = 122, GAP = 16, GAP_C = 8;
+  const TILT_GAIN = 4;   // real pitch peaks near 0.08 rad; the seam bar shows it times this
   const PANELS = [
     { key: "radar",  col: 0, row: 0, label: "RADAR"  },
-    { key: "signal", col: 1, row: 0, label: "SIGNAL" },
-    { key: "phase",  col: 0, row: 1, label: "DRIVE"  },
+    { key: "pull",   col: 1, row: 0, label: "PULL"   },
+    { key: "signal", col: 0, row: 1, label: "SIGNAL" },
     { key: "rec",    col: 1, row: 1, label: "NAV"    },
   ];
   const SYS_PANELS = [
@@ -79,10 +79,14 @@ window.Instruments = (function () {
     const p = src.find(q => q.key === k);
     return { key: p.key, label: p.label, col: 0, row: i, w: CELL_W, h: CELL_H };
   });
-  const COMPACT     = oneColumn(PANELS, COMPACT_KEYS);
+  /* where the side instruments have no room, fuel returns as a tile in the
+     SIGNAL slot (key "phase", which the fuel alarm already lights) */
+  const PANELS_FUEL = PANELS.map(p => p.key === "signal" ? { ...p, key: "phase", label: "FUEL" } : p);
+  const COMPACT     = oneColumn(PANELS_FUEL, COMPACT_KEYS);
   const COMPACT_SYS = oneColumn(SYS_PANELS, COMPACT_SYS_KEYS);
   let compact = false;
-  const navPanels = () => compact ? COMPACT : PANELS;
+  let fuelTile = false;
+  const navPanels = () => compact ? COMPACT : fuelTile ? PANELS_FUEL : PANELS;
   const sysPanels = () => compact ? COMPACT_SYS : SYS_PANELS;
 
   /* both banks always have the same shape (2x2 desktop, 1x2 compact), so the
@@ -94,7 +98,10 @@ window.Instruments = (function () {
      losing a pixel. `compact` is live by the time anything measures. */
   const gap = () => (compact ? GAP_C : GAP);
   const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * gap();
-  const gridH = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * gap();
+  const gridHp = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * gap();
+  /* both banks end on one thin baseline, 4px under the lower tile row */
+  const BASE_PAD = 5;
+  const gridH = () => gridHp() + BASE_PAD;
 
   let cv, ctx, dpr = 1, t = 0;
   let focusKey = null;
@@ -169,10 +176,27 @@ window.Instruments = (function () {
     curFont = null;
   }
 
+  /* the world shows through every tile, so each string gets a thin near-black
+     outline under its fill: one strokeText per fillText, no shadowBlur.
+     Done once per context so the tiles keep calling fillText. */
+  function halo(c) {
+    if (c.haloed) return c;
+    const fill = c.fillText;
+    c.fillText = function (s, x, y, w) {
+      const lw = this.lineWidth, ss = this.strokeStyle, lj = this.lineJoin;
+      this.lineWidth = 2.5; this.lineJoin = "round"; this.strokeStyle = "rgba(4,7,8,0.85)";
+      this.strokeText(s, x, y, w);
+      this.lineWidth = lw; this.lineJoin = lj; this.strokeStyle = ss;
+      fill.call(this, s, x, y, w);
+    };
+    c.haloed = true;
+    return c;
+  }
+
   function mount(canvas) {
     cv = canvas;
     if (!cv) return;
-    ctx = cv.getContext("2d");
+    ctx = halo(cv.getContext("2d"));
     curFont = null;
     fitCanvas(cv, ctx);
     bindFocus(cv, navPanels, () => focusKey, k => { focusKey = k; repaint(); });
@@ -188,7 +212,7 @@ window.Instruments = (function () {
   function mountSys(canvas) {
     sysCv = canvas;
     if (!sysCv) return;
-    sysCtx = sysCv.getContext("2d");
+    sysCtx = halo(sysCv.getContext("2d"));
     fitCanvas(sysCv, sysCtx);
     bindFocus(sysCv, sysPanels, () => sysFocus, k => { sysFocus = k; repaint(); });
     // hidden below 1100px by bridge.css (display: none): a zero-size box
@@ -224,6 +248,14 @@ window.Instruments = (function () {
     resize();
     return compact;
   }
+  function setDriveTile(v) {
+    v = !!v;
+    if (v === fuelTile) return;
+    fuelTile = v;
+    focusKey = null;
+    statics.clear();
+    repaint();
+  }
   const focus = k => { focusKey = k; repaint(); };
   const focusSys = k => { sysFocus = k; repaint(); };
 
@@ -247,7 +279,7 @@ window.Instruments = (function () {
     if (s !== 1) ctx.scale(s, s);
     const q = cellPanel(p);
     // the chrome is in the static layer; leave the context as chrome() left it
-    ctx.fillStyle = `rgba(${PLATE},0.86)`;
+    ctx.fillStyle = "rgba(9,13,15,0.86)";
     ctx.strokeStyle = `rgba(${LAMP},0.5)`; ctx.lineWidth = 1;
     paintFn(q, r, dt);
     alarmOverlay(q, p.key);
@@ -278,14 +310,14 @@ window.Instruments = (function () {
     if (!layer || layer.key !== key) {
       const off = layer ? layer.canvas : document.createElement("canvas");
       off.width = c.width; off.height = c.height;
-      const octx = off.getContext("2d");
+      const octx = halo(off.getContext("2d"));
       octx.setTransform(tf);
       octx.imageSmoothingEnabled = true;
       const saved = ctx;
       ctx = octx;
       curFont = null;
       if (fp) {
-        drawStaticPanel({ key: fp.key, label: fp.label, w: gridW(), h: gridH(), focused: true }, staticFn);
+        drawStaticPanel({ key: fp.key, label: fp.label, w: gridW(), h: gridHp(), focused: true }, staticFn);
       } else {
         for (const p of panels) {
           ctx.save();
@@ -295,6 +327,8 @@ window.Instruments = (function () {
           curFont = null;
         }
       }
+      octx.strokeStyle = `rgba(${LAMP},0.5)`; octx.lineWidth = 1;
+      octx.beginPath(); octx.moveTo(0, gridHp() + 4.5); octx.lineTo(gridW(), gridHp() + 4.5); octx.stroke();
       ctx = saved;
       curFont = null;
       layer = { key, canvas: off };
@@ -314,7 +348,7 @@ window.Instruments = (function () {
     if (focus) {
       const p = panels.find(q => q.key === focus);
       if (p) {
-        drawPanel({ key: p.key, label: p.label, w: gridW(), h: gridH(), focused: true }, r, dt, paintFn);
+        drawPanel({ key: p.key, label: p.label, w: gridW(), h: gridHp(), focused: true }, r, dt, paintFn);
         return;
       }
     }
@@ -322,6 +356,21 @@ window.Instruments = (function () {
       ctx.save();
       ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
       drawPanel(p, r, dt, paintFn);
+      ctx.restore();
+      curFont = null;
+    }
+    /* the seam between the two columns: a short bar that tilts with the ship's pitch */
+    if (cols(panels) > 1) {
+      const a = Math.max(-0.4363, Math.min(0.4363, ((r && r.ship && r.ship.bank) || 0) * TILT_GAIN));
+      ctx.save();
+      ctx.translate(CELL_W + gap() / 2, gridHp() / 2);
+      ctx.rotate(a);
+      ctx.strokeStyle = `rgba(${LAMP},0.7)`; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-20, 0); ctx.lineTo(20, 0);
+      ctx.moveTo(-20, -3); ctx.lineTo(-20, 3);
+      ctx.moveTo(20, -3); ctx.lineTo(20, 3);
+      ctx.stroke();
       ctx.restore();
       curFont = null;
     }
@@ -437,12 +486,15 @@ window.Instruments = (function () {
   function arbitrate(dt) {
     if (alarmQuiet > 0) alarmQuiet = Math.max(0, alarmQuiet - dt);
 
-    const anyErr = Object.values(lit).some(v => v === A_ERR);
-    const curWarn = Object.keys(lit).find(k => lit[k] === A_WARN) || null;
+    /* with the fuel canvas beside the log it blinks on its own and takes no
+       warn slot; only the fuel tile (phone / narrow) shares the one lamp */
+    const own = k => k === "phase" && !fuelTile && !compact;
+    const anyErr = Object.entries(lit).some(([k, v]) => v === A_ERR && !own(k));
+    const curWarn = Object.keys(lit).find(k => lit[k] === A_WARN && !own(k)) || null;
     let warn = (curWarn && (alarmVal.get(curWarn) || A_NONE) === A_WARN) ? curWarn : null;
     if (!warn) {
       for (const key of A_PRIO) {
-        if ((alarmVal.get(key) || A_NONE) === A_WARN) { warn = key; break; }
+        if (!own(key) && (alarmVal.get(key) || A_NONE) === A_WARN) { warn = key; break; }
       }
       if (!anyErr && warn && alarmQuiet > 0) warn = null;
     }
@@ -451,6 +503,7 @@ window.Instruments = (function () {
     const next = {};
     for (const [key, v] of alarmVal) if (v === A_ERR) next[key] = A_ERR;
     if (warn) next[warn] = A_WARN;
+    if (own("phase") && (alarmVal.get("phase") || A_NONE) === A_WARN) next.phase = A_WARN;
 
     for (const key of new Set([...Object.keys(lit), ...Object.keys(next)])) {
       if (next[key]) alarmAge.set(key, lit[key] === next[key] ? (alarmAge.get(key) || 0) + dt : 0);
@@ -516,6 +569,7 @@ window.Instruments = (function () {
   function paintBanks(dt, r) {
     if (!tiles) return;
     tickAlarms(dt, r);
+    if (window.HudSide) HudSide.draw(r, dt);
     if (ctx) drawBank(navPanels(), focusKey, paint, dt, r, paintStatic);
     // readings keep ticking in draw(); only the painting stops while CSS hides the bank
     if (sysShown) paintSysBank(dt, r);
@@ -538,6 +592,7 @@ window.Instruments = (function () {
   }
 
   function paint(p, r, dt) {
+    if (p.key === "phase") { HudSide.tile(ctx, p, r); curFont = null; return; }
     const fn = tiles.paint[p.key];
     if (fn) fn(ctx, p, r, dt);
   }
@@ -662,7 +717,7 @@ window.Instruments = (function () {
   function setPalette(name) {
     const p = PALETTES[name];
     if (!p) return false;
-    ({ LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, PLATE, CLAIMED, GLINT, VEIL } = p);
+    ({ LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL } = p);
     Object.assign(F, p);
     for (const fn of palHooks) fn();
     document.documentElement.dataset.hud = name;
@@ -704,7 +759,7 @@ window.Instruments = (function () {
   }
 
   return {
-    mount, mountSys, draw, setScale, getScale, setCompact, registerTiles,
+    mount, mountSys, draw, setScale, getScale, setCompact, setDriveTile, alarmLevel, registerTiles,
     focus, focusSys, alert,
     impact: (s, g) => tiles && tiles.impact(s, g),
     setRepair: (s, on) => tiles && tiles.setRepair(s, on),
