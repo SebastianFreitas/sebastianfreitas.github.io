@@ -410,8 +410,6 @@ window.VoidshipArt = (function () {
       seg(g, [[-0.065, -0.108], [-0.065, 0.09]], L, rgba(DEEP, 0.3), px);
       seg(g, [[0.065, -0.108], [0.065, 0.09]], L, rgba(DEEP, 0.3), px);
       seg(g, [[-0.13, 0.06], [0.13, 0.06]], L, rgba(DEEP, 1), Math.max(1.5, 0.016 * L));
-      box(g, -0.03, -0.152, 0.03, -0.125, L, rgba(MID, 1));
-      seg(g, [[-0.03, -0.152], [0.03, -0.152]], L, rgba(EDGE, 0.7), px);
       for (const x of [-0.06, 0, 0.06]) box(g, x - 0.005, 0.005, x + 0.005, 0.015, L, rgba(LAMP, 0.7));
     }, kf);
     at(0.34, () => {   // the pod's end face sits at the hull's own station, hanging from it
