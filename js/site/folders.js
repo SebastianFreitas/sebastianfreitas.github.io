@@ -13,11 +13,6 @@ window.Folders = (function () {
   const bodyOf = (section) => section.querySelector(".folder-body");
 
   const rowOf = (key) => document.querySelector('a.obj[href^="projects/' + key + '"]');
-  const PAN_MS = 1200;
-  let pan = null;
-  let relax = null;
-  let pending = null;
-  let seq = 0;
 
   // one-time scaffolding in each body: four empty layers for the css, and the close line
   function dress(section, key) {
@@ -37,96 +32,14 @@ window.Folders = (function () {
     return body;
   }
 
-  // the row's top lands 24px below whatever fixed header there is
-  function topGap() {
-    const bar = document.querySelector(".topbar");
-    const r = bar && getComputedStyle(bar).position === "fixed" ? bar.getBoundingClientRect().bottom : 0;
-    return Math.max(0, r) + 24;
-  }
-
-  const jump = (y) => window.scrollTo({ top: y, behavior: "instant" });
-
-  function stopPan() {
-    if (pan) cancelAnimationFrame(pan);
-    pan = null;
-    relax = null;
-    dropVeil();
-    const p = pending;
-    pending = null;
-    if (p) p();
-  }
-
-  // eased camera to the row; target is re-read each frame since the page above it may be collapsing
-  // after: runs once the glide lands (or at once if the reader takes over the scroll)
-  // fade: set for a button close; over a long glide (more than 1.5 viewports) a page-coloured veil fades in over everything,
-  // the scroll jumps to the row while it is opaque, and the veil fades out while the scan out runs, and the window close follows
-  let veil = null, veilRaf = null;
-  function dropVeil() {
-    if (veilRaf) cancelAnimationFrame(veilRaf);
-    veilRaf = null;
-    if (veil) veil.remove();
-    veil = null;
-  }
-  function panTo(key, after, fade) {
-    const row = rowOf(key);
-    if (!row) { if (after) after(); return; }
-    const target = () => row.getBoundingClientRect().top + window.scrollY - topGap();
-    stopPan();
-    if (Util.reduced()) { jump(target()); if (after) after(); return; }
-    const from = window.scrollY, t0 = performance.now();
-    const dist = Math.abs(target() - from);
-    if (after && dist < 8) { after(); return; }
-    const ms = fade ? Math.min(1200, Math.max(600, 300 + dist * 0.3)) : after ? Math.min(650, 250 + dist * 0.4) : PAN_MS;
-    const dim = fade && dist > innerHeight * 1.5;
-    if (after) pending = after;
-    if (dim) {
-      veil = document.createElement("div");
-      veil.className = "folder-veil";
-      veil.style.opacity = "0";
-      document.body.appendChild(veil);
-      const v = veil;
-      const f0 = performance.now();
-      const vease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
-      let held = 0; // frames spent at full opacity: the jump lands on the 3rd, the lift starts a frame after it
-      const fstep = (now) => {
-        const t = Math.min(1, (now - f0) / 300);
-        v.style.opacity = vease(t);
-        if (t < 1) { pan = requestAnimationFrame(fstep); return; }
-        held++;
-        if (held === 3) jump(target());
-        if (held < 4) { pan = requestAnimationFrame(fstep); return; }
-        pan = null;
-        const o0 = performance.now();
-        const ostep = (n) => {
-          const u = Math.min(1, (n - o0) / 680);
-          v.style.opacity = 1 - vease(u);
-          if (u < 1) { veilRaf = requestAnimationFrame(ostep); return; }
-          veilRaf = null;
-          dropVeil();
-        };
-        veilRaf = requestAnimationFrame(ostep);
-        if (pending) { const p = pending; pending = null; p(); }
-      };
-      pan = requestAnimationFrame(fstep);
-      return;
-    }
-    const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    const step = (now) => {
-      const t = Math.min(1, (now - t0) / ms);
-      jump(from + (target() - from) * ease(t));
-      pan = t < 1 ? requestAnimationFrame(step) : null;
-      if (t >= 1 && pending) { const p = pending; pending = null; p(); }
-    };
-    pan = requestAnimationFrame(step);
-  }
-
-  ["wheel", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, stopPan, { passive: true }));
+  // a touch of the wheel, finger or keys takes the page back: the pin lets go
+  ["wheel", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, () => { anchor = null; }, { passive: true }));
 
   // one timeline for every open effect: p runs 0 to 1 (dir +1) or 1 to 0 (dir -1) on rAF with one easing,
   // and every effect below is a pure function of p, so playing it backwards is exact
   const CASE_MS = 950;
   const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  const CLOSE_MS = 700;
+  const CLOSE_MS = 700, SWAP_K = 0.3;
   const FADE_MS = 300, SCAN_MS = 600, SCAN_OUT_MS = 450; // loading beat, then the content fades in over FADE_MS
 
   // what the opening wipe needs from layout (the open body's height and offset, the next row's extra gap), measured at idle
@@ -153,10 +66,45 @@ window.Folders = (function () {
   }
   const measureOf = (body) => { const m = body._m; return m && m.w === innerWidth && m.ih === innerHeight ? m : null; };
   // the hero loop rests and scroll anchoring is off from the click to the end of the sweep (anchoring would shift the scroll as the body unhides)
-  const hold = (on) => {
-    if (window.Bridge && Bridge.hold) Bridge.hold(on);
-    document.documentElement.style.overflowAnchor = on ? "none" : "";
+  // several cases can sweep at once: held while any of them runs
+  const holders = new Set();
+  const hold = (on, owner) => {
+    if (on) holders.add(owner); else holders.delete(owner);
+    const any = holders.size > 0;
+    if (window.Bridge && Bridge.hold) Bridge.hold(any);
+    document.documentElement.style.overflowAnchor = any ? "none" : "";
   };
+  // the rows after a case ride its wipe edge with transforms; each case adds its own share, so two sweeps at once sum
+  function ride(e, body, ty) {
+    const m = e._ty || (e._ty = {});
+    if (ty == null) delete m[body.dataset.key]; else m[body.dataset.key] = ty;
+    let sum = 0;
+    for (const k in m) sum += m[k];
+    e.style.transform = sum ? "translateY(" + sum + "px)" : "";
+  }
+  const animating = () => KEYS.some((k) => { const b = bodyOf(sectionOf(k)); return b && b._swept; });
+  // the page does not move while a case opens or closes: one row is pinned to the viewport and any drift of its top
+  // (rows above it shrinking or growing) is scrolled away every frame, instant, whatever the css scroll-behavior says
+  // a click low on screen also eases the pinned screen-y up to LIFT_TO of the viewport (lift), so the camera only ever moves down
+  let anchor = null, anchorTop = 0, anchorY = 0, lift = null;
+  const LIFT_FROM = 0.6, LIFT_TO = 0.25;
+  function pin(el) { anchor = el; anchorTop = el.getBoundingClientRect().top; anchorY = window.scrollY; lift = null; }
+  function pinFirst() {
+    const rows = Array.prototype.slice.call(document.querySelectorAll('a.obj[href^="projects/"]'));
+    const top = (r) => r.getBoundingClientRect().top;
+    const r = rows.find((x) => top(x) >= 0 && top(x) < innerHeight) || rows.find((x) => top(x) >= 0);
+    if (r) pin(r);
+  }
+  function comp() {
+    if (!anchor) return;
+    // a page that moved by more than a nudge did so by something other than this pin (scrollbar, a link): let it go; a nudge (the browser's own anchoring) is corrected below
+    if (Math.abs(window.scrollY - anchorY) > 6) { anchor = null; return; }
+    anchorY = window.scrollY;
+    if (lift) anchorTop = lift.from + (lift.to - lift.from) * (1 - Math.pow(1 - Math.min(1, (performance.now() - lift.t0) / CASE_MS), 3));
+    const d = anchor.getBoundingClientRect().top - anchorTop;
+    if (Math.abs(d) > 0.01) { window.scrollBy({ top: d, behavior: "instant" }); anchorY = window.scrollY; }
+  }
+  function endPin() { if (!animating()) anchor = null; }
   function measure(key) {
     const section = sectionOf(key);
     if (!section) return;
@@ -177,7 +125,7 @@ window.Folders = (function () {
       const key = KEYS.find((k) => { const s = sectionOf(k), b = s && bodyOf(s); return b && b.hidden && !measureOf(b); });
       if (!key) return;
       const run = () => {
-        if (current || pan || pending || document.querySelector(".is-sweeping") || performance.now() - lastScroll < 200) { measureLater(); return; }
+        if (current || document.querySelector(".is-sweeping") || performance.now() - lastScroll < 200) { measureLater(); return; }
         measure(key);
         measureLater();
       };
@@ -192,7 +140,7 @@ window.Folders = (function () {
         const k = todo.shift();
         if (!k) { resolve(); return; }
         const s = sectionOf(k), b = s && bodyOf(s);
-        if (b && b.hidden && !measureOf(b) && !current && !pan && !pending) measure(k);
+        if (b && b.hidden && !measureOf(b) && !current) measure(k);
         setTimeout(step, 0);
       };
       step();
@@ -205,7 +153,7 @@ window.Folders = (function () {
   const settle = () => { if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureLater); else measureLater(); };
   if (document.readyState === "complete") settle(); else window.addEventListener("load", settle, { once: true });
 
-  function caseAnim(body, dir, done, onLoad) {
+  function caseAnim(body, dir, done) {
     if (body._anim) body._anim.cancel();
     body._anim = null;
     if (body._raf) cancelAnimationFrame(body._raf);
@@ -237,7 +185,8 @@ window.Folders = (function () {
     if (dir > 0 && y0 != null && sib.length) extra = sib[0].getBoundingClientRect().top - y0 - H;
     // the hero loop rests and the animated layers get promoted from here to the end of the sweep (after every layout read above)
     const swept = [body].concat(kids, sib);
-    hold(true);
+    hold(true, body);
+    body._swept = swept;
     swept.forEach((e) => e.classList.add("is-sweeping"));
     const set = (p) => {
       const edge = vis * p;
@@ -252,16 +201,17 @@ window.Folders = (function () {
       kick.style.clipPath = "inset(0 " + (100 - 100 * Math.min(1, p / 0.45)) + "% 0 0)";
       // the window is empty (content and HUD hidden) while it opens and while it closes; the scan brings the content in and takes it out
       for (let i = 0; i < kids.length; i++) kids[i].style.opacity = 0;
-      const ty = p >= 1 ? "" : "translateY(" + (edge - H - extra * (1 - p)) + "px)";
-      for (let i = 0; i < sib.length; i++) sib[i].style.transform = ty;
+      for (let i = 0; i < sib.length; i++) ride(sib[i], body, p >= 1 ? null : edge - H - extra * (1 - p));
+      comp();
     };
     const clear = () => {
-      swept.forEach((e) => e.classList.remove("is-sweeping"));
-      hold(false);
+      body._swept = null;
+      swept.forEach((e) => { if (!KEYS.some((k) => { const b = bodyOf(sectionOf(k)); return b && b._swept && b._swept.indexOf(e) !== -1; })) e.classList.remove("is-sweeping"); });
+      hold(false, body);
       body.style.clipPath = "";
       [scan, bar, kick, glow].forEach((e) => { e.style.opacity = ""; e.style.transform = ""; e.style.clipPath = ""; });
       kids.forEach((k) => { k.style.opacity = ""; k.style.clipPath = ""; });
-      sib.forEach((e) => { e.style.transform = ""; });
+      sib.forEach((e) => ride(e, body, null));
     };
     // phases 3 and 4 (opening only): the empty window waits for the deferred work and the first images, then the content fades in
     const afterWipe = () => {
@@ -283,7 +233,7 @@ window.Folders = (function () {
         body._p = null;
         body._phase = null;
         clear();
-        if (onLoad) onLoad();
+        if (dir > 0) endPin();
         done();
       };
       body._raf = requestAnimationFrame(loadStep);
@@ -321,7 +271,7 @@ window.Folders = (function () {
         body._s4 = null;
         body._phase = null;
         clear();
-        if (onLoad) onLoad();
+        if (dir > 0) endPin();
         done();
       });
     };
@@ -331,7 +281,7 @@ window.Folders = (function () {
       const p0 = body._p == null ? (dir > 0 ? 0 : 1) : body._p;
       let s = 1 - Math.sqrt(Math.max(0, (1 - p0) / 2)); // inverse of ease
       if (p0 < 0.5) s = Math.sqrt(p0 / 2);
-      const ms = dir > 0 ? CASE_MS : CLOSE_MS;
+      const ms = dir > 0 ? CASE_MS : body._swap ? CLOSE_MS * SWAP_K : CLOSE_MS; // a close caused by another folder opening runs fast, so the new one shows first
       let last = performance.now();
       const step = (now) => {
         s = Math.max(0, Math.min(1, s + dir * (now - last) / ms));
@@ -374,7 +324,7 @@ window.Folders = (function () {
       body._phase = "scanout";
       body._p = 1;
       set(1);
-      sweepRun(s4, -1, SCAN_OUT_MS, toWindow);
+      sweepRun(s4, -1, body._swap ? SCAN_OUT_MS * SWAP_K : SCAN_OUT_MS, toWindow);
     }
   }
 
@@ -383,8 +333,10 @@ window.Folders = (function () {
     if (body._raf) cancelAnimationFrame(body._raf);
     body._raf = null;
     body.style.clipPath = "";
-    if (body._sib) body._sib.forEach((e) => { e.style.transform = ""; });
+    if (body._sib) body._sib.forEach((e) => ride(e, body, null));
     body._sib = null;
+    body._swept = null;
+    hold(false, body);
     Array.prototype.forEach.call(body.children, (c) => {
       c.style.opacity = "";
       c.style.clipPath = "";
@@ -392,109 +344,75 @@ window.Folders = (function () {
     });
   }
 
-  function close({ instant = false, now = false, then = null } = {}) {
-    if (!current) { if (then) then(); return; }
-    if (pending) { pending = null; stopPan(); }
+  function close({ instant = false, now = false } = {}) {
+    if (!current) return;
     const key = current;
     const section = sectionOf(key);
-    // deep in the case: glide to the row first so the wipe is seen, then close
-    const r0 = rowOf(key);
-    if (!now && !instant && !Util.reduced() && r0) {
-      const t = r0.getBoundingClientRect().top;
-      if (t < 0 || t > innerHeight - 200) { panTo(key, () => { if (current !== key) return; const rw = rowOf(key); if (rw) jump(rw.getBoundingClientRect().top + window.scrollY - topGap()); close({ now: true, then }); }, bodyOf(sectionOf(key))); return; }
-    }
+    if (!now && !instant && !Util.reduced()) pinFirst(); // the click came from the close control: what is on screen stays put
     current = null;
-    if (!section) { if (then) then(); return; }
+    if (!section) return;
     section.querySelectorAll("video").forEach((v) => v.pause());
     const row = rowOf(key);
     const body = bodyOf(section);
-    // row chrome and layout change together, at the end of the wipe; scroll is corrected so the row stays put
+    // row chrome and layout change together, at the end of the wipe
     const fin = () => {
-      const y0 = row ? row.getBoundingClientRect().top : 0;
       section.classList.remove("open");
       if (row) row.setAttribute("aria-expanded", "false");
       body.classList.remove("is-open", "is-closing"); body.hidden = true;
       if (!instant && !Util.reduced()) { section.classList.add("gold-out"); setTimeout(() => section.classList.remove("gold-out"), 220); }
       ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; });
-      if (row && !current && !instant) { const d = row.getBoundingClientRect().top - y0; if (Math.abs(d) > 0.5) jump(window.scrollY + d); }
-      if (then) then();
+      comp();
+      endPin();
     };
     body.classList.remove("is-opening");
     stopCase(body);
     if (instant || Util.reduced()) { if (body._anim) body._anim.cancel(); body._anim = null; fin(); return; }
     body.classList.remove("is-open");
     body.classList.add("is-closing");
+    body._swap = now;
     caseAnim(body, -1, fin);
   }
 
-  function open(key, { scroll = true, hash = true, instant = false } = {}) {
+  // the new row opens on the click frame; the old one closes at the same time
+  function open(key, { hash = true, instant = false, rise = false } = {}) {
     const section = sectionOf(key);
     if (KEYS.indexOf(key) === -1 || !section) return;
-    if (current === key) { if (scroll) panTo(key); return; }
-    const mine = ++seq;
-    // another case is open: let its close finish (its height collapses) before measuring and gliding to this row
-    if (current) {
-      if (instant || Util.reduced()) close({ instant, now: true });
-      else {
-        // keep the new row where it is on screen when the old case's height collapses
-        const rw = rowOf(key), y0 = rw.getBoundingClientRect().top;
-        close({ now: true, then: () => { if (mine !== seq) return; jump(rw.getBoundingClientRect().top + window.scrollY - y0); go(); } });
-        return;
-      }
+    if (current === key) return;
+    const row = rowOf(key);
+    const fast = instant || Util.reduced();
+    if (!fast && row) {
+      pin(row);
+      if (rise && anchorTop > innerHeight * LIFT_FROM) lift = { from: anchorTop, to: innerHeight * LIFT_TO, t0: performance.now() };
     }
-    go();
-    function go() {
+    if (current) close({ instant, now: true });
     current = key;
     const body = dress(section, key);
     if (hash) history.replaceState(null, "", "#" + key);
-    const row = rowOf(key);
-    const fast = instant || Util.reduced();
     const settled = () => {
       body.classList.remove("is-opening");
       body.classList.add("is-open");
       body.dispatchEvent(new CustomEvent("folder-settled", { bubbles: true }));
     };
-    // glide to the row with the case still shut, then unhide and open it
-    const start = () => {
-      if (current !== key) { if (!current) hold(false); return; }
-      // read the section's top while the case is still shut (the cached measure gives the body's offset from it)
-      body._top0 = !fast && measureOf(body) ? section.getBoundingClientRect().top : null;
-      // the first row after the case, while everything is still shut: caseAnim measures how far the open state really pushes it
-      const m0 = measureOf(body), nx0 = m0 ? m0.sib[0] : flowAfter(body)[0];
-      body._y0 = !fast && nx0 ? nx0.getBoundingClientRect().top : null;
-      body.hidden = false;
-      section.classList.add("open");
-      if (row) { row.setAttribute("aria-expanded", "true"); row.setAttribute("aria-controls", key + "-body"); }
-      if (body._anim) { body._anim.cancel(); ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; }); }
-      body._anim = null;
-      body.classList.remove("is-closing");
-      const loaded = () => {
-        if (scroll && relax) relax();
-      };
-      if (fast) {
-        // no wipe: the case is simply there
-        window.dispatchEvent(new Event("resize"));
-        settled();
-        loaded();
-      } else {
-        body.classList.remove("is-open");
-        body.classList.add("is-opening");
-        caseAnim(body, 1, settled, loaded);
-      }
-    };
-    if (scroll && !fast) { hold(true); panTo(key, start); } // held from the raw click, released when the sweep clears
-    else {
-      start();
-      if (scroll) {
-        const land = () => { jump(row.getBoundingClientRect().top + window.scrollY - topGap()); };
-        land();
-        // images and fonts above the row settle after a deep link; land again until the reader moves
-        const again = () => { if (relax === again) land(); };
-        relax = again;
-        if (document.readyState !== "complete") window.addEventListener("load", again, { once: true });
-        if (document.fonts) document.fonts.ready.then(again);
-      }
-    }
+    // read the section's top while the case is still shut (the cached measure gives the body's offset from it)
+    body._top0 = !fast && measureOf(body) ? section.getBoundingClientRect().top : null;
+    // the first row after the case, while everything is still shut: caseAnim measures how far the open state really pushes it
+    // (not while another case is still riding its own transforms: the cached measure stands)
+    const m0 = measureOf(body), nx0 = m0 ? m0.sib[0] : flowAfter(body)[0];
+    body._y0 = !fast && nx0 && !animating() ? nx0.getBoundingClientRect().top : null;
+    body.hidden = false;
+    section.classList.add("open");
+    if (row) { row.setAttribute("aria-expanded", "true"); row.setAttribute("aria-controls", key + "-body"); }
+    if (body._anim) { body._anim.cancel(); ["position", "top", "left", "width", "height", "zIndex"].forEach((k) => { body.style[k] = ""; }); }
+    body._anim = null;
+    body.classList.remove("is-closing");
+    if (fast) {
+      // no wipe: the case is simply there
+      window.dispatchEvent(new Event("resize"));
+      settled();
+    } else {
+      body.classList.remove("is-open");
+      body.classList.add("is-opening");
+      caseAnim(body, 1, settled);
     }
   }
 
@@ -506,23 +424,41 @@ window.Folders = (function () {
       e.preventDefault();
       const key = obj.getAttribute("href").replace(/^projects\//, "").replace(/\.html.*$/, "");
       if (current === key) close();
-      else open(key);
+      else open(key, { rise: true });
       return;
     }
-    if (t.closest('a.back[href="#work"]')) close();
+    if (t.closest('a.back[href="#work"]')) close(); // the link's own jump to Work is the camera here
+    if (t.closest('a[href^="#"]')) anchor = null; // any in-page link is its own camera: the pin lets go
   });
 
   let firstLoad = true;
 
   function fromHash() {
     const key = location.hash.replace(/^#/, "");
-    if (KEYS.indexOf(key) !== -1 && key !== current) open(key, { scroll: true, hash: false, instant: firstLoad });
+    if (KEYS.indexOf(key) !== -1 && key !== current) {
+      open(key, { hash: false, instant: firstLoad });
+      // a link into the page lands the row on screen at once; images and fonts above it settle later, so land again until the reader moves
+      const row = rowOf(key);
+      const nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+      // Back or forward restores the reader's own scroll: only a fresh link lands the row
+      if (row && !(firstLoad && nav && nav.type === "back_forward")) {
+        const bar = document.querySelector(".topbar");
+        const gap = Math.max(0, bar && getComputedStyle(bar).position === "fixed" ? bar.getBoundingClientRect().bottom : 0) + 24;
+        let live = true;
+        // the pin holds the landed row while an old case above it closes
+        const land = () => { if (live) { window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - gap, behavior: "instant" }); pin(row); } };
+        ["wheel", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, () => { live = false; }, { passive: true, once: true }));
+        land();
+        if (document.readyState !== "complete") window.addEventListener("load", land, { once: true });
+        if (document.fonts) document.fonts.ready.then(land);
+      }
+    }
     /* the first paint waits for the load-time re-landing too, so nothing visible shifts under the reader */
     const lift = () => document.documentElement.classList.remove("case-hold");
     if (document.readyState === "complete") lift(); else window.addEventListener("load", lift, { once: true });
   }
 
-  window.addEventListener("hashchange", () => { firstLoad = false; fromHash(); });
+  window.addEventListener("hashchange", () => { firstLoad = false; anchor = null; fromHash(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fromHash);
   else fromHash();
 

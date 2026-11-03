@@ -284,7 +284,8 @@ def flow_worklink(browser, base):
         s = state(page)
         check(f"{how}: no gate", not s["gateShown"] and not s["frozen"], s)
         gap = s["workTop"] - s["scrollY"]       # the header's scroll-padding leaves Work a little under the top
-        check(f"{how}: lands on Work", -TOL <= gap <= 80 or s["scrollY"] >= s["maxScroll"] - TOL, s)
+        if how == "top bar Work":   # closing a folder no longer pans the camera, so only the top bar link lands on Work
+            check(f"{how}: lands on Work", -TOL <= gap <= 80 or s["scrollY"] >= s["maxScroll"] - TOL, s)
         if how == "Close file":
             check("Close file: the folder is closed", not page.evaluate(
                 "document.getElementById('conclusus').classList.contains('open')"))
@@ -1209,21 +1210,24 @@ def flow_cc_win(browser, base):
 
 
 def flow_work_open(browser, base):
-    """A Work row opens its teaser (clip, pitch, page link) inline under it: hash set, no page load, body right after the row, row panned to the top; clicking the row again closes it."""
+    """A Work row opens its teaser (clip, pitch, page link) inline under it: hash set, no page load, body right after the row, the page does not move; clicking the row again closes it."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
+    page.evaluate("""() => document.querySelector("a.obj[href='projects/conclusus.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
+    page.wait_for_timeout(300)
+    y0 = page.evaluate("scrollY")
     page.click("a.obj[href='projects/conclusus.html']")
     page.wait_for_timeout(SETTLE)
     r = page.evaluate("""() => { const s = document.getElementById('conclusus');
       return { hash: location.hash, navs: performance.getEntriesByType('navigation').length,
                open: s.classList.contains('open'),
                after: document.querySelector('a.obj[href="projects/conclusus.html"]').nextElementSibling === s,
-               off: Math.abs(document.querySelector('a.obj[href="projects/conclusus.html"]').getBoundingClientRect().top - 24) }; }""")
+               scrolled: scrollY }; }""")
     check("work-open: hash is #conclusus", r["hash"] == "#conclusus", r)
     check("work-open: no page load (one navigation entry)", r["navs"] == 1, r)
     check("work-open: the folder is open", r["open"], r)
     check("work-open: the body sits right after its row", r["after"], r)
-    check("work-open: row panned near the top", r["off"] <= 90, r)
+    check("work-open: no camera move on click (scrollY within 2 px)", abs(r["scrolled"] - y0) <= 2, [y0, r["scrolled"]])
     page.click("a.obj[href='projects/conclusus.html']")
     page.wait_for_timeout(SETTLE)
     r = page.evaluate("({ open: document.getElementById('conclusus').classList.contains('open'), hidden: document.getElementById('conclusus-body').hidden })")
@@ -1243,6 +1247,124 @@ def flow_one_open(browser, base):
       open: document.querySelectorAll('.case-folder.open').length,
       id: (document.querySelector('.case-folder.open') || {}).id })""")
     check("one-open: exactly one folder open", r["open"] == 1 and r["id"] == "heavylight", r)
+    ctx.close()
+
+
+def flow_folder_swap(browser, base):
+    """Clicking another Work row while one is open: the new row opens on the click frame while the old one closes, the clicked row does not move; closing a folder keeps what is on screen in place."""
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    page.evaluate("Folders.open('conclusus')")
+    page.wait_for_timeout(2500)
+    page.evaluate("""() => { const r = document.querySelector('a.obj[href="projects/voidscape.html"]');
+      window.scrollTo({ top: r.getBoundingClientRect().top + scrollY - 150, behavior: 'instant' }); }""")
+    page.wait_for_timeout(600)
+    r = page.evaluate("""() => new Promise((done) => {
+      const row = document.querySelector('a.obj[href="projects/voidscape.html"]');
+      const vs = document.getElementById('voidscape'), cc = document.getElementById('conclusus');
+      const top = () => row.getBoundingClientRect().top;
+      const t0 = top(), y0 = scrollY, out = { t0, frames: 0, openFrame: null, minTop: t0, maxTop: t0, both: false, shotAt: null };
+      const tStart = performance.now();
+      const bodyV = vs.querySelector('.folder-body'), snap = () => bodyV.style.clipPath + '|' + bodyV.style.transform + '|' + bodyV.className + '|' + vs.className;
+      const s0 = snap();
+      row.click();
+      const step = (now) => {
+        out.frames++;
+        const t = top();
+        out.minTop = Math.min(out.minTop, t); out.maxTop = Math.max(out.maxTop, t);
+        if (out.openFrame == null && snap() !== s0 && (bodyV._p > 0 || bodyV.classList.contains('is-sweeping') || vs.querySelector('.is-sweeping'))) out.openFrame = out.frames;
+        const full = (s) => s.querySelector('.folder-body').classList.contains('is-open');
+        if (full(vs) && full(cc)) out.both = true;
+        out.ccClosed = cc.querySelector('.folder-body').hidden && !cc.classList.contains('open');
+        out.vsOpen = vs.querySelector('.folder-body').classList.contains('is-open');
+        out.dy = scrollY - y0;
+        if (now - tStart < 1500) requestAnimationFrame(step); else done(out);
+      };
+      window.__swapT0 = tStart;
+      requestAnimationFrame(step);
+    })""")
+    check("folder-swap: the clicked row's top moves at most 2 px", r["maxTop"] - r["minTop"] <= 2, r)
+    check("folder-swap: its open starts within 2 frames of the click", r["openFrame"] is not None and r["openFrame"] <= 2, r)
+    check("folder-swap: the old row ends closed, the new one open", r["ccClosed"] and r["vsOpen"], r)
+    check("folder-swap: never both fully open", not r["both"], r)
+    # a row clicked low on screen (below 60%) rises to 25% of the viewport while the old folder closes; the camera only moves down
+    page.evaluate("Folders.open('conclusus')")
+    page.wait_for_timeout(2500)
+    page.evaluate("""() => { const r = document.querySelector('a.obj[href="projects/voidscape.html"]');
+      window.scrollTo({ top: r.getBoundingClientRect().top + scrollY - innerHeight * 0.85, behavior: 'instant' }); }""")
+    page.wait_for_timeout(600)
+    shots = os.path.join(os.environ.get("LOCALAPPDATA", __import__("tempfile").gettempdir()), "Temp", "claude")
+    os.makedirs(shots, exist_ok=True)
+    page.evaluate("""() => { const row = document.querySelector('a.obj[href="projects/voidscape.html"]');
+      window.__lift = { row, t0: row.getBoundingClientRect().top, prev: row.getBoundingClientRect().top, maxUp: 0, vh: innerHeight };
+      row.click();
+      const step = () => { const t = row.getBoundingClientRect().top; window.__lift.maxUp = Math.max(window.__lift.maxUp, t - window.__lift.prev); window.__lift.prev = t; requestAnimationFrame(step); };
+      requestAnimationFrame(step); }""")
+    page.wait_for_timeout(300)
+    page.screenshot(path=os.path.join(shots, "folders-lift-mid.png"))
+    page.wait_for_timeout(2700)
+    page.screenshot(path=os.path.join(shots, "folders-lift-end.png"))
+    r = page.evaluate("""() => { const L = window.__lift, b = document.getElementById('bridge-hero').getBoundingClientRect();
+      return { t0: L.t0, vh: L.vh, end: L.row.getBoundingClientRect().top, maxDown: L.maxUp, bridgeBottom: b.bottom }; }""")
+    check("folder-swap: a low click: the row ends at 25% of the viewport +-8 px", abs(r["end"] - r["vh"] * 0.25) <= 8 and r["t0"] > r["vh"] * 0.6, r)
+    check("folder-swap: a low click: the row's top never goes down by more than 2 px", r["maxDown"] <= 2, r)
+    check("folder-swap: a low click: the bridge is out of the viewport", r["bridgeBottom"] <= 0, r)
+    # the same with the open folder ABOVE the clicked row (Sector Zero open, VoidScape clicked low): the bridge never comes into view
+    page.evaluate("Folders.open('sector-zero')")
+    page.wait_for_timeout(2500)
+    page.evaluate("""() => { const r = document.querySelector('a.obj[href="projects/voidscape.html"]');
+      window.scrollTo({ top: r.getBoundingClientRect().top + scrollY - innerHeight * 0.85, behavior: 'instant' }); }""")
+    page.wait_for_timeout(600)
+    page.evaluate("""() => { const row = document.querySelector('a.obj[href="projects/voidscape.html"]'), hero = document.getElementById('bridge-hero');
+      const L = window.__lift = { row, t0: row.getBoundingClientRect().top, prev: row.getBoundingClientRect().top, maxUp: 0, vh: innerHeight, heroSeen: false, samples: {} };
+      const sz = document.getElementById('sector-zero').querySelector('.folder-body'), vsb = document.getElementById('voidscape').querySelector('.folder-body'), c0 = performance.now();
+      row.click();
+      const step = () => { const t = row.getBoundingClientRect().top; const el = performance.now() - c0;
+        [150, 300, 600].forEach((m) => { if (el >= m && !(m in L.samples)) L.samples[m] = { pct: Math.round(100 * t / innerHeight), oldH: sz.hidden ? 0 : Math.round(sz.offsetHeight - (parseFloat((sz.style.clipPath.match(/inset[(]0px 0px ([0-9.]+)px/) || [0, 0])[1]) || 0)), vsP: vsb._p == null ? null : +vsb._p.toFixed(2) }; });
+        L.maxUp = Math.max(L.maxUp, t - L.prev); L.prev = t;
+        if (hero.getBoundingClientRect().bottom > 0) L.heroSeen = true; requestAnimationFrame(step); };
+      requestAnimationFrame(step); }""")
+    page.wait_for_timeout(300)
+    page.screenshot(path=os.path.join(shots, "folders-lift-sz-mid.png"))
+    page.wait_for_timeout(2700)
+    page.screenshot(path=os.path.join(shots, "folders-lift-sz-end.png"))
+    r = page.evaluate("() => { const L = window.__lift; return { t0: L.t0, vh: L.vh, end: L.row.getBoundingClientRect().top, maxDown: L.maxUp, heroSeen: L.heroSeen, samples: L.samples }; }")
+    print("    lift samples (ms: row top %, old folder height px):", r["samples"])
+    check("folder-swap: sector zero open above: the row ends at 25% of the viewport +-8 px", abs(r["end"] - r["vh"] * 0.25) <= 8 and r["t0"] > r["vh"] * 0.6, r)
+    check("folder-swap: sector zero open above: the row's top never goes down by more than 2 px", r["maxDown"] <= 2, r)
+    check("folder-swap: sector zero open above: the bridge is never in view", not r["heroSeen"], r)
+    # the mid-swap picture: a fresh swap back, shot ~300 ms in
+    page.evaluate("document.querySelector('a.obj[href=\"projects/conclusus.html\"]').click()")
+    page.wait_for_timeout(300)
+    page.screenshot(path=os.environ.get("SWAP_SHOT", os.path.join(__import__("tempfile").gettempdir(), "folder-swap-mid.png")))
+    page.wait_for_timeout(2500)
+    # close by its own control with the page scrolled below the folder: the row under the viewport top stays put
+    page.evaluate("""() => { const b = document.getElementById('conclusus-body');
+      window.scrollTo({ top: b.getBoundingClientRect().bottom + scrollY - 300, behavior: 'instant' }); }""")
+    page.wait_for_timeout(600)
+    r = page.evaluate("""() => new Promise((done) => {
+      const b = document.getElementById('conclusus-body');
+      const rows = Array.from(document.querySelectorAll('a.obj[href^="projects/"]'));
+      const row = rows.find((x) => x.getBoundingClientRect().top >= 0);
+      const H = b.offsetHeight, y0 = scrollY, t0 = row.getBoundingClientRect().top, tStart = performance.now();
+      let drift = 0;
+      b.querySelector('.folder-close').click();
+      const step = (now) => {
+        drift = Math.max(drift, Math.abs(row.getBoundingClientRect().top - t0));
+        if (now - tStart < 1500) requestAnimationFrame(step); else done({ H, shrink: y0 - scrollY, drift, closed: b.hidden });
+      };
+      requestAnimationFrame(step);
+    })""")
+    check("folder-swap: closing: the row under the viewport top stays within 2 px", r["drift"] <= 2 and r["closed"], r)
+    check("folder-swap: closing: scrollY changes by the shrink only", 0 < r["shrink"] <= r["H"] + 120, r)
+    # a deep link by hashchange while another case is open: the new row ends on screen after the old one closes
+    page.evaluate("Folders.open('conclusus')")
+    page.wait_for_timeout(2500)
+    page.evaluate("location.hash = 'voidscape'")
+    page.wait_for_timeout(2500)
+    r = page.evaluate("""() => { const t = document.querySelector('a.obj[href="projects/voidscape.html"]').getBoundingClientRect().top;
+      return { top: t, vh: innerHeight, open: document.getElementById('voidscape').classList.contains('open') }; }""")
+    check("folder-swap: deep link by hashchange: VoidScape ends on screen", r["open"] and 0 <= r["top"] < r["vh"], r)
     ctx.close()
 
 
@@ -1349,7 +1471,7 @@ FLOWS = {
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
     "cc-keys": flow_cc_keys,
     "cc-win": flow_cc_win,
-    "work-open": flow_work_open, "one-open": flow_one_open, "game-page-loads": flow_game_page_loads, "game-page-roundtrip": flow_game_page_roundtrip,
+    "work-open": flow_work_open, "folder-swap": flow_folder_swap, "one-open": flow_one_open, "game-page-loads": flow_game_page_loads, "game-page-roundtrip": flow_game_page_roundtrip,
     "loop-pause": flow_loop_pause,
 }
 
