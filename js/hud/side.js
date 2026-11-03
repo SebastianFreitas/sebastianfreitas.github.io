@@ -5,7 +5,7 @@
    narrow, the canvases hide and the NAV bank shows the same fuel painter
    as a tile (key "phase", so its alarm lamp keeps working) via tile(). */
 window.HudSide = (function () {
-  const W_MIN = 240, W_MAX = 300, GAP = 20, BANK_GAP = 6, NEED = W_MIN + GAP + BANK_GAP, H_MIN = 124;
+  const W_MIN = 240, W_MAX = 300, GAP = 20, BANK_GAP = 6, MON_GAP = 14, NEED = W_MIN + GAP + BANK_GAP, H_MIN = 124;
   const { approach, clamp } = Util;
   const HALO = "rgba(4,7,8,0.85)";
   let LAMP, READ, COLD, DIM, BAD, WARN, mono, palKey = "";
@@ -84,8 +84,9 @@ window.HudSide = (function () {
     const h = Math.max(H_MIN, Math.round(br.height)), dpr = Math.min(devicePixelRatio || 1, 2);
     const W = Math.round(clamp(room - GAP - BANK_GAP, W_MIN, W_MAX));
     const bottom = Math.round(hr.bottom - br.bottom);
-    fuelCv.style.left = Math.round(lr.left - hr.left - GAP - W) + "px";
-    resCv.style.left = Math.round(lr.right - hr.left + GAP) + "px";
+    /* both sit against their monitor: fuel's left edge a small gap right of the left bank, the resonance axis (3 px in from the canvas's right edge) the same gap left of the right bank */
+    fuelCv.style.left = Math.round(tr.right - hr.left + MON_GAP) + "px";
+    resCv.style.left = Math.round(rightEdge - hr.left - MON_GAP - W + 3) + "px";
     fuelCv.style.bottom = resCv.style.bottom = bottom + "px";
     fuelCv.style.width = resCv.style.width = W + "px";
     fuelCv.style.height = resCv.style.height = h + "px";
@@ -315,17 +316,19 @@ window.HudSide = (function () {
     const tankBot = Math.round(h * 0.97), tankTop = Math.ceil(Math.max(curveY((tx + tankW + 1) / w) * h + 2, curveY((tx + tankW + 3 + 6 + 15) / w) * h + 5)), tankH = Math.max(12, tankBot - tankTop);
     /* the bay's seam line is part of the bridge art, 2px wide at 170px left of the canvas's right edge (x 78-79 at w 248); nothing may touch it, so content starts 4px right of it */
     const seamR = w - 170 + 2, clear = seamR + 6;
-    const zl = Math.max(w * 0.30, clear), pitch = (w * 0.98 - zl) / 3;
-    const dx = [0, 1, 2].map(i => Math.round(zl + pitch * (i + 0.5)));
+    /* packed: the dials and the readout start one small gap (10px) right of the tank's 100 label, or at the seam if that is further right */
+    const zl = Math.max(tx + tankW + 3 + 6 + 15 + 10), pitch0 = (w * 0.98 - zl) / 3;
     const t8 = px(8, 8), v14 = px(14, 9);
     const barY = Math.round(h * 0.98) - 2;
     /* the big reading row sits at .74 of the height; the arcs stay below it and the labels at the floor: the height sets the radius, the width caps it */
     const under = Math.round(h * 0.74) + 6;
-    const R = Math.max(6, Math.min(pitch / 2 - 3 - Math.max(2, 3 * u) / 2, (barY - 3 - t8 - 1 - under) / 1.707));
+    const R = Math.max(6, Math.min(pitch0 / 2 - 3 - Math.max(2, 3 * u) / 2, (barY - 3 - t8 - 1 - under) / 1.707));
+    const pitch = Math.min(pitch0, 2 * R + Math.max(2, 3 * u) + 10);
+    const dx = [0, 1, 2].map(i => Math.round(zl + pitch * (i + 0.5)));
     const cy = Math.round(barY - 3 - t8 - 1 - R * 0.707);
     Object.assign(g, {
       w, h, u, px, pad, bigF, y1, barY, tankTop, tankBot, tankH, tankW, tx, tcx: tx + tankW / 2, rr: Math.round(6 * u),
-      dx, clear, cy, R, t8, v14, yT: barY - 3, bar0: Math.round(w * 0.20)
+      dx, zl, clear, cy, R, t8, v14, yT: barY - 3, bar0: Math.round(w * 0.20)
     });
   }
 
@@ -414,17 +417,18 @@ window.HudSide = (function () {
       if (pi !== fPct) { fPct = pi; fPctS = pi + "%"; }
       pct = fPctS;
     }
-    const yH = g.L ? Math.round(h * 0.74) : y1, xH = g.L ? Math.max(Math.round(w * 0.34), g.clear) : pad, xE = g.L ? Math.round(w * 0.95) : w - pad;
+    const yH = g.L ? Math.round(h * 0.74) : y1, xH = g.L ? g.zl : pad, xE = g.L ? 0 : w - pad;
     txt(c, pct, xH, yH);
     const pctW = c.measureText(pct).width;
     c.font = mono(px(9, 8));
     c.fillStyle = infinite ? rgba(LAMP, 0.9) : low ? rgba(col, 1) : rgba(DIM, 1);
-    txt(c, infinite ? "OPEN" : low ? "LOW" : "FUEL", xH + pctW + Math.round(8 * u), yH);
+    const fuelS = infinite ? "OPEN" : low ? "LOW" : "FUEL", xF = xH + pctW + Math.round(8 * u);
+    txt(c, fuelS, xF, yH);
     const mode = burning ? "HARD BURN"
       : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
-    c.textAlign = "right";
     c.fillStyle = burning ? rgba(LAMP, 0.9) : rgba(DIM, 0.9);
-    txt(c, mode, xE, yH);
+    if (g.L) txt(c, mode, xF + c.measureText(fuelS).width + 10, yH);
+    else { c.textAlign = "right"; txt(c, mode, xE, yH); }
 
     // ladder rows lighting from the bottom; the top lit row breathes
     const lvl = infinite ? 0.85 + 0.15 * Math.sin(t * 2) : fuelNeedle;
@@ -542,28 +546,41 @@ window.HudSide = (function () {
     const g = resG;
     if (g.gw === w && g.gh === h) return g;
     const u = clamp(Math.min(h / 220, w / 230), 0.55, 1.25);
-    const axisX = w - Math.round(w * 0.11), bot = Math.round(h * 0.97), yTop = Math.round(18 * u);
+    const axisX = w - 3, bot = h - 1, yTop = Math.round(18 * u);
     const under = new Path2D(), n = curveLut.length;
     under.moveTo(0, curveLut[n - 1][1] * h);
     for (let i = n - 1; i >= 0; i--) under.lineTo(w * (1 - curveLut[i][0]), curveLut[i][1] * h);
     under.lineTo(w, 0); under.lineTo(w, h); under.lineTo(0, h);
     g.gw = w; g.gh = h; g.key = null; rPct = -1; resTy = -1;
-    Object.assign(g, { u, axisX, bot, yTop, ph: bot - yTop, xL: 3, xR: axisX - 6, under, bigF: Math.max(12, Math.min(30, Math.round(h * 0.15))) });
+    Object.assign(g, { u, axisX, bot, yTop, ph: bot - yTop, xL: 24, xR: axisX, under, bigF: Math.max(7, Math.min(15, Math.round(h * 0.075))) });
     /* per column, the room from the floor up to just under the curve: the same log scale spans it, so every column moves with its reading */
     const sx = (g.xR - g.xL) / (RN - 1);
     for (let i = 0; i < RN; i++) resHr[i] = clamp(bot - (curveY((g.xL + i * sx - 4) / w, true) * h + 3), 1, g.ph);
     g.hrR = resHr[RN - 1];
     return g;
   }
+  /* each guide line starts where the red curve crosses its level and runs right to the axis */
+  function resTicks() {
+    const { xL, xR } = resG, w = resG.gw, h = resG.gh;
+    return [1, 0.1, 0.01, 0.001].map(v => {
+      const y = resY(v);
+      let x = xL;
+      while (x < xR && curveY(x / w, true) * h > y) x++;
+      return [v, x];
+    });
+  }
   function resStatic(o, w, h) {
     const { axisX, bot, yTop, xL, xR, under } = resG;
     o.textBaseline = "alphabetic";
     o.lineWidth = 1;
     // faint ruled grid, only inside the clipped area
+    o.beginPath();
+    for (const [v, x0] of resTicks()) { const y = resY(v) + 0.5; o.moveTo(x0, y); o.lineTo(xR, y); }
+    o.strokeStyle = rgba(DIM, 0.55);
+    o.stroke();
     o.save();
     o.clip(under);
     o.beginPath();
-    for (const v of [1, 0.1, 0.01]) { const y = resY(v); o.moveTo(xL, y); o.lineTo(xR, y); }
     for (let i = 1; i <= 8; i++) { const x = xL + (xR - xL) * i / 8; o.moveTo(x, yTop); o.lineTo(x, bot); }
     o.strokeStyle = rgba(DIM, 0.26);
     o.stroke();
@@ -594,22 +611,18 @@ window.HudSide = (function () {
     o.font = mono(8);
     o.textAlign = "left";
     o.fillStyle = rgba(READ, 0.9);
-    txt(o, "Y", axisX + 5, 10);
-    txt(o, "X", 10, bot - 4);
-    // the scale on the axis
+    txt(o, "-" + Math.round(RN * 0.05) + " s", xL + 6, bot - 4);
+    o.textAlign = "right";
+    txt(o, "NOW", axisX - 5, bot - 4);
+    // the scale: each number at the left end of its guide line
     o.beginPath();
-    const lab = [[1, "1"], [0.1, ".1"], [0.01, ".01"]];
-    for (const [v, s] of lab) {
-      const y = resY(v);
-      o.moveTo(axisX - 3, y); o.lineTo(axisX, y);
-      txt(o, s, axisX + 4, y + 3);
-    }
-    o.strokeStyle = rgba(DIM, 0.6);
-    o.stroke();
+    o.fillStyle = rgba(DIM, 0.9);
+    const lab = { 1: "1", 0.1: ".1", 0.01: ".01", 0.001: ".001" };
+    for (const [v, x0] of resTicks()) txt(o, lab[v], x0 - 3, resY(v) + 3 - (v === 0.001 ? 4 : 0));
     o.font = mono(8);
     o.textAlign = "right";
     o.fillStyle = rgba(READ, 0.9);
-    txt(o, "NOSE RESONANCE", axisX - 7, 8);
+    txt(o, "NOSE RESONANCE \u00b7 LOG", axisX - 7, 8);
   }
   function resTrace(c, xL, sx) {
     for (let i = 0; i < resN; i++) {
@@ -631,7 +644,7 @@ window.HudSide = (function () {
     c.font = mono(bigF, "600");
     if (ri !== rPct) { rPct = ri; rPctS = cur.toFixed(2); rPctW = c.measureText(rPctS).width; }
     let yMin = resN ? resYi(resN - 1) : resY(cur), yMax = yMin;
-    const x0 = axisX - 6 - rPctW - 6;
+    const x0 = xR - rPctW - 10;
     for (let i = 0; i < resN; i++) {
       if (xL + (RN - resN + i) * sx < x0 - sx) continue;
       const y = resYi(i);
@@ -642,7 +655,7 @@ window.HudSide = (function () {
     const target = Math.min(h - 3, above - bigF * 0.8 > 2 ? above : yMax + 7 + bigF * 0.8);
     resTy = resTy < 0 ? target : resTy + (target - resTy) * 0.3;
     c.fillStyle = rgba(cur > 0.6 ? BAD : READ, 0.95);
-    txt(c, rPctS, axisX - 6, Math.round(resTy));
+    txt(c, rPctS, xR - 4, Math.round(resTy));
     if (resN < 2) return;
     c.save();
     c.clip(under);
