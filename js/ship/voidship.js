@@ -294,8 +294,10 @@ window.Voidship = (function () {
       ship.fumes.push({ x: env.W * 0.5, y: ship.y, bx: 0, vx: 0, vy: 0, age: 0, life: 0.55, r0: 0.08 * L, grow: 0.9 * L, kind: 2, seed: 0 });
     }
 
+    ship.drain = 0;
     if (burning && !ship.infinite) {
-      ship.fuel = Math.max(0, ship.fuel - BASE.burnFull * P.burn * (0.35 + 0.65 * demand) * dt);
+      ship.drain = BASE.burnFull * P.burn * (0.35 + 0.65 * demand);
+      ship.fuel = Math.max(0, ship.fuel - ship.drain * dt);
     } else {
       ship.fuel = Math.min(ship.fuelMax, ship.fuel + BASE.fuelRegen * P.fuelMax * dt);
     }
@@ -570,6 +572,7 @@ window.Voidship = (function () {
     return {
       fuel: ship.fuel,
       fuelMax: ship.fuelMax,
+      drain: ship.drain || 0,   // fuel units per second actually being burned (0 while refilling)
       fuelN: ship.infinite ? 1 : ship.fuel / ship.fuelMax,
       infinite: ship.infinite,
       vel: ship.vel,

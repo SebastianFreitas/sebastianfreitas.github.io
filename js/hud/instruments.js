@@ -53,8 +53,7 @@ window.Instruments = (function () {
   };
   let LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL;
 
-  const CELL_W = 168, CELL_H = 122, GAP = 16, GAP_C = 8;
-  const TILT_GAIN = 4;   // real pitch peaks near 0.08 rad; the seam bar shows it times this
+  const CELL_W = 168, CELL_H = 122, GAP = 4;
   const PANELS = [
     { key: "radar",  col: 0, row: 0, label: "RADAR"  },
     { key: "pull",   col: 1, row: 0, label: "PULL"   },
@@ -93,13 +92,10 @@ window.Instruments = (function () {
      NAV set alone tells us the grid size */
   const cols = ps => ps.reduce((n, p) => Math.max(n, p.col + 1), 1);
   const rows = ps => ps.reduce((n, p) => Math.max(n, p.row + 1), 1);
-  /* the phone stacks two panels in one column with no room to spare:
-     halve the gutter there so the bank is shorter without either panel
-     losing a pixel. `compact` is live by the time anything measures. */
-  const gap = () => (compact ? GAP_C : GAP);
+  const gap = () => GAP;
   const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * gap();
   const gridHp = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * gap();
-  /* both banks end on one thin baseline, 4px under the lower tile row */
+  /* both banks end 5px under the lower tile row (padding only; no line is drawn there) */
   const BASE_PAD = 5;
   const gridH = () => gridHp() + BASE_PAD;
 
@@ -326,9 +322,8 @@ window.Instruments = (function () {
           ctx.restore();
           curFont = null;
         }
+        if (cols(panels) > 1 && rows(panels) > 1) gutterCross();
       }
-      octx.strokeStyle = `rgba(${LAMP},0.5)`; octx.lineWidth = 1;
-      octx.beginPath(); octx.moveTo(0, gridHp() + 4.5); octx.lineTo(gridW(), gridHp() + 4.5); octx.stroke();
       ctx = saved;
       curFont = null;
       layer = { key, canvas: off };
@@ -356,21 +351,6 @@ window.Instruments = (function () {
       ctx.save();
       ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
       drawPanel(p, r, dt, paintFn);
-      ctx.restore();
-      curFont = null;
-    }
-    /* the seam between the two columns: a short bar that tilts with the ship's pitch */
-    if (cols(panels) > 1) {
-      const a = Math.max(-0.4363, Math.min(0.4363, ((r && r.ship && r.ship.bank) || 0) * TILT_GAIN));
-      ctx.save();
-      ctx.translate(CELL_W + gap() / 2, gridHp() / 2);
-      ctx.rotate(a);
-      ctx.strokeStyle = `rgba(${LAMP},0.7)`; ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(-20, 0); ctx.lineTo(20, 0);
-      ctx.moveTo(-20, -3); ctx.lineTo(-20, 3);
-      ctx.moveTo(20, -3); ctx.lineTo(20, 3);
-      ctx.stroke();
       ctx.restore();
       curFont = null;
     }
@@ -607,15 +587,28 @@ window.Instruments = (function () {
     if (fn) fn(ctx, p, r);
   }
 
+  /* the gutters of a 2x2 bank as one reticle: a line down each gutter, a
+     short tick at each end. The canvas is the bank's edge, so the ends sit
+     on it (bottom: inside the padding) and keep the layout's own gap to
+     the neighbouring column and graph. */
+  function gutterCross() {
+    const gx = CELL_W + gap() / 2 + 0.5, gy = CELL_H + gap() / 2 + 0.5;
+    const x1 = gridW() - 0.5, y0 = 0.5, y1 = gridHp() + BASE_PAD - 1.5, t = 4;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(${LAMP},0.32)`;
+    ctx.beginPath();
+    ctx.moveTo(gx, y0); ctx.lineTo(gx, y1);
+    ctx.moveTo(0.5, gy); ctx.lineTo(x1, gy);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(${LAMP},0.45)`;
+    ctx.beginPath();
+    for (const y of [y0, y1]) { ctx.moveTo(gx - t, y); ctx.lineTo(gx + t, y); }
+    for (const x of [0.5, x1]) { ctx.moveTo(x, gy - t); ctx.lineTo(x, gy + t); }
+    ctx.stroke();
+  }
+
   function chrome(p) {
     ctx.lineWidth = 1;
-    // corner ticks
-    ctx.strokeStyle = `rgba(${LAMP},0.35)`;
-    ctx.beginPath();
-    ctx.moveTo(0, 8); ctx.lineTo(0, 0); ctx.lineTo(8, 0);
-    ctx.moveTo(p.w, 8); ctx.lineTo(p.w, 0); ctx.lineTo(p.w - 8, 0);
-    ctx.stroke();
-
     const gx = p.w - 11, gy = 7;
     ctx.strokeStyle = `rgba(${LAMP},0.5)`;
     ctx.lineWidth = 1;

@@ -211,7 +211,7 @@
       ctx.textAlign = "right";
       setFont(mono(9));
       ctx.fillStyle = event ? `rgba(${evCol},0.95)` : `rgba(${DIM},1)`;
-      ctx.fillText(event ? "EVENT" : "QUIET", p.w - 17, 14);
+      ctx.fillText(event ? "EVENT" : "QUIET", p.w - 17, 12);
       ctx.fillStyle = `rgba(${COLD},0.85)`;
       ctx.fillText((sys.dose * 24).toFixed(2) + " /d", p.w - 5, 26);
 

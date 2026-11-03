@@ -8,7 +8,7 @@ window.HudSide = (function () {
   const W_MIN = 240, W_MAX = 300, GAP = 20, BANK_GAP = 6, MON_GAP = 14, NEED = W_MIN + GAP + BANK_GAP, H_MIN = 124;
   const { approach, clamp } = Util;
   const HALO = "rgba(4,7,8,0.85)";
-  let LAMP, READ, COLD, DIM, BAD, WARN, mono, palKey = "";
+  let LAMP, READ, COLD, DIM, BAD, WARN, GLINT, mono, palKey = "";
   /* colour strings per paint come from here: alpha in hundredths, so the sine-driven ones stay a small set */
   const colCache = new Map();
   const rgba = (c, a) => {
@@ -20,8 +20,8 @@ window.HudSide = (function () {
     return s;
   };
   const readPal = F => {
-    ({ LAMP, READ, COLD, DIM, BAD, WARN } = F);
-    palKey = [LAMP, READ, COLD, DIM, BAD, WARN].join("|");
+    ({ LAMP, READ, COLD, DIM, BAD, WARN, GLINT } = F);
+    palKey = [LAMP, READ, COLD, DIM, BAD, WARN, GLINT].join("|");
     colCache.clear();
   };
   window.Instruments.registerTiles(function (F) {
@@ -33,8 +33,8 @@ window.HudSide = (function () {
   let alarmCol = null, alarmBl = 0;
 
   let hero, logEl, termEl, termCv, sysCv, fuelCv, resCv, fctx, rctx;
-  let showSide = false, fallback = null, cvW = 0, cvH = 0, cvDpr = 0, t = 0;
-  let fuelNeedle = 1, thrustNeedle = 0, cruiseNeedle = 0;
+  let showSide = false, fallback = null, cvW = 0, cvFW = 0, cvH = 0, cvDpr = 0, t = 0;
+  let fuelNeedle = 1, thrustNeedle = 0, cruiseNeedle = 0, speedNeedle = 0, barT = 0, barB = 0;
   const NB = 7;
   const bx = new Float32Array(NB), by = new Float32Array(NB), bs = new Float32Array(NB);
   /* a fixed spread, not Math.random: the world's seeded stream must not shift because the HUD loaded */
@@ -82,18 +82,21 @@ window.HudSide = (function () {
     /* the log's height comes and goes, so the size follows the bank: both canvases are as tall as it, as wide as the gap allows */
     const br = termEl.getBoundingClientRect();
     const h = Math.max(H_MIN, Math.round(br.height)), dpr = Math.min(devicePixelRatio || 1, 2);
-    const W = Math.round(clamp(room - GAP - BANK_GAP, W_MIN, W_MAX));
+    const W = Math.round(clamp(room - GAP - BANK_GAP, W_MIN, W_MAX)), WF = FUEL_CW;
     const bottom = Math.round(hr.bottom - br.bottom);
     /* both sit against their monitor: fuel's left edge a small gap right of the left bank, the resonance axis (3 px in from the canvas's right edge) the same gap left of the right bank */
     fuelCv.style.left = Math.round(tr.right - hr.left + MON_GAP) + "px";
     resCv.style.left = Math.round(rightEdge - hr.left - MON_GAP - W + 3) + "px";
     fuelCv.style.bottom = resCv.style.bottom = bottom + "px";
-    fuelCv.style.width = resCv.style.width = W + "px";
+    fuelCv.style.width = WF + "px"; resCv.style.width = W + "px";
     fuelCv.style.height = resCv.style.height = h + "px";
-    if (W !== cvW || h !== cvH || dpr !== cvDpr) {
-      cvW = W; cvH = h; cvDpr = dpr;
-      for (const [cv, c] of [[fuelCv, fctx], [resCv, rctx]]) {
-        cv.width = Math.round(W * dpr); cv.height = Math.round(h * dpr);
+    /* the thrust column runs from the monitors' top to their baseline (the canvas's bottom edge sits on the bank's) */
+    const fr = fuelCv.getBoundingClientRect();
+    barT = Math.max(0, Math.round(tr.top - fr.top)); barB = Math.round(tr.bottom - fr.top) - 1;
+    if (W !== cvW || WF !== cvFW || h !== cvH || dpr !== cvDpr) {
+      cvW = W; cvFW = WF; cvH = h; cvDpr = dpr;
+      for (const [cv, c, cw] of [[fuelCv, fctx, WF], [resCv, rctx, W]]) {
+        cv.width = Math.round(cw * dpr); cv.height = Math.round(h * dpr);
         c.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
     }
@@ -130,6 +133,7 @@ window.HudSide = (function () {
     fuelNeedle = approach(fuelNeedle, s ? s.fuelN : 1, 8, dt);
     thrustNeedle = approach(thrustNeedle, s ? s.thrust : 0, 10, dt);
     cruiseNeedle = approach(cruiseNeedle, s ? s.holdT : 0, 6, dt);
+    speedNeedle = approach(speedNeedle, s ? s.speedN : 0, 8, dt);
     const burning = s && s.burning;
     for (let i = 0; i < NB; i++) {
       if (!burning) continue;
@@ -164,96 +168,53 @@ window.HudSide = (function () {
      surface), thrust ring, burn / power numerals, cruise bar, state word. Nothing is filled. */
   const NR = 16;
   let fPct = -1, fPctS = "", tPct = -1, tPctS = "", cPct = -1, cPctS = "", cPctL = -1, cPctLS = "", bKey = "", bS = "", pKey = -1, pS = "";
-  function fuelStaticL(o, g) {
-    const w = g.w, u = g.u;
-    const { tx, tankTop, tankBot, tankW, tankH, rr, cy, R, t8, yT, barY, bar0, dx } = g;
-    g.vessel = new Path2D();
-    const v = g.vessel;
-    v.moveTo(tx, tankTop);
-    v.lineTo(tx, tankBot - rr);
-    v.arcTo(tx, tankBot, tx + rr, tankBot, rr);
-    v.lineTo(tx + tankW - rr, tankBot);
-    v.arcTo(tx + tankW, tankBot, tx + tankW, tankBot - rr, rr);
-    v.lineTo(tx + tankW, tankTop);
-    fuelColStatic(o, g);
-    // three dial tracks and their labels
-    o.lineCap = "round";
-    o.lineWidth = Math.max(2, 3 * u);
-    o.strokeStyle = `rgba(${DIM},0.3)`;
-    o.beginPath();
-    for (const x of dx) { o.moveTo(x + R * Math.cos(0.75 * Math.PI), cy + R * Math.sin(0.75 * Math.PI)); o.arc(x, cy, R, 0.75 * Math.PI, 2.25 * Math.PI); }
-    o.stroke();
-    o.lineCap = "butt";
-    o.textBaseline = "alphabetic";
-    o.textAlign = "center";
-    o.font = mono(t8);
-    o.fillStyle = `rgba(${DIM},1)`;
-    ["THRUST", "BURN", "PWR"].forEach((s, i) => txt(o, s, dx[i], yT));
-  }
-
-  /* the tank column, a stack of chevron cells: its fixed parts */
-  const FCELLS = 12;
-  const yAt = (g, f) => g.tankBot - 2 - f * (g.tankH - 2);
-  function chev(p, g, i) {
-    const { tx, tankW, tankBot, cellH, bandH, k } = g;
-    const y = tankBot - k - (i + 1) * cellH, x1 = tx + tankW, xm = tx + tankW / 2;
-    p.moveTo(tx, y + k); p.lineTo(xm, y); p.lineTo(x1, y + k);
-    p.lineTo(x1, y + k + bandH); p.lineTo(xm, y + bandH); p.lineTo(tx, y + k + bandH);
-    p.closePath();
-  }
-  function fuelColStatic(o, g) {
-    const { tx, tankTop, tankBot, tankW, tankH, u } = g;
+  /* the same faint outline as the fuel bar's; the lit slits sit inside it */
+  function thrustStatic(o, g) {
+    const { bx0, bt, bb, lb, fx } = g;
     o.lineWidth = 1;
-    o.textBaseline = "alphabetic";
-    g.k = Math.max(3, Math.round(5 * u)); g.cellH = (tankH - g.k) / FCELLS; g.bandH = Math.max(2, g.cellH - 4);
-    const p = new Path2D();
-    for (let i = 0; i < FCELLS; i++) chev(p, g, i);
-    o.strokeStyle = `rgba(${DIM},0.3)`;
-    o.stroke(p);
-    // scale rail beside the stack: 25 / 50 / 75
-    const rx = tx + tankW + 3;
-    o.beginPath(); o.moveTo(rx, tankTop); o.lineTo(rx, tankBot);
-    o.strokeStyle = `rgba(${DIM},0.3)`;
-    o.stroke();
-    o.font = mono(8);
-    o.textAlign = "left";
-    o.fillStyle = rgba(READ, 0.9);
-    o.beginPath();
-    for (const f of [0.25, 0.5, 0.75, 1]) {
-      const y = yAt(g, f), s = Math.round(f * 100) + "";
-      o.moveTo(rx, y); o.lineTo(rx + 4, y);
-      /* the label stays inside the curve: slide it in until its far end clears the curve at its height, hide it if it cannot */
-      const lw = o.measureText(s).width;
-      let x = rx + 6;
-      while (x > rx + 4 && curveY((x + lw) / g.w) * g.h > y - 5) x--;
-      if (x > rx + 4) txt(o, s, x, y + 3);
-    }
-    o.strokeStyle = `rgba(${DIM},0.6)`;
-    o.stroke();
+    o.strokeStyle = `rgba(${DIM},0.45)`;
+    o.strokeRect(bx0 + 0.5, bt + 0.5, THR_W - 1, bb - bt - 1);
+    /* one-glyph marks at the foot of the pair */
+    o.font = mono(7);
+    o.textAlign = "center"; o.textBaseline = "alphabetic";
+    o.fillStyle = rgba(READ, 0.6);
+    txt(o, "T", bx0 + THR_W / 2, lb - 1);
+    txt(o, "F", fx + FUEL_W / 2, lb - 1);
   }
 
-  /* the live part of the column: the fuel level */
-  function fuelColLive(c, g, lvl, col) {
-    const n = lvl * FCELLS, full = Math.min(FCELLS, Math.floor(n)), frac = n - full;
-    if (full > 0) {
-      const p = new Path2D();
-      for (let i = 0; i < full; i++) chev(p, g, i);
-      c.fillStyle = rgba(col, 0.55);
-      c.fill(p);
-      c.lineWidth = 1;
-      c.strokeStyle = rgba(col, 0.95);
-      c.stroke(p);
+  /* lit from the bottom by thrust or speed in the fuel's gold: thin slits with 1 px gaps, so the column reads close to a solid fill.
+     At max only the top few slits brighten toward GLINT and shimmer. Readouts stack at the foot, right of the fuel bar, under the curve:
+     the thrust % only at max, the PWR "x" when it is not x1.0 or at max. */
+  let tPow = -1, tPowS = "";
+  function thrustLive(c, g, s) {
+    const { bx0, bb, segH, t8, tx, nseg: NSEG } = g;
+    const lvl = clamp(Math.max(thrustNeedle, speedNeedle), 0, 1);
+    const max = speedNeedle > 0.97;
+    const n = lvl * NSEG, full = Math.floor(n), frac = n - full;
+    const hot = clamp((speedNeedle - 0.9) / 0.1, 0, 1);
+    for (let i = 0; i < NSEG && i <= full; i++) {
+      const a = i < full ? 1 : frac;
+      if (a < 0.04) break;
+      const y = bb - 1 - (i + 1) * segH, hh = Math.max(1.5, segH - 1);
+      c.fillStyle = rgba(LAMP, 0.9 * a);
+      c.fillRect(bx0 + 1, y, THR_W - 2, hh);
+      const d = NSEG - 1 - i;
+      if (hot > 0 && d < 4) {
+        const k = hot * (1 - d / 4) * a * (0.8 + 0.2 * Math.sin(t * 17 + i * 1.7));
+        c.fillStyle = rgba(GLINT, k);
+        c.fillRect(bx0 + 1, y, THR_W - 2, hh);
+      }
     }
-    if (full < FCELLS && frac > 0.02) {
-      const p = new Path2D();
-      chev(p, g, full);
-      c.fillStyle = rgba(col, 0.15 + 0.7 * frac);
-      c.fill(p);
-    }
+    const ac = s && s.power ? s.power.accel : 1, pk = Math.round(ac * 10);
+    if (pk !== tPow) { tPow = pk; tPowS = "×" + ac.toFixed(1); }
+    c.font = mono(t8);
+    c.textBaseline = "alphabetic"; c.textAlign = "left";
+    const row = t8 + 1;
+    if (pk !== 10 || max) { c.fillStyle = rgba(READ, 0.9); txt(c, tPowS, tx, bb - 1 - 2 * row); }
+    if (max) { c.fillStyle = rgba(GLINT, 0.95); txt(c, Math.round(Math.max(thrustNeedle, speedNeedle) * 100) + "%", tx, bb - 1 - row); }
   }
 
   function fuelStatic(o, g) {
-    if (g.L) return fuelStaticL(o, g);
     const w = g.w, h = g.h, u = g.u, px = g.px, pad = g.pad;
     const { tx, tankTop, tankBot, tankW, tankH, rr, zcx, zcy, R, t8, yT, yL, lx, rx, barY } = g;
     g.vessel = new Path2D();
@@ -306,30 +267,45 @@ window.HudSide = (function () {
     o.beginPath(); o.moveTo(pad, barY); o.lineTo(w - pad, barY); o.stroke();
   }
 
+  /* the thrust heat column: THR_W wide at the left end, from the monitors' top (barT) to their baseline (barB); the slot right of it is the fuel's */
+  const LBL_H = 8, THR_W = 9, FUEL_W = Math.ceil(THR_W / 2), FUEL_GAP = 6, FUEL_CW = 58;
   function fuelGeomL(g, w, h) {
     const u = clamp(Math.min(h / 220, w / 230), 0.55, 1.25);
     const px = (n, min) => Math.max(min || 7, Math.round(n * u));
-    const pad = Math.round(16 * u), padY = Math.round(10 * u);
-    const bigF = px(24, 12), y1 = padY + bigF;
-    const tx = Math.round(w * 0.02), tankW = Math.max(14, Math.round(w * 0.09));
-    /* the 100 mark sits at the tank top, so the top leaves room for its label (about 3 glyphs of 8px) inside the curve */
-    const tankBot = Math.round(h * 0.97), tankTop = Math.ceil(Math.max(curveY((tx + tankW + 1) / w) * h + 2, curveY((tx + tankW + 3 + 6 + 15) / w) * h + 5)), tankH = Math.max(12, tankBot - tankTop);
-    /* the bay's seam line is part of the bridge art, 2px wide at 170px left of the canvas's right edge (x 78-79 at w 248); nothing may touch it, so content starts 4px right of it */
-    const seamR = w - 170 + 2, clear = seamR + 6;
-    /* packed: the dials and the readout start one small gap (10px) right of the tank's 100 label, or at the seam if that is further right */
-    const zl = Math.max(tx + tankW + 3 + 6 + 15 + 10), pitch0 = (w * 0.98 - zl) / 3;
-    const t8 = px(8, 8), v14 = px(14, 9);
-    const barY = Math.round(h * 0.98) - 2;
-    /* the big reading row sits at .74 of the height; the arcs stay below it and the labels at the floor: the height sets the radius, the width caps it */
-    const under = Math.round(h * 0.74) + 6;
-    const R = Math.max(6, Math.min(pitch0 / 2 - 3 - Math.max(2, 3 * u) / 2, (barY - 3 - t8 - 1 - under) / 1.707));
-    const pitch = Math.min(pitch0, 2 * R + Math.max(2, 3 * u) + 10);
-    const dx = [0, 1, 2].map(i => Math.round(zl + pitch * (i + 0.5)));
-    const cy = Math.round(barY - 3 - t8 - 1 - R * 0.707);
-    Object.assign(g, {
-      w, h, u, px, pad, bigF, y1, barY, tankTop, tankBot, tankH, tankW, tx, tcx: tx + tankW / 2, rr: Math.round(6 * u),
-      dx, zl, clear, cy, R, t8, v14, yT: barY - 3, bar0: Math.round(w * 0.20)
-    });
+    const bx0 = 3, bt = barT, lb = barB > bt + 20 ? barB : h - 2;
+    const bb = lb - LBL_H;   /* the bars end a label's height above the baseline; the T / F marks sit in that strip */
+    const nseg = Math.max(8, Math.round((bb - bt - 2) / 3.5));   /* slits about 2.5 px tall with a 1 px gap */
+    const segH = (bb - bt - 2) / nseg;
+    const fx = bx0 + THR_W + FUEL_GAP;
+    Object.assign(g, { w, h, u, px, bx0, bt, bb, lb, nseg, segH, fx, tx: fx + FUEL_W + 4, t8: px(8, 8), gb: barT + "/" + barB });
+  }
+
+  /* the calm fuel bar right of the thrust column: one smooth fill, WARN / BAD when low, a notch where the fuel will be in 10 s at this burn
+     (only while burning); a small % only when low */
+  let lPct = -1, lPctS = "";
+  function fuelBar(c, g, s, low, col) {
+    const { fx, bt, bb, t8, tx } = g;
+    const infinite = s && s.infinite, hh = bb - bt;
+    c.lineWidth = 1;
+    c.strokeStyle = `rgba(${DIM},0.3)`;
+    c.strokeRect(fx + 0.5, bt + 0.5, FUEL_W - 1, hh - 1);
+    const lvl = infinite ? 1 : clamp(fuelNeedle, 0, 1);
+    c.fillStyle = rgba(col, low ? 1 : 0.55);
+    c.fillRect(fx + 1, bb - (hh - 2) * lvl, FUEL_W - 2, (hh - 2) * lvl);
+    if (s && s.drain > 0 && !infinite && s.fuelMax > 0) {
+      const rate = s.drain;   /* the ship's real drain per second (Voidship.stats) */
+      const y = Math.round(bb - (hh - 2) * clamp(fuelNeedle - rate * 10 / s.fuelMax, 0, 1)) + 0.5;
+      c.strokeStyle = rgba(LAMP, 0.7);
+      c.beginPath(); c.moveTo(fx + 1, y); c.lineTo(fx + FUEL_W - 1, y); c.stroke();
+    }
+    if (low) {
+      const pi = Math.round(fuelNeedle * 100);
+      if (pi !== lPct) { lPct = pi; lPctS = pi + "%"; }
+      c.font = mono(t8);
+      c.textBaseline = "alphabetic"; c.textAlign = "left";
+      c.fillStyle = rgba(col, 1);
+      txt(c, lPctS, tx, bb - 1);
+    }
   }
 
   function fuelGeom(g, w, h) {
@@ -360,50 +336,19 @@ window.HudSide = (function () {
     });
   }
 
-  /* the side build of the dials and the cruise line: three small arcs (THRUST, BURN, PWR) under the curve, the line along the floor */
-  const dKey = ["", "", ""], dS = ["", "", ""];
-  function dialsL(c, g, s, infinite, burning) {
-    const { u, px, dx, cy, R, barY, bar0, w } = g;
-    const burnRate = burning ? 7.5 * (s.power && s.power.burn || 1) : 0;
-    const ac = s && s.power ? s.power.accel : 1;
-    const ti = Math.round(thrustNeedle * 100), pk = Math.round(ac * 10);
-    const left = burning && burnRate > 0.1 && !infinite;
-    const val = infinite ? 0 : left ? Math.round(s.fuel / burnRate) : Math.round(s ? s.fuel : 100);
-    const bk = infinite ? "i" : (left ? "~" : "u") + val;
-    if (ti !== dKey[0]) { dKey[0] = ti; dS[0] = ti + "%"; }
-    if (bk !== dKey[1]) { dKey[1] = bk; dS[1] = infinite ? "∞" : left ? "~" + val + "s" : val + "u"; }
-    if (pk !== dKey[2]) { dKey[2] = pk; dS[2] = "×" + ac.toFixed(1); }
-    const fr = [thrustNeedle, infinite ? 1 : fuelNeedle, clamp(ac / 2, 0, 1)];
-    const cols = [READ, READ, COLD];
-    c.textAlign = "center";
-    for (let i = 0; i < 3; i++) {
-      c.lineCap = "round";
-      c.lineWidth = Math.max(2, 3 * u);
-      c.strokeStyle = rgba(LAMP, 0.9);
-      if (fr[i] > 0.005) { c.beginPath(); c.arc(dx[i], cy, R, 0.75 * Math.PI, 0.75 * Math.PI + 1.5 * Math.PI * fr[i]); c.stroke(); }
-      c.lineCap = "butt";
-      /* the value's corner stays 3px inside the arc's inner edge: mono width .6f per glyph, height about .8f */
-      const n = dS[i].length, rin = R - Math.max(2, 3 * u) / 2 - 3;
-      const f = Math.max(6, Math.min(Math.round(R * 0.9), Math.floor(rin / Math.sqrt(0.09 * n * n + 0.16))));
-      c.font = mono(f, "600");
-      c.fillStyle = rgba(cols[i], 0.95);
-      txt(c, dS[i], dx[i], cy + Math.round(f * 0.35));
-    }
-    c.lineWidth = 1;
-  }
-
   function paintFuel(c, w, h, r, g) {
     const s = r && r.ship;
     const infinite = s && s.infinite;
     const burning = s && s.burning;
     const bank = s ? s.bank || 0 : 0;
-    if (g.gw !== w || g.gh !== h) { g.gw = w; g.gh = h; g.key = null; fuelGeom(g, w, h); }
-    layer(g, c, w, h, "f", fuelStatic);
+    if (g.gw !== w || g.gh !== h || (g.L && g.gb !== barT + "/" + barB)) { g.gw = w; g.gh = h; g.key = null; fuelGeom(g, w, h); }
+    layer(g, c, w, h, g.L ? "f" + barT + "/" + barB : "f", g.L ? thrustStatic : fuelStatic);
     c.drawImage(g.off, 0, 0, w, h);
     const { u, px, pad, bigF, y1, barY, tankTop, tankBot, tankH, tankW, tx, tcx, zcx, zcy, R, t8, v14, yT, yV, lx, rx } = g;
-    const ins = g.L ? 3 : 5;
+    const ins = 5;
     const low = !infinite && fuelNeedle < 0.22;
     const col = low ? (fuelNeedle < 0.09 ? BAD : WARN) : LAMP;
+    if (g.L) { fuelBar(c, g, s, low, col); thrustLive(c, g, s); return; }
 
     // header: big percent (tinted by the alarm), label, state word
     c.textBaseline = "alphabetic";
@@ -417,7 +362,7 @@ window.HudSide = (function () {
       if (pi !== fPct) { fPct = pi; fPctS = pi + "%"; }
       pct = fPctS;
     }
-    const yH = g.L ? Math.round(h * 0.74) : y1, xH = g.L ? g.zl : pad, xE = g.L ? 0 : w - pad;
+    const yH = y1, xH = pad, xE = w - pad;
     txt(c, pct, xH, yH);
     const pctW = c.measureText(pct).width;
     c.font = mono(px(9, 8));
@@ -427,12 +372,10 @@ window.HudSide = (function () {
     const mode = burning ? "HARD BURN"
       : (s && s.courseMark ? "SEEK" : (cruiseNeedle > 0.05 ? "COAST" : "IDLE"));
     c.fillStyle = burning ? rgba(LAMP, 0.9) : rgba(DIM, 0.9);
-    if (g.L) txt(c, mode, xF + c.measureText(fuelS).width + 10, yH);
-    else { c.textAlign = "right"; txt(c, mode, xE, yH); }
+    c.textAlign = "right"; txt(c, mode, xE, yH);
 
     // ladder rows lighting from the bottom; the top lit row breathes
     const lvl = infinite ? 0.85 + 0.15 * Math.sin(t * 2) : fuelNeedle;
-    if (g.L) { fuelColLive(c, g, lvl, col); dialsL(c, g, s, infinite, burning); return; }
     const lit = Math.min(NR, Math.round(lvl * NR));
     if (lit > 0) {
       c.lineWidth = 2;
@@ -495,7 +438,7 @@ window.HudSide = (function () {
     txt(c, tPctS, zcx, zcy + Math.round(pctF * 0.35));
 
     // burn and power numerals
-    const burnRate = burning ? 7.5 * (s.power && s.power.burn || 1) : 0;
+    const burnRate = burning ? s.drain || 0 : 0;
     c.font = mono(v14);
     c.fillStyle = rgba(READ, 0.9);
     if (infinite) txt(c, "∞", lx, yV);
@@ -697,13 +640,13 @@ window.HudSide = (function () {
       alarmCol = lv >= 2 ? BAD : WARN;
       alarmBl = lv >= 2 ? (Math.sin(t * 6.9) + 1) / 2 : (Math.sin(t * 3.1) + 1) / 2;
     }
-    fctx.clearRect(0, 0, cvW, cvH);
-    paintFuel(fctx, cvW, cvH, r, sideG);
+    fctx.clearRect(0, 0, cvFW, cvH);
+    paintFuel(fctx, cvFW, cvH, r, sideG);
     rctx.clearRect(0, 0, cvW, cvH);
     paintRes(rctx, cvW, cvH);
     if (alarmCol) {
       fctx.strokeStyle = rgba(alarmCol, 0.5 + 0.4 * alarmBl); fctx.lineWidth = 1.5;
-      if (sideG.vessel) fctx.stroke(sideG.vessel);
+      fctx.strokeRect(sideG.fx - 0.5, sideG.bt - 0.5, FUEL_W + 1, sideG.bb - sideG.bt + 1);
     }
   }
 

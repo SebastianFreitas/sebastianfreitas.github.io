@@ -330,7 +330,7 @@
         const tag = e.tag;
         const tagW = ctx.measureText(tag).width;
         ctx.fillStyle = `rgba(${DIM},1)`;
-        ctx.fillText(fit(String(siteName).toUpperCase(), p.w - 17 - tagW - 12), 6, 12);
+        ctx.fillText(fit(String(siteName).toUpperCase(), p.w - 17 - tagW - 12), 5, 12);
         const cols = [chaosCol, COLD, nomicCol];
         const tagCol = cols.includes(BAD) ? BAD : cols.includes(WARN) ? WARN : LAMP;
         ctx.textAlign = "right";
@@ -340,7 +340,7 @@
         const str = "STR " + Math.round(peak * 100);
         const strW = ctx.measureText(str).width;
         ctx.fillStyle = `rgba(${DIM},1)`;
-        ctx.fillText(fit(v.name.toUpperCase(), p.w - 17 - strW - 12), 6, 12);
+        ctx.fillText(fit(v.name.toUpperCase(), p.w - 17 - strW - 12), 5, 12);
         ctx.textAlign = "right";
         ctx.fillStyle = `rgba(${READ},0.9)`;
         ctx.fillText(str,p.w - 17, 12);
