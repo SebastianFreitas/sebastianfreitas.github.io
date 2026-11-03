@@ -988,7 +988,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   clip-path: var(--xp-clip, polygon(2.8% 12.3%, 100% 0, 29.7% 100%, 0 73.5%));
 }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
-.xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: 2.5px; stroke-linecap: butt; }
+.xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: 6px; stroke-linecap: butt; }
 .experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }
 .xp-shape .section-title { padding: 0; margin: 0 0 1.5rem; }
 .xp-shape .xp li { padding: 0.6rem 0; margin-bottom: 0.6rem; max-width: 44rem; }
