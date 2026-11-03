@@ -77,6 +77,7 @@
     radial-gradient(ellipse 70% 30% at 62% 72%, rgb(206 198 180 / 0.15), transparent 70%),
     radial-gradient(ellipse 45% 18% at 10% 85%, rgb(0 0 0 / 0.21), transparent 70%),
     radial-gradient(ellipse 35% 40% at 45% 45%, rgb(0 0 0 / 0.12), transparent 70%);
+  --ground:          #282828;
   --stroke:          rgb(4 4 5 / 0.86);
   --tear:            25px;
   /* the wall's dirt as static transparent tiles (css/art/, 1440x1280, repeat-y): dry-brush, scratches and big ink marks; two tiles so no two places stamp the same picture */
@@ -122,14 +123,6 @@
 @media (prefers-reduced-motion: reduce) { .slab::before { transform: none; } }
 .ink { position: absolute; width: 340px; height: 151px; opacity: 0.8; pointer-events: none; }
 
-/* the wall's paint: broad dry-brush streaks and pale scratches (tile, repeats down), then a soft vignette; behind the slabs */
-.work::before, .experience::before, footer::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 75% at 50% 50%, transparent 45%, rgb(0 0 0 / 0.4) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900'%3E%3Cfilter id='b' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.5' numOctaves='2' seed='4' result='n'/%3E%3CfeColorMatrix in='n' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -7 4.1' result='h'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.09' numOctaves='2' seed='9' result='e'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='e' scale='24' xChannelSelector='R' yChannelSelector='G' result='r'/%3E%3CfeComposite in='r' in2='h' operator='in'/%3E%3C/filter%3E%3Cg filter='url(%23b)'%3E%3Cg transform='translate(120 60) rotate(18)' opacity='.28'%3E%3Cpath fill='rgb(4,4,5)' d='M0,6L450,0L900,5L873,66L450,74L0,66Z'/%3E%3C/g%3E%3Cg transform='translate(640 540) rotate(-22)' opacity='.26'%3E%3Cpath fill='rgb(4,4,5)' d='M0,5L410,0L820,6L800,58L410,64L0,56Z'/%3E%3C/g%3E%3Cg transform='translate(260 350) rotate(28)' opacity='.12'%3E%3Cpath fill='rgb(236,228,208)' d='M0,4L350,0L700,4L680,44L350,48L0,42Z'/%3E%3C/g%3E%3Cg transform='translate(780 150) rotate(-30)' opacity='.1'%3E%3Cpath fill='rgb(236,228,208)' d='M0,3L300,0L600,4L585,38L300,42L0,36Z'/%3E%3C/g%3E%3C/g%3E%3Cg fill='none' stroke='rgb(236,228,208)' stroke-linecap='round'%3E%3Cpath d='M90,520Q420,560 760,470' stroke-width='1.5' stroke-opacity='.28' stroke-dasharray='180 14 90 30'/%3E%3Cpath d='M820,640Q1100,560 1330,380' stroke-width='1' stroke-opacity='.26' stroke-dasharray='140 20 60 36'/%3E%3Cpath d='M980,90Q1180,190 1360,300' stroke-width='1.5' stroke-opacity='.22' stroke-dasharray='120 18 70 40'/%3E%3C/g%3E%3C/svg%3E")
-    center top / 1440px 900px repeat-y;
-}
 footer { isolation: isolate; }
 
 * { box-sizing: border-box; }
@@ -485,11 +478,11 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   color: var(--sage);
 }
 /* 404: the case shell on the wash, the note one straight stroke */
-.page-404 main.case { position: relative; isolation: isolate; max-width: none; min-height: 60vh; padding-bottom: 4rem; background: var(--dirt-b) 62% top / 1200px auto repeat-y, var(--smoke), linear-gradient(170deg, #605c55, #4e4a43); }
+.page-404 main.case { position: relative; isolation: isolate; max-width: none; min-height: 60vh; padding-bottom: 4rem; background: var(--ground); }
 /* the join to the footer is torn, not ruler-straight: a strip of the footer's own dark tone bites up into the wash */
 .page-404 main.case::after {
   content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: 7.5rem; pointer-events: none;
-  background: linear-gradient(180deg, #47433d, #3c3933);   /* ends on the footer's top tone (its vignette makes it darker than the wash) */
+  background: var(--ground);
   clip-path: polygon(0 62%, 4% 38%, 9% 55%, 15% 20%, 22% 46%, 27% 8%, 35% 40%, 41% 24%, 49% 58%, 56% 14%, 63% 44%, 70% 30%, 77% 64%, 84% 18%, 91% 48%, 96% 26%, 100% 52%, 100% 100%, 0 100%);
 }
 .page-404 .void-note { max-width: 44rem; padding: 1.5rem 2rem; }
@@ -498,7 +491,8 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .page-404 .case-nav a::before { background: rgb(4,4,5); }
 .page-404 .case-nav a:hover::before, .page-404 .case-nav a:focus-visible::before { background: var(--type-tag-bg); }
 /* behind the see-through open folder the page paints the body: black there, not the old blue-grey (toy layers sit on body, untouched) */
-body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
+body:has(.case-folder.open) { background: rgb(4, 4, 5); }
+body.page-case { background: var(--ground); }
 
 /* ---------------- shared section furniture ---------------- */
 
@@ -665,7 +659,7 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   color: var(--type-dim);
   grid-row: span 2;
 }
-.experience { background: var(--smoke), linear-gradient(180deg, #57534c, #4e4a43); }
+.experience { background: var(--ground); }
 .xp-what { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.3; color: var(--type-cream); }
 .xp-what strong { color: var(--type-cream); font-weight: 400; font-synthesis: none; }
 /* rough top and bottom, straight sides; the edge differs down the stack */
@@ -692,18 +686,16 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 /* case body on the wash (dp-9a): each block is a torn black stroke, its long sides notched (side padding >= the tear, so no cut text);
    each h2 sits after a wide wash gap that breaks the column into sections */
 .folder-body > .case { position: relative; isolation: isolate; }
-/* the painted wash under the strokes, its long sides torn; the toy's strip lies right of the article, so it stays visible */
+/* the flat ground under the strokes; the toy shows beside the column */
 .folder-body > .case::before {
   content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  /* the index wall's paint: smoke blotches over the wash; the long sides fall off in big irregular bites */
-  background: var(--smoke), var(--wash);
+  background: var(--ground);
 }
-/* desktop: a toy draws behind the case, so the wash is half-clear and fades out toward the right */
+/* desktop: the toy draws behind the column, so its right edge fades out instead of cutting the toy */
 @media (min-width: 900px) {
   .folder-body > .case::before {
-    opacity: 0.55;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 30%, rgb(0 0 0 / 0.35) 62%, transparent 85%);
-    mask-image: linear-gradient(90deg, #000 0, #000 30%, rgb(0 0 0 / 0.35) 62%, transparent 85%);
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
   }
 }
 .case > p:not(.todo), .case > ul, .case > h2 { position: relative; isolation: isolate; }
@@ -837,7 +829,7 @@ footer {
 }
 .foot-text { max-width: 48rem; padding: 1.5rem 2rem; }
 footer p { margin: 0 0 0.4rem; }
-footer { background: linear-gradient(180deg, #4e4a43, #44403a); }
+footer { background: var(--ground); }
 footer .foot-text::before { clip-path: var(--shape, polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px))); }
 footer p:not(.rights) { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream); }
 footer .rights { font-family: var(--type-sans); font-size: 0.85rem; line-height: 1.5; color: var(--type-text); }
@@ -971,8 +963,8 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 
 .work, .experience { position: relative; z-index: 1; }
-/* one wall: each section's wash starts at the tone the one above ends on, and the smoke stays off the section edges */
-.work { background: linear-gradient(180deg, #605c55, #57534c); }
+/* one flat ground under Work, Experience and the footer */
+.work { background: var(--ground); }
 
 .topbar.is-solid::before, .page-case .topbar::before { background: linear-gradient(rgb(4, 4, 5), rgb(4, 4, 5)); }
 
