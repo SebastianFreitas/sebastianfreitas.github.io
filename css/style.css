@@ -571,7 +571,7 @@ body.page-case { background: var(--ground); }
   color: inherit;
   text-decoration: none;
   /* side padding = the case's own --gutter, so row text and case text share one left edge */
-  padding: 2rem var(--gutter) 2.25rem;
+  padding: max(calc(2rem * var(--wk-hf, 1)), var(--wk-pt, 0px)) calc(var(--gutter) + var(--wk-pr, 0px)) max(calc(2.25rem * var(--wk-hf, 1)), var(--wk-pb, 0px)) calc(var(--gutter) + var(--wk-pl, 0px));
   margin: 3.4rem 0 0;
   border: 0;
 }
@@ -979,6 +979,11 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   background: rgb(4 4 5);
   clip-path: var(--xp-clip, polygon(2.8% 12.3%, 100% 0, 29.7% 100%, 0 73.5%));
 }
+/* the Work rows: a worn quad in px (Shapes.workRows sets --wk-clip, the tilt is baked in), a red line down the left edge */
+.work > .obj.slab[data-wornquad]::before { inset: calc(var(--wk-pad, 0px) * -1) 0; transform: none; clip-path: var(--wk-clip, polygon(0 3%, 100% 0, 100% 97%, 0 100%)); }
+.work > .obj[data-wornquad] > .obj-shot { transform: none; clip-path: var(--wk-shot-clip, inset(0)); }
+.obj > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none !important; z-index: 1; }
+.obj > .xp-red line { stroke: var(--type-red); stroke-width: 6px; stroke-linecap: butt; }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
 .xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: 6px; stroke-linecap: butt; }
 .experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }

@@ -9,8 +9,8 @@
 
 /* closed folders stack like a filing drawer: each tab and top edge sits over the bottom padding of the folder before; an open folder keeps the full gap below it */
 .work > .case-folder + .obj { margin-top: -1px; }
-/* an open folder's page runs under the next row's torn top: margin-top is the 3deg rise across half the row (the page pivots at its left, the row's stroke at its centre) plus a 10px overlap, so no wall shows between them along the tilt (on narrow the page pivots at its centre: overlap only) */
-.work > .case-folder:has(.folder-body:not([hidden])) + .obj { margin-top: calc(-2.62% - 10px); }
+/* an open folder's page runs under the next row's torn top: margin-top is set by shapes.js (--wk-seam) from the row's real top edge and the page's real bottom line, a 10px overlap so no wall shows between them (the 3deg fallback only until it runs) */
+.work > .case-folder:has(.folder-body:not([hidden])) + .obj { margin-top: var(--wk-seam, calc(-2.62% - 10px)); }
 /* that pulled-up row's flat box lies over the page's bottom-left, so only its own painted parts take the pointer: its tilted stroke (clipped to the visible row) and its content; the page's close bar and link stay clickable */
 .work > .case-folder:has(.folder-body:not([hidden])) + .obj { pointer-events: none; }
 .work > .case-folder:has(.folder-body:not([hidden])) + .obj::before, .work > .case-folder:has(.folder-body:not([hidden])) + .obj > :not(.redlines, .obj-shot) { pointer-events: auto; }
@@ -108,7 +108,7 @@
 .case-folder:not(:has(+ .obj)) { --page-end: rgb(4 4 5); }
 .case-folder > .folder-body {
   width: 60%; margin: -2.5rem 0 0;
-  transform: rotate(-3deg); transform-origin: 0 0;
+  transform: rotate(calc(var(--wk-rot, 3) * -1deg)); transform-origin: 0 0;
   -webkit-mask: linear-gradient(#000, #000) bottom / 100% calc(100% - var(--tuck) + 8px) no-repeat; mask: linear-gradient(#000, #000) bottom / 100% calc(100% - var(--tuck) + 8px) no-repeat;
 }
 /* the sheet's black is its own layer so the left and right edges can be eroded (js clips the body itself while it opens). Each page has its own hand-placed polygon of bites cut inward from both side edges: y is in % of the page height (placed at 584 px), so each side's points stay strictly increasing at any height and the bites scale with the page. Top and bottom stay straight */
