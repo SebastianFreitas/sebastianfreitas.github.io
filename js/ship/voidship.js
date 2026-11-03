@@ -42,7 +42,9 @@ window.Voidship = (function () {
     pitchAccel: Math.PI * 5 / 3, // rad/s², how fast the nose's turn rate can change (300°/s²)
     pitchEase: 3.5,  // 1/s, bank reading settles toward its target at this rate
     aimAccel: 5.4,    // rad/s², nose swing: about 1 s for 90°, easing in and out
-    aimDead: 28,      // px round the ship where the aim holds its last angle
+    closeTurnRange: 2,        // hull lengths: inside this the nose swings to the pointer even at rest
+    closeTurnRate: Math.PI,   // rad/s, turn rate at point blank (180°/s)
+    aimDead: 28,     // px round the ship where the aim holds its last angle
     fuelMax: 100,
     burnFull: 7.5,
     fuelRegen: 14,
@@ -82,7 +84,7 @@ window.Voidship = (function () {
       fumes: [], fumeAcc: 0, ringAcc: 0, exA: 1, rcsAcc: 0,
       bob: 0, alpha: 1,
       power: { accel: 1, maxSpeed: 1, fuelMax: 1, burn: 1 },
-      spool: 0, speedN: 0, phase: 0, sustain: 0, strain: 0, flare: 0, jet: 0,
+      spool: 0, speedN: 0, phase: 0, sustain: 0, strain: 0, flare: 0, jet: 0, turnFire: 0,
       burnPrev: false, igniteCd: 0,
       sustAcc: 0, jetAcc: 0, sparkAcc: 0, trailAcc: 0,
       sparks: [], trails: [[], [], [], []], heads: [[0, 0], [0, 0], [0, 0], [0, 0]],
@@ -136,11 +138,19 @@ window.Voidship = (function () {
     ship.aimPy = py;
   }
 
+  /* 0 while the pointer is inside the close zone (zero thrust), ramping to 1 just outside it */
+  function closeGo(ship, W) {
+    const dPx = Math.hypot(ship.aimPx - W * 0.5, ship.aimPy - ship.y);
+    return clamp((dPx / (BASE.closeTurnRange * BASE.size) - 1) / 0.15, 0, 1);
+  }
+
   function setThrusting(ship, on) {
     on = !!on;
     if (ship.thrusting === on) return;
     ship.thrusting = on;
     if (on || !hasTarget(ship) || ship.courseMark) return;
+    // released a close press: nothing to fly to, the hull just brakes
+    if (ship.aimPx != null && ship.envW && closeGo(ship, ship.envW) < 1) { clearCourse(ship); return; }
     // released a free hold: keep the point only if the ship can still stop on it
     const dx = ship.targetX - ship.camX;
     const stopV = Math.sqrt(2 * BASE.brakeX * Math.abs(dx)) * 1.1 + 40;
@@ -173,13 +183,14 @@ window.Voidship = (function () {
       ship.thrustAmt = approach(ship.thrustAmt, 0, 8, dt || 0.016);
       ship.bob += dt || 0.016;
       ship.camX = camX;
-      ship.spool = 0; ship.strain = 0; ship.sustain = 0; ship.jet = 0; ship.flare = 0; ship.sparks.length = 0; for (const tr of ship.trails) tr.length = 0;
+      ship.spool = 0; ship.strain = 0; ship.sustain = 0; ship.jet = 0; ship.turnFire = 0; ship.flare = 0; ship.sparks.length = 0; for (const tr of ship.trails) tr.length = 0;
       return { camX, vel: 0 };
     }
     if (!(dt > 0)) return { camX, vel: ship.vel };
     dt = Math.min(dt, 0.05);
 
     resize(ship, env.W, env.H);
+    ship.envW = env.W;
 
     const P = ship.power;
     const pxPerUnit = env.W / (env.viewUnits || 2100);
@@ -204,7 +215,7 @@ window.Voidship = (function () {
     const vFrac = clamp(Math.abs(ship.vel) / (BASE.maxSpeed * P.maxSpeed), 0, 1);
     const yCap = BASE.yMax * (1 - (1 - BASE.yMaxFast) * vFrac);
 
-    let vWantX = 0, vWantY = 0, burning = false, demand = 0;
+    let vWantX = 0, vWantY = 0, burning = false, demand = 0, closeHold = false;
     const active = hasTarget(ship) && (ship.thrusting || !ship.arrived);
     if (active) {
       const sx = Math.sign(dx), sy = Math.sign(dy);
@@ -219,6 +230,15 @@ window.Voidship = (function () {
         if (vLine < Math.abs(vWantY)) vWantY = sy * vLine;
       }
       demand = far ? 1 : clamp(Math.abs(vWantX) / cruise, 0, 1);
+      // a press close to the ship is zero thrust: the nose turns in place, the drive stays off
+      // (a short ramp at the zone's edge so crossing it is not a jolt)
+      if (ship.thrusting && ship.aimPx != null && !ship.courseMark) {
+        const go = closeGo(ship, env.W);
+        if (go < 1) {
+          closeHold = true;
+          vWantX *= go; vWantY *= go; demand *= go;
+        }
+      }
       burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
     }
 
@@ -235,6 +255,8 @@ window.Voidship = (function () {
     ship.yaw += clamp(ship.yawTarget - ship.yaw, -stepA, stepA);
     if (Math.abs(ship.yawTarget - ship.yaw) < 1e-3) ship.yaw = ship.yawTarget;
     ship.face = Math.cos(ship.yaw);
+    // flip progress 0..1 and which way the screen swings (-1 yaw rising 0 to 180, +1 falling), for the sideways thrusters
+    ship.flip = ship.yaw === ship.yawTarget ? null : { p: ship.yawTarget > ship.yaw ? ship.yaw / Math.PI : 1 - ship.yaw / Math.PI, dx: ship.yawTarget > ship.yaw ? -1 : 1 };
     if (ship.yaw === 0) ship.face = 1;
     if (ship.yaw === Math.PI) ship.face = -1;
 
@@ -274,7 +296,7 @@ window.Voidship = (function () {
     if (ship.y < top) { ship.y = top; if (ship.vy < 0) ship.vy = 0; }
     if (ship.y > bot) { ship.y = bot; if (ship.vy > 0) ship.vy = 0; }
 
-    if (hasTarget(ship)) {
+    if (hasTarget(ship) && !closeHold) {
       let atX = false, atY = false;
       if ((!far && (ship.targetX - prevX) * (ship.targetX - camX) <= 0) ||
         (Math.abs(ship.targetX - camX) < BASE.arriveWorld && Math.abs(ship.vel) < 40)) {
@@ -316,7 +338,8 @@ window.Voidship = (function () {
         const side = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
         const noseA = side > 0 ? ship.pitch : ship.pitch + Math.PI;
         // a sharp U-turn (aim within 30° of straight opposite the nose) flips the yaw, keeping the pitch
-        if (ship.yaw === ship.yawTarget && Math.abs(wrap(aimA - noseA - Math.PI)) < Math.PI / 6) {
+        // (only when the aim lies behind the ship's side, within 45° of level: a steep up/down aim is a pitch turn, no flip)
+        if (ship.yaw === ship.yawTarget && Math.abs(wrap(aimA - noseA - Math.PI)) < Math.PI / 6 && ex * side < 0 && Math.abs(ex) > Math.abs(ey)) {
           ship.yawTarget = side > 0 ? Math.PI : 0;
         }
         const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
@@ -326,7 +349,10 @@ window.Voidship = (function () {
         const distRate = dt > 0 ? travelled * (Math.PI / 2) / (2 * L) / dt : 0;
         const err = wrap(wantP - ship.pitch);
         // angular velocity with limited acceleration: top rate, and a braking curve so it never overshoots
-        const wMax = Math.min(distRate, BASE.pitchTurnMax, Math.sqrt(2 * BASE.pitchAccel * Math.abs(err)));
+        // a close pointer turns the nose even when the ship is still: faster the closer it is
+        const closeK = clamp(1 - Math.hypot(ex, ey) / (BASE.closeTurnRange * L), 0, 1);
+        const closeRate = BASE.closeTurnRate * closeK * closeK * (3 - 2 * closeK);
+        const wMax = Math.min(Math.max(Math.min(distRate, BASE.pitchTurnMax), closeRate), Math.sqrt(2 * BASE.pitchAccel * Math.abs(err)));
         ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -BASE.pitchAccel * dt, BASE.pitchAccel * dt);
         let stepP = ship.pitchW * dt;
         if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
@@ -351,6 +377,10 @@ window.Voidship = (function () {
     const jw = clamp(ay / (1.5 * BASE.brakeY), -1, 1);
     ship.jet = approach(ship.jet, jw, Math.abs(jw) > Math.abs(ship.jet) ? 14 : 6, dt);
     if (ship.vy === 0 && Math.abs(ship.jet) < 0.02) ship.jet = 0;
+    // turn flames: signed share of the top turn rate, caught fast and let go slowly so they never pop
+    const tfW = clamp(ship.pitchW / BASE.pitchTurnMax, -1, 1);
+    ship.turnFire = approach(ship.turnFire, tfW, Math.abs(tfW) > Math.abs(ship.turnFire) ? 14 : 7, dt);
+    if (tfW === 0 && Math.abs(ship.turnFire) < 0.02) ship.turnFire = 0;
 
     ship.bob += dt;
 
@@ -544,7 +574,7 @@ window.Voidship = (function () {
     return !ship.thrusting && ship.targetX == null && ship.vel === 0 && ship.vy === 0
       && ship.holdT === 0 && ship.thrustAmt < 0.01 && ship.fumes.length === 0
       && ship.yaw === ship.yawTarget
-      && ship.spool === 0 && ship.flare === 0 && ship.jet === 0 && ship.sparks.length === 0 && ship.trails.every(tr => tr.length === 0);
+      && ship.spool === 0 && ship.flare === 0 && ship.jet === 0 && ship.turnFire === 0 && ship.sparks.length === 0 && ship.trails.every(tr => tr.length === 0);
   }
 
   function screenPos(ship, W) {
@@ -623,7 +653,7 @@ window.Voidship = (function () {
       ctx.restore();
     }
 
-    if (window.VoidshipArt) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
+    if (window.VoidshipArt && !ship.flip) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
     if (window.VoidshipArt && VoidshipArt.drawWake) VoidshipArt.drawWake(ctx, ship, { W: env.W, H: env.H, t, trailLife: BASE.trailLife, rs: L / 200 });
 
     const bobY = Math.sin(ship.bob * 0.6) * 1.5;
