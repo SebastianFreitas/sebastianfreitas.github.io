@@ -430,7 +430,12 @@ window.VoidshipArt = (function () {
       const sx = p.x;
       if (sx < -r || sx > env.W + r) continue;
       const sy = p.kind === 3 ? p.y : p.y + Math.sin(p.age * (1.5 + p.seed * 2.5) + p.seed * 6.283) * (4 + 10 * p.seed) * Math.min(1, p.age * 2);
-      if (p.kind === 0) {
+      if (p.rcs) {   // cold jet: a short sharp streak pointing away from the hull
+        const m = Math.hypot(p.bx, p.by) || 1, len = 6 + 10 * (1 - f) + r;
+        const col = mixc(WHITE, COLD, f);
+        g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - p.bx / m * len, sy - p.by / m * len);
+        g.lineWidth = 1.6; g.lineCap = 'round'; g.strokeStyle = rgba(col, 0.95 * (1 - f * 0.6)); g.stroke(); g.lineCap = 'butt';
+      } else if (p.kind === 0) {
         const col = f < 0.5 ? mixc(DRIVE_A, DRIVE_B, f * 2) : mixc(DRIVE_B, DRIVE_C, (f - 0.5) * 2);
         const a = Math.pow(1 - f, 1.6) * 0.55;
         Paint.circle(g, sx, sy, r, rgba(col, a * 0.45));

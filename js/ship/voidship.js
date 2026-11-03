@@ -38,7 +38,9 @@ window.Voidship = (function () {
     pitchRef: 4000,   // px/s of virtual headway: sets how much the bank reading lifts at rest
     pitchLead: 0.03,  // rad the bank reading leads a climb
     pitchRate: 0.14,  // rad/s cap on how fast the bank reading swings
-    pitchEase: 3.5,   // 1/s, bank reading settles toward its target at this rate
+    pitchTurnMax: Math.PI / 2,  // rad/s, top turn rate of the drawn nose (90°/s)
+    pitchAccel: Math.PI * 5 / 3, // rad/s², how fast the nose's turn rate can change (300°/s²)
+    pitchEase: 3.5,  // 1/s, bank reading settles toward its target at this rate
     aimAccel: 5.4,    // rad/s², nose swing: about 1 s for 90°, easing in and out
     aimDead: 28,      // px round the ship where the aim holds its last angle
     fuelMax: 100,
@@ -69,14 +71,15 @@ window.Voidship = (function () {
       yawTarget: 0,
       face: 1,             // cos(yaw): the sprite's x-scale, sign = facing
       pitch: 0,             // canvas rotation, full circle (-PI..PI], down is positive; turns by distance travelled, hangs after release
-      myaw: 0, myawT: 0,             // the movement-facing yaw (flight path only, never drawn); yaw is the drawn one
+      pitchW: 0,            // rad/s, angular velocity of the nose
+      myaw: 0, myawT: 0,            // the movement-facing yaw (flight path only, never drawn); yaw is the drawn one
       mface: 1,             // cos(myaw)
       bankQ: 0,             // old flight-path nose; only stats().bank reads it
       thrusting: false, holdT: 0,
       targetX: null, targetY: null, courseMark: null, arrived: true,
       fuel: BASE.fuelMax, fuelMax: BASE.fuelMax, infinite: false,
       thrustAmt: 0,
-      fumes: [], fumeAcc: 0, ringAcc: 0,
+      fumes: [], fumeAcc: 0, ringAcc: 0, exA: 1, rcsAcc: 0,
       bob: 0, alpha: 1,
       power: { accel: 1, maxSpeed: 1, fuelMax: 1, burn: 1 },
       spool: 0, speedN: 0, phase: 0, sustain: 0, strain: 0, flare: 0, jet: 0,
@@ -318,10 +321,16 @@ window.Voidship = (function () {
         const wantP = sideT > 0 ? aimA : aimA - Math.PI;
         // turn by distance travelled: a quarter turn per 2 hull lengths
         const travelled = Math.hypot((camX - prevX) * pxPerUnit, ship.y - prevY);
-        const stepP = travelled * (Math.PI / 2) / (2 * L);
-        ship.pitch = wrap(ship.pitch + clamp(wrap(wantP - ship.pitch), -stepP, stepP));
-      }
-    }
+        const distRate = dt > 0 ? travelled * (Math.PI / 2) / (2 * L) / dt : 0;
+        const err = wrap(wantP - ship.pitch);
+        // angular velocity with limited acceleration: top rate, and a braking curve so it never overshoots
+        const wMax = Math.min(distRate, BASE.pitchTurnMax, Math.sqrt(2 * BASE.pitchAccel * Math.abs(err)));
+        ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -BASE.pitchAccel * dt, BASE.pitchAccel * dt);
+        let stepP = ship.pitchW * dt;
+        if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
+        ship.pitch = wrap(ship.pitch + stepP);
+      } else ship.pitchW = 0;
+    } else ship.pitchW = 0;
     // the old flight-path nose, kept quiet: it only feeds stats().bank
     const vxPx = Math.abs(ship.vel) * pxPerUnit;
     const pathAng = Math.atan2(ship.vy, vxPx + BASE.pitchRef);
@@ -362,16 +371,25 @@ window.Voidship = (function () {
         const sp = (320 + Math.random() * 320) * rs, bx = tx(sp), by = ty(sp);
         ship.fumes.push({ x: seatX(e), y: seatY(e), bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 90 * rs,
           age: 0, life: 0.7 + Math.random() * 0.5, r0: (4 + Math.random() * 5) * rs, grow: (34 + Math.random() * 30) * rs,
-          kind: 0, seed: Math.random() });
+          kind: 0, seed: Math.random(), main: 1, sa: ship.exA });
       }
     }
     ship.burnPrev = burning;
     ship.flare = approach(ship.flare, 0, 5, dt);
     if (ship.flare < 0.01) ship.flare = 0;
 
+    // the main plume follows how much of the travel runs along the nose: full nose-first,
+    // an idle floor when sideways or tail-first; the rest of the push shows as RCS puffs
+    const tvx = ship.vel * pxPerUnit, tvy = ship.vy, tsp = Math.hypot(tvx, tvy);
+    const noseDot = tsp < 30 ? 1 : (tvx * ship.face * pc + tvy * ship.face * ps) / tsp;
+    const exT = Math.max(0, noseDot);
+    ship.exA = approach(ship.exA, exT, exT > ship.exA ? 6.7 : 16.7, dt);   // slow up (0.15 s), fast down (0.06 s)
+    const exK = 0.1 + 0.9 * ship.exA * ship.exA;
+    const exE = noseDot < 0.3 ? 0.1 : exK;   // emission rate: idle floor only while the push is off the nose line
+
     if (ship.thrustAmt > 0.06 && EM.length) {
       // main drive: existing puffs; the sustainers take over part of the load past phase 1
-      ship.fumeAcc += (10 + 70 * ship.thrustAmt) * (1 - 0.55 * w2) * half * dt;
+      ship.fumeAcc += (10 + 70 * ship.thrustAmt) * (1 - 0.55 * w2) * half * exE * dt;
       let n = Math.floor(ship.fumeAcc); ship.fumeAcc -= n;
       for (; n > 0; n--) {
         const e = EM[Math.floor(Math.random() * EM.length)];
@@ -380,32 +398,49 @@ window.Voidship = (function () {
           x: seatX(e), y: seatY(e),
           bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 40 * rs,
           age: 0, life: 1.0 + Math.random() * 1.1,
-          r0: (3 + Math.random() * 5) * rs, grow: (16 + Math.random() * 26) * rs,
-          kind: Math.random() < 0.18 ? 1 : 0, seed: Math.random(),
+          r0: (3 + Math.random() * 5) * rs * exK, grow: (16 + Math.random() * 26) * rs * exK,
+          kind: Math.random() < 0.18 ? 1 : 0, seed: Math.random(), main: 1, sa: ship.exA,
         });
       }
-      if (ship.thrustAmt > 0.3) {
+      if (ship.thrustAmt > 0.3 && ship.exA > 0.3) {
         ship.ringAcc += dt * half;
         if (ship.ringAcc >= 0.16) {
           ship.ringAcc = 0;
           const e = EM[1] || EM[0];
           ship.fumes.push({ x: seatX(e), y: seatY(e),
             bx: tx(90 * rs), by: ty(90 * rs), vx: tx(90 * rs), vy: ty(90 * rs), age: 0, life: 0.7,
-            r0: 2 * rs, grow: 70 * rs, kind: 1, seed: Math.random() });
+            r0: 2 * rs * exK, grow: 70 * rs * exK, kind: 1, seed: Math.random(), main: 1, sa: ship.exA });
         }
       }
       // sustainers (phase 2+): thin streaks from the aft spar tips
       if (ship.thrustAmt > 0.3 && w2 > 0 && SUST.length) {
-        ship.sustAcc += (8 + 30 * w2) * half * dt;
+        ship.sustAcc += (8 + 30 * w2) * half * exE * dt;
         let n = Math.floor(ship.sustAcc); ship.sustAcc -= n;
         for (; n > 0; n--) {
           const s = SUST[Math.random() < 0.5 ? 0 : 1] || SUST[0];
           const sp = (420 + Math.random() * 320) * rs, bx = tx(sp), by = ty(sp);
           ship.fumes.push({ x: seatX(s), y: seatY(s), bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 16 * rs,
-            age: 0, life: 0.30 + Math.random() * 0.30, r0: (7 + Math.random() * 12) * rs, grow: 0, kind: 3, seed: Math.random() });
+            age: 0, life: 0.30 + Math.random() * 0.30, r0: (7 + Math.random() * 12) * rs, grow: 0, kind: 3, seed: Math.random(), main: 1, sa: ship.exA });
         }
       }
     }
+    // RCS: when the push is off the nose line, cold puffs leave the side opposite the push
+    // (the nose end when flying tail-first, the far flank when sideways)
+    if (ship.thrustAmt > 0.06 && tsp > 30) {
+      const rcs = (1 - ship.exA) * ship.thrustAmt;
+      if (rcs > 0.05) {
+        ship.rcsAcc += 3.5 * rcs * half * dt;   // bursts of 2 or 3 tiny puffs
+        let n = Math.floor(ship.rcsAcc); ship.rcsAcc -= n;
+        const ux = -tvx / tsp, uy = -tvy / tsp, reach = (0.12 + 0.33 * Math.abs(noseDot)) * L;
+        for (; n > 0; n--) {
+          for (let k = 2 + (Math.random() < 0.5 ? 1 : 0); k > 0; k--) {
+            const sp = (90 + Math.random() * 60) * rs;
+            ship.fumes.push({ x: env.W * 0.5 + ux * reach + (Math.random() - 0.5) * 6 * rs, y: ship.y + uy * reach + (Math.random() - 0.5) * 6 * rs, bx: ux * sp, by: uy * sp, vx: ux * sp, vy: uy * sp,
+              age: 0, life: 0.16 + Math.random() * 0.08, r0: (0.8 + Math.random() * 0.8) * rs, grow: 5 * rs, kind: 0, seed: Math.random(), rcs: 1 });
+          }
+        }
+      }
+    } else ship.rcsAcc = 0;
     // vertical jets: small quick puffs leaving the firing nozzles
     {
       const ja = Math.abs(ship.jet);
@@ -464,19 +499,24 @@ window.Voidship = (function () {
     while (ship.fumes.length > BASE.fumeCap) ship.fumes.shift();
     const dvx = (ship.vel - prevVel) * pxPerUnit;   // the hull's speed change this frame, px/s
     const dvy = ship.vy - prevVy;
-    const relax = 1 - Math.exp(-2 * dt), ky = Math.exp(-1.8 * dt), lim = 1400 * rs;
+    const scrollPx = (camX - prevX) * pxPerUnit;   // how far the world slid under the hull this frame
+    const relax = 1 - Math.exp(-2 * dt), ky = Math.exp(-1.8 * dt), lim = 1400 * rs + Math.abs(tvx);
     for (let i = ship.fumes.length - 1; i >= 0; i--) {
       const p = ship.fumes[i];
+      if (p.age === 0) { p.w = 1 - ship.exA; p.vx += p.w * tvx; }   // nose-first puffs ride the hull frame (the old plume); off-nose ones start with the hull's speed and drift in the world
       p.age += dt;
+      // a main puff lying ahead of the hull along travel (tail-first flight) fades out fast
+      if (p.main && !p.cut && noseDot < 0.3 && tsp > 30 && (p.x - env.W * 0.5) * tvx + (p.y - ship.y) * tvy > 0) { p.cut = 1; p.life = Math.min(p.life, p.age + 0.15); }
       if (p.age >= p.life) { ship.fumes.splice(i, 1); continue; }
       // partial inertia: when the hull brakes the plume surges ahead of it,
       // when it accelerates the plume is left behind; then it settles back
       // onto its own drift
-      p.vx = clamp(p.vx - dvx * 0.2, p.bx - lim, p.bx + lim);
+      const bt = p.bx + (p.w || 0) * tvx;
+      p.vx = clamp(p.vx - dvx * 0.2, bt - lim, bt + lim);
       p.vy -= dvy * 0.5;
-      p.vx += (p.bx - p.vx) * relax;
+      p.vx += (bt - p.vx) * relax;
       p.vy = (p.by || 0) + (p.vy - (p.by || 0)) * ky;
-      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.x += p.vx * dt - (p.w || 0) * scrollPx; p.y += p.vy * dt;
     }
     for (let i = ship.sparks.length - 1; i >= 0; i--) {
       const p = ship.sparks[i];
