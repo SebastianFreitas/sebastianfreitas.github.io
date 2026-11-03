@@ -191,11 +191,28 @@
       const dy = Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
       const pts = phone ? [[x0, dy], [W, 0], [W, H], [0, by]] : [[x0, dy], [W, 0], [0.297 * W, H], [0, by]];
+      /* worn top edge: a few small irregular bites eaten inward from it (fixed seed, spaced along the edge length) */
+      const ex = W - x0, ey = -dy, len = Math.hypot(ex, ey), ux = ex / len, uy = ey / len;
+      const rnd = rng("xp-wear"), bites = [];
+      const at = function (u, off) { return [x0 + ux * u - uy * off, dy + uy * u + ux * off]; };
+      const f = Math.max(1, Math.min(2.5, 1 + 1.5 * (W - 420) / 800)), fn = 1 + (f - 1) * 0.4;   /* bite scale: 1 on a phone, 2.5 on desktop */
+      /* five bites at uneven spots (bunched toward the corners, long clean runs between): a deep chip or two, the rest hairline nicks */
+      [[0.06, 1], [0.11, 0], [0.46, 0], [0.9, 1], [0.95, 0]].forEach(function (s, n) {
+        const t = (s[0] + (rnd() - 0.5) * 0.03) * len, chip = n === 0 || n === 3;
+        const w = (chip ? 14 + rnd() * 16 : 3 + rnd() * 7) * (chip ? f : fn), d = (chip ? 3 + rnd() * 1.2 : 0.7 + rnd() * 0.8) * (chip ? f : fn);
+        const m = 2 + Math.floor(rnd() * 3), us = [];
+        for (let j = 0; j < m; j++) us.push(rnd());
+        us.sort(function (a, b) { return a - b; });
+        bites.push(at(t, 0));
+        us.forEach(function (u) { bites.push(at(t + u * w, d * (0.25 + rnd() * 0.75))); });
+        bites.push(at(t + w, 0));
+      });
+      pts.splice.apply(pts, [1, 0].concat(bites));
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
       el.style.setProperty("--xp-clip", "polygon(" + pts.map(function (p) { return p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px"; }).join(", ") + ")");
       const l = red.firstChild, vx = 0 - x0, vy = by - dy;
       l.setAttribute("x1", (x0 - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (dy - 0.06 * vy).toFixed(1));
-      l.setAttribute("x2", "0"); l.setAttribute("y2", by.toFixed(1));
+      l.setAttribute("x2", (-0.06 * vx).toFixed(1)); l.setAttribute("y2", (by - 0.06 * vy).toFixed(1));   /* stops short of the corner by the top overshoot */
     }
     draw();
     if (window.ResizeObserver) new ResizeObserver(draw).observe(el);
