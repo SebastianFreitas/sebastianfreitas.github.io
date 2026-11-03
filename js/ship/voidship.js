@@ -34,11 +34,13 @@ window.Voidship = (function () {
     farUnits: 600,    // a held pointer further than this = cruise, nearer = arrive
     limpSpeed: 0.25,  // cruise fraction with dry tanks
     turnTime: 0.72,   // s for a full 180° yaw
-    pitchMax: 0.08,   // rad, nose angle cap
-    pitchRef: 4000,   // px/s of virtual headway: sets how much the nose lifts at rest
-    pitchLead: 0.03,  // rad the nose leads a climb (and flares when levelling off)
-    pitchRate: 0.14,  // rad/s cap on how fast the nose swings
-    pitchEase: 3.5,   // 1/s, nose settles toward its target at this rate
+    pitchMax: 0.08,   // rad, cap on the bank the HUD reads (the drawn nose goes to 90°)
+    pitchRef: 4000,   // px/s of virtual headway: sets how much the bank reading lifts at rest
+    pitchLead: 0.03,  // rad the bank reading leads a climb
+    pitchRate: 0.14,  // rad/s cap on how fast the bank reading swings
+    pitchEase: 3.5,   // 1/s, bank reading settles toward its target at this rate
+    aimAccel: 5.4,    // rad/s², nose swing: about 1 s for 90°, easing in and out
+    aimDead: 28,      // px round the ship where the aim holds its last angle
     fuelMax: 100,
     burnFull: 7.5,
     fuelRegen: 14,
@@ -66,7 +68,10 @@ window.Voidship = (function () {
       yaw: 0,              // 0 = nose right, Math.PI = nose left
       yawTarget: 0,
       face: 1,             // cos(yaw): the sprite's x-scale, sign = facing
-      pitch: 0,             // canvas rotation, nose rises on a climb
+      pitch: 0,             // canvas rotation, full circle (-PI..PI], down is positive; turns by distance travelled, hangs after release
+      myaw: 0, myawT: 0,             // the movement-facing yaw (flight path only, never drawn); yaw is the drawn one
+      mface: 1,             // cos(myaw)
+      bankQ: 0,             // old flight-path nose; only stats().bank reads it
       thrusting: false, holdT: 0,
       targetX: null, targetY: null, courseMark: null, arrived: true,
       fuel: BASE.fuelMax, fuelMax: BASE.fuelMax, infinite: false,
@@ -89,9 +94,15 @@ window.Voidship = (function () {
       ship.y = deckY(H);
       ship._seated = true;
     }
-    const mid = deckY(H);
-    const band = H * BASE.yBand;
-    ship.y = Math.min(mid + band, Math.max(mid - band, ship.y));
+    const lim = yLimits(ship, H);
+    ship.y = Math.min(lim.bot, Math.max(lim.top, ship.y));
+  }
+
+  /* the y band, pulled in by the hull's vertical reach so a steep nose stays clear of the bars */
+  function yLimits(ship, H) {
+    const mid = deckY(H), band = H * BASE.yBand;
+    const reach = BASE.size * 0.5 * Math.abs(Math.sin(ship.pitch || 0));
+    return { top: mid - band + reach, bot: mid + band - reach };
   }
 
   function addFuel(ship, n) {
@@ -113,6 +124,13 @@ window.Voidship = (function () {
     ship.targetY = screenY;
     ship.courseMark = mark || null;
     ship.arrived = false;
+    if (mark) ship.aimPx = null;
+  }
+
+  /* the raw pointer, host pixels, unclamped: the nose aims at it while the course stays in the band */
+  function setAim(ship, px, py) {
+    ship.aimPx = px;
+    ship.aimPy = py;
   }
 
   function setThrusting(ship, on) {
@@ -132,6 +150,7 @@ window.Voidship = (function () {
     ship.targetY = null;
     ship.courseMark = null;
     ship.arrived = true;
+    ship.aimPx = null;
   }
 
   /* ---- integration ------------------------------------------------ */
@@ -163,10 +182,12 @@ window.Voidship = (function () {
     const pxPerUnit = env.W / (env.viewUnits || 2100);
     const L = BASE.size;
 
+    const yLim = yLimits(ship, env.H);
+    const tgtY = hasTarget(ship) ? Math.min(yLim.bot, Math.max(yLim.top, ship.targetY)) : 0;
     let dx = 0, dy = 0;
     if (hasTarget(ship)) {
       dx = ship.targetX - camX;
-      dy = ship.targetY - ship.y;
+      dy = tgtY - ship.y;
     }
 
     const far = hasTarget(ship) && ship.thrusting && !ship.courseMark && Math.abs(dx) > BASE.farUnits;
@@ -198,9 +219,16 @@ window.Voidship = (function () {
       burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
     }
 
-    if (Math.abs(vWantX) > 150) ship.yawTarget = vWantX > 0 ? 0 : Math.PI;
-    if (vWantX !== 0) vWantX *= clamp((Math.sign(vWantX) * ship.face + 1) / 2, 0.12, 1);
+    // the flight path turns as it always did (a shadow yaw that follows the way of travel)
     const stepA = Math.PI / BASE.turnTime * dt;
+    if (Math.abs(vWantX) > 150) ship.myawT = vWantX > 0 ? 0 : Math.PI;
+    if (vWantX !== 0) vWantX *= clamp((Math.sign(vWantX) * ship.mface + 1) / 2, 0.12, 1);
+    ship.myaw += clamp(ship.myawT - ship.myaw, -stepA, stepA);
+    if (Math.abs(ship.myawT - ship.myaw) < 1e-3) ship.myaw = ship.myawT;
+    ship.mface = Math.cos(ship.myaw);
+    if (ship.myaw === 0) ship.mface = 1;
+    if (ship.myaw === Math.PI) ship.mface = -1;
+    // the drawn yaw flips only on a sharp U-turn (below, with the aim)
     ship.yaw += clamp(ship.yawTarget - ship.yaw, -stepA, stepA);
     if (Math.abs(ship.yawTarget - ship.yaw) < 1e-3) ship.yaw = ship.yawTarget;
     ship.face = Math.cos(ship.yaw);
@@ -239,9 +267,7 @@ window.Voidship = (function () {
     const prevX = camX, prevY = ship.y;
     camX += ship.vel * dt;
     ship.y += ship.vy * dt;
-    const mid = deckY(env.H);
-    const band = env.H * BASE.yBand;
-    const top = mid - band, bot = mid + band;
+    const top = yLim.top, bot = yLim.bot;
     if (ship.y < top) { ship.y = top; if (ship.vy < 0) ship.vy = 0; }
     if (ship.y > bot) { ship.y = bot; if (ship.vy > 0) ship.vy = 0; }
 
@@ -251,9 +277,9 @@ window.Voidship = (function () {
         (Math.abs(ship.targetX - camX) < BASE.arriveWorld && Math.abs(ship.vel) < 40)) {
         camX = ship.targetX; ship.vel = 0; atX = true;
       }
-      if ((ship.targetY - prevY) * (ship.targetY - ship.y) <= 0 ||
-        (Math.abs(ship.targetY - ship.y) < BASE.arriveY && Math.abs(ship.vy) < 8)) {
-        ship.y = ship.targetY; ship.vy = 0; atY = true;
+      if ((tgtY - prevY) * (tgtY - ship.y) <= 0 ||
+        (Math.abs(tgtY - ship.y) < BASE.arriveY && Math.abs(ship.vy) < 8)) {
+        ship.y = tgtY; ship.vy = 0; atY = true;
       }
       if (atX && atY) {
         ship.arrived = true;
@@ -273,16 +299,39 @@ window.Voidship = (function () {
 
     ship.thrustAmt = approach(ship.thrustAmt, burning ? 0.45 + 0.55 * demand : 0, burning ? 10 : 5, dt);
 
-    // the nose follows the flight path (shallow when fast sideways, steeper at rest),
-    // leads into a climb and flares as the ship levels off, and swings slowly
+    // the nose aims at the pointer (a hold) or the mark (a seek), up to straight up or down,
+    // swings heavily with a capped turn rate, and hangs at that angle until the next aim
+    if (active) {
+      const raw = ship.aimPx != null && !ship.courseMark;
+      const ex = raw ? ship.aimPx - env.W * 0.5 : dx * pxPerUnit;
+      const ey = raw ? ship.aimPy - ship.y : dy;
+      if (Math.hypot(ex, ey) > BASE.aimDead) {
+        const wrap = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
+        const aimA = Math.atan2(ey, ex);
+        const side = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
+        const noseA = side > 0 ? ship.pitch : ship.pitch + Math.PI;
+        // a sharp U-turn (aim within 30° of straight opposite the nose) flips the yaw, keeping the pitch
+        if (ship.yaw === ship.yawTarget && Math.abs(wrap(aimA - noseA - Math.PI)) < Math.PI / 6) {
+          ship.yawTarget = side > 0 ? Math.PI : 0;
+        }
+        const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
+        const wantP = sideT > 0 ? aimA : aimA - Math.PI;
+        // turn by distance travelled: a quarter turn per 2 hull lengths
+        const travelled = Math.hypot((camX - prevX) * pxPerUnit, ship.y - prevY);
+        const stepP = travelled * (Math.PI / 2) / (2 * L);
+        ship.pitch = wrap(ship.pitch + clamp(wrap(wantP - ship.pitch), -stepP, stepP));
+      }
+    }
+    // the old flight-path nose, kept quiet: it only feeds stats().bank
     const vxPx = Math.abs(ship.vel) * pxPerUnit;
     const pathAng = Math.atan2(ship.vy, vxPx + BASE.pitchRef);
     const lead = BASE.pitchLead * clamp((vWantY - ship.vy) / BASE.yMax, -1, 1);
-    const want = clamp(pathAng + lead, -BASE.pitchMax, BASE.pitchMax) * (ship.face >= 0 ? 1 : -1);
-    const eased = approach(ship.pitch, want, BASE.pitchEase, dt);
-    const pitchStep = BASE.pitchRate * dt;
-    ship.pitch += clamp(eased - ship.pitch, -pitchStep, pitchStep);
-    if (ship.vy === 0 && vWantY === 0 && Math.abs(ship.pitch) < 0.003) ship.pitch = 0;
+    const wantB = clamp(pathAng + lead, -BASE.pitchMax, BASE.pitchMax) * (ship.mface >= 0 ? 1 : -1);
+    const easedB = approach(ship.bankQ, wantB, BASE.pitchEase, dt);
+    const bankStep = BASE.pitchRate * dt;
+    ship.bankQ += clamp(easedB - ship.bankQ, -bankStep, bankStep);
+    if (ship.vy === 0 && vWantY === 0 && Math.abs(ship.bankQ) < 0.003) ship.bankQ = 0;
+    const pc = Math.cos(ship.pitch), ps = Math.sin(ship.pitch);
 
     // RCS jets fire against the vertical push: belly nozzles when the hull is shoved up
     // (launching a climb, braking a descent), deck nozzles when it is shoved down.
@@ -298,7 +347,9 @@ window.Voidship = (function () {
     const ART = window.VoidshipArt || {};
     const SUST = ART.SUST || [], JETS = ART.JETS || { belly: [], top: [] }, TSEATS = ART.TRAIL_SEATS || [];
     const half = Util.reduced() ? 0.5 : 1;
-    const seatX = (s) => env.W * 0.5 + s.x * L * ship.face, seatY = (s) => ship.y + s.y * L;
+    // seats turn with the hull (full sin/cos); tx/ty are a speed along the tail direction
+    const seatX = (s) => env.W * 0.5 + s.x * L * ship.face * pc - s.y * L * ps, seatY = (s) => ship.y + s.x * L * ship.face * ps + s.y * L * pc;
+    const tx = (sp) => -dir * sp * pc, ty = (sp) => -dir * sp * ps;
 
     // ignition: one big flash from the main drive when a real burn starts
     ship.igniteCd = Math.max(0, ship.igniteCd - dt);
@@ -306,10 +357,10 @@ window.Voidship = (function () {
       ship.igniteCd = 0.6;
       ship.flare = 1;
       const e = EM[1] || EM[0];
-      ship.fumes.push({ x: seatX(e), y: seatY(e), bx: -dir * 60 * rs, vx: -dir * 60 * rs, vy: 0, age: 0, life: 0.5, r0: 0.03 * L, grow: 1.4 * L, kind: 2, seed: 0 });
+      ship.fumes.push({ x: seatX(e), y: seatY(e), bx: tx(60 * rs), by: ty(60 * rs), vx: tx(60 * rs), vy: ty(60 * rs), age: 0, life: 0.5, r0: 0.03 * L, grow: 1.4 * L, kind: 2, seed: 0 });
       for (let n = Math.round(14 * half); n > 0; n--) {
-        const bx = -dir * (320 + Math.random() * 320) * rs;
-        ship.fumes.push({ x: seatX(e), y: seatY(e), bx, vx: bx, vy: (Math.random() - 0.5) * 90 * rs,
+        const sp = (320 + Math.random() * 320) * rs, bx = tx(sp), by = ty(sp);
+        ship.fumes.push({ x: seatX(e), y: seatY(e), bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 90 * rs,
           age: 0, life: 0.7 + Math.random() * 0.5, r0: (4 + Math.random() * 5) * rs, grow: (34 + Math.random() * 30) * rs,
           kind: 0, seed: Math.random() });
       }
@@ -324,10 +375,10 @@ window.Voidship = (function () {
       let n = Math.floor(ship.fumeAcc); ship.fumeAcc -= n;
       for (; n > 0; n--) {
         const e = EM[Math.floor(Math.random() * EM.length)];
-        const bx = -dir * (120 + Math.random() * 280) * rs;
+        const sp = (120 + Math.random() * 280) * rs, bx = tx(sp), by = ty(sp);
         ship.fumes.push({
-          x: env.W * 0.5 + e.x * L * ship.face, y: ship.y + e.y * L,
-          bx, vx: bx, vy: (Math.random() - 0.5) * 40 * rs,
+          x: seatX(e), y: seatY(e),
+          bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 40 * rs,
           age: 0, life: 1.0 + Math.random() * 1.1,
           r0: (3 + Math.random() * 5) * rs, grow: (16 + Math.random() * 26) * rs,
           kind: Math.random() < 0.18 ? 1 : 0, seed: Math.random(),
@@ -338,8 +389,8 @@ window.Voidship = (function () {
         if (ship.ringAcc >= 0.16) {
           ship.ringAcc = 0;
           const e = EM[1] || EM[0];
-          ship.fumes.push({ x: env.W * 0.5 + e.x * L * ship.face, y: ship.y + e.y * L,
-            bx: -dir * 90 * rs, vx: -dir * 90 * rs, vy: 0, age: 0, life: 0.7,
+          ship.fumes.push({ x: seatX(e), y: seatY(e),
+            bx: tx(90 * rs), by: ty(90 * rs), vx: tx(90 * rs), vy: ty(90 * rs), age: 0, life: 0.7,
             r0: 2 * rs, grow: 70 * rs, kind: 1, seed: Math.random() });
         }
       }
@@ -349,8 +400,8 @@ window.Voidship = (function () {
         let n = Math.floor(ship.sustAcc); ship.sustAcc -= n;
         for (; n > 0; n--) {
           const s = SUST[Math.random() < 0.5 ? 0 : 1] || SUST[0];
-          const bx = -dir * (420 + Math.random() * 320) * rs;
-          ship.fumes.push({ x: seatX(s), y: seatY(s), bx, vx: bx, vy: (Math.random() - 0.5) * 16 * rs,
+          const sp = (420 + Math.random() * 320) * rs, bx = tx(sp), by = ty(sp);
+          ship.fumes.push({ x: seatX(s), y: seatY(s), bx, by, vx: bx, vy: by + (Math.random() - 0.5) * 16 * rs,
             age: 0, life: 0.30 + Math.random() * 0.30, r0: (7 + Math.random() * 12) * rs, grow: 0, kind: 3, seed: Math.random() });
         }
       }
@@ -365,7 +416,8 @@ window.Voidship = (function () {
           let n = Math.floor(ship.jetAcc); ship.jetAcc -= n;
           for (; n > 0; n--) {
             const s = seats[Math.random() < 0.5 ? 0 : 1] || seats[0];
-            ship.fumes.push({ x: seatX(s), y: seatY(s), bx: 0, vx: 0, vy: sgn * (110 + Math.random() * 70) * rs,
+            const sp = sgn * (110 + Math.random() * 70) * rs;   // along the hull's own down, turned with it
+            ship.fumes.push({ x: seatX(s), y: seatY(s), bx: 0, vx: -sp * ps, vy: sp * pc,
               age: 0, life: 0.30 + Math.random() * 0.15, r0: (1.5 + Math.random() * 1.5) * rs, grow: 10 * rs, kind: 0, seed: Math.random() });
           }
         }
@@ -376,8 +428,9 @@ window.Voidship = (function () {
       ship.sparkAcc += (30 + 60 * w3) * half * dt;
       let n = Math.floor(ship.sparkAcc); ship.sparkAcc -= n;
       for (; n > 0; n--) {
-        ship.sparks.push({ x: env.W * 0.5 + ship.face * (0.10 + Math.random() * 0.9) * L, y: ship.y + (Math.random() - 0.5) * 0.8 * L,
-          vx: -dir * (2600 + Math.random() * 1400) * rs, vy: (Math.random() - 0.5) * 40 * rs,
+        const sx0 = ship.face * (0.10 + Math.random() * 0.9) * L, sy0 = (Math.random() - 0.5) * 0.8 * L, sp = (2600 + Math.random() * 1400) * rs;
+        ship.sparks.push({ x: env.W * 0.5 + sx0 * pc - sy0 * ps, y: ship.y + sx0 * ps + sy0 * pc,
+          vx: tx(sp), vy: ty(sp) + (Math.random() - 0.5) * 40 * rs,
           age: 0, life: 0.22 + Math.random() * 0.2, seed: Math.random() });
       }
       while (ship.sparks.length > BASE.sparkCap) ship.sparks.shift();
@@ -399,10 +452,10 @@ window.Voidship = (function () {
       if (w3 > 0.02 && TSEATS.length) {
         if (ship.trailAcc >= 1 / BASE.trailRate) {
           ship.trailAcc = 0;
-          const vx = -dir * (600 + 1400 * ship.speedN) * rs;
+          const sp = (600 + 1400 * ship.speedN) * rs;
           for (let i = 0; i < ship.trails.length && i < TSEATS.length; i++) {
-            const tr = ship.trails[i];
-            tr.push({ x: ship.heads[i][0], y: ship.heads[i][1], vx: vx * (0.9 + 0.2 * Math.random()), vy: (Math.random() - 0.5) * 70 * rs, age: 0, a: w3, seed: Math.random() });
+            const tr = ship.trails[i], k = 0.9 + 0.2 * Math.random();
+            tr.push({ x: ship.heads[i][0], y: ship.heads[i][1], vx: tx(sp) * k, vy: ty(sp) * k + (Math.random() - 0.5) * 70 * rs, age: 0, a: w3, seed: Math.random() });
             while (tr.length > BASE.trailPts) tr.shift();
           }
         }
@@ -422,7 +475,7 @@ window.Voidship = (function () {
       p.vx = clamp(p.vx - dvx * 0.2, p.bx - lim, p.bx + lim);
       p.vy -= dvy * 0.5;
       p.vx += (p.bx - p.vx) * relax;
-      p.vy *= ky;
+      p.vy = (p.by || 0) + (p.vy - (p.by || 0)) * ky;
       p.x += p.vx * dt; p.y += p.vy * dt;
     }
     for (let i = ship.sparks.length - 1; i >= 0; i--) {
@@ -448,7 +501,7 @@ window.Voidship = (function () {
   function settled(ship) {
     return !ship.thrusting && ship.targetX == null && ship.vel === 0 && ship.vy === 0
       && ship.holdT === 0 && ship.thrustAmt < 0.01 && ship.fumes.length === 0
-      && ship.yaw === ship.yawTarget && ship.pitch === 0
+      && ship.yaw === ship.yawTarget
       && ship.spool === 0 && ship.flare === 0 && ship.jet === 0 && ship.sparks.length === 0 && ship.trails.every(tr => tr.length === 0);
   }
 
@@ -488,7 +541,7 @@ window.Voidship = (function () {
       courseMark: ship.courseMark && ship.courseMark.id,
       courseName: ship.courseMark && ship.courseMark.name,
       angle: ship.yaw,
-      bank: ship.pitch,
+      bank: clamp(ship.bankQ,-BASE.pitchMax, BASE.pitchMax),
       vy: ship.vy,
       power: ship.power,
       face: ship.face,
@@ -548,7 +601,7 @@ window.Voidship = (function () {
   }
 
   return {
-    BASE, create, resize, setPower, setCourse, setThrusting, clearCourse,
+    BASE, create, resize, setPower, setCourse, setAim, setThrusting, clearCourse,
     step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled,
   };
 })();

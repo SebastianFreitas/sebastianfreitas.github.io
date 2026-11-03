@@ -85,6 +85,7 @@
       B.hintDone("beacon");
     } else {
       Voidship.setCourse(B.ship, c.worldX, c.screenY, null);
+      Voidship.setAim(B.ship, c.px, c.py);
       B.courseArmAt = 0;
       B.hintDone("burn");
     }
@@ -157,6 +158,7 @@
     }
     const c = clientToCourse(lastPtr.x, lastPtr.y);
     Voidship.setCourse(B.ship, c.worldX, c.screenY, null);
+    Voidship.setAim(B.ship, c.px, c.py);
   }
   B.retargetFromPointer = retargetFromPointer;
 
@@ -197,6 +199,7 @@
       } else if (!B.ship.courseMark) {
         const c = clientToCourse(e.clientX, e.clientY);
         Voidship.setCourse(B.ship, c.worldX, c.screenY, null);
+        Voidship.setAim(B.ship, c.px, c.py);
       }
       return;
     }

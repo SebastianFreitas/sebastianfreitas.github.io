@@ -195,7 +195,7 @@ does not — it is pure data, no dependency on `B`.
 | `voidship-prow.js` | The shard | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwTurn, emberOf, PROW}` |
 
 - `voidship.js`: `create`, `setThrusting` (release rule), `step` (hold boost → wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw`
-- `voidship.js` publishes: `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}`
+- `voidship.js` publishes: `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, setAim, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}`
 - `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), geometry tables (`W_FAR ENGINE HULL BELLY OPANEL W_NEAR OWING POD BRIDGE T1 T2`, `FV_*` for the turn's cross-section ends),
 - `voidship-art.js`: `drawHull(g, ship, L, t, turn)` (side view at rest, built part by part in depth mid-turn), `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS`;
 - `voidship-art.js`: local frame +x nose, +y down, units of hull length L; the shard is delegated to `voidship-prow.js` (`drawProwBack` first, `drawProw` after the turrets at rest, `drawProwTurn` in its place mid-turn: the blade as one projected solid)
