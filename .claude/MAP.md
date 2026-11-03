@@ -28,6 +28,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
 - Eroded banners (rejected worn box ends): archive/eroded-banners/ (tools/worn.py, its caps, CSS diff, README.md); open only when the owner names it
+- Red side lines (owner's tuned red line pieces on rank card, glimpse card, gate, Work rows): archive/red-side-lines/ (js/redlines.js, css/redlines.css, README.md); never delete; open only when the owner names it
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
 - case folder: `div.case-folder` under its game's row in section#work on index.html, a teaser (lead clip, pitch, link to the game page) (js/site/folders.js, css/folder.css)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
@@ -102,6 +103,7 @@ shares `Gen`:
 | `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; index clips are not preloaded (lazy-video.js loads one when its folder is open and on screen) | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
+| `shapes.js` | Seeded torn/slab polygon maker (points, rough, notches, chamfer, inset per edge); `[data-shape]` elements get `--shape` at load, redrawn on resize for `data-shape-tear` (px-sized cut) hosts | `window.Shapes {polygon, styles, apply, rng}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |

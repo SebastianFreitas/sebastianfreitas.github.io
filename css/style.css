@@ -114,10 +114,10 @@
 .slab::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   background: var(--stroke);
-  clip-path: var(--slab-scrape);
+  clip-path: var(--shape, var(--slab-scrape));
   transform: rotate(-3deg);
 }
-.slab:nth-of-type(even)::before { clip-path: var(--slab-scrape-even); }
+.slab:nth-of-type(even)::before { clip-path: var(--shape, var(--slab-scrape-even)); }
 .slab.straight::before { transform: none; }
 @media (prefers-reduced-motion: reduce) { .slab::before { transform: none; } }
 .ink { position: absolute; width: 340px; height: 151px; opacity: 0.8; pointer-events: none; }
@@ -398,11 +398,11 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   --ml: 18px; --mr: 16px; --mh: 100%;
   -webkit-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
   mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
-  clip-path: polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%);
+  clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
   transition: background-color 0.12s ease-out;
 }
 .topbar nav a:nth-child(even)::before {
-  clip-path: polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%);
+  clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
 /* a few px of invisible hit area so the tilted box never drops the pointer at its edge (the active tab's ::after is the sliver) */
 .topbar nav a:not(.active)::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
@@ -605,11 +605,11 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
   --ml: 18px; --mr: 16px; --mh: 100%;
   -webkit-mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
   mask: var(--wear-tl) left top / var(--ml) var(--mh) no-repeat, var(--wear-br) right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 /calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
-  clip-path: polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%);
+  clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
   transition: opacity 0.12s ease-out;
 }
 .obj:nth-of-type(even) .obj-head h3::before {
-  clip-path: polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%);
+  clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
 /* white on pointer hover only (a tap would leave it stuck); red while focused by keyboard, pressed or open, with cream text */
 @media (hover: hover) {
@@ -668,9 +668,9 @@ body:has(.case-folder.open), body.page-case { background: rgb(4, 4, 5); }
 .xp-what { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.3; color: var(--type-cream); }
 .xp-what strong { color: var(--type-cream); font-weight: 400; font-synthesis: none; }
 /* rough top and bottom, straight sides; the edge differs down the stack */
-.xp li:nth-of-type(1)::before { clip-path: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px)); }
-.xp li:nth-of-type(2)::before, .work .section-title::before, .experience .section-title::before { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
-.xp li:nth-of-type(3)::before, .obj.slab::before, .obj.slab:nth-of-type(even)::before, .void-note.slab::before { clip-path: polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px)); }
+.xp li:nth-of-type(1)::before { clip-path: var(--shape, polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px))); }
+.xp li:nth-of-type(2)::before, .work .section-title::before, .experience .section-title::before { clip-path: var(--shape, polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%)); }
+.xp li:nth-of-type(3)::before, .obj.slab::before, .obj.slab:nth-of-type(even)::before, .void-note.slab::before { clip-path: var(--shape, polygon(0 4px, 9% 0, 22% 6px, 38% 1px, 57% 4px, 79% 0, 100% 3px, 100% calc(100% - 3px), 83% calc(100% - 6px), 61% calc(100% - 1px), 44% calc(100% - 8px), 20% calc(100% - 2px), 0 calc(100% - 4px))); }
 .xp-what a { color: var(--lamp); text-decoration: underline; }
 .xp-what a:hover { text-decoration-thickness: 2px; }
 .xp-note { color: var(--type-dim); font-size: 0.92rem; }
@@ -837,7 +837,7 @@ footer {
 .foot-text { max-width: 48rem; padding: 1.5rem 2rem; }
 footer p { margin: 0 0 0.4rem; }
 footer { background: linear-gradient(180deg, #4e4a43, #44403a); }
-footer .foot-text::before { clip-path: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px)); }
+footer .foot-text::before { clip-path: var(--shape, polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 0 calc(100% - 2px))); }
 footer p:not(.rights) { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.4; color: var(--type-cream); }
 footer .rights { font-family: var(--type-sans); font-size: 0.85rem; line-height: 1.5; color: var(--type-text); }
 footer a { color: var(--type-cream); text-decoration: underline dotted 1px var(--type-cream); text-underline-offset: 3px; }
@@ -984,4 +984,27 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 @media (max-width: 640px) {
   .topbar.is-solid, .page-case .topbar { grid-template-areas: "mark nav"; --bar-pb: 0.4rem; row-gap: 0; }
+}
+
+/* ---------------- experience + contact in one black shape (js/site/shapes.js, Shapes.xpShape) ---------------- */
+/* --xp-dy is the top edge's drop, set from the Work row's tilt so the two edges stay parallel; the clip-path is in px */
+.xp-shape {
+  position: relative; isolation: isolate; --xp-dy: 6rem;
+  padding: calc(var(--xp-dy) + 2.5rem) 0 17rem calc(var(--gutter) + 3rem);
+}
+.xp-shape::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgb(4 4 5);
+  clip-path: var(--xp-clip, polygon(2.8% 12.3%, 100% 0, 29.7% 100%, 0 73.5%));
+}
+.xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: 2.5px; stroke-linecap: butt; }
+.experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }
+.xp-shape .section-title { padding: 0; margin: 0 0 1.5rem; }
+.xp-shape .xp li { padding: 0.6rem 0; margin-bottom: 0.6rem; max-width: 44rem; }
+.xp-shape footer { background: none; padding: 1.2rem 0 0; }
+.xp-shape footer::before { content: none; }
+.xp-shape .foot-text { padding: 0; max-width: 44rem; }
+@media (max-width: 640px) {
+  .xp-shape { padding: calc(var(--xp-dy) + 1.8rem) 1.2rem 5rem calc(var(--gutter) * 0.5 + 0.8rem); }
 }

@@ -39,7 +39,7 @@ window.RedLines = (function () {
   }
 
   // the plate's top and bottom edge from its computed polygon: t = [x fraction, y px from top], b = [x fraction, y px from bottom (<= 0)]
-  function readEdge(el, W, self) {
+  function readEdge(el, W, H, self) {
     const flat = { t: [[0, 0], [1, 0]], b: [[0, 0], [1, 0]], ok: false };
     const m = /^polygon\((.*)\)$/.exec(getComputedStyle(el, self ? null : "::before").clipPath || "");
     if (!m) return flat;
@@ -52,6 +52,8 @@ window.RedLines = (function () {
     }
     parts.push(cur);
     const t = [], b = [];
+    const pct = !/px|calc/.test(m[1]);
+    let ph = 0; // percent polygon (Shapes): 0 top edge, 1 right edge, 2 bottom edge, 3 left edge, by the corners passed
     for (const part of parts) {
       const xy = part.trim().match(/calc\([^)]*\)|\S+/g);
       if (!xy || xy.length !== 2) continue;
@@ -59,7 +61,13 @@ window.RedLines = (function () {
       if (!px) continue;
       const x = px[2] === "%" ? +px[1] / 100 : +px[1] / W;
       let c;
-      if ((c = /^calc\(\s*100%\s*-\s*([\d.]+)px\s*\)$/.exec(xy[1]))) b.push([x, -c[1]]);
+      if (pct && (c = /^(-?[\d.]+)%$/.exec(xy[1]))) {
+        const y = +c[1];
+        if (ph === 0) { t.push([x, y * H / 100]); if (x >= 0.999) ph = 1; }
+        else if (ph === 1) { if (y >= 99.9) { ph = 2; b.push([x, 0]); } }
+        else if (ph === 2) { b.push([x, -(100 - y) * H / 100]); if (x <= 0.001 && y >= 99.9) ph = 3; }
+      }
+      else if ((c = /^calc\(\s*100%\s*-\s*([\d.]+)px\s*\)$/.exec(xy[1]))) b.push([x, -c[1]]);
       else if (xy[1] === "100%") b.push([x, 0]);
       else if ((c = /^(-?[\d.]+)px$/.exec(xy[1]))) t.push([x, +c[1]]);
     }
@@ -276,7 +284,7 @@ window.RedLines = (function () {
     // room left on screen either side of the plate (the first screen's worth: a plate off to the side is not clamped)
     const rc = el.getBoundingClientRect(), cw = document.documentElement.clientWidth, sx = rc.left + (self ? 0 : parseFloat(cs.left) || 0);
     const lim = rc.right > 0 && rc.left < cw ? [Math.max(0, sx), Math.max(0, cw - sx - W)] : [1e4, 1e4];
-    svg.firstChild.setAttribute("d", build(W, H, readEdge(el, W, self), o, seed, lim));
+    svg.firstChild.setAttribute("d", build(W, H, readEdge(el, W, H, self), o, seed, lim));
     drawn.set(el, W0 + "x" + H0);
     return true;
   }

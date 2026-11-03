@@ -1,0 +1,74 @@
+/* Verbatim from main (owner's tuned version). Not loaded by any page. */
+/* css/style.css  :root  --type-red */
+  --type-red:        #6e1a1a;
+/* css/style.css  :root  --stroke, --tear (slab ink and notch size) */
+  --stroke:          rgb(4 4 5 / 0.86);
+  --tear:            25px;
+/* css/style.css  :root  --slab-scrape, --slab-scrape-even, --slab-scrape-tall */
+:root {
+  --slab-scrape:      polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 91% 0, 100% 0, calc(100% - var(--tear)) 18%, 100% 34%, calc(100% - calc(var(--tear) * 0.5)) 50%, 100% 64%, calc(100% - calc(var(--tear) * 0.4)) 82%, calc(100% - 3px) 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%, calc(var(--tear) * 0.6) 82%, 2px 68%, var(--tear) 48%, 0 32%, calc(var(--tear) * 0.4) 14%);
+  --slab-scrape-even: polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, calc(100% - calc(var(--tear) * 0.4)) 14%, 100% 32%, calc(100% - var(--tear)) 48%, calc(100% - 2px) 68%, calc(100% - calc(var(--tear) * 0.6)) 82%, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 3px 100%, calc(var(--tear) * 0.4) 82%, 0 64%, calc(var(--tear) * 0.5) 50%, 0 34%, var(--tear) 18%);
+  --slab-scrape-tall: polygon(0 0, 14% min(var(--tear), 24px), 30% 2px, 48% calc(min(var(--tear), 24px) * 0.5), 70% 1px, 84% calc(min(var(--tear), 24px) * 0.4), 100% 0, 100% 50%, 100% 100%, 78% calc(100% - calc(min(var(--tear), 24px) * 0.45)), 58% calc(100% - 2px), 38% calc(100% - min(var(--tear), 24px)), 20% calc(100% - calc(min(var(--tear), 24px) * 0.6)), 0 100%, 0 50%);
+}
+/* css/style.css  .work, .experience, footer  per-section clips, stroke and tear */
+.work, .experience, footer {
+  --slab-scrape:      polygon(0 5px, 6% 0, 9% 6px, 21% 2px, 23% 9px, 38% 1px, 47% 5px, 66% 0, 71% 8px, 90% 3px, 100% 0, calc(100% - var(--tear) * 0.9) 9%, calc(100% - var(--tear) * 0.2) 17%, calc(100% - var(--tear) * 0.7) 31%, 100% 38%, calc(100% - var(--tear) * 0.1) 47%, calc(100% - var(--tear)) 58%, calc(100% - var(--tear) * 0.4) 66%, 100% 79%, calc(100% - var(--tear) * 0.8) 90%, calc(100% - 4px) 100%, 81% calc(100% - 6px), 77% calc(100% - 1px), 59% calc(100% - 9px), 52% calc(100% - 2px), 33% calc(100% - 5px), 30% 100%, 12% calc(100% - 7px), 5% calc(100% - 1px), 0 100%, calc(var(--tear) * 0.7) 88%, calc(var(--tear) * 0.1) 77%, var(--tear) 66%, 3px 55%, calc(var(--tear) * 0.8) 44%, 0 36%, calc(var(--tear) * 0.4) 24%, calc(var(--tear) * 0.9) 13%);
+  --slab-scrape-even: polygon(0 0, 11% 4px, 14% 0, 30% 7px, 41% 2px, 44% 6px, 58% 0, 83% 5px, 87% 1px, 100% 3px, calc(100% - var(--tear) * 0.6) 11%, 100% 21%, calc(100% - var(--tear) * 0.3) 29%, calc(100% - var(--tear) * 0.95) 41%, calc(100% - 3px) 55%, calc(100% - var(--tear) * 0.5) 63%, calc(100% - var(--tear) * 0.1) 74%, calc(100% - var(--tear) * 0.7) 85%, 100% 100%, 90% calc(100% - 5px), 71% calc(100% - 1px), 68% calc(100% - 7px), 46% calc(100% - 2px), 24% calc(100% - 8px), 19% calc(100% - 1px), 6px 100%, calc(var(--tear) * 0.3) 91%, calc(var(--tear) * 0.8) 80%, 0 69%, calc(var(--tear) * 0.45) 58%, calc(var(--tear) * 0.1) 47%, calc(var(--tear) * 0.95) 35%, 0 27%, calc(var(--tear) * 0.6) 16%, calc(var(--tear) * 0.2) 7%);
+  --slab-scrape-tall: polygon(0 0, 9% min(var(--tear), 24px), 12% 3px, 31% calc(min(var(--tear), 24px) * 0.7), 36% 1px, 55% calc(min(var(--tear), 24px) * 0.3), 73% 2px, 80% calc(min(var(--tear), 24px) * 0.55), 100% 0, calc(100% - var(--tear) * 0.5) 22%, 100% 40%, calc(100% - var(--tear) * 0.8) 63%, calc(100% - 5px) 100%, 85% calc(100% - min(var(--tear), 24px) * 0.3), 66% calc(100% - 3px), 61% calc(100% - min(var(--tear), 24px) * 0.8), 40% calc(100% - 1px), 33% calc(100% - min(var(--tear), 24px) * 0.5), 14% calc(100% - 6px), 0 100%, calc(var(--tear) * 0.6) 70%, 4px 48%, calc(var(--tear) * 0.9) 27%);
+}
+.work, .experience, footer { --stroke: rgb(4 4 5 / 0.92); --tear: 31.25px; }
+/* css/style.css  .slab and .slab::before (the clip-path the red lines read) */
+/* torn black stroke behind an element's text; the tilt is on the pseudo only */
+.slab { position: relative; isolation: isolate; }
+.slab::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--stroke);
+  clip-path: var(--slab-scrape);
+  transform: rotate(-3deg);
+}
+.slab:nth-of-type(even)::before { clip-path: var(--slab-scrape-even); }
+.slab.straight::before { transform: none; }
+@media (prefers-reduced-motion: reduce) { .slab::before { transform: none; } }
+/* css/style.css  .redlines */
+/* seeded red line pieces on a plate (js/site/redlines.js): out of flow, one flat red path */
+.redlines { position: absolute; overflow: visible; pointer-events: none; z-index: 1; will-change: transform; } /* own cached surface: cheap under software compositing */
+.redlines path { fill: var(--type-red); }
+/* css/style.css  .obj:nth-of-type(...)::before  Work row stagger */
+/* the row is a .slab stroke its full width (D39); later rows paint over earlier, staggered inset */
+.obj:nth-of-type(4n+2)::before { left: 0.6rem; }
+.obj:nth-of-type(4n+3)::before { left: 0.2rem; }
+.obj:nth-of-type(4n+4)::before { left: 0.9rem; }
+/* css/beacon.css  .rank-card */
+.rank-card {
+  position: relative; box-sizing: border-box; width: min(340px, 100%); padding: 1.5rem 1.6rem 1.2rem;
+  --stroke: rgb(4 4 5 / 0.92);
+  text-align: center;
+  animation: rankCardIn 0.32s cubic-bezier(.2,1.35,.35,1) both;
+}
+/* css/beacon.css  .rank-card.slab::before  clip of rank card and glimpse card, tilt rules */
+/* the card is a torn stroke (.slab in surge.js); tilt on the pseudo only, per card size (D17) */
+.rank-card.slab::before { clip-path: polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 100% 0, 100% 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%); background: var(--stroke); }
+/* tilt when W + H x 0.052 fits the viewport - 32 (340 x 300 fits at 390, not at 375); the glimpse card stays straight on phone */
+@media (max-width: 389px) { .rank-card::before { transform: none; } }
+@media (max-width: 640px) { .glimpse-card::before { transform: none; } }
+/* css/gate.css  .gate-stage and .gate-stage::before */
+/* one centred stage — terminal box, then bio replaces it; one torn stroke behind it (.slab, tilt on the pseudo) */
+.gate-stage {
+  width: min(34rem, 90vw);
+  min-height: 12rem;
+  box-sizing: border-box; padding: 2.4rem 2.5rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.gate-stage { --stroke: rgb(4 4 5 / 0.92); transform: translate(-9vw, 5vh); }
+/* a plain plate, off centre: rough top and bottom, two straight sides */
+.gate-stage::before {
+  background: var(--stroke);
+  clip-path: polygon(0 6px, 11% 1px, 24% 7px, 38% 0, 52% 5px, 69% 1px, 83% 8px, 100% 3px,
+    100% calc(100% - 4px),
+    90% calc(100% - 7px), 77% calc(100% - 1px), 61% calc(100% - 9px), 47% calc(100% - 2px), 30% calc(100% - 6px), 14% 100%, 0 calc(100% - 3px));
+}
+/* css/bridge.css  .redlines.bnote-red */
+/* the red line pieces (js/site/redlines.js) sit beside the plate, not in it: the plate's clip and scroll would cut them */
+.redlines.bnote-red { z-index: 14; opacity: 0; transition: opacity 0.5s ease; }
+.redlines.bnote-red.show { opacity: 1; }
+.bridge-hero.warping .redlines.bnote-red, .bridge-hero.is-cinematic .redlines.bnote-red { opacity: 0 !important; visibility: hidden !important; }
