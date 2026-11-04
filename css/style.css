@@ -1017,14 +1017,14 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 /* experience + contact type: the top bar's serif, two straight columns (Experience left, contact right) centred as a pair, every line left-aligned; they stack when the pair does not fit */
 .xp-shape { display: flex; flex-flow: row wrap; justify-content: center; align-items: flex-start; column-gap: clamp(2rem, 5vw, 5rem); row-gap: 3rem; }
 /* the slanted right edge cuts in as it goes down, so the pair is centred in the part of the shape that stays black under the contact column */
-@media (min-width: 641px) { .xp-shape { padding-left: 5%; padding-right: 24%; } }
-/* stacked mid widths: the slant leaves less black at the bottom, so the single column keeps further from it */
-@media (min-width: 641px) and (max-width: 920px) {
-  .xp-shape { padding-left: 7%; padding-right: 34%; justify-content: flex-start; }
-  .xp-shape .xp-tilt { flex-basis: 20rem; min-width: min(20rem, 100%); }
+/* desktop: the shape is one fixed 1660x780 px box (the 2000-wide look, matching Shapes.xpShape's constants), centred and cut off by the section when the window is narrower; never scaled or re-wrapped */
+.experience { overflow-x: clip; }
+@media (min-width: 641px) {
+  .xp-shape { box-sizing: border-box; width: 1660px; height: 780px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; column-gap: 80px; padding: 141px 546px 0 106px; }
 }
 .xp-shape .xp-tilt { flex: 0 1 clamp(22rem, 33vw, 36rem); min-width: min(22rem, 100%); max-width: 100%; text-align: left; }
 .xp-shape footer { flex: 0 1 clamp(16rem, 19vw, 22rem); min-width: min(16rem, 100%); padding: 0; text-align: left; }
+@media (min-width: 641px) { .xp-shape .xp-tilt { flex: 0 0 576px; } .xp-shape footer { flex: 0 0 352px; } }
 /* the hover padding is pulled back out with a matching negative margin, so the text of every line starts at the column edge; links and dates never split */
 .xp-shape footer .foot-text a { margin: 0 -8px; white-space: nowrap; }
 .xp-shape footer p:not(.rights):nth-of-type(2) { white-space: nowrap; }

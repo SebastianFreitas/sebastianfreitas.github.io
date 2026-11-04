@@ -336,12 +336,15 @@
      a red line runs down the left edge from ~6% above its top. Phone: the long point becomes a mild slant. */
   function xpShape(el) {
     const red = redOf(el);
+    const XW = 1660, XH = 780, XANG = -3 * Math.PI / 180;      /* desktop: one fixed size and tilt (the 2000x1009 look), never rebuilt from the window */
+    let mode = null;
     function draw() {
-      const W = el.offsetWidth, H = el.offsetHeight;
-      if (!W || !H) return;
-      const rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
-      const ang = rows.length ? -WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180 : -3 * Math.PI / 180;
       const phone = window.matchMedia("(max-width: 640px)").matches;
+      const W = phone ? el.offsetWidth : XW, H = phone ? el.offsetHeight : XH;
+      if (!W || !H) return;
+      mode = phone;
+      let ang = XANG;
+      if (phone) { const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"); ang = rows.length ? -WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180 : -3 * Math.PI / 180; }
       const x0 = 0.028 * W;
       const dy = Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
@@ -349,9 +352,10 @@
       wornQuad(el, red, pts, W, "xp-wear", "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
     }
+    function live() { if (window.matchMedia("(max-width: 640px)").matches || mode !== false) draw(); }
     draw();
-    if (window.ResizeObserver) new ResizeObserver(draw).observe(el);
-    window.addEventListener("resize", draw);
+    if (window.ResizeObserver) new ResizeObserver(live).observe(el);
+    window.addEventListener("resize", live);
   }
 
   function boot() { apply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); }
