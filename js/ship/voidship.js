@@ -336,24 +336,31 @@ window.Voidship = (function () {
         const wrap = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
         const aimA = Math.atan2(ey, ex);
         const side = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
-        const noseA = side > 0 ? ship.pitch : ship.pitch + Math.PI;
-        // a sharp U-turn (aim within 30° of straight opposite the nose) flips the yaw, keeping the pitch
-        // (only when the aim lies behind the ship's side, within 45° of level: a steep up/down aim is a pitch turn, no flip)
-        if (ship.yaw === ship.yawTarget && Math.abs(wrap(aimA - noseA - Math.PI)) < Math.PI / 6 && ex * side < 0 && Math.abs(ex) > Math.abs(ey)) {
+        // a close pointer (inside the spin-in-place radius): the nose follows it all the way round at turn speed, no yaw turn
+        const closeK = clamp(1 - Math.hypot(ex, ey) / (BASE.closeTurnRange * L), 0, 1);
+        const close = closeK > 0;
+        // a far press starting upside down cannot fold into a mirrored pose (the hull is not symmetric): the nose swings back inside 90° at turn speed
+        const upside = !close && Math.abs(ship.pitch) > Math.PI / 2;
+        // a far aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the pitch
+        if (!close && ship.yaw === ship.yawTarget && ex * side < -Math.hypot(ex, ey) * 0.14) {
           ship.yawTarget = side > 0 ? Math.PI : 0;
         }
         const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
-        const wantP = sideT > 0 ? aimA : aimA - Math.PI;
+        // a far press never pitches the nose past 90° from level; a close one may go upside down
+        const rawP = wrap(sideT > 0 ? aimA : aimA - Math.PI);
+        const wantP = close ? rawP : clamp(rawP, -Math.PI / 2, Math.PI / 2);
         // turn by distance travelled: a quarter turn per 2 hull lengths
         const travelled = Math.hypot((camX - prevX) * pxPerUnit, ship.y - prevY);
         const distRate = dt > 0 ? travelled * (Math.PI / 2) / (2 * L) / dt : 0;
         const err = wrap(wantP - ship.pitch);
         // angular velocity with limited acceleration: top rate, and a braking curve so it never overshoots
         // a close pointer turns the nose even when the ship is still: faster the closer it is
-        const closeK = clamp(1 - Math.hypot(ex, ey) / (BASE.closeTurnRange * L), 0, 1);
-        const closeRate = BASE.closeTurnRate * closeK * closeK * (3 - 2 * closeK);
-        const wMax = Math.min(Math.max(Math.min(distRate, BASE.pitchTurnMax), closeRate), Math.sqrt(2 * BASE.pitchAccel * Math.abs(err)));
-        ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -BASE.pitchAccel * dt, BASE.pitchAccel * dt);
+        const turnW = Math.PI / BASE.turnTime;
+        const fast = close || upside;
+        const accel = fast ? BASE.pitchAccel * 6 : BASE.pitchAccel;
+        const wMax = fast ? Math.min(turnW, Math.sqrt(2 * accel * Math.abs(err)))
+          : Math.min(Math.min(distRate, BASE.pitchTurnMax), Math.sqrt(2 * accel * Math.abs(err)));
+        ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -accel * dt, accel * dt);
         let stepP = ship.pitchW * dt;
         if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
         ship.pitch = wrap(ship.pitch + stepP);
