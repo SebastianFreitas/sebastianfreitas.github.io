@@ -120,6 +120,16 @@ window.VoidshipArt = (function () {
   const FAR_TIP = [[-0.47, -0.31], [-0.40, -0.303], [-0.435, -0.255]];
   const FAR_EDGE = [[0.10, -0.10], [-0.16, -0.28]];
   const NEAR_EDGE = [[0.15, 0.095], [-0.145, 0.36]];
+  // the hull's rear end (its last section before the engine) and the wing outlines at that station, for the 3D-turn tail jet
+  const REAR = Math.min(...HULL.map(p => p[0]));
+  const edgeY = (pts, x, sgn) => pts.reduce((m, a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    if ((a[0] - x) * (b[0] - x) > 0 || a[0] === b[0]) return m;
+    const y = a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+    return y * sgn > m * sgn ? y : m;
+  }, -sgn * 9);
+  const ENG_X = -0.50;   // a station on the engine block's top/bottom edge, just behind the dorsal fin's rear edge
+  const REAR_DN =edgeY(W_NEAR, REAR, 1), REAR_UP = edgeY(W_FAR5, REAR, -1);
 
   function drawHull(g, ship, L, t, turn) {
     const dir = (ship.face || 1) >= 0 ? 1 : -1;
@@ -207,65 +217,68 @@ window.VoidshipArt = (function () {
       g.stroke();
       const su = turn && ship.flip ? 0 : clamp(ship.sustain || 0, 0, 1);
       if (su > 0.02) for (const s of SUST) {
-        Paint.circle(g, s.x * L, s.y * L, Math.max(0.016 * L, 2) * (0.6 + 0.4 * su), rgba(DRIVE_B, 0.35 * su));
         Paint.circle(g, s.x * L, s.y * L, Math.max(0.006 * L, 1), rgba(DRIVE_A, 0.9 * su));
       }
     };
 
-    // the flip's sideways thrusters (nose ring and tail, opposite): hull-sideways fire, projected.
-    // A tongue along screen x of length ~s, a round glow for the part pointing at or away from the camera, ~c.
-    // A start burst for the first ~60% of the flip, then a short reverse burst over the last ~25%.
+    // the 3D turn fires the clock-spin jets, one steady push away from the turn the whole way through.
     const ss = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
     const flip = turn && ship.flip, fp = flip ? flip.p : 0;
-    const flipAmp = flip ? ss(0, 0.08, fp) * (1 - ss(0.5, 0.6, fp)) - 0.7 * Math.sin(Math.PI * clamp((fp - 0.75) / 0.25, 0, 1)) * (fp > 0.75 ? 1 : 0) : 0;
-    const sideFire = (x0, y, h, seed, over) => {
-      const x = x0 * turn.c;   // the ring and tail foreshorten with the hull
-      // h: +1 the ring's hull direction, -1 the opposite; depth > 0 points at the camera
-      const k = 0.7 + 0.3 * Math.abs(flipAmp), hh = (fp > 0.7 ? -1 : 1) * h;   // fires the whole flip
-      const depth = hh * (fp < 0.5 ? 1 : -1) * turn.c;
-      const fl = 0.8 + 0.2 * Math.sin(t * 53 + seed) + 0.12 * Math.sin(t * 97 + seed * 3);
-      const tx = flip.dx * hh * turn.s * dir;   // local x of the tongue (the hull is mirrored by dir)
-      const len = 0.7 * turn.s * k * fl, hw = (0.03 + 0.035 * k) * (0.9 + 0.1 * Math.sin(t * 71 + seed * 2));
-      const tip = (j) => Math.sin(t * 61 + seed * 5 + j * 2.3) * hw * 0.5;
-      const sg = tx >= 0 ? 1 : -1, ln = Math.abs(len);
-      if (ln > 0.01 && over === (Math.abs(turn.c) < 0.5)) {   // over the hull only near head-on; near side-on behind it
-        const tongue = (w, l, col, a) => {
-          Paint.poly(g, [[-sg * 0.05 * turn.s, -w], [sg * l * 0.45, -w * 0.9], [sg * l * 0.7, -w * 0.4 + tip(1)], [sg * l, tip(0) * 0.6],
-            [sg * l * 0.65, w * 0.35 + tip(2)], [sg * l * 0.4, w * 0.9], [-sg * 0.05 * turn.s, w]].map(([px_, py_]) => [(x + px_) * L, (y + py_) * L]));
-          g.fillStyle = rgba(col, a); g.fill();
-        };
-        tongue(hw, ln, ORANGE, 0.95 * k);
-        tongue(hw * 0.75, ln * 0.85, [255, 200, 80], k);
-        tongue(hw * 0.45, ln * 0.62, [255, 250, 215], k);
-      }
-      // side-on the tail's fire is behind the hull: a warm core peeking past the rear edge
-      if (h < 0 && !over) {
-        // additive light: hot core fading to nothing, spilling past the rear edge (full strength all flip)
-        const g0 = (0.078 + 0.024 * Math.sin(t * 67 + seed)) * (0.9 + 0.1 * fl) * (0.4 + 0.6 * Math.abs(turn.c)) * 1.3, ex = -0.6 * turn.c;
-        const R = g0 * 3.2 * L, gx = ex * L, gy = y * L, gd = g.createRadialGradient(gx, gy, 0, gx, gy, R);
-        gd.addColorStop(0, 'rgba(255,248,205,1)'); gd.addColorStop(0.18, 'rgba(255,215,110,0.85)');
-        gd.addColorStop(0.5, 'rgba(255,140,40,0.3)'); gd.addColorStop(1, 'rgba(255,100,20,0)');
-        const op = g.globalCompositeOperation;
-        g.globalCompositeOperation = 'lighter';
-        g.fillStyle = gd; g.beginPath(); g.arc(gx, gy, R, 0, Math.PI * 2); g.fill();
-        g.globalCompositeOperation = op;
-      }
-      if ((depth > 0) !== over) return;
-      // the part along the line of sight: a round fire glow, at least 0.07 L at head-on's opposite (c = 1)
-      const gr = (0.078 + 0.024 * Math.sin(t * 67 + seed)) * Math.abs(turn.c) * 1.6 * (0.9 + 0.1 * fl);   // full size all flip
-      if (gr > 0.004) {
-        const R = gr * 2.2 * L, gx = x * L, gy = y * L, gd = g.createRadialGradient(gx, gy, 0, gx, gy, R);
-        gd.addColorStop(0, 'rgba(255,252,235,1)'); gd.addColorStop(0.3, 'rgba(255,225,130,0.9)');
-        gd.addColorStop(0.65, 'rgba(255,160,50,0.4)'); gd.addColorStop(1, 'rgba(255,120,30,0)');
-        const op = g.globalCompositeOperation;
-        g.globalCompositeOperation = 'lighter';
-        g.fillStyle = gd; g.beginPath(); g.arc(gx, gy, R, 0, Math.PI * 2); g.fill();
-        g.globalCompositeOperation = op;
-      }
-    };
+    const flipAmp = flip ? 0.8 * ss(0, 0.01, fp) * (1 - ss(0.99, 1, fp)) : 0;
 
+    // 12. RCS jets and turn flames: ragged fire tongues, orange out to a yellow-white core
+    const flame = (x, y, dy, k, seed, sharp) => {
+      const fl = 0.8 + 0.2 * Math.sin(t * 53 + seed) + 0.12 * Math.sin(t * 97 + seed * 3);
+      const len = (0.07 + 0.25 * k) * fl, hw = (0.022 + 0.028 * k) * (0.9 + 0.1 * Math.sin(t * 71 + seed * 2));
+      const tip = (j) => Math.sin(t * 61 + seed * 5 + j * 2.3) * hw * 0.5;
+      const tongue = (w, l, col, a) => {
+        Paint.poly(g, [[x - w, y], [x - w * 0.9, y + dy * l * 0.45], [x - w * 0.4 + tip(1), y + dy * l * 0.7], [x + tip(0) * 0.6, y + dy * l],
+          [x + w * 0.35 + tip(2), y + dy * l * 0.65], [x + w * 0.9, y + dy * l * 0.4], [x + w, y]].map(([px_, py_]) => [px_ * L, py_ * L]));
+        g.fillStyle = rgba(col, a); g.fill();
+      };
+      tongue(hw, len, ORANGE, 0.95 * k);
+      tongue(hw * 0.62, len * 0.72, [255, 190, 70], k);
+      tongue(hw * 0.3, len * 0.45, [255, 250, 215], k);
+    };
+    const turnJets = () => {
+      // ls foreshortens the flame along its own axis (1 = full length)
+      const aim = (x, y, dy, th, seed, kk, ls) => { g.save(); g.translate(x * L, y * L); g.rotate(th); if (ls != null) g.scale(1, ls); flame(0, 0, dy, kk, seed); g.restore(); };
+      if (!flip) {   // the clock spin: a steady up/down pair off the ring and the tail
+        const tf = ship.turnFire || 0, dn = tf > 0 ? -1 : 1, kk = 0.55 + 0.45 * Math.abs(tf);
+        if (Math.abs(tf) > 0.03) {
+          aim(0.68, -0.015 + dn * 0.17, dn, 0, 1.7, kk);
+          aim(-0.36, -dn * (dn < 0 ? 0.31 : 0.19), -dn, 0, 4.1, kk);
+        }
+        return;
+      }
+      if (flipAmp <= 0.03) return;
+      // the 3D turn is a yaw: ring and tail push sideways, so their flames point straight across the screen whatever the pitch,
+      // the ring's one way and the tail's the other, chosen by the turn's direction d alone (dx -1 swings the nose screen-left,
+      // so the ring flame points right). Side-on they point mostly at or away from the viewer: short, full length end-on.
+      const d = flip.dx, kk = 0.55 + 0.45 * flipAmp, c = turn.c, s = turn.s, pt = ship.pitch || 0;
+      const rx = 0.68 * c, ry = -0.015, ro = 0.13;   // the blade ring: centre and outer radius (voidship-prow.js)
+      const ls = 0.2 + 0.8 * s, endOn = 1 - ss(0.15, 0.4, c);
+      const side = (sr, y, nx, seed) => {
+        const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr;
+        // end-on the base sits just outside the whole silhouette (disc, ring, hull, both wings) on its own side
+        let we = -Infinity;
+        for (let i = 0; i < W_NEAR.length; i++) {
+          const p = W_NEAR[i], q = W_NEAR[(i + 1) % W_NEAR.length];
+          if ((p[1] - y) * (q[1] - y) > 0 || p[1] === q[1]) continue;
+          const x0 = p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]);
+          for (const zs of [-1, 1]) for (const k of [0, 1]) we = Math.max(we, sg * wing(zs, k)([x0, y])[0]);
+        }
+        const e = Math.max(sg * rx + ro * s, HW * s, we) + 0.01;
+        // side-on it sits on the nozzle itself: the part's wall on that side, which faces the viewer
+        const bx = mix(nx + sg * ro * s, vx * e, endOn), by = mix(y, y + vy * e, endOn);
+        aim(bx, by, 1, Math.atan2(-vx, vy), seed, kk, ls);
+      };
+      const ty = d > 0 ? ENGINE[2][1] : -ENGINE[2][1];
+      // side-on the ring flame sits on the band's rim, off the blade's centre line (there it read as a glow from the nose), opposite the tail's edge
+      side(-d, ry - Math.sign(ty) * 0.8 * ro * (1 - endOn), rx, 1.7);
+      side(d, ty, ENG_X * c, 4.1);   // split heights: the engine's top edge or bottom edge, clear of the ring flame
+    };
     // 1. shard glow, behind everything
-    if (flip) { sideFire(0.68, -0.015, 1, 1.7, false); sideFire(-0.36, 0.11, -1, 4.1, false); }
     open(0);
     if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
     close();
@@ -394,36 +407,14 @@ window.VoidshipArt = (function () {
     open(0);
     if (!turn) drive();
 
-    // 12. RCS jets and turn flames: ragged fire tongues, orange out to a yellow-white core
-    const flame = (x, y, dy, k, seed) => {
-      const fl = 0.8 + 0.2 * Math.sin(t * 53 + seed) + 0.12 * Math.sin(t * 97 + seed * 3);
-      const len = (0.07 + 0.25 * k) * fl, hw = (0.022 + 0.028 * k) * (0.9 + 0.1 * Math.sin(t * 71 + seed * 2));
-      const tip = (j) => Math.sin(t * 61 + seed * 5 + j * 2.3) * hw * 0.5;
-      const tongue = (w, l, col, a) => {
-        Paint.poly(g, [[x - w, y], [x - w * 0.9, y + dy * l * 0.45], [x - w * 0.4 + tip(1), y + dy * l * 0.7], [x + tip(0) * 0.6, y + dy * l],
-          [x + w * 0.35 + tip(2), y + dy * l * 0.65], [x + w * 0.9, y + dy * l * 0.4], [x + w, y]].map(([px_, py_]) => [px_ * L, py_ * L]));
-        g.fillStyle = rgba(col, a); g.fill();
-      };
-      g.fillStyle = rgba(ORANGE, 0.12 * k); g.beginPath(); g.arc(x * L, (y + dy * len * 0.3) * L, (hw * 2.2 + len * 0.25) * L, 0, Math.PI * 2); g.fill();
-      tongue(hw, len, ORANGE, 0.95 * k);
-      tongue(hw * 0.62, len * 0.72, [255, 190, 70], k);
-      tongue(hw * 0.3, len * 0.45, [255, 250, 215], k);
-    };
     const jet = ship.jet || 0, ja = Math.abs(jet);
-    if (ja > 0.03) {
+    if (ja > 0.03 && !flip) {   // the 3D turn shows only its jet pair
       const seats = jet < 0 ? JETS.belly : JETS.top, sgn = jet < 0 ? 1 : -1;
       for (const s of seats) flame(s.x, s.y, sgn, ja * 0.7, s.x * 40);
     }
-    // a turn fires opposite sides: the nose flame leaves the blade ring against the swing, the tail flame the other way
-    const tfire = ship.turnFire || 0, ta = Math.abs(tfire);
-    if (ta > 0.03) {
-      const dn = tfire > 0 ? -1 : 1;
-      flame(0.68, -0.015 + dn * 0.13, dn, ta, 1.7);
-      flame(-0.36, dn > 0 ? -0.125 : 0.115, -dn, ta, 4.1);
-    }
 
+    if (!flip) turnJets();
     close();
-    if (flip) { sideFire(0.68, -0.015, 1, 1.7, true); sideFire(-0.36, 0.11, -1, 4.1, true); }
     open(0);
 
     // 13. bow strain chevrons
@@ -437,6 +428,7 @@ window.VoidshipArt = (function () {
       g.beginPath(); g.moveTo(0.90 * L, -0.17 * L); g.lineTo(1.16 * L, 0.02 * L); g.lineTo(0.90 * L, 0.14 * L); g.stroke();
     }
     close();
+    if (flip) turnJets();   // both jets go over the finished hull, un-squeezed by the turn, x already times c
   }
 
   // The cross-section faces of the hull volumes, drawn unmirrored about their own centres

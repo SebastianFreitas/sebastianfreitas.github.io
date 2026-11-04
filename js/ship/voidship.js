@@ -73,7 +73,8 @@ window.Voidship = (function () {
       yawTarget: 0,
       face: 1,             // cos(yaw): the sprite's x-scale, sign = facing
       pitch: 0,             // canvas rotation, full circle (-PI..PI], down is positive; turns by distance travelled, hangs after release
-      pitchW: 0,            // rad/s, angular velocity of the nose
+      pitchW: 0,            // rad/s, angular velocity of elev (the nose's spin in the hull's own frame)
+      elev: 0,              // the nose's elevation as if facing right: pitch = elev facing right, -elev facing left; the 3D turn keeps it
       myaw: 0, myawT: 0,            // the movement-facing yaw (flight path only, never drawn); yaw is the drawn one
       mface: 1,             // cos(myaw)
       bankQ: 0,             // old flight-path nose; only stats().bank reads it
@@ -340,19 +341,19 @@ window.Voidship = (function () {
         const closeK = clamp(1 - Math.hypot(ex, ey) / (BASE.closeTurnRange * L), 0, 1);
         const close = closeK > 0;
         // a far press starting upside down cannot fold into a mirrored pose (the hull is not symmetric): the nose swings back inside 90° at turn speed
-        const upside = !close && Math.abs(ship.pitch) > Math.PI / 2;
-        // a far aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the pitch
+        const upside = !close && Math.abs(ship.elev) > Math.PI / 2;
+        // a far aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the nose's height
         if (!close && ship.yaw === ship.yawTarget && ex * side < -Math.hypot(ex, ey) * 0.14) {
           ship.yawTarget = side > 0 ? Math.PI : 0;
         }
         const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
         // a far press never pitches the nose past 90° from level; a close one may go upside down
-        const rawP = wrap(sideT > 0 ? aimA : aimA - Math.PI);
-        const wantP = close ? rawP : clamp(rawP, -Math.PI / 2, Math.PI / 2);
+        const rawE = wrap(sideT > 0 ? aimA : Math.PI - aimA);
+        const wantE = close ? rawE : clamp(rawE, -Math.PI / 2, Math.PI / 2);
         // turn by distance travelled: a quarter turn per 2 hull lengths
         const travelled = Math.hypot((camX - prevX) * pxPerUnit, ship.y - prevY);
         const distRate = dt > 0 ? travelled * (Math.PI / 2) / (2 * L) / dt : 0;
-        const err = wrap(wantP - ship.pitch);
+        const err = wrap(wantE - ship.elev);
         // angular velocity with limited acceleration: top rate, and a braking curve so it never overshoots
         // a close pointer turns the nose even when the ship is still: faster the closer it is
         const turnW = Math.PI / BASE.turnTime;
@@ -363,9 +364,12 @@ window.Voidship = (function () {
         ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -accel * dt, accel * dt);
         let stepP = ship.pitchW * dt;
         if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
-        ship.pitch = wrap(ship.pitch + stepP);
+        ship.elev = wrap(ship.elev + stepP);
       } else ship.pitchW = 0;
     } else ship.pitchW = 0;
+    // the drawn pitch: the 3D turn spins the hull about the screen's vertical, so the nose keeps its height
+    // (up-right turns to up-left, never down-left) and the hull's up axis stays exact all the way through
+    ship.pitch = Math.atan2(ship.face * Math.sin(ship.elev), Math.cos(ship.elev));
     // the old flight-path nose, kept quiet: it only feeds stats().bank
     const vxPx = Math.abs(ship.vel) * pxPerUnit;
     const pathAng = Math.atan2(ship.vy, vxPx + BASE.pitchRef);
@@ -384,7 +388,8 @@ window.Voidship = (function () {
     const jw = clamp(ay / (1.5 * BASE.brakeY), -1, 1);
     ship.jet = approach(ship.jet, jw, Math.abs(jw) > Math.abs(ship.jet) ? 14 : 6, dt);
     if (ship.vy === 0 && Math.abs(ship.jet) < 0.02) ship.jet = 0;
-    // turn flames: signed share of the top turn rate, caught fast and let go slowly so they never pop
+    // turn flames: signed share of the top turn rate in the hull's own frame (nose-down positive whatever the facing),
+    // caught fast and let go slowly so they never pop; the 3D turn's own spin is not a clock spin and fires none
     const tfW = clamp(ship.pitchW / BASE.pitchTurnMax, -1, 1);
     ship.turnFire = approach(ship.turnFire, tfW, Math.abs(tfW) > Math.abs(ship.turnFire) ? 14 : 7, dt);
     if (tfW === 0 && Math.abs(ship.turnFire) < 0.02) ship.turnFire = 0;
