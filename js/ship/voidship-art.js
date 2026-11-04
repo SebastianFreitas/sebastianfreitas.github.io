@@ -240,10 +240,10 @@ window.VoidshipArt = (function () {
       tongue(hw * 0.62, len * 0.72, [255, 190, 70], k);
       tongue(hw * 0.3, len * 0.45, [255, 250, 215], k);
     };
-    const turnJets = () => {
+    const turnJets = (far) => {   // far: only the jet firing away from the viewer (drawn before the hull), else only the rest
       // ls foreshortens the flame along its own axis (1 = full length)
       const aim = (x, y, dy, th, seed, kk, ls) => { g.save(); g.translate(x * L, y * L); g.rotate(th); if (ls != null) g.scale(1, ls); flame(0, 0, dy, kk, seed); g.restore(); };
-      if (!flip) {   // the clock spin: a steady up/down pair off the ring and the tail
+      if (!flip) { if (far) return;   // the clock spin: a steady up/down pair off the ring and the tail
         const tf = ship.turnFire || 0, dn = tf > 0 ? -1 : 1, kk = 0.55 + 0.45 * Math.abs(tf);
         if (Math.abs(tf) > 0.03) {
           aim(0.68, -0.015 + dn * 0.17, dn, 0, 1.7, kk);
@@ -259,7 +259,7 @@ window.VoidshipArt = (function () {
       const rx = 0.68 * c, ry = -0.015, ro = 0.13;   // the blade ring: centre and outer radius (voidship-prow.js)
       const ls = 0.2 + 0.8 * s, endOn = 1 - ss(0.15, 0.4, c);
       const side = (sr, y, nx, seed) => {
-        const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr;
+        const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr; if ((sg > 0) !== !!far) return;   // the near side lies toward local -x, so sg > 0 fires away from the viewer
         // end-on the base sits just outside the whole silhouette (disc, ring, hull, both wings) on its own side
         let we = -Infinity;
         for (let i = 0; i < W_NEAR.length; i++) {
@@ -273,17 +273,17 @@ window.VoidshipArt = (function () {
         const bx = mix(nx + sg * ro * s, vx * e, endOn), by = mix(y, y + vy * e, endOn);
         aim(bx, by, 1, Math.atan2(-vx, vy), seed, kk, ls);
       };
-      const ty = d > 0 ? ENGINE[2][1] : -ENGINE[2][1];
-      // side-on the ring flame sits on the band's rim, off the blade's centre line (there it read as a glow from the nose), opposite the tail's edge
-      side(-d, ry - Math.sign(ty) * 0.8 * ro * (1 - endOn), rx, 1.7);
-      side(d, ty, ENG_X * c, 4.1);   // split heights: the engine's top edge or bottom edge, clear of the ring flame
+      const ty = d > 0 ? -0.08 : 0.08;
+      // side-on each nozzle sits on its part (the ring's centre row, the engine's face), never on an outline in the air
+      side(-d, ry, rx, 1.7);
+      side(d, ty, ENG_X * c, 4.1);   // on the engine's face a little off the drive, so end-on it stays clear of the ring flame
     };
     // 1. shard glow, behind everything
     open(0);
     if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
     close();
     // mid-turn the drive sits behind the hull, so the engine and hull cover it
-    if (turn) { open(0); drive(); close(); }
+    if (turn) { open(0); drive(); close(); if (flip) turnJets(true); }   // the jet firing away from the viewer: the hull drawn next covers its root
 
     // 2. far wing
     if (turn) {
@@ -428,7 +428,7 @@ window.VoidshipArt = (function () {
       g.beginPath(); g.moveTo(0.90 * L, -0.17 * L); g.lineTo(1.16 * L, 0.02 * L); g.lineTo(0.90 * L, 0.14 * L); g.stroke();
     }
     close();
-    if (flip) turnJets();   // both jets go over the finished hull, un-squeezed by the turn, x already times c
+    if (flip) turnJets(false);   // the jet firing toward the viewer goes over the finished hull, un-squeezed by the turn, x already times c
   }
 
   // The cross-section faces of the hull volumes, drawn unmirrored about their own centres
