@@ -154,10 +154,11 @@ window.VoidshipArt = (function () {
     // The dorsal fin sits on the centre line, half thickness FT either side.
     let wing = null, fin = null;
     if (turn) {
+      const lean = clamp((ship.face || 0) / 0.7, -1, 1);   // the head-on splay keeps its screen side through the mirror: it fades to nothing at face 0, so the mirrored art never swaps it
       wing = (zs, k) => (p) => {
         const u = (p[1] - A_RY) / SPH;
         const th = k * (0.14 + 0.1 * u) * clamp(3 * turn.c, 0, 1);   // the wing's own depth, a plate not a stick; gone head-on
-        return [p[0] * (turn.c + 0.3 * turn.s * turn.s) - zs * WING_Z(u) * turn.s + th * turn.s, p[1]];   // yaw never moves y
+        return [p[0] * (turn.c + 0.3 * turn.s * turn.s * lean) - zs * WING_Z(u) * turn.s + th * turn.s, p[1]];   // yaw never moves y
       };
       fin = (zz) => (p) => [p[0] * turn.c - zz * FT * (0.3 + 0.7 * clamp((p[1] + 0.31) / 0.2, 0, 1)) * turn.s, p[1]];   // thinner toward the top: head-on it is a fin, not a block
     }

@@ -13,7 +13,7 @@ sizes at read time).
 
 Owner's words → code names. Add a line when the owner uses a word the code does not.
 
-- the ship's rolls/rotations: pitch = nose tilts in the screen plane (`ship.pitch`; far press capped +-90 deg and slow, close press spins a full circle at turn speed); turn = yaw swing through head-on to face the other way (`yaw`/`yawTarget`, js/ship/voidship.js); roll (spin around the nose, barrel roll) does not exist yet
+- the ship's rolls/rotations: pitch = nose tilts in the screen plane (`ship.pitch`; capped +-90 deg so the belly never faces up; every press turns the ship to the aim first, the motors only engage once the nose is within ~10deg); turn = yaw swing through head-on to face the other way (`yaw`/`yawTarget`, js/ship/voidship.js); roll (spin around the nose, barrel roll) does not exist yet
 - the nav bank: js/hud/tiles-nav.js (radar, signal, pull, nav tiles)
 - the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
 - the navigation bar (beacon positions): the bridge minimap `#bridge-map` (bridge-input.js)
