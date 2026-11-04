@@ -132,7 +132,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 3.2rem; }
 body {
   margin: 0;
   padding-top: 0;
-  background: var(--petrol);
+  /* the bridge window's bottom void, fading to dark navy below the bridge (case pages override with the flat ground) */
+  background: #0a0d10 linear-gradient(180deg, #0e1115 0, #0a0d10 900px) 0 100svh / 100% 900px no-repeat;
   color: var(--sage);
   font-family: var(--body);
   font-size: 1rem;
@@ -676,7 +677,7 @@ body.page-case { background: var(--ground); }
   color: var(--type-dim);
   grid-row: span 2;
 }
-.experience { background: var(--ground); }
+.experience { background: none; }
 .xp-what { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.3; color: var(--type-cream); }
 .xp-what strong { color: var(--type-cream); font-weight: 400; font-synthesis: none; }
 /* rough top and bottom, straight sides; the edge differs down the stack */
@@ -978,8 +979,8 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 
 .work, .experience { position: relative; z-index: 1; }
-/* one flat ground under Work, Experience and the footer */
-.work { background: var(--ground); }
+/* no own ground: the body gradient shows through Work, Experience and the footer */
+.work { background: none; }
 
 .topbar.is-solid::before, .page-case .topbar::before { background: linear-gradient(rgb(4, 4, 5), rgb(4, 4, 5)); }
 

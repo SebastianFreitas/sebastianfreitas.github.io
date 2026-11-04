@@ -272,7 +272,7 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 | `admin-tear.js` | `ADMIN_TEAR`, `TEAR_JAG`, `TEAR_MOTES`/`SPECKS`/`STITCH`, `tearLine`/`tearHalf`/`tearPath`, `drawAdminTear` (a cut in reality: warped lattice sheared into the wound, lit lip, void with specks, infall motes, gold sutures at the tips) |
 | `vikings.js` | `VIKINGS`, `VIKING_STARS`/`LINES`/`MAG`, `drawVikings` |
 | `rex.js` | `fillRidge` wrapper, `drawRex`, `drawHell`, `rexInterior`, `drawRexPlaces` (reads `window.RexArt`) |
-| `city.js` | `drawBand`, `drawCityNear`, `drawLandPlace` (reads `window.LandArt`), `drawRoot`, `drawBridge` |
+| `city.js` | `drawBand`, `drawCityNear`, `drawLandPlace` (reads `window.LandArt`), `drawRoot`, `drawBridge` (`GenVoid.paintSpan` into a stage; the hero blits the top, `#bridge-legs` the bottom) |
 
 - `world.js`: `VIEW_UNITS`, `SLOT`, `LAND`, `BOUNDS`, `DECK`, `FLOOR`, `BAY`, `chaosAt`, `futureAt`, seeded `city` and particle arrays, Rex consts `REX_BANDS`/`REX_FROM`/`REX_END`/`HELL_AT`/`rexHeight`/`REX_PLACES`, `rexSprite` cache, `depthAlpha`/`setA`/`faded`,
 - `world.js`: `MAIN_PAR` + faction anchors, `F`, `P`, `scale`/`wx`/`onScreen`, `draw` (paint order lives here; a gamedev frame is handed to `GdWorld.draw`)
@@ -310,7 +310,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-ceilkinds3.js` | ceiling hanger worm (pale ringed, tapered, on metal rocks) and the eye drawer for metal rocks' eye sites (crack that opens into one of four looks, one open at a time via a module scheduler; no slit hanger) | `window.GenCeilHang3` (`kinds`, `eye`, `eyeSite`) |
 | `genesis-ceilkinds2.js` | extra ceiling hangers (bead chain, stepped bar, pointed teeth, pendulum), seeded; not in the GenCeilKinds deck | `window.GenCeilHang` (`kinds`) |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
-| `genesis-void.js` | Far realms, motes, the monumental span | `window.GenVoid` |
+| `genesis-void.js` | Far realms, motes, the monumental span (`paintSpan`, `paintLimb`, `hh` shared with the homepage bridge) | `window.GenVoid` |
 | `genesis-flesh.js` | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
 | `genesis-soup.js` | `soup` beat inside the womb: red dots eat the blue in held steps; `drawBackdrop`, `finalReds` (post-eat layout), `shaded`, `PAL` shared with later inside beats | `window.GenSoup` |
 | `genesis-eye.js` | `eye` beat: tier-3 lidless arc cut by the frame; colour leaves as sparks into a power point, grey dust lands in one centre mound: `draw`, `drawPowerPoint`, `pile`, `pool`, `setPileCut(k)` (hide the top k pile rows) | `window.GenEye` |
@@ -354,7 +354,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-tier3.js`: the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset,
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
-- `genesis-void.js`: `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
+- `genesis-void.js`: `paintSpan(ctx, {W,H,camX,deckY,ky,fogEnd})` (the same span body with explicit inputs and a settled beat; the homepage bridge) and `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
 - `genesis-circle.js`: roles end state as backdrop; a grey thread rises from the pile and draws the ring in 8 held arcs from the bottom (pile shrinks a row per arc via `GenEye.setPileCut`), the rose thread + power point from P,
 - `genesis-circle.js`: then a living universe (flat disc + band, turning 2-arm speck spiral, rose sparks, blue souls): `draw`, `drawUniverse(ctx,W,H,t,C?,R?)` (chains' opening disc)
 - `genesis-rexin.js`: Rex tears the level-1 ring into two arcs, grows over held zoom-outs (field shrinks, roof band thins) until only part of him fits, then the chains settle round him as braided dark-red rivers;

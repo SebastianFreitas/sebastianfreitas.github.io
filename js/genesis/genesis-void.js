@@ -174,9 +174,11 @@
   const railY = (H) => H * DECK - 0.012 * H - 1.5;
 
   const SPAN_BAY_U = 0.46;
+  const LIMB_LIT = "#151b20", LIMB_SHADE = "#0d1115", NEST_LIT = "#1b1f22", NEST_SHADE = "#101316";
+  const limbRnd = b => { const v = Math.sin(b * 127.1 + 11.3) * 43758.5453; return v - Math.floor(v); };
   const hh = (b, i, k) => { const v = Math.sin(b * 91.7 + i * 37.3 + k * 13.9 + 5.1) * 43758.5453; return v - Math.floor(v); };
   let spanCv = null, spanCtx = null;
-  const spanKey = new Float64Array(13);
+  const spanKey = new Float64Array(14);
   // the rail erodes in the break: hard-edged gaps fixed by seed in span units; each opens at its own time over the blast, then holds; one flat colour, no fades
   const RAIL_GAPS = (() => {
     // about 30% of the line worn away, no period: patches, runs and sizes all drawn from wide skewed ranges; mediums are placed apart from the patches, in clumps (1 u = 1 view width)
@@ -253,7 +255,7 @@
     return out;
   })();
   // clear one gap from the rail canvas (device-independent CSS px)
-  function clearGap(g, R, ry) {
+  function clearGap(g, R, ry, sx = G.sx) {
     const a = Math.round(sx(R.u0)), b = Math.max(a + 1, Math.round(sx(R.u1)));
     if (R.rows === 0) g.clearRect(a, ry, b - a, 2); else g.clearRect(a, ry + R.rows - 1, b - a, 1);
     if (R.stl) { const t = Math.round(sx(R.u0 - R.stl)); g.clearRect(t, ry + R.rl - 1, a - t, 1); }
@@ -279,9 +281,121 @@
       }
     }
   }
+  // one limb of the span (shared with the homepage bridge): g, hero height, deck y, bay index, x of its pier, nests grown, y where the leg ends
+  function paintLimb(g, H, deckY, b, xb, walk, yf = H * 1.08) {
+    const yt = deckY + 0.020 * H; // slab underside
+    const sh = 0.06 * H; // shoulder half-span
+    const r = limbRnd(b);
+    const side = (b % 2 ? 1 : -1);
+    const lean = (r - 0.5) * 0.05 * H + side * 0.015 * H;
+    const wt = 0.013 * H;
+    const yk = deckY + 0.11 * H;
+    const xk = xb + side * (0.035 + 0.025 * r) * H;
+    const wk = 0.017 * H;
+    const xf = xb + lean;
+    const wf = 0.003 * H;
+
+    const trace = () => {
+      g.beginPath();
+      g.moveTo(xb - sh, yt - 1);
+      g.quadraticCurveTo(xb - wt, yt, xb - wt * 1.1, yt + 0.07 * H);
+      g.quadraticCurveTo(xk - wk * 1.25, (yt + 0.07 * H + yk) / 2, xk - wk, yk);
+      g.quadraticCurveTo(xk - wk * 0.9 + lean * 0.2, (yk + yf) / 2, xf - wf, yf);
+      g.lineTo(xf + wf, yf);
+      g.quadraticCurveTo(xk + wk * 0.8 + lean * 0.2, (yk + yf) / 2, xk + wk, yk);
+      g.quadraticCurveTo(xk + wk * 1.1, (yt + 0.07 * H + yk) / 2, xb + wt * 1.1, yt + 0.07 * H);
+      g.quadraticCurveTo(xb + wt, yt, xb + sh, yt - 1);
+      g.closePath();
+    };
+    Paint.litShade(g, trace, xk - wk * 0.4, LIMB_LIT, LIMB_SHADE);
+
+    // knee: hard split, no gradient
+    g.fillStyle = LIMB_LIT;
+    g.beginPath();
+    g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
+    g.fill();
+    g.save();
+    g.beginPath();
+    g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
+    g.clip();
+    g.fillStyle = LIMB_SHADE;
+    g.fillRect(xk + wk * 0.1, yk - wk * 1.5, 1e5, wk * 3);
+    g.restore();
+
+    // nests: on the piers, tucked at the knee and under the eave
+    if (hh(b, 0, 20) < 0.7 && walk) {
+      if (hh(b, 0, 22) < 0.75) {
+        const ax = xk + wk * 0.3 + (hh(b, 0, 23) - 0.5) * wk;
+        const ay = yk - wk * 0.9;
+        const nw = (0.008 + 0.008 * hh(b, 0, 24)) * H;
+        const nh = nw * 0.55;
+        const nestTrace = () => {
+          g.beginPath();
+          g.moveTo(ax - nw / 2, ay - nh);
+          for (let j = 0; j <= 6; j++) {
+            const x = ax - nw / 2 + nw * j / 6;
+            const y = ay - nh - (j % 2 ? 0.25 : -0.1) * nh * (0.6 + 0.8 * hh(b, j, 25));
+            g.lineTo(x, y);
+          }
+          g.quadraticCurveTo(ax, ay + nh * 0.4, ax - nw / 2, ay - nh);
+          g.closePath();
+        };
+        Paint.litShade(g, nestTrace, ax - nw * 0.2, NEST_LIT, NEST_SHADE);
+
+        const nt = 3 + Math.floor(hh(b, 0, 26) * 3);
+        g.fillStyle = NEST_LIT;
+        for (let t = 0; t < nt; t++) {
+          const bx = ax - nw / 2 + nw * hh(b, t, 27);
+          const by = ay - nh;
+          const a = -Math.PI / 2 + (hh(b, t, 28) - 0.5) * 2.2;
+          const len = nw * (0.35 + 0.4 * hh(b, t, 29));
+          const tx = bx + Math.cos(a) * len;
+          const ty = by + Math.sin(a) * len;
+          const nx = -Math.sin(a), ny = Math.cos(a);
+          g.beginPath();
+          g.moveTo(bx - nx * 0.8, by - ny * 0.8);
+          g.lineTo(bx + nx * 0.8, by + ny * 0.8);
+          g.lineTo(tx, ty);
+          g.closePath();
+          g.fill();
+        }
+      }
+
+      const ne = 1 + (hh(b, 0, 30) < 0.4 ? 1 : 0);
+      for (let e = 0; e < ne; e++) {
+        const s = e === 0 ? -1 : 1;
+        const ex = xb + s * (wt * 1.6 + (0.004 + 0.01 * hh(b, e, 31)) * H);
+        const ey = yt;
+        const ew = (0.006 + 0.005 * hh(b, e, 32)) * H;
+        const eh = ew * 1.3;
+        const eaveTrace = () => {
+          g.beginPath();
+          g.moveTo(ex - ew / 2, ey - 1);
+          g.lineTo(ex + ew / 2, ey - 1);
+          g.quadraticCurveTo(ex + ew * 0.6, ey + eh * 0.7, ex, ey + eh);
+          g.quadraticCurveTo(ex - ew * 0.6, ey + eh * 0.7, ex - ew / 2, ey - 1);
+          g.closePath();
+        };
+        Paint.litShade(g, eaveTrace, ex - ew * 0.2, NEST_LIT, NEST_SHADE);
+
+        g.globalCompositeOperation = "destination-out";
+        g.fillStyle = "#000";
+        g.beginPath();
+        g.ellipse(ex + s * ew * 0.15, ey + eh * 0.55, ew * 0.2, ew * 0.16, 0, 0, Math.PI * 2);
+        g.fill();
+        g.globalCompositeOperation = "source-over";
+      }
+    }
+  }
+
   function drawSpan(ctx, grow) {
     drawSpanBody(ctx, grow);
     if (grow >= 0.02) drawRailChips(ctx);
+  }
+  // the homepage's span: the same body with explicit inputs and a settled beat (every leg and city arrived, every rail gap open, no break chips, unlit deck)
+  // o: W, H, camX (in views), deckY, fogEnd (y where the fog reaches the void; default 0.98 H)
+  function paintSpan(ctx, o) {
+    drawSpanBody(ctx, 1, { W: o.W, H: o.H, cam: o.camX, deckY: o.deckY, ky: o.ky, fogEnd: o.fogEnd });
   }
   function railOpen(i) {
     const bi = idxOf("break");
@@ -289,13 +403,17 @@
   }
   // The span: an old one, long dead. Few limbs bowed at the knee, a thin iron
   // deck, near the void's own colour; limbs and ends go into the fog.
-  function drawSpanBody(ctx, grow) {
+  // v (paintSpan only): explicit view and a settled beat; without it the cutscene's G values
+  function drawSpanBody(ctx, grow, v) {
     if (grow < 0.02) return;
-    const W = G.W, H = G.H, deckY = H * DECK;
-    const inf = G.beat >= idxOf("flee");
-    const lit = G.beat <= idxOf("drawn") ? 1 : 0;
-    const startU = inf ? G.cam - 2.65 : SPAN_START_U;
-    const endU = inf ? G.cam + 2.45 : mix(-0.48, ROOT_U + 0.22, grow);
+    const W = v ? v.W : G.W, H = v ? v.H : G.H, deckY = v ? v.deckY : H * DECK;
+    const cam = v ? v.cam : G.cam;
+    const sx = v ? (u => (u - cam) * W + W * 0.5) : G.sx;
+    const fogEnd = v && v.fogEnd ? v.fogEnd : H * 0.98;
+    const inf = v ? true : G.beat >= idxOf("flee");
+    const lit = v ? 0 : G.beat <= idxOf("drawn") ? 1 : 0;
+    const startU = inf ? cam - 2.65 : SPAN_START_U;
+    const endU = inf ? cam + 2.45 : mix(-0.48, ROOT_U + 0.22, grow);
     const x0 = sx(startU);
     const x1 = sx(endU);
     if (x1 - x0 < 2) return;
@@ -303,26 +421,26 @@
     const cw = ctx.canvas.width, ch = ctx.canvas.height;
     if (!spanCv) { spanCv = document.createElement("canvas"); spanCtx = spanCv.getContext("2d"); }
     if (spanCv.width !== cw || spanCv.height !== ch) { spanCv.width = cw; spanCv.height = ch; }
-    const sxk = cw / W, syk = ch / H;
+    const sxk = cw / W, syk = v && v.ky ? v.ky : ch / H;
     const dx0 = Math.max(0, Math.floor((x0 - 3) * sxk));
     const dx1 = Math.min(cw, Math.ceil((x1 + 3) * sxk));
     const dy0 = Math.max(0, Math.floor((deckY - 0.06 * H) * syk));
     const dy1 = ch;
     if (dx1 <= dx0 || dy1 <= dy0) return;
     const bx0 = dx0 / sxk, bx1 = dx1 / sxk, by0 = dy0 / syk, by1 = dy1 / syk; // same box in CSS px
-    const first = Math.floor((G.cam - 0.5) / SPAN_BAY_U) - 1;
-    const last = Math.ceil((G.cam + 0.5) / SPAN_BAY_U) + 1;
-    const arrived = (id, b, k) => G.secs(id) >= hh(b, 0, k) * G.beatDur(id) * 0.8;
+    const first = Math.floor((cam - 0.5) / SPAN_BAY_U) - 1;
+    const last = Math.ceil((cam + 0.5) / SPAN_BAY_U) + 1;
+    const arrived = (id, b, k) => v || G.secs(id) >= hh(b, 0, k) * G.beatDur(id) * 0.8;
     // everything in the offscreen depends on these only: blit it when none changed
     let sig = 0;
     for (let b = first; b <= last; b++) {
       sig = (sig * 31 + (arrived("trade", b, 2) ? 1 : 0) + (arrived("walk", b, 21) ? 2 : 0) + (arrived("trade", b, 41) ? 4 : 0)) | 0;
     }
     let gapSig = 0;
-    for (let i = 0; i < RAIL_GAPS.length; i++) if (railOpen(i)) gapSig++; // gaps only ever open, so the count names the set
+    for (let i = 0; i < RAIL_GAPS.length; i++) if (v || railOpen(i)) gapSig++; // gaps only ever open, so the count names the set
     const K = spanKey;
     const same = K[0] === cw && K[1] === ch && K[2] === W && K[3] === H && K[4] === x0 && K[5] === x1
-      && K[6] === G.cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0 && K[11] === lit && K[12] === gapSig;
+      && K[6] === cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0 && K[11] === lit && K[12] === gapSig && K[13] === fogEnd;
     if (same) {
       ctx.save();
       ctx.globalAlpha = clamp(grow * 3, 0, 1) * 0.9;
@@ -331,27 +449,24 @@
       return;
     }
     K[0] = cw; K[1] = ch; K[2] = W; K[3] = H; K[4] = x0; K[5] = x1;
-    K[6] = G.cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0; K[11] = lit; K[12] = gapSig;
+    K[6] = cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0; K[11] = lit; K[12] = gapSig; K[13] = fogEnd;
     const g = spanCtx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = "source-over";
     g.globalAlpha = 1;
     g.clearRect(dx0, dy0, dx1 - dx0, dy1 - dy0);
-    g.setTransform(cw / W, 0, 0, ch / H, 0, 0);
+    g.setTransform(sxk, 0, 0, syk, 0, 0);
 
     const slab = 0.020 * H;
     const yt = deckY + slab; // slab underside
     const sh = 0.06 * H; // shoulder half-span
-    const LIMB_LIT = "#151b20", LIMB_SHADE = "#0d1115";
-    const CITY_LIT = "#1e262d", CITY_SHADE = "#12181d", UNDER_LIT = "#161c21", UNDER_SHADE = "#0e1216", NEST_LIT = "#1b1f22", NEST_SHADE = "#101316", WIN = "rgba(245,208,107,0.35)";
+    const CITY_LIT = "#1e262d", CITY_SHADE = "#12181d", UNDER_LIT = "#161c21", UNDER_SHADE = "#0e1216", WIN = "rgba(245,208,107,0.35)";
     // while it is drawn (point, drawn) the deck is lit: a held step well above the backdrop and a pale cold edge
     const SLAB = "#11161a", DECK_TOP = lit ? "#2e383f" : "#1e262c", DECK_HI = "#34414b";
-    const fr = v => v - Math.floor(v);
-    const rnd = b => fr(Math.sin(b * 127.1 + 11.3) * 43758.5453);
 
     g.save();
     g.beginPath();
-    g.rect(x0 - 2, 0, (x1 - x0) + 4, H);
+    g.rect(x0 - 2, 0, (x1 - x0) + 4, v && v.fogEnd ? v.fogEnd : H);
     g.clip();
 
     // belly: a shallow sag between each pair of legs, like a belly
@@ -411,114 +526,13 @@
     for (let b = first; b <= last; b++) {
       const xb = sx(b * SPAN_BAY_U);
       if (xb < x0 - sh || xb > x1 + sh) continue;
-      const r = rnd(b);
-      const side = (b % 2 ? 1 : -1);
-      const lean = (r - 0.5) * 0.05 * H + side * 0.015 * H;
-      const wt = 0.013 * H;
-      const yk = deckY + 0.11 * H;
-      const xk = xb + side * (0.035 + 0.025 * r) * H;
-      const wk = 0.017 * H;
-      const yf = H * 1.08;
-      const xf = xb + lean;
-      const wf = 0.003 * H;
-
-      const trace = () => {
-        g.beginPath();
-        g.moveTo(xb - sh, yt - 1);
-        g.quadraticCurveTo(xb - wt, yt, xb - wt * 1.1, yt + 0.07 * H);
-        g.quadraticCurveTo(xk - wk * 1.25, (yt + 0.07 * H + yk) / 2, xk - wk, yk);
-        g.quadraticCurveTo(xk - wk * 0.9 + lean * 0.2, (yk + yf) / 2, xf - wf, yf);
-        g.lineTo(xf + wf, yf);
-        g.quadraticCurveTo(xk + wk * 0.8 + lean * 0.2, (yk + yf) / 2, xk + wk, yk);
-        g.quadraticCurveTo(xk + wk * 1.1, (yt + 0.07 * H + yk) / 2, xb + wt * 1.1, yt + 0.07 * H);
-        g.quadraticCurveTo(xb + wt, yt, xb + sh, yt - 1);
-        g.closePath();
-      };
-      Paint.litShade(g, trace, xk - wk * 0.4, LIMB_LIT, LIMB_SHADE);
-
-      // knee: hard split, no gradient
-      g.fillStyle = LIMB_LIT;
-      g.beginPath();
-      g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
-      g.fill();
-      g.save();
-      g.beginPath();
-      g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
-      g.clip();
-      g.fillStyle = LIMB_SHADE;
-      g.fillRect(xk + wk * 0.1, yk - wk * 1.5, 1e5, wk * 3);
-      g.restore();
-
-      // nests: on the piers, tucked at the knee and under the eave
-      if (hh(b, 0, 20) < 0.7 && arrived("walk", b, 21)) {
-        if (hh(b, 0, 22) < 0.75) {
-          const ax = xk + wk * 0.3 + (hh(b, 0, 23) - 0.5) * wk;
-          const ay = yk - wk * 0.9;
-          const nw = (0.008 + 0.008 * hh(b, 0, 24)) * H;
-          const nh = nw * 0.55;
-          const nestTrace = () => {
-            g.beginPath();
-            g.moveTo(ax - nw / 2, ay - nh);
-            for (let j = 0; j <= 6; j++) {
-              const x = ax - nw / 2 + nw * j / 6;
-              const y = ay - nh - (j % 2 ? 0.25 : -0.1) * nh * (0.6 + 0.8 * hh(b, j, 25));
-              g.lineTo(x, y);
-            }
-            g.quadraticCurveTo(ax, ay + nh * 0.4, ax - nw / 2, ay - nh);
-            g.closePath();
-          };
-          Paint.litShade(g, nestTrace, ax - nw * 0.2, NEST_LIT, NEST_SHADE);
-
-          const nt = 3 + Math.floor(hh(b, 0, 26) * 3);
-          g.fillStyle = NEST_LIT;
-          for (let t = 0; t < nt; t++) {
-            const bx = ax - nw / 2 + nw * hh(b, t, 27);
-            const by = ay - nh;
-            const a = -Math.PI / 2 + (hh(b, t, 28) - 0.5) * 2.2;
-            const len = nw * (0.35 + 0.4 * hh(b, t, 29));
-            const tx = bx + Math.cos(a) * len;
-            const ty = by + Math.sin(a) * len;
-            const nx = -Math.sin(a), ny = Math.cos(a);
-            g.beginPath();
-            g.moveTo(bx - nx * 0.8, by - ny * 0.8);
-            g.lineTo(bx + nx * 0.8, by + ny * 0.8);
-            g.lineTo(tx, ty);
-            g.closePath();
-            g.fill();
-          }
-        }
-
-        const ne = 1 + (hh(b, 0, 30) < 0.4 ? 1 : 0);
-        for (let e = 0; e < ne; e++) {
-          const s = e === 0 ? -1 : 1;
-          const ex = xb + s * (wt * 1.6 + (0.004 + 0.01 * hh(b, e, 31)) * H);
-          const ey = yt;
-          const ew = (0.006 + 0.005 * hh(b, e, 32)) * H;
-          const eh = ew * 1.3;
-          const eaveTrace = () => {
-            g.beginPath();
-            g.moveTo(ex - ew / 2, ey - 1);
-            g.lineTo(ex + ew / 2, ey - 1);
-            g.quadraticCurveTo(ex + ew * 0.6, ey + eh * 0.7, ex, ey + eh);
-            g.quadraticCurveTo(ex - ew * 0.6, ey + eh * 0.7, ex - ew / 2, ey - 1);
-            g.closePath();
-          };
-          Paint.litShade(g, eaveTrace, ex - ew * 0.2, NEST_LIT, NEST_SHADE);
-
-          g.globalCompositeOperation = "destination-out";
-          g.fillStyle = "#000";
-          g.beginPath();
-          g.ellipse(ex + s * ew * 0.15, ey + eh * 0.55, ew * 0.2, ew * 0.16, 0, 0, Math.PI * 2);
-          g.fill();
-          g.globalCompositeOperation = "source-over";
-        }
-      }
+      paintLimb(g, H, deckY, b, xb, arrived("walk", b, 21), v && v.fogEnd ? v.fogEnd : H * 1.08);
     }
 
     // vertebra nubs, under the slab
     g.fillStyle = SLAB;
     g.beginPath();
-    for (let u = Math.floor((G.cam - 0.5) / 0.04) * 0.04; u <= G.cam + 0.5; u += 0.04) {
+    for (let u = Math.floor((cam - 0.5) / 0.04) * 0.04; u <= cam + 0.5; u += 0.04) {
       const x = sx(u);
       g.moveTo(x - 0.004 * H, yt - 1);
       g.lineTo(x + 0.004 * H, yt - 1);
@@ -539,10 +553,10 @@
     if (gapSig) {
       const ry = Math.round(railY(H));
       for (let i = 0; i < RAIL_GAPS.length; i++) {
-        if (!railOpen(i)) continue;
+        if (!v && !railOpen(i)) continue;
         const R = RAIL_GAPS[i];
         if (sx(R.u1 + R.str) < x0 - 2 || sx(R.u0 - R.stl) > x1 + 2) continue;
-        clearGap(g, R, ry);
+        clearGap(g, R, ry, sx);
       }
     }
 
@@ -590,8 +604,8 @@
 
     // fog mask: legs and both ends dissolve into the void
     g.globalCompositeOperation = "destination-out";
-    const vlen = H * 0.98 - yt;
-    const vgrad = g.createLinearGradient(0, yt, 0, H * 0.98);
+    const vlen = fogEnd - yt;
+    const vgrad = g.createLinearGradient(0, yt, 0, fogEnd);
     vgrad.addColorStop(0, "rgba(0,0,0,0)");
     vgrad.addColorStop(clamp(0.14 * H / vlen, 0, 1), "rgba(0,0,0,0.30)");
     vgrad.addColorStop(clamp(0.30 * H / vlen, 0, 1), "rgba(0,0,0,0.80)");
@@ -630,6 +644,6 @@
   }
 
   window.GenVoid = Object.assign(window.GenVoid || {}, {
-    fillBg, drawMotes, drawChaos, drawPoint, drawSpan, SPAN_BAY_U,
+    fillBg, drawMotes, drawChaos, drawPoint, drawSpan, paintSpan, SPAN_BAY_U, paintLimb, hh,
   });
 })();

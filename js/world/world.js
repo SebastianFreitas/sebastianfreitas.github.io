@@ -249,7 +249,7 @@ window.World = (function () {
     const { ctx, W, H } = F;
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
-    ctx.fillStyle = "#0d1114";
+    ctx.fillStyle = v.dt != null ? "#0e1115" : "#0d1114";
     ctx.fillRect(0, 0, W, H);
 
     P.drawVoid();
@@ -268,6 +268,15 @@ window.World = (function () {
     P.drawLandPlace("bnote-land-shattered", "shattered", SHATTERED); P.drawLandPlace("bnote-land-libertech", "libertech", LIBERTECH); P.drawLandPlace("bnote-land-dawn", "dawn", FIRST_DAWN); P.drawLandPlace("bnote-land-accord", "accord", DIVINE_ACCORD); P.drawLandPlace("bnote-land-gore", "gore", GORE_LEGION);
     P.drawRoot();
     P.drawFragments();
+
+    // homepage only (the genesis caller passes no dt): melt the void into the page's top colour at the canvas bottom
+    if (v.dt != null) {
+      const y0 = H * 0.84;
+      const g = ctx.createLinearGradient(0, y0, 0, H);
+      g.addColorStop(0, "rgba(14,17,21,0)"); g.addColorStop(1, "#0e1115");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, y0, W, H - y0);
+    }
 
     P.drawBridge();
   }

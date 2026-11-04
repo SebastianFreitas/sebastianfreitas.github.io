@@ -107,59 +107,50 @@
     ctx.lineWidth = 1;
   }
 
+  /* The bridge: the genesis cutscene's own span painter (GenVoid.paintSpan: deck, rail chips, belly,
+     nubs, curved kneed legs, nests, fog), settled beat. It is painted once into a stage that covers the
+     hero and the #bridge-legs strip below it (the fog runs on to the strip's end); the hero blits the top
+     rows, the strip the bottom rows. The stage repaints when the span's device-pixel x changes. */
+  const stage = { cv: null, key: "" };
+
   function drawBridge() {
-    const { ctx, W, H, camX } = F;
-    const par = 0.94, s = scale();
-    const deckY = H * DECK;
-    const bayPx = Math.max(24, BAY * s * par);
-    const legW  = Math.min(3, Math.max(1.2, bayPx * 0.007));
-    const deckH = Math.min(6, Math.max(2.5, bayPx * 0.013));
-    const rise  = bayPx * 0.20;
-    const legBot = H * 1.22;
-
-    const first = Math.floor((camX - VIEW_UNITS) / BAY) - 1;
-    const last  = Math.ceil((camX + VIEW_UNITS) / BAY) + 1;
-
-    ctx.fillStyle = "rgba(112,130,140,0.55)";
-    for (let b = first; b <= last; b++) {
-      const x = wx(b * BAY, par);
-      if (!onScreen(x, 20)) continue;
-      ctx.fillRect(x - legW / 2, deckY + deckH, legW, legBot - deckY - deckH);
-    }
-    const archT = Math.max(1, legW * 0.55);
-    ctx.fillStyle = "rgba(112,130,140,0.30)";
-    for (let b = first; b <= last; b++) {
-      const x0 = wx(b * BAY, par);
-      if (!onScreen(x0, bayPx + 20)) continue;
-      const cx = x0 + bayPx / 2, cy = deckY + deckH + rise, rx = bayPx / 2 - legW;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, rise, 0, Math.PI, 0);
-      ctx.ellipse(cx, cy, rx - archT, rise - archT, 0, 0, Math.PI, true);
-      ctx.closePath(); ctx.fill();
-    }
-    for (let b = first; b <= last; b++) {
-      const x = wx(b * BAY, par);
-      if (!onScreen(x, 24)) continue;
-      const r = hash1(b * 911 + 7);
-      ctx.fillStyle = "rgba(120,138,147,0.4)";
-      ctx.fillRect(x - legW * 0.4, deckY - deckH * 1.9, legW * 0.8, deckH * 1.9);
-      if (r < 0.13) {
-        const mh = deckH * (4.5 + r * 22);
-        ctx.fillStyle = "rgba(120,138,147,0.34)";
-        ctx.fillRect(x - legW * 0.3, deckY - mh, legW * 0.6, mh);
-        ctx.fillStyle = "rgba(245,208,107,0.75)";
-        ctx.fillRect(x - legW * 0.55, deckY - mh - legW * 0.7, legW * 1.1, legW * 1.1);
+    const { ctx, W, H } = F;
+    if (!window.GenVoid || !GenVoid.paintSpan) return;
+    const dpr = ctx.getTransform().a || 1;
+    const stripCv = document.getElementById("bridge-legs");
+    const stripH = stripCv ? Math.round(stripCv.clientHeight) : 0;
+    const ph = wx(0, 0.94);
+    const key = W + "|" + H + "|" + dpr + "|" + stripH + "|" + Math.round(ph * dpr);
+    const cw = Math.round(W * dpr), ch = Math.round((H + stripH) * dpr);
+    if (!stage.cv) stage.cv = document.createElement("canvas");
+    if (stage.key !== key) {
+      stage.key = key;
+      const cv = stage.cv;
+      if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+      const g = cv.getContext("2d");
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, W, H + stripH);
+      GenVoid.paintSpan(g, { W, H, camX: 0.5 - ph / W, deckY: H * DECK, ky: dpr, fogEnd: H + stripH });
+      const sc = stripCv && stripCv.getContext("2d");
+      if (sc && stripH > 0) {
+        if (stripCv.width !== cw || stripCv.height !== Math.round(stripH * dpr)) {
+          stripCv.width = cw; stripCv.height = Math.round(stripH * dpr);
+        }
+        sc.setTransform(1, 0, 0, 1, 0, 0);
+        sc.clearRect(0, 0, stripCv.width, stripCv.height);
+        const sy = Math.round(H * dpr);
+        sc.drawImage(cv, 0, sy, cw, ch - sy, 0, 0, cw, ch - sy);
       }
     }
-    ctx.fillStyle = "rgba(36,45,51,0.92)";
-    ctx.fillRect(0, deckY, W, deckH);
-    ctx.fillStyle = "rgba(245,208,107,0.62)";
-    for (let b = first; b <= last; b++) {
-      const x = wx(b * BAY, par);
-      if (!onScreen(x, bayPx + 20)) continue;
-      ctx.fillRect(x, deckY - 1.6, bayPx + 1, 2.4);
-    }
+    const hy = Math.round(H * dpr);
+    ctx.drawImage(stage.cv, 0, 0, stage.cv.width, hy, 0, 0, W, H);
   }
+
+  // a resize stretches the strip's pixels off the window's legs: redraw it (the loop may be parked)
+  addEventListener("resize", () => {
+    stage.key = "";
+    requestAnimationFrame(() => { if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce(); });
+  });
 
   P.drawBand = drawBand;
   P.drawCityNear = drawCityNear;

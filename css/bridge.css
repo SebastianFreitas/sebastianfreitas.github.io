@@ -24,6 +24,9 @@
   z-index: 0;
   touch-action: pan-y;      /* we take horizontal drags, the page keeps vertical */
 }
+/* the span's legs run on below the hero and fade out above the Work label (drawn by World.drawBridge) */
+.bridge-legs { position: relative; z-index: 0; height: 0; pointer-events: none; }
+#bridge-legs { position: absolute; top: 0; left: 0; display: block; width: 100%; height: clamp(7.5rem, 16vh, 9.5rem); }
 /* ---- HUD ---- */
 .bridge-hud {
   position: absolute; z-index: 10; pointer-events: none;
