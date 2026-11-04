@@ -221,7 +221,11 @@
     rows.forEach(function (el, i) {
       const red = redOf(el);
       /* the row's own height: its padding scaled by a seeded factor (a different one per row), so the layout really differs */
-      el.style.setProperty("--wk-hf", ([0.45, 1.55, 0.8, 1.3][i % 4] + (rng("wk-h-" + i)() - 0.5) * 0.2).toFixed(2));
+      const hf0 = [0.45, 1.55, 0.8, 1.3][i % 4] + (rng("wk-h-" + i)() - 0.5) * 0.2;
+      el.style.setProperty("--wk-hf", hf0.toFixed(2));
+      /* then grown: the row's height at that factor is B; the padding is raised so the row lands at 1.3x B (1.2x on a phone; B already holds the wrapped meta, so about 1.5x the old row), the text staying centred */
+      { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, B = el.offsetHeight, txt = B - 4.25 * rem * hf0;
+        if (B) el.style.setProperty("--wk-hf", Math.max(hf0, (B * (window.matchMedia("(max-width: 899px)").matches ? 1.2 : 1.3) - txt) / (4.25 * rem)).toFixed(3)); }
       /* the row's width as a share of its box, seeded per row (82-100%) */
       const wfRow = Math.min(1, [0.86, 1, 0.82, 0.94][i % 4] + (rng("wk-w-" + i)() - 0.5) * 0.06);
       const TXT = ".obj-id, h3, .obj-line, .props > div", MARGIN = 6;
@@ -247,16 +251,16 @@
         const S = el._wk && el._wk.W === W ? el._wk : (el._wk = { W: W, pt: 0, pb: 0, pl: 0, pr: 0, cpl: 0, cpr: 0 });
         const narrow = window.matchMedia("(max-width: 899px)").matches, cs = getComputedStyle(el);
         const gutL = parseFloat(cs.paddingLeft) - S.cpl, gutR = parseFloat(cs.paddingRight) - S.cpr;
-        /* each edge sits its own px in from the box (never under 4, so none sits square). The left edge leans 4-10deg off vertical, alternating
+        /* each edge sits its own px in from the box (never under 4, so none sits square). The left edge leans 10-20deg off vertical, alternating
            under/over 90 from row to row (the first row's side is seeded); its x range stays inside the gutter so the text is never cut, and on a phone
            (gutter 20px) the lean shrinks to fit. The right edge leans 1-4deg either way and sits in from the box by up to 13% of W (the gutter on a phone).
            The first row's top has no seam above, so its two top corners also move up or down on their own. Seam edges keep their angle, so the edge as a whole moves, never one corner alone */
         const px = function (lo, hi) { return lo + rnd() * (hi - lo); }, dyMax = Math.max(6, 0.04 * H);
         const ty = 4 + rnd() * dyMax, by = H - 4 - rnd() * dyMax, hq = by - ty;
         const ls = (i % 2 ? 1 : -1) * (rng("wk-side")() < 0.5 ? 1 : -1), rs = rnd() < 0.5 ? 1 : -1;
-        /* on a phone the text side grows with the lean (left padding), and the right padding with the row's inset, so the 4-8deg edge never cuts text */
-        const angL = px(4, narrow ? 8 : 10), dL = Math.tan(angL * Math.PI / 180) * hq;
-        const pl = (narrow ? Math.max(0, Math.ceil(dL + 12 - gutL)) : 0) + S.pl, lmax = Math.max(8, gutL + pl - 8);
+        /* the text side grows with the lean (left padding), and the right padding with the row's inset, so the leaning edge never cuts text */
+        const angL = px(narrow ? 4 : 10, narrow ? 8 : 20), dL = Math.tan(angL * Math.PI / 180) * hq;
+        const pl = Math.max(0, Math.ceil(dL + 12 - gutL)) + S.pl, lmax = Math.max(8, gutL + pl - 8);
         const dl = Math.min(dL, lmax - 4), atL = 4 + rnd() * Math.min(lmax - 4 - dl, narrow ? 12 : 1e9);
         const lx = ls > 0 ? [atL + dl, atL] : [atL, atL + dl];   /* [top x, bottom x] */
         const angR = px(1, 4), dR = Math.tan(angR * Math.PI / 180) * hq;
@@ -314,6 +318,12 @@
         }
         /* the game picture sits inside the same quad: its clip is the quad moved into the picture's own box */
         const shot = el.querySelector(":scope > .obj-shot");
+        if (shot) {
+          /* the picture is fully dark under the whole text block (its widest line, measured by range), then fades in */
+          const er2 = el.getBoundingClientRect(), rg = document.createRange(); let tx = 0;
+          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); tx = Math.max(tx, rg.getBoundingClientRect().right - er2.left); });
+          shot.style.setProperty("--wk-tx", Math.max(0, tx + 16 - shot.offsetLeft).toFixed(0) + "px");
+        }
         if (shot) shot.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - shot.offsetLeft).toFixed(1) + "px " + (p[1] - shot.offsetTop).toFixed(1) + "px"; }).join(", ") + ")");
       }
       draw();
