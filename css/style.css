@@ -509,8 +509,6 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .page-404 .void-note p:last-of-type { margin-bottom: 0; }
 .page-404 .case-nav a::before { background: rgb(4,4,5); }
 .page-404 .case-nav a:hover::before, .page-404 .case-nav a:focus-visible::before { background: var(--type-tag-bg); }
-/* behind the see-through open folder the page paints the body: black there, not the old blue-grey (toy layers sit on body, untouched) */
-body:has(.case-folder.open) { background: rgb(4, 4, 5); }
 body.page-case { background: var(--ground); }
 
 /* ---------------- shared section furniture ---------------- */
@@ -923,7 +921,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
    ========================================================= */
 
 
-.obj-shot {
+.obj-shot, .obj > .obj-clip {
   position: absolute;
   top: 0;
   right: 0;
@@ -955,12 +953,12 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 
 /* the card lights up on hover — the artwork comes with it */
-/* not while the page scrolls (.work.is-scrolling, folders.js): a hover starting under the wheel would raster the masked, clipped artwork */
+/* not while the page scrolls (.work.is-scrolling, work-preview.js): a hover starting under the wheel would raster the masked, clipped artwork */
 :where(.work:not(.is-scrolling)) .obj:hover .obj-shot,
 :where(.work:not(.is-scrolling)) .obj:focus-visible .obj-shot {
   opacity: 0.8;
 }
-.obj:nth-of-type(even) .obj-shot { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
+.obj:nth-of-type(even) .obj-shot, .obj:nth-of-type(even) > .obj-clip { clip-path: polygon(0 0, 14% 6px, 33% 0, 61% 8px, 85% 2px, 100% 0, 100% calc(100% - 2px), 76% calc(100% - 3px), 52% calc(100% - 9px), 27% calc(100% - 1px), 9% calc(100% - 6px), 0 100%); }
 
 /* text sits above the artwork */
 .obj h3, .obj-line, .obj .props {
@@ -971,7 +969,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 /* narrow screens: the text runs the full width, so pull the
    artwork right back rather than fighting it */
 @media (max-width: 900px) {
-  .obj-shot { width: 100%; opacity: 0.3; -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); }
+  .obj-shot, .obj > .obj-clip { width: 100%; opacity: 0.3; -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); }
   :where(.work:not(.is-scrolling)) .obj:hover .obj-shot { opacity: 0.34; }
 }
 
@@ -999,7 +997,29 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 /* the Work rows: a worn quad in px (Shapes.workRows sets --wk-clip, the tilt is baked in), a red line down the left edge */
 .work > .obj.slab[data-wornquad]::before { inset: calc(var(--wk-pad, 0px) * -1) 0; transform: none; clip-path: var(--wk-clip, polygon(0 3%, 100% 0, 100% 97%, 0 100%)); }
 @media (min-width: 901px) { .work > .obj[data-wornquad] .obj-head { left: 0; top: 0; } .work > .obj[data-wornquad] .props { max-width: var(--measure); } } /* the title sticker stays in the text column, off the picture on the right */
-.work > .obj[data-wornquad] > .obj-shot { transform: none; clip-path: var(--wk-shot-clip, inset(0)); }
+.work > .obj[data-wornquad] > :is(.obj-shot, .obj-clip) { transform: none; clip-path: var(--wk-shot-clip, inset(0)); }
+
+/* hover preview (js/site/work-preview.js): the row tilts, its clip plays over the picture, a game-page button shows under the text */
+.obj > .obj-clip { background: none; opacity: 0; transition: opacity 0.3s ease; }
+.obj > .obj-go { display: none; }
+@media (hover: hover) {
+  .work > .obj[data-wornquad] { transition: transform 0.25s ease-out; }
+  .work > .obj[data-wornquad]:nth-of-type(even) { --peek: -2deg; }
+  .work > .obj.is-live > .obj-clip { opacity: 0.8; }
+  .work > .obj.is-live > .obj-shot { opacity: 0; }
+  .work > .obj.is-peek > .obj-go {
+    display: inline-block; position: absolute; z-index: 2; isolation: isolate; left: calc(var(--gutter) + var(--wk-pl, 0px)); bottom: 0.6rem; padding: 0.5rem 0.9rem;
+    font-family: var(--type-serif); font-size: 0.95rem; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1714;
+  }
+  .work > .obj.is-peek > .obj-go::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; background: #f1ecd8;
+    clip-path: polygon(0% 6%, 30% 0%, 65% 5%, 100% 0%, 100% 100%, 60% 94%, 30% 100%, 0% 95%);
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .work > .obj.is-peek { transform: rotate(var(--peek, 2.5deg)); }
+}
+@media (max-width: 900px) and (hover: hover) { .work > .obj.is-live > .obj-clip { opacity: 0.5; } }
 .obj > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none !important; z-index: 1; }
 .obj > .xp-red line { stroke: var(--type-red); stroke-width: 6px; stroke-linecap: butt; }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }

@@ -6,9 +6,6 @@
 
 html.gate-done .site-gate { display: none; }
 
-/* a #case link paints nothing until folders.js has opened the case and landed on it (same task), so the hero frame never jumps; after 3 s regardless */
-html.case-hold body { visibility: hidden; animation: hash-hold-lift 0s 3s forwards !important; }
-@keyframes hash-hold-lift { to { visibility: visible; } }
 
 body.site-frozen { overflow: hidden; }
 body.site-frozen > *:not(.site-gate) {

@@ -464,17 +464,16 @@ def project_page(name, label, viewport):
     return fn
 
 
-def folder_scene(name):
-    """The Work folder for a game, open from a deep link: lead clip, pitch, page link."""
-    def fn(browser, base, out_dir):
-        ctx, page = new_ctx(browser, nav.DESKTOP)
-        page.goto(f"{base}/#{name}")
-        page.wait_for_selector(f"#{name}.open")
-        page.wait_for_load_state("load")
-        settle(page, 1000)
-        shot(page, out_dir, f"folder-{name}")
-        ctx.close()
-    return fn
+def work_hover_scene(browser, base, out_dir):
+    """The VoidScape Work row hovered about 1.5 s: tilt, clip playing in the picture spot, page button."""
+    ctx, page = new_ctx(browser, nav.DESKTOP)
+    page.goto(f"{base}/#voidscape")
+    page.wait_for_load_state("load")
+    settle(page, 600)
+    page.hover("a.obj[href='projects/voidscape.html']")
+    settle(page, 1500)
+    shot(page, out_dir, "work-hover")
+    ctx.close()
 
 
 def page_404(label, viewport):
@@ -558,7 +557,7 @@ def scenes():
         out.append((f"page-{name}-desktop", project_page(name, "desktop", nav.DESKTOP)))
         out.append((f"page-{name}-phone", project_page(name, "phone", nav.PHONE)))
         out.append((f"page-{name}-toy", toy_page(name)))
-        out.append((f"folder-{name}", folder_scene(name)))
+    out.append(("work-hover", work_hover_scene))
     for section in ("work", "experience"):
         out.append((f"index-{section}-desktop", index_section(section, "desktop", nav.DESKTOP)))
         out.append((f"index-{section}-phone", index_section(section, "phone", nav.PHONE)))

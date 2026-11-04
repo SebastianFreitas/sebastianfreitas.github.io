@@ -122,7 +122,6 @@
     (entries) => {
       for (const entry of entries) {
         const v = entry.target;
-        if (entry.isIntersecting && v.closest(".folder-body.is-opening")) continue; // a case still opening: folders.js fires folder-settled and these are looked at again
         if (entry.isIntersecting) seen.add(v); else seen.delete(v);
         if (entry.isIntersecting) {
           if (v.preload === "none" && !queue.includes(v) && loading !== v) {
@@ -139,7 +138,4 @@
   );
  
   videos.forEach((v) => io.observe(v));
-  document.addEventListener("folder-settled", (e) => {
-    videos.forEach((v) => { if (e.target.contains(v)) { io.unobserve(v); io.observe(v); } });
-  });
 })();

@@ -788,15 +788,7 @@
     flyDirty = any;
     if (!any) return;
     flyG.imageSmoothingEnabled = false;
-    // the flight arc stays inside the open folder's gold frame
-    const fr = V.mainEl && V.mainEl.closest(".case-folder");
     flyG.save();
-    if (fr) {
-      const r = fr.getBoundingClientRect();
-      flyG.beginPath();
-      flyG.rect(r.left + fr.clientLeft, Math.max(r.top, 0), fr.clientWidth, Math.min(r.bottom, V.H) - Math.max(r.top, 0));
-      flyG.clip();
-    }
     for (const key of keys) {
       if (!key.fly) continue;
       const f = key.fly, e = easeIO(f.t);

@@ -29,7 +29,6 @@ html.dev-nomask * , html.dev-nomask *::before, html.dev-nomask *::after { -webki
   function what() {
     const w = document.querySelector('.work');
     if (w && w.classList.contains('is-scrolling')) return 'scrolling';
-    if (document.querySelector('.is-opening')) return 'folder opening';
     for (const v of document.querySelectorAll('video.clip')) if (!v.paused && !v.ended) return 'clip playing';
     return 'idle';
   }

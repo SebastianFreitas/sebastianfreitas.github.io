@@ -41,7 +41,6 @@
     });
     return Promise.all([
       run(() => Promise.all([loaded, document.fonts && document.fonts.ready])),
-      run(() => loaded.then(() => window.Folders && Folders.warm())),
       run(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
         if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce();
         res();

@@ -275,7 +275,7 @@
         const free = function () { return (rnd() < 0.5 ? -1 : 1) * px(4, dyMax); };
         const ytl = i ? 0 : free(), ytr = i ? 0 : free();
         const ta = i ? WK_BOT[i - 1] : WK_TOP, ba = WK_BOT[i % WK_BOT.length];
-        /* each edge pivots about the row's centre (as the old rotated band did), which folder.css's --tuck and overlap assume */
+        /* each edge pivots about the row's centre (as the old rotated band did) */
         const rt = Math.tan(ta * Math.PI / 180) * (xtr - xtl) / 2, rb = Math.tan(ba * Math.PI / 180) * (xbr - xbl) / 2;
         /* the tilted edges reach past the box top and bottom, so the pseudo is padded that far (--wk-pad) and nothing is cut flat */
         const pad = Math.ceil(Math.max(rt, rb)) + 12;
@@ -300,21 +300,6 @@
             S.pl += Math.ceil(need.l); S.pr += Math.ceil(need.r);
             return draw(pass + 1);
           }
-        }
-        /* the row below an open page: its top edge (parallel to this bottom edge) sits 10px above the page's real bottom line; the page pivots at the folder's left (centre on narrow) and drops by H(1-cos)/cos */
-        const above = el.previousElementSibling;
-        if (above && above.classList.contains("case-folder")) {
-          const narrow = window.matchMedia("(max-width: 899px)").matches, tt = Math.tan(ta * Math.PI / 180), body = above.querySelector(".folder-body");
-          const hp = body ? body.offsetHeight : 0, dv = hp * (1 - Math.cos(ta * Math.PI / 180)) / Math.cos(ta * Math.PI / 180);
-          el.style.setProperty("--wk-seam", (dv + tt * ((narrow ? W / 2 : 0) - xtl) - (ty + rt + ytl) - 10).toFixed(1) + "px");
-        }
-        /* the open page below pivots on the row's real bottom edge: same angle, and --tuck from that line (at the page's pivot x) down to the page's top */
-        const fold = el.nextElementSibling;
-        if (fold && fold.classList.contains("case-folder")) {
-          const narrow = window.matchMedia("(max-width: 899px)").matches, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-          const tb = Math.tan(ba * Math.PI / 180), yline = by + rb - tb * ((narrow ? W / 2 : 0) - xbl);
-          fold.style.setProperty("--wk-rot", ba);
-          fold.style.setProperty("--tuck", ((yline - (H - 2.5 * rem)) * Math.cos(ba * Math.PI / 180) + 1).toFixed(1) + "px");
         }
         /* the game picture sits inside the same quad: its clip is the quad moved into the picture's own box */
         const shot = el.querySelector(":scope > .obj-shot");

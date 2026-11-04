@@ -30,10 +30,9 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - Eroded banners (rejected worn box ends): archive/eroded-banners/ (tools/worn.py, its caps, CSS diff, README.md); open only when the owner names it
 - Red side lines (owner's tuned red line pieces on rank card, glimpse card, gate, Work rows): archive/red-side-lines/ (js/redlines.js, css/redlines.css, README.md); never delete; open only when the owner names it
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
-- case folder: `div.case-folder` under its game's row in section#work on index.html, a teaser (lead clip, pitch, link to the game page) (js/site/folders.js, css/folder.css)
+- Work row preview: `a.obj` rows in section#work on index.html show a clip and a game-page button on hover (js/site/work-preview.js, css/style.css)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
-- the case pages, a page's toy: standalone pages `projects/<key>.html`; toy js/pages/<page>.js registers on js/pages/play.js, css/play.css; the Work folder is only a teaser
-- the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
+- the case pages, a page's toy: standalone pages `projects/<key>.html`; toy js/pages/<page>.js registers on js/pages/play.js, css/play.css- the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
 - the sea, the river (the banded strip at the genesis frame bottom): js/genesis/genesis-elements.js (seaK, drawSea; drawn every frame from genesis.js)
 - the ceiling mass (drifting clouds along the top, grow with the sea): js/genesis/genesis-ceiling.js (GenCeiling.draw: the floor sea mirrored overhead via GenElem.paintSea dir -1 and the floor's own water line (seaLine); objects sit in it as pieces, arrival = GenElem.seaLevel; drift + wobble)
@@ -100,19 +99,15 @@ shares `Gen`:
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; index clips are not preloaded (lazy-video.js loads one when its folder is open and on screen) | uses `SiteEntry`, `XP` |
+| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; index clips are not preloaded (lazy-video.js loads one when its row is on screen) | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `shapes.js` | Seeded torn/slab polygon maker (points, rough, notches, chamfer, inset per edge); `[data-shape]` elements get `--shape` at load, redrawn on resize for `data-shape-tear` (px-sized cut) hosts | `window.Shapes {polygon, styles, apply, rng}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
-| `folders.js` | Case folders: grows one `div.case-folder` body open under its Work row at a time (clip-path wipe) from Work rows, the `#<key>` hash or a beacon's Open case file; awards no XP | `window.Folders {open, close, current, KEYS, warm, decodeImages}` |
+| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row tilts it (`.is-peek`), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go`; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
-- `folders.js`: every open wipes an empty window first, defers the resize dispatch until the wipe ends, then fades the teaser in (300 ms, once the first images have decoded or 2.5 s; warm opens skip the wait).
-- `folders.js`: holds the hero loop (`B.hold`) and scroll anchoring from the click; measures each case at idle (cache keyed on window width and height) so the first click does no full layout.
-- `folders.js`: `warm()` measures every shut case (run by the gate's warm-up in intro.js); the opening push matches the closed layout (`body._y0`); fires `folder-settled` when the slide ends, and lazy-video.js holds a folder's videos until then.
-- `folders.js`: a click never moves the camera; the old folder closes while the new one opens, and a pin (`pin`, `comp`) offsets scroll by any shrink above the clicked row; a fresh `#<key>` hash lands instantly (not on Back).
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), bar growth on a claim (no flying box or tag, never freezes the world); only the bridge awards XP, cross-tab sync, `?reset=1`
 - `xp.js` growth: `award` adds at once, `ceremony` walks the bar up one level per 600 ms (`B.barPeek` first, fill starts 400 ms later), extra awards just raise the target; `busy` while it walks; `xp:ceremony-done` at the end; `onRankUp` is the hook for ship upgrades.
 - `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` once per level filled and `xp:rankup` once per rank crossed
@@ -153,7 +148,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
-| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer; folders.js holds it through an open) |
+| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer) |
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
@@ -474,17 +469,16 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
-| `css/folder.css` | The four Work folder teasers on index: the body is a tilted black page under the row (clip, video 60% + pitch, close), hidden/clip states |
 | `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils), never a plate |
-| `css/art/wash.webp`, `folder-glow.webp` | Baked wash (no longer used by folder.css) and the open folder's nine-sliced inner glow; images so the sweep does not repaint gradients each frame; used by folder.css |
-| `index.html` | Homepage; holds the four case folders (`div.case-folder`). Inline head script is only the service-worker purge |
+| `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
+| `index.html` | Homepage; holds the four Work rows, each with its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
 | `projects/heavylight.html` | Case page for HeavyLight, a 2D puzzle platformer where light carries momentum (Unity, WebGL); toy `js/pages/heavylight.js` |
 | `404.html` | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
-| `tools/nav-flows.test.py` | Playwright flows (folder and beacon-nav flows: see `--list`); starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
-| `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>`; also 404, glimpse/rank cards, footer, phone scenes; `capture` flags `--only`, `--phone-width <px>`, `--reduced-motion` |
+| `tools/nav-flows.test.py` | Playwright flows (Work-row hover, case-page click and beacon-nav flows: see `--list`; `work-hover` checks the hover preview); starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
+| `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>`; `work-hover` scene (VoidScape row hovered 1.5 s); also 404, glimpse/rank cards, footer, phone scenes; `capture` flags `--only`, `--phone-width <px>`, `--reduced-motion` |
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/merge-cachebust.py` | Git merge driver for `*.html`: merges with every `?v=` number treated as equal, then writes the highest back, so bumps never conflict; installed by `try.py` |
 | `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <index.html[#case]> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
@@ -493,7 +487,6 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/scrollperf.py` | Scroll-jank measure |
-| `tools/folderperf.py` | Frame meter for the first open of a game folder teaser (gate, wheel to Work, click; per-phase frame times, longtasks): `py -3 tools/folderperf.py [--folder k] [--slow] [--cpu N (default 6)] [--phone] [--json p]` |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
 | `tools/try_project.py` | Portfolio hooks for the shared `try.py`/`try_commit.py` |
@@ -528,7 +521,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 ### Load order
 
 `index.html` head: `css/style.css`, `css/gate.css`, `css/beacon.css`,
-`css/bridge.css`, `css/folder.css`, then `js/lib/util.js`,
+`css/bridge.css`, then `js/lib/util.js`,
 `js/site/xp.js`, `js/site/entry.js` (blocking, on purpose), then the inline
 SW purge. Body tail, in this order:
 
@@ -539,10 +532,10 @@ ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
 bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,
 bridge-input, bridge-motifs, bridge-marks, bridge-poi, bridge-panel, bridge-depths,
 bridge-env, bridge-readout, bridge-loop} → genesis/* → site/lazy-video →
-site/embed → shared/heavylight-sprites → site/folders → site/redlines →
+site/embed → shared/heavylight-sprites → site/redlines →
 site/intro`.
 
-Index loads no toys and no `play.js`: the Work folders are teasers. `folders.js` loads
+Index loads no toys and no `play.js`: the Work rows preview on hover (`work-preview.js`). `work-preview.js` loads
 after `embed` and `shared/heavylight-sprites`, then `redlines`, then `intro.js`. `genesis/*` and `world/*` keep the order in `index.html` (grep
 `<script`); the constraints below still hold.
 
