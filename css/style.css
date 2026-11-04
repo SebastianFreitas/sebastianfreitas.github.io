@@ -630,16 +630,16 @@ body.page-case { background: var(--ground); }
   :where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-head h3 { color: #1a1714; text-shadow: none; }
 }
 /* the label rests straight and tilts 14deg with its paper on hover, press, focus and open (desktop only; the narrow block below sets its own tilt) */
-@media (min-width: 901px) {
+@media (min-width: 1200px) {
   .work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head { transform: rotate(14deg); }
 }
-@media (min-width: 901px) and (hover: hover) {
+@media (min-width: 1200px) and (hover: hover) {
   :where(.work:not(.is-scrolling)) .obj:hover > .obj-head { transform: rotate(14deg); }
 }
 .work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3::before { opacity: 1; background: var(--type-red); }
 .work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3 { color: #f6f0da; text-shadow: none; }
 /* narrow: the picture is no longer beside the text, so the label sits at the top of the row, right aligned, in flow */
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .obj-head { left: 0; top: 0; margin-left: auto; margin-right: 0.9rem; margin-bottom: 1rem; transform: rotate(9deg); }
 }
 @media (prefers-reduced-motion: reduce) { .obj-head, .obj-head h3::before { transition: none; } }
@@ -710,7 +710,7 @@ body.page-case { background: var(--ground); }
   background: var(--ground);
 }
 /* desktop: the toy draws behind the column, so its right edge fades out instead of cutting the toy */
-@media (min-width: 900px) {
+@media (min-width: 1200px) {
   .folder-body > .case::before {
     -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
     mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
@@ -730,8 +730,14 @@ body.page-case { background: var(--ground); }
 .case > p:nth-of-type(7n+1) { max-width: calc(var(--measure) * 1.12); }
 .case > h2 { margin-top: 4.5rem; }
 /* phone: no toy, so the wash stays opaque; the tear is shallower than the gutter so each stroke stops short of the screen edge, and a clear wash gap lies between strokes */
+@media (max-width: 1199px) { .folder-body > .case { --tear: 14px; } }
+@media (min-width: 900px) and (max-width: 1199px) {
+  .stage .case > p:not(.todo), .stage .case > ul { margin-block: 2rem; }
+  .stage .case > h2 { margin-bottom: 2rem; }
+  .stage .case > p:not(.todo)::before, .stage .case > ul::before, .stage .case > h2::before { inset: -0.4rem calc(var(--tear) * -1); }
+  .stage .case > p:nth-of-type(5n+3), .stage .case > ul:nth-of-type(2n), .stage .case > p:nth-of-type(7n+1) { max-width: none; }
+}
 @media (max-width: 899px) {
-  .folder-body > .case { --tear: 14px; }
   .case > p:not(.todo), .case > ul { margin-block: 2rem; }
   .case > h2 { margin-bottom: 2rem; }
   .case > p:not(.todo)::before, .case > ul::before, .case > h2::before { inset: -0.4rem calc(var(--tear) * -1); }
@@ -969,8 +975,10 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 
 /* narrow screens: the text runs the full width, so pull the
    artwork right back rather than fighting it */
-@media (max-width: 900px) {
+
+@media (max-width: 1199px) {
   .obj-shot, .obj > .obj-clip { width: 100%; opacity: 0.3; -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 18%, rgba(0,0,0,0.7) 45%, #000 75%); }
+
   :where(.work:not(.is-scrolling)) .obj:hover .obj-shot { opacity: 0.34; }
 }
 
@@ -997,7 +1005,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 /* the Work rows: a worn quad in px (Shapes.workRows sets --wk-clip, the tilt is baked in), a red line down the left edge */
 .work > .obj.slab[data-wornquad]::before { inset: calc(var(--wk-pad, 0px) * -1) 0; transform: none; clip-path: var(--wk-clip, polygon(0 3%, 100% 0, 100% 97%, 0 100%)); }
-@media (min-width: 901px) { .work > .obj[data-wornquad] .obj-head { left: 0; top: 0; } .work > .obj[data-wornquad] .props { max-width: var(--measure); } } /* the title sticker stays in the text column, off the picture on the right */
+@media (min-width: 1200px) { .work > .obj[data-wornquad] .obj-head { left: 0; top: 0; } .work > .obj[data-wornquad] .props { max-width: var(--measure); } } /* the title sticker stays in the text column, off the picture on the right */
 .work > .obj[data-wornquad] > :is(.obj-shot, .obj-clip) { transform: none; clip-path: var(--wk-shot-clip, inset(0)); }
 
 /* hover preview (js/site/work-preview.js): the row tilts, its clip plays over the picture, a game-page button shows under the text */
@@ -1020,7 +1028,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .work > .obj.is-peek { transform: rotate(var(--peek, 2.5deg)); }
 }
-@media (max-width: 900px) and (hover: hover) { .work > .obj.is-live > .obj-clip { opacity: 0.5; } }
+@media (max-width: 1199px) and (hover: hover) { .work > .obj.is-live > .obj-clip { opacity: 0.5; } }
 .obj > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none !important; z-index: 1; }
 .obj > .xp-red line { stroke: var(--type-red); stroke-width: 6px; stroke-linecap: butt; }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
@@ -1031,7 +1039,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 .xp-shape footer { background: none; padding: 0; }
 .xp-shape footer::before { content: none; }
 .xp-shape .foot-text { padding: 0; }
-@media (max-width: 640px) {
+@media (max-width: 1199px) {
   .xp-shape { padding: calc(var(--xp-dy) + 1.8rem) 1.2rem 5rem calc(var(--gutter) * 0.5 + 0.8rem); }
 }
 
@@ -1040,12 +1048,12 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 /* the slanted right edge cuts in as it goes down, so the pair is centred in the part of the shape that stays black under the contact column */
 /* desktop: the shape is one fixed 1660x780 px box (the 2000-wide look, matching Shapes.xpShape's constants), centred and cut off by the section when the window is narrower; never scaled or re-wrapped */
 .experience { overflow-x: clip; }
-@media (min-width: 641px) {
-  .xp-shape { box-sizing: border-box; width: 1660px; height: 780px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; column-gap: 80px; padding: 141px 546px 0 106px; }
+@media (min-width: 1200px) {
+  .xp-shape { box-sizing: border-box; width: 1660px; height: 780px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 141px 0 0 56px; }
 }
 .xp-shape .xp-tilt { flex: 0 1 clamp(22rem, 33vw, 36rem); min-width: min(22rem, 100%); max-width: 100%; text-align: left; }
 .xp-shape footer { flex: 0 1 clamp(16rem, 19vw, 22rem); min-width: min(16rem, 100%); padding: 0; text-align: left; }
-@media (min-width: 641px) { .xp-shape .xp-tilt { flex: 0 0 576px; } .xp-shape footer { flex: 0 0 352px; } }
+@media (min-width: 1200px) { .xp-shape .xp-tilt { flex: 0 0 576px; } .xp-shape footer { flex: 0 0 352px; } }
 /* the hover padding is pulled back out with a matching negative margin, so the text of every line starts at the column edge; links and dates never split */
 .xp-shape footer .foot-text a { margin: 0 -8px; white-space: nowrap; }
 .xp-shape footer p:not(.rights):nth-of-type(2) { white-space: nowrap; }
@@ -1060,7 +1068,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 .xp-shape footer p:not(.rights) { font-family: var(--bar-serif); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--type-cream); text-wrap: pretty; }
 .xp-shape footer .nm { white-space: nowrap; }
 .xp-shape footer .rights { font-size: 0.7rem; color: var(--type-dim); text-wrap: balance; }
-@media (max-width: 640px) {
+@media (max-width: 1199px) {
   .xp-shape { row-gap: 2.5rem; }
   .xp-shape .xp-tilt, .xp-shape footer { flex-basis: 100%; }
   .xp-shape .section-title { font-size: 1.7rem; }
@@ -1069,3 +1077,14 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 }
 .xp-shape .xp-when { grid-column: 1; grid-row: 1 / span 2; }
 .xp-shape .xp-what, .xp-shape .xp-note { grid-column: 2; }
+
+/* ---------------- the stage: Work + Experience drawn at one 1600px design width (js/site/stage.js sets --stage-s) ----------------
+   from 1200px up the block is laid out 1600px wide and zoomed evenly by --stage-s (0.75 to 1.2), so nothing re-slants or re-chips as the window changes;
+   below 1200px it is not scaled and the phone layouts apply. Everything vw/vh-based inside is fixed to its value at the design width. */
+.stage { overflow-x: clip; }
+@media (min-width: 1200px) {
+  .stage { zoom: var(--stage-s, 1); width: 1600px; margin-inline: auto; --gutter: 5rem; --type-page: 2.4rem; --type-section: 1.9rem; --type-card: 2rem; }
+  .stage .work, .stage .experience { padding-top: 9.5rem; padding-bottom: 0; background: none; }
+  .stage .experience { padding-top: 0; padding-bottom: 4.5rem; background: none; }   /* the shape hangs up over the last row's bottom corner: the section's own ground would paint over the row there */
+  .stage { background: none; }
+}

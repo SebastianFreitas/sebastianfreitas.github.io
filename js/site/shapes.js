@@ -225,7 +225,7 @@
       el.style.setProperty("--wk-hf", hf0.toFixed(2));
       /* then grown: the row's height at that factor is B; the padding is raised so the row lands at 1.3x B (1.2x on a phone; B already holds the wrapped meta, so about 1.5x the old row), the text staying centred */
       { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, B = el.offsetHeight, txt = B - 4.25 * rem * hf0;
-        if (B) el.style.setProperty("--wk-hf", Math.max(hf0, (B * (window.matchMedia("(max-width: 899px)").matches ? 1.2 : 1.3) - txt) / (4.25 * rem)).toFixed(3)); }
+        if (B) el.style.setProperty("--wk-hf", Math.max(hf0, (B * (window.matchMedia("(max-width: 1199px)").matches ? 1.2 : 1.3) - txt) / (4.25 * rem)).toFixed(3)); }
       /* the row's width as a share of its box, seeded per row (82-100%) */
       const wfRow = Math.min(1, [0.86, 1, 0.82, 0.94][i % 4] + (rng("wk-w-" + i)() - 0.5) * 0.06);
       const TXT = ".obj-id, h3, .obj-line, .props > div", MARGIN = 6;
@@ -249,7 +249,7 @@
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
         if (!el._wk || el._wk.W !== W) ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wk-" + v); });
         const S = el._wk && el._wk.W === W ? el._wk : (el._wk = { W: W, pt: 0, pb: 0, pl: 0, pr: 0, cpl: 0, cpr: 0 });
-        const narrow = window.matchMedia("(max-width: 899px)").matches, cs = getComputedStyle(el);
+        const narrow = window.matchMedia("(max-width: 1199px)").matches, cs = getComputedStyle(el);
         const gutL = parseFloat(cs.paddingLeft) - S.cpl, gutR = parseFloat(cs.paddingRight) - S.cpr;
         /* each edge sits its own px in from the box (never under 4, so none sits square). The left edge leans 10-20deg off vertical, alternating
            under/over 90 from row to row (the first row's side is seeded); its x range stays inside the gutter so the text is never cut, and on a phone
@@ -281,11 +281,12 @@
         const pad = Math.ceil(Math.max(rt, rb)) + 12;
         el.style.setProperty("--wk-pad", pad + "px");
         const all = wornQuad(el, red, [[xtl, ty + rt + ytl], [xtr, ty - rt + ytr], [xbr, by - rb], [xbl, by + rb]], W, "wk-wear-" + i, "--wk-clip", pad, 2, 0.1);
+        el._wkGeo = { xtl: xtl, ytl: ty + rt + ytl, xbl: xbl, ybl: by + rb, xbr: xbr, ybr: by - rb, ba: ba };   /* the Experience shape hangs from this bottom edge */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
         if (pass < 5) {
-          const er = el.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 };
+          const er = el.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 }, k = window.Stage ? window.Stage.s() : 1;   /* rects are screen px under the stage zoom, the quad is in design px */
           el.querySelectorAll(TXT).forEach(function (t) {
-            const r = t.getBoundingClientRect(), x0 = r.left - er.left, y0 = r.top - er.top;
+            const rr = t.getBoundingClientRect(), r = { width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
             for (let k = 0; k <= 6; k++) for (let s = 0; s < 4; s++) {
               const x = x0 + (s < 2 ? k / 6 * r.width : (s - 2) * r.width), y = y0 + (s < 2 ? s * r.height : k / 6 * r.height);
               const q = inside(all, x, y), lack = MARGIN - q.d;
@@ -305,8 +306,8 @@
         const shot = el.querySelector(":scope > .obj-shot");
         if (shot) {
           /* the picture is fully dark under the whole text block (its widest line, measured by range), then fades in */
-          const er2 = el.getBoundingClientRect(), rg = document.createRange(); let tx = 0;
-          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); tx = Math.max(tx, rg.getBoundingClientRect().right - er2.left); });
+          const er2 = el.getBoundingClientRect(), rg = document.createRange(), k2 = window.Stage ? window.Stage.s() : 1; let tx = 0;
+          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); tx = Math.max(tx, (rg.getBoundingClientRect().right - er2.left) / k2); });
           shot.style.setProperty("--wk-tx", Math.max(0, tx + 16 - shot.offsetLeft).toFixed(0) + "px");
         }
         if (shot) shot.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - shot.offsetLeft).toFixed(1) + "px " + (p[1] - shot.offsetTop).toFixed(1) + "px"; }).join(", ") + ")");
@@ -321,25 +322,54 @@
      a red line runs down the left edge from ~6% above its top. Phone: the long point becomes a mild slant. */
   function xpShape(el) {
     const red = redOf(el);
-    const XW = 1660, XH = 780, XANG = -3 * Math.PI / 180;      /* desktop: one fixed size and tilt (the 2000x1009 look), never rebuilt from the window */
+    const XW = 1660, XH = 780, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
     let mode = null;
+    /* desktop: the top edge is the last Work row's bottom edge moved down its normal by the row-to-row gap (perpendicular distance between two rows' parallel edges), same length;
+       everything is in design px (rects divided by the stage zoom), so the result is the same at every window size. Returns {W, dy, left, top} (left/top: where the box sits, page design px) or null */
+    function hang() {
+      const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), n = rows.length, last = n ? rows[n - 1] : null, g = last && last._wkGeo;
+      if (!g) return null;
+      const k = window.Stage ? window.Stage.s() : 1, r = last.getBoundingClientRect(), a = g.ba * Math.PI / 180, ta = Math.tan(a);
+      let gap = 3.4 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(a);
+      const prev = n > 1 ? rows[n - 2] : null, pg = prev && prev._wkGeo;
+      if (pg) {   /* the two rows' edges are what the eye sees */
+        const pr = prev.getBoundingClientRect(), ox = (r.left - pr.left) / k, oy = (r.top - pr.top) / k;   /* last row's origin in prev's coordinates */
+        const yline = pg.ybl - Math.tan(pg.ba * Math.PI / 180) * (ox + g.xtl - pg.xbl);
+        gap = (oy + g.ytl - yline) * Math.cos(pg.ba * Math.PI / 180);
+      }
+      gap *= 2;   /* the owner wants twice the row-to-row distance */
+      const sx = gap * Math.sin(a), sy = gap * Math.cos(a), lx = g.xbr - g.xbl, W = lx / 0.972;
+      return { W: W, dy: ta * lx, left: r.left / k + g.xbl + sx - 0.028 * W, top: r.top / k + g.ybr + sy };
+    }
     function draw() {
-      const phone = window.matchMedia("(max-width: 640px)").matches;
-      const W = phone ? el.offsetWidth : XW, H = phone ? el.offsetHeight : XH;
+      const phone = window.matchMedia("(max-width: 1199px)").matches, hg = phone ? null : hang();
+      const W = phone ? el.offsetWidth : hg ? hg.W : XW, H = phone ? el.offsetHeight : XH;
       if (!W || !H) return;
       mode = phone;
       let ang = XANG;
       if (phone) { const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"); ang = rows.length ? -WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180 : -3 * Math.PI / 180; }
+      if (hg) {
+        el.style.width = hg.W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.marginTop = "0px";
+        const er = el.getBoundingClientRect(), k = window.Stage ? window.Stage.s() : 1;
+        el.style.marginLeft = (hg.left - er.left / k).toFixed(1) + "px";
+        el.style.marginTop = (hg.top - er.top / k).toFixed(1) + "px";
+      } else { el.style.width = ""; el.style.left = ""; el.style.marginLeft = ""; el.style.marginTop = ""; }
       const x0 = 0.028 * W;
-      const dy = Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
+      const dy = hg ? hg.dy : Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
       const pts = phone ? [[x0, dy], [W, 0], [W, H], [0, by]] : [[x0, dy], [W, 0], [0.297 * W, H], [0, by]];
       wornQuad(el, red, pts, W, "xp-wear", "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
     }
-    function live() { if (window.matchMedia("(max-width: 640px)").matches || mode !== false) draw(); }
+    function live() { if (window.matchMedia("(max-width: 1199px)").matches || mode !== false) draw(); }
     draw();
-    if (window.ResizeObserver) new ResizeObserver(live).observe(el);
+    if (window.ResizeObserver) {
+      new ResizeObserver(live).observe(el);
+      const wk = document.querySelector(".work"), rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
+      const ro = new ResizeObserver(function () { if (!window.matchMedia("(max-width: 1199px)").matches) draw(); });
+      if (wk) ro.observe(wk);
+      if (rows.length) ro.observe(rows[rows.length - 1]);
+    }
     window.addEventListener("resize", live);
   }
 
