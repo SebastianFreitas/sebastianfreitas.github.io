@@ -1034,9 +1034,11 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 /* hover preview (js/site/work-preview.js): the row tilts, its clip plays over the picture, a game-page button shows under the text */
 .obj > .obj-clip { background: none; opacity: 0; transition: opacity 0.3s ease; }
 .obj > .obj-go { display: none; }
+.work > .obj > .xp-red { opacity: 0; transition: opacity 0.25s ease-out; }   /* the red bar shows only while the row is open (touch never opens one) */
 @media (hover: hover) {
   .work > .obj[data-wornquad] { transition: transform 0.25s ease-out; }
   .work > .obj[data-wornquad]:nth-of-type(even) { --peek: -2deg; }
+  .work > .obj.is-peek > .xp-red { opacity: 1; }
   .work > .obj.is-live > .obj-clip { opacity: 0.8; }
   .work > .obj.is-live > .obj-shot { opacity: 0; }
   .work > .obj.is-peek > .obj-go {

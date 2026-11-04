@@ -1199,7 +1199,7 @@ def flow_cc_win(browser, base):
 
 
 def flow_work_hover(browser, base):
-    """Hovering a Work row plays its clip and shows its button; leaving pauses the clip and hides the button; one row previews at a time."""
+    """Hovering a Work row plays its clip and shows its button; a row stays open until another row or leaving Work closes it; one row previews at a time."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     sel = lambda k: f"a.obj[href='projects/{k}.html']"
@@ -1227,10 +1227,24 @@ def flow_work_hover(browser, base):
     page.wait_for_timeout(600)
     a, b = read("voidscape"), read("conclusus")
     check("work-hover: only one row previews", a["paused"] and not a["goShown"] and not b["paused"] and b["peeking"] == 1, [a, b])
+    box = page.evaluate("""() => { const r = document.querySelector("a.obj[href='projects/conclusus.html']").getBoundingClientRect();
+      const n = document.querySelector("a.obj[href='projects/heavylight.html']").getBoundingClientRect();
+      return { x: r.left + r.width / 2, bottom: r.bottom, nextTop: n.top }; }""")
+    if box["nextTop"] - box["bottom"] > 4:
+        page.mouse.move(box["x"], (box["bottom"] + box["nextTop"]) / 2)
+        page.wait_for_timeout(500)
+        r = read("conclusus")
+        check("work-hover: leaving a row into a gap keeps it open", not r["paused"] and r["goShown"] and r["peeking"] == 1, r)
+    page.evaluate("""() => document.querySelector("a.obj[href='projects/heavylight.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
+    page.wait_for_timeout(500)
+    page.hover(sel("heavylight"))
+    page.wait_for_timeout(600)
+    a, b = read("conclusus"), read("heavylight")
+    check("work-hover: entering the next row swaps", a["paused"] and not a["goShown"] and b["peeking"] == 1 and b["goShown"], [a, b])
     page.mouse.move(2, 2)
     page.wait_for_timeout(500)
-    r = read("conclusus")
-    check("work-hover: leaving pauses the clip and hides the button", r["paused"] and not r["goShown"] and r["peeking"] == 0, r)
+    r = read("heavylight")
+    check("work-hover: leaving Work closes it", r["paused"] and not r["goShown"] and r["peeking"] == 0, r)
     ctx.close()
 
 

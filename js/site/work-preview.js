@@ -1,7 +1,7 @@
 /* ==========================================================================
    WORK PREVIEW — hover (or keyboard focus) on a Work row tilts it, plays its
-   clip where the picture is and shows the "game page" button; leaving puts
-   everything back. A click is just the row's own link. No preview on touch.
+   clip where the picture is, shows the "game page" button and the red bar; it
+   stays open until another row opens or the pointer leaves Work. A click is just the row's own link. No preview on touch.
    Also keeps .work.is-scrolling while the page scrolls (css/style.css holds
    the row hover then) and lands an old #<key> link on its row.
    ========================================================================== */
@@ -16,6 +16,7 @@ window.WorkPreview = (function () {
     scrollEnd = setTimeout(() => work.classList.remove("is-scrolling"), 150);
   }, { passive: true });
 
+  const stops = [];
   work.querySelectorAll(":scope > a.obj[data-wornquad]").forEach((row) => {
     const v = row.querySelector(":scope > video.obj-clip");
     if (!v) return;
@@ -31,6 +32,7 @@ window.WorkPreview = (function () {
     }
     const start = () => {
       if (!hoverOK.matches) return;
+      stops.forEach((f) => { if (f !== stop) f(); });   /* one row open at a time */
       row.classList.add("is-peek");
       if (v.preload === "none") v.preload = "auto";
       const p = v.play();
@@ -41,12 +43,15 @@ window.WorkPreview = (function () {
       v.pause();
       v.currentTime = 0;
     };
+    stops.push(stop);
     v.addEventListener("playing", () => { if (row.classList.contains("is-peek")) row.classList.add("is-live"); });
     row.addEventListener("pointerenter", (e) => { if (e.pointerType !== "touch") start(); });
-    row.addEventListener("pointerleave", stop);
     row.addEventListener("focus", () => { if (row.matches(":focus-visible")) start(); });
     row.addEventListener("blur", stop);
   });
+
+  /* a row stays open after the pointer leaves it: until another row opens or the pointer leaves Work */
+  work.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") stops.forEach((f) => f()); });
 
   /* an old #sector-zero style link scrolls to its row and opens nothing */
   const land = () => {
