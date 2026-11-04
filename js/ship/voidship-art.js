@@ -71,7 +71,7 @@ window.VoidshipArt = (function () {
   // sustainer nozzles: the engine block's rear chamfer corners (phase 2 onward)
   const SUST = [{ x: -0.585, y: 0.15 }, { x: -0.585, y: -0.15 }];
   // RCS nozzles: belly pair fires down (climb), deck pair fires up (descent)
-  const JETS = { belly: [{ x: 0.32, y: 0.083 }, { x: -0.30, y: 0.115 }], top: [{ x: 0.32, y: -0.101 }, { x: -0.34, y: -0.125 }] };
+  const JETS = { belly: [{ x: -0.30, y: 0.115 }], top: [{ x: -0.34, y: -0.125 }] };   // tail seats only: a mid-ship seat read as a third thruster beside the ring and tail jets
   // streamer roots: shard top-front corner, far wing tip, mast tip, near wing tip
   // the lower wing seen head-on: span coordinate u = (y - A_RY) / SPH along the wing, screen
   // depth WING_Z(u) off the centre line; the near wing tip (y 0.37) is at u = WING_UT
@@ -258,7 +258,7 @@ window.VoidshipArt = (function () {
       const d = flip.dx, kk = 0.55 + 0.45 * flipAmp, c = turn.c, s = turn.s, pt = ship.pitch || 0;
       const rx = 0.68 * c, ry = -0.015, ro = 0.13;   // the blade ring: centre and outer radius (voidship-prow.js)
       const ls = 0.2 + 0.8 * s, endOn = 1 - ss(0.15, 0.4, c);
-      const side = (sr, y, nx, seed) => {
+      const side = (sr, y, nx, seed, rk = 1) => {   // rk: the root's reach toward the viewer, in part radii
         const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr; if ((sg > 0) !== !!far) return;   // the near side lies toward local -x, so sg > 0 fires away from the viewer
         // end-on the base sits just outside the whole silhouette (disc, ring, hull, both wings) on its own side
         let we = -Infinity;
@@ -270,12 +270,12 @@ window.VoidshipArt = (function () {
         }
         const e = Math.max(sg * rx + ro * s, HW * s, we) + 0.01;
         // side-on it sits on the nozzle itself: the part's wall on that side, which faces the viewer
-        const bx = mix(nx + sg * ro * s, vx * e, endOn), by = mix(y, y + vy * e, endOn);
+        const bx = mix(nx + sg * rk * ro * s, vx * e, endOn), by = mix(y, y + vy * e, endOn);
         aim(bx, by, 1, Math.atan2(-vx, vy), seed, kk, ls);
       };
       const ty = d > 0 ? -0.08 : 0.08;
       // side-on each nozzle sits on its part (the ring's centre row, the engine's face), never on an outline in the air
-      side(-d, ry, rx, 1.7);
+      side(-d, far ? ry : ry - Math.sign(ty) * 0.8 * ro * (1 - endOn), rx, 1.7, far ? 1 : 0.6);   // facing the viewer it fires from the ring's rim (a true point on the hoop: sin 0.8, cos -0.6), off the blade
       side(d, ty, ENG_X * c, 4.1);   // on the engine's face a little off the drive, so end-on it stays clear of the ring flame
     };
     // 1. shard glow, behind everything
