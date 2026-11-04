@@ -1029,7 +1029,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 /* the Work rows: a worn quad in px (Shapes.workRows sets --wk-clip, the tilt is baked in), a red line down the left edge */
 .work > .obj.slab[data-wornquad]::before { inset: calc(var(--wk-pad, 0px) * -1) 0; transform: none; clip-path: var(--wk-clip, polygon(0 3%, 100% 0, 100% 97%, 0 100%)); }
 @media (min-width: 1200px) { .work > .obj[data-wornquad] .obj-head { left: 0; top: 0; } .work > .obj[data-wornquad] .props { max-width: var(--measure); } } /* the title sticker stays in the text column, off the picture on the right */
-.work > .obj[data-wornquad] > :is(.obj-shot, .obj-clip) { transform: none; clip-path: var(--wk-shot-clip, inset(0)); }
+.work > .obj[data-wornquad] > :is(.obj-shot, .obj-clip) { transform: none; top: calc(var(--wk-pad, 0px) * -1); height: calc(100% + var(--wk-pad, 0px) * 2); clip-path: var(--wk-shot-clip, inset(0)); }   /* as tall as the black shape (it reaches --wk-pad past the box), so the picture's edges are the shape's edges */
 
 /* hover preview (js/site/work-preview.js): the row tilts, its clip plays over the picture, a game-page button shows under the text */
 .obj > .obj-clip { background: none; opacity: 0; transition: opacity 0.3s ease; }
