@@ -243,6 +243,15 @@
       }
       function draw(pass) {
         pass = pass || 0;
+        /* desktop: the row grows to both sides (the text column keeps its size and moves left with the row): every row runs to 6% of the screen from the right edge and its left edge sits 6% in */
+        const wide = !window.matchMedia("(max-width: 1199px)").matches;
+        if (wide && pass === 0) {
+          const k0 = window.Stage ? window.Stage.s() : 1, wk = el.parentNode, ws = getComputedStyle(wk), cw = document.documentElement.clientWidth;
+          const natR = wk.getBoundingClientRect().right - parseFloat(ws.paddingRight) * k0, tgt = cw * 0.94;
+          const natL = wk.getBoundingClientRect().left + parseFloat(ws.paddingLeft) * k0;
+          el._wkExt = Math.max(0, (tgt - natR) / k0); el._wkExtL = Math.max(0, (natL - cw * 0.06) / k0);
+          el.style.marginRight = (-el._wkExt).toFixed(1) + "px"; el.style.marginLeft = (-el._wkExtL).toFixed(1) + "px";
+        } else if (!wide && (el._wkExt || el._wkExtL)) { el._wkExt = el._wkExtL = 0; el.style.marginRight = el.style.marginLeft = ""; }
         const W = el.offsetWidth, H = el.offsetHeight;
         if (!W || !H) return;
         const rnd = rng("wk-quad-" + i);
@@ -257,14 +266,14 @@
            The first row's top has no seam above, so its two top corners also move up or down on their own. Seam edges keep their angle, so the edge as a whole moves, never one corner alone */
         const px = function (lo, hi) { return lo + rnd() * (hi - lo); }, dyMax = Math.max(6, 0.04 * H);
         const ty = 4 + rnd() * dyMax, by = H - 4 - rnd() * dyMax, hq = by - ty;
-        const ls = (i % 2 ? 1 : -1) * (rng("wk-side")() < 0.5 ? 1 : -1), rs = rnd() < 0.5 ? 1 : -1;
+        const ls = (i % 2 ? 1 : -1) * (rng("wk-side")() < 0.5 ? 1 : -1), rs = narrow ? (rnd() < 0.5 ? 1 : -1) : -ls;   /* desktop: the right edge leans the way the left one does */
         /* the text side grows with the lean (left padding), and the right padding with the row's inset, so the leaning edge never cuts text */
         const angL = px(narrow ? 4 : 10, narrow ? 8 : 20), dL = Math.tan(angL * Math.PI / 180) * hq;
         const pl = Math.max(0, Math.ceil(dL + 12 - gutL)) + S.pl, lmax = Math.max(8, gutL + pl - 8);
         const dl = Math.min(dL, lmax - 4), atL = 4 + rnd() * Math.min(lmax - 4 - dl, narrow ? 12 : 1e9);
         const lx = ls > 0 ? [atL + dl, atL] : [atL, atL + dl];   /* [top x, bottom x] */
-        const angR = px(1, 4), dR = Math.tan(angR * Math.PI / 180) * hq;
-        const rm = Math.max(4 + dR / 2, (1 - (narrow ? wfRow - 0.07 : wfRow)) * W - (lx[0] + lx[1]) / 2);   /* right edge's mean inset: the row's width share minus the left inset */
+        const angR = narrow ? px(1, 4) : px(8, 14), dR = Math.tan(angR * Math.PI / 180) * hq;
+        const rm = Math.max(4 + dR / 2, (1 - (narrow ? wfRow - 0.07 : 1)) * W - (lx[0] + lx[1]) / 2);   /* right edge's mean inset: the row's width share minus the left inset */
         const pr = (narrow ? Math.max(0, Math.ceil(rm + dR / 2 + 8 - gutR)) : 0) + S.pr;
         if (pass < 5 && (Math.abs(pl - S.cpl) > 2 || Math.abs(pr - S.cpr) > 2)) {
           S.cpl = pl; S.cpr = pr; el.style.setProperty("--wk-pl", pl + "px"); el.style.setProperty("--wk-pr", pr + "px");
@@ -308,7 +317,8 @@
           /* the picture is fully dark under the whole text block (its widest line, measured by range), then fades in */
           const er2 = el.getBoundingClientRect(), rg = document.createRange(), k2 = window.Stage ? window.Stage.s() : 1; let tx = 0;
           el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); tx = Math.max(tx, (rg.getBoundingClientRect().right - er2.left) / k2); });
-          shot.style.setProperty("--wk-tx", Math.max(0, tx + 16 - shot.offsetLeft).toFixed(0) + "px");
+          el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.width = wide && (el._wkExt || el._wkExtL) ? (W - 0.2 * (W - el._wkExt - el._wkExtL)).toFixed(1) + "px" : ""; });   /* the picture keeps its place relative to the text: it grows with the row on both sides */
+          el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
         }
         if (shot) shot.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - shot.offsetLeft).toFixed(1) + "px " + (p[1] - shot.offsetTop).toFixed(1) + "px"; }).join(", ") + ")");
       }
@@ -339,7 +349,7 @@
       }
       gap *= 2;   /* the owner wants twice the row-to-row distance */
       const sx = gap * Math.sin(a), sy = gap * Math.cos(a), lx = g.xbr - g.xbl, W = lx / 0.972;
-      return { W: W, dy: ta * lx, left: r.left / k + g.xbl + sx - 0.028 * W, top: r.top / k + g.ybr + sy };
+      return { W: W, dy: ta * lx, left: Math.max(r.left / k + g.xbl + sx - 0.028 * W, 0.06 * document.documentElement.clientWidth / k), top: r.top / k + g.ybr + sy };
     }
     function draw() {
       const phone = window.matchMedia("(max-width: 1199px)").matches, hg = phone ? null : hang();
@@ -373,6 +383,8 @@
     window.addEventListener("resize", live);
   }
 
+  /* a browser without CSS zoom (Firefox before 126) never scales the stage (it stays 1600 wide), so the scale every rect is divided by is 1 there */
+  if (window.Stage && !(window.CSS && CSS.supports && CSS.supports("zoom", "1.2"))) window.Stage = { s: function () { return 1; } };
   function boot() { apply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

@@ -935,7 +935,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   height: 100%;
   width: 80%;
   object-fit: cover;
-  object-position: center;
+  object-position: var(--wk-pos, center);
   z-index: 0;
   opacity: 0.8;
   background: var(--petrol);
@@ -947,17 +947,40 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 
   /* transparent at the left edge, solid at the right */
   -webkit-mask-image: linear-gradient(to right,
-      transparent var(--wk-tx, 18%),
-      rgba(0,0,0,0.6) calc(var(--wk-tx, 18%) + 8%),
-      #000 calc(var(--wk-tx, 18%) + 20%));
+transparent calc(var(--wk-tx, 18%) + 0%),
+      rgba(0,0,0,0.020) calc(var(--wk-tx, 18%) + 3%),
+      rgba(0,0,0,0.074) calc(var(--wk-tx, 18%) + 6%),
+      rgba(0,0,0,0.156) calc(var(--wk-tx, 18%) + 9%),
+      rgba(0,0,0,0.259) calc(var(--wk-tx, 18%) + 12%),
+      rgba(0,0,0,0.376) calc(var(--wk-tx, 18%) + 15%),
+      rgba(0,0,0,0.500) calc(var(--wk-tx, 18%) + 18%),
+      rgba(0,0,0,0.624) calc(var(--wk-tx, 18%) + 21%),
+      rgba(0,0,0,0.741) calc(var(--wk-tx, 18%) + 24%),
+      rgba(0,0,0,0.844) calc(var(--wk-tx, 18%) + 27%),
+      rgba(0,0,0,0.926) calc(var(--wk-tx, 18%) + 30%),
+      rgba(0,0,0,0.980) calc(var(--wk-tx, 18%) + 33%),
+      #000 calc(var(--wk-tx, 18%) + 36%));
           mask-image: linear-gradient(to right,
-      transparent var(--wk-tx, 18%),
-      rgba(0,0,0,0.6) calc(var(--wk-tx, 18%) + 8%),
-      #000 calc(var(--wk-tx, 18%) + 20%));
+transparent calc(var(--wk-tx, 18%) + 0%),
+      rgba(0,0,0,0.020) calc(var(--wk-tx, 18%) + 3%),
+      rgba(0,0,0,0.074) calc(var(--wk-tx, 18%) + 6%),
+      rgba(0,0,0,0.156) calc(var(--wk-tx, 18%) + 9%),
+      rgba(0,0,0,0.259) calc(var(--wk-tx, 18%) + 12%),
+      rgba(0,0,0,0.376) calc(var(--wk-tx, 18%) + 15%),
+      rgba(0,0,0,0.500) calc(var(--wk-tx, 18%) + 18%),
+      rgba(0,0,0,0.624) calc(var(--wk-tx, 18%) + 21%),
+      rgba(0,0,0,0.741) calc(var(--wk-tx, 18%) + 24%),
+      rgba(0,0,0,0.844) calc(var(--wk-tx, 18%) + 27%),
+      rgba(0,0,0,0.926) calc(var(--wk-tx, 18%) + 30%),
+      rgba(0,0,0,0.980) calc(var(--wk-tx, 18%) + 33%),
+      #000 calc(var(--wk-tx, 18%) + 36%));
 
   transition: opacity 0.4s ease, transform 0.6s ease;
   will-change: opacity; /* own layer: the mask and clip raster once, the hover only fades it */
 }
+
+#sector-zero { --wk-pos: 50% 0%; }
+#heavylight { --wk-pos: 50% 100%; }
 
 /* the card lights up on hover — the artwork comes with it */
 /* not while the page scrolls (.work.is-scrolling, work-preview.js): a hover starting under the wheel would raster the masked, clipped artwork */
@@ -1083,8 +1106,9 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
    below 1200px it is not scaled and the phone layouts apply. Everything vw/vh-based inside is fixed to its value at the design width. */
 .stage { overflow-x: clip; }
 @media (min-width: 1200px) {
-  .stage { zoom: var(--stage-s, 1); width: 1600px; margin-inline: auto; --gutter: 5rem; --type-page: 2.4rem; --type-section: 1.9rem; --type-card: 2rem; }
+  .stage { overflow-x: visible; zoom: var(--stage-s, 1); width: 1600px; margin-inline: auto; --gutter: 5rem; --type-page: 2.4rem; --type-section: 1.9rem; --type-card: 2rem; }
   .stage .work, .stage .experience { padding-top: 9.5rem; padding-bottom: 0; background: none; }
   .stage .experience { padding-top: 0; padding-bottom: 4.5rem; background: none; }   /* the shape hangs up over the last row's bottom corner: the section's own ground would paint over the row there */
   .stage { background: none; }
+  .stage .experience { overflow-x: visible; }   /* the shape is placed from the window, not the 1600 box (no CSS zoom: the box is narrower than the window) */
 }
