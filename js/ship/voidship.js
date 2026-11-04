@@ -343,7 +343,7 @@ window.Voidship = (function () {
         ship.aimErr = ship.yaw !== ship.yawTarget ? Math.PI : Math.abs(err);
         const turnW = Math.PI / BASE.turnTime;
         const accel = BASE.pitchAccel * 6;
-        const wMax = Math.min(turnW, Math.sqrt(2 * accel * Math.abs(err)));
+        const wMax = Math.min(turnW * 0.4, Math.sqrt(2 * accel / 3 * Math.abs(err))); // the tilt is slower than the side flip: 100°/s top, gentler start
         ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -accel * dt, accel * dt);
         let stepP = ship.pitchW * dt;
         if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
