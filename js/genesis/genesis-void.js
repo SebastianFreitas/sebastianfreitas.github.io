@@ -552,11 +552,17 @@
     g.fillRect(x0, Math.round(railY(H)), x1 - x0, 2);
     if (gapSig) {
       const ry = Math.round(railY(H));
-      for (let i = 0; i < RAIL_GAPS.length; i++) {
-        if (!v && !railOpen(i)) continue;
-        const R = RAIL_GAPS[i];
-        if (sx(R.u1 + R.str) < x0 - 2 || sx(R.u0 - R.stl) > x1 + 2) continue;
-        clearGap(g, R, ry, sx);
+      // homepage: the end-state pattern repeats along the whole drawn rail (period = the gaps' own range)
+      const per = ROOT_U + 0.22 - SPAN_START_U;
+      const k0 = v ? Math.floor((startU - ROOT_U - 0.22) / per) : 0, k1 = v ? Math.ceil((endU - SPAN_START_U) / per) : 0;
+      for (let k = k0; k <= k1; k++) {
+        const sxk2 = k ? (u => sx(u + k * per)) : sx;
+        for (let i = 0; i < RAIL_GAPS.length; i++) {
+          if (!v && !railOpen(i)) continue;
+          const R = RAIL_GAPS[i];
+          if (sxk2(R.u1 + R.str) < x0 - 2 || sxk2(R.u0 - R.stl) > x1 + 2) continue;
+          clearGap(g, R, ry, sxk2);
+        }
       }
     }
 
