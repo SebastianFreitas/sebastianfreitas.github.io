@@ -104,10 +104,9 @@
     B.log.setMax(B.phone ? 3 : 6);
     B.HIT = HIT_BASE * (B.phone ? 1.7 : 1);
     if (window.Voidship) window.Voidship.BASE.size = B.phone ? Math.round(SHIP_SIZE / PHONE_ZOOM) : SHIP_SIZE;
-    if (window.Instruments) Instruments.setCompact(B.phone);
   }
   B.syncPhone = syncPhone;
-  function onPhoneChange() { syncPhone(); if (window.__bridgeRefit) window.__bridgeRefit(); }
+  function onPhoneChange() { syncPhone(); }
   if (phoneQ.addEventListener) phoneQ.addEventListener("change", onPhoneChange);
   else phoneQ.addListener(onPhoneChange);
   const rotateEl = document.getElementById("bridge-rotate");
@@ -275,6 +274,7 @@
       Voidship.resize(B.ship, B.W, B.H);
       B.ship.bob = 0;
     }
+    document.dispatchEvent(new Event("bridge:arrive"));
   }
   B.begin = begin;
 

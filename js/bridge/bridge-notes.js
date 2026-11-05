@@ -88,9 +88,7 @@
     const p = B.markScreen(mark);
     const pw = el2._pw, ph = el2._ph;
     const pad = 50, edge = 20;   // clear of the beacon's hover label
-    /* the right instrument bank is painted over the hero's right edge: the plate ends left of it */
-    const bankW = parseFloat(host.style.getPropertyValue("--inst-w")) || 0;
-    const rMax = B.W - bankW - edge;
+    const rMax = B.W - edge;
     let gap = pad, right = p.x + pad + pw < rMax;
     if (!right && p.x - pad - pw < edge) {
       /* neither side fits: take the one with more room and drop the pad, so the plate sits as clear of the beacon as it can */
@@ -103,14 +101,6 @@
     /* torn on all four sides: stay a tear-depth clear of the top bar and the bottom edge */
     const topMin = 100, botGap = 28;
     top = Math.min(B.H - ph - botGap, Math.max(topMin, top));
-    /* keep off the HUD prompt: slide above it (or below) when the two overlap */
-    const hr = hintEl && !hintEl.classList.contains("retired") ? hintEl.getBoundingClientRect() : null;
-    if (hr && hr.width && left < hr.right + 12 && left + pw > hr.left - 12 && top < hr.bottom + 12 && top + ph > hr.top - 12) {
-      if (hr.top - 14 - ph >= topMin) top = hr.top - 14 - ph;
-      else if (hr.bottom + 14 + ph <= B.H - botGap) top = hr.bottom + 14;
-      else if (hr.right + 14 + pw < rMax) left = hr.right + 14;
-      else left = Math.max(edge, Math.min(rMax - pw, hr.left - 14 - pw));
-    }
     left = Math.round(left); top = Math.round(top);
     if (el2._left !== left) { el2.style.left = left + "px"; el2._left = left; if (el2._red) el2._red.style.left = left + "px"; }
     if (el2._top  !== top)  { el2.style.top  = top + "px";  el2._top  = top; if (el2._red) el2._red.style.top = top + "px"; }
@@ -225,25 +215,14 @@
     { id: "beacon", text: "Click a beacon to set course — contact files it" },
     { id: "fuel",   text: "Fuel refills when you stop burning" },
   ];
-  const hintEl = document.getElementById("bridge-hint");
   let hintsDone = {};
   try { hintsDone = JSON.parse(Util.read(localStorage, HINT_KEY) || "{}"); } catch (e) {}
 
-  function paintHint() {
-    if (!hintEl) return;
-    const next = HINT_STEPS.find(h => !hintsDone[h.id]);
-    if (!next) { hintEl.classList.add("retired"); return; }
-    if (hintEl.textContent !== next.text) {
-      hintEl.classList.add("fading");
-      setTimeout(() => { hintEl.textContent = next.text; hintEl.classList.remove("fading"); }, 260);
-    }
-  }
   function hintDone(id) {
     if (hintsDone[id]) return;
     hintsDone[id] = true;
     Util.write(localStorage, HINT_KEY, JSON.stringify(hintsDone));
-    paintHint();
   }
   B.hintDone = hintDone;
-  paintHint();
+  B.hintNow = () => { const h = HINT_STEPS.find(h => !hintsDone[h.id]); return h ? h.id : null; };
 })();

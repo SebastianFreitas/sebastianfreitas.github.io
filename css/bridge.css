@@ -36,33 +36,11 @@
   opacity: 0; transition: opacity 0.6s;
 }
 .bridge-hero.live .bridge-hud { opacity: 1; }
-/* ---- the readout ---- */
-#bridge-term {
-  left: 2rem; bottom: var(--hud-floor); width: auto;
-  overflow: visible;
-}
-.tinst-wrap { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: visible; }
-.tinst-ctl {
-  position: absolute; right: 0; top: -0.75rem; z-index: 2;
-  display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 0.25s;
-}
-.tinst-wrap:hover .tinst-ctl,
-.tinst-wrap:focus-within .tinst-ctl { opacity: 1; }
-.tinst-ctl button {
-  font-family: var(--mono); font-size: 0.7rem; line-height: 1;
-  width: 18px; height: 18px; padding: 0; cursor: pointer;
-  color: var(--sage-dim); background: rgb(var(--ink-rgb) / 0.8);
-  border: 1px solid rgba(255,255,255,0.09);
-}
-.tinst-ctl button:hover { color: var(--type-cream); border-color: rgb(228 221 198 / 0.5); }
-#bridge-term .tinst {
-  display: block; width: auto; height: auto;
-  background: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-}
-.tinst-wrap { pointer-events: none; }
-.tinst-ctl { pointer-events: auto; }
+/* HUD C25: one canvas over the bridge (no HUD on a phone, D25) */
+#bhud { display: block; position: absolute; left: 0; top: 0; z-index: 10; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
+.bridge-hero.live #bhud { opacity: 1; }
+.bridge-hero.is-cinematic #bhud { opacity: 0 !important; visibility: hidden !important; }
+@media (max-height: 520px) and (pointer: coarse) { #bhud { display: none; } }
 /* HUD palette for the log and the navigation bar. The default is today's
    look; html[data-hud] (set by js/hud/instruments.js) swaps it. The canvas
    tiles have their own table there. */
@@ -104,131 +82,6 @@ html[data-hud="violet"] {
   --hud-rule: #352c40; --hud-rule-hover: #54466a; --hud-mk: #5a4a72;
   --hud-hover: #f6f0fb; --hud-label: #8f82a3;
 }
-/* log: sits on the span strip, writing left to right like a terminal */
-#bridge-log {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  bottom: calc(var(--hud-stack) + 0.4rem);
-  width: min(34rem, 38vw);
-  max-width: calc(100vw - 4rem);
-  z-index: 11;
-}
-#bridge-log .tlog {
-  display: flex; flex-direction: column; justify-content: flex-end;
-  align-items: flex-start;
-  gap: 0.28rem; margin: 0;
-  position: relative;
-  padding: 0.45rem 0.75rem 0.5rem;
-  background: linear-gradient(to top, rgba(9,13,15,0.72) 0%, rgba(9,13,15,0.18) 70%, transparent 100%);
-  text-align: left;
-}
-#bridge-log .tlog::before {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 1px;
-  background: var(--hud-quiet);
-}
-#bridge-log .tlog::after {
-  content: "";
-  position: absolute; left: 0; bottom: -1px;
-  width: 2.2rem; height: 2px;
-  transform: none;
-  background: var(--hud-main);
-}
-#bridge-log .tl {
-  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
-  text-transform: lowercase; color: var(--hud-quiet); line-height: 1.5;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
-  animation: tlIn 0.45s ease both;
-}
-#bridge-log .tl::before { content: "> "; color: var(--hud-quiet); }
-#bridge-log .tl:last-child { color: var(--hud-num); }
-#bridge-log .tl.loc:last-child  { color: var(--hud-quiet); }
-#bridge-log .tl.good { color: var(--hud-main); }
-/* tiers: a reading that bent, and one that cannot be true.
-   Same specificity as .tl:last-child above, so order decides. */
-#bridge-log .tl.warn { color: var(--hud-main); }
-#bridge-log .tl.err  { color: var(--hud-main); }
-#bridge-log .tl.crit { color: var(--hud-main); font-weight: 600; }
-#bridge-log .tl.rep  { color: var(--hud-quiet); }
-#bridge-log .tl.good::before { content: "+ "; color: inherit; }
-#bridge-log .tl.warn::before { content: "! "; color: var(--hud-red); }
-#bridge-log .tl.err::before  { content: "!! "; color: var(--hud-red); }
-#bridge-log .tl.crit::before { content: "!!! "; color: var(--hud-red); }
-#bridge-log .tl.rep::before  { content: "~ "; color: inherit; }
-#bridge-log .tl.warn {
-  box-shadow: inset 1px 0 0 var(--hud-red);
-  padding-left: 0.35rem; margin-left: -0.35rem;
-}
-#bridge-log .tl.err {
-  background: rgb(var(--hud-err-rgb) / 0.07);
-  box-shadow: inset 2px 0 0 rgb(var(--hud-err-rgb) / 0.5);
-  padding-left: 0.35rem; margin-left: -0.35rem;
-  animation: tlIn 0.45s ease both;
-}
-/* a strike: the hull actually lost something */
-#bridge-log .tl.crit {
-  background: rgb(var(--hud-err-rgb) / 0.09);
-  box-shadow: inset 1px 0 0 var(--hud-red);
-  padding-left: 0.35rem; margin-left: -0.35rem;
-  animation: tlIn 0.45s ease both;
-}
-/* damage control, working */
-#bridge-log .tl.rep {
-  background: rgb(var(--hud-rep-rgb) / 0.07);
-  box-shadow: inset 2px 0 0 rgb(var(--hud-rep-rgb) / 0.35);
-  padding-left: 0.35rem; margin-left: -0.35rem;
-}
-/* numbers carry the weight — they're the part worth reading */
-#bridge-log .tl .n { font-weight: 700; color: var(--hud-num); }
-#bridge-log .tl.loc .n,
-#bridge-log .tl.good .n,
-#bridge-log .tl.rep .n,
-#bridge-log .tl.warn .n,
-#bridge-log .tl.err .n,
-#bridge-log .tl.crit .n { color: inherit; }
-#bridge-log .tl .caret { color: var(--hud-main); opacity: 0.6; }
-@keyframes tlIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-#bridge-map { left: 50%; transform: translateX(-50%); bottom: var(--hud-floor); width: min(34rem, 38vw); }
-.bridge-hero.live #bridge-map { pointer-events: auto; }
-#bridge-map .track {
-  position: relative; height: 18px; margin-bottom: 0.3rem;
-  cursor: pointer; touch-action: none;
-}
-/* the visible line sits inside a taller, easier-to-hit strip */
-#bridge-map .track::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 50%;
-  height: 1px; background: var(--hud-rule);
-}
-#bridge-map .track:hover::before { background: var(--hud-rule-hover); }
-#bridge-map .mk { position: absolute; top: 50%; margin-top: -3px; width: 1px; height: 7px; background: var(--hud-mk); }
-#bridge-map .you {
-  position: absolute; top: 50%; margin-top: -7px;
-  width: 2px; height: 14px; background: var(--hud-main);
-}
-#bridge-map .ghost {
-  position: absolute; top: 50%; margin-top: -7px;
-  width: 1px; height: 14px; background: rgb(var(--hud-lamp-rgb) / 0.45);
-  opacity: 0; transition: opacity 0.15s;
-}
-#bridge-map .track:hover .ghost { opacity: 1; }
-#bridge-map .labels { display: flex; justify-content: space-between; font-size: 0.54rem; letter-spacing: 0.16em; color: var(--hud-label); }
-#bridge-hint {
-  left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--hud-stack) + 10.5rem); /* clears a full 6-line log (~9.8rem) */
-  opacity: 0; transition: opacity 0.6s;
-}
-#bridge-hint { isolation: isolate; padding: 0.7rem 1.4rem; color: var(--type-cream); white-space: nowrap; }
-#bridge-hint::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape-even);
-  pointer-events: none;
-}
-.bridge-hero.live #bridge-hint { opacity: 1; }
-.bridge-hero.live.moving #bridge-hint { opacity: 0; }
 /* ---- landmark notes: positioned next to their beacon by JS ---- */
 .bnote {
   --sage: #d6d0bd; --sage-rgb: 214 208 189; --sage-dim: #8d9a9a; --brick: #8d9a9a;
@@ -467,19 +320,6 @@ html[data-hud="violet"] {
 @media (max-width: 640px) {
   #bridge-modes { top: 8.2rem; }
 }
-#bridge-sys {
-  right: 2rem; left: auto; bottom: var(--hud-floor);
-  width: auto; max-width: 46vw;
-}
-#bridge-sys .tinst {
-  display: block; width: auto; height: auto;
-  background: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-}
-#bridge-sys .tinst-wrap { padding-top: 0; border-top: none; }
-/* the fuel and res canvases beside the log: js/hud/side.js sets left, bottom and height */
-.bridge-side { display: none; width: 240px; z-index: 11; }
 /* ---- cursor ----
    left/top must be set: a fixed element with no offsets keeps its
    static-flow position, so translate() would move it from wherever
@@ -498,7 +338,6 @@ html[data-hud="violet"] {
 @media (max-width: 900px), (max-height: 520px) and (pointer: coarse) {
   .bridge-hero { cursor: auto; }
 #bridge-cursor { display: none; }
-#bridge-map { width: calc(100vw - 2.5rem); }
 }
 @media (prefers-reduced-motion: reduce) {
   .bridge-hero { cursor: auto; }
@@ -508,27 +347,6 @@ html[data-hud="violet"] {
    Loading, markers, minimap ticks, rights line
    ========================================================= */
 
-/* the ticks that mark something worth stopping at */
-#bridge-map .mk.poi {
-  margin-top: -9px; height: 18px; width: 2px;
-  background: rgb(var(--hud-lamp-rgb) / 0.55);
-  pointer-events: auto; cursor: pointer;
-}
-#bridge-map .mk.poi::after {
-  content: ""; position: absolute; left: -2px; top: -6px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: rgb(var(--hud-lamp-rgb) / 0.75);
-}
-#bridge-map .mk.poi:hover { background: var(--hud-hover); }
-#bridge-map .mk.poi:hover::after { background: var(--hud-hover); }
-/* read: still there, no longer asking for attention */
-#bridge-map .mk.poi.read {
-  background: rgb(var(--hud-read-rgb) / 0.5); box-shadow: none; height: 12px; margin-top: -6px;
-}
-#bridge-map .mk.poi.read::after {
-  background: rgb(var(--hud-read-rgb) / 0.6); box-shadow: none; width: 4px; height: 4px; left: -1px; top: -5px;
-}
-#bridge-map .mk.poi.read:hover { background: var(--hud-num); }
 /* cursor over something inspectable */
 #bridge-cursor.over {
   width: 40px; height: 40px; margin: -20px 0 0 -20px;
@@ -562,26 +380,9 @@ footer .rights {
 /* burning the voidship */
 .bridge-hero { cursor: crosshair; }
 .bridge-hero.burning { cursor: crosshair; }
-/* span strip is a readout — not a jump drive */
-#bridge-map .track.readonly,
-#bridge-map .track.readonly .mk.poi {
-  cursor: default;
-  pointer-events: none;
-}
-#bridge-map .track.readonly { pointer-events: auto; } /* still show ghost on hover */
-#bridge-map .track.readonly .mk.poi { pointer-events: none; }
 @media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
-  #bridge-term { left: 1.25rem; }
-  #bridge-log, #bridge-map { width: calc(100vw - 2.5rem); }
   .bridge-scroll { right: 0.6rem; }
 }
-@media (max-width: 1100px) {
-  #bridge-sys .tinst-wrap { display: none; }
-}
-/* the hint names one thing at a time, then stops appearing */
-#bridge-hint { transition: opacity 0.5s ease; }
-#bridge-hint.fading { opacity: 0 !important; }
-#bridge-hint.retired { display: none; }
 /* held while a level lands */
 .bridge-hero.held { cursor: default; }
 .bridge-hero.held .bnote { transition: opacity .4s ease; }
@@ -591,7 +392,6 @@ footer .rights {
 .bridge-hero.warping { cursor: default; }
 .bridge-hero.warping .bnote { opacity: 0 !important; visibility: hidden !important; }
 .bridge-hero.warping #bridge-modes .modes-panel { opacity: 0.35; pointer-events: none; }
-.bridge-hero.warping #bridge-hint { opacity: 0 !important; }
 
 /* ---- genesis: first Void visit, or Intro Cutscene ------------
    HUD steps out. Copy sits at the top so it never covers the
@@ -799,43 +599,6 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
 @media (max-height: 520px) and (pointer: coarse) {
   .bridge-hero { --hud-floor: 0.6rem; --span-h: 1.9rem; }
 
-  /* the bank auto-fits to the viewport here, so the ± buttons have no job */
-  #bridge-term .tinst-ctl { display: none; }
-  #bridge-term { left: 0.75rem; }
-  #bridge-sys  { right: 0.75rem; max-width: none; }
-
-  /* a landscape phone is under 1100px wide, so the rule above would drop the
-     right bank — but there is room for it here, and losing half the cockpit
-     is the one thing this layout cannot afford. instruments.js watches for
-     it coming back (the ResizeObserver in mountSys) and repaints. */
-  #bridge-sys .tinst-wrap { display: flex; }
-
-  /* --inst-h is published by bridge.js from the bank's real painted height,
-     so the log floats exactly clear of the banks at whatever scale they got */
-  #bridge-log {
-    width: calc(100vw - 1.5rem);
-    max-width: none;
-    bottom: calc(var(--hud-stack) + var(--inst-h, 9rem) + 0.3rem);
-  }
-  /* three lines and no more — bridge.js caps LOG_MAX to match, and the
-     max-height is the belt to that braces: an overlong line that wraps
-     still cannot push the panel up into the header */
-  #bridge-log .tlog {
-    max-height: 3.6rem; overflow: hidden;
-    padding: 0.25rem 0.5rem 0.3rem; gap: 0.14rem;
-    background: none;
-  }
-  /* the 1px rule under the log reads as a scratch across the whole screen
-     once the panel is full-bleed — the lamp tick alone marks the log */
-  #bridge-log .tlog::before { display: none; }
-  #bridge-log .tlog::after { left: 0.5rem; bottom: 0; width: 1.4rem; }
-  #bridge-log .tl { font-size: 0.62rem; line-height: 1.35; }
-
-  /* the ruler shares the bottom row with the banks, so it takes only the
-     open span between them — --inst-w is the bank's real painted width */
-  #bridge-map { width: calc(100vw - 2 * var(--inst-w, 0px) - 3rem); }
-  #bridge-map .labels { font-size: 0.52rem; }
-  #bridge-hint { display: none; }
 
   /* the two banks and the span leave no margin the cue can have without
      landing on top of something. The top bar's own Work link and the
@@ -845,8 +608,8 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   /* the log is at the top and the banks fill both lower corners, so the note takes the open middle
      between the banks, above the ruler and under the log; scrolls inside if long */
   .bnote {
-    left: calc(var(--inst-w, 9rem) + 1rem) !important;
-    right: calc(var(--inst-w, 9rem) + 1rem) !important;
+    left: 1rem !important;
+    right: 1rem !important;
     /* the whole height between the top bar and the ruler, less a tear-deep gap each end (the tear border is inside the room) */
     --note-room: calc(100svh - var(--hud-stack) - 1.2rem - 9.6rem);   /* the extra 3rem keeps the plate under the beacon's label */
     bottom: calc(var(--hud-stack) + 1.2rem) !important;

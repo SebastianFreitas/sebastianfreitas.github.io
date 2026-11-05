@@ -1,116 +1,20 @@
 /* ===========================================================
    INSTRUMENTS
 
-   Two banks, four tiles each. Same chrome, one readings feed.
-
-     NAV (left)
-       RADAR   contacts — beacons by bearing/range, nearest callout
-       SIGNAL  field    — local spectrum, chaos, unformed
-       DRIVE   tanks    — fuel, thrust, cruise, burn budget
-       NAV     course   — speed, bearing, span, lock status
-
-     SYS (right)
-       ECLSS   cabin    — O2, CO2, pressure, humidity
-       RAD     dose     — mSv/h, magnetometer
-       HULL    skin     — micro-impacts, hull/cabin temp, HX
-       PWR     bus      — loads, chamber, IMU
-
-   Feed a readings object each frame; it owns everything else.
-
-   What each tile draws lives in tiles-nav.js (radar, signal, drive, nav)
-   and tiles-sys.js (tickSys, eclss, rad, hull, bus); this file owns the
-   banks, the layout, the alarms and the paint loop.
+   What is left of the tile HUD: the module clock, the value alarms
+   (tickAlarms), the critical-line pulse and the readings tiles-sys.js
+   integrates. The canvas HUD is hud-c25.js; this file draws nothing.
    =========================================================== */
 
 window.Instruments = (function () {
 
-  /* the HUD's colours, "r,g,b" strings. The roles below are the active
-     palette: setPalette() (at the bottom) swaps them and the tiles re-read
-     them through F.onPalette. LAMP is the main readout colour, READ the
-     tile numbers and readings, COLD the
-     locked / label colour, DIM the quiet one; CLAIMED a claimed contact, GLINT the radar head, VEIL the glare wash. */
-  const PALETTES = {
-    current: {
-      LAMP: "245,208,107", READ: "245,208,107", COLD: "143,176,184", BAR: "143,176,184", DIM: "125,135,131",
-      BAD: "196,74,68", WARN: "229,166,60", GOOD: "120,170,140",
-      CLAIMED: "150,164,160", GLINT: "255,255,255", VEIL: "214,222,226",
-    },
-    site: {
-      LAMP: "228,221,198", READ: "228,221,198", COLD: "176,167,143", BAR: "176,167,143", DIM: "176,167,143",
-      BAD: "196,74,68", WARN: "214,140,70", GOOD: "228,221,198",
-      CLAIMED: "150,160,158", GLINT: "246,240,218", VEIL: "228,221,198",
-    },
-    verdigris: {
-      LAMP: "86,170,146", READ: "222,214,190", COLD: "222,214,190", BAR: "86,170,146", DIM: "112,138,128",
-      BAD: "205,78,70", WARN: "229,166,60", GOOD: "160,200,150",
-      CLAIMED: "140,160,150", GLINT: "255,255,250", VEIL: "214,226,220",
-    },
-    violet: {
-      LAMP: "190,158,220", READ: "226,214,242", COLD: "214,200,232", BAR: "190,158,220", DIM: "150,140,166",
-      BAD: "204,72,84", WARN: "229,166,60", GOOD: "190,158,220",
-      CLAIMED: "150,142,164", GLINT: "255,252,255", VEIL: "222,214,232",
-    },
-  };
-  let LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL;
+  let t = 0;
 
-  const CELL_W = 168, CELL_H = 122, GAP = 4;
-  const PANELS = [
-    { key: "radar",  col: 0, row: 0, label: "RADAR"  },
-    { key: "pull",   col: 1, row: 0, label: "PULL"   },
-    { key: "signal", col: 0, row: 1, label: "SIGNAL" },
-    { key: "rec",    col: 1, row: 1, label: "NAV"    },
-  ];
-  const SYS_PANELS = [
-    { key: "eclss", col: 0, row: 0, label: "ECLSS" },
-    { key: "rad",   col: 1, row: 0, label: "RAD"   },
-    { key: "hull",  col: 0, row: 1, label: "HULL"  },
-    { key: "bus",   col: 1, row: 1, label: "PWR"   },
-  ];
-  PANELS.forEach(p => { p.w = CELL_W; p.h = CELL_H; });
-  SYS_PANELS.forEach(p => { p.w = CELL_W; p.h = CELL_H; });
-
-  /* A phone has room for two tiles a side, stacked in one column. These are
-     derived from the banks above by key, so a tile edited up there is the
-     same tile down here — there is no second set of instruments to keep. */
-  const COMPACT_KEYS     = ["radar", "phase"];
-  const COMPACT_SYS_KEYS = ["eclss", "hull"];
-  const oneColumn = (src, keys) => keys.map((k, i) => {
-    const p = src.find(q => q.key === k);
-    return { key: p.key, label: p.label, col: 0, row: i, w: CELL_W, h: CELL_H };
-  });
-  /* where the side instruments have no room, fuel returns as a tile in the
-     SIGNAL slot (key "phase", which the fuel alarm already lights) */
-  const PANELS_FUEL = PANELS.map(p => p.key === "signal" ? { ...p, key: "phase", label: "FUEL" } : p);
-  const COMPACT     = oneColumn(PANELS_FUEL, COMPACT_KEYS);
-  const COMPACT_SYS = oneColumn(SYS_PANELS, COMPACT_SYS_KEYS);
-  let compact = false;
-  let fuelTile = false;
-  const navPanels = () => compact ? COMPACT : fuelTile ? PANELS_FUEL : PANELS;
-  const sysPanels = () => compact ? COMPACT_SYS : SYS_PANELS;
-
-  /* both banks always have the same shape (2x2 desktop, 1x2 compact), so the
-     NAV set alone tells us the grid size */
-  const cols = ps => ps.reduce((n, p) => Math.max(n, p.col + 1), 1);
-  const rows = ps => ps.reduce((n, p) => Math.max(n, p.row + 1), 1);
-  const gap = () => GAP;
-  const gridW = () => cols(navPanels()) * CELL_W + (cols(navPanels()) - 1) * gap();
-  const gridHp = () => rows(navPanels()) * CELL_H + (rows(navPanels()) - 1) * gap();
-  /* both banks end 5px under the lower tile row (padding only; no line is drawn there) */
-  const BASE_PAD = 5;
-  const gridH = () => gridHp() + BASE_PAD;
-
-  let cv, ctx, dpr = 1, t = 0;
-  let focusKey = null;
-  let sysCv = null, sysCtx = null, sysFocus = null;
-  let sysShown = true, lastR = null;   // SYS bank displayed? / last readings, for a repaint on show
-
-  /* the banks are small and slow-moving: paint them about 20 times a second
-     (every 3rd frame at 60 fps), handing each paint the time since the last */
+  /* the alarms are slow: step them about 20 times a second
+     (every 3rd frame at 60 fps), handing each step the time since the last */
   const PAINT_STEP = 0.045;
-  let paintAcc = PAINT_STEP;   // first draw paints at once
-  let uiScale = 1;
-  let tiles = null;            // the eight tiles, merged from tiles-nav.js and tiles-sys.js
-  let tilesWarned = false;
+  let paintAcc = PAINT_STEP;   // first draw steps at once
+  let tiles = null;            // registered by tiles-sys.js
 
   /* Alarm — master caution. A reading must hold to be believed. Every fault
      lights at once; among warnings only one may show at a time, and the
@@ -138,241 +42,15 @@ window.Instruments = (function () {
   let lit = {};                 // key -> level (A_WARN/A_ERR) shown now; absent = off
   let alarmQuiet = 0;           // seconds of hush still owed
 
-  function bindFocus(canvas, panelsFn, getter, setter) {
-    canvas.addEventListener("pointerdown", e => {
-      e.stopPropagation();
-      const box = canvas.getBoundingClientRect();
-      if (getter()) { setter(null); return; }
-      const px = (e.clientX - box.left) / box.width  * gridW();
-      const py = (e.clientY - box.top)  / box.height * gridH();
-      for (const p of panelsFn()) {
-        const x0 = p.col * (CELL_W + gap()), y0 = p.row * (CELL_H + gap());
-        if (px >= x0 && px <= x0 + CELL_W && py >= y0 && py <= y0 + CELL_H) {
-          setter(p.key); return;
-        }
-      }
-    });
-  }
-
-  function fitCanvas(canvas, context) {
-    if (!canvas || !context) return;
-    /* the phone draws the bank at well under 1:1, so its 7px labels land on a
-       handful of device pixels: let a 3x phone screen actually spend them.
-       The desktop bank is large and animating, and keeps its cap of 2. */
-    dpr = Math.min(devicePixelRatio || 1, compact ? 3 : 2);
-    const fit = uiScale;
-    const dispW = Math.round(gridW() * fit);
-    const dispH = Math.round(gridH() * fit);
-    canvas.style.width = dispW + "px";
-    canvas.style.height = dispH + "px";
-    canvas.width = Math.max(1, Math.round(gridW() * dpr * fit));
-    canvas.height = Math.max(1, Math.round(gridH() * dpr * fit));
-    context.setTransform(dpr * fit, 0, 0, dpr * fit, 0, 0);
-    context.imageSmoothingEnabled = true;
-    curFont = null;
-  }
-
-  /* the world shows through every tile, so each string gets a thin near-black
-     outline under its fill: one strokeText per fillText, no shadowBlur.
-     Done once per context so the tiles keep calling fillText. */
-  function halo(c) {
-    if (c.haloed) return c;
-    const fill = c.fillText;
-    c.fillText = function (s, x, y, w) {
-      const lw = this.lineWidth, ss = this.strokeStyle, lj = this.lineJoin;
-      this.lineWidth = 2.5; this.lineJoin = "round"; this.strokeStyle = "rgba(4,7,8,0.85)";
-      this.strokeText(s, x, y, w);
-      this.lineWidth = lw; this.lineJoin = lj; this.strokeStyle = ss;
-      fill.call(this, s, x, y, w);
-    };
-    c.haloed = true;
-    return c;
-  }
-
-  function mount(canvas) {
-    cv = canvas;
-    if (!cv) return;
-    ctx = halo(cv.getContext("2d"));
-    curFont = null;
-    fitCanvas(cv, ctx);
-    bindFocus(cv, navPanels, () => focusKey, k => { focusKey = k; repaint(); });
-    addEventListener("resize", resize);
-    // the static layer has label text baked in: redraw it once web fonts arrive
-    if (document.fonts) {
-      const refont = () => { statics.clear(); repaint(); };
-      document.fonts.addEventListener("loadingdone", refont);
-      if (document.fonts.ready) document.fonts.ready.then(refont);
-    }
-  }
-
-  function mountSys(canvas) {
-    sysCv = canvas;
-    if (!sysCv) return;
-    sysCtx = halo(sysCv.getContext("2d"));
-    fitCanvas(sysCv, sysCtx);
-    bindFocus(sysCv, sysPanels, () => sysFocus, k => { sysFocus = k; repaint(); });
-    // hidden below 1100px by bridge.css (display: none): a zero-size box
-    if ("ResizeObserver" in window) {
-      new ResizeObserver(es => {
-        const box = es[es.length - 1].contentRect;
-        const shown = box.width > 0 && box.height > 0;
-        if (shown === sysShown) return;
-        sysShown = shown;
-        if (shown && lastR) {
-          fitCanvas(sysCv, sysCtx);
-          paintSysBank(0, lastR);
-        }
-      }).observe(sysCv);
-    }
-  }
-
-  function setScale(v) {
-    uiScale = Math.max(0.45, Math.min(2.0, v));
-    resize();
-    return uiScale;
-  }
-  const getScale = () => uiScale;
-
-  /* the statics layer caches per canvas: a different grid is a different
-     picture, so drop it outright rather than trusting the size in its key */
-  function setCompact(v) {
-    v = !!v;
-    if (v === compact) return compact;
-    compact = v;
-    if (compact) { focusKey = null; sysFocus = null; }
-    statics.clear();
-    resize();
-    return compact;
-  }
-  function setDriveTile(v) {
-    v = !!v;
-    if (v === fuelTile) return;
-    fuelTile = v;
-    focusKey = null;
-    statics.clear();
-    repaint();
-  }
-  const focus = k => { focusKey = k; repaint(); };
-  const focusSys = k => { sysFocus = k; repaint(); };
-
-  function resize() {
-    fitCanvas(cv, ctx);
-    fitCanvas(sysCv, sysCtx);
-    repaint();
-  }
-
-  /* cell → focused panel: scale drawing so labels/gauges grow with the tile */
-  function ps(p) { return Math.min(p.w / CELL_W, p.h / CELL_H); }
-  function cellPanel(p) {
-    const s = ps(p);
-    if (s === 1) return p;
-    return { key: p.key, label: p.label, w: p.w / s, h: p.h / s, focused: p.focused };
-  }
-
-  function drawPanel(p, r, dt, paintFn) {
-    const s = ps(p);
-    ctx.save();
-    if (s !== 1) ctx.scale(s, s);
-    const q = cellPanel(p);
-    // the chrome is in the static layer; leave the context as chrome() left it
-    ctx.fillStyle = "rgba(9,13,15,0.86)";
-    ctx.strokeStyle = `rgba(${LAMP},0.5)`; ctx.lineWidth = 1;
-    paintFn(q, r, dt);
-    alarmOverlay(q, p.key);
-    ctx.restore();
-    curFont = null;
-  }
-
-  function drawStaticPanel(p, staticFn) {
-    const s = ps(p);
-    ctx.save();
-    if (s !== 1) ctx.scale(s, s);
-    const q = cellPanel(p);
-    chrome(q);
-    if (staticFn) staticFn(q);
-    ctx.restore();
-    curFont = null;
-  }
-
-  /* chrome and fixed dials, drawn once per bank / focus / size into an
-     offscreen canvas at the bank's own pixel size, then copied 1:1 */
-  const statics = new Map();
-  function blitStatic(panels, focus, staticFn) {
-    const c = ctx.canvas;
-    const fp = focus ? panels.find(q => q.key === focus) : null;
-    const tf = ctx.getTransform();
-    const key = (fp ? fp.key : "") + "|" + c.width + "x" + c.height + "|" + tf.a + "," + tf.d;
-    let layer = statics.get(c);
-    if (!layer || layer.key !== key) {
-      const off = layer ? layer.canvas : document.createElement("canvas");
-      off.width = c.width; off.height = c.height;
-      const octx = halo(off.getContext("2d"));
-      octx.setTransform(tf);
-      octx.imageSmoothingEnabled = true;
-      const saved = ctx;
-      ctx = octx;
-      curFont = null;
-      if (fp) {
-        drawStaticPanel({ key: fp.key, label: fp.label, w: gridW(), h: gridHp(), focused: true }, staticFn);
-      } else {
-        for (const p of panels) {
-          ctx.save();
-          ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
-          drawStaticPanel(p, staticFn);
-          ctx.restore();
-          curFont = null;
-        }
-        if (cols(panels) > 1 && rows(panels) > 1) gutterCross();
-      }
-      ctx = saved;
-      curFont = null;
-      layer = { key, canvas: off };
-      statics.set(c, layer);
-    }
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(layer.canvas, 0, 0);
-    ctx.restore();
-    curFont = null;
-  }
-
-  function drawBank(panels, focus, paintFn, dt, r, staticFn) {
-    ctx.clearRect(0, 0, gridW(), gridH());
-    curFont = null;
-    blitStatic(panels, focus, staticFn);
-    if (focus) {
-      const p = panels.find(q => q.key === focus);
-      if (p) {
-        drawPanel({ key: p.key, label: p.label, w: gridW(), h: gridHp(), focused: true }, r, dt, paintFn);
-        return;
-      }
-    }
-    for (const p of panels) {
-      ctx.save();
-      ctx.translate(p.col * (CELL_W + gap()), p.row * (CELL_H + gap()));
-      drawPanel(p, r, dt, paintFn);
-      ctx.restore();
-      curFont = null;
-    }
-  }
-
   function draw(dt, r) {
-    if (!tiles) {
-      if (!tilesWarned) {
-        tilesWarned = true;
-        console.error("tiles-nav.js / tiles-sys.js did not load — the HUD has no tiles");
-      }
-      return;
-    }
     t += dt;
     decayAlarms(dt);
-    if (tiles.tickSys) tiles.tickSys(dt, r);
-    lastR = r;
+    tiles.tickSys(dt, r);
     paintAcc += dt;
     if (paintAcc < PAINT_STEP) return;
     const pdt = paintAcc;
     paintAcc = 0;
-    paintBanks(pdt, r);
+    tickAlarms(pdt, r);
   }
 
   /* value alarms. Thresholds sit where the reading stops being weather and
@@ -387,21 +65,19 @@ window.Instruments = (function () {
     alarmRaw.set("phase", (s && s.infinite) ? A_NONE
       : fuelN < 0.09 ? A_ERR : fuelN < 0.22 ? A_WARN : A_NONE);
 
-    if (tiles.sys) {
-      const sys = tiles.sys;             // the readings the tiles integrate
-      const rep = tiles.repairState();
+    const sys = tiles.sys;             // the readings the tiles integrate
+    const rep = tiles.repairState();
 
-      // cabin — only the deepest unformed space pulls the pressure down this far
-      alarmRaw.set("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
-        : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6) ? A_WARN : A_NONE);
+    // cabin — only the deepest unformed space pulls the pressure down this far
+    alarmRaw.set("eclss", (sys.o2 < 19.0 || sys.co2 > 1800 || sys.kpa < 92) ? A_ERR
+      : (sys.o2 < 19.6 || sys.co2 > 1200 || sys.kpa < 95.6) ? A_WARN : A_NONE);
 
-      // dose — only the peak of a flare, which is rare by construction
-      alarmRaw.set("rad", sys.dose > 0.50 ? A_ERR : sys.dose > 0.16 ? A_WARN : A_NONE);
+    // dose — only the peak of a flare, which is rare by construction
+    alarmRaw.set("rad", sys.dose > 0.50 ? A_ERR : sys.dose > 0.16 ? A_WARN : A_NONE);
 
-      // skin — an open breach, but only while it is fresh. The bridge log
-      // narrates the rest of the repair; the tile does not need to nag.
-      alarmRaw.set("hull", (rep.count > 0 && rep.age < 12) ? A_WARN : A_NONE);
-    }
+    // skin — an open breach, but only while it is fresh. The bridge log
+    // narrates the rest of the repair; the tile does not need to nag.
+    alarmRaw.set("hull", (rep.count > 0 && rep.age < 12) ? A_WARN : A_NONE);
 
     // these have no abnormal state of their own worth a lamp — the
     // environment can still trip them, below
@@ -416,10 +92,10 @@ window.Instruments = (function () {
     // ship is contained; phase, eclss and rad are untouched here since their
     // own inputs already move with the environment.
     const e = r.env || {};
-    const ce = 1 - (e.contained || 0);
+    const ce = HudModels.ce(e);
     const lv = (err, warn) => err ? A_ERR : warn ? A_WARN : A_NONE;
     // the open void reads chaos 1 for most of the map; only a place (a dominant site) turns that into a lamp
-    const sc = (e.w || 0) >= 0.5 ? (e.chaos || 0) : 0;
+    const sc = HudModels.sc(e);
     alarmRaw.set("signal", Math.max(alarmRaw.get("signal") || A_NONE,
       lv(sc > 0.92 || (e.nomic || 0) * ce > 0.85, sc > 0.78 || (e.nomic || 0) * ce > 0.6)));
     alarmRaw.set("radar", Math.max(alarmRaw.get("radar") || A_NONE,
@@ -466,9 +142,8 @@ window.Instruments = (function () {
   function arbitrate(dt) {
     if (alarmQuiet > 0) alarmQuiet = Math.max(0, alarmQuiet - dt);
 
-    /* with the fuel canvas beside the log it blinks on its own and takes no
-       warn slot; only the fuel tile (phone / narrow) shares the one lamp */
-    const own = k => k === "phase" && !fuelTile && !compact;
+    /* the fuel gauge blinks on its own and takes no warn slot */
+    const own = k => k === "phase";
     const anyErr = Object.entries(lit).some(([k, v]) => v === A_ERR && !own(k));
     const curWarn = Object.keys(lit).find(k => lit[k] === A_WARN && !own(k)) || null;
     let warn = (curWarn && (alarmVal.get(curWarn) || A_NONE) === A_WARN) ? curWarn : null;
@@ -483,7 +158,7 @@ window.Instruments = (function () {
     const next = {};
     for (const [key, v] of alarmVal) if (v === A_ERR) next[key] = A_ERR;
     if (warn) next[warn] = A_WARN;
-    if (own("phase") && (alarmVal.get("phase") || A_NONE) === A_WARN) next.phase = A_WARN;
+    if ((alarmVal.get("phase") || A_NONE) === A_WARN) next.phase = A_WARN;
 
     for (const key of new Set([...Object.keys(lit), ...Object.keys(next)])) {
       if (next[key]) alarmAge.set(key, lit[key] === next[key] ? (alarmAge.get(key) || 0) + dt : 0);
@@ -509,6 +184,7 @@ window.Instruments = (function () {
     const lv = EVT_LV[kind];
     if (!lv) return;
     const dur = EVT_DUR[kind];
+    if (kind === "crit" && window.HudModels) HudModels.critUntil = t + dur;
     for (const k of (keys || EVT_KEYS[kind])) {
       const cur = alarmEvt.get(k);
       if (!cur || lv > cur.lv) alarmEvt.set(k, { lv, t: dur });
@@ -516,247 +192,14 @@ window.Instruments = (function () {
     }
   }
 
-  /* drawn over the tile's own readout, on top of the static chrome. A real
-     blink, timed off the module clock: fast for an error, slow for a
-     warning, and every lit tile beats in step. */
-  function alarmOverlay(p, key) {
-    const lv = alarmLevel(key);
-    if (!lv) return;
-    const err = lv >= A_ERR;
-    const bl = blink(err ? 1.1 : 0.5);
-    const col = err ? BAD : WARN;
-    ctx.save();
-    ctx.fillStyle = `rgba(${col},${err ? 0.03 + 0.05 * bl : 0.015 + 0.01 * bl})`;
-    ctx.fillRect(0, 0, p.w, p.h - 4);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(${col},${err ? 0.34 + 0.3 * bl : 0.3 + 0.14 * bl})`;
-    ctx.strokeRect(0.8, 0.8, p.w - 1.6, p.h - 5.6);
-    if (err) {
-      ctx.strokeStyle = `rgba(${col},${0.12 * bl})`;
-      ctx.strokeRect(3.5, 3.5, p.w - 7, p.h - 11);
-    }
-    // relight the chrome's corner ticks in the alarm colour
-    ctx.strokeStyle = `rgba(${col},${err ? 0.4 + 0.35 * bl : 0.4})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0.8, 9); ctx.lineTo(0.8, 0.8); ctx.lineTo(9, 0.8);
-    ctx.moveTo(p.w - 0.8, 9); ctx.lineTo(p.w - 0.8, 0.8); ctx.lineTo(p.w - 9, 0.8);
-    ctx.stroke();
-    ctx.restore();
-    ctx.lineWidth = 1;
-  }
-
-  function paintBanks(dt, r) {
-    if (!tiles) return;
-    tickAlarms(dt, r);
-    if (window.HudSide) HudSide.draw(r, dt);
-    if (ctx) drawBank(navPanels(), focusKey, paint, dt, r, paintStatic);
-    // readings keep ticking in draw(); only the painting stops while CSS hides the bank
-    if (sysShown) paintSysBank(dt, r);
-  }
-
-  /* show a focus or size change now instead of on the next paint; dt 0
-     moves nothing, and the time owed stays in paintAcc for the next paint */
-  function repaint() {
-    if (lastR) paintBanks(0, lastR);
-  }
-
-  function paintSysBank(dt, r) {
-    if (!sysCtx) return;
-    const saved = ctx;
-    ctx = sysCtx;
-    curFont = null;
-    drawBank(sysPanels(), sysFocus, paintSys, dt, r, paintStatic);
-    ctx = saved;
-    curFont = null;
-  }
-
-  function paint(p, r, dt) {
-    if (p.key === "phase") { HudSide.tile(ctx, p, r); curFont = null; return; }
-    const fn = tiles.paint[p.key];
-    if (fn) fn(ctx, p, r, dt);
-  }
-
-  function paintStatic(p) {
-    const fn = tiles.paintStatic[p.key];
-    if (fn) fn(ctx, p);
-  }
-
-  function paintSys(p, r, dt) {
-    const fn = tiles.paintSys[p.key];
-    if (fn) fn(ctx, p, r);
-  }
-
-  /* the gutters of a 2x2 bank as one reticle: a line down each gutter, a
-     short tick at each end. The canvas is the bank's edge, so the ends sit
-     on it (bottom: inside the padding) and keep the layout's own gap to
-     the neighbouring column and graph. */
-  function gutterCross() {
-    const gx = CELL_W + gap() / 2 + 0.5, gy = CELL_H + gap() / 2 + 0.5;
-    const x1 = gridW() - 0.5, y0 = 0.5, y1 = gridHp() + BASE_PAD - 1.5, t = 4;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(${LAMP},0.32)`;
-    ctx.beginPath();
-    ctx.moveTo(gx, y0); ctx.lineTo(gx, y1);
-    ctx.moveTo(0.5, gy); ctx.lineTo(x1, gy);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(${LAMP},0.45)`;
-    ctx.beginPath();
-    for (const y of [y0, y1]) { ctx.moveTo(gx - t, y); ctx.lineTo(gx + t, y); }
-    for (const x of [0.5, x1]) { ctx.moveTo(x, gy - t); ctx.lineTo(x, gy + t); }
-    ctx.stroke();
-  }
-
-  function chrome(p) {
-    ctx.lineWidth = 1;
-    const gx = p.w - 11, gy = 7;
-    ctx.strokeStyle = `rgba(${LAMP},0.5)`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (p.focused) {
-      ctx.moveTo(gx, gy + 5); ctx.lineTo(gx + 5, gy + 5); ctx.lineTo(gx + 5, gy);
-      ctx.moveTo(gx + 5, gy + 5); ctx.lineTo(gx - 1, gy - 1);
-    } else {
-      ctx.moveTo(gx, gy); ctx.lineTo(gx + 5, gy); ctx.lineTo(gx + 5, gy + 5);
-      ctx.moveTo(gx + 5, gy); ctx.lineTo(gx - 1, gy + 6);
-    }
-    ctx.stroke();
-  }
-
-  function spark(xs, x0, yBot, w, h, col, a) {
-    if (xs.length < 2) return;
-    const step = w / Math.max(1, xs.length - 1);
-    let lo = Infinity, hi = -Infinity;
-    for (let i = 0; i < xs.length; i++) {
-      if (xs[i] < lo) lo = xs[i];
-      if (xs[i] > hi) hi = xs[i];
-    }
-    const span = Math.max(1e-6, hi - lo);
-    ctx.strokeStyle = `rgba(${col},${a})`;
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    xs.forEach((v, i) => {
-      const x = x0 + i * step;
-      const y = yBot - ((v - lo) / span) * (h - 2);
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    });
-    ctx.stroke();
-    ctx.lineWidth = 1;
-  }
-  function fmtK(n) {
-    const a = Math.abs(n);
-    if (a >= 100000) return (n / 1000).toFixed(0) + "k";
-    if (a >= 10000) return (n / 1000).toFixed(1) + "k";
-    return Math.round(n).toLocaleString("en-US");
-  }
-
-  /* canvas never clips, so a label that shares a line with another has to
-     earn its width. fit() trims to what is actually free; call it with the
-     font already set, since measureText reads the current one. */
-  function fit(text, maxW) {
-    if (maxW <= 0) return "";
-    if (ctx.measureText(text).width <= maxW) return text;
-    let s = text;
-    while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
-    return s + "…";
-  }
-
-  /* a filled bar over a dim track — the shared meter for every tile that
-     shows a level. A live reading above zero always shows at least a
-     sliver, even one that rounds to under a pixel. */
-  function meter(x, y, w, h, v, col, a = 1) {
-    ctx.fillStyle = `rgba(${DIM},${0.22 * a})`;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = `rgba(${col},${0.9 * a})`;
-    ctx.fillRect(x, y, Math.max(v > 0 ? 1 : 0, w * Util.clamp(v, 0, 1)), h);
-  }
-
-  /* the shared thresholds for a reading that goes from fine to bad */
-  function lvCol(v, warnAt, badAt) {
-    return v >= badAt ? BAD : v >= warnAt ? WARN : LAMP;
-  }
-
-  /* a slow breathing 0..1, timed off the module clock so every blinking
-     thing on the panel beats together */
-  function blink(hz) {
-    return 0.5 + 0.5 * Math.sin(t * Util.TAU * hz);
-  }
-
-  const fontCache = new Map();
-  function mono(px, weight = "500") {
-    const k = weight + " " + px;
-    let f = fontCache.get(k);
-    if (!f) { f = `${weight} ${px}px "IBM Plex Mono", monospace`; fontCache.set(k, f); }
-    return f;
-  }
-
-  /* ctx.font makes the browser bring page style up to date on every set,
-     even an unchanged one, so skip sets that change nothing. restore(),
-     a context swap and a canvas refit all change the real font behind
-     our back, so each of those forgets curFont. */
-  let curFont = null;
-  function setFont(f) {
-    if (f !== curFont) { ctx.font = f; curFont = f; }
-  }
-
-  /* what a tile is allowed to reach for. `t` is read through now() so the
-     clock stays this file's. */
-  const F = { setFont, mono, spark, fit, meter, lvCol, blink, fmtK, now: () => t, onPalette };
-
-  /* tiles destructure the roles once, so they hand us a function that
-     re-reads them from F after every palette change */
-  const palHooks = [];
-  function onPalette(fn) { palHooks.push(fn); }
-  function setPalette(name) {
-    const p = PALETTES[name];
-    if (!p) return false;
-    ({ LAMP, READ, COLD, BAR, DIM, BAD, WARN, GOOD, CLAIMED, GLINT, VEIL } = p);
-    Object.assign(F, p);
-    for (const fn of palHooks) fn();
-    document.documentElement.dataset.hud = name;
-    return true;
-  }
-  setPalette("current");
-
-  /* ---- TEMPORARY palette switch: lift this whole block out once the owner
-     picks. Key "h" cycles the palettes, ?hud=<name> picks one on load, the
-     choice rides sessionStorage "hudPalette" for this tab. Keep PALETTES
-     and setPalette(). ---- */
-  const PAL_NAMES = Object.keys(PALETTES);
-  let palIdx = 0;
-  function pickPalette(name, announce) {
-    if (!setPalette(name)) return;
-    palIdx = PAL_NAMES.indexOf(name);
-    Util.write(sessionStorage, "hudPalette", name);
-    statics.clear();
-    repaint();
-    if (announce && window.Bridge && Bridge.log) Bridge.log.push("hud palette: " + name, "loc");
-  }
-  addEventListener("keydown", e => {
-    if (e.key !== "h" || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.target && e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
-    pickPalette(PAL_NAMES[(palIdx + 1) % PAL_NAMES.length], true);
-  });
-  {
-    let want = null;
-    try { want = new URLSearchParams(location.search).get("hud") || sessionStorage.getItem("hudPalette"); } catch (_) {}
-    if (want && PALETTES[want]) pickPalette(want, false);
-  }
-  /* ---- end temporary palette switch ---- */
-
   function registerTiles(factory) {
-    const part = factory(F);
-    if (!tiles) tiles = { paint: {}, paintStatic: {}, paintSys: {} };
-    for (const k of ["paint", "paintStatic", "paintSys"]) Object.assign(tiles[k], part[k] || {});
-    for (const k of ["tickSys", "impact", "setRepair", "sys", "repairState"]) if (part[k] !== undefined) tiles[k] = part[k];
+    tiles = factory();
   }
 
   return {
-    mount, mountSys, draw, setScale, getScale, setCompact, setDriveTile, alarmLevel, registerTiles,
-    focus, focusSys, alert,
-    impact: (s, g) => tiles && tiles.impact(s, g),
-    setRepair: (s, on) => tiles && tiles.setRepair(s, on),
-    get TOTAL_W() { return gridW(); },
-    get TOTAL_H() { return gridH(); },
+    draw, alarmLevel, registerTiles, alert,
+    impact: (s, g) => tiles.impact(s, g),
+    setRepair: (s, on) => tiles.setRepair(s, on),
+    get now() { return t; },
   };
 })();

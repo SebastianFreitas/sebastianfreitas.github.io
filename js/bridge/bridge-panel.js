@@ -1,4 +1,4 @@
-/* js/bridge/bridge-panel.js — the log, the instrument scale controls, and the setting panel gear */
+/* js/bridge/bridge-panel.js — the log, and the setting panel gear */
 (function () {
   const B = window.Bridge;
   if (!B) return;
@@ -6,77 +6,18 @@
   const { smooth } = Util;
 
   /* ---- the readout: a log that keeps writing, instruments under it ---- */
-  const el = { log: document.getElementById("btlog") };
-  B.log = BridgeLog.create(el.log);
-  if (window.Instruments) {
-    Instruments.mount(document.getElementById("binst"));
-    Instruments.mountSys(document.getElementById("binst-sys"));
-    const IK = Util.KEYS.INST_SCALE;
-    const hero = document.getElementById("bridge-hero");
-
-    /* the compact bank is one narrow column: give it a share of the height and
-       a sliver of the width, and stop at 1. Half the panels means each
-       survivor can afford to be read, so the shares are generous and the
-       floor is above setScale's own clamp — a bank too small to read is
-       worth less than a bank that crowds the log. */
-    const fitScale = () => Math.max(0.55, Math.min(1,
-      (innerHeight * 0.62) / Instruments.TOTAL_H,
-      (innerWidth  * 0.26) / Instruments.TOTAL_W));
-
-    /* setScale's own clamp went down to 0.45 so a compact phone bank could
-       fit. The +/- buttons are desktop-only and used to bottom out at 0.7,
-       so anything stored below that is the new clamp leaking, not a choice
-       anyone made. The desktop keeps its old floor. */
-    const DESK_MIN = 0.7;
-
-    let stored = parseFloat(Util.read(localStorage, IK));
-
-    /* a wide, tall desktop gets the banks a fifth bigger by default: the
-       tiles are the show and there is room. Narrow or short screens keep 1. */
-    const deskDefault = () => {
-      if (innerHeight < 800) return 1;
-      return 1 + 0.2 * Math.max(0, Math.min(1, (innerWidth - 1200) / 600));
-    };
-    const deskScale = () => {
-      if (Number.isFinite(stored)) return Math.max(DESK_MIN, stored);
-      return deskDefault();
-    };
-
-    /* the phone stylesheet floats the log clear of the banks off --inst-h,
-       so both dimensions go out whenever the scale moves */
-    const syncInstBox = () => {
-      if (!hero) return;
-      const s = Instruments.getScale();
-      hero.style.setProperty("--inst-w", (Instruments.TOTAL_W * s) + "px");
-      hero.style.setProperty("--inst-h", (Instruments.TOTAL_H * s) + "px");
-    };
-
-    const applyScale = () => {
-      Instruments.setCompact(B.phone);
-      Instruments.setScale(B.phone ? fitScale() : deskScale());
-      syncInstBox();
-    };
-    applyScale();
-    addEventListener("resize", applyScale);   // a rotate re-fits the banks
-    window.__bridgeRefit = applyScale;
-
-    const step = d => {
-      const lo = B.phone ? 0.45 : DESK_MIN;
-      stored = Instruments.setScale(Math.max(lo, Instruments.getScale() + d));
-      syncInstBox();
-      Util.write(localStorage, IK, String(stored));
-    };
-    const bindScale = (el, delta) => {
-      if (!el) return;
-      el.addEventListener("pointerdown", e => {
-        e.preventDefault();
-        e.stopPropagation();
-        step(delta);
-      });
-    };
-    bindScale(document.getElementById("binst-in"), 0.15);
-    bindScale(document.getElementById("binst-out"), -0.15);
-  }
+  B.log = BridgeLog.create(null);
+  HudC25.mount(document.getElementById("bhud"));
+  /* the hero has no size while the gate holds it: fit whenever the box, the dpr or the bar moves */
+  let hudKey = "";
+  B.fitHud = () => {
+    const tb = document.querySelector(".topbar");
+    const bb = tb ? tb.offsetTop + tb.getBoundingClientRect().height : undefined; /* layout bottom: the bar-away slide is a transform and must not move the span line */
+    const key = B.W + "x" + B.H + "@" + B.dpr + "/" + bb;
+    if (key === hudKey || !B.W || !B.H) return;
+    hudKey = key;
+    HudC25.resize(B.W, B.H, B.dpr, bb);
+  };
 
   /* gamedev sector archived: the bridge has one setting (the void). */
   const modesPanel = document.getElementById("bridge-modes");

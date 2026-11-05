@@ -14,10 +14,9 @@ sizes at read time).
 Owner's words → code names. Add a line when the owner uses a word the code does not.
 
 - the ship's rolls/rotations: pitch = nose tilts in the screen plane (`ship.pitch`; capped +-90 deg so the belly never faces up; every press turns the ship to the aim first, the motors only engage once the nose is within ~10deg); turn = yaw swing through head-on to face the other way (`yaw`/`yawTarget`, js/ship/voidship.js); roll (spin around the nose, barrel roll) does not exist yet
-- the nav bank: js/hud/tiles-nav.js (radar, signal, pull, nav tiles)
 - the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
-- the navigation bar (beacon positions): the bridge minimap `#bridge-map` (bridge-input.js)
-- the sys bank, systems monitor: js/hud/tiles-sys.js (hull, repair, bus tiles); framework js/hud/instruments.js
+- the navigation bar (beacon positions): the span line at the top of the HUD (js/hud/hud-c25.js)
+- the sys bank, systems monitor: the HUD's right wing (js/hud/hud-c25.js); sys model js/hud/tiles-sys.js `tickSys`, alarm clock js/hud/instruments.js
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
@@ -118,20 +117,16 @@ shares `Gen`:
 
 | File | Purpose | Publishes / uses |
 |---|---|---|
-| `instruments.js` | HUD framework | `window.Instruments` |
-| `tiles-nav.js` | The nav bank | registers `{paint, paintStatic}` |
-| `tiles-sys.js` | The sys bank and its shared state | registers `{paintSys, tickSys, impact, setRepair, sys, repairState}` |
-| `side.js` | Fuel instrument left of the bridge log (`#bridge-fuel`), nose resonance graph right of it (`#bridge-res`, reads `env.res`); fuel tile fallback when narrow | `HudSide` `{draw, tile}` |
+| `instruments.js` | The HUD's clock, alarms and sys-model host (tiles gone) | `window.Instruments {draw, alarmLevel, registerTiles, alert, impact, setRepair, now}` |
+| `tiles-sys.js` | The ship-systems model (no painters) | registers `{tickSys, impact, setRepair, sys, repairState}` |
+| `hud-models.js` | Wing readings as shared functions (old tiles and hud-c25 call the same); exports listed below | `window.HudModels` |
+| `hud-c25.js` | C25 HUD line art on one canvas, values from one data object | `window.HudC25` `{mount, draw, resize, report, nearestUnread}` |
 
-- `instruments.js`: banks/layout (`CELL_W`/`gridW`), `mount`/`mountSys`, `blitStatic`, `draw`, alarms `tickAlarms` (env rules: signal chaos/nomic, radar glare, hull wear, bus sway, rec gAnom, `contained` scales nomic/sway) → `arbitrate` (`lit` map: every error tile lights at once,
-- `instruments.js`: one warning at a time, 22s quiet only when no error is lit) → `alarmOverlay` (blinks 1.1 Hz err / 0.5 Hz warn), `alert`; SYS bank honours `paintStatic`; the `F` kit gained `meter`/`lvCol`/`blink`; `registerTiles` (merges every registration into one `tiles` object)
-- `instruments.js`: `PALETTES` table (current, site, verdigris, violet) + `setPalette`; the `F` kit carries the active roles and `onPalette(fn)`; css/bridge.css `--hud-*` per `html[data-hud]`; temporary key `h` cycles, `?hud=<name>` picks, `sessionStorage` key `hudPalette`
-- `instruments.js` publishes: `window.Instruments {mount, mountSys, draw, setScale, setCompact, setDriveTile, alarmLevel, focus, focusSys, impact, setRepair, alert, registerTiles, …}`
-- `tiles-nav.js`: every tile has a static layer (`radarStatic`/`signalStatic`/`navStatic`); `radar` wash + blip smear from `glare`, a second contact (our echo) from `env.twin`, glow bitmaps cached per colour;
-- `tiles-nav.js`: `signal` is the environment tile — site name + tag header, coherent comb lines, meters CHAOS (`max(r.chaos, env.chaos)`)/UNFORMED/NOMIC; `nav` (key `rec`) right column `X`/`G`/`ρ`;
-- `tiles-nav.js`: `VOICES` gained `zero`/`voidscape`/`heavylight`/`conclusus`
-- `tiles-sys.js`: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt` (integrity, cosmetic) and `sys.wear`; `eclss` rows are bars with nominal bands;
-- `tiles-sys.js`: `hull` has a STRESS/REGEN header, sector stress flicker, an INT bar and WEAR ×n; `bus` sags with `sway`, shows UPLINK on `link`; static layers `eclssStatic`/`radStatic`/`hullStatic`/`busStatic`
+- `instruments.js`: `draw` ticks `t` (`now`), the sys model and `tickAlarms` (env rules) → `arbitrate` (one warning at a time); `alert` crit sets `HudModels.critUntil`; `registerTiles` holds the sys model's factory
+- `hud-models.js` left: `contacts, blipAngle, bearingOf, strength, signal, resF, RES_LO, ce, sc, driftOf, leftLamps, live, sys`.
+- `hud-models.js` right: `busLoads, cabTAt, cells, cabTrace, stress, rightLamps, JOINT_U, RING_U, critUntil` (crit burst set by `Instruments.alert`).
+- `hud-c25.js`: span line (live: marks, `nearestUnread()`, you pin), left/right wings, log (`sampleData()` for now); static linework cached per resize; mounted by bridge-panel.js, painted from `drawInstruments`
+- `tiles-sys.js`: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt`, `sys.wear`, `sys.omega` (turn rate) and `sys.lastImpact`, which the C25 right wing reads
 
 ### js/bridge
 
@@ -142,7 +137,7 @@ does not — it is pure data, no dependency on `B`.
 |---|---|---|
 | `bridge.js` | Core | `window.Bridge` |
 | `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `fileMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
-| `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer rebuildTrack syncLabels coversViewport` |
+| `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer coversViewport` |
 | `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
 | `bridge-poi.js` | Beacon detect-then-scan beat: brackets + POINT OF INTEREST label at range, 1 s SCANNING plate (name, percent, fill) above the ship on contact, then `fileMark` awards; cancels if the ship leaves; colour from `--hud-lamp-rgb` | `B.poiScan poiStep drawPoi` |
@@ -153,7 +148,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer) |
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
-| `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle}` |
+| `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle, lines}`; types with a null `el` too |
 | `marks.js` | Landmark roster: `MARKS` (Void beacons); `PLANETS` is an empty shim | `window.Marks {MARKS, PLANETS: [], visible, camUnder}`; uses `World` |
 | `lamp.js` | Canvas beacon draw + `HIT` radius (named lamp because adblockers drop "beacon") | `window.Beacon {draw, HIT}` |
 
@@ -167,10 +162,10 @@ does not — it is pure data, no dependency on `B`.
 - `bridge.js`: scene-mode consts (`ZERO_MARK VS_MARK HL_MARK CONC_MARK XSTAGE`), `B.ship = Voidship.create`, `xp:freeze`, cursor, sheet, projection `viewUnitsNow`/`scale`/`wx`/`onScreen`/`flyK`/`markScreen`, `begin`
 - `bridge.js` publishes: `window.Bridge`; `B.resize syncPhone startLoop activeMarks viewUnitsNow scale wx onScreen flyK markScreen begin`
 - `bridge-input.js`: `coversViewport` sets `B.visible` only while `#bridge-hero` covers the viewport (passive scroll + resize), so the loop pauses the moment anything else shows
-- `bridge-input.js`: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, `coversViewport`/`syncCover`, `onPortrait`; minimap `rebuildTrack`/`syncLabels`
-- `bridge-panel.js`: `B.log = BridgeLog.create`, the Instruments scale block (`__bridgeRefit`): `deskDefault()` gives wide, tall desktops (≥1800 px wide, ≥800 tall) banks at 1.2×, ramping from 1 at 1200 px, stored `INST_SCALE` still wins;
+- `bridge-input.js`: `markAt`, `clientToCourse`, `courseForMark`, `beginBurn`, `endBurn`, `retargetFromPointer`, listeners, `coversViewport`/`syncCover`, `onPortrait`
+- `bridge-panel.js`: `B.log = BridgeLog.create(null)`, mounts `HudC25` and `B.fitHud` (no flag; phones get no HUD, D25)
 - `bridge-panel.js`: cutscene journal (Full intro + seen scenes, rebuilt on open and `site:genesis-done`): `applyPendingView`, `saveView`, journal/folder button, `site:genesis-start`/`-done`, `drawIris`
-- `bridge-panel.js` publishes: `B.applyPendingView saveView`; `window.__bridgeRefit`
+- `bridge-panel.js` publishes: `B.applyPendingView saveView fitHud`
 - `bridge-env.js`: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t}`;
 - `bridge-env.js`: `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases;
 - `bridge-env.js`: a site's `osc` may be one object or an array, each `{field, period, lo, hi, shape: "sine" | "square" | "pulse", duty?, phase?}`; debug `window.envReport`
@@ -484,6 +479,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/merge-cachebust.py` | Git merge driver for `*.html`: merges with every `?v=` number treated as equal, then writes the highest back, so bumps never conflict; installed by `try.py` |
 | `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <index.html[#case]> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
+| `tools/hudshot.py` | Bridge HUD shots into `snapshots/<run>/`, prints `HudC25.report()`: `--c25` (no-op), `--size WxH`, `--at <mark>`, `--x`, `--site`, `--claimed`, `--read`, `--burn`, `--touch` (prints `phone:`, `canvas:`, `painted:`); exits 1 on a console error |
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
@@ -495,6 +491,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
+- `hudshot.py`: `--x <world x>`, `--site <SITES id>` (implies `--claimed`), `--read <n>`, `--burn <s>`, `--touch` (phone check, no shot); imports `tools/snap.py`
 
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);
 - `tools/snap.py`: imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js`
@@ -528,7 +525,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 SW purge. Body tail, in this order:
 
 `site/surge → bridge/lamp → depths/depths → depths/lore →
-hud/instruments → hud/tiles-nav → hud/tiles-sys → hud/side → lib/paint → world/art/* →
+hud/instruments → hud/hud-models → hud/tiles-sys → hud/hud-c25 → lib/paint → world/art/* →
 world/world → world/* → ship/voidship-art → ship/voidship-prow →
 ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
 bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,
@@ -595,7 +592,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | View persistence, iris FX, cutscene journal | `js/bridge/bridge-panel.js` |
 | Environment model / place readings | `js/bridge/bridge-env.js` (`B.env`, `B.stepEnv`) |
 | Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
-| HUD tiles | `js/hud/tiles-nav.js`, `js/hud/tiles-sys.js`; framework `instruments.js` |
+| HUD | `js/hud/hud-c25.js`, models `hud-models.js`, sys model `tiles-sys.js`; clock and alarms `instruments.js` |
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
 | Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
 | Entry gate | decision `js/site/entry.js`, UI `js/site/intro.js`, CSS `css/gate.css` + `css/bridge.css` boot terminal, bridge defers in `bridge.js` `readyBridge` |
@@ -629,10 +626,8 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
 (xp.js), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
-INST_SCALE, GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
-`?reset=1` wipes every key with the PREFIX. Exception: `hudPalette`
-(instruments.js, sessionStorage) is a deliberate literal outside `KEYS`, so the
-temporary palette switch lifts in one edit.
+GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
+`?reset=1` wipes every key with the PREFIX.
 
 ## Future work briefs
 
@@ -650,7 +645,7 @@ system, announced on the rank card.
 
 - Lamplighter (10): radar range up; beacons show on the radar tile from
   further away.
-- Wayfinder (20): minimap labels for unvisited beacons.
+- Wayfinder (20): labels for unvisited beacons (the minimap is gone; the C25 span line ticks them).
 - Voidrunner (30): ship cruise speed up (`voidship.js` `BASE`).
 - Beaconwarden (40): signal tile resolves one more site line; hull
   regenerates faster.

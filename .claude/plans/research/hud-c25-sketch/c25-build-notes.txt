@@ -1,0 +1,31 @@
+# C25 build: the span line at the top
+
+Owner on C24: "no should be closer to the original, a line that represents the full length of the map, with lines for places of interest we haven't seen yet".
+
+Built by tmp/mk25.py: copies scripts/opt-c24b.js to opt-c25.js, swaps only the C24B top block (chevron, ring, name, pip row, count) for the span line, registers c25 in scripts/page.html. Render: `py -3 scripts/render.py c24b c25`, check: `py -3 tmp/chk25.py`.
+
+- Data: as C23/C24 (the old centre track read off the base shot): span 408 km (CAM.min..CAM.max), 17 beacons, 10 read, 7 unread, you at 228 km. Nearest unread = 9 km west.
+- Line: y 66.5, x 200..1800 (1600 px, ~3.9 px/km), wings' thin gold (GOLD, STRUCT .42), tiny end ticks at both ends of the span.
+- Unseen beacons: gold ticks 7 px tall rising from the line (6 of them). Seen beacons: faint gold dots (r 1.2, a .3) on the line.
+- Next one: the nearest unseen tick is cream, 10 px tall, with glow; "9 km" (size 10 cream) under the line, just left of it.
+- You: small cream caret under the line pointing up at your spot, "you" (mic grey) beside it.
+- No arrows, compass, rings or boxes. Top paint bbox (bare): x 200..1801, y 55..82.
+- Diff vs C24B outside the top strip (y 48..180): 0 px, bare and full. Log centre and C22 wings unchanged.
+- Note: the sheet's option tag ("C25 · span line ...") sits top-left over the line's west end in the full shot, as the C24 tags did; it is not part of the HUD.
+
+Outputs: out/c25-full.png, dbg/c25-top.png (180..1820 x 44..96), dbg/c25-top-near.png (990..1190, 4x).
+
+## Fix after judge31 (5/10, too faint)
+- Strip moved down to y 88.5, clear of the top bar's gold track. Bare top paint bbox now y 72..106.
+- Line GOLD a .75 w 1.5; unseen ticks GOLD a 1 w 2, 9 px tall; seen dots a .4.
+- Next tick: cream w 2.5, 14 px tall plus glow, the brightest mark on the strip.
+- You: a cream pin crosses the line (stem 19 px, dot r 4, glow), with "you" in cream beside it.
+- Cue: the stretch from you to the next tick is a lit cream segment (w 2.5). "9 km" sits centred under it (size 11 cream).
+- Diff vs C24B outside the top strip is still 0 px, bare and full. The sheet's option tag overlaps the line's west end; that tag is sheet chrome, not part of the HUD.
+- Crops: dbg/c25-top.png (180..1820 x 44..116), dbg/c25-top-near.png (990..1190 x 60..112).
+
+## Fix after judge 7/10 (tag over the west end)
+- The sheet tag is hidden for c25 only (page.html: `display='none'` when o=c25; mk25.py adds that line). It is not removed, because bare mode removes it later.
+- Both end ticks: GOLD a .95, w 2, 11 px tall. Read dots: r 1.7, a .6.
+- Pixel check, strip band x 190..1810, y 70..110: every full-shot pixel that differs from base.png lies within 3 px of the HUD's own paint (0 stray). Nothing else overlaps the strip.
+- Diff vs C24B outside the top strip is still 0 px, bare and full.

@@ -165,7 +165,7 @@
   host.addEventListener("pointerdown", e => {
     if (B.frozen || document.body.classList.contains("site-frozen")) return;
     // note panels scroll and hold clips, so a press inside one belongs to the panel, not a burn
-    if (e.target.closest && e.target.closest("a, button, #bridge-map, #bridge-term, #bridge-sys, #bridge-log, .bnote")) return;
+    if (e.target.closest && e.target.closest("a, button, .bnote")) return;
     const m = markAt(e.clientX, e.clientY);
     beginBurn(e, m);
   });
@@ -293,56 +293,4 @@
   };
   if (portraitQ.addEventListener) portraitQ.addEventListener("change", onPortrait);
   else portraitQ.addListener(onPortrait);
-
-  /* ---- minimap: readout only — no jump, no scrub ---- */
-  const track = document.getElementById("btrack");
-  const trackLabels = document.querySelectorAll("#bridge-map .labels span");
-
-  function rebuildTrack() {
-    if (!track) return;
-    track.classList.add("readonly");
-    track.querySelectorAll(".mk").forEach(el => el.remove());
-    for (const m of activeMarks()) {
-      const d = document.createElement("div");
-      d.className = "mk poi";
-      d.style.left = ((m.cam - CAM.min) / (CAM.max - CAM.min) * 100) + "%";
-      d.title = m.name;
-      d.dataset.mark = m.id;
-      const done = !!(window.XP && XP.has("beacon-" + m.id));
-      if (done) d.classList.add("read");
-      track.appendChild(d);
-    }
-    for (let i = 0; i < 30; i++) {
-      const d = document.createElement("div");
-      d.className = "mk"; d.style.left = (i / 29 * 100) + "%";
-      track.appendChild(d);
-    }
-  }
-  B.rebuildTrack = rebuildTrack;
-  rebuildTrack();
-  if (track) {
-    // ghost follows the pointer for orientation, but never moves the camera
-    track.addEventListener("pointermove", e => {
-      const ghost = document.getElementById("bghost");
-      if (!ghost) return;
-      const r = track.getBoundingClientRect();
-      ghost.style.left = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%";
-    });
-  }
-  document.addEventListener("xp:award", e => {
-    if (!track || !/^beacon-/.test(e.detail.id)) return;
-    const id = e.detail.id.replace(/^beacon-/, "");
-    const d = track.querySelector(`[data-mark="${id}"]`);
-    if (d) d.classList.add("read");
-  });
-
-  // a seen cutscene reveals more beacons
-  document.addEventListener("site:genesis-done", rebuildTrack);
-
-  function syncLabels() {
-    if (trackLabels.length < 2) return;
-    trackLabels[0].textContent = "West · the future";
-    trackLabels[1].textContent = "East · the past";
-  }
-  B.syncLabels = syncLabels;
 })();

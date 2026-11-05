@@ -25,7 +25,7 @@ window.BridgeVoice = (function () {
 
     /* true wherever we are */
     const ANY = [
-      () => `bearing ${fmt(S.camX)} · drift ${Math.abs(S.vel).toFixed(0)} m/s`,
+      () => { const L = window.HudModels && HudModels.live; return L && Number.isFinite(L.brg) && Number.isFinite(L.slip) ? `bearing ${String(L.brg).padStart(3, "0")} · drift ${L.slip.toFixed(2)} m/s` : `bearing ${fmt(S.camX)} · drift ${Math.abs(S.vel).toFixed(0)} m/s`; },
       () => `span ${spanPctNow().toFixed(1)}% crossed`,
       () => `sweep complete · ${activeMarks().filter(m => Math.abs(m.cam - S.camX) < 22000).length} in range`,
       () => `cabin ${f1(20.8, 21.5)}°c · rh ${f0(38, 46)}%`,

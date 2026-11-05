@@ -2,17 +2,21 @@
    time, digits weighted, the tiles flashing as each line commits. */
 window.BridgeLog = (function () {
   function create(el) {            // el: the #btlog element (may be null: everything no-ops)
-    let max = 6, head = null, queue = [];
+    let max = 6, head = null, queue = [], seq = 0;
+    const mem = [];                // committed lines + the one typing, oldest first, last 12
 
     function push(text, kind) {
-      if (!el) return;
-      queue.push({ text, kind: kind || "" });
+      queue.push({ n: ++seq, text, kind: kind || "" });
       if (queue.length > max + 2) queue.splice(0, queue.length - (max + 2));
     }
 
     function commit(entry) {
       /* the tiles flash with the line, not when it was queued */
       if (window.Instruments && Instruments.alert) Instruments.alert(entry.kind);
+      const rec = { n: entry.n, text: entry.text, kind: entry.kind, shown: 0, typing: true };
+      mem.push(rec);
+      if (mem.length > 12) mem.shift();
+      if (!el) { head = { rec, len: entry.text.length, shown: 0 }; return; }
       const line = document.createElement("div");
       line.className = "tl " + entry.kind;
       el.appendChild(line);
@@ -40,14 +44,18 @@ window.BridgeLog = (function () {
       caret.textContent = "_";
       line.appendChild(caret);
 
-      head = { line, parts, spans, caret, len: entry.text.length, shown: 0 };
+      head = { rec, line, parts, spans, caret, len: entry.text.length, shown: 0 };
     }
 
     function run(dt) {
-      if (!el) return;
       if (head) {
         head.shown = Math.min(head.len, head.shown + dt * 58);
         const n = Math.floor(head.shown);
+        head.rec.shown = n;
+        if (!el) {
+          if (n >= head.len) { head.rec.typing = false; head = null; }
+          return;
+        }
         let used = 0;
         for (let i = 0; i < head.parts.length; i++) {
           const p = head.parts[i];
@@ -56,13 +64,14 @@ window.BridgeLog = (function () {
           if (head.spans[i].textContent !== next) head.spans[i].textContent = next;
           used += p.text.length;
         }
-        if (n >= head.len) { head.caret.remove(); head = null; }
+        if (n >= head.len) { head.caret.remove(); head.rec.typing = false; head = null; }
         return;
       }
       if (queue.length) commit(queue.shift());
     }
 
-    return { push, run, setMax: n => { max = n; }, get idle() { return !head && !queue.length; } };
+    return { push, run, lines: () => mem.map(l => ({ n: l.n, text: l.text, kind: l.kind, shown: l.shown, typing: l.typing })),
+ setMax: n => { max = n; }, get idle() { return !head && !queue.length; } };
   }
   return { create };
 })();

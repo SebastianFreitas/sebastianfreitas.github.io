@@ -151,15 +151,8 @@
   }
   B.reportFiled = reportFiled;
 
-  let youEl, youPct = null;
   let movingNow = false;
   function updateHUD(dt) {
-    if (youEl === undefined) youEl = document.getElementById("byou");
-    if (youEl) {
-      const pct = (B.camX - CAM.min) / (CAM.max - CAM.min) * 100;
-      if (pct !== youPct) { youEl.style.left = pct + "%"; youPct = pct; }
-    }
-
     if (Math.abs(B.camX - LAND.mainland) < SLOT * 1.4)
       B.catalogued += (160 + Math.abs(B.vel) * 0.02) * dt;
 
@@ -186,7 +179,7 @@
     if (B.stepEnv) B.stepEnv(dt);
     if (window.Instruments) {
       const st = B.ship ? Voidship.stats(B.ship) : null;
-      Instruments.draw(dt, {
+      const r = {
         camX: B.camX, vel: B.vel,
         speedN: st ? st.speedN : Math.min(1, Math.abs(B.vel) / CAM.maxFling),
         chaos: B.chaosNow,
@@ -203,7 +196,9 @@
         })),
         ship: st,
         shipOy: B.ship && B.H ? B.ship.y / B.H : null,
-      });
+      };
+      Instruments.draw(dt, r);
+      if (B.fitHud && !B.phone) { B.fitHud(); HudC25.draw({ env: B.env, st, r, dt }); }
     }
   }
   B.drawInstruments = drawInstruments;

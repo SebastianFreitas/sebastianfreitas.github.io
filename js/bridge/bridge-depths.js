@@ -81,7 +81,6 @@
       }
     }
     if (!added) return;
-    B.rebuildTrack();
     if (animate) B.log.push(`signal resolved — ${added} contact${added > 1 ? "s" : ""} in range`, "good");
   }
   B.revealDepths = revealDepths;
