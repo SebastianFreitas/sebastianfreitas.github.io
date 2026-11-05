@@ -320,7 +320,7 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 }
 /* the paper hover is shared: the top bar tabs and the links in the Experience shape's footer text (every rule below that lists both) */
 .topbar nav a,
-.xp-shape footer .foot-text a {
+.xp-shape footer .foot-text a, .glimpse-card .glimpse-btn {
   position: relative; isolation: isolate;
   text-decoration: none;
   transition: color 0.12s ease-out, transform 0.12s ease-out;
@@ -328,10 +328,10 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 }
 .xp-shape footer .foot-text a { display: inline-block; padding: 2px 8px; color: var(--type-cream); }
 .topbar nav a:nth-child(even),
-.xp-shape footer .foot-text a:nth-of-type(even) { --tilt: 1.7deg; }
+.xp-shape footer .foot-text a:nth-of-type(even), .glimpse-card .glimpse-btn:nth-child(even) { --tilt: 1.7deg; }
 /* the strip is erased at the corners with the name plate's masks, sized for a tab */
 .topbar nav a::before,
-.xp-shape footer .foot-text a::before {
+.xp-shape footer .foot-text a::before, .glimpse-card .glimpse-btn::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   background: none;
   --ml: 18px; --mr: 16px; --mh: 100%;
@@ -341,35 +341,35 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   transition: background-color 0.12s ease-out;
 }
 .topbar nav a:nth-child(even)::before,
-.xp-shape footer .foot-text a:nth-of-type(even)::before {
+.xp-shape footer .foot-text a:nth-of-type(even)::before, .glimpse-card .glimpse-btn:nth-child(even)::before {
   clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
 /* a few px of invisible hit area so the tilted box never drops the pointer at its edge (the active tab's ::after is the sliver) */
-.topbar nav a:not(.active)::after, .xp-shape footer .foot-text a::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
+.topbar nav a:not(.active)::after, .xp-shape footer .foot-text a::after, .glimpse-card .glimpse-btn::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
 .topbar nav a:not(.active):last-child::after { right: 0; }
 .topbar nav a:focus-visible,
-.xp-shape footer .foot-text a:focus-visible { color: #f6f0da; opacity: 1; }
+.xp-shape footer .foot-text a:focus-visible, .glimpse-card .glimpse-btn:focus-visible { color: #f6f0da; opacity: 1; }
 .topbar nav a:focus-visible::before,
-.xp-shape footer .foot-text a:focus-visible::before { background: var(--type-red); }
+.xp-shape footer .foot-text a:focus-visible::before, .glimpse-card .glimpse-btn:focus-visible::before { background: var(--type-red); }
 /* the white paper strip is a pointer hover only (a touch tap would leave it stuck); red strip while pressed */
 @media (hover: hover) {
   .topbar nav a:hover,
-  .xp-shape footer .foot-text a:hover { color: #1a1714; opacity: 1; }
+  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover { color: #1a1714; opacity: 1; }
   .topbar nav a:hover::before,
-  .xp-shape footer .foot-text a:hover::before { background: #f1ecd8; }
+  .xp-shape footer .foot-text a:hover::before, .glimpse-card .glimpse-btn:hover::before { background: #f1ecd8; }
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active,
-  .xp-shape footer .foot-text a:hover, .xp-shape footer .foot-text a:active { transform: rotate(var(--tilt)); }
+  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover, .xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { transform: rotate(var(--tilt)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active,
-  .xp-shape footer .foot-text a:hover, .xp-shape footer .foot-text a:active { transform: none; }
+  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover, .xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { transform: none; }
 }
 .topbar nav a:active,
-.xp-shape footer .foot-text a:active { color: #f6f0da; }
+.xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { color: #f6f0da; }
 .topbar nav a:active::before,
-.xp-shape footer .foot-text a:active::before { background: var(--type-red); }
+.xp-shape footer .foot-text a:active::before, .glimpse-card .glimpse-btn:active::before { background: var(--type-red); }
 .topbar nav a:focus-visible,
-.xp-shape footer .foot-text a:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
+.xp-shape footer .foot-text a:focus-visible, .glimpse-card .glimpse-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
 .topbar nav a[aria-current], .topbar nav a.is-current, .topbar nav a.active { color: #1a1714; transform: rotate(-3deg); -webkit-text-stroke: 0.2px currentColor; }
 .topbar nav a[aria-current]::before, .topbar nav a.is-current::before, .topbar nav a.active::before {
   background: #f1ecd8;

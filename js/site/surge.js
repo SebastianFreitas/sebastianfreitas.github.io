@@ -301,21 +301,21 @@
     veil.setAttribute("aria-label", "A glimpse of my world");
 
     const cardEl = document.createElement("div");
-    cardEl.className = "rank-card glimpse-card slab";
+    cardEl.className = "rank-card glimpse-card";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
-    kicker.className = "type-kicker glimpse-kicker";
+    kicker.className = "type-label glimpse-kicker";
     kicker.textContent = "The Void";
     cardEl.appendChild(kicker);
 
     const title = document.createElement("h2");
-    title.className = "type-title type-card glimpse-title";
+    title.className = "glimpse-title";
     title.textContent = "A glimpse of my world";
     cardEl.appendChild(title);
 
     const body = document.createElement("p");
-    body.className = "type-body glimpse-body";
+    body.className = "glimpse-body";
     body.textContent = "That was a first look at my setting. Keep exploring, or head down to my game projects and more.";
     cardEl.appendChild(body);
 
@@ -325,19 +325,31 @@
 
     const keep = document.createElement("button");
     keep.type = "button";
-    keep.className = "type-action";
+    keep.className = "glimpse-btn glimpse-keep";
     keep.textContent = "Keep exploring the void";
     choices.appendChild(keep);
 
     const game = document.createElement("a");
-    game.className = "back glimpse-game";
+    game.className = "glimpse-btn glimpse-game";
     game.href = "#work";
     game.textContent = "See my game projects";
     choices.appendChild(game);
 
+    // the Experience shape's look: one red line down the slanted left edge, from a bit above the top corner (box %, stroke stays 6 px)
+    const NS = "http://www.w3.org/2000/svg";
+    const red = document.createElementNS(NS, "svg");
+    red.setAttribute("class", "glimpse-red");
+    red.setAttribute("aria-hidden", "true");
+    red.setAttribute("viewBox", "0 0 100 100");
+    red.setAttribute("preserveAspectRatio", "none");
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", "3.2"); line.setAttribute("y1", "1.7");
+    line.setAttribute("x2", "0.2"); line.setAttribute("y2", "89.7");
+    line.setAttribute("vector-effect", "non-scaling-stroke");
+    red.appendChild(line);
+    cardEl.appendChild(red);
+
     document.body.appendChild(veil);
-    cardEl.dataset.redlines = "glimpse";
-    if (window.RedLines) window.RedLines.draw(cardEl, { kind: "item" });
     requestAnimationFrame(() => veil.classList.add("open"));
 
     const openedAt = performance.now();

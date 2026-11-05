@@ -166,9 +166,8 @@
 }
 /* the card is a torn stroke (.slab in surge.js); tilt on the pseudo only, per card size (D17) */
 .rank-card.slab::before { clip-path: polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 100% 0, 100% 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%); background: var(--stroke); }
-/* tilt when W + H x 0.052 fits the viewport - 32 (340 x 300 fits at 390, not at 375); the glimpse card stays straight on phone */
+/* tilt when W + H x 0.052 fits the viewport - 32 (340 x 300 fits at 390, not at 375) */
 @media (max-width: 389px) { .rank-card::before { transform: none; } }
-@media (max-width: 640px) { .glimpse-card::before { transform: none; } }
 .rank-veil.closing .rank-card { animation: rankCardOut 0.18s ease-in forwards; }
 @keyframes rankCardIn { 0% { transform: translateY(10px) scale(0.86); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes rankCardOut { to { transform: scale(0.96); opacity: 0; } }
@@ -195,12 +194,20 @@
 .rank-next { margin: 0.35rem 0 0; font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--type-cream); }
 .rank-hint { margin: 1.1rem 0 0; font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--type-quiet); opacity: 0; animation: rankHint 0.4s ease 0.9s forwards; }
 @keyframes rankHint { to { opacity: 1; } }
-.glimpse-card { width: min(420px, 100%); padding: 1.5rem 1.6rem 1.4rem; }
-.glimpse-kicker { display: inline-block; margin: 0 0 0.5rem; padding: 3px 7px; background: var(--type-tag-bg); color: var(--type-tag-ink); clip-path: var(--btn-scrape); }
-.glimpse-title { margin: 0 0 0.9rem; text-transform: uppercase; }
-.glimpse-body { margin: 0 0 1.4rem; }
-.glimpse-card .choices { display: flex; flex-direction: column; gap: 0.6rem; }
-.glimpse-card .type-action, .glimpse-card .back { cursor: pointer; text-align: center; }
+/* the glimpse card wears the Experience shape's look: a flat black slanted quad, one red line down its left edge, type system B, the top bar's tabs as its two choices */
+.glimpse-card { width: min(460px, 100%); padding: 2.1rem 1.9rem 1.5rem 2.4rem; text-align: left; }
+.glimpse-card::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: rgb(4 4 5);
+  clip-path: polygon(3% 7%, 100% 0, 98.5% 100%, 0 95%);
+}
+.glimpse-red { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.glimpse-red line { stroke: var(--type-red); stroke-width: var(--red-line); stroke-linecap: butt; }
+.glimpse-kicker { margin: 0 0 0.8rem; font-size: 0.85rem; }
+.glimpse-title { margin: 0 0 0.7rem; font-family: var(--type-head); font-weight: 700; font-size: 2.3rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; color: var(--type-cream); }
+.glimpse-body { margin: 0 0 1.5rem; font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); text-wrap: pretty; }
+.glimpse-card .choices { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-left: -14px; }
+.glimpse-btn { display: block; padding: 6px 14px; border: 0; background: none; cursor: pointer; font-family: var(--type-head); font-weight: 700; font-size: 1.1rem; line-height: 1; letter-spacing: 0.08em; text-transform: uppercase; color: #e4ddc6; }
+@media (max-width: 640px) { .glimpse-card { padding: 1.9rem 1.3rem 1.3rem 1.8rem; } .glimpse-title { font-size: 1.9rem; } }
 @media (max-height: 520px) {
   .rank-card { padding: 0.9rem 1.2rem 0.8rem; }
   .rank-badge { width: 52px; height: 52px; margin: 0.5rem auto; }
