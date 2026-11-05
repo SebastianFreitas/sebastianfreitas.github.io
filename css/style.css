@@ -167,6 +167,7 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
    links either side weigh */
 .topbar {
   --bone: #e6e1cf;
+  --bar-pt: 0.4rem;
   --bar-pb: 1.35rem;
   --gs: var(--gutter);
   /* the scale ends one needle short of the tab column, so the needle never reaches a tab */
@@ -286,20 +287,21 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 }
 .wordmark:hover { color: var(--type-red-text); text-decoration: none; }
 .wordmark { color: #e4ddc6; text-transform: uppercase; text-shadow: none; }
-.topbar .wordmark { font-family: var(--bar-serif); font-weight: 700; }
+/* the mark wears the name plate's face (--type-head 700, 0.04em) */
+.topbar .wordmark { font-family: var(--type-head); font-weight: 700; letter-spacing: 0.04em; }
 /* desktop: the mark sits on a short vertical black band, a dark red hairline on its right edge, the lower end torn */
 @media (min-width: 641px) and (min-height: 521px) {
   .topbar > .wordmark { align-self: stretch; justify-self: start; display: flex; align-items: center; }
   .wordmark::before {
     content: ""; position: absolute; z-index: -1; pointer-events: none;
-    left: -10px; right: -10px; top: -0.4rem; bottom: calc(-1 * var(--bar-pb));
+    left: -10px; right: -10px; top: calc(-1 * var(--bar-pt)); bottom: calc(-1 * var(--bar-pb));
     background: none; border: 0; clip-path: none;
   }
 }
 /* one small vertical red line right of the mark, on top of everything in the bar */
 .wordmark::after {
   content: ""; position: absolute; z-index: 5; pointer-events: none;
-  left: calc(100% + 0.9rem); top: -0.4rem; bottom: calc(-1 * var(--bar-pb)); width: var(--red-line);
+  left: calc(100% + 0.9rem); top: calc(-1 * var(--bar-pt)); bottom: calc(-1 * var(--bar-pb)); width: var(--red-line);
   background: var(--type-red);
 }
 /* phones: the mark is only the first of two rows, so the line runs down to the bar's bottom edge (the two-row bar is 4rem below the mark) */
@@ -382,12 +384,15 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .topbar nav a.active:nth-child(even)::after { clip-path: var(--tab-scrape-even); }
 
 @media (min-width: 641px) and (pointer: fine) {
+  /* the bar is 48px: the row fills it, no padding (the nav and the red line cancel nothing) */
+  .topbar { --bar-pt: 0px; --bar-pb: 0px; box-sizing: border-box; height: 48px; padding-block: 0; }
+  .topbar > .wordmark { font-size: 1.5rem; }
   /* the tabs bleed one gutter left of their column, so the free space ends there; the grid gap keeps 16px clear of both. The chip does not set the row height: the mark hangs 2.14px over each side */
   .topbar > .xp-slot { max-width: calc(100% - var(--gutter)); margin-right: var(--gutter); }
   .topbar .xp-chip { top: -0.26px; margin-block: -2.14px; }
   /* the nav spans the bar's full height (cancels the padding) so its links centre on the black area */
   /* overflow clip: the tilted hover strips are cut at the bar's top, bottom and the screen edge */
-  .topbar > nav { gap: 8px; align-items: stretch; align-self: stretch; margin: -0.4rem calc(-1 * var(--gutter)) calc(-1 * var(--bar-pb)); overflow: clip; }
+  .topbar > nav { gap: 8px; align-items: stretch; align-self: stretch; margin: calc(-1 * var(--bar-pt)) calc(-1 * var(--gutter)) calc(-1 * var(--bar-pb)); overflow: clip; }
   .topbar > nav > a { display: flex; align-items: center; padding: 6px 1.6rem; font-size: 1.15rem; }
 }
 /* the first tab's paint starts 1.6rem inside its box, which the slot's margin counts as free space: half of that pushes the group to the middle of what is painted */
@@ -799,7 +804,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   html { scroll-padding-top: 0; }
   .topbar { position: absolute; }
   .page-case .topbar { position: relative; }
-  .topbar { gap: 8px; grid-template-columns: auto 1fr; grid-template-areas: "mark nav" "xp xp"; --bar-pb: 1.85rem; --ge: var(--gs); }
+  .topbar { gap: 8px; grid-template-columns: auto 1fr; grid-template-areas: "mark nav" "xp xp"; --bar-pb: 1.25rem; --ge: var(--gs); }
   .topbar .xp-chip { min-width: 0; }
   .topbar .xp-chip { justify-content: center; gap: 10px; top: 0; }
   .topbar .xp-chip .xp-name { font-size: 20px; line-height: 26px; height: 26px; padding: 0 18px 0 22px; --ml: 22px; --mr: 18px; --mh: 26px; }
@@ -818,7 +823,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
 
 /* a landscape phone has ~390px of height to spend — the topbar takes less of it */
 @media (max-height: 520px) and (pointer: coarse) {
-  .topbar { --gs: calc(0.7rem + 3rem); --ge: calc(0.7rem + 16.5rem); --bar-pb: 0.65rem; padding: 0.1rem 0.7rem var(--bar-pb); font-size: 0.5rem; gap: 0.9rem; }
+  .topbar { --gs: calc(0.7rem + 3rem); --ge: calc(0.7rem + 16.5rem); --bar-pb: 0.4rem; padding: 0.1rem 0.7rem var(--bar-pb); font-size: 0.5rem; gap: 0.9rem; }
   .topbar nav a { padding: 0.18rem 0.5rem; font-size: 0.68rem; }
   .topbar .xp-chip { font-size: 0.6rem; }
   .topbar .xp-chip .xp-badge { width: 22px; height: 22px; padding: 0; }
