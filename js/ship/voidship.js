@@ -68,6 +68,7 @@ window.Voidship = (function () {
       camX: 0,            // cache of the last camX seen by step (setThrusting needs it)
       yaw: 0,              // 0 = nose right, Math.PI = nose left
       yawTarget: 0,
+      sideSet: false,     // the facing has been decided for this press
       face: 1,             // cos(yaw): the sprite's x-scale, sign = facing
       pitch: 0,             // canvas rotation, full circle (-PI..PI], down is positive; turns by distance travelled, hangs after release
       pitchW: 0,            // rad/s, angular velocity of elev (the nose's spin in the hull's own frame)
@@ -139,6 +140,7 @@ window.Voidship = (function () {
     on = !!on;
     if (ship.thrusting === on) return;
     ship.thrusting = on;
+    if (on) ship.sideSet = false;   // a new press re-decides the facing
     if (on || !hasTarget(ship) || ship.courseMark) return;
     // released before the motors lit (a tap): the course stays, the ship finishes turning, then flies there
     if (ship.aimPx != null && !ship.go) return;
@@ -330,7 +332,13 @@ window.Voidship = (function () {
         const side = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
         // an aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the nose's height;
         // mid-flip, an aim swung back behind the side it is turning to reverses the flip from where it is
-        if (ex * side < -Math.hypot(ex, ey) * 0.14) {
+        // the side is decided once per press; during the hold only the live pointer swinging well
+        // past the ship (60px) flips it, so arrival or releasing never does
+        const cone = ex * side < -Math.hypot(ex, ey) * 0.14;
+        if (!ship.sideSet) {
+          ship.sideSet = true;
+          if (cone) ship.yawTarget = side > 0 ? Math.PI : 0;
+        } else if (raw && ship.thrusting && cone && (ship.aimPx - env.W * 0.5) * side < -60) {
           ship.yawTarget = side > 0 ? Math.PI : 0;
         }
         const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
