@@ -332,6 +332,8 @@ window.XP = (function () {
     get isNew()  { return fresh; },
     get known()  { return !!state.seen; },
     has: id => !!state.claimed[id],
+    /* beacon ids in the order they were read (profiles from before it have none) */
+    get readOrder() { return state.readOrder ? state.readOrder.slice() : []; },
 
     /* awards once and only once per id */
     award(id, n, label, x, y) {
@@ -340,6 +342,7 @@ window.XP = (function () {
       const before = state.level;
       state.claimed[id] = true;
       state.level += n;
+      if (/^beacon-/.test(id)) (state.readOrder || (state.readOrder = [])).push(id);
       save();
       ceremony(before);
       document.dispatchEvent(new CustomEvent("xp:award", { detail: { id, n, label } }));

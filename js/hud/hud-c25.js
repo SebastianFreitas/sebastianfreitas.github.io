@@ -8,7 +8,7 @@ window.HudC25 = (function () {
   const PI = Math.PI, STRUCT = 0.42, RAIL = 796, TOP = 772, XL = 776, XR = 1224, FL = 959, HB0 = 584;
   const BAR_B = 58.7;
   let cv = null, c = null, W = 0, H = 0, dpr = 1, s = 1, ts = 1, barB = BAR_B;
-  let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null;
+  let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null, beadSig = "";
   let painted = false;   // true once a frame has painted since mount
   let probe = false;   // true only while report() repaints the live layer to record text boxes
   let txS = [], txD = [], shS = [], shD = [], spanLine = null;   // every drawn text with its screen box (static kept, live per frame), and the span line's screen extent, for report().textMin / textHits / paint
@@ -793,8 +793,29 @@ window.HudC25 = (function () {
     if (ph === "d" && probe) spanLine = scrBox(X0 - 1, Y - (S.near != null ? 14 : 9), X1 + 1, Y + 10);
     stat_(() => {
       line(X0, Y + 0.5, X1, Y + 0.5, GOLD, 0.75, 1.5); [X0, X1].forEach(x => line(x + 0.5, Y - 5, x + 0.5, Y + 6, GOLD, 0.95, 2));
-      S.read.forEach(p => dot(X(p), Y + 0.5, 1.7, GOLD, 0.6));
-      S.unread.forEach(p => line(X(p), Y - 9, X(p), Y, GOLD, 1, 2));
+      /* each read beacon is a level earned: a lit gold bead */
+      /* every bead stays full size; ones under 12 px apart spread symmetric around their true x (a cluster stays centred) */
+      const spread = (xs, D) => {
+        let cl = xs.slice().sort((a, b) => a - b).map(x => ({ n: [x], m: x }));
+        const ext = k => [k.m - (k.n.length - 1) * D / 2, k.m + (k.n.length - 1) * D / 2];
+        for (let again = true; again;) {
+          again = false;
+          for (let i = 1; i < cl.length; i++) if (ext(cl[i])[0] - ext(cl[i - 1])[1] < D) {
+            const n = cl[i - 1].n.concat(cl[i].n); cl.splice(i - 1, 2, { n: n, m: n.reduce((a, b) => a + b, 0) / n.length }); again = true; break;
+          }
+        }
+        const out = []; cl.forEach(k => k.n.forEach((_, j) => out.push(k.m + (j - (k.n.length - 1) / 2) * D)));
+        return out;
+      };
+      const bx = spread(S.read.map(p => X(p)), 12);
+      c.save(); c.shadowColor = rgba(GOLD, 0.6); c.shadowBlur = 6 * s;
+      bx.forEach(x => dot(x, Y + 0.5, 3.2, GOLD, 1));
+      c.restore();
+      spread(S.unread.map(p => X(p)), 10).forEach(x => { if (!bx.some(b => Math.abs(b - x) <= 9)) line(x, Y - 9, x, Y, GOLD, 1, 2); });
+      const xl = live_() ? XP.level : S.read.length, nx = live_() ? XP.rankOf(xl).next : null;
+      const bc = live_() ? Bridge.beaconCount() : { read: S.read.length, total: S.read.length + S.unread.length };
+      text(bc.read + " / " + bc.total, X1, Y + 24, { size: 13, col: GOLD, a: 1, align: "right" });
+      mic("read · lv " + xl + " · " + (nx == null ? "top rank" : "rank in " + (nx - xl)), X1, Y + 38, { align: "right" });
     });
     dyn(() => {
       const xy = X(S.you);
@@ -807,7 +828,8 @@ window.HudC25 = (function () {
         glow(CREAM, () => { let a = lo; brk.forEach(x => { if (x - GAP > a) line(a, Y + 1, x - GAP, Y + 1, CREAM, 0.95, 2.5); a = Math.max(a, x + GAP); });
           if (hi > a) line(a, Y + 1, hi, Y + 1, CREAM, 0.95, 2.5); });
         rd.forEach(x => dot(x, Y + 0.5, 1.7, CREAM, 0.6));
-        text(S.label,(xn + xy) / 2, Y + 18, { size: 11, col: CREAM, a: 1, align: "center" });
+        text(S.label, (xn + xy) / 2, Y + 18, { size: 11, col: CREAM, a: 1, align: "center" });
+        text("+1 lv", xn, Y - 20, { size: 10, col: CREAM, a: 1, align: "center" });
         glow(CREAM, () => line(xn, Y - 14, xn, Y + 2, CREAM, 1, 2.5));
       }
       glow(CREAM, () => { line(xy, Y - 9, xy, Y + 10, CREAM, 1, 2.5); dot(xy, Y + 0.5, 4, CREAM, 1); });
@@ -851,6 +873,7 @@ window.HudC25 = (function () {
     LF = leftNow(env);
     RF = rightNow(env);
     ctl();
+    if (live_()) { const bc = Bridge.beaconCount(), sig = bc.read + "/" + bc.total; if (sig !== beadSig) { beadSig = sig; dirty = true; } }   // the static span line follows the shared count
     if (dirty && stat) rebuildStat();
     paintLive(); painted = true;
   }

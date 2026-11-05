@@ -52,7 +52,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the Watcher's alien: js/world/serus.js (Serus), inside js/world/watcher.js
 - the ship, the wedge hull, the shard: js/ship/voidship*.js (art, prow = the shard)
 - v bump, cache bust: tools/bump.py
-- the top bar, topbar: css/style.css (topbar rules); pinned on scroll; its centre XP (chip, gauge, scale, trace) is hidden on `.topbar.is-solid` and `.page-case .topbar`, so it shows only over the bridge
+- the top bar, topbar: css/style.css (topbar rules); pinned on scroll; its centre XP (level square, rank ring, name plate, pips, ref) is hidden on `.topbar.is-solid` and `.page-case .topbar`, so it shows only over the bridge
 
 ## Shared state conventions
 
@@ -142,7 +142,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
 | `bridge-marks.js` | `drawCue`/`drawCueLine`/`drawMarks`, `marksSettled`; debug `beaconReport` | `B.drawMarks marksSettled` |
 | `bridge-poi.js` | Beacon detect-then-scan beat: brackets + POINT OF INTEREST label at range, 1 s SCANNING plate (name, percent, fill) above the ship on contact, then `fileMark` awards; cancels if the ship leaves; colour from `--hud-lamp-rgb` | `B.poiScan poiStep drawPoi` |
-| `bridge-panel.js` | Cutscene journal panel, Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
+| `bridge-panel.js` | Cutscene journal panel, Data Archive spine under the folder (`#arch`, `buildArchive`), Instruments scale, view persistence | `B.applyPendingView saveView`; `window.__bridgeRefit` |
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
@@ -625,7 +625,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 ### Storage keys
 
 All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
-(xp.js), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
+(xp.js; `{name, ref, level, claimed, seen, readOrder}`, `readOrder` = beacon ids in read order, absent on old profiles), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
 GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
 `?reset=1` wipes every key with the PREFIX.

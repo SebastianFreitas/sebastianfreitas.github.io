@@ -307,6 +307,38 @@ html[data-hud="violet"] {
 .modes-gear:hover::before, .modes-gear:focus-visible::before, #bridge-modes.open .modes-gear::before { background: var(--type-tag-bg); }
 @media (prefers-reduced-motion: reduce) { .modes-gear { transition: none; } }
 .modes-gear svg { display: block; width: 24px; height: 24px; }
+/* the Data Archive: a thin spine down from the folder, no boxes, no red */
+.arch {
+  display: flex; gap: 12px; margin: 10px 0 0 0; width: 14rem;
+  pointer-events: none; color: #e4ddc6;
+  font-family: "IBM Plex Mono", monospace; text-transform: none;
+}
+#bridge-modes.open .arch { display: none; }
+.arch:empty { display: none; }
+.arch-spine {
+  flex: none; width: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 4px 0 2px; position: relative; contain: size;
+}
+.arch-spine::before {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+  background: rgb(245 208 107 / 0.42);
+}
+.arch-spine i { position: relative; width: 9px; height: 2px; background: rgb(245 208 107 / 0.3); }
+.arch-spine i.on { width: 13px; background: rgb(245 208 107); box-shadow: 0 0 6px rgb(245 208 107 / 0.7); }
+.arch-spine i.new { background: #eee6d0; }
+.arch-body { display: flex; flex-direction: column; min-width: 0; }
+.arch-label { font-size: 0.65rem; line-height: 1; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(228 221 198 / 0.6); }
+.arch-count { font-size: 1.8rem; line-height: 1; margin: 4px 0 10px; color: rgb(245 208 107); }
+.arch-count small { font-size: 0.6rem; letter-spacing: 0.06em; color: rgb(228 221 198 / 0.6); }
+.arch-row { font-size: 0.62rem; line-height: 1; letter-spacing: 0.06em; padding: 5px 0; white-space: nowrap; }
+.arch-link {
+  margin-top: 4px; align-self: flex-start; pointer-events: auto; cursor: pointer;
+  background: none; border: none; padding: 6px 0 0;
+  font: inherit; font-size: 0.75rem; letter-spacing: 0.08em; color: #eee6d0;
+}
+.arch-sub { font-size: 0.6rem; letter-spacing: 0.06em; color: rgb(228 221 198 / 0.55); }
+.arch-link:hover, .arch-link:focus-visible { color: rgb(245 208 107); }
+@media (max-width: 900px), (max-height: 520px) and (pointer: coarse) { .arch { display: none; } }
 /* phone only: says what the folder is until it is used */
 .modes-tip { display: none; }
 @keyframes modes-tip-pulse {
