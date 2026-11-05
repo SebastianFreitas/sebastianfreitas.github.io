@@ -853,7 +853,8 @@ window.HudC25 = (function () {
     s = s0 * wk; ts = Math.max(s, 0.9);   // the wings draw at the wing scale, anchored to their corners; the log and span line keep s
     at_(0, H - 1009 * s, paintLeft); at_(W - 2000 * s, H - 1009 * s, paintRight);
     s = s0; ts = ts0;
-    at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? (50 * wk - 13) * s : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
+    at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? (50 * wk - 13) * s : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them
+    at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
     if (ph === "d") paintMarks();
   }
   /* ---- wing size: one SIZE - + stepper above the left wing's top-left, in screen px ---- */
