@@ -115,13 +115,14 @@ def run(a):
             else:
                 name = "hud" + f"-{w}x{h}" + (f"-{a.at}" if a.at else "") + (f"-x{int(a.x)}" if a.x is not None else "") + (f"-{a.site}" if a.site else "") + (f"-read{a.read}" if a.read else "") + ("-claimed" if a.claimed else "")
                 if a.burn:
-                    page.mouse.move(w * 0.8, h * 0.4)
+                    page.mouse.move(w * a.aim, h * 0.4)
                     page.mouse.down()
                     if a.turn:
                         snap.settle(page, int(a.turn * 1000))
                         page.mouse.move(w * 0.62, h * 0.9, steps=8)
                     snap.settle(page, int(max(a.burn - a.turn, 0.2) * 1000))
                     snap.shot(page, out_dir, name + "-burn")
+                    print("ship:", page.evaluate("() => { const s = Bridge.ship; return { holdT: s.holdT, far: s.far, vel: s.vel }; }"))
                     held = json.dumps(page.evaluate(REPORT))   # read while still held, the aim is gone after release
                     page.mouse.up()
                 else:
@@ -158,6 +159,7 @@ def main():
     ap.add_argument("--claimed", action="store_true")
     ap.add_argument("--read", type=int, default=0)
     ap.add_argument("--burn", type=float, default=0)
+    ap.add_argument("--aim", type=float, default=0.8)   # with --burn: the held pointer x as a fraction of the width
     ap.add_argument("--turn", type=float, default=0)   # with --burn: after this many seconds swing the held aim down (about 90 degrees off) for real sideways slip
     ap.add_argument("--touch", action="store_true")
     ap.add_argument("--sweep", action="store_true")   # force the rose bearing to 0 90 180 270 350 and print the left wing's box check for each

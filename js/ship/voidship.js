@@ -198,6 +198,7 @@ window.Voidship = (function () {
     }
 
     const far = hasTarget(ship) && ship.thrusting && !ship.courseMark && Math.abs(dx) > BASE.farUnits;
+    ship.far = far;   // read by the tether art
     const charging = far && canBurn(ship) && ship.go;   // the boost is earned in flight, never while the nose swings round
     ship.holdT = clamp(ship.holdT + (charging ? dt / BASE.holdBuild : -dt / BASE.holdDecay), 0, 1);
 
@@ -658,6 +659,7 @@ window.Voidship = (function () {
     }
 
     if (window.VoidshipArt && !ship.flip) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
+    if (window.VoidshipArt && VoidshipArt.drawTether) VoidshipArt.drawTether(ctx, ship, { W: env.W, camX: env.camX, viewUnits: env.viewUnits || 2100, farUnits: BASE.farUnits, holdBuild: BASE.holdBuild, aimDead: BASE.aimDead });
     if (window.VoidshipArt && VoidshipArt.drawWake) VoidshipArt.drawWake(ctx, ship, { W: env.W, H: env.H, t, trailLife: BASE.trailLife, rs: L / 200 });
 
     const bobY = Math.sin(ship.bob * 0.6) * 1.5;
