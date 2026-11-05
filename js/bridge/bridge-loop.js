@@ -21,6 +21,8 @@
 
     if (B.ship) {
       B.retargetFromPointer();
+      // the camera stops at the map's ends, so a course past them could never be reached (an endless burn)
+      if (B.ship.targetX != null) B.ship.targetX = Math.min(CAM.max, Math.max(CAM.min, B.ship.targetX));
       const prev = B.camX;
       const out = Voidship.step(B.ship, dt, {
         camX: B.camX, W: B.W, H: B.H, frozen: B.frozen, viewUnits: viewUnitsNow(),

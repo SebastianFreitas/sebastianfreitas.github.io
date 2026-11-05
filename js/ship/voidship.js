@@ -38,11 +38,9 @@ window.Voidship = (function () {
     pitchRef: 4000,   // px/s of virtual headway: sets how much the bank reading lifts at rest
     pitchLead: 0.03,  // rad the bank reading leads a climb
     pitchRate: 0.14,  // rad/s cap on how fast the bank reading swings
-    pitchTurnMax: Math.PI / 2,  // rad/s, top turn rate of the drawn nose (90°/s)
+    pitchTurnMax: Math.PI * 5 / 9,  // rad/s, top turn rate of the drawn nose (100°/s); the turn flames scale to it
     pitchAccel: Math.PI * 5 / 3, // rad/s², how fast the nose's turn rate can change (300°/s²)
-    pitchSlew: 9,    // rad/s, cap on the drawn pitch's swing (only bites where a steep nose passes the yaw flip)
     pitchEase: 3.5,  // 1/s, bank reading settles toward its target at this rate
-    aimAccel: 5.4,    // rad/s², nose swing: about 1 s for 90°, easing in and out
     aimDead: 28,     // px round the ship where the aim holds its last angle
     fuelMax: 100,
     burnFull: 7.5,
@@ -104,11 +102,11 @@ window.Voidship = (function () {
     ship.y = Math.min(lim.bot, Math.max(lim.top, ship.y));
   }
 
-  /* the y band, pulled in by the hull's vertical reach so a steep nose stays clear of the bars */
+  /* the y band for the hull's centre; a steep nose or tail may poke past it, so tilting toward
+     an edge never pushes the ship away from it (owner, 2026-11-05) */
   function yLimits(ship, H) {
     const mid = deckY(H), band = H * BASE.yBand;
-    const reach = BASE.size * 0.5 * Math.abs(Math.sin(ship.pitch || 0));
-    return { top: mid - band + reach, bot: mid + band - reach };
+    return { top: mid - band, bot: mid + band };
   }
 
   function addFuel(ship, n) {
@@ -200,7 +198,7 @@ window.Voidship = (function () {
     }
 
     const far = hasTarget(ship) && ship.thrusting && !ship.courseMark && Math.abs(dx) > BASE.farUnits;
-    const charging = far && canBurn(ship);
+    const charging = far && canBurn(ship) && ship.go;   // the boost is earned in flight, never while the nose swings round
     ship.holdT = clamp(ship.holdT + (charging ? dt / BASE.holdBuild : -dt / BASE.holdDecay), 0, 1);
 
     let cruise = BASE.maxSpeed * P.maxSpeed * (1 + 2.4 * ship.holdT * ship.holdT);
@@ -226,20 +224,26 @@ window.Voidship = (function () {
       }
       demand = far ? 1 : clamp(Math.abs(vWantX) / cruise, 0, 1);
       // any flight (a press, a tap's course, a seek) turns the ship first: the motors wait until
-      // the nose is on the aim (10°), then keep pushing through small aim changes (30°)
+      // the nose is on the aim (10°), then keep pushing through small aim changes (30°);
+      // once under way they stay lit and push by how much the nose points along the aim, so a
+      // steered curve slows into the turn instead of stopping dead (90° off = no push, it brakes)
       const e = ship.aimErr == null ? Math.PI : ship.aimErr;
-      ship.go = e < 0.175 || (ship.go && e < 0.52);
+      const underWay = Math.abs(ship.vel) > 400 || Math.abs(ship.vy) > 40;
+      ship.go = e < 0.175 || (ship.go && (e < 0.52 || underWay));
       if (!ship.go) {
         closeHold = true;
         vWantX = 0; vWantY = 0; demand = 0;
+      } else if (e >= 0.52) {
+        const k = Math.max(0, Math.cos(e));
+        vWantX *= k; vWantY *= k; demand *= k;
       }
       burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
     }
 
-    // the flight path turns as it always did (a shadow yaw that follows the way of travel)
+    // a shadow yaw that follows the way of travel; it only feeds stats().bank and never holds the push
+    // back (the nose gate above already made the ship turn before it thrusts)
     const stepA = Math.PI / BASE.turnTime * dt;
     if (Math.abs(vWantX) > 150) ship.myawT = vWantX > 0 ? 0 : Math.PI;
-    if (vWantX !== 0) vWantX *= clamp((Math.sign(vWantX) * ship.mface + 1) / 2, 0.12, 1);
     ship.myaw += clamp(ship.myawT - ship.myaw, -stepA, stepA);
     if (Math.abs(ship.myawT - ship.myaw) < 1e-3) ship.myaw = ship.myawT;
     ship.mface = Math.cos(ship.myaw);
@@ -330,8 +334,9 @@ window.Voidship = (function () {
         const wrap = (a) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
         const aimA = Math.atan2(ey, ex);
         const side = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
-        // an aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the nose's height
-        if (ship.yaw === ship.yawTarget && ex * side < -Math.hypot(ex, ey) * 0.14) {
+        // an aim behind the ship's side (more than ~8° past vertical) flips the yaw, keeping the nose's height;
+        // mid-flip, an aim swung back behind the side it is turning to reverses the flip from where it is
+        if (ex * side < -Math.hypot(ex, ey) * 0.14) {
           ship.yawTarget = side > 0 ? Math.PI : 0;
         }
         const sideT = Math.cos(ship.yawTarget) >= 0 ? 1 : -1;
@@ -341,9 +346,8 @@ window.Voidship = (function () {
         // angular velocity with limited acceleration: top rate, and a braking curve so it never overshoots
         // a press turns the nose at turn speed even when the ship is still (the motors wait for it)
         ship.aimErr = ship.yaw !== ship.yawTarget ? Math.PI : Math.abs(err);
-        const turnW = Math.PI / BASE.turnTime;
         const accel = BASE.pitchAccel * 6;
-        const wMax = Math.min(turnW * 0.4, Math.sqrt(2 * accel / 3 * Math.abs(err))); // the tilt is slower than the side flip: 100°/s top, gentler start
+        const wMax = Math.min(BASE.pitchTurnMax, Math.sqrt(2 * accel / 3 * Math.abs(err))); // the tilt is slower than the side flip, gentler start
         ship.pitchW += clamp(Math.sign(err) * wMax - ship.pitchW, -accel * dt, accel * dt);
         let stepP = ship.pitchW * dt;
         if (Math.abs(stepP) > Math.abs(err) && stepP * err > 0) { stepP = err; ship.pitchW = 0; }
@@ -352,10 +356,8 @@ window.Voidship = (function () {
     } else { ship.pitchW = 0; ship.aimErr = null; ship.go = false; }
     // the drawn pitch: the 3D turn spins the hull about the screen's vertical, so the nose keeps its height
     // (up-right turns to up-left, never down-left) and the hull's up axis stays exact all the way through
-    // near a vertical nose that pitch swings half a turn within a few degrees of yaw, so it is slewed: a smooth half roll, never a flick
     const wantP = ship.face >= 0 ? ship.elev : -ship.elev; // the tilt holds through the turn; flips with the mirror at face = 0
-    const dP = wantP - ship.pitch, maxP = BASE.pitchSlew * dt;
-    ship.pitch = wantP; void dP; void maxP; // snaps with the mirror (the two poses look the same there), no slewed half roll
+    ship.pitch = wantP; // snaps with the mirror (the two poses look the same there), no slewed half roll
     ship.pitch -= Math.PI * 2 * Math.round(ship.pitch / (Math.PI * 2));
     // the old flight-path nose, kept quiet: it only feeds stats().bank
     const vxPx = Math.abs(ship.vel) * pxPerUnit;
