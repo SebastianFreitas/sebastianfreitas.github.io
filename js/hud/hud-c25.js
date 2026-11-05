@@ -43,11 +43,11 @@ window.HudC25 = (function () {
       lampsR: [["drv 1", 1], ["drv 2", 1], ["drv 3", 0], ["drv 4", 0], ["ring", 0], ["fin t", 0], ["fin b", 0],
                ["bus", 0], ["cell", 1], ["cool", 0], ["lsp", 1], ["seal", 0], ["nav", 1], ["jnt", 2]],
       /* log [text, mark], oldest first, the newest is the last (the live line) */
-      log: [["entering the void — chaos 1.00 · incoherent field detected", ">"], ["span ranged 408,000 m · both ends unlit", ">"],
+      log: [["entering the void — chaos 1.00 · incoherent field detected", ">"], ["span ranged 120 AU · both ends unlit", ">"],
             ["gravity flips sign every 2.5s", "!"], ["beacon read · The Nephilim · 10 of 17", ">"],
-            ["next signal: The Shattered · 9 km west", ">"]], now: "now",
+            ["next signal: The Shattered · 9.0 AU west", ">"]], now: "now",
       /* span line: marks as 0..1 of the span */
-      spanKm: 408,
+      spanDist: 38,
       read: [807, 826, 839, 843, 847, 859, 909, 1152, 1170, 1216].map(P),
       unread, you, span: { next }
     };
@@ -601,7 +601,7 @@ window.HudC25 = (function () {
   const clock = () => (api._clock ? api._clock() : performance.now());
   function nextLine() {
     const u = nearestUnread();
-    return u ? "next signal: " + u.mark.name.toLowerCase() + " · " + u.km + " km " + u.dir : null;
+    return u ? "next signal: " + u.mark.name.toLowerCase() + " · " + u.label + " " + u.dir : null;
   }
   function pushHint(id) {
     const h = hs[id] || (hs[id] = { count: 0 });
@@ -648,20 +648,36 @@ window.HudC25 = (function () {
       const d = Math.abs(m.cam - B.camX); if (d < bd) { bd = d; best = m; }
     }
     if (!best) return null;
-    return { mark: best, dir: best.cam < B.camX ? "west" : "east", km: Math.round(bd / (B.CAM.max - B.CAM.min) * 408) };
+    return Object.assign({ mark: best, dir: best.cam < B.camX ? "west" : "east" }, spanDist(B.camX, best));
+  }
+  /* the span label's distance: AU inside one landmass, Gly in open space, unknown across Rex/Mainland or to the ends */
+  const AU_SPAN = 120, GLY_SPAN = 90, EDGE_SLOTS = 0.7, UNKNOWN_IDS = ["bnote-future", "bnote-root"];
+  const fmtDist = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
+  function landOf(B, cam) {
+    const L = B.LAND, e = EDGE_SLOTS * B.SLOT;
+    if (Math.abs(cam - L.mainland) <= e) return { id: "main", w: 2 * e };
+    if (cam >= L.rex - e && cam <= L.unnamed + e) return { id: "rex", w: L.unnamed - L.rex + 2 * e };
+    return null;
+  }
+  function spanDist(camX, mark) {
+    const B = window.Bridge, a = landOf(B, camX), b = landOf(B, mark.cam), d = Math.abs(mark.cam - camX);
+    if (UNKNOWN_IDS.indexOf(mark.id) >= 0 || (a && b && a.id !== b.id)) return { dist: null, unit: null, label: "unknown" };
+    if (a && b) { const v = d / a.w * AU_SPAN; return { dist: v, unit: "AU", label: fmtDist(v) + " AU" }; }
+    const v = d / (B.CAM.max - B.CAM.min) * GLY_SPAN;
+    return { dist: v, unit: "Gly", label: fmtDist(v) + " Gly" };
   }
   /* the span line's marks and pin as 0..1 of the span: live from the bridge, else the sample */
   function spanNow() {
     if (!live_()) {
       const near = D.unread[D.span.next];
-      return { read: D.read, unread: D.unread, near, you: D.you, km: Math.round(Math.abs(near - D.you) * D.spanKm), nextId: null };
+      return { read: D.read, unread: D.unread, near, you: D.you, dist: D.spanDist, unit: "AU", label: D.spanDist + " AU", nextId: null };
     }
-    const B = window.Bridge, span = B.CAM.max - B.CAM.min, P = cam => (cam - B.CAM.min) / span, n = nearestUnread(), r = { read: [], unread: [], near: null, nextId: null, km: 0 };
+    const B = window.Bridge, span = B.CAM.max - B.CAM.min, P = cam => (cam - B.CAM.min) / span, n = nearestUnread(), r = { read: [], unread: [], near: null, nextId: null, dist: null, unit: null, label: "" };
     for (const m of B.activeMarks()) {
       if (XP.has("beacon-" + m.id)) r.read.push(P(m.cam)); else r.unread.push(P(m.cam));
     }
     r.you = P(B.camX);
-    if (n) { r.near = P(n.mark.cam); r.km = n.km; r.nextId = n.mark.id; }
+    if (n) { r.near = P(n.mark.cam); r.dist = n.dist; r.unit = n.unit; r.label = n.label; r.nextId = n.mark.id; }
     return r;
   }
   /* ======================= LEFT WING DATA ======================= */
@@ -772,7 +788,7 @@ window.HudC25 = (function () {
   function paintSpan() {
     const X0 = 200, X1 = 1800, Y = 88, X = p => Math.round(X0 + p * (X1 - X0)) + 0.5;
     const S = spanNow();
-    if (ph === "d") lastSpan = { you: X(S.you), next: S.nextId, km: S.near == null ? null : S.km, dir: S.near == null ? null : (S.near < S.you ? "west" : "east"),
+    if (ph === "d") lastSpan = { you: X(S.you), next: S.nextId, dist: S.near == null ? null : S.dist, unit: S.near == null ? null : S.unit, label: S.near == null ? null : S.label, dir: S.near == null ? null : (S.near < S.you ? "west" : "east"),
       unread: S.unread.length, read: S.read.length };
     if (ph === "d" && probe) spanLine = scrBox(X0 - 1, Y - (S.near != null ? 14 : 9), X1 + 1, Y + 10);
     stat_(() => {
@@ -791,7 +807,7 @@ window.HudC25 = (function () {
         glow(CREAM, () => { let a = lo; brk.forEach(x => { if (x - GAP > a) line(a, Y + 1, x - GAP, Y + 1, CREAM, 0.95, 2.5); a = Math.max(a, x + GAP); });
           if (hi > a) line(a, Y + 1, hi, Y + 1, CREAM, 0.95, 2.5); });
         rd.forEach(x => dot(x, Y + 0.5, 1.7, CREAM, 0.6));
-        text(S.km + " km", (xn + xy) / 2, Y + 18, { size: 11, col: CREAM, a: 1, align: "center" });
+        text(S.label,(xn + xy) / 2, Y + 18, { size: 11, col: CREAM, a: 1, align: "center" });
         glow(CREAM, () => line(xn, Y - 14, xn, Y + 2, CREAM, 1, 2.5));
       }
       glow(CREAM, () => { line(xy, Y - 9, xy, Y + 10, CREAM, 1, 2.5); dot(xy, Y + 0.5, 4, CREAM, 1); });
