@@ -56,6 +56,7 @@ window.Util = (function () {
     SECTOR: "arcanis.sector.v1",
     GEAR_SEEN: "arcanis.gear.seen",
     SW_CLEANUP: "arcanis.swcleanup.v1",
+    HUD_WING: "arcanis.hudwing.v1",
   };
   function read(store, key) { try { return store.getItem(key); } catch (e) { return null; } }
   function write(store, key, value) { try { store.setItem(key, value); return true; } catch (e) { return false; } }

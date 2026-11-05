@@ -127,6 +127,8 @@ shares `Gen`:
 - `hud-models.js` left: `contacts, blipAngle, bearingOf, strength, signal, resF, RES_LO, ce, sc, driftOf, leftLamps, live, sys`.
 - `hud-models.js` right: `busLoads, cabTAt, cells, cabTrace, stress, rightLamps, JOINT_U, RING_U, critUntil` (crit burst set by `Instruments.alert`).
 - `hud-c25.js`: span line (live: marks, `nearestUnread()`, you pin), left/right wings, log (`sampleData()` for now); static linework cached per resize; mounted by bridge-panel.js, painted from `drawInstruments`
+  - wing size steps: one `SIZE - +` stepper (no % shown) above the left wing's top-left (screen px, `marks`/`paintMarks`/`markAt`) steps both wings (1, 1.25, 1.5, 1.75; `Util.KEYS.HUD_WING`), scaled from their corners; span line does not scale.
+  - wing fit: `wingFit` draws the largest stored-or-lower step with `XL*q*v + 12 <= W/2` (1.25 at 2000x1009); above step 1 the log rises above the wings' floor line; `HudC25.wing()` feeds `B.fitHud`.
 - `tiles-sys.js`: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt`, `sys.wear`, `sys.omega` (turn rate) and `sys.lastImpact`, which the C25 right wing reads
 
 ### js/bridge
@@ -627,7 +629,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
 (xp.js; `{name, ref, level, claimed, seen, readOrder}`, `readOrder` = beacon ids in read order, absent on old profiles), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
-GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head).
+GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head), HUD_WING `arcanis.hudwing.v1` (hud-c25.js; wing scale 1 / 1.25 / 1.5 / 1.75).
 `?reset=1` wipes every key with the PREFIX.
 
 ## Future work briefs

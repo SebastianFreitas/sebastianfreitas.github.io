@@ -7,6 +7,8 @@ window.HudC25 = (function () {
   const GOLD = "245,208,107", CREAM = "238,230,208", GREY = "160,168,160", RED = "110,26,26", REDT = "196,74,68";
   const PI = Math.PI, STRUCT = 0.42, RAIL = 796, TOP = 772, XL = 776, XR = 1224, FL = 959, HB0 = 584;
   const BAR_B = 58.7;
+  const WSTEPS = [1, 1.25, 1.5, 1.75];
+  let wsv = WSTEPS.indexOf(+Util.read(localStorage, Util.KEYS.HUD_WING)) >= 0 ? +Util.read(localStorage, Util.KEYS.HUD_WING) : 1, wk = wsv, hov = -1;   // wing scale: the stored step, and the drawn one (the largest step <= it that fits this screen)
   let cv = null, c = null, W = 0, H = 0, dpr = 1, s = 1, ts = 1, barB = BAR_B;
   let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null, beadSig = "";
   let painted = false;   // true once a frame has painted since mount
@@ -619,6 +621,11 @@ window.HudC25 = (function () {
     if (newer >= 5 || (inputT < h.t && now - h.t >= 20000)) pushHint(id);
   }
   function wire() {
+    window.addEventListener("pointerdown", e => {   // first in line: a press on a mark steps the wing size and never reaches the steering
+      const n = markAt(e); if (n < 0) return;
+      e.stopImmediatePropagation(); e.preventDefault(); const m = marks()[n]; if (m.on) stepWing(m.d);
+    }, true);
+    window.addEventListener("pointermove", e => { hov = markAt(e); });
     ["pointerdown", "keydown"].forEach(t => window.addEventListener(t, () => { inputT = clock(); }, true));
     document.addEventListener("bridge:arrive", () => {
       if (!window.Bridge || !Bridge.log) return;
@@ -840,12 +847,38 @@ window.HudC25 = (function () {
   /* ======================= public API ======================= */
   /* each block draws in sketch coordinates under its own anchor: wings at the bottom corners, log + span centred */
   function paintAll() {
-    const oy = H - 1009 * s, spanY = barB + 29.8 * s;
+    const spanY = barB + 29.8 * s, s0 = s, ts0 = ts;
     blk = 0;
     const at_ = (ox, oyy, f) => { blk++; c.save(); c.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oyy); f(); c.restore(); };
-    at_(0, oy, paintLeft); at_(W - 2000 * s, oy, paintRight);
-    at_(W / 2 - 1000 * s, oy, paintLog); at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
+    s = s0 * wk; ts = Math.max(s, 0.9);   // the wings draw at the wing scale, anchored to their corners; the log and span line keep s
+    at_(0, H - 1009 * s, paintLeft); at_(W - 2000 * s, H - 1009 * s, paintRight);
+    s = s0; ts = ts0;
+    at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? (50 * wk - 13) * s : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
+    if (ph === "d") paintMarks();
   }
+  /* ---- wing size: one SIZE - + stepper above the left wing's top-left, in screen px ---- */
+  const wingOk = v => { const q = Math.min(1, W / 2000, H / 1009); return XL * q * v + 12 <= W / 2; };   // the left wing's inner edge (its floor line and readouts end at XL) keeps 12 px of the centre; the right wing mirrors it
+  const wingFit = () => { wk = WSTEPS.filter(v => v <= wsv && (v === 1 || wingOk(v))).pop(); };
+  const marks = () => { const sw = Math.min(1, W / 2000, H / 1009) * wk, y = H - 237 * sw - 33, i = WSTEPS.indexOf(wk), up = WSTEPS[i + 1];
+    return [{ d: -1, x: 14 + 47, y, on: i > 0 }, { d: 1, x: 14 + 69, y, on: up != null && wingOk(up) }]; };   // cells 22 px wide, centred on x
+  function paintMarks() {
+    c.save(); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const mk = marks(), Y = Math.round(mk[0].y) + 0.5, fx = 14.5, fy = Y - 10;
+    c.lineWidth = 1; c.strokeStyle = rgba(GOLD, STRUCT); c.strokeRect(fx, fy, 80, 20);   // quiet frame at the wing lines' weight
+    c.beginPath(); c.moveTo(fx + 36, fy); c.lineTo(fx + 36, fy + 20); c.moveTo(fx + 58, fy); c.lineTo(fx + 58, fy + 20); c.stroke();
+    c.font = '500 10px "IBM Plex Mono", monospace'; c.letterSpacing = "1px"; c.textBaseline = "alphabetic"; c.textAlign = "left"; c.fillStyle = rgba(GREY, 0.85); c.fillText("SIZE", fx + 5, Y + 3.5);
+    c.letterSpacing = "0px";
+    mk.forEach((m, n) => { const h = hov === n && m.on, a = !m.on ? 0.35 : h ? 0.95 : 0.6, X = Math.round(m.x) + 0.5;
+      c.lineWidth = 1; c.strokeStyle = rgba(CREAM, a); c.beginPath(); c.moveTo(X - 4, Y); c.lineTo(X + 4, Y);
+      if (m.d > 0) { c.moveTo(X, Y - 4); c.lineTo(X, Y + 4); }
+      c.stroke(); });
+    c.restore();
+  }
+  const markAt = e => { if (phone() || !painted || !cv || +getComputedStyle(cv).opacity < 0.5) return -1;
+    if (e.target && e.target.closest && e.target.closest("a, button, .bnote, .genesis")) return -1;
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    return marks().findIndex(m => Math.abs(x - m.x) <= 11 && Math.abs(y - m.y) <= 12); };
+  function stepWing(d) { const v = WSTEPS[WSTEPS.indexOf(wk) + d]; if (v == null || (d > 0 && !wingOk(v))) return; wsv = wk = v; Util.write(localStorage, Util.KEYS.HUD_WING, String(v)); dirty = true; }
   function mount(canvas) {
     cv = canvas; c = cv.getContext("2d"); if (!D) D = sampleData();
     if (!LF) LF = leftSample();
@@ -857,7 +890,7 @@ window.HudC25 = (function () {
   const phone = () => !!(window.Bridge && Bridge.phone);   /* D25: a phone gets no HUD */
   function resize(w, h, d, bb) {
     if (phone()) return;
-    W = w; H = h; dpr = d || 1; barB = bb == null ? BAR_B : bb;
+    W = w; H = h; dpr = d || 1; barB = bb == null ? BAR_B : bb; wingFit();
     s = Math.min(1, W / 2000, H / 1009); ts = Math.max(s, 0.9);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + "px"; cv.style.height = H + "px";
     rebuildStat();
@@ -895,10 +928,11 @@ window.HudC25 = (function () {
         const g2 = Math.max(Math.max(a.sl, b.sl) - Math.min(a.sr, b.sr), Math.max(a.st, b.st) - Math.min(a.sb, b.sb));   // the pair's gap in the 2000 x 1009 layout
         if (Math.max(-ox, -oy) < (g2 < 12 && (Math.min(a.sb, b.sb) - Math.max(a.st, b.st) > 0 || Math.min(a.sr, b.sr) - Math.max(a.sl, b.sl) > 0) ? 1 : pad)) hits.push('"' + a.s + '" x "' + b.s + '" @' + Math.round((Math.max(a.l, b.l) + Math.min(a.r, b.r)) / 2) + "," + Math.round((Math.max(a.t, b.t) + Math.min(a.b, b.b)) / 2)); }
       sh.forEach(b => { if (Math.min(a.r, b.r) - Math.max(a.l, b.l) > -1 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > -1) hits.push('"' + a.s + '" x ' + b.s + " @" + Math.round(a.l) + "," + Math.round(a.t)); }); });
-    const oy0 = H - 1009 * s, wing = {};
-    Object.keys(ext).forEach(k => { const e = ext[k]; wing["L." + k] = [e[0] * s, oy0 + e[2] * s, e[1] * s, oy0 + e[3] * s].map(v => +v.toFixed(1));
-      if (e[0] * s < 0 || e[1] * s > W || oy0 + e[2] * s < 0 || oy0 + e[3] * s > H) out.push("ext:" + k); });
-    if (busEnd) { wing.busRail = +(W - 2000 * s + busEnd.rail * s).toFixed(1); wing.busTxtR = +(W - 2000 * s + busEnd.txtR * s).toFixed(1); }
+    const sw = s * wk, oy0 = H - 1009 * sw, wing = {};
+    Object.keys(ext).forEach(k => { const e = ext[k]; wing["L." + k] = [e[0] * sw, oy0 + e[2] * sw, e[1] * sw, oy0 + e[3] * sw].map(v => +v.toFixed(1));
+      if (k === "str" || k === "brg") return;   // bearing ticks: not screen boxes (see leftBoxes)
+      if (e[0] * sw < 0 || e[1] * sw > W || oy0 + e[2] * sw < 0 || oy0 + e[3] * sw > H) out.push("ext:" + k); });
+    if (busEnd) { wing.busRail = +(W - 2000 * sw + busEnd.rail * sw).toFixed(1); wing.busTxtR = +(W - 2000 * sw + busEnd.txtR * sw).toFixed(1); }
     let sb = spanLine ? spanLine.slice() : null;
     if (sb) tx.forEach(a => { if (a.blk === 4) { sb[0] = Math.min(sb[0], a.l); sb[1] = Math.min(sb[1], a.t); sb[2] = Math.max(sb[2], a.r); sb[3] = Math.max(sb[3], a.b); } });
     return { textMin: textMin == null ? null : +textMin.toFixed(3), textHits: hits, paint: { outside: out, wing }, spanBox: sb && { l: +sb[0].toFixed(1), t: +sb[1].toFixed(1), r: +sb[2].toFixed(1), b: +sb[3].toFixed(1) } };
@@ -952,6 +986,6 @@ window.HudC25 = (function () {
     const sc = sizeChecks();
     return { phone: phone(), painted, W, H, dpr, s, ts, barBottom: barB, span: Object.assign({ y: barB + 29.8 * s, x0, x1: x0 + 1600 * s }, lastSpan, { box: sc.spanBox }), log: lastLog, left: LF && LF.rep, right: RF && RF.rep, textMin: sc.textMin, textHits: sc.textHits, paint: sc.paint };
   }
-  const api = { mount, draw, resize, report, sampleData, nearestUnread };
+  const api = { mount, draw, resize, report, sampleData, nearestUnread, wing: () => wk };
   return api;
 })();

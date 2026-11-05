@@ -13,7 +13,7 @@
   B.fitHud = () => {
     const tb = document.querySelector(".topbar");
     const bb = tb ? tb.offsetTop + tb.getBoundingClientRect().height : undefined; /* layout bottom: the bar-away slide is a transform and must not move the span line */
-    const key = B.W + "x" + B.H + "@" + B.dpr + "/" + bb;
+    const key = B.W + "x" + B.H + "@" + B.dpr + "/" + bb + "/" + HudC25.wing();
     if (key === hudKey || !B.W || !B.H) return;
     hudKey = key;
     HudC25.resize(B.W, B.H, B.dpr, bb);
