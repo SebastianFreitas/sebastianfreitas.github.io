@@ -50,6 +50,11 @@ in those areas.
   tools/jscheck.py <files> --shot out.png`, or `snap.py
   capture <run> --only <page>-toy` for its three scroll stops, plus the
   flows. The full `snap.py` only when page DOM or CSS changes.
+- Games/Work rows, the stage or `js/site/shapes.js` rows: `py -3 tools/workcut.py`
+  must pass (installed Firefox, wide windows and page zoom).
+- Anything that paints the homepage or case pages: also shoot it with
+  `py -3 tools/ffshot.py` (the owner's installed Firefox); Playwright
+  Firefox has missed bugs twice.
 
 ## Paths never to open
 

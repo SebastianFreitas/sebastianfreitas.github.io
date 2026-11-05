@@ -174,30 +174,36 @@
      line runs down the left edge, overshooting the top-left corner by 0.06 of the edge and stopping short of the bottom-left
      by the same. Sets the clip as `prop` on el (its y moved down by `pad`, for a pseudo reaching `pad` px above the box) and draws the line in the svg `red`.
      k deepens the chips and nicks and jit spreads where they sit (both default to the Experience tile's look). */
-  function wornQuad(el, red, pts, W, seed, prop, pad, k, jit) {
-    pad = pad || 0; k = k || 1; jit = jit || 0.03;
+  function wornQuad(el, red, pts, W, seed, prop, pad, k, jit, e) {
+    pad = pad || 0; k = k || 1; jit = jit || 0.03; e = e || 1;
     const x0 = pts[0][0], dy = pts[0][1];
-    const ex = pts[1][0] - x0, ey = pts[1][1] - dy, len = Math.hypot(ex, ey), ux = ex / len, uy = ey / len;
-    const rnd = rng(seed), bites = [];
-    const at = function (u, off) { return [x0 + ux * u - uy * off, dy + uy * u + ux * off]; };
+    /* the worn run is the chain pts[0..e] (one plain edge when e is 1); a bite never spans a corner of it and sits in the segment its start falls in */
+    const segs = []; let len = 0;
+    for (let j = 0; j < e; j++) { const ex = pts[j + 1][0] - pts[j][0], ey = pts[j + 1][1] - pts[j][1], l = Math.hypot(ex, ey); segs.push({ x: pts[j][0], y: pts[j][1], ux: ex / l, uy: ey / l, l: l, s: len }); len += l; }
+    const rnd = rng(seed), bites = segs.map(function () { return []; });   /* bites per segment of the run */
+    const at = function (u, off) { let g = segs[segs.length - 1]; for (let j = 0; j < segs.length; j++) if (u <= segs[j].s + segs[j].l) { g = segs[j]; break; } const q = u - g.s; return [g.x + g.ux * q - g.uy * off, g.y + g.uy * q + g.ux * off]; };
     const f = Math.max(1, Math.min(2.5, 1 + 1.5 * (W - 420) / 800)), fn = 1 + (f - 1) * 0.4;   /* bite scale: 1 on a phone, 2.5 on desktop */
     /* five bites at uneven spots (bunched toward the corners, long clean runs between): a deep chip or two, the rest hairline nicks */
     [[0.06, 1], [0.11, 0], [0.46, 0], [0.9, 1], [0.95, 0]].forEach(function (s, n) {
-      const t = (s[0] + (rnd() - 0.5) * jit) * len, chip = n === 0 || n === 3;
+      let t = (s[0] + (rnd() - 0.5) * jit) * len;
+      const chip = n === 0 || n === 3;
       const w = (chip ? 14 + rnd() * 16 : 3 + rnd() * 7) * (chip ? f : fn) * Math.sqrt(k);
       let d = (chip ? 3 + rnd() * 1.2 : 0.7 + rnd() * 0.8) * (chip ? f : fn) * k;
       if (chip && k > 1) d = Math.min(16, Math.max(6, d));   /* deepened chips (Work rows): 6 px at least on a phone, 16 at most on desktop */
-      const m = 2 + Math.floor(rnd() * 3), us = [];
+      segs.forEach(function (g) { if (g.s > t && g.s < t + w) t = g.s + 1; });   /* a corner of the run inside the bite: start the bite after it */
+      let sj = 0; segs.forEach(function (g, j) { if (t >= g.s) sj = j; });
+      const bs = bites[sj], m = 2 + Math.floor(rnd() * 3), us = [];
       for (let j = 0; j < m; j++) us.push(rnd());
       us.sort(function (a, b) { return a - b; });
-      bites.push(at(t, 0));
-      us.forEach(function (u, q) { const r = rnd(); bites.push(at(t + u * w, d * (chip && k > 1 && q === 0 ? 1 : 0.25 + r * 0.75))); });
-      bites.push(at(t + w, 0));
+      bs.push(at(t, 0));
+      us.forEach(function (u, q) { const r = rnd(); bs.push(at(t + u * w, d * (chip && k > 1 && q === 0 ? 1 : 0.25 + r * 0.75))); });
+      bs.push(at(t + w, 0));
     });
-    const all = pts.slice();
-    all.splice.apply(all, [1, 0].concat(bites));
+    const all = [pts[0]];
+    for (let j = 0; j < e; j++) all.push.apply(all, bites[j].concat([pts[j + 1]]));
+    all.push.apply(all, pts.slice(e + 1));
     el.style.setProperty(prop, "polygon(" + all.map(function (p) { return p[0].toFixed(1) + "px " + (p[1] + pad).toFixed(1) + "px"; }).join(", ") + ")");
-    const l = red.firstChild, bl = pts[3], vx = bl[0] - x0, vy = bl[1] - dy;
+    const l = red.firstChild, bl = pts[pts.length - 1], vx = bl[0] - x0, vy = bl[1] - dy;
     l.setAttribute("x1", (x0 - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (dy - 0.06 * vy).toFixed(1));
     l.setAttribute("x2", (bl[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (bl[1] - 0.06 * vy).toFixed(1));   /* stops short of the corner by the top overshoot */
     return all;
@@ -212,10 +218,32 @@
     return red;
   }
 
-  /* the Work rows: each band is a worn quad, its four corners pushed off by a seeded few %; a row's top edge takes the
-     previous row's bottom angle (rows are read in order), so each runs parallel to the game above. Angles in degrees,
-     rising to the right, within a few degrees of the old -3deg tilt. */
-  const WK_TOP = 2.6, WK_BOT = [3.3, 2.5, 3.6, 3];
+  /* the Work rows: each band is the worn polygon of its game (below). */
+  const WK_BOT = [3.3, 2.5, 3.6, 3];   /* degrees: only the phone Experience tilt now */
+  /* each game is cut as its own polygon (box fractions, clockwise from the top-left point of the top run; the last point closes the left edge).
+     WK_TOP_END: index where the worn top run (leftmost to rightmost across the top) ends; WK_BASE: [bottom-left, bottom-right] point indexes
+     of the lowest run, which the Experience shape hangs from. */
+  /* the cracks between neighbouring rows: each is one polyline [x as a fraction of the row width, drop in widths]. The upper row's
+     bottom run is the crack raised so its deepest point touches the box bottom; the lower row's top run is the same crack with its
+     highest point on the box top, so the two edges are parallel and WK_GAP (rem) apart however tall the rows are (the lower row's margin does the rest) */
+  const WK_CRACK = [
+    [[0.10, 0.04], [0.93, 0.1]],
+    [[0.04, 0.1], [0.55, 0], [0.86, 0.03]],
+    [[0.10, 0], [0.94, 0.07]]
+  ];
+  const WK_GAP = 4;
+  const WK_ANCH = [0, 0, 0, 0];
+  const WK_DROP = function (c) { return Math.max.apply(null, c.map(function (p) { return p[1]; })); };
+  /* row i's polygon in px (box W x H), clockwise from the top-left point of its top run; the last point closes the left edge.
+     Returns {pts, end (index where the worn top run ends), bi ([bottom-left, bottom-right] indexes: the Experience shape hangs from that run)} */
+  function wkPoly(i, W, H) {
+    const top = i === 0 ? [[0, 0], [0.142 * W, 0.199 * H], [0.94 * W, 0.292 * H]] : WK_CRACK[i - 1].map(function (p) { return [p[0] * W, p[1] * W]; });
+    const R = i === 0 ? [[W, 0.62 * H]] : [], L = i === 1 ? [[0, 0.5 * H]] : [];   /* side bulges: Sector Zero's right edge, VoidScape's left */
+    let bot;
+    if (i < WK_CRACK.length) { const A = WK_DROP(WK_CRACK[i]) * W; bot = WK_CRACK[i].map(function (p) { return [p[0] * W, H - A + p[1] * W]; }).reverse(); }
+    else bot = [[W, 0.82 * H], [0, H]];   /* the last row's bottom is one straight run (the Experience shape's top edge follows it) */
+    return { pts: top.concat(R, bot, L), end: top.length - 1, bi: [top.length + R.length + bot.length - 1, top.length + R.length] };
+  }
   function workRows() {
     const rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
     rows.forEach(function (el, i) {
@@ -223,11 +251,13 @@
       /* the row's own height: its padding scaled by a seeded factor (a different one per row), so the layout really differs */
       const hf0 = [0.45, 1.55, 0.8, 1.3][i % 4] + (rng("wk-h-" + i)() - 0.5) * 0.2;
       el.style.setProperty("--wk-hf", hf0.toFixed(2));
-      /* then grown: the row's height at that factor is B; the padding is raised so the row lands at 1.3x B (1.2x on a phone; B already holds the wrapped meta, so about 1.5x the old row), the text staying centred */
+      /* then grown: the row's height at that factor is B; the padding is raised so the row lands at 1.95x B (1.8x on a phone; B already holds the wrapped meta): 1.5x the earlier, already grown row, the text staying centred */
       { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, B = el.offsetHeight, txt = B - 4.25 * rem * hf0;
-        if (B) el.style.setProperty("--wk-hf", Math.max(hf0, (B * (window.matchMedia("(max-width: 1199px)").matches ? 1.2 : 1.3) - txt) / (4.25 * rem)).toFixed(3)); }
-      /* the row's width as a share of its box, seeded per row (82-100%) */
-      const wfRow = Math.min(1, [0.86, 1, 0.82, 0.94][i % 4] + (rng("wk-w-" + i)() - 0.5) * 0.06);
+        if (B) {
+          const hf = Math.max(hf0, (B * (window.matchMedia("(max-width: 1199px)").matches ? 1.8 : 1.95) * (i === 0 ? 1.25 : 1) - txt) / (4.25 * rem)), a = WK_ANCH[i % WK_ANCH.length];
+          el.style.setProperty("--wk-hf", (a ? hf * (1 - a) / 0.53 : hf).toFixed(3));   /* a: share of the spare height put above the text (a deep notch up top); the rest stays below it */
+          el._wkPt = a ? hf * 4.25 * rem * a : 0;
+        } }
       const TXT = ".obj-id, h3, .obj-line, .props > div", MARGIN = 6;
       /* signed distance (px, inside positive) from a point to the polygon, and the nearest edge's direction */
       function inside(poly, x, y) {
@@ -252,45 +282,25 @@
           el._wkExt = Math.max(0, (tgt - natR) / k0); el._wkExtL = Math.max(0, (natL - cw * 0.06) / k0);
           el.style.marginRight = (-el._wkExt).toFixed(1) + "px"; el.style.marginLeft = (-el._wkExtL).toFixed(1) + "px";
         } else if (!wide && (el._wkExt || el._wkExtL)) { el._wkExt = el._wkExtL = 0; el.style.marginRight = el.style.marginLeft = ""; }
-        const W = el.offsetWidth, H = el.offsetHeight;
+        const W = el.offsetWidth, H = el.offsetHeight, flip = wide && el.classList.contains("is-flip");   /* flip: text right, picture left (css .is-flip) */
         if (!W || !H) return;
-        const rnd = rng("wk-quad-" + i);
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
         if (!el._wk || el._wk.W !== W) ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wk-" + v); });
         const S = el._wk && el._wk.W === W ? el._wk : (el._wk = { W: W, pt: 0, pb: 0, pl: 0, pr: 0, cpl: 0, cpr: 0 });
-        const narrow = window.matchMedia("(max-width: 1199px)").matches, cs = getComputedStyle(el);
-        const gutL = parseFloat(cs.paddingLeft) - S.cpl, gutR = parseFloat(cs.paddingRight) - S.cpr;
-        /* each edge sits its own px in from the box (never under 4, so none sits square). The left edge leans 10-20deg off vertical, alternating
-           under/over 90 from row to row (the first row's side is seeded); its x range stays inside the gutter so the text is never cut, and on a phone
-           (gutter 20px) the lean shrinks to fit. The right edge leans 1-4deg either way and sits in from the box by up to 13% of W (the gutter on a phone).
-           The first row's top has no seam above, so its two top corners also move up or down on their own. Seam edges keep their angle, so the edge as a whole moves, never one corner alone */
-        const px = function (lo, hi) { return lo + rnd() * (hi - lo); }, dyMax = Math.max(6, 0.04 * H);
-        const ty = 4 + rnd() * dyMax, by = H - 4 - rnd() * dyMax, hq = by - ty;
-        const ls = (i % 2 ? 1 : -1) * (rng("wk-side")() < 0.5 ? 1 : -1), rs = narrow ? (rnd() < 0.5 ? 1 : -1) : -ls;   /* desktop: the right edge leans the way the left one does */
-        /* the text side grows with the lean (left padding), and the right padding with the row's inset, so the leaning edge never cuts text */
-        const angL = px(narrow ? 4 : 10, narrow ? 8 : 20), dL = Math.tan(angL * Math.PI / 180) * hq;
-        const pl = Math.max(0, Math.ceil(dL + 12 - gutL)) + S.pl, lmax = Math.max(8, gutL + pl - 8);
-        const dl = Math.min(dL, lmax - 4), atL = 4 + rnd() * Math.min(lmax - 4 - dl, narrow ? 12 : 1e9);
-        const lx = ls > 0 ? [atL + dl, atL] : [atL, atL + dl];   /* [top x, bottom x] */
-        const angR = narrow ? px(1, 4) : px(8, 14), dR = Math.tan(angR * Math.PI / 180) * hq;
-        const rm = Math.max(4 + dR / 2, (1 - (narrow ? wfRow - 0.07 : 1)) * W - (lx[0] + lx[1]) / 2);   /* right edge's mean inset: the row's width share minus the left inset */
-        const pr = (narrow ? Math.max(0, Math.ceil(rm + dR / 2 + 8 - gutR)) : 0) + S.pr;
-        if (pass < 5 && (Math.abs(pl - S.cpl) > 2 || Math.abs(pr - S.cpr) > 2)) {
-          S.cpl = pl; S.cpr = pr; el.style.setProperty("--wk-pl", pl + "px"); el.style.setProperty("--wk-pr", pr + "px");
-          return draw(pass + 1);
+        if (el._wkPt && !S.pt) el.style.setProperty("--wk-pt", el._wkPt.toFixed(0) + "px");
+        const cs = getComputedStyle(el);
+        /* the row's own cut: its polygon (WK_POLY, box fractions) scaled to the row's box; nothing reaches past the box, so no padding above */
+        const poly = wkPoly(i, W, H), pts = poly.pts, bi = poly.bi;
+        if (i > 0) el.style.marginTop = (WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - WK_DROP(WK_CRACK[i - 1]) * W).toFixed(1) + "px";   /* the crack above this row: WK_GAP between the two edges */
+        el.style.setProperty("--wk-pad", "0px");
+        const all = wornQuad(el, red, pts, W, "wk-wear-" + i, "--wk-clip", 0, 2, 0.1, poly.end);
+        const bl = pts[bi[0]], br = pts[bi[1]];
+        if (flip) {   /* mirrored row: the red line runs down the right edge, from the end of the worn top run to the bottom-right point, same overshoot as the left one */
+          const tr = pts[poly.end], l = red.firstChild, vx = br[0] - tr[0], vy = br[1] - tr[1];
+          l.setAttribute("x1", (tr[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (tr[1] - 0.06 * vy).toFixed(1));
+          l.setAttribute("x2", (br[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (br[1] - 0.06 * vy).toFixed(1));
         }
-        const rx = rs > 0 ? [rm + dR / 2, rm - dR / 2] : [rm - dR / 2, rm + dR / 2];
-        const xtl = lx[0], xbl = lx[1], xtr = W - rx[0], xbr = W - rx[1];
-        const free = function () { return (rnd() < 0.5 ? -1 : 1) * px(4, dyMax); };
-        const ytl = i ? 0 : free(), ytr = i ? 0 : free();
-        const ta = i ? WK_BOT[i - 1] : WK_TOP, ba = WK_BOT[i % WK_BOT.length];
-        /* each edge pivots about the row's centre (as the old rotated band did) */
-        const rt = Math.tan(ta * Math.PI / 180) * (xtr - xtl) / 2, rb = Math.tan(ba * Math.PI / 180) * (xbr - xbl) / 2;
-        /* the tilted edges reach past the box top and bottom, so the pseudo is padded that far (--wk-pad) and nothing is cut flat */
-        const pad = Math.ceil(Math.max(rt, rb)) + 12;
-        el.style.setProperty("--wk-pad", pad + "px");
-        const all = wornQuad(el, red, [[xtl, ty + rt + ytl], [xtr, ty - rt + ytr], [xbr, by - rb], [xbl, by + rb]], W, "wk-wear-" + i, "--wk-clip", pad, 2, 0.1);
-        el._wkGeo = { xtl: xtl, ytl: ty + rt + ytl, xbl: xbl, ybl: by + rb, xbr: xbr, ybr: by - rb, ba: ba };   /* the Experience shape hangs from this bottom edge */
+        el._wkGeo = { xtl: pts[0][0], ytl: pts[0][1], xbl: bl[0], ybl: bl[1], xbr: br[0], ybr: br[1], ba: Math.atan2(bl[1] - br[1], br[0] - bl[0]) * 180 / Math.PI };   /* the Experience shape hangs from this bottom edge (the lowest run, bottom-left to bottom-right) */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
         if (pass < 5) {
           const er = el.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 }, k = window.Stage ? window.Stage.s() : 1;   /* rects are screen px under the stage zoom, the quad is in design px */
@@ -308,6 +318,7 @@
             if (need.t) { S.pt = parseFloat(cs.paddingTop) + Math.ceil(need.t); el.style.setProperty("--wk-pt", S.pt + "px"); }
             if (need.b) { S.pb = parseFloat(cs.paddingBottom) + Math.ceil(need.b); el.style.setProperty("--wk-pb", S.pb + "px"); }
             S.pl += Math.ceil(need.l); S.pr += Math.ceil(need.r);
+            el.style.setProperty("--wk-pl", S.pl + "px"); el.style.setProperty("--wk-pr", S.pr + "px");
             return draw(pass + 1);
           }
         }
@@ -316,14 +327,17 @@
         if (shot) {
           /* the picture is fully dark under the whole text block (its widest line, measured by range), then fades in */
           const er2 = el.getBoundingClientRect(), rg = document.createRange(), k2 = window.Stage ? window.Stage.s() : 1; let tx = 0;
-          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); tx = Math.max(tx, (rg.getBoundingClientRect().right - er2.left) / k2); });
+          if (flip) tx = W;   /* mirrored: tx is the text's reach from the row's right edge, measured from its leftmost line */
+          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); const rc = rg.getBoundingClientRect(); tx = flip ? Math.min(tx, (rc.left - er2.left) / k2) : Math.max(tx, (rc.right - er2.left) / k2); });
+          if (flip) tx = W - tx;
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.width = wide && (el._wkExt || el._wkExtL) ? (W - 0.2 * (W - el._wkExt - el._wkExtL)).toFixed(1) + "px" : ""; });   /* the picture keeps its place relative to the text: it grows with the row on both sides */
-          el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
+          el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, flip ? tx + 16 - (W - m.offsetLeft - m.offsetWidth) : tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
         }
-        if (shot) shot.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - shot.offsetLeft).toFixed(1) + "px " + (p[1] - shot.offsetTop).toFixed(1) + "px"; }).join(", ") + ")");
+        if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
       }
       draw();
       if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el);
+      window.addEventListener("resize", function () { const cw = document.documentElement.clientWidth; if (el._wkCw === cw) return; el._wkCw = cw; draw(); clearTimeout(el._wkRz); el._wkRz = setTimeout(function () { draw(); }, 200); });   /* page zoom while open: the capped stage keeps the row's box, so only the window says the width changed; the late pass settles the text padding once a resize or zoom crosses 1200 */
     });
   }
 
@@ -340,14 +354,7 @@
       const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), n = rows.length, last = n ? rows[n - 1] : null, g = last && last._wkGeo;
       if (!g) return null;
       const k = window.Stage ? window.Stage.s() : 1, r = last.getBoundingClientRect(), a = g.ba * Math.PI / 180, ta = Math.tan(a);
-      let gap = 3.4 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(a);
-      const prev = n > 1 ? rows[n - 2] : null, pg = prev && prev._wkGeo;
-      if (pg) {   /* the two rows' edges are what the eye sees */
-        const pr = prev.getBoundingClientRect(), ox = (r.left - pr.left) / k, oy = (r.top - pr.top) / k;   /* last row's origin in prev's coordinates */
-        const yline = pg.ybl - Math.tan(pg.ba * Math.PI / 180) * (ox + g.xtl - pg.xbl);
-        gap = (oy + g.ytl - yline) * Math.cos(pg.ba * Math.PI / 180);
-      }
-      gap *= 2;   /* the owner wants twice the row-to-row distance */
+      const gap = WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(a);   /* the same vertical gap as between the rows */
       const sx = gap * Math.sin(a), sy = gap * Math.cos(a), lx = g.xbr - g.xbl, W = lx / 0.972;
       return { W: W, dy: ta * lx, left: Math.max(r.left / k + g.xbl + sx - 0.028 * W, 0.06 * document.documentElement.clientWidth / k), top: r.top / k + g.ybr + sy };
     }

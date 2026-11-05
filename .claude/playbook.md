@@ -59,6 +59,7 @@ The detail behind `workflow.md` "Run" steps 3 to 6.
 - A prepared run's specs are gitignored and exist only in the worktree
   the go prompt names, so a run never moves to another checkout.
 - Verify: the reviewer may re-run the implementer's checks.
+- Verify: homepage or case-page paint is also shot with `py -3 tools/ffshot.py` (installed Firefox; `--games` for the rows).
 - Review is not a judgement call: `.claude/hooks/review-guard.py` counts
   the real diff at `git commit` and at `try.py --commit` and refuses the
   command until a reviewer has run in this window; an earlier window's
