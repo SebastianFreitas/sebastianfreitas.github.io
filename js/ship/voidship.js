@@ -358,7 +358,8 @@ window.Voidship = (function () {
     } else { ship.pitchW = 0; ship.aimErr = null; ship.go = false; }
     // the drawn pitch: the 3D turn spins the hull about the screen's vertical, so the nose keeps its height
     // (up-right turns to up-left, never down-left) and the hull's up axis stays exact all the way through
-    const wantP = ship.face >= 0 ? ship.elev : -ship.elev; // the tilt holds through the turn; flips with the mirror at face = 0
+    // the tilt fades with |face| through a side turn, so it is level where the mirror flips (face = 0): no pop, no tumble
+    const wantP = (ship.face >= 0 ? ship.elev : -ship.elev) * Math.abs(ship.face);
     ship.pitch = wantP; // snaps with the mirror (the two poses look the same there), no slewed half roll
     ship.pitch -= Math.PI * 2 * Math.round(ship.pitch / (Math.PI * 2));
     // the old flight-path nose, kept quiet: it only feeds stats().bank
