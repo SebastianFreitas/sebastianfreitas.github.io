@@ -132,7 +132,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 3.2rem; }
 body {
   margin: 0;
   padding-top: 0;
-  /* the bridge window's bottom void, fading to dark navy below the bridge (case pages override with the flat ground) */
+  /* the bridge window's bottom void, fading to dark navy below the bridge (case pages override with the flat settled colour #0a0d10, since the 100svh offset is homepage-only) */
   background: #0a0d10 linear-gradient(180deg, #0e1115 0, #0a0d10 900px) 0 100svh / 100% 900px no-repeat;
   color: var(--sage);
   font-family: var(--body);
@@ -510,7 +510,8 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .page-404 .void-note p:last-of-type { margin-bottom: 0; }
 .page-404 .case-nav a::before { background: rgb(4,4,5); }
 .page-404 .case-nav a:hover::before, .page-404 .case-nav a:focus-visible::before { background: var(--type-tag-bg); }
-body.page-case { background: var(--ground); }
+body.page-case { background: #0a0d10; }
+.case .cmd { font-family: var(--type-mono); font-size: 0.92em; color: var(--type-cream); }
 
 /* ---------------- shared section furniture ---------------- */
 
@@ -707,7 +708,7 @@ body.page-case { background: var(--ground); }
 /* the flat ground under the strokes; the toy shows beside the column */
 .folder-body > .case::before {
   content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  background: var(--ground);
+  background: #0a0d10;
 }
 /* desktop: the toy draws behind the column, so its right edge fades out instead of cutting the toy */
 @media (min-width: 1200px) {

@@ -16,9 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Fraunces:wght@800&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=258">
-<link rel="stylesheet" href="../css/beacon.css?v=258">
-<link rel="stylesheet" href="../css/play.css?v=258">
+<link rel="stylesheet" href="../css/style.css?v=259">
+<link rel="stylesheet" href="../css/beacon.css?v=259">
+<link rel="stylesheet" href="../css/play.css?v=259">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -97,7 +97,7 @@
     <p class="caption">Look at an object, read its ID, type create. The object is now a text file,
        and the text file is now the object.</p>
     <p>The goal is simple: <span class="key">register</span> things so the storm, the chaos and the unknown cannot take them.
-       Point at anything, read its three-character ID, and <code>create</code> writes it into the
+       Point at anything, read its three-character ID, and <span class="cmd">create</span> writes it into the
        filesystem as a text file. From then on that file is the object. Edit it and the object
        follows: rename it, rewrite its note, change what it is. A registered object is stable,
        readable and usable.</p>
@@ -111,10 +111,10 @@
 
     <h2>A real shell</h2>
     <p><span class="key">RealityTXT</span> is a working shell over a <span class="key">virtual filesystem</span>, not a menu dressed as one. It runs
-       <code>ls</code>, <code>cd</code>, <code>cat</code>, <code>create</code>, <code>edit</code>,
-       <code>rm</code>, <code>mail</code>, <code>read</code>, <code>reply</code>, <code>logout</code>
-       and <code>reset</code>, with tab completion, command history and real errors. Your login is a
-       line in a file, so editing the file changes your password. <code>help</code> does not list
+       <span class="cmd">ls</span>, <span class="cmd">cd</span>, <span class="cmd">cat</span>, <span class="cmd">create</span>, <span class="cmd">edit</span>,
+       <span class="cmd">rm</span>, <span class="cmd">mail</span>, <span class="cmd">read</span>, <span class="cmd">reply</span>, <span class="cmd">logout</span>
+       and <span class="cmd">reset</span>, with tab completion, command history and real errors. Your login is a
+       line in a file, so editing the file changes your password. <span class="cmd">help</span> does not list
        every command. Anyone who has used a terminal already knows how to play, and because every
        mechanic is a text operation, a new feature costs a command rather than a UI.</p>
     <p>The <span class="key">mail client</span> lives inside the shell. Messages arrive, you read them, and replies are
@@ -182,7 +182,7 @@
        chaos: combustion, transmutation, erasure. Long exposure breaks minds and bodies.</p>
     <p>They built devices to detect it, then embedded it safely in a reinforced computer, and after a
        run of catastrophic failures produced <span class="key">RealityTXT</span>: a terminal that gives control over any
-       physical object listed inside it. Type <code>static</code> on an object and it holds, even
+       physical object listed inside it. Type <span class="cmd">static</span> on an object and it holds, even
        against <span class="key">Anomium</span>. For the first time the company had a weapon against chaos. What Anomium
        actually is, they still do not know.</p>
 
@@ -226,16 +226,16 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=258"></script>
-<script src="../js/site/xp.js?v=258"></script>
-<script src="../js/site/surge.js?v=258"></script>
-<script src="../js/lib/pacer.js?v=258"></script>
-<script src="../js/site/lazy-video.js?v=258"></script>
-<script src="../js/pages/play.js?v=258"></script>
-<script src="../js/pages/sector-zero-records.js?v=258"></script>
-<script src="../js/pages/sector-zero.js?v=258"></script>
-<script src="../js/site/shapes.js?v=258"></script>
-<script src="../js/site/redlines.js?v=258"></script>
+<script src="../js/lib/util.js?v=259"></script>
+<script src="../js/site/xp.js?v=259"></script>
+<script src="../js/site/surge.js?v=259"></script>
+<script src="../js/lib/pacer.js?v=259"></script>
+<script src="../js/site/lazy-video.js?v=259"></script>
+<script src="../js/pages/play.js?v=259"></script>
+<script src="../js/pages/sector-zero-records.js?v=259"></script>
+<script src="../js/pages/sector-zero.js?v=259"></script>
+<script src="../js/site/shapes.js?v=259"></script>
+<script src="../js/site/redlines.js?v=259"></script>
 <script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "zero");</script>
 </body>
 </html>
