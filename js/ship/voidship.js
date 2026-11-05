@@ -19,10 +19,8 @@ window.Voidship = (function () {
   const BASE = {
     accelTau: 0.30,   // s, velocity time constant when speeding up (world x)
     brakeTau: 0.07,   // s, when slowing/reversing: full stop in ~0.3 s
-    maxSpeed: 9000,   // world u/s at holdT 0
-    holdBoost: 3.4,   // cruise multiplier at holdT 1 (stats only)
-    holdBuild: 1.35,  // s of held far pointer to reach holdT 1
-    holdDecay: 1.6,   // s to bleed holdT back to 0
+    maxSpeed: 9000,   // world u/s base cruise
+    holdBoost: 3.4,   // top speed multiplier: a held pointer at full demand flies maxSpeed * this
     brakeX: 14000,    // u/s², arrive profile v = sqrt(2*brakeX*d)
     brakeY: 700,      // px/s², arrive profile v = sqrt(2*brakeY*d)
     yMax: 420,        // px/s at rest
@@ -31,7 +29,8 @@ window.Voidship = (function () {
     yBrake: 1200,     // px/s² when catching a vertical speed
     yTau: 0.06,       // s, shapes only the last approach to the wanted vertical speed
     yBand: 0.24,
-    farUnits: 600,    // a held pointer further than this = cruise, nearer = arrive
+    holdD0: 70,       // u, a held pointer closer than this (just off the hull) asks for no thrust
+    holdD1: 585,      // u, full thrust at this distance (~585 px at 2000 wide); linear between
     limpSpeed: 0.25,  // cruise fraction with dry tanks
     turnTime: 0.72,   // s for a full 180° yaw
     pitchMax: 0.08,   // rad, cap on the bank the HUD reads (the drawn nose goes to 90°)
@@ -74,7 +73,7 @@ window.Voidship = (function () {
       pitchW: 0,            // rad/s, angular velocity of elev (the nose's spin in the hull's own frame)
       elev: 0,              // the nose's elevation as if facing right: pitch = elev facing right, -elev facing left; the 3D turn keeps it
       bankQ: 0,             // old flight-path nose; only stats().bank reads it
-      thrusting: false, holdT: 0,
+      thrusting: false,
       go: false, aimErr: null,   // motors on (nose within ~10° of the press aim, held to 30°); the nose's last error
       targetX: null, targetY: null, courseMark: null, arrived: true,
       fuel: BASE.fuelMax, fuelMax: BASE.fuelMax, infinite: false,
@@ -197,12 +196,16 @@ window.Voidship = (function () {
       dy = tgtY - ship.y;
     }
 
-    const far = hasTarget(ship) && ship.thrusting && !ship.courseMark && Math.abs(dx) > BASE.farUnits;
-    ship.far = far;   // read by the tether art
-    const charging = far && canBurn(ship) && ship.go;   // the boost is earned in flight, never while the nose swings round
-    ship.holdT = clamp(ship.holdT + (charging ? dt / BASE.holdBuild : -dt / BASE.holdDecay), 0, 1);
+    // a held pointer sets the thrust by its distance: d0 off the hull = 0, d1 = full
+    const held = hasTarget(ship) && ship.thrusting && !ship.courseMark;
+    // (measured to the raw pointer, as the gauge draws it, not the clamped tgtY)
+    const dRaw = held ? Math.hypot(dx, (ship.targetY - ship.y) / pxPerUnit) : 0;
+    const pull = held ? clamp((dRaw - BASE.holdD0) / (BASE.holdD1 - BASE.holdD0), 0, 1) : 0;
+    ship.demand = pull;   // read by the tether art
+    ship.far = held && pull >= 1;
 
-    let cruise = BASE.maxSpeed * P.maxSpeed * (1 + 2.4 * ship.holdT * ship.holdT);
+    const topSpeed = BASE.maxSpeed * BASE.holdBoost * P.maxSpeed;
+    let cruise = BASE.maxSpeed * P.maxSpeed * (1 + 2.4);
     if (!canBurn(ship)) cruise = BASE.maxSpeed * P.maxSpeed * BASE.limpSpeed;
 
     // vertical authority: full at rest, down to yMaxFast of it by base cruise speed
@@ -213,17 +216,17 @@ window.Voidship = (function () {
     const active = hasTarget(ship) && (ship.thrusting || !ship.arrived);
     if (active) {
       const sx = Math.sign(dx), sy = Math.sign(dy);
-      vWantX = far ? sx * cruise : sx * Math.min(cruise, Math.sqrt(2 * BASE.brakeX * Math.abs(dx)));
+      vWantX = held ? sx * cruise * pull * (dRaw > 0 ? Math.abs(dx) / dRaw : 0) : sx * Math.min(cruise, Math.sqrt(2 * BASE.brakeX * Math.abs(dx)));
       vWantY = sy * Math.min(yCap, Math.sqrt(2 * BASE.brakeY * Math.abs(dy)));
       if (Math.abs(dx) < BASE.arriveWorld) vWantX = 0;
       if (Math.abs(dy) < BASE.arriveY) vWantY = 0;
       // a seek flies a straight line to the mark: climb no faster than the path needs,
       // so height and distance run out together instead of an L-shaped hop
-      if (!far && Math.abs(dx) >= BASE.arriveWorld && vWantX !== 0) {
+      if (!held && Math.abs(dx) >= BASE.arriveWorld && vWantX !== 0) {
         const vLine = Math.abs(vWantX) * Math.abs(dy) / Math.abs(dx);
         if (vLine < Math.abs(vWantY)) vWantY = sy * vLine;
       }
-      demand = far ? 1 : clamp(Math.abs(vWantX) / cruise, 0, 1);
+      demand = held ? pull : clamp(Math.abs(vWantX) / cruise, 0, 1);
       // any flight (a press, a tap's course, a seek) turns the ship first: the motors wait until
       // the nose is on the aim (10°), then keep pushing through small aim changes (30°);
       // once under way they stay lit and push by how much the nose points along the aim, so a
@@ -276,7 +279,7 @@ window.Voidship = (function () {
     ship.vy += clamp(vyGain, -ayMax * dt, ayMax * dt);
     if (vWantX === 0 && Math.abs(ship.vel) < 6) ship.vel = 0;
     if (vWantY === 0 && Math.abs(ship.vy) < 2) ship.vy = 0;
-    const topSpeed = BASE.maxSpeed * BASE.holdBoost * P.maxSpeed;
+    ship.engine = burning ? clamp(Math.abs(ship.vel) / topSpeed, 0, 1) : 0;   // live main-engine output for the gauge
     ship.speedN = Math.min(1, Math.abs(ship.vel) / topSpeed);
     const w2 = clamp((ship.speedN - BASE.phase2At) / 0.10, 0, 1);   // sustainers, 0.28→0.38
     const w3 = clamp((ship.speedN - BASE.phase3At) / 0.12, 0, 1);   // full burn, 0.70→0.82
@@ -293,7 +296,7 @@ window.Voidship = (function () {
 
     if (hasTarget(ship) && !closeHold) {
       let atX = false, atY = false;
-      if ((!far && (ship.targetX - prevX) * (ship.targetX - camX) <= 0) ||
+      if ((!held && (ship.targetX - prevX) * (ship.targetX - camX) <= 0) ||
         (Math.abs(ship.targetX - camX) < BASE.arriveWorld && Math.abs(ship.vel) < 40)) {
         camX = ship.targetX; ship.vel = 0; atX = true;
       }
@@ -577,7 +580,7 @@ window.Voidship = (function () {
 
   function settled(ship) {
     return !ship.thrusting && ship.targetX == null && ship.vel === 0 && ship.vy === 0
-      && ship.holdT === 0 && ship.thrustAmt < 0.01 && ship.fumes.length === 0
+      && ship.thrustAmt < 0.01 && ship.fumes.length === 0
       && ship.yaw === ship.yawTarget
       && ship.spool === 0 && ship.flare === 0 && ship.jet === 0 && ship.turnFire === 0 && ship.sparks.length === 0 && ship.trails.every(tr => tr.length === 0);
   }
@@ -612,7 +615,7 @@ window.Voidship = (function () {
       infinite: ship.infinite,
       vel: ship.vel,
       speedN: Math.min(1, Math.abs(ship.vel) / (BASE.maxSpeed * BASE.holdBoost * ship.power.maxSpeed)),
-      holdT: ship.holdT,
+      demand: ship.demand || 0,
       thrust: ship.thrustAmt,
       burning: ship.thrustAmt > 0.08,
       arrived: ship.arrived,
@@ -659,7 +662,7 @@ window.Voidship = (function () {
     }
 
     if (window.VoidshipArt && !ship.flip) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
-    if (window.VoidshipArt && VoidshipArt.drawTether) VoidshipArt.drawTether(ctx, ship, { W: env.W, camX: env.camX, viewUnits: env.viewUnits || 2100, farUnits: BASE.farUnits, holdBuild: BASE.holdBuild, aimDead: BASE.aimDead });
+    if (window.VoidshipArt && VoidshipArt.drawTether) VoidshipArt.drawTether(ctx, ship, { W: env.W, camX: env.camX, viewUnits: env.viewUnits || 2100, holdD0: BASE.holdD0, holdD1: BASE.holdD1, aimDead: BASE.aimDead });
     if (window.VoidshipArt && VoidshipArt.drawWake) VoidshipArt.drawWake(ctx, ship, { W: env.W, H: env.H, t, trailLife: BASE.trailLife, rs: L / 200 });
 
     const bobY = Math.sin(ship.bob * 0.6) * 1.5;

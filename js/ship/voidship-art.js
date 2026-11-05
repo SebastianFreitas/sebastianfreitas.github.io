@@ -561,8 +561,9 @@ window.VoidshipArt = (function () {
 
   const COLORS = { LIT, MID, SHADE, DEEP, EDGE, ORANGE, ORANGE_D, LAMP, COLD, RED, WHITE, DRIVE_A, DRIVE_B, DRIVE_C };
 
-  /* Thrust tether: a faint line from the hull to the held pointer; dim up to the cruise
-     line (|dx| = farUnits), a tick there, brighter past it and rising with holdT. */
+  /* Thrust gauge: a fixed track from d0 to d1 along the hull-to-pointer line (the pointer's
+     distance sets the thrust); the fill is the live main-engine speed / top speed (0 while the
+     nose swings), a tick marks the pointer's demand, a dim line carries on past d1. */
   function drawTether(g, ship, env) {
     if (!ship.thrusting) return;
     const ppu = env.W / env.viewUnits, sx = env.W * 0.5, sy = ship.y;
@@ -572,23 +573,23 @@ window.VoidshipArt = (function () {
     else return;
     const dx = cx - sx, dy = cy - sy, d = Math.hypot(dx, dy);
     if (d <= env.aimDead) return;
-    const ux = dx / d, uy = dy / d, boost = ship.far ? clamp(ship.holdT, 0, 1) : 0;
-    const farPx = env.farUnits * ppu, k = Math.abs(dx) > 1e-6 ? farPx / Math.abs(dx) : 2;
-    const s0 = 60, e = Math.max(s0, d - 16);
-    if (e <= s0) return;
-    const m = Math.min(e, Math.max(s0, d * k));
+    const ux = dx / d, uy = dy / d;
+    const p1 = env.holdD1 * ppu;
+    const s0 = 1.15 * ((window.Voidship && window.Voidship.BASE.size) || 96) + 30;   // 0% sits 30 px past the drawn blade tip (the blade tip is ~1.15 BASE.size out)
+    const fill = s0 + (p1 - s0) * clamp(ship.engine || 0, 0, 1);
     const CR = "228,221,198";
-    const line = (x0, y0, x1, y1, w, a) => {
+    const line = (x0, x1, w, a) => {
       g.strokeStyle = "rgba(" + CR + "," + a + ")"; g.lineWidth = w; g.lineCap = "round";
-      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+      g.beginPath(); g.moveTo(sx + ux * x0, sy + uy * x0); g.lineTo(sx + ux * x1, sy + uy * x1); g.stroke();
     };
     g.save();
-    line(sx + ux * s0, sy + uy * s0, sx + ux * m, sy + uy * m, 1, 0.14);
-    if (k < 1) {
-      line(sx + ux * m, sy + uy * m, sx + ux * e, sy + uy * e, 1 + 1.5 * boost, 0.3 + 0.4 * boost);
-      const ix = sx + ux * d * k, iy = sy + uy * d * k;
-      line(ix - uy * 7, iy + ux * 7, ix + uy * 7, iy - ux * 7, 1.5, 0.5);
-    } else line(sx + ux * m, sy + uy * m, sx + ux * e, sy + uy * e, 1, 0.14);
+    line(s0, p1, 1, 0.09);
+    if (d - 16 > p1) line(p1, d - 16, 1, 0.05);
+    if (fill > s0 + 0.5) line(s0, fill, 1.5, 0.26);
+    // 100% mark: one tiny dim tick across the line
+    const ex = sx + ux * p1, ey = sy + uy * p1;
+    g.strokeStyle = "rgba(" + CR + ",0.22)"; g.lineWidth = 1; g.lineCap = "butt";
+    g.beginPath(); g.moveTo(ex - uy * 4, ey + ux * 4); g.lineTo(ex + uy * 4, ey - ux * 4); g.stroke();
     g.restore();
   }
 

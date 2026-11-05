@@ -122,7 +122,7 @@ def run(a):
                         page.mouse.move(w * 0.62, h * 0.9, steps=8)
                     snap.settle(page, int(max(a.burn - a.turn, 0.2) * 1000))
                     snap.shot(page, out_dir, name + "-burn")
-                    print("ship:", page.evaluate("() => { const s = Bridge.ship; return { holdT: s.holdT, far: s.far, vel: s.vel }; }"))
+                    print("ship:", page.evaluate("() => { const s = Bridge.ship; return { demand: s.demand, engine: s.engine, far: s.far, vel: s.vel }; }"))
                     held = json.dumps(page.evaluate(REPORT))   # read while still held, the aim is gone after release
                     page.mouse.up()
                 else:
