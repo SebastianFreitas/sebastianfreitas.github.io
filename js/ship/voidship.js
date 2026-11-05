@@ -72,8 +72,6 @@ window.Voidship = (function () {
       pitch: 0,             // canvas rotation, full circle (-PI..PI], down is positive; turns by distance travelled, hangs after release
       pitchW: 0,            // rad/s, angular velocity of elev (the nose's spin in the hull's own frame)
       elev: 0,              // the nose's elevation as if facing right: pitch = elev facing right, -elev facing left; the 3D turn keeps it
-      myaw: 0, myawT: 0,            // the movement-facing yaw (flight path only, never drawn); yaw is the drawn one
-      mface: 1,             // cos(myaw)
       bankQ: 0,             // old flight-path nose; only stats().bank reads it
       thrusting: false, holdT: 0,
       go: false, aimErr: null,   // motors on (nose within ~10° of the press aim, held to 30°); the nose's last error
@@ -208,7 +206,7 @@ window.Voidship = (function () {
     const vFrac = clamp(Math.abs(ship.vel) / (BASE.maxSpeed * P.maxSpeed), 0, 1);
     const yCap = BASE.yMax * (1 - (1 - BASE.yMaxFast) * vFrac);
 
-    let vWantX = 0, vWantY = 0, burning = false, demand = 0, closeHold = false;
+    let vWantX = 0, vWantY = 0, burning = false, demand = 0, closeHold = false, swinging = false;
     const active = hasTarget(ship) && (ship.thrusting || !ship.arrived);
     if (active) {
       const sx = Math.sign(dx), sy = Math.sign(dy);
@@ -230,6 +228,7 @@ window.Voidship = (function () {
       const e = ship.aimErr == null ? Math.PI : ship.aimErr;
       const underWay = Math.abs(ship.vel) > 400 || Math.abs(ship.vy) > 40;
       ship.go = e < 0.175 || (ship.go && (e < 0.52 || underWay));
+      swinging = e >= 0.175 && canBurn(ship);   // the nose is still coming round to the aim
       if (!ship.go) {
         closeHold = true;
         vWantX = 0; vWantY = 0; demand = 0;
@@ -240,15 +239,7 @@ window.Voidship = (function () {
       burning = canBurn(ship) && (Math.abs(vWantX) > 30 || Math.abs(vWantY) > 10);
     }
 
-    // a shadow yaw that follows the way of travel; it only feeds stats().bank and never holds the push
-    // back (the nose gate above already made the ship turn before it thrusts)
     const stepA = Math.PI / BASE.turnTime * dt;
-    if (Math.abs(vWantX) > 150) ship.myawT = vWantX > 0 ? 0 : Math.PI;
-    ship.myaw += clamp(ship.myawT - ship.myaw, -stepA, stepA);
-    if (Math.abs(ship.myawT - ship.myaw) < 1e-3) ship.myaw = ship.myawT;
-    ship.mface = Math.cos(ship.myaw);
-    if (ship.myaw === 0) ship.mface = 1;
-    if (ship.myaw === Math.PI) ship.mface = -1;
     // the drawn yaw flips only on a sharp U-turn (below, with the aim)
     ship.yaw += clamp(ship.yawTarget - ship.yaw, -stepA, stepA);
     if (Math.abs(ship.yawTarget - ship.yaw) < 1e-3) ship.yaw = ship.yawTarget;
@@ -261,7 +252,10 @@ window.Voidship = (function () {
     const prevVel = ship.vel;
     const prevVy = ship.vy;
     const speedingX = Math.abs(vWantX) > Math.abs(ship.vel) && (Math.sign(vWantX) === Math.sign(ship.vel) || ship.vel === 0);
-    ship.spool = clamp(ship.spool + ((speedingX && burning) ? dt / BASE.spoolUp : -dt / BASE.spoolDown), 0, 1);
+    // the drive keeps its heat while the nose swings round (the turn flames are firing), so take-off
+    // after a U-turn is quick; a start from rest is still cold and heavy
+    if (speedingX && burning) ship.spool = Math.min(1, ship.spool + dt / BASE.spoolUp);
+    else if (!swinging) ship.spool = Math.max(0, ship.spool - dt / BASE.spoolDown);
     if (speedingX) {
       // heavy hull: speed may only grow at aMax, and the drive spools up from cold;
       // the exponential term only shapes the last approach to the wanted speed
@@ -363,7 +357,7 @@ window.Voidship = (function () {
     const vxPx = Math.abs(ship.vel) * pxPerUnit;
     const pathAng = Math.atan2(ship.vy, vxPx + BASE.pitchRef);
     const lead = BASE.pitchLead * clamp((vWantY - ship.vy) / BASE.yMax, -1, 1);
-    const wantB = clamp(pathAng + lead, -BASE.pitchMax, BASE.pitchMax) * (ship.mface >= 0 ? 1 : -1);
+    const wantB = clamp(pathAng + lead, -BASE.pitchMax, BASE.pitchMax) * (ship.face >= 0 ? 1 : -1); // the ship only flies forward, so the drawn facing is the way of travel
     const easedB = approach(ship.bankQ, wantB, BASE.pitchEase, dt);
     const bankStep = BASE.pitchRate * dt;
     ship.bankQ += clamp(easedB - ship.bankQ, -bankStep, bankStep);
