@@ -233,6 +233,7 @@ window.RedLines = (function () {
 
   // draw (or redraw) the plate's svg; a plate with no size, or an open row with no ::before, is skipped
   function draw(el, opts) {
+    if (el.matches("article.case, main.case")) return false; // case pages draw no red lines
     const W0 = el.offsetWidth, H0 = el.offsetHeight;
     if (!W0 || !H0) return false;
     const o = Object.assign({}, PRESETS[(opts && opts.kind) || el.dataset.redlinesKind || "obj"], opts);

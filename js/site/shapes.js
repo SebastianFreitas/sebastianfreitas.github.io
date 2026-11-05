@@ -203,6 +203,7 @@
     for (let j = 0; j < e; j++) all.push.apply(all, bites[j].concat([pts[j + 1]]));
     all.push.apply(all, pts.slice(e + 1));
     el.style.setProperty(prop, "polygon(" + all.map(function (p) { return p[0].toFixed(1) + "px " + (p[1] + pad).toFixed(1) + "px"; }).join(", ") + ")");
+    if (!red) return all;
     const l = red.firstChild, bl = pts[pts.length - 1], vx = bl[0] - x0, vy = bl[1] - dy;
     l.setAttribute("x1", (x0 - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (dy - 0.06 * vy).toFixed(1));
     l.setAttribute("x2", (bl[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (bl[1] - 0.06 * vy).toFixed(1));   /* stops short of the corner by the top overshoot */

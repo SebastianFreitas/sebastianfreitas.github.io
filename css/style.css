@@ -62,6 +62,7 @@
   --type-soft:       var(--type-cream);
   --type-tag-bg:     #e4ddc6;
   --type-tag-ink:    #000;
+  --fs-body: 1.0625rem; --lh-body: 1.6; --ink-body: #d9d2bb; --fs-label: 0.7rem; --ls-label: 0.12em;
   --tab-scrape:      polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, 97% 34%, 100% 62%, 96% 100%, 45% 97%, 0% 100%, 1% 50%);
   /* the same torn block at button width: edge insets in px so a wide button is not notched like a ribbon */
   --btn-scrape:      polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, calc(100% - 4px) 34%, 100% 62%, calc(100% - 5px) 100%, 45% 97%, 0% 100%, 1px 50%);
@@ -479,9 +480,10 @@ body.page-case { background: #0a0d10; }
 .case p:not(.caption), .case li { color: var(--type-soft); }
 .case > p:first-of-type, .case h1 + p, .case h2 + p { color: var(--type-cream); }
 .case strong:not(.key), .case b:not(.key) { font-weight: 700; color: inherit; text-decoration: none; }
-.key, em.key { color: var(--type-cream); font-style: normal; font-weight: 500; background: none; text-decoration: underline 1px var(--type-red); text-underline-offset: 0.12em; }
+.key, em.key { color: var(--type-cream); font-style: normal; font-weight: 600; background: none; text-decoration: underline 1px color-mix(in srgb, var(--type-cream) 35%, transparent); text-underline-offset: 0.2em; }
+.key:hover, em.key:hover { text-decoration-color: var(--type-cream); }
 .type-readout, .xp-when, .caption {
-  font-family: var(--type-mono); font-size: 0.72rem; letter-spacing: 0.12em;
+  font-family: var(--type-mono); font-size: var(--fs-label); letter-spacing: var(--ls-label);
 }
 /* action button: L4 cream text in the torn red box, only on .type-action; .back and .case-nav a are cream text that take the L2 cream plate on hover */
 .type-action, .back, .case-nav a {
@@ -641,46 +643,32 @@ body.page-case { background: #0a0d10; }
 .case li { margin-bottom: 0.4rem; }
 .case a:not(.back):not(.case-nav a) { color: var(--type-quiet); text-decoration: underline dotted 1px var(--type-cream); text-underline-offset: 3px; }
 .case a:not(.back):not(.case-nav a):hover, .case a:not(.back):not(.case-nav a):focus-visible { color: var(--type-cream); text-decoration-style: solid; }
-/* case body on the wash (dp-9a): each block is a torn black stroke, its long sides notched (side padding >= the tear, so no cut text);
-   each h2 sits after a wide wash gap that breaks the column into sections */
+/* case body: one straight dark panel behind all the text; the toy shows beside it on desktop */
 .folder-body > .case { position: relative; isolation: isolate; }
-/* the flat ground under the strokes; the toy shows beside the column */
 .folder-body > .case::before {
   content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  background: #0a0d10;
+  background: rgb(6 7 9 / 0.94);
 }
-/* desktop: the toy draws behind the column, so its right edge fades out instead of cutting the toy */
+/* desktop: the toy draws behind the column, so the panel's right edge fades out over 120px */
 @media (min-width: 1200px) {
+  .folder-body > .case { padding-inline: 2.5rem; }
   .folder-body > .case::before {
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 100px), transparent);
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 120px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 120px), transparent);
   }
-}
-.case > p:not(.todo), .case > ul, .case > h2 { position: relative; isolation: isolate; }
-.case > p:not(.todo)::before, .case > ul::before, .case > h2::before {
-  content: ""; position: absolute; z-index: -1; inset: -0.6rem calc(var(--tear) * -1);
-  background: var(--stroke);
-  clip-path: polygon(0 3px, 30% 0, 62% 3px, 100% 1px, 100% 100%, 70% calc(100% - 3px), 38% calc(100% - 1px), 0 calc(100% - 2px));
-}
-.case > p:nth-of-type(even)::before {
-  clip-path: polygon(0 1px, 35% 3px, 70% 0, 100% 2px, 100% 100%, 64% calc(100% - 2px), 30% calc(100% - 3px), 0 100%);
 }
 /* a few run long and a few stop short */
 .case > p:nth-of-type(5n+3), .case > ul:nth-of-type(2n) { max-width: calc(var(--measure) * 0.82); }
 .case > p:nth-of-type(7n+1) { max-width: calc(var(--measure) * 1.12); }
 .case > h2 { margin-top: 4.5rem; }
-/* phone: no toy, so the wash stays opaque; the tear is shallower than the gutter so each stroke stops short of the screen edge, and a clear wash gap lies between strokes */
-@media (max-width: 1199px) { .folder-body > .case { --tear: 14px; } }
 @media (min-width: 900px) and (max-width: 1199px) {
   .stage .case > p:not(.todo), .stage .case > ul { margin-block: 2rem; }
   .stage .case > h2 { margin-bottom: 2rem; }
-  .stage .case > p:not(.todo)::before, .stage .case > ul::before, .stage .case > h2::before { inset: -0.4rem calc(var(--tear) * -1); }
   .stage .case > p:nth-of-type(5n+3), .stage .case > ul:nth-of-type(2n), .stage .case > p:nth-of-type(7n+1) { max-width: none; }
 }
 @media (max-width: 899px) {
   .case > p:not(.todo), .case > ul { margin-block: 2rem; }
   .case > h2 { margin-bottom: 2rem; }
-  .case > p:not(.todo)::before, .case > ul::before, .case > h2::before { inset: -0.4rem calc(var(--tear) * -1); }
   .case > p:nth-of-type(5n+3), .case > ul:nth-of-type(2n), .case > p:nth-of-type(7n+1) { max-width: none; }
 }
 /* Conclusus: the toy gets the opening screen and each section more air (desktop only) */
@@ -1051,7 +1039,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .xp-shape .foot-text { max-width: none; width: auto; }
 .xp-shape .section-title { font-family: var(--bar-serif); font-weight: 700; font-size: 2.3rem; letter-spacing: 0.1em; line-height: 1; color: var(--type-cream); }
 .xp-shape .xp li { max-width: none; grid-template-columns: 8.5rem 1fr; gap: 0.15rem 1.4rem; }
-.xp-shape .xp-when { font-family: var(--type-mono); font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--type-dim); padding-top: 0.45rem; border-right: 1px solid rgb(228 221 198 / 0.25); }
+.xp-shape .xp-when { font-family: var(--type-mono); font-size: var(--fs-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--type-dim); padding-top: 0.45rem; border-right: 1px solid rgb(228 221 198 / 0.25); }
 .xp-shape .xp-what { font-family: var(--bar-serif); font-size: 0.82rem; letter-spacing: 0.06em; line-height: 1.3; color: var(--type-dim); }
 .xp-shape .xp-what strong { display: block; margin-bottom: 0.9rem; font-family: var(--bar-serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; line-height: 1.2; color: var(--type-cream); text-wrap: pretty; text-wrap: balance; }
 .xp-shape .xp-note { max-width: 34rem; font-family: var(--type-sans); font-size: 0.88rem; color: var(--type-dim); text-wrap: pretty; }
@@ -1063,7 +1051,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
   .xp-shape .xp-tilt, .xp-shape footer { flex-basis: 100%; }
   .xp-shape .section-title { font-size: 1.7rem; }
   .xp-shape .xp li { grid-template-columns: 6.4rem 1fr; gap: 0.15rem 0.8rem; }
-  .xp-shape .xp-when { letter-spacing: 0.12em; }
+  .xp-shape .xp-when { letter-spacing: var(--ls-label); }
 }
 .xp-shape .xp-when { grid-column: 1; grid-row: 1 / span 2; }
 .xp-shape .xp-what, .xp-shape .xp-note { grid-column: 2; }
@@ -1093,11 +1081,11 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 .page-case:not(.page-404) .case h1 { font-size: clamp(2.6rem, 7vw, 4rem); line-height: 0.95; letter-spacing: 0.02em; margin: 1.6rem 0 0.9rem; }
 .page-case:not(.page-404) .case-sub { margin: 0 0 2.6rem; }
-.page-case:not(.page-404) .case h2 { font-size: clamp(1.7rem, 4.5vw, 2.1rem); line-height: 1; letter-spacing: 0.03em; }
-.page-case:not(.page-404) .case { font-family: var(--type-read); font-size: 1.125rem; line-height: 1.6; }
-.page-case:not(.page-404) .case p:not(.caption), .page-case:not(.page-404) .case li { font-family: var(--type-read); font-size: 1.125rem; line-height: 1.6; color: #d9d2bb; }
-.page-case:not(.page-404) .case > p:first-of-type, .page-case:not(.page-404) .case h2 + p:not(.caption) { font-family: var(--type-read); font-size: 1.25rem; line-height: 1.5; color: var(--type-cream); }
-.page-case:not(.page-404) .case .key { font-weight: 600; text-decoration-thickness: 2px; text-underline-offset: 0.18em; }
+.page-case:not(.page-404) .case h2 { font-size: clamp(1.7rem, 4.5vw, 2.1rem); line-height: 1; letter-spacing: 0.03em; font-weight: 600; }
+.page-case:not(.page-404) .case { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); }
+.page-case:not(.page-404) .case p:not(.caption), .page-case:not(.page-404) .case li { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); max-width: min(68ch, var(--measure)); }
+.page-case:not(.page-404) .case > p:first-of-type { font-family: var(--type-read); font-size: 1.25rem; line-height: 1.5; color: var(--type-cream); }
+.page-case:not(.page-404) .case .key { font-weight: 600; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .page-case .back, .page-case .case-nav a, .work > .obj.is-peek > .obj-go { font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em; }
 /* Work rows */
 .work .obj h3 { font-size: 2.5rem; line-height: 0.95; letter-spacing: 0.02em; }
@@ -1105,12 +1093,12 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .work .props dd { font-family: var(--type-read); font-weight: 600; }
 /* Experience + contact */
 .xp-shape .section-title { font-size: 2.75rem; letter-spacing: 0.04em; line-height: 1; }
-.xp-shape .xp-what { font-family: var(--type-read); font-size: 1rem; letter-spacing: 0; line-height: 1.5; color: var(--type-dim); }
+.xp-shape .xp-what { font-family: var(--type-read); font-size: var(--fs-body); letter-spacing: 0; line-height: var(--lh-body); color: var(--ink-body); }
 .xp-shape .xp-what strong { margin-bottom: 0.35rem; font-family: var(--type-head); font-weight: 600; font-size: 1.45rem; letter-spacing: 0.03em; line-height: 1.1; text-transform: uppercase; }
-.xp-shape .xp-note { font-family: var(--type-read); font-size: 1rem; line-height: 1.5; }
-.xp-shape footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: 1.05rem; letter-spacing: 0; }
-.xp-shape footer .rights { font-family: var(--type-read); }
-footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: 1.05rem; line-height: 1.5; }
+.xp-shape .xp-note { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); }
+.xp-shape footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); letter-spacing: 0; }
+.xp-shape footer .rights { font-family: var(--type-read); font-size: var(--fs-label); }
+footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); line-height: 1.5; }
 footer, footer .rights { font-family: var(--type-read); }
 @media (max-width: 1199px) { .xp-shape .section-title { font-size: 2.2rem; } }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
