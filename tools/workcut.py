@@ -63,6 +63,13 @@ for (const el of rows) {
       if (!ok) { fails.push(id+': text "'+t.textContent.trim().slice(0,24)+'" outside the slab'); break; }
     }
   }
+  /* the go button keeps its spot (hidden until hover): inside the slab, a clear gap under the last fact */
+  const go=el.querySelector(':scope > .obj-go'), lf=[...el.querySelectorAll('.props > div')].pop();
+  if (go) {
+    const b=go.getBoundingClientRect();
+    if (![[b.left,b.top],[b.right,b.top],[b.left,b.bottom],[b.right,b.bottom]].every(([x,y])=>inside(P,x,y))) fails.push(id+': go button outside the slab');
+    if (lf && b.top - lf.getBoundingClientRect().bottom < 8*k) fails.push(id+': go button '+Math.round((b.top-lf.getBoundingClientRect().bottom)/k)+'px under the last fact');
+  }
   if (!el.querySelector('svg line')) fails.push(id+': red edge line missing');
 }
 return {cw, rows: rows.length, margin: Math.round(-worst), fails};

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WORK PREVIEW — hover (or keyboard focus) on a Work row tilts it, plays its
+   WORK PREVIEW — hover (or keyboard focus) on a Work row marks it (no turn), plays its
    clip where the picture is, shows the "game page" button and the red bar; it
    stays open until another row opens or the pointer leaves Work. A click is just the row's own link. No preview on touch.
    Also keeps .work.is-scrolling while the page scrolls (css/style.css holds
@@ -59,12 +59,9 @@ window.WorkPreview = (function () {
     if (!row || row.parentNode !== work) return;
     const bar = document.querySelector(".topbar");
     const gap = Math.max(0, bar && getComputedStyle(bar).position === "fixed" ? bar.getBoundingClientRect().bottom : 0) + 24;
-    /* a hovered row tilts (css/style.css .is-peek, eased in): land its untilted top so the tilted corner still clears the bar */
-    const tilt = Math.abs(parseFloat(getComputedStyle(row).getPropertyValue("--peek")) || 2.5) * Math.PI / 180;
     const k = window.Stage ? window.Stage.s() : 1;   /* offsets are design px under the stage zoom, rects are screen px */
-    const lift = k * (row.offsetWidth * Math.sin(tilt) + row.offsetHeight * (Math.cos(tilt) - 1)) / 2;
     const top = work.getBoundingClientRect().top + row.offsetTop * k;
-    window.scrollTo({ top: top + window.scrollY - gap - lift, behavior: "instant" });
+    window.scrollTo({ top: top + window.scrollY - gap, behavior: "instant" });
   };
   /* images and fonts above the row settle later: land again until the reader moves */
   let live = true;

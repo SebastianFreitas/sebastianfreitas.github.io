@@ -106,7 +106,7 @@ shares `Gen`:
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
 | `shapes.js` | Seeded torn/slab polygon maker (points, rough, notches, chamfer, inset per edge); `[data-shape]` elements get `--shape` at load, redrawn on resize for `data-shape-tear` (px-sized cut) hosts | `window.Shapes {polygon, styles, apply, rng}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
-| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row tilts it (`.is-peek`), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go`; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch | none |
+| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go` in the spot kept for it under the facts; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 

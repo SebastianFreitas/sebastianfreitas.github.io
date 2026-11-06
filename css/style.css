@@ -910,7 +910,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 
 #sector-zero { --wk-pos: 50% 0%; }
-@media (min-width: 1200px) { #sector-zero > :is(.obj-head, .obj-line, .props) { transform: translateY(24px); } }   /* the text block sits vertically centred in the slab */
+@media (min-width: 1200px) { #sector-zero > :is(.obj-head, .obj-line, .props, .obj-go) { transform: translateY(24px); } }   /* the text block sits vertically centred in the slab */
 #heavylight { --wk-pos: 50% 100%; }
 #conclusus { --wk-pos: 88% 50%; }
 #conclusus > :is(.obj-shot, .obj-clip) { image-rendering: pixelated; }
@@ -976,25 +976,22 @@ transparent calc(var(--wk-tx, 18%) + 0%),
   }
 }
 
-/* hover preview (js/site/work-preview.js): the row tilts, its clip plays over the picture, a game-page button shows under the text */
+/* hover preview (js/site/work-preview.js): the row holds still, its clip plays over the picture, a game-page button shows in its own spot under the facts (kept while hidden, so nothing moves) */
 .obj > .obj-clip { background: none; opacity: 0; transition: opacity 0.3s ease; }
 .obj > .obj-go { display: none; }
 @media (hover: hover) {
-  .work > .obj[data-wornquad] { transition: transform 0.25s ease-out; }
-  .work > .obj[data-wornquad]:nth-of-type(even) { --peek: -2deg; }
   .work > .obj.is-live > .obj-clip { opacity: 0.8; }
   .work > .obj.is-live > .obj-shot { opacity: 0; }
-  .work > .obj.is-peek > .obj-go {
-    display: inline-block; position: absolute; z-index: 2; isolation: isolate; left: calc(var(--gutter) + var(--wk-pl, 0px)); bottom: 0.6rem; padding: 0.5rem 0.9rem;
+  .work > .obj > .obj-go { visibility: hidden; }
+  .work > .obj.is-peek > .obj-go { visibility: visible; }
+  .work > .obj > .obj-go {
+    display: table; position: relative; z-index: 2; isolation: isolate; margin-top: 1.1rem; padding: 0.5rem 0.9rem;
     font-family: var(--type-serif); font-size: 0.95rem; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1714;
   }
-  .work > .obj.is-peek > .obj-go::before {
+  .work > .obj > .obj-go::before {
     content: ""; position: absolute; inset: 0; z-index: -1; background: #f1ecd8;
     clip-path: polygon(0% 6%, 30% 0%, 65% 5%, 100% 0%, 100% 100%, 60% 94%, 30% 100%, 0% 95%);
   }
-}
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .work > .obj.is-peek { transform: rotate(var(--peek, 2.5deg)); }
 }
 @media (max-width: 1199px) and (hover: hover) { .work > .obj.is-live > .obj-clip { opacity: 0.5; } }
 /* mirrored rows (.is-flip, desktop): text column on the right, picture on the left fading toward the text, button under the text (js/site/shapes.js puts the red line on the right edge) */
@@ -1009,8 +1006,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
   .work > .obj.is-flip .obj-line, .work > .obj.is-flip .props { width: min(var(--measure), 100%); }
 }
 @media (min-width: 1200px) and (hover: hover) {
-  .work > .obj.is-peek > .obj-go { bottom: 6.5rem; }   /* inside its own slab, not over the next one */
-  .work > .obj.is-flip.is-peek > .obj-go { left: auto; right: calc(var(--gutter) + var(--wk-pr, 0px)); }
+  .work > .obj.is-flip > .obj-go { margin-left: auto; }   /* under the right-hand text column */
 }
 .obj > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none !important; z-index: 1; }
 .obj > .xp-red line { stroke: var(--type-red); stroke-width: calc(var(--red-line) / var(--stage-s, 1)); stroke-linecap: butt; }
@@ -1091,7 +1087,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .page-case:not(.page-404) .case p:not(.caption), .page-case:not(.page-404) .case li { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); max-width: min(68ch, var(--measure)); }
 .page-case:not(.page-404) .case > p:first-of-type { font-family: var(--type-read); font-size: 1.25rem; line-height: 1.5; color: var(--type-cream); }
 .page-case:not(.page-404) .case .key { font-weight: 600; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
-.page-case .back, .page-case .case-nav a, .work > .obj.is-peek > .obj-go { font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em; }
+.page-case .back, .page-case .case-nav a, .work > .obj > .obj-go { font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em; }
 /* Work rows */
 .work .obj h3 { font-size: 2.5rem; line-height: 0.95; letter-spacing: 0.02em; }
 .work .obj-line { font-family: var(--type-read); font-size: 1.0625rem; line-height: 1.55; }

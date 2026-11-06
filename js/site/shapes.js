@@ -228,38 +228,33 @@
      bottom run is the crack raised so its deepest point touches the box bottom; the lower row's top run is the same crack with its
      highest point on the box top, so the two edges are parallel and WK_GAP (rem) apart however tall the rows are (the lower row's margin does the rest) */
   const WK_CRACK = [
-    [[0.10, 0.04], [0.93, 0.1]],
-    [[0.04, 0.1], [0.55, 0], [0.86, 0.03]],
-    [[0.10, 0], [0.94, 0.07]]
-  ];
-  const WK_GAP = 4;
-  const WK_ANCH = [0, 0, 0, 0];
+    [[0, 0.035], [1, 0]],
+    [[0, 0], [1, 0.035]],
+    [[0, 0.035], [1, 0]]
+  ];   /* straight 2 degree cuts, alternating, so the red-line side of every row is its tallest edge */
+  const WK_GAP = 3, XP_GAP = 4;   /* rem: between rows, and above the Experience shape */
+  const WK_LEAN = 0.035;   /* the red-line edge leans: its top corner sits this share of the row width inward */
+  const WK_LAST = Math.tan(4.02 * Math.PI / 180);   /* the last row's bottom slope, which the Experience shape's top edge follows */
   const WK_DROP = function (c) { return Math.max.apply(null, c.map(function (p) { return p[1]; })); };
   /* row i's polygon in px (box W x H), clockwise from the top-left point of its top run; the last point closes the left edge.
      Returns {pts, end (index where the worn top run ends), bi ([bottom-left, bottom-right] indexes: the Experience shape hangs from that run)} */
-  function wkPoly(i, W, H) {
-    const top = i === 0 ? [[0, 0], [0.142 * W, 0.199 * H], [0.94 * W, 0.292 * H]] : WK_CRACK[i - 1].map(function (p) { return [p[0] * W, p[1] * W]; });
-    const R = i === 0 ? [[W, 0.62 * H]] : [], L = i === 1 ? [[0, 0.5 * H]] : [];   /* side bulges: Sector Zero's right edge, VoidScape's left */
+  function wkPoly(i, W, H, flip) {
+    const top = i === 0 ? [[0, 0], [W, 0.035 * W]] : WK_CRACK[i - 1].map(function (p) { return [p[0] * W, p[1] * W]; });
     let bot;
     if (i < WK_CRACK.length) { const A = WK_DROP(WK_CRACK[i]) * W; bot = WK_CRACK[i].map(function (p) { return [p[0] * W, H - A + p[1] * W]; }).reverse(); }
-    else bot = [[W, 0.82 * H], [0, H]];   /* the last row's bottom is one straight run (the Experience shape's top edge follows it) */
-    return { pts: top.concat(R, bot, L), end: top.length - 1, bi: [top.length + R.length + bot.length - 1, top.length + R.length] };
+    else bot = [[W, H - WK_LAST * W], [0, H]];   /* the last row's bottom is one straight run (the Experience shape's top edge follows it) */
+    const pts = top.concat(bot), end = top.length - 1;
+    if (flip) pts[end][0] -= WK_LEAN * W; else pts[0][0] += WK_LEAN * W;   /* only the red-line edge leans */
+    return { pts: pts, end: end, bi: [pts.length - 1, top.length] };
   }
   function workRows() {
     const rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
     rows.forEach(function (el, i) {
       const red = redOf(el);
       /* the row's own height: its padding scaled by a seeded factor (a different one per row), so the layout really differs */
-      const hf0 = [0.45, 1.55, 0.8, 1.3][i % 4] + (rng("wk-h-" + i)() - 0.5) * 0.2;
+      const hf0 = 0.35 + (rng("wk-h-" + i)() - 0.5) * 0.2;
       el.style.setProperty("--wk-hf", hf0.toFixed(2));
-      /* then grown: the row's height at that factor is B; the padding is raised so the row lands at 1.95x B (1.8x on a phone; B already holds the wrapped meta): 1.5x the earlier, already grown row, the text staying centred */
-      { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, B = el.offsetHeight, txt = B - 4.25 * rem * hf0;
-        if (B) {
-          const hf = Math.max(hf0, (B * (window.matchMedia("(max-width: 1199px)").matches ? 1.8 : 1.95) * (i === 0 ? 1.25 : 1) - txt) / (4.25 * rem)), a = WK_ANCH[i % WK_ANCH.length];
-          el.style.setProperty("--wk-hf", (a ? hf * (1 - a) / 0.53 : hf).toFixed(3));   /* a: share of the spare height put above the text (a deep notch up top); the rest stays below it */
-          el._wkPt = a ? hf * 4.25 * rem * a : 0;
-        } }
-      const TXT = ".obj-id, h3, .obj-line, .props > div", MARGIN = 6;
+      const TXT = ".obj-id, h3, .obj-line, .props > div, :scope > .obj-go",MARGIN = 6;
       /* signed distance (px, inside positive) from a point to the polygon, and the nearest edge's direction */
       function inside(poly, x, y) {
         let c = false, m = 1e9, sx = 0, sy = 0;
@@ -288,33 +283,40 @@
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
         if (!el._wk || el._wk.W !== W) ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wk-" + v); });
         const S = el._wk && el._wk.W === W ? el._wk : (el._wk = { W: W, pt: 0, pb: 0, pl: 0, pr: 0, cpl: 0, cpr: 0 });
-        if (el._wkPt && !S.pt) el.style.setProperty("--wk-pt", el._wkPt.toFixed(0) + "px");
         const cs = getComputedStyle(el);
         /* the row's own cut: its polygon (WK_POLY, box fractions) scaled to the row's box; nothing reaches past the box, so no padding above */
-        const poly = wkPoly(i, W, H), pts = poly.pts, bi = poly.bi;
+        const poly = wkPoly(i, W, H, flip), pts = poly.pts, bi = poly.bi;
         if (i > 0) el.style.marginTop = (WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - WK_DROP(WK_CRACK[i - 1]) * W).toFixed(1) + "px";   /* the crack above this row: WK_GAP between the two edges */
         el.style.setProperty("--wk-pad", "0px");
         const all = wornQuad(el, red, pts, W, "wk-wear-" + i, "--wk-clip", 0, 2, 0.1, poly.end);
         const bl = pts[bi[0]], br = pts[bi[1]];
-        if (flip) {   /* mirrored row: the red line runs down the right edge, from the end of the worn top run to the bottom-right point, same overshoot as the left one */
-          const tr = pts[poly.end], l = red.firstChild, vx = br[0] - tr[0], vy = br[1] - tr[1];
-          l.setAttribute("x1", (tr[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (tr[1] - 0.06 * vy).toFixed(1));
-          l.setAttribute("x2", (br[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (br[1] - 0.06 * vy).toFixed(1));
+        {   /* the red line runs down the leaning edge (the right one on a mirrored row) from a little above the top corner all the way to the bottom corner */
+          const tc = flip ? pts[poly.end] : pts[0], bc = flip ? br : bl, l = red.firstChild, vx = bc[0] - tc[0], vy = bc[1] - tc[1];
+          l.setAttribute("x1", (tc[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (tc[1] - 0.06 * vy).toFixed(1));
+          l.setAttribute("x2", bc[0].toFixed(1)); l.setAttribute("y2", bc[1].toFixed(1));
         }
         el._wkGeo = { xtl: pts[0][0], ytl: pts[0][1], xbl: bl[0], ybl: bl[1], xbr: br[0], ybr: br[1], ba: Math.atan2(bl[1] - br[1], br[0] - bl[0]) * 180 / Math.PI };   /* the Experience shape hangs from this bottom edge (the lowest run, bottom-left to bottom-right) */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
         if (pass < 5) {
           const er = el.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 }, k = window.Stage ? window.Stage.s() : 1;   /* rects are screen px under the stage zoom, the quad is in design px */
+          /* desktop: the label turns 14deg about its centre on hover, focus and open, so its text is also checked in that pose (measured straight, then turned here) */
+          const hd = el.querySelector(":scope > .obj-head"), turn = wide && hd ? 14 * Math.PI / 180 : 0, hx = hd ? hd.offsetLeft + hd.offsetWidth / 2 : 0, hy = hd ? hd.offsetTop + hd.offsetHeight / 2 : 0;
+          if (turn) { hd.style.transition = "none"; hd.style.transform = "none"; }
           el.querySelectorAll(TXT).forEach(function (t) {
-            const rr = t.getBoundingClientRect(), r = { width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
+            const tn = turn && hd.contains(t);
+            const g = document.createRange(); g.selectNodeContents(t); const eb = t.getBoundingClientRect(), gb = g.getBoundingClientRect(), rr = gb.width && gb.height ? { left: Math.min(eb.left, gb.left), top: Math.min(eb.top, gb.top), width: Math.max(eb.right, gb.right) - Math.min(eb.left, gb.left), height: Math.max(eb.bottom, gb.bottom) - Math.min(eb.top, gb.top) } : eb, r ={ width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
             for (let k = 0; k <= 6; k++) for (let s = 0; s < 4; s++) {
               const x = x0 + (s < 2 ? k / 6 * r.width : (s - 2) * r.width), y = y0 + (s < 2 ? s * r.height : k / 6 * r.height);
-              const q = inside(all, x, y), lack = MARGIN - q.d;
-              if (lack <= 0) continue;
-              const side = Math.abs(q.sx) > Math.abs(q.sy) ? (y < H / 2 ? "t" : "b") : (x < W / 2 ? "l" : "r");
-              need[side] = Math.max(need[side], lack);
+              for (let u = 0; u < (tn ? 2 : 1); u++) {
+                const px = u ? hx + (x - hx) * Math.cos(turn) - (y - hy) * Math.sin(turn) : x, py = u ? hy + (x - hx) * Math.sin(turn) + (y - hy) * Math.cos(turn) : y;
+                const q = inside(all, px, py), lack = MARGIN - q.d;
+                if (lack <= 0) continue;
+                const side = Math.abs(q.sx) > Math.abs(q.sy) ? (py < H / 2 ? "t" : "b") : (px < W / 2 ? "l" : "r");
+                need[side] = Math.max(need[side], lack);
+              }
             }
           });
+          if (turn) { hd.style.transform = ""; void hd.offsetWidth; hd.style.transition = ""; }
           if (need.t + need.b + need.l + need.r > 0.5) {
             if (need.t) { S.pt = parseFloat(cs.paddingTop) + Math.ceil(need.t); el.style.setProperty("--wk-pt", S.pt + "px"); }
             if (need.b) { S.pb = parseFloat(cs.paddingBottom) + Math.ceil(need.b); el.style.setProperty("--wk-pb", S.pb + "px"); }
@@ -337,7 +339,7 @@
         if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
       }
       draw();
-      if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el);
+      if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el); if (document.fonts) document.fonts.ready.then(function () { draw(); });   /* and once the web fonts swap in: an id line can grow without the row's size changing */
       window.addEventListener("resize", function () { const cw = document.documentElement.clientWidth; if (el._wkCw === cw) return; el._wkCw = cw; draw(); clearTimeout(el._wkRz); el._wkRz = setTimeout(function () { draw(); }, 200); });   /* page zoom while open: the capped stage keeps the row's box, so only the window says the width changed; the late pass settles the text padding once a resize or zoom crosses 1200 */
     });
   }
@@ -355,7 +357,7 @@
       const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), n = rows.length, last = n ? rows[n - 1] : null, g = last && last._wkGeo;
       if (!g) return null;
       const k = window.Stage ? window.Stage.s() : 1, r = last.getBoundingClientRect(), a = g.ba * Math.PI / 180, ta = Math.tan(a);
-      const gap = WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(a);   /* the same vertical gap as between the rows */
+      const gap = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(a);   /* a little more air than between the rows (XP_GAP 4rem vs WK_GAP 3rem): Experience is a new section */
       const sx = gap * Math.sin(a), sy = gap * Math.cos(a), lx = g.xbr - g.xbl, W = lx / 0.972;
       return { W: W, dy: ta * lx, left: Math.max(r.left / k + g.xbl + sx - 0.028 * W, 0.06 * document.documentElement.clientWidth / k), top: r.top / k + g.ybr + sy };
     }
