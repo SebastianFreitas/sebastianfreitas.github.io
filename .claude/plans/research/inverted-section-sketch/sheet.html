@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Inverted section sketches</title>
+<style>
+body{margin:0;padding:24px;background:#0d0f12;color:#9aa0a6;font:14px sans-serif}
+.grid{display:grid;grid-template-columns:repeat(2,640px);gap:28px 32px;justify-content:center}
+.cell svg{display:block;width:640px;height:auto;background:#101216}
+.cap{margin-top:6px;letter-spacing:.05em}
+</style></head><body>
+<div class="grid" id="g"></div>
+<script>
+(function () {
+  var RED = "#6e1a1a", W = 1600, H = 560, NS = "http://www.w3.org/2000/svg";
+  /* Experience polygon (shapes.js xpShape): [0.028W,dy] [W,0] [0.297W,H] [0,0.735H], dy = tan3deg*(W-x0).
+     Inverted = 180-degree flip: (x,y) -> (w-x, h-y): peak (0.703w,0), right (w,0.265h), tail point (0,h), (0.972w,h-dy). */
+  function flip(w, h, tilt) {
+    var dy = Math.tan(tilt * Math.PI / 180) * 0.972 * w;
+    return [[0.703 * w, 0], [w, 0.265 * h], [0.972 * w, h - dy], [0, h]];
+  }
+  function at(pts, ox, oy) { return pts.map(function (p) { return [p[0] + ox, p[1] + oy]; }); }
+  var V = [
+    { k: "A", cap: "Straight flip, shorter", pts: at(flip(1100, 380, 3), 380, 90), red: [0, 1], text: [880, 300], sc: 1 },
+    { k: "B", cap: "Edge tail, sharper", pts: [[1000, 80], [1450, 330], [1400, 440], [0, 440], [0, 400]], red: [0, 1], text: [700, 310], sc: 1 },
+    { k: "C", cap: "Low centred, tilt+3", pts: [[800, 305], [1060, 345], [1050, 478], [533, 462], [533, 420]], red: [0, 1], text: [810, 385], sc: 0.75 },
+    { k: "D", cap: "Steep right peak", pts: [[1150, 100], [1380, 450], [200, 450], [200, 430]], red: [0, 1], text: [850, 340], sc: 0.8 },
+    { k: "E", cap: "Under bridge, flat", pts: [[150, -10], [1150, 110], [1450, 205], [1420, 410], [800, 410]], red: [1, 2], text: [800, 280], sc: 1 },
+    { k: "F", cap: "Two-step notched tail", pts: [[1000, 100], [1400, 300], [1360, 440], [700, 440], [640, 340], [560, 440], [360, 440], [360, 380]], red: [0, 1], text: [800, 270], sc: 1 }
+  ];
+  function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+  var g = document.getElementById("g");
+  V.forEach(function (v) {
+    var c = document.createElement("div"); c.className = "cell";
+    var s = el("svg", { viewBox: "0 0 " + W + " " + H });
+    el("polygon", { points: "60,500 1540,480 1540,556 60,556", fill: "none", stroke: "#4a4f56", "stroke-width": 2 }, s);
+    el("polygon", { points: v.pts.map(function (p) { return p.join(","); }).join(" "), fill: "#0b0c0e", stroke: "#1c1f24", "stroke-width": 2 }, s);
+    var a = v.pts[v.red[0]], b = v.pts[v.red[1]];
+    el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: RED, "stroke-width": 8 }, s);
+    el("rect", { x: 0, y: 0, width: W, height: 50, fill: "#1a1d22" }, s);
+    var t = el("text", { x: v.text[0], y: v.text[1], fill: "#d8dade", "font-size": 54 * v.sc, "font-weight": 700 }, s); t.textContent = "Heading";
+    var l1 = el("text", { x: v.text[0], y: v.text[1] + 50 * v.sc, fill: "#8a9098", "font-size": 30 * v.sc }, s); l1.textContent = "Placeholder line one";
+    var l2 = el("text", { x: v.text[0], y: v.text[1] + 90 * v.sc, fill: "#8a9098", "font-size": 30 * v.sc }, s); l2.textContent = "Placeholder line two";
+    c.appendChild(s);
+    var cp = document.createElement("div"); cp.className = "cap"; cp.textContent = v.k + "  " + v.cap; c.appendChild(cp);
+    g.appendChild(c);
+  });
+})();
+</script></body></html>

@@ -387,9 +387,56 @@
     window.addEventListener("resize", live);
   }
 
+  /* the Games opener: the Experience shape turned around (its polygon mirrored left to right, the closer's width and mirrored x on desktop but only 300 px tall, chips from its own
+     seed). The wide top edge is flat and flush under the bridge, the red line runs down the right edge, and the long edge ends in a point aimed at the first
+     Games row: the intro's margin puts XP_GAP (4rem) between that point and the row's top edge, measured across the edge (perpendicular). Phone: the box is the
+     text's height and the plate is inset from the right so the whole red line shows. */
+  function openerShape(el) {
+    const red = redOf(el), XH = 300;   /* desktop height in design px: the text block, its padding and the taper (the closer's 780 is for its content) */
+    function draw() {
+      const phone = window.matchMedia("(max-width: 1199px)").matches;
+      const first = document.querySelector(".work > a.obj[data-wornquad]"), g = first && first._wkGeo, sec = el.parentNode;
+      const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), last = rows.length ? rows[rows.length - 1] : null, lg = last && last._wkGeo;
+      const k = window.Stage ? window.Stage.s() : 1, cw = document.documentElement.clientWidth / k;
+      let W, H, tx, rx;
+      if (phone) { W = el.offsetWidth; H = el.offsetHeight; el.style.width = ""; el.style.marginLeft = ""; el.style.paddingLeft = ""; tx = 0.70 * W; rx = 0.94 * W; }
+      else {
+        if (!lg) return;
+        /* the closer's width and left edge (hang()), mirrored about the window centre: they place the tip and the lower-right corner; the plate itself spans the window */
+        const lx = lg.xbr - lg.xbl, ba = lg.ba * Math.PI / 180, gx = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(ba) * Math.sin(ba);
+        const cwid = lx / 0.972; H = XH;
+        const cl = Math.max(last.getBoundingClientRect().left / k + lg.xbl + gx - 0.028 * cwid, 0.06 * cw);
+        const off = cw - cl - cwid;
+        W = cw; tx = off + 0.703 * cwid; rx = off + cwid;
+        el.style.width = W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.paddingLeft = (off + 600).toFixed(1) + "px";
+      }
+      if (!W || !H) return;
+      const by = phone ? 0.75 * H : 0.735 * H;
+      const pts = [[0, 0], [W, 0], [rx, by], [tx, H]];   /* clockwise, so the worn top run goes left to right and its chips bite down into the plate */
+      wornQuad(el, null, pts, W, "op-wear", "--op-clip");
+      const t0 = phone ? 0.12 : 0.05, t1 = 0.94;   /* the red line runs down the right edge, kept off the very top so the stroke at the window edge is not half cut */
+      const l = red.firstChild; l.setAttribute("x1", (W + t0 * (rx - W)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
+      l.setAttribute("x2", (W + t1 * (rx - W)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
+      if (!g) return;
+      sec.style.marginBottom = "0px";
+      const er = el.getBoundingClientRect(), r = first.getBoundingClientRect();
+      const px = er.left / k + pts[3][0], py = er.top / k + pts[3][1], sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
+      const ytop = r.top / k + g.ytl + sl * (px - (r.left / k + g.xtl));
+      const gap = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / Math.cos(a);
+      sec.style.marginBottom = (gap - (ytop - py)).toFixed(1) + "px";
+    }
+    draw();
+    if (window.ResizeObserver) {
+      new ResizeObserver(draw).observe(el);
+      const f = document.querySelector(".work > a.obj[data-wornquad]");
+      if (f) new ResizeObserver(draw).observe(f);
+    }
+    window.addEventListener("resize", draw);
+  }
+
   /* a browser without CSS zoom (Firefox before 126) never scales the stage (it stays 1600 wide), so the scale every rect is divided by is 1 there */
   if (window.Stage && !(window.CSS && CSS.supports && CSS.supports("zoom", "1.2"))) window.Stage = { s: function () { return 1; } };
-  function boot() { apply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); }
+  function boot() { apply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); const o = document.querySelector(".intro-plate"); if (o) openerShape(o); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 

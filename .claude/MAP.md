@@ -37,7 +37,9 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
 - the sea, the river (the banded strip at the genesis frame bottom): js/genesis/genesis-elements.js (seaK, drawSea; drawn every frame from genesis.js)
 - the ceiling mass (drifting clouds along the top, grow with the sea): js/genesis/genesis-ceiling.js (GenCeiling.draw: the floor sea mirrored overhead via GenElem.paintSea dir -1 and the floor's own water line (seaLine); objects sit in it as pieces, arrival = GenElem.seaLevel; drift + wobble)
-- genesis-ceiling.js resolveHangers (end of prep): hangers that cross a rock are shortened to the nearest hit or dropped (never across a rock's own eye), roots spaced in layout order, tips capped at 0.28 H; hangers hidden under another cloud body re-rooted onto it (farthest free anchor) or dropped; bare big front clouds keep their own hanger; tiny-cloud tails mirrored or cut when they cross a rock; the left rock slides to close a band sliver. drawSprites paints rocks, hangers and eyes before the cloud bodies (extras sit behind the clouds)
+- genesis-ceiling.js resolveHangers (end of prep): hangers that cross a rock are shortened to the nearest hit or dropped (never across a rock's own eye), roots spaced in layout order, tips capped at 0.28 H
+- genesis-ceiling.js resolveHangers (cont.): hangers hidden under another cloud body re-rooted onto it (farthest free anchor) or dropped; bare big front clouds keep their own hanger; tiny-cloud tails mirrored or cut when they cross a rock; the left rock slides to close a band sliver.
+- genesis-ceiling.js drawSprites paints rocks, hangers and eyes before the cloud bodies (extras sit behind the clouds)
 - the womb, the flesh ball, Primordisentia: js/genesis/genesis-flesh.js (fleshGeom, drawFlesh, drawSeal)
 - the old ones: js/genesis/genesis-oldones.js (24 beings), painters in genesis-oldkin.js
 - the east-goers (dressed old ones): js/genesis/genesis-oldkin.js (Bare/Dressed painters), clothes in genesis-attire.js
@@ -106,10 +108,11 @@ shares `Gen`:
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
 | `shapes.js` | Seeded torn/slab polygon maker (points, rough, notches, chamfer, inset per edge); `[data-shape]` elements get `--shape` at load, redrawn on resize for `data-shape-tear` (px-sized cut) hosts | `window.Shapes {polygon, styles, apply, rng}` |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
-| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go` in the spot kept for it under the facts; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch | none |
+| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip`, shows `.obj-go`; see bullet below | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 
+- `work-preview.js`: hover or focus marks the row (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go` in the spot kept for it under the facts; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), bar growth on a claim (no flying box or tag, never freezes the world); only the bridge awards XP, cross-tab sync, `?reset=1`
 - `xp.js` growth: `award` adds at once, `ceremony` walks the bar up one level per 600 ms (`B.barPeek` first, fill starts 400 ms later), extra awards just raise the target; `busy` while it walks; `xp:ceremony-done` at the end; `onRankUp` is the hook for ship upgrades.
 - `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` once per level filled and `xp:rankup` once per rank crossed
@@ -356,7 +359,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-giants.js`: A topples in held steps, B and C stand still; the whole owner sketch sheet mapped to the screen, passing behind the bridge; screen-fixed (undoes zoom and shake); dark TIER3 tones; drawn only during the explosion (tb 0.5 to 1.6 s).
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
-- `genesis-void.js`: `paintSpan(ctx, {W,H,camX,deckY,ky,fogEnd})` (the same span body with explicit inputs and a settled beat; the homepage bridge) and `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
+- `genesis-void.js`: `paintSpan(ctx, {W,H,camX,deckY,ky,fogEnd})` (the same span body with explicit inputs and a settled beat; the homepage bridge) and `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail)
+- `genesis-void.js` `drawSpan`: deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23
 - `genesis-circle.js`: roles end state as backdrop; a grey thread rises from the pile and draws the ring in 8 held arcs from the bottom (pile shrinks a row per arc via `GenEye.setPileCut`), the rose thread + power point from P,
 - `genesis-circle.js`: then a living universe (flat disc + band, turning 2-arm speck spiral, rose sparks, blue souls): `draw`, `drawUniverse(ctx,W,H,t,C?,R?)` (chains' opening disc)
 - `genesis-rexin.js`: Rex tears the level-1 ring into two arcs, grows over held zoom-outs (field shrinks, roof band thins) until only part of him fits, then the chains settle round him as braided dark-red rivers;
@@ -473,7 +477,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils), never a plate |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
-| `index.html` | Homepage; holds the four Work rows, each with its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge |
+| `index.html` | Homepage; section#intro (placeholder barrier hanging from the bridge, CSS clip + svg red cut), then the four Work rows; see bullet below |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
@@ -498,6 +502,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
+- `index.html`: section#intro sits before div.stage (own zoom by --stage-s, full window width); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
 - `hudshot.py`: `--x <world x>`, `--site <SITES id>` (implies `--claimed`), `--read <n>`, `--burn <s>`, `--touch` (phone check, no shot); imports `tools/snap.py`
 
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);
@@ -626,7 +631,8 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
 - Case-page toys (lamps, shadow walker, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
-- Case-page toys (lamps, shadow walker, records, the range): give no XP (`Play.award` is a no-op). Conclusus: a document-space toy (`doc: true`, page-coordinate `.play-tiles`), beats unlock in order (twin → 3 keys by click into a tray → door → win), progress survives relayout, cached glow sprites in `play.js`
+- Case-page toys (lamps, shadow walker, records, the range): give no XP (`Play.award` is a no-op). Conclusus: a document-space toy (`doc: true`, page-coordinate `.play-tiles`), beats unlock in order (twin → 3 keys by click into a tray → door → win)
+- Conclusus toy: progress survives relayout, cached glow sprites in `play.js`
 
 ### Storage keys
 

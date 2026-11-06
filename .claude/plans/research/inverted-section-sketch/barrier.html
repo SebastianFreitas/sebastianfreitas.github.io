@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Barrier sketches</title>
+<style>
+body{margin:0;padding:24px;background:#0d0f12;color:#9aa0a6;font:14px sans-serif}
+.grid{display:grid;grid-template-columns:repeat(2,640px);gap:28px 32px;justify-content:center}
+.cell svg{display:block;width:640px;height:auto;background:#2c3036}
+.cap{margin-top:6px;letter-spacing:.05em}
+</style></head><body>
+<div class="grid" id="g"></div>
+<script>
+(function () {
+  var RED = "#6e1a1a", W = 1600, H = 900, NS = "http://www.w3.org/2000/svg";
+  /* Mock: bridge strip y 0-190, gap (>= 150 under the bridge for every read), first Games row slab from y 800.
+     Plate: shape D language, peak up in the right third, tail running left, red line on the right slope. */
+  var V = [
+    { k: "A", cap: "Edge to edge: wedge rising to a right-third peak, sits on the Games row, red on the right slope",
+      pts: [[1150, 340], [1600, 440], [1600, 800], [0, 800], [0, 660]], red: [0, 1], text: [880, 560], sc: 1 },
+    { k: "B", cap: "Flat wall: flat-topped thick wall, D's peak as a short raised notch in the right third",
+      pts: [[0, 440], [880, 440], [1150, 300], [1330, 440], [1600, 440], [1600, 800], [0, 800]], red: [2, 3], text: [200, 560], sc: 1 },
+    { k: "C", cap: "Shelf: long shallow tail, red steps down to a low shelf that runs to the right edge",
+      pts: [[1150, 330], [1300, 540], [1600, 540], [1600, 800], [0, 800], [0, 440]], red: [0, 1], text: [760, 570], sc: 0.9 },
+    { k: "D", cap: "Double layer: dark full-width band, D plate on top with its steep red end",
+      band: [0, 560, 1600, 240],
+      pts: [[1150, 300], [1400, 800], [200, 800], [200, 640]], red: [0, 1], text: [880, 540], sc: 0.85 },
+    { k: "E", cap: "Two-tier wall: low left tier, step up to the right-third peak, red on the right slope",
+      pts: [[0, 560], [760, 560], [760, 420], [1150, 300], [1600, 400], [1600, 800], [0, 800]], red: [3, 4], text: [880, 540], sc: 0.9 }
+  ];
+  var only = (location.search.match(/o=([A-E])/) || [])[1];
+  if (only) { V = V.filter(function (v) { return v.k === only; }); document.getElementById("g").style.gridTemplateColumns = "1400px"; document.styleSheets[0].insertRule(".cell svg{width:1400px !important}", 0); }
+  function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+  var g = document.getElementById("g");
+  V.forEach(function (v) {
+    var c = document.createElement("div"); c.className = "cell";
+    var s = el("svg", { viewBox: "0 0 " + W + " " + H });
+    el("rect", { x: 0, y: 0, width: W, height: 190, fill: "#15171b" }, s);
+    var bt = el("text", { x: 40, y: 120, fill: "#6a707a", "font-size": 30 }, s); bt.textContent = "bridge (bottom strip)";
+    el("rect", { x: 0, y: 800, width: W, height: 100, fill: "#444a52", stroke: "#5a616a", "stroke-width": 2 }, s);
+    var gt = el("text", { x: 40, y: 860, fill: "#a0a6ae", "font-size": 30 }, s); gt.textContent = "Games row 1";
+    if (v.band) el("rect", { x: v.band[0], y: v.band[1], width: v.band[2], height: v.band[3], fill: "#20242a", stroke: "#6a707a", "stroke-width": 3 }, s);
+    el("polygon", { points: v.pts.map(function (p) { return p.join(","); }).join(" "), fill: "#030304", stroke: "#030304", "stroke-width": 2 }, s);
+    var a = v.pts[v.red[0]], b = v.pts[v.red[1]];
+    el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: RED, "stroke-width": 8 }, s);
+    var t = el("text", { x: v.text[0], y: v.text[1], fill: "#d8dade", "font-size": 54 * v.sc, "font-weight": 700 }, s); t.textContent = "Heading";
+    var l1 = el("text", { x: v.text[0], y: v.text[1] + 50 * v.sc, fill: "#a8aeb6", "font-size": 34 * v.sc }, s); l1.textContent = "Placeholder line one";
+    var l2 = el("text", { x: v.text[0], y: v.text[1] + 90 * v.sc, fill: "#a8aeb6", "font-size": 34 * v.sc }, s); l2.textContent = "Placeholder line two";
+    c.appendChild(s);
+    var cp = document.createElement("div"); cp.className = "cap"; cp.textContent = v.k + "  " + v.cap; c.appendChild(cp);
+    g.appendChild(c);
+  });
+})();
+</script></body></html>
