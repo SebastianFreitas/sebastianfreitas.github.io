@@ -130,20 +130,6 @@
     ctx.bezierCurveTo(-0.35 * u, -0.9 * u, -0.5 * u, -0.75 * u, -0.5 * u, -0.62 * u);
     ctx.closePath(); ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(0.35 * u, 0.82 * u);
-    ctx.lineTo(0.95 * u, 0.96 * u);
-    ctx.quadraticCurveTo(-0.6 * u, 1.7 * u, -2.2 * u, 1.75 * u);
-    ctx.quadraticCurveTo(-0.9 * u, 1.3 * u, 0.35 * u, 0.82 * u);
-    ctx.closePath(); ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(0.0 * u, 0.72 * u);
-    ctx.lineTo(0.4 * u, 0.84 * u);
-    ctx.quadraticCurveTo(-0.7 * u, 1.25 * u, -1.4 * u, 1.2 * u);
-    ctx.quadraticCurveTo(-0.6 * u, 0.95 * u, 0.0 * u, 0.72 * u);
-    ctx.closePath(); ctx.fill();
-
     ctx.restore();
 
     ctx.restore(); setA(1); ctx.lineWidth = 1; ctx.lineCap = "butt"; ctx.lineJoin = "miter";
