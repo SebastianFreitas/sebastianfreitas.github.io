@@ -1008,8 +1008,6 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 @media (min-width: 1200px) and (hover: hover) {
   .work > .obj.is-flip > .obj-go { margin-left: auto; }   /* under the right-hand text column */
 }
-.obj > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none !important; z-index: 1; }
-.obj > .xp-red line { stroke: var(--type-red); stroke-width: calc(var(--red-line) / var(--stage-s, 1)); stroke-linecap: butt; }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
 .xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: calc(var(--red-line) / var(--stage-s, 1)); stroke-linecap: butt; }
 .experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }

@@ -250,7 +250,6 @@
   function workRows() {
     const rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
     rows.forEach(function (el, i) {
-      const red = redOf(el);
       /* the row's own height: its padding scaled by a seeded factor (a different one per row), so the layout really differs */
       const hf0 = 0.35 + (rng("wk-h-" + i)() - 0.5) * 0.2;
       el.style.setProperty("--wk-hf", hf0.toFixed(2));
@@ -288,13 +287,8 @@
         const poly = wkPoly(i, W, H, flip), pts = poly.pts, bi = poly.bi;
         if (i > 0) el.style.marginTop = (WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - WK_DROP(WK_CRACK[i - 1]) * W).toFixed(1) + "px";   /* the crack above this row: WK_GAP between the two edges */
         el.style.setProperty("--wk-pad", "0px");
-        const all = wornQuad(el, red, pts, W, "wk-wear-" + i, "--wk-clip", 0, 2, 0.1, poly.end);
+        const all = wornQuad(el, null, pts, W, "wk-wear-" + i, "--wk-clip", 0, 2, 0.1, poly.end);
         const bl = pts[bi[0]], br = pts[bi[1]];
-        {   /* the red line runs down the leaning edge (the right one on a mirrored row) from a little above the top corner all the way to the bottom corner */
-          const tc = flip ? pts[poly.end] : pts[0], bc = flip ? br : bl, l = red.firstChild, vx = bc[0] - tc[0], vy = bc[1] - tc[1];
-          l.setAttribute("x1", (tc[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (tc[1] - 0.06 * vy).toFixed(1));
-          l.setAttribute("x2", bc[0].toFixed(1)); l.setAttribute("y2", bc[1].toFixed(1));
-        }
         el._wkGeo = { xtl: pts[0][0], ytl: pts[0][1], xbl: bl[0], ybl: bl[1], xbr: br[0], ybr: br[1], ba: Math.atan2(bl[1] - br[1], br[0] - bl[0]) * 180 / Math.PI };   /* the Experience shape hangs from this bottom edge (the lowest run, bottom-left to bottom-right) */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
         if (pass < 5) {

@@ -490,7 +490,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
-| `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, red line present, no side scroll; sizes `WxH`, `@z` opened at zoom, `~z` zoomed while open; exit 1 on a fail |
+| `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, no side scroll; sizes `WxH`, `@z` opened at zoom, `~z` zoomed while open; exit 1 on a fail |
 | `tools/scrollperf.py` | Scroll-jank measure |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |

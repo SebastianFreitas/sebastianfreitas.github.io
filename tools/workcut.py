@@ -6,7 +6,7 @@ Loads `/` at each size (`@z` = opened at Firefox page zoom z, stored per host li
 Ctrl+wheel does; `~z` = opened at 100%, then zoomed to z while open) and checks every
 `.work > a.obj[data-wornquad]` row: the row's ::before polygon must sit inside its nearest overflow-clipping ancestor and inside clientWidth,
 every text line (.obj-id, h3, .obj-line, .props > div) must sit inside the polygon, the
-red edge line (svg line) must exist, and the page must not scroll sideways. The cut it
+page must not scroll sideways. The cut it
 guards: rows reach 94% of the window, so a window wider than 1920 css px (wide screen,
 or page zoom under 100%) ran them past the 1600 stage box. One line per size, exits 1 on
 any fail.
@@ -70,7 +70,6 @@ for (const el of rows) {
     if (![[b.left,b.top],[b.right,b.top],[b.left,b.bottom],[b.right,b.bottom]].every(([x,y])=>inside(P,x,y))) fails.push(id+': go button outside the slab');
     if (lf && b.top - lf.getBoundingClientRect().bottom < 8*k) fails.push(id+': go button '+Math.round((b.top-lf.getBoundingClientRect().bottom)/k)+'px under the last fact');
   }
-  if (!el.querySelector('svg line')) fails.push(id+': red edge line missing');
 }
 return {cw, rows: rows.length, margin: Math.round(-worst), fails};
 """
