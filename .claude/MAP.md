@@ -45,7 +45,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the red dot (Obrokxus inside the womb): js/genesis/genesis-dot.js; his forms in genesis-obrok.js, genesis-titans.js
 - the Hound: drawHound in js/genesis/genesis-titans.js; its ritual in genesis-ritual.js
 - the war, angels and devils: js/genesis/genesis-armies.js (sim), genesis-hosts.js, genesis-seraphin.js (angels), genesis-malgrur.js (devils)
-- the sky shadows, tier 3: js/genesis/genesis-tier3.js; palette genesis-eldpal.js
+- the sky shadows, tier 3: js/genesis/genesis-tier3.js, break giants genesis-giants.js; palette genesis-eldpal.js
 - the Rex kingdoms: js/world/rex.js; art in js/world/art/ (firstlight, crimson, bonespire, titans, valkhar, law)
 - the Mainland factions: js/world/city.js drawLandPlace; art in js/world/art/ (shattered, libertech, dawn, accord, gore)
 - the tear: js/world/admin-tear.js (the Administration's cut in reality)
@@ -310,6 +310,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-ceilkinds3.js` | ceiling hanger worm (pale ringed, tapered, on metal rocks) and the eye drawer for metal rocks' eye sites (crack that opens into one of four looks, one open at a time via a module scheduler; no slit hanger) | `window.GenCeilHang3` (`kinds`, `eye`, `eyeSite`) |
 | `genesis-ceilkinds2.js` | extra ceiling hangers (bead chain, stepped bar, pointed teeth, pendulum), seeded; not in the GenCeilKinds deck | `window.GenCeilHang` (`kinds`) |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
+| `genesis-giants.js` | the three break-beat giants A, B, C (specs 8, 9) | `window.GenGiants` (`draw(ctx,W,H,tb)`) |
 | `genesis-void.js` | Far realms, motes, the monumental span (`paintSpan`, `paintLimb`, `hh` shared with the homepage bridge) | `window.GenVoid` |
 | `genesis-flesh.js` | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
 | `genesis-soup.js` | `soup` beat inside the womb: red dots eat the blue in held steps; `drawBackdrop`, `finalReds` (post-eat layout), `shaded`, `PAL` shared with later inside beats | `window.GenSoup` |
@@ -327,7 +328,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, chunkAt, MASS, massScale}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
-| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT litSplit eyeDot figCover captionBand updateFigs drawFigs drawTraces OLD_DIM`) |
+| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT litSplit eyeDot figCover captionBand OLD_DIM`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
@@ -352,6 +353,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
 - `genesis-state.js`: `G.STRIKE_S0` (0.29) and `G.strikePulse(c)` are the gods' shared strike shape in deep and slip (act about 1.5 s of the 3.70 s cycle); `genesis-gods.js` `strikeOf` inverts `STRIKE_CA` from it
 - `genesis-tier3.js`: the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset,
+- `genesis-giants.js`: A topples in held steps, B and C stand still; the whole owner sketch sheet mapped to the screen, passing behind the bridge; screen-fixed (undoes zoom and shake); dark TIER3 tones; drawn only during the explosion (tb 0.5 to 1.6 s).
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
 - `genesis-void.js`: `paintSpan(ctx, {W,H,camX,deckY,ky,fogEnd})` (the same span body with explicit inputs and a settled beat; the homepage bridge) and `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail; deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23)
@@ -369,7 +371,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-oldones.js`: in the `dress` beat each east-goer flips `o.dressed` at its own `dressAt` time after `drawMaking` cloth steps; in the `leave` beat every rim old one but the carers (`CARERS`: eye, chime, mound) and the brothers goes out left to right by x, half then gone,
 - `genesis-oldones.js`: leaving a `drawPin` of its `o.hue` that runs along the rim and out, `p.pinU`) plus fourteen painted in genesis-oldkin.js, six locomotions (walk, slide, fly, blink, roll); humanoid/animal-like kinds go west (side -1), the strange ones east;
 - `genesis-oldones.js`: they climb one by one out of the matter mass during the trade beat in held steps clipped at the rim, the gentleman first and alone, flakes at each snap (`VENT_T0`, `ventOf`, `ventDur`, `ventSteps`, `GENT_IDX`, `emergeK`, `activeVents`, `drawFlakes`, plan phase 20),
-- `genesis-oldones.js`: break fragments: `figCover(x,y)` and `captionBand()` gate the break confetti; `updateFigs(burst)` sets the fragment boxes first; `drawFigs` paints foot, face, hand and eye over the grey flash, each with its own exit; `drawTraces(ctx)` paints what each left behind in every later beat.
+- `genesis-oldones.js`: break confetti gates: `figCover(x,y)` and `captionBand()` gate the break confetti.
 - `genesis-oldones.js`: `drawOldOnes` takes `env.emerge` and `env.layer` ("inside" = still climbing, drawn behind the stones): `ROSTER_SPECS ROSTER ORDER place drawOldOnes drawShards drawKind makeOne`
 - `genesis-oldkin.js`: painters for the fourteen new old ones (tower pearl bundle needle slab bloom comb veil knot husk chime prism swarmling mound;
 - `genesis-oldkin.js`: every east-goer (tower bundle slab comb chime mound swarmling prism bloom veil needle knot) switches `<kind>Bare`/`<kind>Dressed` on `O.dressNow`, each Dressed a new body with its clothes per D28), registered into `GenOld.PAINT`

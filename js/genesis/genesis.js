@@ -710,13 +710,6 @@ window.Genesis = (function () {
       const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
       drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
       GenElem.drawSea(ctx);   // the sea bed, over the matter, flesh and land, under the gods
-      if (window.GenOld && tb < 0) {   // (in the break they are drawn over the flash, below) what the four break fragments left, for good: over the later layers, under the gods
-        ctx.save();
-        ctx.translate(0, diveY);   // they stay on the screen through the dive
-        unzoom(ctx, z);
-        GenOld.drawTraces(ctx);
-        ctx.restore();
-      }
       drawGodsBirth(ctx, flesh);
       if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
       drawRexHole(ctx);
@@ -736,7 +729,6 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("land") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("land") && G.local < 1.2 && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // the death frame covers the world for 1.2 s; the traces stay over it
 
     if (L && L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
@@ -745,8 +737,6 @@ window.Genesis = (function () {
         ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
       }
     }
-    const underBang = tb >= 0.5 && tb < 0.95;   // the traces sit under the bang's peak: the flash paints over their tint and rim
-    if (underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }
     if (G.flash > 0.02) {
       ctx.fillStyle = `rgba(200,200,205,${0.18 * G.flash})`;
       ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
@@ -788,21 +778,13 @@ window.Genesis = (function () {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      if (window.GenGiants) { ctx.save(); unzoom(ctx, z); GenGiants.draw(ctx, G.W, G.H, tb); ctx.restore(); }   // the giants live only in the blast (0.5 to 1.6 s), dark against its light, over the wash, under the clots and the bridge
       GenElem.drawClots(ctx, tb);   // the clots thrown from the hole, under the bridge
       GenMatter.drawRocks(ctx, tb);   // the rocks in front of them, still under the bridge
       GenVoid.drawSpan(ctx, uDrawn);   // the bridge stays through the wash: drawn again over it
     }
-    if (tb >= 0 && !underBang && window.GenOld) { ctx.save(); unzoom(ctx, z); GenOld.drawTraces(ctx); ctx.restore(); }   // over the flash, so they read from their first step
 
     ctx.restore();
-
-    /* the cut is screen-fixed: drawn outside the camera transform */
-    if (tb >= 0.9 && tb < 1.2) {   // not before 0.9: nothing dark may sit on the core disc's peak
-      const fa = tb < 0.8 ? 0.78 : tb < 0.95 ? 0.5 : tb < 1.08 ? 0.28 : 0.11;
-      if (window.GenTier3 && GenTier3.drawCut) {
-        GenTier3.drawCut(ctx, G.W, G.H, fa / 0.78, tb + 0.7);   // the cut's own clock still starts at 1.2
-      }
-    }
 
     if (uNow > 0.001) {
       const fade = smooth(uNow);
