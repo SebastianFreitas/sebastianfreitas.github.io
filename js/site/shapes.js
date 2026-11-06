@@ -412,15 +412,17 @@
       }
       if (!W || !H) return;
       const by = phone ? 0.75 * H : 0.735 * H;
-      const pts = [[0, 0], [W, 0], [rx, by], [tx, H]];   /* clockwise, so the worn top run goes left to right and its chips bite down into the plate */
-      wornQuad(el, null, pts, W, "op-wear", "--op-clip");
-      const t0 = phone ? 0.12 : 0.05, t1 = 0.94;   /* the red line runs down the right edge, kept off the very top so the stroke at the window edge is not half cut */
-      const l = red.firstChild; l.setAttribute("x1", (W + t0 * (rx - W)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
-      l.setAttribute("x2", (W + t1 * (rx - W)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
+      const c = 0.33 * H;   /* the vertical sides before the slants start */
+      const ri = 0.08 * W; rx = W - ri - by * Math.tan(5 * Math.PI / 180);   /* the right side is steep: 5 degrees off vertical, like Experience's */
+      const pts = [[tx, H], [0, c], [0, 0], [W - ri, 0], [rx, by]];   /* clockwise, starting at the tip so the worn run is the long left diagonal alone and its chips bite into the plate; the top (which ends 8% of the width short of the right edge), the right side and the short bottom edge stay clean */
+      wornQuad(el, null, pts, W, "op-wear", "--op-clip", 0, 2, 0.03, 1);
+      const el0 = Math.hypot(rx - (W - ri), by), t0 = 35 / el0, t1 = 1 + 30 / el0;   /* the Experience line mirrored: it stops 35 px short of the top corner and sticks 30 px out past the bottom one */
+      const l = red.firstChild; l.setAttribute("x1", (W - ri + t0 * (rx - W + ri)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
+      l.setAttribute("x2", (W - ri + t1 * (rx - W + ri)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
       if (!g) return;
       sec.style.marginBottom = "0px";
       const er = el.getBoundingClientRect(), r = first.getBoundingClientRect();
-      const px = er.left / k + pts[3][0], py = er.top / k + pts[3][1], sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
+      const px = er.left / k + pts[0][0], py = er.top / k + pts[0][1], sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
       const ytop = r.top / k + g.ytl + sl * (px - (r.left / k + g.xtl));
       const gap = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / Math.cos(a);
       sec.style.marginBottom = (gap - (ytop - py)).toFixed(1) + "px";
