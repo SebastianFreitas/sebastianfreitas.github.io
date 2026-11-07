@@ -329,9 +329,10 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-gods-beat.js` | `gods` beat opening: the death frame cut by a stepped octagon onto the live land. `window.GenGodsBeat` |
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
-| `genesis-matter.js` | wave two | `window.GenMatter {draw, chunkAt, MASS, massScale}` |
+| `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale}` |
+| `genesis-rocktitans.js` | Four rock titans: grow from the blast rocks in matter, meet at one point in trade and burst into debris the old ones grow from; see bullet | `window.GenRockTitans {on, draw, LAYOUT, buildDebris, drawDebris, partRest}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
-| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT litSplit eyeDot figCover captionBand OLD_DIM`) |
+| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
@@ -369,14 +370,14 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-elements.js`: late in `elements` each particle freezes and snaps in held steps to the sea, the rail top or the sky (`posAt`, `drawSplit`) (plan phase 21).
 - `genesis-elements.js`: `drawSea` draws the crooked waste at the frame bottom: debris falls and heaps, then forms (spires, ledges, loops, stairs, self-contradicting kinds) rise out of the heaps; colours are `GenEldPal.SEA` families keyed to world x.
 - `genesis-matter.js`: 100 flesh/stone/meld chunks (float, fall, break, meld pairs) that fly briefly then gather into one mass (`MASS`, slot per chunk, `gatherK`) resting on the span;
-- `genesis-matter.js`: through trade it opens where an old one climbs out (`GenOld.activeVents`) and crumbles from the outside in (`massScale`); 150 insects hatching (deformed, most die; storm deaths), 7 lawless storms (air, rain, fire, lightning)
+- `genesis-matter.js`: through trade its four rocks are skipped while `GenRockTitans.on` (the titans take the mass to the clash); 150 insects hatching (deformed, most die; storm deaths), 7 lawless storms (air, rain, fire, lightning)
 - `genesis-oldones.js`: one each of the ten old kinds (slot 0 the headless gentleman, east, bare until a `dress` beat, then a GenAttire suit: `dressNow gentlemanBare gentlemanDressed`; eye, mass, blinker and roller switch the same way;
 - `genesis-oldones.js`: `windAt`/`frostNow` set `GenAttire.weather` per frame, each `<kind>Dressed` a new body per D28; `place()` acts for east-goers: stutter, mime gait, held-pose kneel and bow, twitch, `p.gest`;
 - `genesis-oldones.js`: in the `dress` beat each east-goer flips `o.dressed` at its own `dressAt` time after `drawMaking` cloth steps; in the `leave` beat every rim old one but the carers (`CARERS`: eye, chime, mound) and the brothers goes out left to right by x, half then gone,
 - `genesis-oldones.js`: leaving a `drawPin` of its `o.hue` that runs along the rim and out, `p.pinU`) plus fourteen painted in genesis-oldkin.js, six locomotions (walk, slide, fly, blink, roll); humanoid/animal-like kinds go west (side -1), the strange ones east;
-- `genesis-oldones.js`: they climb one by one out of the matter mass during the trade beat in held steps clipped at the rim, the gentleman first and alone, flakes at each snap (`VENT_T0`, `ventOf`, `ventDur`, `ventSteps`, `GENT_IDX`, `emergeK`, `activeVents`, `drawFlakes`, plan phase 20),
+- `genesis-oldones.js`: grows from its debris part at `birthT(idx)` (trade 3.0 + rank x 0.12), posed by `GenRockTitans.partRest(idx)` (`p.rot`, `p.mirror`, `p.clipBox`); walk from 8.4; reduced motion: upright and awake at `deckSpot` from trade 0,
 - `genesis-oldones.js`: break confetti gates: `figCover(x,y)` and `captionBand()` gate the break confetti.
-- `genesis-oldones.js`: `drawOldOnes` takes `env.emerge` and `env.layer` ("inside" = still climbing, drawn behind the stones): `ROSTER_SPECS ROSTER ORDER place drawOldOnes drawShards drawKind makeOne`
+- `genesis-oldones.js`: `drawOldOnes` takes `env.emerge` and `env.layer` ("inside" layer kept for the draw order, draws nothing since the births replaced the climb): `ROSTER_SPECS ROSTER ORDER place drawOldOnes drawShards drawKind makeOne`
 - `genesis-oldkin.js`: painters for the fourteen new old ones (tower pearl bundle needle slab bloom comb veil knot husk chime prism swarmling mound;
 - `genesis-oldkin.js`: every east-goer (tower bundle slab comb chime mound swarmling prism bloom veil needle knot) switches `<kind>Bare`/`<kind>Dressed` on `O.dressNow`, each Dressed a new body with its clothes per D28), registered into `GenOld.PAINT`
 - `genesis-attire.js`: flat garment painters registered by `reg(piece, kind, spec)` and drawn with `draw(ctx, piece, x, y, s, opt)` (unit coords, `fit` tailored/found, `sq`, `dir`, `seed`, `snow`;
@@ -404,7 +405,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-ritual.js`: `drawOver` (teaching/pact/blessing/help beams, Velindra's blades, the four ritual beams, latched flashes)
 - `genesis-saga.js`: `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`;
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
-- `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash, titans in the fight, the depths, the saga, the now-fade),
+- `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 10 in the blast rocks' slot (before `drawSpan`); pieces cached as cropped sprites; one per-titan cache per snap k, drawn under a rock-to-titan group transform.
+- `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash (titans or `drawRocks`), titans in the fight, the depths, the saga, the now-fade),
 - `genesis.js`: the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input
 
 ### js/pages
@@ -492,6 +494,8 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
+| `tools/titansheet.py` | `py -3 tools/titansheet.py <out_dir> [--layout path]`: 2000x1009 sketch sheet of the four rock titans (plan rock-titans phase 1) with per-titan and per-piece numbers; exit 1 on a console error or a failed size, gap, share or top check |
+| `.claude/plans/research/rock-titans-sketch/layout.js` | `window.TitanLayout`: the titans' sketch layout (roots, cores, pieces, filler, shears); read by titansheet.py, copied by phase 2 |
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
 | `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, no side scroll; sizes `WxH`, `@z` opened at zoom, `~z` zoomed while open; exit 1 on a fail |
@@ -571,6 +575,7 @@ withTilt` at parse time) and before `genesis-armies`/`genesis-ritual`;
 `genesis-trade` before `genesis-oldones` (SPOTS, read at call time);
 `genesis-gods` after `genesis-figures` (destructures `fillPoly shadedPoly
 quad withTilt` at parse time);
+`genesis-rocktitans` right after `genesis-oldkin` (needs `GenOld`, `GenMatter`);
 `genesis-oldkin` right after `genesis-oldones` (registers into
 `GenOld.PAINT` at parse time). Never bake `G.W`/`G.H` into data at load:
 they are 0 until the cutscene sizes its canvas; store fractions and

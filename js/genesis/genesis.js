@@ -664,7 +664,9 @@ window.Genesis = (function () {
         G.zoomKick = Math.max(G.zoomKick, 0.05);
         G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1, grey: true });
       }
-      if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, G.secs("break"));   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
+      const tbs = G.secs("break");
+      if (GenRockTitans.on(tbs)) GenRockTitans.draw(ctx, tbs);   // rest-pose rock titans take the rocks' slot
+      else if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, tbs);   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
       GenVoid.drawSpan(ctx, uDrawn);
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
@@ -696,6 +698,7 @@ window.Genesis = (function () {
       /* the old ones climb out of the mass one by one through the trade beat, and start
          down the span before it ends, so the procession never stops */
       GenTrade.drawStream(ctx);   // everything that travels with them
+      GenRockTitans.drawDebris(ctx, tTrade);   // deck and float chips of the titans' burst, behind the front old ones
       GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
 
       L = lightsAt(uBirth, uFight, uLand, flesh);

@@ -103,10 +103,9 @@ window.GenOld = (function () {
   })();
   const ORDER = ROSTER.map((o, i) => i).sort((a, b) => ROSTER[a].lane - ROSTER[b].lane);
 
-  /* ---- emergence: one by one out of the mass of matter ------------- */
-  // each one's becoming is slow (long climb, tight stagger, so the last still ends at 8.8 s); the vent spots keep the old timing's mid-points (VENT_MID0)
-  const VENT_DUR = 3.1, VENT_FIRST = 2.6, VENT_STEP = 0.14, GENT_T0 = 0.4, GENT_DUR = 3.2;
-  const VENT_STEP0 = 0.2, VENT_DUR0 = 1.8, GENT_DUR0 = 2.4;
+  /* ---- birth: each grows out of its lying debris part and gets up, staggered by rank ---- */
+  // GenRockTitans (loads after this file) is read at call time
+  const VENT_FIRST = 2.6, VENT_STEP = 0.14, GENT_T0 = 0.4, VENT_STEP0 = 0.2, VENT_DUR0 = 1.8, GENT_DUR0 = 2.4;
   const GENT_IDX = ROSTER.findIndex(o => o.kind === "gentleman");
   const VENT_MID0 = [];
   const VENT_T0 = (function () {
@@ -123,46 +122,11 @@ window.GenOld = (function () {
     });
     return t0;
   })();
-
-  function ventDur(idx) { return idx === GENT_IDX ? GENT_DUR : VENT_DUR; }
   function ventSteps(idx) { return idx === GENT_IDX ? 6 : 3 + Math.floor(hash1(idx * 29 + 5) * 3); }
-
-  // upper-left rim of the mass for west-goers, upper-right for east-goers
-  function ventAng(o) {
-    const h = hash1(o.idx * 17 + 2);
-    return o.side < 0 ? -Math.PI * (0.55 + 0.40 * h) : -Math.PI * (0.05 + 0.40 * h);
-  }
-
-  const VENT = { x0: 0, y0: 0, x1: 0, y1: 0 };
-  function ventOf(o) {
-    const M = window.GenMatter && GenMatter.MASS;
-    const cx = sx(0);
-    const cy = (M ? M.yf : 0.52) * G.H;
-    const ms = window.GenMatter ? GenMatter.massScale(VENT_MID0[o.idx]) : 1;
-    const rx = (M ? M.rxH : 0.30) * G.H * ms;
-    const ry = (M ? M.ryH : 0.12) * G.H * ms;
-    const a = ventAng(o);
-    VENT.x0 = cx + Math.cos(a) * rx * 0.3;
-    VENT.y0 = cy + Math.sin(a) * ry * 0.3;
-    VENT.x1 = cx + Math.cos(a) * rx * 1.1;
-    VENT.y1 = cy + Math.sin(a) * ry * 1.1 - 0.01 * G.H;
-    return VENT;
-  }
-
-  function emergeK(o, trs) { return clamp((trs - VENT_T0[o.idx]) / ventDur(o.idx), 0, 1); }
-
-  const VENTS_OUT = [];
-  function activeVents(trs) {
-    VENTS_OUT.length = 0;
-    for (const o of ROSTER) {
-      const e = emergeK(o, trs);
-      if (e > 0 && e < 1) {
-        const v = ventOf(o);
-        VENTS_OUT.push({ x: mix(v.x0, v.x1, 0.6), y: mix(v.y0, v.y1, 0.6), k: Math.sin(Math.PI * e) * (o.idx === GENT_IDX ? 1.8 : 1) });
-      }
-    }
-    return VENTS_OUT;
-  }
+  const BIRTH_T0 = 3.0, BIRTH_RANK = 0.12, BIRTH_STEP = 0.4;
+  // rank 0 = the gentleman, then the others by their VENT_T0
+  function birthRank(idx) { if (idx === GENT_IDX) return 0; let r = 0; VENT_T0.forEach((t) => { if (t < VENT_T0[idx]) r++; }); return r; }
+  function birthT(idx) { return BIRTH_T0 + birthRank(idx) * BIRTH_RANK; }
 
   // a single fresh being of `kind`, for files that draw an old one outside the
   // roster (Obrokxus's brothers); side is always +1, tint optionally overrides
@@ -188,6 +152,12 @@ window.GenOld = (function () {
     return -0.38 + 0.66 * c[Math.max(0, EAST.indexOf(o))] / Math.max(1, acc);
   }
 
+  // where a being first stands on the deck (walk 0, scale 1): foot x, foot y and body height in px, for the rock titans' drop step
+  function deckSpot(o) {
+    const H = G.H, splitU = o.side * (0.15 + 0.08 * hash1(o.idx * 7 + 1));
+    return { x: sx(o.side < 0 ? splitU : eastStartU(o)), y: o.move === "fly" ? DECK * H - o.airY * H : DECK * H - 2 + o.lane * 0.012 * H, h: o.hf * H };
+  }
+
   function place(o, env) {
     const W = G.W, H = G.H, deckY = DECK * H;
     const idx = o.idx;
@@ -198,17 +168,17 @@ window.GenOld = (function () {
     o.dressed = (o.side > 0 && !o.bro) ? dt >= 0 : false;
     const dressHold = (o.side > 0 && !o.bro) && Math.abs(dt) < HOLD;
 
-    /* 1. climb out of the mass */
-    const e = emergeK(o, emerge);
-    const v = ventOf(o);
-    const n = ventSteps(idx);
-    const s = e <= 0 ? 0 : Math.min(1, (Math.floor(e * n) + 1) / n);
-    const rimX = v.x1, rimY = v.y1;
-    const xe = rimX, ye = rimY + (1 - s) * 1.1 * o.hf * H;
+    /* 1. on the deck from the second its titan piece landed, grey and still until it wakes */
+    const bt = birthT(idx), nst = ventSteps(idx), upT = bt + nst * BIRTH_STEP;
+    const rdTrade = G.reduced && emerge >= 0;   // reduced motion: from trade 0 all stand upright and awake at their spots
+    const e = (emerge >= bt || rdTrade) ? 1 : 0;
+    const part = (e > 0 && !rdTrade &&emerge < upT && window.GenRockTitans && GenRockTitans.partRest) ? GenRockTitans.partRest(idx) : null;
+    const growStep = part ? Math.min(nst, Math.floor((emerge - bt) / BIRTH_STEP + 1e-6) + 1) : 0;
+    const held = emerge < 8.4;
+    o.wake = (emerge >= upT || rdTrade) ? 1 : 0;
     // the walk is read at half the frame: they grow through it and settle back for the root
     const scale = 1 + 0.5 * smooth(G.since("walk")) * (1 - clamp(G.linear("root") / 0.1, 0, 1));   // back to 1x within ~0.6 s of root
     const rot = 0;
-    const settle = smooth(clamp((emerge - VENT_T0[idx] - ventDur(idx)) / 1.2, 0, 1));
 
     /* 2. split to the deck */
     const splitU = o.side * (0.15 + 0.08 * hash1(idx * 7 + 1));
@@ -236,12 +206,15 @@ window.GenOld = (function () {
     const tl = (G.t || 0) + sd * 1.37;
     const phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
     const isFlyer = o.move === "fly";
-    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H;
+    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * (held ? 0 : o.wake < 1 ? o.wake : 1);
     else y = deckY - 2 + o.lane * 0.012 * H;
-    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.since("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph);
-
-    // from the rim of the mass down to the deck
-    x = mix(xe, x, settle); y = mix(ye, y, settle);
+    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.since("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * (held ? 0 : o.wake < 1 ? o.wake : 1);
+    if (part) {   // the cut's bottom-centre sits on the chip's pivot: the feet are offset from it by the lying rotation
+      const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]), ib = part.ib;
+      let ax = ib[0] + (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2 * ib[2], ay = ib[1] + Math.max.apply(null, vs) * ib[3];
+      if (part.mirror) ax = -ax;
+      x = part.x - (ax * Math.cos(part.tilt) - ay * Math.sin(part.tilt)); y = part.y - (ax * Math.sin(part.tilt) + ay * Math.cos(part.tilt));
+    }
 
     /* 4. cling to the body */
     if (o.side > 0 && flesh && cling > 0.05) {
@@ -279,8 +252,17 @@ window.GenOld = (function () {
     }
 
     const p = o.p;
-    p.x = x; p.y = y; p.a = a; p.rot = rot; p.scale = scale;
-    p.phase = phase; p.sy = sy; p.kneel = still;
+    p.x = x; p.y = y; p.a = a; p.rot = part ? part.tilt : rot; p.scale = scale;
+    p.mirror = part ? !!part.mirror : false;
+    p.clipY = (part && !isFlyer) ? deckY : null;
+    if (part) {   // the part's cut unioned with a rect growing from the cut's middle (step 1) to the whole ink box (last step), in ink-box units
+      const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]);
+      const k = nst > 1 ? (growStep - 1) / (nst - 1) : 1;
+      const cu = (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2, cv = (Math.min.apply(null, vs) + Math.max.apply(null, vs)) / 2;   // step 1: the cut alone, a point inside it
+      const u0 = mix(cu, 0, k), u1 = mix(cu, 1, k), v0 = mix(cv, 0, k), v1 = mix(cv, 1, k);
+      p.clipBox = { ink: part.ink, ib: part.ib, cut: part.cut, rect: [u0, v0, u1, v1], fx: part.fx, fy: part.fy };
+    } else p.clipBox = null;
+    p.phase = part ? 0 : phase; p.sy = sy; p.kneel = still;
     p.gest = 0;
     p.pinU = pinU;
     if (o.side > 0) {
@@ -291,7 +273,7 @@ window.GenOld = (function () {
       p.rot += -0.12 * Math.sin(Math.PI * Math.min(1, stillV * 1.25));
 
       const Pt = 6 + 3 * hash1a(sd * 7.1);
-      if (!dressHold && (tl % Pt) < 0.08 && p.e >= 0.85) {
+      if (!dressHold && (tl % Pt) < 0.08 && p.e >= 0.85 && !held) {
         const tw = Math.sin(Math.PI * (tl % Pt) / 0.08);
         const tk = G.beat === G.idxOf("walk") ? 1 - clamp(G.since("walk") / 0.8, 0, 1) : 1;   // off while walking, faded in from the beat change
         p.x += 0.02 * H * tw * tw * tk * (hash1a(sd * 3.3) - 0.5 < 0 ? -1 : 1);
@@ -328,8 +310,6 @@ window.GenOld = (function () {
 
     p.look = env.look != null ? env.look : sx(0);
     p.e = e;
-    p.clipY = (e > 0 && e < 1) ? rimY : null;
-    p.rimX = rimX; p.rimY = rimY; p.steps = n;
     return p;
   }
 
@@ -1115,30 +1095,6 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  // stone crumbs fall from the lip at each held step of the climb
-  function drawFlakes(ctx, o, p, emerge) {
-    if (!(emerge >= 0)) return;
-    const H = G.H, t0 = VENT_T0[o.idx], d = ventDur(o.idx), n = p.steps;
-    ctx.save();
-    ctx.globalAlpha = 1;
-    for (let k = 0; k < n; k++) {
-      const tk = t0 + k * d / n;
-      const age = emerge - tk;
-      if (!(age >= 0 && age < 0.5)) continue;
-      const aq = Math.floor(age / 0.08) * 0.08;
-      for (let j = 0; j < 3; j++) {
-        const h1 = hash1(o.idx * 131 + k * 7 + j);
-        const h2 = hash1(o.idx * 71 + k * 13 + j * 3 + 1);
-        const fx = p.rimX + (h1 - 0.5) * 0.08 * H + (h2 - 0.5) * 0.03 * H * aq * 2;
-        const fy = p.rimY + 0.3 * H * aq * aq + 0.004 * H * h2;
-        const sz = Math.max(1.5, (0.003 + 0.003 * h1) * H);
-        ctx.fillStyle = j === 0 ? "#656965" : "#4b4f4c";
-        ctx.fillRect(fx - sz / 2, fy - sz * 0.8 / 2, sz, sz * 0.8);
-      }
-    }
-    ctx.restore();
-  }
-
   function drawOldOnes(ctx, env) {
     const W = G.W, H = G.H;
     const inside = env.layer === "inside";
@@ -1147,9 +1103,23 @@ window.GenOld = (function () {
       if (p.clipY != null) { c.beginPath(); c.rect(-W, -H, 3 * W, p.clipY + H); c.clip(); }
       c.translate(p.x, p.y);
       c.rotate(p.rot);
+      if (p.mirror) c.scale(-1, 1);
+      if (p.clipBox) {   // ink box from the feet (ib); the cut's polygon plus the growing rect, straight edges
+        const cb = p.clipBox, ib = cb.ib, X = (u) => ib[0] + u * ib[2], Y = (v) => ib[1] + v * ib[3];
+        let ar = 0; cb.cut.forEach((q, i) => { const n = cb.cut[(i + 1) % cb.cut.length]; ar += q[0] * n[1] - n[0] * q[1]; });
+        const r = cb.rect, rc = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]];
+        if (ar < 0) rc.reverse();
+        c.beginPath();
+        cb.cut.forEach((q, i) => { i ? c.lineTo(X(q[0]), Y(q[1])) : c.moveTo(X(q[0]), Y(q[1])); }); c.closePath();
+        rc.forEach((q, i) => { i ? c.lineTo(X(q[0]), Y(q[1])) : c.moveTo(X(q[0]), Y(q[1])); }); c.closePath();
+        c.clip();
+      }
       c.scale(p.scale, p.scale * p.sy);
-      c.translate(-p.x, -p.y);
-      PAINT[o.kind](c, o, p.x, p.y, o.hf * H, p);
+      // a growing part is painted where the chip's body was measured: gaits read the world x, so the drawing there is the chip's pose
+      const gx = p.clipBox ? p.clipBox.fx : p.x, gy = p.clipBox ? p.clipBox.fy : p.y;
+      c.translate(-gx, -gy);
+      PAINT[o.kind](c, o, gx, gy, o.hf * H, p);
+      c.translate(gx - p.x, gy - p.y);
       drawMaking(c, o, p, o.hf * H);
       c.restore();
     }
@@ -1166,7 +1136,6 @@ window.GenOld = (function () {
       if (p.a < 0.04 || p.x < -0.35 * H || p.x > W + 0.35 * H) continue;
       ctx.globalAlpha = p.a;
       paintOne(ctx, o, p);
-      if (p.clipY != null || (p.e >= 1 && env.emerge - VENT_T0[idx] - ventDur(idx) < 0.5)) drawFlakes(ctx, o, p, env.emerge);
       if (wantRift && p.e > 0 && p.x >= 0 && p.x <= W) {
         const ncx = p.x, ncy = p.y - 0.5 * o.hf * H;
         const dd = (ncx - R.x) * (ncx - R.x) + (ncy - R.y) * (ncy - R.y);
@@ -1482,5 +1451,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { OLD_DIM, ROSTER, ORDER, PAINT, place, drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, activeVents, VENT_DUR, dressNow, windAt, frostNow };
+  return { OLD_DIM, ROSTER, ORDER, PAINT, place, deckSpot, birthT,drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, dressNow, windAt, frostNow };
 })();

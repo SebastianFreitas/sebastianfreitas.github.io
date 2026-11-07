@@ -178,7 +178,7 @@
   const limbRnd = b => { const v = Math.sin(b * 127.1 + 11.3) * 43758.5453; return v - Math.floor(v); };
   const hh = (b, i, k) => { const v = Math.sin(b * 91.7 + i * 37.3 + k * 13.9 + 5.1) * 43758.5453; return v - Math.floor(v); };
   let spanCv = null, spanCtx = null;
-  const spanKey = new Float64Array(14);
+  const spanKey = new Float64Array(15);
   // the rail erodes in the break: hard-edged gaps fixed by seed in span units; each opens at its own time over the blast, then holds; one flat colour, no fades
   const RAIL_GAPS = (() => {
     // about 30% of the line worn away, no period: patches, runs and sizes all drawn from wide skewed ranges; mediums are placed apart from the patches, in clumps (1 u = 1 view width)
@@ -377,7 +377,7 @@
   }
 
   function drawSpan(ctx, grow) {
-    drawSpanBody(ctx, grow);
+    drawSpanBody(ctx, grow, null, true);
     if (grow >= 0.02) drawRailChips(ctx);
   }
   // the homepage's span: the same body with explicit inputs and a settled beat (every leg and city arrived, every rail gap open, no break chips, unlit deck)
@@ -392,7 +392,7 @@
   // The span: an old one, long dead. Few limbs bowed at the knee, a thin iron
   // deck, near the void's own colour; limbs and ends go into the fog.
   // v (paintSpan only): explicit view and a settled beat; without it the cutscene's G values
-  function drawSpanBody(ctx, grow, v) {
+  function drawSpanBody(ctx, grow, v, edge) {
     if (grow < 0.02) return;
     const W = v ? v.W : G.W, H = v ? v.H : G.H, deckY = v ? v.deckY : H * DECK;
     const cam = v ? v.cam : G.cam;
@@ -428,7 +428,7 @@
     for (let i = 0; i < RAIL_GAPS.length; i++) if (v || railOpen(i)) gapSig++; // gaps only ever open, so the count names the set
     const K = spanKey;
     const same = K[0] === cw && K[1] === ch && K[2] === W && K[3] === H && K[4] === x0 && K[5] === x1
-      && K[6] === cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0 && K[11] === lit && K[12] === gapSig && K[13] === fogEnd;
+      && K[6] === cam && K[7] === sig && K[8] === dx0 && K[9] === dx1 && K[10] === dy0 && K[11] === lit && K[12] === gapSig && K[13] === fogEnd && K[14] === (edge ? 1 : 0);
     if (same) {
       ctx.save();
       ctx.globalAlpha = clamp(grow * 3, 0, 1) * 0.9;
@@ -437,7 +437,7 @@
       return;
     }
     K[0] = cw; K[1] = ch; K[2] = W; K[3] = H; K[4] = x0; K[5] = x1;
-    K[6] = cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0; K[11] = lit; K[12] = gapSig; K[13] = fogEnd;
+    K[6] = cam; K[7] = sig; K[8] = dx0; K[9] = dx1; K[10] = dy0; K[11] = lit; K[12] = gapSig; K[13] = fogEnd; K[14] = edge ? 1 : 0;
     const g = spanCtx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = "source-over";
@@ -536,6 +536,7 @@
     g.fillRect(x0, deckY - 0.012 * H, x1 - x0, 0.012 * H);
     g.fillStyle = DECK_HI;
     g.fillRect(x0, deckY - 0.012 * H, x1 - x0, 0.003 * H);
+    if (edge) { g.fillStyle = "#8a98a3"; g.fillRect(x0, deckY - 0.012 * H, x1 - x0, Math.max(1, 0.0015 * H)); } // cutscene only: thin bright top edge
     g.fillStyle = "#6e1a1a";
     g.fillRect(x0, Math.round(railY(H)), x1 - x0, 2);
     if (gapSig) {

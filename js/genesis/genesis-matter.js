@@ -79,11 +79,12 @@
      f: where each rests (x, y as fractions of H from the mass centre), R: size as a fraction of H. */
   const BLAST_TB = 0.5;
   const ROCKS = [
-    { mat: "stone", n: 11, lo: 0.55, st: [1.25, 0.8], R: 0.076, fx: -0.20, fy: -0.04, ang: -2.6, dl: 0.00, dur: 1.9, spin: 0.9, r0: 0.4, seed: 4417, cut: 0 },
-    { mat: "flesh", n: 7, lo: 0.5, st: [0.85, 1.15], R: 0.060, fx: -0.04, fy: -0.11, ang: -1.3, dl: 0.08, dur: 2.3, spin: -1.4, r0: 1.1, seed: 4423, cut: 1 },
-    { mat: "meld", n: 9, lo: 0.6, st: [1.35, 0.7], R: 0.070, fx: 0.10, fy: -0.02, ang: 0.6, dl: 0.04, dur: 2.6, spin: 0.6, r0: -0.7, seed: 4441, cut: 2 },
-    { mat: "stone", n: 6, lo: 0.7, st: [1, 1], R: 0.045, fx: 0.27, fy: -0.06, ang: -0.3, dl: 0.12, dur: 1.6, spin: -2.2, r0: 1.3, seed: 4447, cut: 3 },
+    { mat: "stone", n: 11, lo: 0.55, st: [1.25, 0.8], R: 0.076, fx: -0.60, fy: -0.04, ang: -2.6, dl: 0.00, dur: 1.9, spin: 0.9, r0: 0.4, seed: 4417, cut: 0 },
+    { mat: "flesh", n: 7, lo: 0.5, st: [0.85, 1.15], R: 0.060, fx: -0.20, fy: -0.11, ang: -1.3, dl: 0.08, dur: 2.3, spin: -1.4, r0: 1.1, seed: 4423, cut: 1 },
+    { mat: "meld", n: 9, lo: 0.6, st: [1.35, 0.7], R: 0.070, fx: 0.20, fy: -0.02, ang: 0.6, dl: 0.04, dur: 2.6, spin: 0.6, r0: -0.7, seed: 4441, cut: 2 },
+    { mat: "stone", n: 6, lo: 0.7, st: [1, 1], R: 0.045, fx: 0.60, fy: -0.06, ang: -0.3, dl: 0.12, dur: 1.6, spin: -2.2, r0: 1.3, seed: 4447, cut: 3 },
   ];
+  const INSECT_FX = [-0.20, -0.04, 0.10, 0.27];   // where the insects hatch, frozen at the rocks' old resting spots
   ROCKS.forEach(function (k) {
     // a rough outline, then every edge split twice and each new point pushed off the line, so no long straight edge is left
     const base = [];
@@ -105,36 +106,44 @@
     for (let j = 0; j < k.verts.length; j++) k.ext = Math.max(k.ext, Math.hypot(k.verts[j][0], k.verts[j][1]));
     k.mr = Math.min(1, Math.hypot(k.fx / MASS.rxH, k.fy / MASS.ryH));
   });
+  // one pose for drawRocks and rockPose: rock k, a seconds after its own start, trs = trade seconds; null once worn away
+  function rockPoseAt(k, a, trs) {
+    const H = G.H, Ox = G.sx(0), Oy = 0.46 * H, Mx = G.sx(0), My = MASS.yf * H;
+    const u = clamp(a / k.dur, 0, 1), e = 1 - Math.pow(1 - u, 3), arc = Math.sin(Math.PI * u) * 0.05 * H;
+    let x = mix(Ox, Mx + k.fx * H, e) + Math.cos(k.ang) * arc, y = mix(Oy, My + k.fy * H, e) + Math.sin(k.ang) * arc;
+    let sk = 1;
+    if (trs > 0) {
+      const vents = window.GenOld && GenOld.activeVents ? GenOld.activeVents(trs) : null;
+      if (vents) {
+        const R = 0.14 * H;
+        for (let q = 0; q < vents.length; q++) {
+          const v = vents[q], dx = x - v.x, dy = y - v.y, d = Math.hypot(dx, dy);
+          if (d > 0.001 && d < R) { const push = (1 - d / R) * 0.06 * H * v.k; x += dx / d * push; y += dy / d * push; }
+        }
+      }
+      // the rocks wear away from the outside in, slower than the old ones climb out: they shrink in held steps, always opaque, then go
+      const keep = clamp((massScale(trs * 0.75) - k.mr * 0.6) / 0.2, 0, 1);
+      sk = trs >= 8.6 ? 0 : trs >= 8.2 ? 0.25 : keep > 0.75 ? 1 : keep > 0.5 ? 0.8 : keep > 0.25 ? 0.6 : 0.4;
+    }
+    if (sk === 0) return null;
+    const size = k.R * H * sk * (0.9 + 0.1 * smooth(clamp(a / 0.2, 0, 1)));
+    // never over the bridge: the rock's lowest reach stays above the span's top
+    y = Math.min(y, G.H * G.DECK - 0.06 * H - k.ext * size);
+    return { x: x, y: y, rot: k.r0 + k.spin * 1.2 * (1 - Math.exp(-a / 1.2)), size: size };
+  }
   function drawRocks(ctx, tb) {
     const a0 = tb - BLAST_TB;
     if (a0 < 0) return;
-    const H = G.H, Ox = G.sx(0), Oy = 0.46 * H, Mx = G.sx(0), My = MASS.yf * H, trs = G.secs("trade");
+    const trs = G.secs("trade");
     for (let i = 0; i < ROCKS.length; i++) {
       const k = ROCKS[i], a = a0 - k.dl;
       if (a < 0) continue;
-      const u = clamp(a / k.dur, 0, 1), e = 1 - Math.pow(1 - u, 3), arc = Math.sin(Math.PI * u) * 0.05 * H;
-      let x = mix(Ox, Mx + k.fx * H, e) + Math.cos(k.ang) * arc, y = mix(Oy, My + k.fy * H, e) + Math.sin(k.ang) * arc;
-      let sk = 1;
-      if (trs > 0) {
-        const vents = window.GenOld && GenOld.activeVents ? GenOld.activeVents(trs) : null;
-        if (vents) {
-          const R = 0.14 * H;
-          for (let q = 0; q < vents.length; q++) {
-            const v = vents[q], dx = x - v.x, dy = y - v.y, d = Math.hypot(dx, dy);
-            if (d > 0.001 && d < R) { const push = (1 - d / R) * 0.06 * H * v.k; x += dx / d * push; y += dy / d * push; }
-          }
-        }
-        // the rocks wear away from the outside in, slower than the old ones climb out: they shrink in held steps, always opaque, then go
-        const keep = clamp((massScale(trs * 0.75) - k.mr * 0.6) / 0.2, 0, 1);
-        sk = trs >= 8.6 ? 0 : trs >= 8.2 ? 0.25 : keep > 0.75 ? 1 : keep > 0.5 ? 0.8 : keep > 0.25 ? 0.6 : 0.4;
-      }
-      if (sk === 0) continue;
-      const size = k.R * H * sk * (0.9 + 0.1 * smooth(clamp(a / 0.2, 0, 1)));
-      // never over the bridge: the rock's lowest reach stays above the span's top
-      y = Math.min(y, G.H * G.DECK - 0.06 * H - k.ext * size);
-      drawRockAt(ctx, k, x, y, k.r0 + k.spin * 1.2 * (1 - Math.exp(-a / 1.2)), size);
+      const p = rockPoseAt(k, a, trs);
+      if (p) drawRockAt(ctx, k, p.x, p.y, p.rot, p.size);
     }
   }
+  // the rock where drawRocks leaves it at the first frame of matter (tb 10, a0 9.5); reads G.H like drawRocks
+  function rockPose(i) { return rockPoseAt(ROCKS[i], 9.5 - ROCKS[i].dl, 0); }
   // each rock has its own break (or none), cut in its own turning frame, all darker than the bridge
   const RK_LIT = "#2a2a2a", RK_MID = "#232323", RK_SHADE = "#1c1c1c", RK_DARK = "#141414";
   function drawRockAt(ctx, k, x, y, rot, s) {
@@ -348,7 +357,7 @@
       if (!hatchPos.alive) continue; // parent dead at hatch time: never drawn
       // they hatch from the rocks now, on the rock's near edge (the chunks they were born of are no longer drawn)
       const rk = ROCKS[ins.parent % ROCKS.length], rr = rk.R * G.H * 0.8;
-      const hx = G.sx(0) + rk.fx * G.H + Math.cos(ins.ang) * rr, hy = MASS.yf * G.H + rk.fy * G.H + Math.sin(ins.ang) * rr * 0.7;
+      const hx = G.sx(0) + INSECT_FX[ins.parent % ROCKS.length] * G.H + Math.cos(ins.ang) * rr, hy = MASS.yf * G.H + rk.fy * G.H + Math.sin(ins.ang) * rr * 0.7;
 
       let b = s - ins.hatch;
       // storm death: check position at each storm's start time
@@ -585,5 +594,5 @@
     GenElem.layerEnd(outer, ctx, GenElem.dimK());
   }
 
-  window.GenMatter = { draw, drawRocks, chunkAt, MASS, massScale };
+  window.GenMatter = { draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale };
 })();
