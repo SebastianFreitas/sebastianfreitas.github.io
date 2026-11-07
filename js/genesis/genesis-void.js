@@ -299,28 +299,16 @@
       g.beginPath();
       g.moveTo(xb - sh, yt - 1);
       g.quadraticCurveTo(xb - wt, yt, xb - wt * 1.1, yt + 0.07 * H);
-      g.quadraticCurveTo(xk - wk * 1.25, (yt + 0.07 * H + yk) / 2, xk - wk, yk);
+      const y1 = yt + 0.07 * H, yc = (y1 + yk) / 2, kk = (yk - yc) / ((yf - yk) / 2);
+      g.quadraticCurveTo(xk - wk - kk * (wk * 0.1 + lean * 0.2), yc, xk - wk, yk);
       g.quadraticCurveTo(xk - wk * 0.9 + lean * 0.2, (yk + yf) / 2, xf - wf, yf);
       g.lineTo(xf + wf, yf);
       g.quadraticCurveTo(xk + wk * 0.8 + lean * 0.2, (yk + yf) / 2, xk + wk, yk);
-      g.quadraticCurveTo(xk + wk * 1.1, (yt + 0.07 * H + yk) / 2, xb + wt * 1.1, yt + 0.07 * H);
+      g.quadraticCurveTo(xk + wk - kk * (lean * 0.2 - wk * 0.2), yc, xb + wt * 1.1, y1);
       g.quadraticCurveTo(xb + wt, yt, xb + sh, yt - 1);
       g.closePath();
     };
     Paint.litShade(g, trace, xk - wk * 0.4, LIMB_LIT, LIMB_SHADE);
-
-    // knee: hard split, no gradient
-    g.fillStyle = LIMB_LIT;
-    g.beginPath();
-    g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
-    g.fill();
-    g.save();
-    g.beginPath();
-    g.ellipse(xk + wk * 0.3, yk, wk * 1.15, wk * 0.95, 0, 0, Math.PI * 2);
-    g.clip();
-    g.fillStyle = LIMB_SHADE;
-    g.fillRect(xk + wk * 0.1, yk - wk * 1.5, 1e5, wk * 3);
-    g.restore();
 
     // nests: on the piers, tucked at the knee and under the eave
     if (hh(b, 0, 20) < 0.7 && walk) {
