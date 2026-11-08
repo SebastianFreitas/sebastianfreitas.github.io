@@ -119,6 +119,7 @@
     a.className = "type-action";
     a.href = "#";
     a.textContent = "Watch again";
+    a.dataset.wear = "button"; a.dataset.seed = "86";
     a.addEventListener("click", e => {
       e.preventDefault();
       if (window.Genesis) Genesis.playScene(BEACON_SEGMENT[id]);

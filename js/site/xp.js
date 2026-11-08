@@ -156,13 +156,14 @@ window.XP = (function () {
       '<span class="xp-badge">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="" vector-effect="non-scaling-stroke"/></svg>' +
       '</span>' +
-      '<span class="xp-name"></span>' +
+      '<span class="xp-name" data-banner="plate"></span>' +
       '<span class="xp-track">' + pips + '</span>' +
       '<span class="xp-ref"></span>';
     // the level belongs to the whole site, so it lives in the top bar
     const slot = document.getElementById("xp-slot");
     if (slot) slot.appendChild(chip);
     else { chip.classList.add("floating"); document.body.appendChild(chip); }
+    if (window.Banner) Banner.apply(chip);
 
     chipName  = chip.querySelector(".xp-name");
     chipRef   = chip.querySelector(".xp-ref");

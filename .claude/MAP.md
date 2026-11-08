@@ -55,6 +55,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the ship, the wedge hull, the shard: js/ship/voidship*.js (art, prow = the shard)
 - v bump, cache bust: tools/bump.py
 - the top bar, topbar: css/style.css (topbar rules); pinned on scroll; its centre XP (level square, rank ring, name plate, pips, ref) is hidden on `.topbar.is-solid` and `.page-case .topbar`, so it shows only over the bridge
+- "quiet auditor" (or any rank title): the rank name plate in the top bar, the span `js/site/xp.js` builds (`data-wear="tab"`); the words change with rank.
 
 ## Shared state conventions
 
@@ -106,11 +107,19 @@ shares `Gen`:
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
-| `shapes.js` | Seeded torn/slab polygon maker (points, rough, notches, chamfer, inset per edge); `[data-shape]` elements get `--shape` at load, redrawn on resize for `data-shape-tear` (px-sized cut) hosts | `window.Shapes {polygon, styles, apply, rng}` |
+| `banner.js` | Seeded cream text banner: plate = main's `.xp-name` recipe, tab = nav tab; `apply` masks `[data-banner]` labels (bullet below) | `window.Banner {schema, params, ready, draw, dataURL, apply}` |
+| `shapes.js` | Seeded raster wear masks: every `[data-wear]` box gets `--wear` (PNG mask) and `--shape: none`, redrawn on resize; `wearPlate`/`quad` clip the Work rows and Experience plate; kinds mode wears 1-2 corners | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
+| `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
 | `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip`, shows `.obj-go`; see bullet below | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
+- `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon.
+- `banner.js` apply: `Banner.apply(root)` paints `--banner: url(png)` (alpha mask, no text) on `[data-banner="plate|tab"]`, opt. `data-banner-on="before"` and `data-banner-seed`; ResizeObserver repaint; self-boots.
+- `shapes.js`: kinds mode (opt-in `opts.kinds`) sets `el._wearSites` and `el._wearKinds`; no preset uses it yet.
+- `shapes.js`: nav links carry no `data-wear`; the tab hover paper is masked by the two old grainy PNG corners in `art/wear/` (css `.topbar nav a::before`).
+- `shapes.js` wear: `Shapes.wear(el, preset, seed)` paints a seeded PNG mask into `--wear` and sets `--shape: none`; 10 presets in `wearPresets` (depth as % of the short side, bites per edge, corner chips).
+- `shapes.js` wear seed: from `data-seed` or preset+index, so a box keeps its wear across reloads; `Shapes.apply(root)` wears boxes added later (gate, surge veils, bridge notes). CSS keeps a literal polygon as the no-JS fallback: `clip-path: var(--shape, <polygon>)`, `mask-image: var(--wear, none)`.
 
 - `work-preview.js`: hover or focus marks the row (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go` in the spot kept for it under the facts; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), bar growth on a claim (no flying box or tag, never freezes the world); only the bridge awards XP, cross-tab sync, `?reset=1`
@@ -492,8 +501,12 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <index.html[#case]> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
 | `tools/hudshot.py` | Bridge HUD shots into `snapshots/<run>/`, prints `HudC25.report()`: `--c25` (no-op), `--size WxH`, `--at <mark>`, `--x`, `--site`, `--claimed`, `--read`, `--burn`, `--touch` (prints `phone:`, `canvas:`, `painted:`); exits 1 on a console error |
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
+| `tools/banner-lab.html` | Banner lab page (`py -3 serve.py`, `/tools/banner-lab.html`): loads `js/site/shapes.js`, `js/site/banner.js` and `banner-lab.js`; dark tool page; `?sheet=N&seed=S[&set=k:v,..]` renders only the sheet onto `#cv` |
+| `tools/banner-lab.js` | `window.BannerLab`: a control and lock per `Banner.schema` key, seed, Plate/Tab presets, sheet of seeded variants, PNG export at 2x/4x, state in URL hash |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
+| `tools/bannersheet.py` | Headless banner-lab sheet PNG: `py -3 tools/bannersheet.py <out.png> [--n 24] [--seed 1] [--set key=val ...] [--preset plate\|tab] [--scale 2] [--compare ref.png]`; compare = ref left, generated right; exits 1 on a blank canvas or console error |
+| `tools/plateref.py` | Shoots the live name plate and nav tab as ref PNGs: `py -3 tools/plateref.py <plate.png> <tab.png>`; refs for `bannersheet.py --compare` |
 | `tools/titansheet.py` | `py -3 tools/titansheet.py <out_dir> [--layout path]`: 2000x1009 sketch sheet of the four rock titans (plan rock-titans phase 1) with per-titan and per-piece numbers; exit 1 on a console error or a failed size, gap, share or top check |
 | `.claude/plans/research/rock-titans-sketch/layout.js` | `window.TitanLayout`: the titans' sketch layout (roots, cores, pieces, filler, shears); read by titansheet.py, copied by phase 2 |
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |

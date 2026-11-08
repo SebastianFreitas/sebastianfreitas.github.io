@@ -16,9 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=283">
-<link rel="stylesheet" href="../css/beacon.css?v=283">
-<link rel="stylesheet" href="../css/play.css?v=283">
+<link rel="stylesheet" href="../css/style.css?v=284">
+<link rel="stylesheet" href="../css/beacon.css?v=284">
+<link rel="stylesheet" href="../css/play.css?v=284">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -27,18 +27,18 @@
   <a class="wordmark" href="../index.html">SF</a>
   <div class="xp-slot" id="xp-slot"></div>
   <nav aria-label="Site">
-    <a data-shape="torn" data-shape-seed="11" href="../index.html#bridge-hero">Bridge</a>
-    <a data-shape="torn" data-shape-seed="12" href="../index.html#work">Games</a>
-    <a data-shape="torn" data-shape-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
-    <a data-shape="torn" data-shape-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="11" href="../index.html#bridge-hero">Bridge</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="12" href="../index.html#work">Games</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
   </nav>
 </header>
 
 <div class="folder-body">
 <main class="case" id="main" data-redlines="case-heavylight">
-  <a class="back" href="../#heavylight">← Back to Work</a>
+  <a class="back" data-banner="tab" data-banner-on="before" data-wear="button" href="../#heavylight">← Back to Work</a>
   <h1>HeavyLight</h1>
-  <div class="case-sub"><span class="type-label">2D puzzle platformer · Unity</span></div>
+  <div class="case-sub"><span class="type-label" data-banner="tab">2D puzzle platformer · Unity</span></div>
 
     <p>A 2D puzzle platformer built on one rule: <span class="key">light has weight</span>. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
 
@@ -46,7 +46,7 @@
          data-src="https://itch.io/embed-upload/6434502?color=002f4b"
          data-title="Play HeavyLight in your browser"
          style="background-image:url('../media/heavylight/heavylightFrontPage.webp')">
-      <button type="button" class="embed-play">Play HeavyLight</button>
+      <button type="button" class="embed-play" data-wear="button">Play HeavyLight</button>
     </div>
     <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
 
@@ -59,7 +59,7 @@
 
     <h2>Lamps</h2>
     <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
-    <video class="clip" src="../media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
 
     <h2>One new thing per level</h2>
@@ -67,7 +67,7 @@
 
     <h2>The journal</h2>
     <p>ESC opens the <span class="key">journal</span>, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
-    <img class="clip" src="../media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
+    <img class="clip" data-wear="image" src="../media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
     <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
 
     <h2>The clues</h2>
@@ -84,13 +84,13 @@
     <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
 
     <nav class="case-nav" aria-label="More work">
-      <a class="next" rel="next" href="sector-zero.html">Next: Sector Zero →</a>
+      <a class="next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="sector-zero.html">Next: Sector Zero →</a>
     </nav>
 </main>
 </div>
 
 <footer>
-  <div class="foot-text slab" data-shape="torn" data-shape-seed="42" data-shape-tear="7" data-redlines="foot-heavylight">
+  <div class="foot-text slab" data-wear="slab" data-seed="42" data-redlines="foot-heavylight">
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
   <p class="rights">The Warlocks © 2017–2026 Sebastião Freitas. All rights reserved.<br>
@@ -99,17 +99,18 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=283"></script>
-<script src="../js/site/xp.js?v=283"></script>
-<script src="../js/site/surge.js?v=283"></script>
-<script src="../js/lib/pacer.js?v=283"></script>
-<script src="../js/site/embed.js?v=283"></script>
-<script src="../js/site/lazy-video.js?v=283"></script>
-<script src="../js/pages/play.js?v=283"></script>
-<script src="../js/shared/heavylight-sprites.js?v=283"></script>
-<script src="../js/pages/heavylight.js?v=283"></script>
-<script src="../js/site/shapes.js?v=283"></script>
-<script src="../js/site/redlines.js?v=283"></script>
+<script src="../js/lib/util.js?v=284"></script>
+<script src="../js/site/xp.js?v=284"></script>
+<script src="../js/site/surge.js?v=284"></script>
+<script src="../js/lib/pacer.js?v=284"></script>
+<script src="../js/site/embed.js?v=284"></script>
+<script src="../js/site/lazy-video.js?v=284"></script>
+<script src="../js/pages/play.js?v=284"></script>
+<script src="../js/shared/heavylight-sprites.js?v=284"></script>
+<script src="../js/pages/heavylight.js?v=284"></script>
+<script src="../js/site/banner.js?v=284"></script>
+<script src="../js/site/shapes.js?v=284"></script>
+<script src="../js/site/redlines.js?v=284"></script>
 <script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "heavylight");</script>
 </body>
 </html>

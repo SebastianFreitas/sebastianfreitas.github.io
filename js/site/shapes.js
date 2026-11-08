@@ -1,21 +1,7 @@
 /* ===========================================================
    SHAPES — torn paper, rough slabs, made from numbers.
 
-   Shapes.polygon(opts) gives a CSS polygon(...) in percentages.
-   Same inputs, same shape. Every input has a default:
-
-     seed     number or string
-     points   rough points per edge        [top, right, bottom, left]
-     rough    how far each point strays    [t, r, b, l], % (0 = straight)
-     notches  notches per edge             [t, r, b, l]
-     notchDepth  [min, max] %    notchWidth  [min, max] % of the edge
-     chamfer  cut per corner               [tl, tr, br, bl], %
-     inset    most any jag may cut in, %
-
-   Shapes.styles holds named presets (torn, slab). Shapes.apply(root)
-   sets --shape on every [data-shape="<style>"] element; optional
-   data-shape-seed and data-shape-<input> ("3,2,3,2" lists, "2-5"
-   ranges). CSS: clip-path: var(--shape, <old polygon>).
+   Shapes.wear(el, preset, seed) erodes a box inward into a mask; Shapes.apply(root) runs the [data-wear] scan.
    Made once per element, never per frame.
    =========================================================== */
 
@@ -37,177 +23,1125 @@
     };
   }
 
-  const styles = {
-    /* the top-bar tab paper */
-    torn: {
-      points: [4, 4, 4, 4], rough: [4, 4, 4, 4], notches: [1, 0, 1, 0],
-      notchDepth: [2, 3], notchWidth: [6, 9], chamfer: [8, 0, 0, 0], inset: 9
-    },
-    /* the black slabs: rough top and bottom, straight sides */
-    slab: {
-      points: [5, 0, 5, 0], rough: [6, 0, 6, 0], notches: [0, 0, 0, 0],
-      notchDepth: [2, 4], notchWidth: [4, 8], chamfer: [0, 0, 0, 0], inset: 8
-    }
+  /* ---- WEAR: one seeded raster mask for every chipped edge ----
+     Spec 38: outside kinds mode every preset draws the one baseline (the name plate's recipe: end shards at the corners, a rare mid bite, crumbs above scale 1)
+     scaled by the short side (name plate 26 px = 1, clamp 1-3) and masked by the flags (corners tl tr bl br, edges top right bottom left; opts.flags or data-wear-flags,
+     else ROLE_FLAGS); the knobs below only drive kinds mode and sheet.py.
+     Shapes.wear(el, preset, seed) paints a white box on a canvas, erases chunky shard bites at the corners and the two ends
+     of each worn edge (the middle half of an edge stays clean bar one small bite) plus a 1.5 px grain near those ends,
+     inward only (nothing past the box), and sets --wear (a PNG data URI) on el, and --shape: none too unless el has data-wear-keep.
+     CSS: clip-path: var(--shape, <static polygon>); mask-image: var(--wear, none) (and -webkit-), so no JS keeps the old look.
+     data-wear-keep marks a box whose CSS polygon is a real shape (at most 6 points): the clip stays, the mask wears it.
+     Depth is a % of the short side, clamped to [4, max] css px (max 26 unless the preset says); shard length is 2-4x its depth.
+     Knobs: depth %; max px clamp; ends per edge [t,r,b,l] (0 none, 1 one random end, 2 both ends); mid chance of one small
+     middle bite; shard [min,max] length-to-depth ratio; grain px (0 = none); edges the worn sides (letters t r b l);
+     tear {pct, n:[min,max], edges} deep stacked shards at each end of those edges (paper); spread n bites along the edge (row-top).
+     kinds: optional list of effect kinds (step slant spike square tear, Shapes.wearKinds); when set, each cut site (a corner or an end
+     of a worn edge) picks one by the seed and the shard knobs above are bypassed. opts.kinds overrides it, opts.kind forces one; el._wearKinds lists the picks. */
+  const wearPresets = {
+    tab:        { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
+    button:     { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
+    paper:      { depth: 14, ends: [1, 0, 1, 0], mid: 0,   shard: [2, 4], grain: 0, edges: "tb", tear: { pct: 40, n: [2, 3], edges: "lr" } },
+    slab:       { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
+    "slab-tall": { depth: 22, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
+    "row-top":  { depth: 30, max: 44, spread: [3, 4], shard: [2, 4], grain: 0, edges: "t" },
+    title:      { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
+    item:       { depth: 22, ends: [2, 1, 2, 1], mid: 0.3, shard: [2, 4], grain: 0, edges: "trbl" },
+    image:      { depth: 20, ends: [1, 1, 1, 1], mid: 0.2, shard: [2, 4], grain: 0, edges: "trbl" },
+    card:       { depth: 20, ends: [1, 1, 1, 1], mid: 0.2, shard: [2, 4], grain: 0, edges: "trbl" }
   };
-  const BASE = {
-    seed: 1, points: [3, 3, 3, 3], rough: [3, 3, 3, 3], notches: [0, 0, 0, 0],
-    notchDepth: [2, 4], notchWidth: [4, 8], chamfer: [0, 0, 0, 0], inset: 6
+  const EDGE_KEYS = ["t", "r", "b", "l"];
+  const WEAR_KINDS = ["step", "slant", "spike", "square", "tear", "scallop", "shear", "round"];
+  /* kinds mode: the corners a role's lead cut may take (name plate: bottom or top right; button: a bottom corner; paper title: a top corner); other roles take any */
+  const WEAR_FLAGS = ["tl", "tr", "bl", "br", "top", "right", "bottom", "left"];
+  const WEAR_EDGES = ["top", "right", "bottom", "left"];
+  const WEAR_REF = 26;   /* the name plate's short side, css px: scale 1 */
+  /* the flags each role wears; none is off yet (the owner's picks go in data-wear-flags or here) */
+  const ROLE_FLAGS = { tab: WEAR_FLAGS, button: WEAR_FLAGS, paper: WEAR_FLAGS, slab: WEAR_FLAGS, "slab-tall": WEAR_FLAGS, "row-top": WEAR_FLAGS, title: WEAR_FLAGS, item: WEAR_FLAGS, image: WEAR_FLAGS, card: WEAR_FLAGS };
+  const ROLE_CORNERS = { title: ["tr", "br"], button: ["bl", "br"], paper: ["tl", "tr"] };
+  /* unit scallop profile (chord 1, depth 1) with its deepest point at pk: sine flanks, so the mouth is the widest span and both ends leave the edge at 67 degrees or less */
+  const scallopPts = function (pk) {
+    return [[0.3 * pk, 0.454], [0.7 * pk, 0.891], [pk, 1], [pk + 0.3 * (1 - pk), 0.891], [pk + 0.7 * (1 - pk), 0.454]];
   };
+  /* step masks traced from the old hover corner PNGs (erased part, u along the edge, v inward, both 0..1 of the 184x140 and
+     160x140 boxes, corner at 0,0): the first from the top-left one, the second from the bottom-right one */
+  const STEP_SHAPES = [
+    { r: 184 / 140, q: [[0, 0], [0, 1], [0.16, 1], [0.16, 0.87], [0.24, 0.87], [0.24, 0.68], [0.45, 0.68], [0.45, 0.44], [0.58, 0.44], [0.58, 0]] },
+    { r: 160 / 140, q: [[0, 0], [0, 0.65], [0.13, 0.65], [0.13, 0.28], [0.38, 0.28], [0.38, 0]] }
+  ];
 
-  function four(v) { return Array.isArray(v) ? [v[0], v[1], v[2], v[3]] : [v, v, v, v]; }
-  function pair(v) { return Array.isArray(v) ? v : [v, v]; }
-  function clamp(v) { return Math.max(0, Math.min(100, v)); }
-  function num(n) { return +clamp(n).toFixed(1); }
-
-  function polygon(opts) {
-    const o = Object.assign({}, BASE, opts || {});
-    const rand = rng(o.seed);
-    const pts = four(o.points), rough = four(o.rough), notches = four(o.notches), ch = four(o.chamfer);
-    /* chamfer along y per corner; defaults to the x amount (px-sized cuts on a wide box differ) */
-    const chy = o.chamferY !== undefined ? four(o.chamferY) : ch;
-    const along = function (e, c) { return e % 2 === 0 ? ch[c] : chy[c]; };
-    const nd = pair(o.notchDepth), nw = pair(o.notchWidth), inset = o.inset;
-    const corners = [[0, 0], [100, 0], [100, 100], [0, 100]];
-    /* inward normal per edge: top, right, bottom, left */
-    const normal = [[0, 1], [-1, 0], [0, -1], [1, 0]];
-    const out = [];
-
-    for (let e = 0; e < 4; e++) {
-      const a = corners[e], b = corners[(e + 1) % 4];
-      const dx = b[0] - a[0] > 0 ? 1 : b[0] - a[0] < 0 ? -1 : 0;
-      const dy = b[1] - a[1] > 0 ? 1 : b[1] - a[1] < 0 ? -1 : 0;
-      /* start and end along the edge, in %, after the corner chamfers */
-      const s0 = along(e, e), s1 = 100 - along(e, (e + 1) % 4);
-      const n = normal[e];
-      const at = function (t, off) {
-        return [a[0] + dx * t + n[0] * off, a[1] + dy * t + n[1] * off];
-      };
-      const items = [];
-
-      /* notches first, evenly spread with a little jitter, so rough points can avoid them */
-      const spans = [];
-      const nc = Math.round(notches[e]);
-      for (let k = 0; k < nc; k++) {
-        const w = nw[0] + rand() * (nw[1] - nw[0]);
-        const d = Math.min(inset, nd[0] + rand() * (nd[1] - nd[0]));
-        const slot = (s1 - s0) / nc;
-        const c = s0 + slot * (k + 0.2 + rand() * 0.6);
-        const lo = Math.max(s0, c - w / 2), hi = Math.min(s1, c + w / 2);
-        spans.push([lo, hi]);
-        items.push([lo, 0], [(lo + hi) / 2 - w * 0.1 + rand() * w * 0.2, d], [hi, 0]);
-      }
-      const np = Math.round(pts[e]);
-      for (let k = 0; k < np && rough[e] > 0; k++) {
-        const t = s0 + (s1 - s0) * ((k + 0.25 + rand() * 0.5) / np);
-        const off = Math.min(inset, rand() * rough[e]);
-        if (spans.some(function (s) { return t > s[0] - 1 && t < s[1] + 1; })) continue;
-        items.push([t, off]);
-      }
-      items.sort(function (p, q) { return p[0] - q[0]; });
-
-      /* the corner at the start of this edge (two points when chamfered) */
-      if (along(e, e) > 0 || (e % 2 === 0 ? chy[e] : ch[e]) > 0) {
-        const pe = (e + 3) % 4, pa = corners[pe];
-        const pdx = a[0] - pa[0] > 0 ? 1 : a[0] - pa[0] < 0 ? -1 : 0;
-        const pdy = a[1] - pa[1] > 0 ? 1 : a[1] - pa[1] < 0 ? -1 : 0;
-        out.push([a[0] - pdx * (pe % 2 === 0 ? ch[e] : chy[e]), a[1] - pdy * (pe % 2 === 0 ? ch[e] : chy[e])]);
-      } else {
-        out.push([a[0], a[1]]);
-      }
-      if (s0 > 0) out.push(at(s0, 0));
-      items.forEach(function (p) { out.push(at(p[0], p[1])); });
-    }
-    return "polygon(" + out.map(function (p) { return num(p[0]) + "% " + num(p[1]) + "%"; }).join(", ") + ")";
-  }
-
-  function list(s) {
-    const p = String(s).split(",").map(parseFloat);
-    return p.length === 1 ? p[0] : p;
-  }
-  function range(s) {
-    const p = String(s).split(/[-,]/).map(parseFloat);
-    return p.length === 1 ? p[0] : p;
-  }
-  const kinds = { points: list, rough: list, notches: list, chamfer: list, inset: parseFloat,
-                  notchDepth: range, notchWidth: range, chamferY: list };
-
-  let ro = null;
-  function one(el, i) {
-      const d = el.dataset;
-      const opts = Object.assign({}, styles[d.shape] || {});
-      Object.keys(kinds).forEach(function (k) {
-        const v = d["shape" + k.charAt(0).toUpperCase() + k.slice(1)];
-        if (v !== undefined && v !== "") opts[k] = kinds[k](v);
+  function wear(el, preset, seed, opts) {
+    const P = wearPresets[preset];
+    const cssW = el.offsetWidth, cssH = el.offsetHeight;
+    if (!P || !cssW || !cssH) return null;
+    let dpr = window.devicePixelRatio || 1;
+    dpr = Math.min(dpr, 2048 / Math.max(cssW, cssH));
+    const W = Math.max(1, Math.round(cssW * dpr)), H = Math.max(1, Math.round(cssH * dpr));
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const g = cv.getContext("2d");
+    if (!g) return null;
+    const rnd = rng(String(preset) + "|" + seed);
+    const Scss = Math.min(cssW, cssH);
+    g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = "destination-out";
+    g.fillStyle = "#000";
+    /* edge e, along u (0..1) and in by d px, to canvas px */
+    const lens = [W, H, W, H];
+    const pt = function (e, u, d) {
+      return e === 0 ? [u * W, d] : e === 1 ? [W - d, u * H] : e === 2 ? [W - u * W, H - d] : [d, H - u * H];
+    };
+    const profile = [];
+    let mute = false;
+    /* baseline wear: flags (opts.flags, else data-wear-flags, else the role's) name the corners and edges that are worn; bk is the scale (short side / name plate, 1-6), bd the corner depth in canvas px */
+    const flagAttr = el.getAttribute("data-wear-flags");
+    const flagList = opts && opts.flags ? opts.flags : flagAttr != null ? flagAttr.split(",").map(function (f) { return f.trim(); }) : Scss > 60 ? [] : ROLE_FLAGS[preset] || WEAR_FLAGS;
+    const on = function (f) { return flagList.indexOf(f) >= 0; };
+    const bk = Math.max(1, Math.min(2, Scss / WEAR_REF)), bd = 0.25 * Math.max(16, Math.min(156, Scss)) * dpr;
+    /* one chunky shard (5 points) on edge e from a0 to a0 + L px along it, d px deep; end shards run from the box end (a0
+       before it) with the deep side at the corner, flip mirrors them to the far end; mid shards peak in the middle */
+    const shard = function (e, a0, L, d, flip, end) {
+      const q = end ? [[0, -2], [0, d * (0.85 + rnd() * 0.15)], [0.22, d * (0.65 + rnd() * 0.3)], [0.55, d * (0.3 + rnd() * 0.3)], [1, -2]]
+        : [[0, -2], [0.3, d * (0.55 + rnd() * 0.3)], [0.5, d], [0.8, d * (0.3 + rnd() * 0.4)], [1, -2]];
+      g.beginPath();
+      q.forEach(function (p, j) {
+        const a = a0 + (flip ? 1 - p[0] : p[0]) * L, c = pt(e, a / lens[e], p[1]);
+        if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]);
+        if (e === 0 && p[1] > 0 && !mute) profile.push([Math.max(0, Math.min(1, a / W)), p[1] / H]);
       });
-      /* data-shape-tear="px": size the cut in px from the element's box, so a wide row gets small bites */
-      const tear = parseFloat(d.shapeTear), W = el.offsetWidth, H = el.offsetHeight;
-      if (tear > 0 && W > 0 && H > 0) {
-        /* the hover tab paper in px: a point every ~25 px, a few px deep, chipped corners, notches every ~140 px */
-        const ph = tear / H * 100, pw = tear / W * 100;
-        const px = function (n, len) { return n / len * 100; };
-        const nh = Math.max(1, Math.round(W / 140));
-        opts.rough = [ph, pw, ph, pw];
-        opts.inset = Math.max(ph, pw);
-        opts.points = [Math.max(3, Math.round(W / 25)), Math.max(2, Math.round(H / 25)), Math.max(3, Math.round(W / 25)), Math.max(2, Math.round(H / 25))];
-        opts.notches = [nh, 0, nh, 0];
-        opts.notchDepth = [ph * 0.7, ph * 1.2];
-        opts.notchWidth = [px(10, W), px(26, W)];
-        opts.chamfer = [px(14, W), px(9, W), px(12, W), px(16, W)];
-        opts.chamferY = [px(10, H), px(12, H), px(9, H), px(11, H)];
+      g.closePath(); if (!mute) g.fill();
+    };
+    const clampD = function (pct, max) { return Math.max(4, Math.min(max, pct / 100 * Scss)) * dpr; };
+    /* opts.edges: [[[x0, y0], [x1, y1]], ...] worn segments in box px; the shards sit on each segment and erode toward the box centre */
+    const segs = opts && opts.edges;
+    /* kinds mode is sparse: severity by seed (0 faint = one small bite, 1 one bold, 2 two corners); the rest of the box stays crisp */
+    const kz = !!(opts && (opts.kinds || opts.kind));
+    /* kinds mode draws its lead pick (corner, kind) first so a small seed change moves it */
+    if (kz) { rnd(); rnd(); }
+    /* kinds mode: the grain knob (opts.grain, css px, default 2.5) roughens bite rims only; the straight runs between bites stay clean */
+    const rimAmp = kz ? (opts && opts.grain != null ? opts.grain : 4) * dpr : 0;
+    /* kinds mode: a lip never hooks. Interior vertices of a bite whose ends sit at q[0] and q[n-1] (s in units of sc px) stay inside the 67 degree cone from each end, so both ends leave the edge at 67 degrees or less */
+    const cone = function (q, sc, lead) {
+      const n = q.length, a = q[0][0], z = q[n - 1][0], ta = q[0][1], tz = q[n - 1][1];
+      for (let i = 1; i < n - 1; i++) q[i][0] = Math.min(lead ? q[i][0] : Math.max(q[i][0], a + 0.43 * (q[i][1] - ta) / sc), z - 0.43 * (q[i][1] - tz) / sc);
+      lipChk(q, sc, lead);
+      return q;
+    };
+    /* sheet check (kinds mode): the two lips of a bite leave the edge at 67 degrees or less; the max per role is kept on window.__wearLip */
+    const lipChk = function (q, sc, lead) {
+      const n = q.length, ang = function (p, r) { return Math.atan2(Math.abs(r[1] - p[1]), Math.abs(r[0] - p[0]) * sc) * 180 / Math.PI; };
+      const m = lead ? ang(q[n - 1], q[n - 2]) : Math.max(ang(q[0], q[1]), ang(q[n - 1], q[n - 2])), lip = window.__wearLip = window.__wearLip || {};
+      lip[preset] = Math.max(lip[preset] || 0, m);
+      if (m > 67.01) console.error("wear lip " + preset + " " + m.toFixed(1));
+      /* the lead's outer wall runs off the box: the cut must reach 0.9 of its depth where it crosses the box side (s = 0); the least ratio per role is kept on window.__wearBox */
+      if (lead) {
+        let r = 0;
+        for (let i = 1; i < n - 1; i++) if (q[i][0] < 0 && q[i + 1][0] >= 0) { r = (q[i][1] + (q[i + 1][1] - q[i][1]) * (0 - q[i][0]) / (q[i + 1][0] - q[i][0])) / Math.max.apply(null, q.map(function (p) { return p[1]; })); break; }
+        const bx = window.__wearBox = window.__wearBox || {};
+        bx[preset] = Math.min(bx[preset] === undefined ? 9 : bx[preset], r);
+        if (r < 0.9) console.error("wear box side " + preset + " " + r.toFixed(2));
       }
-      opts.seed = d.shapeSeed !== undefined ? d.shapeSeed : (opts.seed !== undefined ? opts.seed : i);
-      el.style.setProperty("--shape", polygon(opts));
-      /* a sized cut follows its box (observed first, so it runs before redlines reads the edge) */
-      if (tear > 0 && window.ResizeObserver && !el._shapeRo) {
-        if (!ro) ro = new ResizeObserver(function (es) { es.forEach(function (e) { if (e.target._shapeW !== e.target.offsetWidth || e.target._shapeH !== e.target.offsetHeight) one(e.target, 0); }); });
-        el._shapeRo = true; ro.observe(el);
+    };
+    /* bite polygon q (local frame, s in units of sc px, t in px, first and last vertex on or outside the box): split each rim segment into pieces of 3-5 grain lengths (12-20 px at the default grain) and nudge the rim vertices along the normal by 0.5-1.25 grain, the sign alternating with an occasional repeat; points on or outside the edge stay put */
+    const rough = function (q, cap, sc, half, chip, fix, uneven) {
+      if (rimAmp <= 0) return q;
+      sc = sc || 1;
+      let sg = rnd() < 0.5 ? 1 : -1;
+      /* a vertex moves along the normal of its segment only (one axis); a and b are the neighbours that give the direction */
+      const jv = function (p, a, b) {
+        if (p[0] * sc < 1 || p[1] < 0.5) return p;
+        const dx = (b[0] - a[0]) * sc, dy = b[1] - a[1], ln = Math.hypot(dx, dy) || 1, dd = (sg = rnd() < 0.2 ? sg : -sg) * rimAmp * (0.5 + rnd() * 0.75) * (half ? 0.5 : 1);
+        return [p[0] - dy / ln * dd / sc, Math.min(Math.max(p[1] + dx / ln * dd, 1), cap)];
+      };
+      const out = [q[0]], js = [0], bs = [null], put = function (j, p) { out.push(j); bs.push(j === p ? null : p); };
+      /* uneven (the image tear): each segment but the last two guards is cut into pieces of 8-40 px, no two neighbours alike (length and amplitude each 30% apart), amplitude 2-8 px (at most 0.38 of the piece); one piece is a flat (under 1 px) and the longest is a sharp notch (7.6-8 px); a piece is one bump vertex pushed off its middle, the piece ends stay on the line */
+      const bi = [];
+      let pcs = null;
+      if (uneven) {
+        const sgl = [], un = q.length - 3;
+        for (let i = 0; i < un; i++) sgl.push(Math.hypot((q[i + 1][0] - q[i][0]) * sc, q[i + 1][1] - q[i][1]) / dpr);
+        const far = function (v, p) { return !p || Math.abs(v - p) / Math.max(v, p) >= 0.35; };
+        let Ls, As, cn;
+        for (let tr = 0; tr < 60; tr++) {
+          Ls = []; As = []; cn = [];
+          let prev = 0;
+          sgl.forEach(function (s) {
+            const k = Math.max(1, Math.round(s / 22)), w = [];
+            for (let j = 0; j < k; j++) { let v, t = 0; do { v = 8 + rnd() * 32; t++; } while (t < 30 && !far(v, prev)); w.push(v); prev = v; }
+            const sum = w.reduce(function (x, y) { return x + y; }, 0);
+            w.forEach(function (v) { Ls.push(v * s / sum); });
+            cn.push(k);
+          });
+          let ni = 0;
+          Ls.forEach(function (l, i) { if (l > Ls[ni]) ni = i; });
+          let fi = Math.floor(rnd() * Ls.length);
+          if (fi === ni) fi = (fi + 1) % Ls.length;
+          let pa = 0;
+          As = Ls.map(function (l, i) {
+            if (i === ni) return pa = 7.6 + rnd() * 0.4;
+            if (i === fi) return pa = 0.3 + rnd() * 0.5;
+            let v, t = 0; do { v = 2 + rnd() * (Math.min(8, 0.38 * l) - 2); t++; } while (t < 30 && !far(v, pa));
+            return pa = v;
+          });
+          let ok = Ls.length > 2 && Ls[ni] >= 20;
+          for (let i = 0; i < Ls.length; i++) {
+            if (Ls[i] < 8 || Ls[i] > 40.01) ok = false;
+            if (i && (!far(Ls[i], Ls[i - 1]) || !far(As[i], As[i - 1]))) ok = false;
+          }
+          if (ok) break;
+        }
+        pcs = [];
+        let pi = 0;
+        for (let i = 0; i < q.length - 1; i++) {
+          const a = q[i], b = q[i + 1];
+          if (i >= un) { put(b, b); js.push(out.length - 1); continue; }
+          const dx = (b[0] - a[0]) * sc, dy = b[1] - a[1], ln = Math.hypot(dx, dy) || 1;
+          const ps = pi, cum = sgl[i];
+          pi += cn[i];
+          let pos = 0;
+          for (let j = ps; j < pi; j++) {
+            const f0 = pos / cum, f1 = (pos + Ls[j]) / cum, fm = (f0 + f1) / 2;
+            const m = [a[0] + (b[0] - a[0]) * fm, a[1] + (b[1] - a[1]) * fm];
+            sg = rnd() < 0.2 ? sg : -sg;
+            const dd = sg * As[j] * dpr, mv = m[0] * sc < 1 || m[1] < 0.5 ? m : [m[0] - dy / ln * dd / sc, Math.min(Math.max(m[1] + dx / ln * dd, 1), cap)];
+            put(mv, m); bi.push([out.length - 1, Ls[j]]);
+            pos += Ls[j];
+            if (j < pi - 1) { const e = [a[0] + (b[0] - a[0]) * f1, a[1] + (b[1] - a[1]) * f1]; put(e, e); }
+          }
+          put(b, b);
+          js.push(out.length - 1);
+        }
       }
-      el._shapeW = W; el._shapeH = H;
-  }
-  function apply(root) {
-    const els = (root || document).querySelectorAll("[data-shape]");
-    for (let i = 0; i < els.length; i++) one(els[i], i);
+      /* the name plate and the row-top corner (not chips): a facet over 24 px is cut into at least 2 pieces of unequal length, neighbours 30% or more apart, each piece about 14 px at most on average */
+      const rag = !chip && (preset === "title" || preset === "row-top");
+      const raggedFr = function (n) {
+        const w = [];
+        for (let k = 0; k < n; k++) {
+          let v = 0.55 + rnd() * 0.95;
+          if (k && Math.abs(v - w[k - 1]) / Math.max(v, w[k - 1]) < 0.3) v = w[k - 1] * 0.65 >= 0.55 ? w[k - 1] * 0.65 : w[k - 1] * 1.45;
+          w.push(v);
+        }
+        const t = w.reduce(function (x, y) { return x + y; }, 0); let c = 0;
+        return w.map(function (v) { c += v; return c / t; });
+      };
+      for (let i = 0; i < q.length - 1 && !uneven; i++) {
+        const a = q[i], b = q[i + 1], sl = Math.hypot((b[0] - a[0]) * sc, b[1] - a[1]);
+        let n = a[1] < 0 && b[1] < 0 ? 1 : Math.max(Math.ceil(sl / (5 * rimAmp) - 0.01), Math.round(sl / (rimAmp * (3 + 2 * rnd()))));
+        const fr = rag && n > 1 && sl / dpr > 24 ? raggedFr(n = Math.max(n, 2, Math.ceil(sl / dpr / 14))) : null;
+        for (let k = 1; k < n; k++) { const f = fr ? fr[k - 1] : k / n, p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; put(jv(p, a, b), p); }
+        if (i + 1 < q.length - 1 && !fix) put(jv(b, a, q[i + 2]), b); else put(b, b);
+        js.push(out.length - 1);
+      }
+      /* turn check: a jittered vertex whose interior angle falls under 100 degrees (or turns back) is damped by halves, then dropped back to its place */
+      const bad = function (i) {
+        const p = out[i], ux = (out[i - 1][0] - p[0]) * sc, uy = out[i - 1][1] - p[1], vx = (out[i + 1][0] - p[0]) * sc, vy = out[i + 1][1] - p[1], m = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+        return !m || (ux * vx + uy * vy) / m > -0.1736;
+      };
+      for (let pass = 0; pass < 3; pass++) for (let i = 1; i < out.length - 1; i++) {
+        if (!bs[i]) continue;
+        for (let k = 0; k < 3 && bad(i); k++) out[i] = [bs[i][0] + (out[i][0] - bs[i][0]) / 2, bs[i][1] + (out[i][1] - bs[i][1]) / 2];
+        if (bad(i)) out[i] = bs[i];
+      }
+      /* sheet check: the mean jitter of the rim vertices (css px, 3 or more of them) holds a floor of 1.5 px */
+      let ra = 0, rc = 0;
+      for (let i = 1; i < out.length - 1; i++) if (bs[i]) { ra += Math.hypot((out[i][0] - bs[i][0]) * sc, out[i][1] - bs[i][1]) / dpr; rc++; }
+      if (rc >= 3 && ra / rc < (half ? 0.75 : 1.5)) console.error("CHECK FAIL rim mean " + preset + " " + seed + " " + (ra / rc).toFixed(2));
+      /* sheet check (kinds mode), measured from the final vertices in css px: the mean rim piece (kept on window.__wearRim as [sum, count]), a facet over 24 px, a flat chip floor (under 5 degrees) */
+      const seg = [], dm = Math.max.apply(null, out.map(function (p) { return p[1]; }));
+      for (let i = 0; i < out.length - 1; i++) {
+        const a = out[i], b = out[i + 1];
+        if ((a[1] < 0.5 && b[1] < 0.5) || (a[0] * sc < 1 && b[0] * sc < 1)) continue;
+        seg.push((Math.hypot((b[0] - a[0]) * sc, b[1] - a[1])) / dpr);
+      }
+      if (chip) {
+        const dj = js.map(function (k) { return out[k][1]; }).filter(function (t) { return t >= 1; }), dmj = Math.max.apply(null, dj);
+        for (let i = 0; i < dj.length; i++) for (let k = i + 1; k < dj.length; k++) if (Math.abs(dj[i] - dj[k]) < 0.15 * dmj) { console.error("CHECK FAIL flat floor " + preset); i = k = dj.length; }
+      }
+      const rm = window.__wearRim = window.__wearRim || {};
+      rm[preset] = rm[preset] || [0, 0];
+      seg.forEach(function (l) { rm[preset][0] += l; rm[preset][1]++; if (l > 24.01) console.error("CHECK FAIL facet " + preset + " " + l.toFixed(1) + " px"); });
+      if (uneven) out.pcs = bi.map(function (e) { const m = bs[e[0]] || out[e[0]]; return [e[1], Math.hypot((out[e[0]][0] - m[0]) * sc, out[e[0]][1] - m[1]) / dpr]; });
+      out.js = js;
+      return out;
+    };
+    /* kinds mode: the deepest point of a scallop is never the centre: 0.28-0.42 or 0.58-0.72 along */
+    const pkPick = function () { return rnd() < 0.5 ? 0.28 + rnd() * 0.14 : 0.58 + rnd() * 0.14; };
+    /* kinds mode: a mid or button bite is a chip, a broken polyline of 3-5 segments (3-4 on a small box) on a unit chord: 2-4 inner vertices (2-3), uneven x spacing, the deepest point at pk (depth 1, a single vertex), every other depth at least 0.16 apart (0.33-0.84, no flat floor), the two walls that meet the edge no steeper than 50 degrees (hr is the deepest depth over the chord) */
+    const chipPts = function (pk, hr) {
+      const m = 2 + Math.floor(rnd() * (small ? 2 : 3)), nl = rnd() < 0.5 ? Math.floor((m - 1) / 2) : Math.ceil((m - 1) / 2), nr = m - 1 - nl, wall = 0.84 * hr, gap = 0.04;
+      const side = function (n) { const r = []; for (let i = 0; i < n; i++) r.push(0.2 + rnd()); const t = r.reduce(function (a, b) { return a + b; }, 0) + 0.2 + rnd(); let c = 0; return r.map(function (v) { c += v; return c / t; }); };
+      /* levels step down from 0.75 (the deepest vertex clears its neighbours by 0.25 of the depth); the two neighbours of the deepest vertex differ by 0.1 or more; redrawn, then forced */
+      let lv, ld, rd;
+      for (let tr = 0; tr < 12; tr++) {
+        lv = []; for (let i = 0; i < m; i++) lv.push(0.75 - 0.16 * i - rnd() * 0.01);
+        for (let i = lv.length - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)), t = lv[i]; lv[i] = lv[k]; lv[k] = t; }
+        ld = lv.slice(0, nl).sort(function (a, b) { return a - b; }); rd = lv.slice(nl).sort(function (a, b) { return b - a; });
+        const na = nl ? ld[nl - 1] : -1, nb = nr ? rd[0] : -1;
+        if ((!nl || na <= 0.75) && (!nr || nb <= 0.75) && (!nl || !nr || Math.abs(na - nb) >= 0.1)) break;
+        if (tr === 11) { lv = lv.map(function (v, i) { return 0.75 - 0.16 * i; }); ld = lv.slice(0, nl).sort(function (a, b) { return a - b; }); rd = lv.slice(nl).sort(function (a, b) { return b - a; }); }
+      }
+      const lx = side(nl).map(function (x) { return x * pk; }), rx = side(nr).map(function (x) { return pk + x * (1 - pk); }), out = [];
+      if (nl) lx[0] = Math.min(Math.max(lx[0], ld[0] * wall), pk - gap * nl);
+      for (let i = 1; i < nl; i++) lx[i] = Math.min(Math.max(lx[i], lx[i - 1] + gap), pk - gap * (nl - i));
+      if (nr) rx[nr - 1] = Math.max(Math.min(rx[nr - 1], 1 - rd[nr - 1] * wall), pk + gap * nr);
+      for (let i = nr - 2; i >= 0; i--) rx[i] = Math.max(Math.min(rx[i], rx[i + 1] - gap), pk + gap * (i + 1));
+      lx.forEach(function (x, i) { out.push([x, ld[i]]); });
+      out.push([pk, 1]);
+      rx.forEach(function (x, i) { out.push([x, rd[i]]); });
+      return out;
+    };
+    /* kinds mode, row-top lead bite: a union of discs clipped to the edge. 3-4 concave arcs of chords 0.45/0.2/0.35(/0.15) of size, shuffled per seed, neighbouring discs meet at cusps of intact material 70-110 degrees wide (one pair overlaps so little that its cusp is a tongue reaching 0.4 into the bite), the deepest disc peaks 0.3 along from the corner. Points are [s px along the edge from the corner, t px into the plate]; the first polygon is the bite, the rest are two flecks 4-8 px and a 3 px hairline nick on the edge */
+    const bays1 = function (sd, corner, size, spec, att, msg) {
+      const rr = rng(String(preset) + "|" + sd + "|bays|" + corner + (att ? "|" + att : "")), ra = function (a, b) { return a + rr() * (b - a); }, dg = Math.PI / 180, u = (spec && spec.dpr) || 1;
+      /* spec.ch fixes the chords in order (the card corner: 0.25/0.5/0.25), no shuffle */
+      const ch = spec && spec.ch ? spec.ch.slice() : [0.45, 0.2, 0.35]; if (!(spec && spec.ch) && !(spec && spec.work) && rr() < 0.5) ch.push(0.15);
+      for (let i = ch.length - 1; i > 0 && !(spec && spec.ch); i--) { const k = Math.floor(rr() * (i + 1)), t = ch[i]; ch[i] = ch[k]; ch[k] = t; }
+      const n = ch.length, r = ch.map(function (c) { return c / 2; }), cs = [0], tg = Math.floor(rr() * (n - 1));
+      for (let i = 1; i < n; i++) {
+        const r1 = r[i - 1], r2 = r[i], dist = function (al) { return Math.sqrt(r1 * r1 + r2 * r2 - 2 * r1 * r2 * Math.cos(al)); };
+        let al = ra(70, 110) * dg;
+        if (i - 1 === tg) { let best = 9; for (let a = 90; a <= 176; a++) { const e = Math.abs(r1 * r2 * Math.sin(a * dg) / dist(a * dg) / Math.min(r1, r2) - 0.6); if (e < best) { best = e; al = a * dg; } } }
+        cs.push(cs[i - 1] + dist(al));
+      }
+      const k = size / (cs[n - 1] + r[n - 1] + (spec && spec.ch ? 0 : r[0]));
+      let dp = 0; for (let i = 1; i < n; i++) if (r[i] > r[dp]) dp = i;
+      /* the shift never pushes the first disc more than 0.4 of its radius off the corner, so no shuffle loses an arc */
+      const sh = spec && spec.ch ? 0 : Math.max(0.3 * size - cs[dp] * k, 0.6 * r[0] * k), c = cs.map(function (v) { return v * k + sh; }), R = r.map(function (v) { return v * k; });
+      /* each disc is a lumpy curve: radius R * (1 + A sin(7 th + ph)), A 0.11-0.16 tapered by sin(th) so the rim stays a function of x near the edge (the visible swing is checked to sit in 0.15-0.4), sampled over th 0..pi */
+      const prof = R.map(function (Ri, i) {
+        const A = ra(0.11, 0.16), ph = ra(0, 6.283), q = [];
+        for (let j = 0; j <= 360; j++) { const th = Math.PI * j / 360, rho = Ri * (1 + A * Math.sin(th) * Math.sin(7 * th + ph)); q.push([c[i] + rho * Math.cos(th), rho * Math.sin(th), rho]); }
+        return q;
+      });
+      let wn = 0, wr = 0;
+      const dep = function (x) {
+        let m = 0; wn = -1; wr = 0;
+        for (let i = 0; i < n; i++) { const q = prof[i]; for (let j = 0; j < 360; j++) {
+          const x0 = q[j][0], x1 = q[j + 1][0];
+          if ((x0 - x) * (x1 - x) <= 0 && x0 !== x1) { const y = q[j][1] + (q[j + 1][1] - q[j][1]) * (x - x0) / (x1 - x0); if (y > m) { m = y; wn = i; wr = q[j][2]; } }
+        } }
+        return m;
+      };
+      let xe = 0; for (let i = 0; i < n; i++) xe = Math.max(xe, prof[i][0][0]);
+      const poly = [[-2, 0], [-2, dep(0)]], jA = ra(1, 3) * u, rmn = [], rmx = [], cnt = [];
+      for (let i = 0; i < n; i++) { rmn.push(1e9); rmx.push(0); cnt.push(0); }
+      let x = 0, py = dep(0); if (wn >= 0) cnt[wn]++;
+      while (x < xe - 0.05 * u) {
+        let nx = Math.min(x + 1.5 * u, xe), ny = dep(nx);
+        while (Math.hypot(nx - x, ny - py) > 4.5 * u && nx - x > 0.02) { nx = x + (nx - x) / 2; ny = dep(nx); }
+        x = nx; py = ny;
+        if (wn >= 0) { rmn[wn] = Math.min(rmn[wn], wr); rmx[wn] = Math.max(rmx[wn], wr); cnt[wn]++; }
+        /* the jitter is clamped so no segment passes 6 px after it (the step before it is at most 4.5 px) */
+        const pl = poly[poly.length - 1];
+        let yy = x < xe - 3 * u && ny > 0 ? Math.max(0.3 * u, ny + (rr() * 2 - 1) * jA) : ny;
+        const dxx = x - pl[0], lim = Math.sqrt(Math.max(0, 36 * u * u - dxx * dxx));
+        yy = Math.min(Math.max(yy, pl[1] - lim), pl[1] + lim);
+        poly.push([x, yy]);
+      }
+      poly.push([xe, 0]);
+      /* radius variation per disc over the points that actually reach the outline (its visible span), not the whole disc */
+      let lost = 0, vmin = 9, vmax = 0, sgm = 0;
+      for (let i = 3; i < poly.length; i++) sgm = Math.max(sgm, Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]) / u);
+      for (let i = 0; i < n; i++) { if (cnt[i] < 1) lost++; else { vmin = Math.min(vmin, rmx[i] / rmn[i] - 1); vmax = Math.max(vmax, rmx[i] / rmn[i] - 1); } }
+      if (sgm > 6.01) msg.push("CHECK FAIL bays segment " + preset + " " + sd + " " + corner + " " + sgm.toFixed(2));
+      msg.push("bays vis " + preset + " " + sd + " " + corner + " try " + att + " min " + vmin.toFixed(2) + " max " + vmax.toFixed(2) + " seg " + sgm.toFixed(2));
+      if (lost) msg.push("CHECK FAIL bays arcs lost " + preset + " " + sd + " " + corner + " " + (n - lost) + "/" + n + " " + cnt.join() + " ch " + ch.join());
+      if (vmin < 0.15) msg.push("CHECK FAIL bays arc circular " + preset + " " + sd + " " + corner + " " + vmin.toFixed(2));
+      if (vmax > 0.4) msg.push("CHECK FAIL bays swing " + preset + " " + sd + " " + corner + " " + vmax.toFixed(2));
+      const wk = !!(spec && spec.work), out = [poly], x1 = xe + ra(6, 24) * u, x2 = x1 + ra(8, 20) * u, xn = Math.min(xe + 60 * u, x2 + ra(10, 20) * u);
+      [x1, x2].forEach(function (x) {
+        const rd = ra(2, 4) * u, ty = rd + ra(1, 5) * u, f = [];
+        /* a Work fleck is a round blob: 8 points within 5% of the radius */
+        if (wk) for (let j = 0; j < 8; j++) f.push([x + Math.cos(j * 0.7854) * rd * ra(0.95, 1.05), ty + Math.sin(j * 0.7854) * rd * ra(0.95, 1.05)]);
+        else for (let j = 0; j < 5; j++) f.push([x + Math.cos(j * 1.2566 + 0.4) * rd * ra(0.8, 1.15), ty + Math.sin(j * 1.2566 + 0.4) * rd * ra(0.8, 1.15)]);
+        out.push(f);
+      });
+      /* Work corners are paint, not spikes: no nick, and the tip angle of every piece (neighbours 6 px away, adjacent ones on a fleck) stays 40 degrees or more */
+      if (!wk) out.push([[xn - 0.8 * u, 0], [xn + 0.8 * u, 0], [xn + ra(-0.3, 0.3) * u, 3 * u]]);
+      else {
+        const tp = tipAngle(out, u);
+        if (tp < 40) msg.push("CHECK FAIL work corner spike " + preset + " " + sd + " " + corner + " " + tp.toFixed(0));
+      }
+      return out;
+    };
+    /* the smallest convex tip angle (degrees) over the pieces: the neighbours are the first vertices 6 px away along the outline (adjacent ones on a piece of 10 vertices or fewer) */
+    const tipAngle = function (pieces, u) {
+      let mn = 180;
+      pieces.forEach(function (pl) {
+        const n = pl.length; let ar = 0;
+        for (let i = 0; i < n; i++) { const a = pl[i], b = pl[(i + 1) % n]; ar += a[0] * b[1] - b[0] * a[1]; }
+        const walk = function (i, d) {
+          let j = (i + d + n) % n;
+          if (n > 10) for (let k = 0; k < n && Math.hypot(pl[j][0] - pl[i][0], pl[j][1] - pl[i][1]) < 6 * u; k++) j = (j + d + n) % n;
+          return j;
+        };
+        for (let i = 0; i < n; i++) {
+          const b = pl[i], a = pl[walk(i, -1)], c = pl[walk(i, 1)], p = [a[0] - b[0], a[1] - b[1]], q = [c[0] - b[0], c[1] - b[1]];
+          if (((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) * ar <= 0) continue;
+          const l = Math.hypot(p[0], p[1]) * Math.hypot(q[0], q[1]);
+          if (l > 0) mn = Math.min(mn, Math.acos(Math.max(-1, Math.min(1, (p[0] * q[0] + p[1] * q[1]) / l))) * 180 / Math.PI);
+        }
+      });
+      return mn;
+    };
+    /* a shuffle or phase that buries an arc, leaves a visible span under 15% swing or a segment over 6 px is redrawn (up to 40 tries); the last try's CHECK FAIL lines are printed */
+    let baysCap = false;
+    const bays = function (sd, corner, size, spec) {
+      let out = null, msg = null, t = 0;
+      for (; t < 40; t++) {
+        msg = [];
+        out = bays1(sd, corner, size, spec, t, msg);
+        if (!msg.some(function (m) { return m.indexOf("CHECK FAIL") === 0; })) break;
+      }
+      if (t === 40 && !baysCap) { baysCap = true; console.error("bays retries hit 40 " + preset + " " + sd + " " + corner); }
+      msg.forEach(function (m) { console.error(m); });
+      return out;
+    };
+    /* kinds mode, mid bite (Work and the other non-flake roles): a chip of lifted paint. A wide shallow gap, width 2.2-3.2x its depth, depth 0.18-0.3 of the row height h, a near-flat floor (within 1.5 px of a line, 1-2 px grain) over 60-80% of the width, two straight sides at 50-75 degrees to the edge, and a lip of 3-5 half-ellipse lumps (3-8 px wide, 1-3 px high, uneven, one neighbouring width ratio of 1.4 or more) either side of the mouth, eating inward, plus 0-2 round flecks of 2-4 px within 8 px of the chip. Points are [s along the edge, t into the plate]. Sheet CHECK FAIL for mid floor, size, depth, lumps, arc circular (5 consecutive samples on one circle within 1 px) and segment (over 6 px) */
+    const chip1 = function (sd, h, dpr2, att, msg, LL) {
+      const rr = rng(String(preset) + "|" + sd + "|chip" + (att ? "|" + att : "")), ra = function (a, b) { return a + rr() * (b - a); }, dg = Math.PI / 180, u = dpr2 || 1;
+      const nl = 3 + Math.floor(rr() * 3), nL = Math.floor(rr() * (nl + 1)), lw = [], lh = [];
+      let rmax = 1;
+      for (let k = 0; k < 60 && rmax < 1.4; k++) {
+        lw.length = 0; lh.length = 0; rmax = 1;
+        for (let i = 0; i < nl; i++) { lw.push(ra(3, 8) * u); lh.push(ra(1, 3) * u); }
+        for (let i = 1; i < nl; i++) rmax = Math.max(rmax, lw[i] / lw[i - 1], lw[i - 1] / lw[i]);
+      }
+      /* the whole chip (lip lumps, mouth and flecks) fits 0.85 of its slot LL: lumps shrink to at most a third of that, the mouth takes the rest and the depth follows it down (floor 0.12 h) */
+      const slotCap = 0.85 * LL;
+      let lsum = 0; lw.forEach(function (w) { lsum += w; });
+      if (lsum > slotCap / 3) { const f = slotCap / 3 / lsum; for (let i = 0; i < nl; i++) lw[i] *= f; lsum = slotCap / 3; }
+      const avail = slotCap - lsum;
+      let D = 0, cw = 0, ang = 0, run = 0, fl = 0, scaled = false;
+      for (let k = 0; k < 60; k++) {
+        const D0 = ra(0.18, 0.3) * h, r0 = ra(2.2, 3.2);
+        cw = r0 * D0; D = D0; scaled = false;
+        if (cw > avail) { cw = avail; D = Math.max(0.12 * h, cw / r0); scaled = true; }
+        run = (1 - ra(0.62, 0.78)) * cw / 2; ang = Math.atan(D / run); fl = cw - 2 * run; if (ang >= 50 * dg && ang <= 75 * dg) break;
+      }
+      const lump = function (poly, x0, w, hh) {
+        const m = Math.max(3, Math.ceil(w / (2.5 * u)));
+        for (let j = 1; j < m; j++) poly.push([x0 + w * j / m, Math.max(0.3 * u, hh * Math.sin(Math.PI * j / m))]);
+        poly.push([x0 + w, 0]);
+      };
+      const poly = [[0, 0]];
+      let x = 0, fx0 = 0, fx1 = 0;
+      for (let i = 0; i < nL; i++) { lump(poly, x, lw[i], lh[i]); x += lw[i]; }
+      const sx = x;
+      /* left side, floor, right side: straight runs split under 5.5 px, 0.4 px jitter on the sides, 1-2 px grain on the floor */
+      const gr = ra(1, 2) * u * 0.5, side = function (xa, ta, xb, tb, jit) {
+        const m = Math.max(1, Math.ceil(Math.hypot(xb - xa, tb - ta) / (jit ? 5 * u : 3 * u)));
+        for (let j = 1; j <= m; j++) poly.push(j === m ? [xb, tb] : [xa + (xb - xa) * j / m, Math.max(0.3 * u, tb + (ta - tb) * (m - j) / m + (rr() * 2 - 1) * (jit ? 0.4 * u : gr))]);
+      };
+      /* the corner vertices sit on the floor line; the grain only moves the points between */
+      side(sx, 0, sx + run, D, true); fx0 = sx + run;
+      side(sx + run, D, sx + run + fl, D, false); fx1 = sx + run + fl;
+      side(fx1, D, fx1 + run, 0, true);
+      x = fx1 + run;
+      for (let i = nL; i < nl; i++) { lump(poly, x, lw[i], lh[i]); x += lw[i]; }
+      let sgm = 0, flo = 0;
+      for (let i = 1; i < poly.length; i++) sgm = Math.max(sgm, Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]) / u);
+      poly.forEach(function (p) { if (p[0] > fx0 + 1e-6 && p[0] < fx1 - 1e-6) flo = Math.max(flo, Math.abs(p[1] - D)); });
+      let circ = false;
+      for (let i = 0; i + 4 < poly.length && !circ; i++) {
+        const a = poly[i], b = poly[i + 2], c = poly[i + 4], dd = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+        if (Math.abs(dd) < 1e-9) continue;
+        const a2 = a[0] * a[0] + a[1] * a[1], b2 = b[0] * b[0] + b[1] * b[1], c2 = c[0] * c[0] + c[1] * c[1];
+        const ox = (a2 * (b[1] - c[1]) + b2 * (c[1] - a[1]) + c2 * (a[1] - b[1])) / dd, oy = (a2 * (c[0] - b[0]) + b2 * (a[0] - c[0]) + c2 * (b[0] - a[0])) / dd, R = Math.hypot(a[0] - ox, a[1] - oy);
+        if (R > 12 * u) continue;
+        let ok = true; for (let k = 0; k < 5; k++) if (Math.abs(Math.hypot(poly[i + k][0] - ox, poly[i + k][1] - oy) - R) > 1 * u) ok = false;
+        if (ok) circ = true;
+      }
+      const total = x, ff = fl / cw;
+      if (ff < 0.6 || ff > 0.8 || flo > 1.5 * u + 1e-6) msg.push("CHECK FAIL mid floor " + preset + " " + sd + " " + ff.toFixed(2) + " " + (flo / u).toFixed(2));
+      if (cw / D < 2.2 - 1e-6 || cw / D > 3.2 + 1e-6) msg.push("CHECK FAIL mid slot ratio " + preset + " " + sd + " " + (cw / D).toFixed(2));
+      if (ang < 50 * dg - 1e-6 || ang > 75 * dg + 1e-6) msg.push("CHECK FAIL mid size " + preset + " " + sd + " " + (cw / D).toFixed(2));
+      if (total > 0.85 * LL + 1e-6 || poly.some(function (p) { return p[0] < -1e-6 || p[0] > LL + 1e-6; })) msg.push("CHECK FAIL mid slot " + preset + " " + sd + " " + (total / LL).toFixed(2));
+      if (D / h < (scaled ? 0.12 : 0.18) - 1e-6 || D / h > 0.3 + 1e-6) msg.push("CHECK FAIL mid depth " + preset + " " + sd + " " + (D / h).toFixed(2));
+      if (nl < 3 || nl > 5 || rmax < 1.4) msg.push("CHECK FAIL mid lumps " + preset + " " + sd + " " + nl + " " + rmax.toFixed(2));
+      if (circ) msg.push("CHECK FAIL mid arc circular " + preset + " " + sd);
+      if (sgm > 6.01) msg.push("CHECK FAIL mid segment " + preset + " " + sd + " " + sgm.toFixed(2));
+      msg.push("mid chip " + preset + " " + sd + " w/d " + (cw / D).toFixed(2) + " floor " + ff.toFixed(2) + " lumps " + nl + " ratio " + rmax.toFixed(2) + " seg " + sgm.toFixed(2));
+      const out = [poly];
+      const nf = Math.floor(rr() * 3);
+      for (let k = 0; k < nf; k++) {
+        const r = ra(1, 2) * u, cx = ra(Math.max(r, sx - 8 * u), Math.min(total - r, total + 8 * u)), cy = D + r + ra(1.5, 6) * u, fp = [];
+        for (let j = 0; j < 8; j++) fp.push([cx + r * Math.cos(j * Math.PI / 4), cy + r * Math.sin(j * Math.PI / 4)]);
+        out.push(fp);
+      }
+      return out;
+    };
+    /* redrawn (up to 40 tries) while a check fails; the last try's lines are printed */
+    const chip = function (sd, h, dpr2, LL) {
+      let out = null, msg = null;
+      for (let t = 0; t < 40; t++) {
+        msg = [];
+        out = chip1(sd, h, dpr2, t, msg, LL);
+        if (!msg.some(function (m) { return m.indexOf("CHECK FAIL") === 0; })) break;
+      }
+      msg.forEach(function (m) { console.error(m); });
+      return out;
+    };
+    /* kinds mode, Experience mid bite: an enamel flake. A polygon of 4-6 facets with straight-ish sides (2-4 px wobble), one or two sharp inward points (under 80 degrees), no arcs; the same size and depth bands as arcPair (width 0.6-0.8 of a 0.35H lead, depth 0.28-0.35 of the width). Sheet CHECK FAIL "exp flake arcs" for a facet count outside 4-6, a facet bowing over 4 px off its chord, or a missing sharp point */
+    const flake = function (sd, h, u) {
+      u = u || 1;
+      const rr = rng(String(preset) + "|" + sd + "|flake"), ra = function (a, b) { return a + rr() * (b - a); }, dg = Math.PI / 180;
+      const lead = 0.35 * h, cw = ra(0.6, 0.8) * lead, D = ra(0.28, 0.35) * cw, wb = ra(2, 4) * u;
+      let vs = null, sharp = 0;
+      for (let t = 0; t < 200; t++) {
+        const nf = 4 + Math.floor(rr() * 3), ns = 1 + Math.floor(rr() * 2), v = [[0, 0]], wt = [];
+        let tot = 0; for (let i = 0; i < nf; i++) { wt.push(ra(0.6, 1.4)); tot += wt[i]; }
+        const pk = [], first = 1 + Math.floor(rr() * (nf - 1)); pk.push(first); if (ns > 1) pk.push(1 + (first - 1 + 1 + Math.floor(rr() * (nf - 2))) % (nf - 1));
+        let x = 0;
+        for (let i = 1; i < nf; i++) { x += wt[i - 1] / tot * cw; v.push([x, (pk.indexOf(i) >= 0 ? (i === pk[0] ? ra(0.9, 1) : ra(0.65, 0.8)) : ra(0.25, 0.55)) * D]); }
+        v.push([cw, 0]);
+        sharp = 0; let ok = pk.length === ns && (ns === 1 || pk[1] !== pk[0]);
+        for (let i = 1; i < nf && ok; i++) {
+          const a = v[i - 1], b = v[i], c2 = v[i + 1], p = [a[0] - b[0], a[1] - b[1]], q = [c2[0] - b[0], c2[1] - b[1]];
+          const an = Math.acos((p[0] * q[0] + p[1] * q[1]) / Math.hypot(p[0], p[1]) / Math.hypot(q[0], q[1])) / dg;
+          if (pk.indexOf(i) >= 0) { if (an > 80) ok = false; else sharp++; }
+          if (Math.hypot(p[0], p[1]) < 0.08 * cw) ok = false;
+        }
+        if (ok && sharp === ns) { vs = v; break; }
+        vs = v;
+      }
+      const nf = vs.length - 1, poly = [[0, 0]];
+      let bow = 0, sgm = 0;
+      for (let i = 0; i < nf; i++) {
+        const a = vs[i], b = vs[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.max(1, Math.ceil(L / (5 * u)));
+        for (let j = 1; j <= m; j++) {
+          let p = [a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m];
+          if (j < m) { const off = (rr() * 2 - 1) * wb * 0.5; p = [p[0], Math.max(0.3 * u, Math.min(D, p[1] + off))]; bow = Math.max(bow, Math.abs(p[1] - (a[1] + (b[1] - a[1]) * j / m))); }
+          else p = [b[0], b[1]];
+          const pl = poly[poly.length - 1], lim = Math.sqrt(Math.max(0, 36 * u * u - (p[0] - pl[0]) * (p[0] - pl[0])));
+          if (j < m) p[1] = Math.min(Math.max(p[1], pl[1] - lim), pl[1] + lim);
+          poly.push(p);
+        }
+      }
+      for (let i = 1; i < poly.length; i++) sgm = Math.max(sgm, Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]) / u);
+      if (nf < 4 || nf > 6 || bow > 4.01 * u || sharp < 1 || sharp > 2) console.error("CHECK FAIL exp flake arcs " + preset + " " + sd + " facets " + nf + " bow " + (bow / u).toFixed(1) + " sharp " + sharp);
+      if (sgm > 6.01) console.error("CHECK FAIL mid segment " + preset + " " + sd + " " + sgm.toFixed(2));
+      console.error("exp flake " + preset + " " + sd + " facets " + nf + " sharp " + sharp + " bow " + (bow / u).toFixed(1) + " seg " + sgm.toFixed(2));
+      return [poly];
+    };
+    /* kinds mode, Experience corner: a cluster of 2-3 enamel flakes, straight facets only. The biggest sits on the corner (0.5-0.8 of size wide, running from 2 px outside the plate), one more along the first edge and, half the time, one along the other edge (the corner frame is square, so its points swap s and t), all within 1.5x size, plus 0-2 square specks of 3-5 px. Each flake is 4-6 facets of 6-30 px with a sharp inner point (under 80 degrees) when one fits, no two adjacent facets both within 12 degrees of a box edge. Points are [s px along the edge, t px into the plate]; sheet CHECK FAIL "exp corner arcs" (curvature on 3+ consecutive samples) and "exp corner facets" (a facet outside 6-30 px) */
+    const flakeCorner = function (sd, corner, size, u) {
+      u = u || 1;
+      const rr = rng(String(preset) + "|" + sd + "|fcorner|" + corner), ra = function (a, b) { return a + rr() * (b - a); }, dg = Math.PI / 180, out = [], facs = [];
+      const near = function (a, b) { const an = Math.abs(Math.atan2(b[1] - a[1], b[0] - a[0])) / dg % 90; return Math.min(an, 90 - an) < 12; };
+      /* one facet chain from its start to [w, 0]; anchored chains start at [-2 px, V0] on the corner side */
+      const chain = function (w, D, anch) {
+        let best = null;
+        for (let t = 0; t < 400; t++) {
+          const nf = 4 + Math.floor(rr() * 3), v = [anch ? [-2 * u, ra(0.7, 1) * D] : [0, 0]], wt = [], pk = 1 + Math.floor(rr() * (nf - 1));
+          let tot = 0; for (let i = 0; i < nf; i++) { wt.push(ra(0.6, 1.4)); tot += wt[i]; }
+          let x = v[0][0];
+          for (let i = 1; i < nf; i++) { x += wt[i - 1] / tot * (w - v[0][0]); v.push([x, (i === pk ? ra(0.85, 1) : ra(0.25, 0.6)) * D]); }
+          v.push([w, 0]);
+          let ok = true, sharp = false;
+          for (let i = 0; i < nf; i++) {
+            const L = Math.hypot(v[i + 1][0] - v[i][0], v[i + 1][1] - v[i][1]) / u;
+            if (L < 6 || L > 30) ok = false;
+            if (i && near(v[i - 1], v[i]) && near(v[i], v[i + 1])) ok = false;
+          }
+          for (let i = 1; i < nf; i++) {
+            const p = [v[i - 1][0] - v[i][0], v[i - 1][1] - v[i][1]], q = [v[i + 1][0] - v[i][0], v[i + 1][1] - v[i][1]];
+            if (Math.acos((p[0] * q[0] + p[1] * q[1]) / Math.hypot(p[0], p[1]) / Math.hypot(q[0], q[1])) / dg < 80) sharp = true;
+          }
+          best = v;
+          if (ok && (sharp || t > 200)) break;
+        }
+        for (let i = 0; i + 1 < best.length; i++) facs.push(Math.hypot(best[i + 1][0] - best[i][0], best[i + 1][1] - best[i][1]) / u);
+        return anch ? [[-2 * u, 0]].concat(best) : best;
+      };
+      const w0 = ra(0.5, 0.8) * size + 2 * u, D0 = ra(0.35, 0.55) * (w0 - 2 * u);
+      out.push(chain(w0, D0, true));
+      const s1 = w0 + ra(0.08, 0.2) * size, w1 = ra(0.35, 0.55) * size, c1 = chain(w1, ra(0.3, 0.4) * w1, false);
+      out.push(c1.map(function (p) { return [p[0] + s1, p[1]]; }));
+      if (rr() < 0.5) {
+        const t0 = D0 + ra(0.06, 0.15) * size, w2 = ra(0.35, 0.55) * size, c2 = chain(w2, ra(0.3, 0.4) * w2, false);
+        out.push(c2.map(function (p) { return [p[1], p[0] + t0]; }));
+      }
+      for (let i = 0, ns = Math.floor(rr() * 3); i < ns; i++) {
+        const h = ra(1.5, 2.5) * u, a = ra(-15, 15) * dg, cx = ra(0.3, 1.4) * size, cy = ra(3, 10) * u + h;
+        out.push([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (p) { return [cx + (p[0] * Math.cos(a) - p[1] * Math.sin(a)) * h, cy + (p[0] * Math.sin(a) + p[1] * Math.cos(a)) * h]; }));
+      }
+      /* the curvature test: each piece resampled every 5 px, a gradual turn (3-25 degrees, sharper ones are facet vertices) on 3 or more consecutive samples is an arc */
+      let arcs = 0;
+      out.forEach(function (pl) {
+        const sm = [];
+        for (let i = 0; i < pl.length; i++) {
+          const a = pl[i], b = pl[(i + 1) % pl.length], m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (5 * u)));
+          for (let j = 0; j < m; j++) sm.push([a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m]);
+        }
+        let run = 0;
+        for (let i = 0; i < sm.length * 2; i++) {
+          const a = sm[i % sm.length], b = sm[(i + 1) % sm.length], c = sm[(i + 2) % sm.length], tn = Math.abs(Math.atan2((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]), (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]))) / dg;
+          run = tn > 3 && tn < 25 ? run + 1 : 0; if (run >= 3) arcs++;
+        }
+      });
+      const fmn = Math.min.apply(null, facs), fmx = Math.max.apply(null, facs);
+      if (arcs) console.error("CHECK FAIL exp corner arcs " + preset + " " + sd + " " + corner + " " + arcs);
+      if (fmn < 6 || fmx > 30) console.error("CHECK FAIL exp corner facets " + preset + " " + sd + " " + corner + " " + fmn.toFixed(1) + "-" + fmx.toFixed(1));
+      console.error("exp corner " + preset + " " + sd + " " + corner + " pieces " + out.length + " facets " + fmn.toFixed(1) + "-" + fmx.toFixed(1));
+      return out;
+    };
+    /* kinds mode: corner, kind, severity and run length each read their own hash lane of the seed, so they vary independently */
+    const lane = function (n, sd) { return rng(String(preset) + "|" + (sd === undefined ? seed : sd) + "|" + n)(); };
+    const small = kz && Scss < 64;
+    /* small boxes: severity and run bucket of the last seven seeds are walked in order and moved off any (severity, run bucket) pair an earlier seed took, so two seeds of one role never match */
+    const smallSR = function () {
+      const sn = Number(seed), used = {};
+      for (let s = Number.isFinite(sn) ? (sn > 200 ? sn - 6 : 0) : sn; ; s++) {
+        const sd = Number.isFinite(sn) ? s : seed, rf = lane("run", sd) * 3;
+        let ix = Math.floor(lane("sev", sd) * 3) * 3 + Math.floor(rf);
+        for (let t = 0; t < 9 && used[ix]; t++) ix = (ix + 1) % 9;
+        used[ix] = 1;
+        if (!Number.isFinite(sn) || s >= sn) return [Math.floor(ix / 3), (ix % 3 + rf % 1) / 3];
+      }
+    };
+    const sr = small ? smallSR() : null;
+    const sev = kz ? (sr ? sr[0] : Math.floor(lane("sev") * 3)) : 1, sevD = sev === 0 ? 0.5 : 1, run = kz ? (sr ? sr[1] : lane("run")) : 0;
+    /* the card preset (kinds mode) keeps its wear small and calm: one corner, depth at most 20% of the short side, runs at most 0.2x the edge */
+    const mid = kz && !small && P === wearPresets.card, runF = small ? 0.3 : mid ? 0.2 : 0.4;
+    /* depth floor (px: 8 / 12 / 16 by severity under a 64 px short side, else 6 scaled by severity) and cap (50% of the shorter side on small boxes, else 35%) so small boxes show a clear cut, never one crossing the far edge */
+    const floorD = (small ? [8, 12, 16][sev] : Math.max(4, 6 * sevD)) * dpr, capD = (small ? 0.5 : mid ? 0.2 : preset === "image" ? 0.6 : 0.35) * Math.min(W, H);
+    const fl = function (x) { return kz ? Math.min(Math.max(x, floorD), capD) : x; };
+    /* lead pick (corner of n, kind of K) from the seed's own lanes; if it repeats either of the previous two seeds' pairs, step the kind, then the corner; a (corner, kind, severity) triple already used twice is skipped too; on a small box a corner an earlier seed led with is skipped as well, the kind is picked evenly */
+    const leadPick = function (n, K) {
+      const sn = Number(seed), from = Number.isFinite(sn) ? (sn > 200 ? sn - 6 : 0) : sn;
+      const hist = [], used = {};
+      for (let s = from; ; s++) {
+        const sd = Number.isFinite(sn) ? s : seed;
+        let c = Math.floor(lane("corner", sd) * n), k = Math.floor(lane("kind", sd) * K);
+        const sv = Math.floor(lane("sev", sd) * 3), bad = small ? function () { return used["c" + c] >= 1 || hist.some(function (h) { return h[0] === c && h[1] === k; }); } : function () { return hist.some(function (h) { return h[0] === c && h[1] === k; }) || used[c + "|" + k + "|" + sv] >= 2; };
+        for (let t = 0; t < n * K && bad(); t++) {
+          if (small) { c = (c + 1) % n; continue; }
+          k = (k + 1) % K;
+          if (k === 0 && n > 1) c = (c + 1) % n;
+        }
+        if (small) used["c" + c] = 1; else used[c + "|" + k + "|" + sv] = (used[c + "|" + k + "|" + sv] || 0) + 1;
+        hist.push([c, k]); if (hist.length > 2) hist.shift();
+        if (!Number.isFinite(sn) || s >= sn) return hist[hist.length - 1];
+      }
+    };
+    /* spread rows (kinds mode): lead corner, lead size and the middle notch positions come from the seed's own lanes; a (corner, size) pair or a (count, first position) pair an earlier seed of this preset took is stepped on, so no two of the first seeds share an outline */
+    const spreadPick = function () {
+      const sn = Number(seed), usedH = {};
+      for (let s = Number.isFinite(sn) ? (sn > 200 ? sn - 6 : 0) : sn; ; s++) {
+        const sd = Number.isFinite(sn) ? s : seed;
+        let cnt = Math.floor(lane("sev", sd) * 3), c = Math.floor(lane("corner", sd) * 2), hb = Math.floor(lane("hump", sd) * 3), b0 = Math.floor(lane("p0", sd) * 4);
+        /* coarse key: (notch count, big or small hump); an earlier seed's key is stepped on, so position alone never makes two seeds differ */
+        for (let t = 0; t < 6 && usedH[cnt + "|" + (hb ? 1 : 0)]; t++) { cnt = (cnt + 1) % 3; if (t % 3 === 2) hb = hb ? 0 : 2; }
+        usedH[cnt + "|" + (hb ? 1 : 0)] = 1;
+        if (!Number.isFinite(sn) || s >= sn) return { c: c, cnt: cnt, hf: [0.7, 0.85, 1][hb], pos: [(b0 + lane("p0f", sd)) / 4, (Math.floor(lane("p1", sd) * 4) + lane("p1f", sd)) / 4] };
+      }
+    };
+    const wearSites = [];
+    if (segs && segs.length && P.spread) {
+      const dm = (kz ? Math.min(Math.max(10, Math.min(P.max || 44, P.depth / 100 * Scss)) * dpr * sevD, capD) : Math.max(10, Math.min(P.max || 44, P.depth / 100 * Scss)) * dpr);
+      const lenOf = function (s) { return Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]); };
+      const info = []; let tot = 0;
+      segs.forEach(function (s) {
+        const len = lenOf(s) * dpr;
+        if (len < 1) return;
+        const A = [s[0][0] * dpr, s[0][1] * dpr], ux = (s[1][0] - s[0][0]) * dpr / len, uy = (s[1][1] - s[0][1]) * dpr / len;
+        let nx = -uy, ny = ux;
+        if (nx * (W / 2 - A[0] - ux * len / 2) + ny * (H / 2 - A[1] - uy * len / 2) < 0) { nx = -nx; ny = -ny; }
+        info.push({ A: A, ux: ux, uy: uy, nx: nx, ny: ny, s0: tot, len: len }); tot += len;
+      });
+      /* a point at arclength s along the whole polyline, pushed p px toward the box centre */
+      const at = function (s, p) {
+        let m = info[info.length - 1];
+        for (let i = 0; i < info.length; i++) if (s <= info[i].s0 + info[i].len) { m = info[i]; break; }
+        const a = Math.max(0, Math.min(m.len, s - m.s0)) + (s < 0 ? s : s > m.s0 + m.len ? s - m.s0 - m.len : 0);
+        return [m.A[0] + m.ux * a + m.nx * p, m.A[1] + m.uy * a + m.ny * p];
+      };
+      /* stepped shard: deep side at arclength sc, running dir (+1/-1) for L px, 3-5 descending steps to the edge; the base starts 2 px outside */
+      const bite = function (sc, dir, L, d, mid) {
+        const n = 3 + Math.floor(rnd() * 3), o = kz ? 0 : -2;
+        let q = [[-2 / L, o], [-2 / L, d], [0, d]];
+        for (let k = 1; k <= n; k++) q.push([k / (n + 0.5) * (0.85 + rnd() * 0.15), d * (1 - k / (n + 0.5)) * (0.8 + rnd() * 0.3)]);
+        q.push([1, o]);
+        if (kz) {
+          (mid ? (preset === "exp-spread" ? flake : chip)(seed + "|" + sc.toFixed(0), H, dpr, L) : preset === "exp-spread" ? flakeCorner(seed, dir > 0 ? 0 : 1, (0.35 + rnd() * 0.15) * H, dpr) : bays(seed, dir > 0 ? 0 : 1, (0.35 + rnd() * 0.15) * H, { dpr: dpr, work: true })).forEach(function (pl) {
+            g.beginPath();
+            pl.forEach(function (p, j) { const c = at(sc + dir * p[0], p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
+            g.closePath(); g.fill();
+          });
+          return;
+        }
+        g.beginPath();
+        q.forEach(function (p, j) {
+          const c = at(sc + dir * p[0] * L, p[1]);
+          if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]);
+        });
+        g.closePath(); g.fill();
+      };
+      if (info.length) {
+        /* where the polyline is inside the visible box: the corner shards sit at its first and last visible points */
+        const inBox = function (s) { const c = at(s, 0); return c[0] >= -1 && c[0] <= W + 1 && c[1] >= -1 && c[1] <= H + 1; };
+        let sIn = 0, sOut = tot;
+        while (sIn < tot && !inBox(sIn)) sIn += 1;
+        while (sOut > sIn && !inBox(sOut)) sOut -= 1;
+        const vis = Math.max(1, sOut - sIn);
+        const sl = function (d) { return Math.min(d * (2 + (kz ? run : rnd()) * 2), vis * 0.3); };
+        const sp = kz ? spreadPick() : null;
+        let d = dm * (0.9 + rnd() * 0.1) * (sp ? sp.hf : 1), L = sl(d);
+        if (!kz) {
+          /* baseline: the plate's end shard at each end of the run (tl, tr), one small mid bite (top) and, above scale 1, crumbs along it */
+          const sr = rng(String(preset) + "|" + seed + "|specks"), dS = bd * (0.6 + rnd() * 0.4);
+          const put = function (sc, dir, LL, dd, end) {
+            const q = end ? [[0, -2], [0, dd * (0.85 + rnd() * 0.15)], [0.22, dd * (0.65 + rnd() * 0.3)], [0.55, dd * (0.3 + rnd() * 0.3)], [1, -2]]
+              : [[0, -2], [0.3, dd * (0.55 + rnd() * 0.3)], [0.5, dd], [0.8, dd * (0.3 + rnd() * 0.4)], [1, -2]];
+            g.beginPath();
+            q.forEach(function (p, j) { const c = at(sc + dir * p[0] * LL, p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
+            g.closePath(); if (!mute) g.fill();
+          };
+          mute = !on("tl"); put(sIn, 1, Math.min(dS * (2 + rnd() * 2), vis * 0.35), dS, true);
+          const d2 = bd * (0.6 + rnd() * 0.4);
+          mute = !on("tr"); put(sOut, -1, Math.min(d2 * (2 + rnd() * 2), vis * 0.35), d2, true);
+          mute = !on("top");
+          if (rnd() < 0.3) {
+            const dd = bd * (0.3 + rnd() * 0.25), LL = Math.min(dd * (2 + rnd()), 0.2 * vis);
+            put(sIn + (0.3 + rnd() * 0.4) * vis - LL / 2, 1, LL, dd, false);
+          }
+          for (let i = 0, n = bk > 1 ? Math.round(vis / dpr / (60 * bk)) : 0; i < n; i++) {
+            const dd = (1.5 + sr() * 1.5) * bk * dpr, LL = dd * (2 + sr() * 2);
+            put(sIn + (0.08 + 0.84 * sr()) * vis - LL / 2, 1, LL, dd, false);
+          }
+          mute = false;
+        } else if (sp.c === 0) { bite(sIn, 1, L, d); wearSites.push("tl"); }
+        else { bite(sOut, -1, L, d); wearSites.push("tr"); }
+        /* one or two smaller shards between, never in the middle 30%, at least 2x depth wide */
+        const nm = kz ? sp.cnt : 0;
+        for (let i = 0; i < nm; i++) {
+          const dd = dm * (0.4 + rnd() * 0.3), LL = kz ? dd * (2.5 + rnd() * 2) : Math.max(dd * (2 + rnd()), 2 * dd);
+          const lo = i === 0 ? 0.12 : 0.65, hi = i === 0 ? 0.35 : 0.88;
+          const ur = rnd();
+          let c = sIn + (lo + (sp ? sp.pos[i] : ur) * Math.max(0, hi - lo - LL / vis)) * vis, Ls = LL;
+          if (kz) {
+            /* the slot stays inside its window and clear of the lead corner cluster (0.6 H from the corner) */
+            let a0 = sIn + lo * vis, a1 = sIn + hi * vis;
+            if (sp.c === 0 && i === 0) a0 = Math.max(a0, sIn + 0.6 * H);
+            if (sp.c !== 0 && i === 1) a1 = Math.min(a1, sOut - 0.6 * H);
+            Ls = Math.max(1, Math.min(LL, a1 - a0));
+            c = Math.max(a0, Math.min(c, a1 - Ls));
+          }
+          bite(c, 1, Ls, dd, true);
+          if (kz) wearSites.push("mid");
+        }
+      }
+    }
+    /* kinds: each cut site (a corner, or the end of a worn edge) picks one effect kind from the list by the seeded rng */
+    const kindList = opts && opts.kind ? [opts.kind] : (opts && opts.kinds) || P.kinds;
+    const spreadSegs = !!(segs && segs.length && P.spread);
+    let kinds = (kz ? !spreadSegs : !P.spread) && kindList ? kindList.filter(function (n) { return WEAR_KINDS.indexOf(n) >= 0; }) : [];
+    /* kinds mode always applies the budget: an empty or unknown list falls back to the preset's kinds, then to every kind */
+    if (kz && !spreadSegs && !kinds.length) kinds = (P.kinds || WEAR_KINDS).filter(function (n) { return WEAR_KINDS.indexOf(n) >= 0; });
+    /* a small box only reads a cut (step, slant or square): the listed ones, else step and square; a forced opts.kind is left alone */
+    if (small && !spreadSegs && !(opts && opts.kind)) {
+      const cuts = kinds.filter(function (n) { return n === "step" || n === "slant" || n === "square" || n === "scallop" || n === "shear"; });
+      kinds = cuts.length ? cuts : ["shear", "scallop"];
+    }
+    /* the card only reads a step or a slant, never a tear, spike or shard: the listed ones, else both */
+    if (mid && !spreadSegs && !(opts && opts.kind)) {
+      kinds = kz ? ["bays"] : (function () { const calm = kinds.filter(function (n) { return n === "step" || n === "slant" || n === "round"; }); return calm.length ? calm : ["round", "slant"]; })();
+    }
+    /* a small square-only list (the button) is one notch that may sit mid-edge, never a corner cut */
+    const notch = small && kinds.length === 1 && kinds[0] === "square" && !(opts && opts.kind);
+    /* one worn corner only: the card, a small step-only list (the paper title) and the notch */
+    const one = notch || mid || (kz && !spreadSegs && (preset === "title" || preset === "image")) || (small && kinds.length === 1 && (kinds[0] === "step" || kinds[0] === "shear" || kinds[0] === "scallop") && !(opts && opts.kind));
+    const picked = [];
+    if (kinds.length) {
+      let sites = [];
+      const seen = {};
+      EDGE_KEYS.forEach(function (k, e) {
+        const tear = P.tear && P.tear.edges.indexOf(k) >= 0;
+        if (P.edges.indexOf(k) < 0 && !tear) return;
+        const ne = tear ? 2 : P.ends ? (kz && ROLE_CORNERS[preset] ? 2 : P.ends[e]) : 1, first = kz ? 0 : rnd() < 0.5 ? 0 : 1;
+        const dmax = tear ? clampD(P.tear.pct, 26) : clampD(P.depth, P.max || 26);
+        for (let i = 0; i < ne; i++) {
+          const end = ne === 2 || kz ? i : first, c = end ? (e + 1) % 4 : e;
+          if (seen[c]) continue;
+          seen[c] = 1; sites.push({ e: e, end: end, dmax: dmax * sevD, name: ["tl", "tr", "br", "bl"][c] });
+        }
+      });
+      if (kz && ROLE_CORNERS[preset]) sites = sites.filter(function (x) { return ROLE_CORNERS[preset].indexOf(x.name) >= 0; });
+      /* corner budget: one corner, or two different ones when severity is "two"; every other corner and edge stays crisp */
+      const lead = kz ? leadPick(Math.max(1, sites.length), kinds.length) : null;
+      const chosen = sites.length ? [sites.splice(kz ? lead[0] : Math.floor(rnd() * sites.length), 1)[0]] : [];
+      /* small slant: the second cut sits on the opposite corner; a small notch is always a single cut */
+      if (sev === 2 && sites.length && !one) {
+        const opp = kinds.length === 1 && (small && kinds[0] === "slant" || kinds[0] === "scallop") ? sites.filter(function (x) { return x.name === ["br", "bl", "tl", "tr"][["tl", "tr", "br", "bl"].indexOf(chosen[0].name)]; }) : sites;
+        if (opp.length) chosen.push(sites.splice(sites.indexOf(opp[Math.floor(rnd() * opp.length)]), 1)[0]);
+      }
+      chosen.forEach(function (S) {
+        wearSites.push(S.name);
+        const e = S.e, end = S.end, len = lens[e], tmax = kz ? Math.min(0.45 * lens[(e + 1) % 4], capD) : 0.45 * lens[(e + 1) % 4];
+        const kind = kinds[kz && S === chosen[0] ? lead[1] : Math.floor(rnd() * kinds.length)];
+        picked.push(kind);
+        const d = fl(S.dmax * (0.6 + rnd() * 0.4));
+        /* local frame: s along the edge from this end, t inward */
+        const poly = function (q) {
+          g.beginPath();
+          q.forEach(function (p, j) {
+            const c = pt(e, (end ? len - p[0] : p[0]) / len, p[1]);
+            if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]);
+          });
+          g.closePath(); g.fill();
+        };
+        if (kind === "bays") {
+          /* kinds mode card corner: bays() with exactly 3 concave arcs (middle 2x the others, cusps between), 0.15-0.25 of the short side, plus a 2-3 px nick one arc-length past the bite on the same edge; sheet CHECK FAIL for under 3 arcs or a straight segment over 0.3 of the bite */
+          const size = (0.15 + rnd() * 0.1) * Math.min(W, H), bp = bays(seed + "|" + S.name, end, size, { dpr: dpr, ch: [0.25, 0.5, 0.25] })[0], xe = bp[bp.length - 1][0];
+          poly(bp);
+          const ns = xe + 0.25 * size, nd = (2 + rnd()) * dpr;
+          /* the nick sits on the longer of the two edges at this corner; on the adjacent edge it takes that edge's frame (the same corner, s from the corner) */
+          const nk = [[ns - 1.2 * dpr, -2], [ns + rnd() * 0.4 * dpr, nd], [ns + 1.2 * dpr, -2]], e2 = end ? (e + 1) % 4 : (e + 3) % 4, e2end = end ? 0 : 1, nonE = lens[e2] > len;
+          if (!nonE) poly(nk);
+          else { g.beginPath(); nk.forEach(function (p, j) { const c = pt(e2, (e2end ? lens[e2] - p[0] : p[0]) / lens[e2], p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); }); g.closePath(); g.fill(); }
+          if (Math.max(lens[e], lens[e2]) !== lens[nonE ? e2 : e]) console.error("CHECK FAIL card nick short edge " + seed);
+          let na = 0, lg = 0;
+          for (let i = 3; i < bp.length - 2; i++) {
+            if (bp[i][1] < bp[i - 1][1] && bp[i][1] <= bp[i + 1][1]) na++;
+            lg = Math.max(lg, Math.hypot(bp[i + 1][0] - bp[i][0], bp[i + 1][1] - bp[i][1]));
+          }
+          na++;
+          if (na < 3 || lg > 0.3 * xe) console.error("CHECK FAIL card corner " + seed + " arcs " + na + " seg " + (lg / xe).toFixed(2));
+        } else if (kind === "step") {
+          const sh = STEP_SHAPES[rnd() < 0.5 ? 0 : 1], maxV = Math.max.apply(null, sh.q.map(function (p) { return p[1]; })), maxU = Math.max.apply(null, sh.q.map(function (p) { return p[0]; })), Hc = Math.min(fl(d * 1.3) / (kz ? maxV : 1), tmax), Wc = Math.min(kz ? Hc * maxV * (small ? 2 + 2 * run : 1.5 * (1 + 0.5 * run)) / maxU : Hc * sh.r, runF * len / (kz ? maxU : 1));
+          /* the card (kinds mode) is one plain right-angle step: no jitter, no extra vertices */
+          if (mid) { const w = Math.min(Wc * maxU, runF * len), h = Math.min(Hc * maxV, tmax); poly([[-2, -2], [w, -2], [w, h / 2], [w / 2, h / 2], [w / 2, h], [-2, h]]); return; }
+          /* kinds mode clamps the jittered vertices to the run and depth caps */
+          poly(sh.q.map(function (p) {
+            const x = p[0] === 0 ? -2 : (p[0] + (rnd() - 0.5) * 0.12) * Wc, y = p[1] === 0 ? -2 : (p[1] + (rnd() - 0.5) * 0.12) * Hc;
+            return kz ? [Math.min(x, runF * len), Math.min(y, tmax)] : [x, y];
+          }));
+        } else if (kind === "slant") {
+          const a = (20 + rnd() * 35) * Math.PI / 180, r = d * 2.2;
+          /* the rim points after the mouth vertex stay inside the 67 degree cone from it */
+          const sl = function (q) { for (let i = 2; i < q.length - 1; i++) q[i][0] = Math.min(q[i][0], q[1][0] - 0.43 * (q[i][1] - q[1][1])); lipChk(q.slice(1, 3), 1); return q; };
+          if (small) { const rise = Math.min(fl(d), tmax); poly(sl(rough([[-2, -2], [Math.min(rise * (2 + 2 * run), 0.3 * len), -2], [-2, rise]], tmax))); }
+          else poly(sl(rough([[-2, -2], [Math.min(r * Math.cos(a), runF * len), -2], [-2, Math.min(fl(r * Math.sin(a)), tmax)]], tmax)));
+        } else if (kind === "spike") {
+          const n = 3 + Math.floor(rnd() * 4), w = Math.min(d * (0.6 + rnd() * 0.3), runF * len / n);
+          for (let i = 0; i < n; i++) poly([[i * w - 2, -2], [(i + 0.5) * w, Math.min(fl(d * (0.45 + rnd() * 0.55)), tmax)], [(i + 1) * w, -2]]);
+        } else if (kind === "scallop") {
+          /* shallow lopsided scallop: visible chord V is 2.5-4.5x the depth (never past a half circle), deepest point 0.3-0.7 along (per seed), the first part runs off the corner; rim roughened; kinds mode only */
+          const ratio = 2.5 + rnd() * 2, sh = 0.1 + rnd() * 0.1, pk = sh + pkPick() * (1 - sh), h0 = Math.min(fl(d * (0.6 + rnd() * 0.4)), tmax);
+          const dmn = Math.min(W, H);
+          const hs = small ? Math.min(Math.max(h0, 0.3 * dmn), 0.4 * dmn, tmax) : h0, V = Math.min(hs * ratio, runF * len), h = Math.max((0.15 + rnd() * 0.05) * V, 1), C = V / (1 - sh), s0 = -sh * C;
+          poly(cone(rough([[s0, -2]].concat(chipPts(pk, h / C).map(function (v) {
+            return [s0 + v[0] * C, Math.min(Math.max(v[1] * h, 1), tmax)];
+          }), [[s0 + C, -2]]), tmax, 1, false, true, true), 1));
+          /* nicks: 1 (button) or 1-2 (slab) specks of 0.2-0.35 of the lead depth along the same edge, 0.5-1.5 chords past it */
+          const nn = small ? 1 : 1 + (rnd() < 0.5 ? 1 : 0);
+          for (let i = 0, at0 = V; i < nn && S === chosen[0]; i++) {
+            const nd = h * (0.2 + rnd() * 0.15), nc = (nd + 2) * (1.1 + rnd() * 0.5), ns = Math.min(at0 + V * (0.5 + rnd()), len * 0.9 - nc);
+            if (ns < at0 + 3) break;
+            lipChk([[ns, -2], [ns + nc * 0.4, nd], [ns + nc, -2]], 1); poly([[ns, -2], [ns + nc * 0.4, nd], [ns + nc, -2]]); at0 = ns + nc;
+          }
+        } else if (kind === "shear") {
+          /* a corner knocked off three times: segments steepen 12-30, 35-60, 65-85 degrees toward the corner; one speck 0-1 */
+          /* the run R follows from the angles: each segment rises a share of the depth and runs rise / tan(angle); a run past the cap scales the whole shape down */
+          /* the image takes a torn corner of its own (all three segments in 35-60, depth 1.5x the name plate's); the paper title takes the 12-30 band (a 65-85 band is a hairline sliver), never the image's; the rest keep the stair */
+          /* the image bends at least 8 degrees at each joint: a1 35-38, a2 10-13 more, a3 8 or more beyond a2, all inside 35-60 */
+          const imgAn = function () { const a1 = 35 + rnd() * 3, a2 = a1 + 10 + rnd() * 3; return [a1, a2, a2 + 8 + rnd() * (52 - a2)]; };
+          const band = preset === "image" ? [35, 60] : preset === "paper" ? [12, 30] : null, bw = band ? band[1] - band[0] : 0;
+          const an = preset === "image" ? imgAn() : band ? [band[0] + rnd() * 0.1 * bw, band[0] + (0.4 + rnd() * 0.2) * bw, band[0] + (0.8 + rnd() * 0.2) * bw] : [12 + rnd() * 18, 35 + rnd() * 25, 65 + rnd() * 20];
+          /* image and paper title (kinds mode): one torn corner, 3-4 segments from the edge to the box side, the direction swinging 20-70 degrees between neighbours; the image bite is 0.5-0.6 of its short side, the title's depth stays in 12-30 px; the run scales down to its cap; rough() roughens it; the swing range per role is kept on window.__wearSwing */
+          const torn = kz && preset === "paper", rim = kz && preset === "image";
+          /* kinds mode image: a torn-paper rim along the edge instead of a corner wedge. 4 runs alternate short (0.08-0.1 of the side) and long (0.2-0.3), each 3-15 degrees off the edge (swing at most 0.27 of its length); one long hump of drift (the first runs go in, the rest come back, the end keeps 5 px or more); joints are V notches (6-14 px deep, opening 40-70 degrees, unequal walls) or 3-8 px depth steps; sheet CHECK FAIL for a run swing over 0.4 of its length or neighbouring runs within 2x */
+          const rimPoly = function () {
+            const dg = Math.PI / 180, cap = Math.min(tmax, 0.6 * Math.min(W, H));
+            let q = null, runs = null, nts = null, accepted = false, bareF = 0;
+            const stat = function (nl) {
+              const cv = function (v) { const m = v.reduce(function (x, y) { return x + y; }, 0) / v.length; return Math.sqrt(v.reduce(function (x, y) { return x + (y - m) * (y - m); }, 0) / v.length) / m; };
+              const dp = nl.map(function (o) { return o.d; }), sp = [], sgn = nl.map(function (o) { return o.sg; });
+              for (let i = 1; i < nl.length; i++) sp.push(nl[i].x - nl[i - 1].x);
+              let rep = false;
+              for (let i = 3; i + 3 <= sgn.length; i++) rep = rep || (sgn[i] === sgn[i - 3] && sgn[i + 1] === sgn[i - 2] && sgn[i + 2] === sgn[i - 1]);
+              return { n: nl.length, dcv: nl.length > 2 ? cv(dp) : 0, scv: nl.length > 2 ? cv(sp) : 0, ratio: nl.length ? Math.max.apply(null, dp) / Math.min.apply(null, dp) : 0, rep: rep };
+            };
+            for (let t = 0; t < 20000; t++) {
+              const hp = 1 + Math.floor(rnd() * 3), rs = [], pts = [[0, 0]], nl = [], nn = [];
+              let s = 0, tt = 0, pk = 0, pl = 0, pv = -9;
+              for (let i = 0; i < 9; i++) {
+                let l = 0;
+                for (let g = 0; g < 30; g++) { l = (0.06 + 0.26 * Math.pow(rnd(), 2.2)) * len; if (!pl || Math.max(l, pl) / Math.min(l, pl) >= 1.15) break; }
+                pl = l;
+                const dt = l * Math.tan((3 + rnd() * 12) * dg) * (i <= hp ? 1 : -1);
+                const r = { l: l, dt: dt, a: pts.length - 1 };
+                rs.push(r);
+                s -= l; tt += dt; pts.push([s, tt]); pk = Math.max(pk, tt); r.b = pts.length - 1;
+                if (i >= 4 && (-s >= 0.68 * len || i === 8)) { nn.push(0); break; }
+                const jr = rnd();
+                if (jr < 0.45) {
+                  /* notch: opens 73-100 degrees, the floor cut c drawn first (2-4 px floor), then the visible depth 3-11 px (never within 1.5 px of the last notch's), so n - c is the depth drawn */
+                  const al = (73 + rnd() * 27) * dg, lf = rnd() < 0.5, f = lf ? 0.62 + rnd() * 0.12 : 0.26 + rnd() * 0.12, p0 = pts[pts.length - 1];
+                  const c = (2 + rnd() * 2) * dpr / (Math.tan(al * f) + Math.tan(al * (1 - f)));
+                  let v = 0;
+                  for (let g = 0; g < 30; g++) { v = (3 + rnd() * 8) * dpr; if (Math.abs(v - pv) >= 1.5 * dpr) break; }
+                  pv = v;
+                  const n = c + v;
+                  const bx = s - n * Math.tan(al * f), ex = bx - n * Math.tan(al * (1 - f)), ba = [bx + c * Math.tan(al * f), tt + n - c], bb = [bx - c * Math.tan(al * (1 - f)), tt + n - c], xp = [ex, tt];
+                  const x0 = s;
+                  s = ex;
+                  pts.push(ba, bb, xp); pk = Math.max(pk, tt + n - c);
+                  const u = [p0[0] - ba[0], p0[1] - ba[1]], w = [xp[0] - bb[0], xp[1] - bb[1]];
+                  nl.push({ ang: Math.acos((u[0] * w[0] + u[1] * w[1]) / Math.hypot(u[0], u[1]) / Math.hypot(w[0], w[1])) / dg, d: n - c, w: p0[0] - xp[0], x: -x0, sg: lf ? 1 : -1 });
+                  nn.push(1);
+                } else if (jr < 0.8) {
+                  s -= 0.6 * dpr; tt += (3 + rnd() * 5) * dpr * (rnd() < 0.5 ? 1 : -1);
+                  pts.push([s, tt]); pk = Math.max(pk, tt); nn.push(0);
+                } else nn.push(0);
+              }
+              /* runs touching no notch at either end: 25-40 percent of the runs */
+              const bare = rs.filter(function (r, i) { return !nn[i] && !(i && nn[i - 1]); }).length / rs.length, st = stat(nl);
+              const mn = Math.min.apply(null, pts.slice(1).map(function (p) { return p[1]; }));
+              q = pts; runs = rs; nts = nl; bareF = bare;
+              if (-s <= 0.8 * len && -s >= 0.6 * len && pk >= 14 * dpr && pk <= cap && mn >= 2 * dpr && tt >= 5 * dpr && bare >= 0.25 && bare <= 0.4 && st.n >= 3 && st.dcv >= 0.3 && st.scv >= 0.3 && st.ratio >= 2.5 && !st.rep) { accepted = true; break; }
+            }
+            if (!accepted) console.error("CHECK FAIL image rim retries " + seed + " bare " + bareF.toFixed(2));
+            /* torn fibre: each run gets 1-2 px serration every 2-4 px (signs alternate, both appear) on top of a slow wander of 2-5 percent of the short side, ends pinned; nothing leaves the rectangle by more than 1 px */
+            const fz = [], at = {};
+            runs.forEach(function (r) { at[r.a] = r; });
+            const qf = [];
+            q.forEach(function (p, j) {
+              qf.push(p);
+              const r = at[j];
+              if (!r) return;
+              const x0 = q[r.a][0], y0 = q[r.a][1], x1 = q[r.b][0], y1 = q[r.b][1], k = Math.max(2, Math.round((Math.round(r.l / (3 * dpr)) - 1) * (0.7 + rnd() * 0.6))), A = Math.min((0.02 + rnd() * 0.03) * Math.min(W, H), 0.2 * r.l) * (rnd() < 0.5 ? 1 : -1), m = 1 + Math.floor(rnd() * 2);
+              let sg = rnd() < 0.5 ? 1 : -1;
+              for (let i = 1; i <= k; i++) {
+                const u = (i + (rnd() - 0.5) * 0.4) / (k + 1);
+                sg = -sg;
+                const base = y0 + (y1 - y0) * u + A * Math.sin(Math.PI * u * m), off = sg * (1 + rnd()) * dpr, y = base + off;
+                const yy = y < -0.5 * dpr || y > cap ? base - off : y;
+                qf.push([x0 + (x1 - x0) * u, Math.min(yy < 0.5 * dpr ? dpr - yy : yy, cap)]);
+              }
+              fz.push({ a: qf.length - k - 1, k: k });
+            });
+            q = qf;
+            const over = Math.max(0, -Math.min.apply(null, q.slice(1).map(function (p) { return p[1]; }))) / dpr;
+            console.error("image rim overshoot " + seed + " " + over.toFixed(2));
+            if (over > 1) console.error("CHECK FAIL image rim outside " + seed + " " + over.toFixed(2));
+            const S0 = -q[q.length - 1][0], out = [[S0 + 2.5 * dpr, -2]].concat(q.map(function (p) { return [p[0] + S0, p[1]]; }), [[-2, q[q.length - 1][1]], [-2, -2]]);
+            let longest = 0;
+            fz.forEach(function (r) {
+              if (r.k < 2) console.error("CHECK FAIL image fuzz missing " + seed);
+              const e = r.a + r.k + 1;
+              for (let i = r.a; i < e; i++) for (let j = i + 1; j <= e; j++) {
+                const dx = q[i][0] - q[j][0], dy = q[j][1] - q[i][1];
+                let ok = true;
+                for (let m = i + 1; m < j && ok; m++) ok = Math.abs(q[i][1] + dy * (q[i][0] - q[m][0]) / dx - q[m][1]) <= dpr;
+                if (ok) longest = Math.max(longest, dx);
+              }
+            });
+            if (longest > 12 * dpr) console.error("CHECK FAIL image run ruled " + seed + " " + (longest / dpr).toFixed(1));
+            nts.forEach(function (nt) { if (nt.ang < 69.9) console.error("CHECK FAIL image notch sharp " + seed + " " + nt.ang.toFixed(1)); });
+            console.error("image rim " + seed + " runs " + runs.length + " straight " + (longest / dpr).toFixed(1) + " notch " + nts.map(function (nt) { return nt.ang.toFixed(0) + "/" + (nt.d / dpr).toFixed(1); }).join(",") + " fuzz " + fz.map(function (r) { return r.k; }).join(","));
+            runs.forEach(function (r, i) {
+              if (Math.abs(r.dt) > 0.4 * r.l) console.error("CHECK FAIL image run swing " + seed + " " + (Math.abs(r.dt) / r.l).toFixed(2));
+              if (i && Math.max(r.l, runs[i - 1].l) / Math.min(r.l, runs[i - 1].l) < 1.149) console.error("CHECK FAIL image runs within 15% " + seed);
+            });
+            const sx = stat(nts), covF = -q[q.length - 1][0] / len;
+            if (bareF < 0.25 - 1e-6 || bareF > 0.4 + 1e-6) console.error("CHECK FAIL image no-notch share " + seed + " " + bareF.toFixed(2));
+            if (sx.ratio < 2.5) console.error("CHECK FAIL image depth range " + seed + " " + sx.ratio.toFixed(2));
+            nts.forEach(function (nt, i) {
+              if (nt.d < 3 * dpr - 1e-6 || nt.d > 11 * dpr + 1e-6 || (i && Math.abs(nt.d - nts[i - 1].d) < 1.5 * dpr - 1e-6)) console.error("CHECK FAIL image notch depth " + seed + " " + (nt.d / dpr).toFixed(2));
+            });
+            if (covF < 0.6 - 1e-6 || covF > 0.8 + 1e-6) console.error("CHECK FAIL image coverage " + seed + " " + covF.toFixed(2));
+            if (sx.n < 3 || sx.dcv < 0.3 || sx.scv < 0.3 || sx.ratio < 2.5 || sx.rep) console.error("CHECK FAIL image rim even " + seed + " n " + sx.n + " dcv " + sx.dcv.toFixed(2) + " scv " + sx.scv.toFixed(2) + " ratio " + sx.ratio.toFixed(1) + " rep " + sx.rep);
+            return out;
+          };
+          const tornCorner = function () {
+            const n = 3 + (rnd() < 0.5 ? 1 : 0), img = preset === "image";
+            let a, w, wt, tt, rn, r0;
+            /* the joints stay put (only the pieces between them are jittered) so the swings hold; the image starts at 18-26 degrees (10-14 with four segments); the title starts at 6-14 and is redrawn until its run is 2-4 times its depth (a torn corner, not a dog-ear) */
+            for (let t = 0; img && t < 200; t++) {
+              a = [img ? (n === 4 ? 10 + rnd() * 4 : 18 + rnd() * 8) : 6 + rnd() * 8];
+              let left = 88 - a[0];
+              for (let i = 1; i < n; i++) { const lo = Math.min(26, left / (n - i)); const sw = lo + rnd() * Math.min(70 - lo, 36, left - lo * (n - i)); a.push(a[i - 1] + sw); left -= sw; }
+              w = a.map(function (x, i) { return i + 1 + rnd() * 0.6; }); wt = w.reduce(function (x, y) { return x + y; }, 0); tt = a.map(function (x) { return Math.tan(x * Math.PI / 180); });
+              rn = w.map(function (x, i) { return x / wt / tt[i]; }); r0 = rn.reduce(function (x, y) { return x + y; }, 0);
+              break;
+            }
+            if (!img) r0 = n === 4 ? 1.8 + rnd() * 0.4 : 2 + rnd();
+            const hT = img ? (0.5 + rnd() * 0.1) * Math.min(W, H) : (12 + 14 * (((Number(seed) || 0) * 0.25) % 1)) * dpr, hc = Math.min(hT, img ? hT : tmax, (img ? 0.85 : runF) * len / r0);
+            let x = r0 * hc, y = 0, q;
+            let chordDir = 0;
+            if (img) {
+              q = [[x + 2 / tt[0], -2], [x, 0]];
+              for (let i = 0; i < n; i++) { x -= rn[i] * hc; y += w[i] / wt * hc; q.push([Math.max(x, 0), y]); }
+              q.splice(1, 1); q[q.length - 1] = [0, hc]; q.push([-2, hc], [-2, -2]);
+            } else {
+              /* title: a zigzag from entry to exit, the segments alternating 20-70 degrees either side of the straight chord; every vertex stays inside the box */
+              const R = x, ch = Math.hypot(R, hc), ca = Math.atan2(hc, -R);
+              let ok = false;
+              q = [[R, 0], [0, hc], [-2, hc], [-2, -2]];
+              for (let t = 0; t < 500 && !ok; t++) {
+                const s0 = rnd() < 0.5 ? 1 : -1, th = [], l = [];
+                for (let i = 0; i < n; i++) th.push(s0 * (i % 2 ? -1 : 1) * (20 + rnd() * (n === 4 ? 20 : 40)) * Math.PI / 180);
+                const sn = th.map(Math.sin), cs = th.map(Math.cos);
+                l[0] = 0.7 + rnd() * 0.6; l[2] = 0.7 + rnd() * 0.6;
+                if (n === 3) l[1] = -(l[0] * sn[0] + l[2] * sn[2]) / sn[1];
+                else { const k = 0.6 + rnd() * 0.8; l[1] = -(l[0] * sn[0] + l[2] * sn[2]) / (sn[1] + k * sn[3]); l[3] = k * l[1]; }
+                const f = ch / l.reduce(function (u, v, i) { return u + v * cs[i]; }, 0);
+                let px = R, py = 0;
+                const vs = [];
+                ok = Math.sin(ca + th[0]) > 0.2;
+                for (let i = 0; i < n - 1 && ok; i++) {
+                  px += l[i] * f * Math.cos(ca + th[i]); py += l[i] * f * Math.sin(ca + th[i]);
+                  if (px < 0 || px > R || py < 0.3 || py > hc) ok = false;
+                  vs.push([px, py]);
+                }
+                if (ok) { const a0 = ca + th[0]; q = [[R - 2 * Math.cos(a0) / Math.sin(a0), -2]].concat(vs, [[0, hc], [-2, hc], [-2, -2]]); }
+              }
+              if (!ok) console.error("CHECK FAIL title zigzag " + seed);
+              chordDir = Math.atan2(hc, R) * 180 / Math.PI;
+            }
+            const out = rough(q, img ? 0.6 * Math.min(W, H) : tmax, 1, false, false, true, img);
+            if (!out.js) return out;
+            /* sheet check: the title tear is 12-30 px deep, the image rim pieces differ from their neighbours */
+            if (!img) { const dp = hc / dpr; console.error("title tear " + seed + " " + dp.toFixed(1)); if (dp < 11.99 || dp > 30.01) console.error("CHECK FAIL title tear " + seed + " " + dp.toFixed(1)); }
+            else if (out.pcs) for (let k = 1; k < out.pcs.length; k++) { const u = out.pcs[k - 1], v = out.pcs[k]; if (Math.abs(u[0] - v[0]) / Math.max(u[0], v[0]) < 0.3 && Math.abs(u[1] - v[1]) / Math.max(u[1], v[1], 0.01) < 0.3) { console.error("CHECK FAIL image rim even " + seed); break; } }
+            /* sheet check: the direction of each torn segment (joint to joint of the final polygon) swings 20-70 degrees from its neighbour; min and max per role kept on window.__wearSwing */
+            const dir = [], sg = window.__wearSwing = window.__wearSwing || {};
+            for (let k = 0; k < n; k++) { const p = out[out.js[k]], r = out[out.js[k + 1]]; dir.push(Math.atan2(r[1] - p[1], p[0] - r[0]) * 180 / Math.PI); }
+            if (!img) for (let k = 0; k < n; k++) { const sw = Math.abs(dir[k] - chordDir); if (sw < 19.5 || sw > 70.5) console.error("CHECK FAIL zigzag " + sw.toFixed(1)); if (k && (dir[k] - chordDir) * (dir[k - 1] - chordDir) >= 0) console.error("CHECK FAIL zigzag sign " + seed); }
+            for (let k = 1; k < n && img; k++) {
+              const sw = dir[k] - dir[k - 1], c = sg[preset] = sg[preset] || [99, 0];
+              c[0] = Math.min(c[0], sw); c[1] = Math.max(c[1], sw);
+              if (sw < 20 || sw > 70) console.error("CHECK FAIL swing " + preset + " " + seed + " " + sw.toFixed(1));
+            }
+            return out;
+          };
+          const tn = an.map(function (a) { return Math.tan(a * Math.PI / 180); }), f1 = 0.28 + rnd() * 0.1, f2 = 0.32 + rnd() * 0.08;
+          let h = Math.min(fl(d * (0.6 + rnd() * 0.4)), tmax);
+          if (preset === "image") {
+            /* the name plate's drawn depth at this severity (its 26 px short side: preset depth, floor and cap), as a share of its short side */
+            const tp = Math.min(Math.max(Math.max(4, Math.min(26, wearPresets.title.depth / 100 * 26)) * sevD * 0.8, [8, 12, 16][sev]), 13) / 26;
+            h = Math.min(1.5 * tp * Math.min(W, H), tmax);
+          }
+          else if (small) h = Math.min(Math.max(h, 0.3 * Math.min(W, H)), 0.4 * Math.min(W, H), tmax);
+          const rs = [f1, f2, 1 - f1 - f2], runs = rs.map(function (f, i) { return f / tn[i]; }), R0 = (runs[0] + runs[1] + runs[2]) * h;
+          if (R0 > runF * len) h *= runF * len / R0;
+          const R = (runs[0] + runs[1] + runs[2]) * h, v1 = [R - runs[0] * h, rs[0] * h], v2 = [v1[0] - runs[1] * h, (rs[0] + rs[1]) * h];
+          if (rim) poly(rimPoly());
+          else if (torn) poly(tornCorner());
+          else poly(rough([[R + 2 / tn[0], -2], v1, v2, [0, h], [-2, h]], tmax));
+          if (S === chosen[0] && !rim && rnd() < 0.5) {
+            const nd = h * (0.2 + rnd() * 0.15), nc = (nd + 2) * (1.1 + rnd() * 0.5), ns = Math.min(R * (1.5 + rnd()), len * 0.9 - nc);
+            if (ns > R + 3) lipChk([[ns, -2], [ns + nc * 0.4, nd], [ns + nc, -2]], 1), poly([[ns, -2], [ns + nc * 0.4, nd], [ns + nc, -2]]);
+          }
+        } else if (kind === "round") {
+          /* worn paper corner: quarter-ellipse arc radii 0.18-0.22 of the short side, roughened, both ends held inside the 67 degree cone */
+          const Ra = Math.min((0.18 + rnd() * 0.04) * Scss * dpr, runF * len), Rb = Math.min((0.18 + rnd() * 0.04) * Scss * dpr, tmax);
+          const arc = [22.5, 45, 67.5].map(function (t) { const ph = t * Math.PI / 180; return [Ra * (1 - Math.sin(ph)), Rb * (1 - Math.cos(ph))]; });
+          const rq = rough([[-2, -2], [Ra, -2]].concat(arc, [[-2, Rb]]), Rb, 1, true);
+          for (let i = 2; i < rq.length - 1; i++) { rq[i][0] = Math.max(Math.min(rq[i][0], Ra - 0.43 * (rq[i][1] + 2)), 1); rq[i][1] = Math.min(rq[i][1], Rb - 0.43 * (rq[i][0] + 2)); }
+          lipChk(rq.slice(1, 3), 1); lipChk(rq.slice(-3).reverse().map(function (p) { return [p[1], p[0]]; }), 1);
+          poly(rq);
+        } else if (kind === "square") {
+          const h = Math.min(fl(d * (0.6 + rnd() * 0.4)), tmax), w = Math.min(kz ? (small ? h * (2 + 2 * run) : h * 1.5 * (1 + 0.6 * run)) : d * (1 + rnd() * 0.8), runF * len), s0 = notch ? d + rnd() * Math.max(0, 0.5 * len - w - d) : rnd() < 0.5 ? -2 : d * 0.5 * rnd();
+          poly([[s0, -2], [s0 + w, -2], [s0 + w, h], [s0, h]]);
+        } else {
+          const n = P.tear ? P.tear.n[0] + Math.floor(rnd() * (P.tear.n[1] - P.tear.n[0] + 1)) : 2 + Math.floor(rnd() * 2);
+          const rat = P.shard || [2, 4];
+          let a = 0;
+          for (let i = 0; i < n; i++) {
+            const dd = Math.min(fl(d * (0.6 + rnd() * 0.4)) / (kz ? 0.85 : 1), tmax), L = Math.min(dd * (rat[0] + rnd() * (rat[1] - rat[0])), (mid ? 0.2 / (1 + 0.8 * (n - 1)) : 0.22) * len);
+            shard(e, end ? len - a - L : a, L, dd, !!end, true);
+            a += L * (0.55 + rnd() * 0.25);
+          }
+        }
+      });
+    }
+    el._wearKinds = picked;
+    el._wearSites = wearSites;
+    /* baseline wear (every preset, spec 38): the name plate's recipe at the box's scale. Corners: one end shard each along the top and bottom edges
+       (tl tr from the top edge, br bl from the bottom); edges: at most one small mid bite on the top and bottom (0.3 chance) and, above scale 1,
+       small crumbs on all four from a second rng so the corners and bites keep the plate's exact bytes. Flags off only mute the paint, the rng stream stays put. */
+    if (!kz && !(segs && segs.length)) {
+      const sr = rng(String(preset) + "|" + seed + "|specks"), CORNER_OF = [["tl", "tr"], null, ["br", "bl"], null];
+      [0, 2, 1, 3].forEach(function (e) {
+        const len = lens[e];
+        if (e % 2 === 0) {
+          rnd();
+          for (let i = 0; i < 2; i++) {
+            mute = !on(CORNER_OF[e][i]);
+            const d = bd * (0.6 + rnd() * 0.4), L = Math.min(d * (2 + rnd() * 2), 0.35 * len);
+            shard(e, i ? len - L : 0, L, d, i === 1, true);
+          }
+          mute = !on(WEAR_EDGES[e]);
+          if (rnd() < 0.3) {
+            const d = bd * (0.3 + rnd() * 0.25), L = Math.min(d * (2 + rnd()), 0.2 * len);
+            shard(e, (0.3 + rnd() * 0.4) * len - L / 2, L, d, false, false);
+          }
+        }
+        mute = !on(WEAR_EDGES[e]);
+        const n = bk > 1 ? Math.round(len / dpr / (60 * bk)) : 0;
+        for (let i = 0; i < n; i++) {
+          const d = (1.5 + sr() * 1.5) * bk * dpr, L = d * (2 + sr() * 2);
+          shard(e, (0.08 + 0.84 * sr()) * len - L / 2, L, d, false, false);
+        }
+        mute = false;
+      });
+    }
+    el._wearProfile = profile.sort(function (a, b) { return a[0] - b[0]; });
+    el.style.setProperty("--wear", 'url("' + cv.toDataURL("image/png") + '")');
+    if (!el.hasAttribute("data-wear-keep")) el.style.setProperty("--shape", "none");
+    el._wearW = cssW; el._wearH = cssH;
+    return cv;
   }
 
-  /* the worn four-sided look shared by the Experience tile and the Work rows: pts = [TL, TR, BR, BL] in px, the top edge
-     (TL to TR) eaten by a few seeded angular chips bunched toward the corners (scaled by width W), clean elsewhere; a red
-     line runs down the left edge, overshooting the top-left corner by 0.06 of the edge and stopping short of the bottom-left
-     by the same. Sets the clip as `prop` on el (its y moved down by `pad`, for a pseudo reaching `pad` px above the box) and draws the line in the svg `red`.
-     k deepens the chips and nicks and jit spreads where they sit (both default to the Experience tile's look). */
-  function wornQuad(el, red, pts, W, seed, prop, pad, k, jit, e) {
-    pad = pad || 0; k = k || 1; jit = jit || 0.03; e = e || 1;
+  /* top-run offsets of the last wear() paint: [[u along the edge 0..1, depth / box height], ...] */
+  function edgeProfile(el) { return el._wearProfile || []; }
+
+  let wearRo = null, wearTimer = 0;
+  const wearPending = [];
+  let wearCount = 0;
+  function wearApply(root) {
+    const r = root || document, els = Array.prototype.slice.call(r.querySelectorAll("[data-wear]"));
+    if (root && root.matches && root.matches("[data-wear]")) els.unshift(root);
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i], p = el.dataset.wear;
+      if (el.dataset.seed === undefined) el.dataset.seed = String(hash(p + ":" + (wearCount++)));
+      el._wearPreset = p;
+      el._wearSeed = el.dataset.seed;
+      wear(el, p, el._wearSeed);
+      if (window.ResizeObserver) {
+        if (!wearRo) wearRo = new ResizeObserver(function (es) {
+          es.forEach(function (e) { wearPending.push(e.target); });
+          clearTimeout(wearTimer);
+          wearTimer = setTimeout(function () {
+            wearPending.splice(0).forEach(function (t) {
+              if (t._wearW !== t.offsetWidth || t._wearH !== t.offsetHeight) wear(t, t._wearPreset, t._wearSeed);
+            });
+          }, 150);
+        });
+        if (!el._wearRo) { el._wearRo = true; wearRo.observe(el); }
+      }
+    }
+  }
+
+  /* the straight four-sided plate shared by the Experience tile and the Work rows: pts = [TL, TR, BR, BL] in px, set uncut as the clip `prop` on el
+     (the chips come from Shapes.wear, in the mask of the plate's ::before); a red line runs down the left edge, overshooting the top-left corner by
+     0.06 of the edge and stopping short of the bottom-left by the same, drawn in the svg `red` (a child of el, outside the masked pseudo) */
+  function quad(el, red, pts, prop) {
     const x0 = pts[0][0], dy = pts[0][1];
-    /* the worn run is the chain pts[0..e] (one plain edge when e is 1); a bite never spans a corner of it and sits in the segment its start falls in */
-    const segs = []; let len = 0;
-    for (let j = 0; j < e; j++) { const ex = pts[j + 1][0] - pts[j][0], ey = pts[j + 1][1] - pts[j][1], l = Math.hypot(ex, ey); segs.push({ x: pts[j][0], y: pts[j][1], ux: ex / l, uy: ey / l, l: l, s: len }); len += l; }
-    const rnd = rng(seed), bites = segs.map(function () { return []; });   /* bites per segment of the run */
-    const at = function (u, off) { let g = segs[segs.length - 1]; for (let j = 0; j < segs.length; j++) if (u <= segs[j].s + segs[j].l) { g = segs[j]; break; } const q = u - g.s; return [g.x + g.ux * q - g.uy * off, g.y + g.uy * q + g.ux * off]; };
-    const f = Math.max(1, Math.min(2.5, 1 + 1.5 * (W - 420) / 800)), fn = 1 + (f - 1) * 0.4;   /* bite scale: 1 on a phone, 2.5 on desktop */
-    /* five bites at uneven spots (bunched toward the corners, long clean runs between): a deep chip or two, the rest hairline nicks */
-    [[0.06, 1], [0.11, 0], [0.46, 0], [0.9, 1], [0.95, 0]].forEach(function (s, n) {
-      let t = (s[0] + (rnd() - 0.5) * jit) * len;
-      const chip = n === 0 || n === 3;
-      const w = (chip ? 14 + rnd() * 16 : 3 + rnd() * 7) * (chip ? f : fn) * Math.sqrt(k);
-      let d = (chip ? 3 + rnd() * 1.2 : 0.7 + rnd() * 0.8) * (chip ? f : fn) * k;
-      if (chip && k > 1) d = Math.min(16, Math.max(6, d));   /* deepened chips (Work rows): 6 px at least on a phone, 16 at most on desktop */
-      segs.forEach(function (g) { if (g.s > t && g.s < t + w) t = g.s + 1; });   /* a corner of the run inside the bite: start the bite after it */
-      let sj = 0; segs.forEach(function (g, j) { if (t >= g.s) sj = j; });
-      const bs = bites[sj], m = 2 + Math.floor(rnd() * 3), us = [];
-      for (let j = 0; j < m; j++) us.push(rnd());
-      us.sort(function (a, b) { return a - b; });
-      bs.push(at(t, 0));
-      us.forEach(function (u, q) { const r = rnd(); bs.push(at(t + u * w, d * (chip && k > 1 && q === 0 ? 1 : 0.25 + r * 0.75))); });
-      bs.push(at(t + w, 0));
-    });
-    const all = [pts[0]];
-    for (let j = 0; j < e; j++) all.push.apply(all, bites[j].concat([pts[j + 1]]));
-    all.push.apply(all, pts.slice(e + 1));
-    el.style.setProperty(prop, "polygon(" + all.map(function (p) { return p[0].toFixed(1) + "px " + (p[1] + pad).toFixed(1) + "px"; }).join(", ") + ")");
-    if (!red) return all;
-    const l = red.firstChild, bl = pts[pts.length - 1], vx = bl[0] - x0, vy = bl[1] - dy;
-    l.setAttribute("x1", (x0 - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (dy - 0.06 * vy).toFixed(1));
-    l.setAttribute("x2", (bl[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (bl[1] - 0.06 * vy).toFixed(1));   /* stops short of the corner by the top overshoot */
-    return all;
+    el.style.setProperty(prop, "polygon(" + pts.map(function (p) { return p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px"; }).join(", ") + ")");
+    if (red) {
+      const l = red.firstChild, bl = pts[pts.length - 1], vx = bl[0] - x0, vy = bl[1] - dy;
+      l.setAttribute("x1", (x0 - 0.06 * vx).toFixed(1)); l.setAttribute("y1", (dy - 0.06 * vy).toFixed(1));
+      l.setAttribute("x2", (bl[0] - 0.06 * vx).toFixed(1)); l.setAttribute("y2", (bl[1] - 0.06 * vy).toFixed(1));
+    }
+    return pts;
+  }
+  /* wear the plate's top edge once per box size (draw runs on every resize) */
+  function wearPlate(el, seed, edges, flags) {
+    if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight) wear(el, "row-top", seed, { edges: edges, flags: flags });
   }
   function redOf(el) {
     const NS = "http://www.w3.org/2000/svg";
@@ -287,7 +1221,8 @@
         const poly = wkPoly(i, W, H, flip), pts = poly.pts, bi = poly.bi;
         if (i > 0) el.style.marginTop = (WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - WK_DROP(WK_CRACK[i - 1]) * W).toFixed(1) + "px";   /* the crack above this row: WK_GAP between the two edges */
         el.style.setProperty("--wk-pad", "0px");
-        const all = wornQuad(el, null, pts, W, "wk-wear-" + i, "--wk-clip", 0, 2, 0.1, poly.end);
+        const all = quad(el, null, pts, "--wk-clip");   /* no red line on the Games rows (main, 2026-11-06) */
+        wearPlate(el, "wk-wear-" + i, pts.slice(0, poly.end).map(function (p, j) { return [p, pts[j + 1]]; }));
         const bl = pts[bi[0]], br = pts[bi[1]];
         el._wkGeo = { xtl: pts[0][0], ytl: pts[0][1], xbl: bl[0], ybl: bl[1], xbr: br[0], ybr: br[1], ba: Math.atan2(bl[1] - br[1], br[0] - bl[0]) * 180 / Math.PI };   /* the Experience shape hangs from this bottom edge (the lowest run, bottom-left to bottom-right) */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
@@ -339,7 +1274,7 @@
   }
 
   /* the Experience + contact shape: one black quad (the owner's drawing, corners as box fractions) whose top edge
-     takes the bottom-edge angle of the last Work row so the two stay parallel (the worn look is wornQuad's);
+     takes the bottom-edge angle of the last Work row so the two stay parallel (the chips are Shapes.wear's);
      a red line runs down the left edge from ~6% above its top. Phone: the long point becomes a mild slant. */
   function xpShape(el) {
     const red = redOf(el);
@@ -372,7 +1307,8 @@
       const dy = hg ? hg.dy : Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
       const pts = phone ? [[x0, dy], [W, 0], [W, H], [0, by]] : [[x0, dy], [W, 0], [0.297 * W, H], [0, by]];
-      wornQuad(el, red, pts, W, "xp-wear", "--xp-clip");
+      quad(el, red, pts, "--xp-clip");
+      wearPlate(el, "xp-wear", [[pts[0], pts[1]]]);
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
     }
     function live() { if (window.matchMedia("(max-width: 1199px)").matches || mode !== false) draw(); }
@@ -415,7 +1351,8 @@
       const c = 0.33 * H;   /* the vertical sides before the slants start */
       const ri = 0.08 * W; rx = W - ri - by * Math.tan(5 * Math.PI / 180);   /* the right side is steep: 5 degrees off vertical, like Experience's */
       const pts = [[tx, H], [0, c], [0, 0], [W - ri, 0], [rx, by]];   /* clockwise, starting at the tip so the worn run is the long left diagonal alone and its chips bite into the plate; the top (which ends 8% of the width short of the right edge), the right side and the short bottom edge stay clean */
-      wornQuad(el, null, pts, W, "op-wear", "--op-clip", 0, 2, 0.03, 1);
+      quad(el, null, pts, "--op-clip");
+      wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the long bottom diagonal alone (tip to the left side), as main has it */
       const el0 = Math.hypot(rx - (W - ri), by), t0 = 35 / el0, t1 = 1 + 30 / el0;   /* the Experience line mirrored: it stops 35 px short of the top corner and sticks 30 px out past the bottom one */
       const l = red.firstChild; l.setAttribute("x1", (W - ri + t0 * (rx - W + ri)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
       l.setAttribute("x2", (W - ri + t1 * (rx - W + ri)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
@@ -438,9 +1375,14 @@
 
   /* a browser without CSS zoom (Firefox before 126) never scales the stage (it stays 1600 wide), so the scale every rect is divided by is 1 there */
   if (window.Stage && !(window.CSS && CSS.supports && CSS.supports("zoom", "1.2"))) window.Stage = { s: function () { return 1; } };
-  function boot() { apply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); const o = document.querySelector(".intro-plate"); if (o) openerShape(o); }
+  function boot() { wearApply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); const o = document.querySelector(".intro-plate"); if (o) openerShape(o); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
+  window.addEventListener("load", function () { wearApply(); });
 
-  window.Shapes = { polygon: polygon, styles: styles, apply: apply, rng: rng };
+  window.Shapes = {
+    rng: rng,
+    apply: wearApply,
+    wear: wear, edgeProfile: edgeProfile, wearPresets: wearPresets, wearKinds: WEAR_KINDS
+  };
 })();

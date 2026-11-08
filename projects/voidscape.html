@@ -16,9 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=283">
-<link rel="stylesheet" href="../css/beacon.css?v=283">
-<link rel="stylesheet" href="../css/play.css?v=283">
+<link rel="stylesheet" href="../css/style.css?v=284">
+<link rel="stylesheet" href="../css/beacon.css?v=284">
+<link rel="stylesheet" href="../css/play.css?v=284">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -27,25 +27,25 @@
   <a class="wordmark" href="../index.html">SF</a>
   <div class="xp-slot" id="xp-slot"></div>
   <nav aria-label="Site">
-    <a data-shape="torn" data-shape-seed="11" href="../index.html#bridge-hero">Bridge</a>
-    <a data-shape="torn" data-shape-seed="12" href="../index.html#work">Games</a>
-    <a data-shape="torn" data-shape-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
-    <a data-shape="torn" data-shape-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="11" href="../index.html#bridge-hero">Bridge</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="12" href="../index.html#work">Games</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
   </nav>
 </header>
 
 <div class="folder-body">
 <main class="case" id="main" data-redlines="case-voidscape">
-  <a class="back" href="../#voidscape">← Back to Work</a>
+  <a class="back" data-banner="tab" data-banner-on="before" data-wear="button" href="../#voidscape">← Back to Work</a>
   <h1>VoidScape</h1>
-  <div class="case-sub"><span class="type-label">First-person roguelike · Unity</span></div>
+  <div class="case-sub"><span class="type-label" data-banner="tab">First-person roguelike · Unity</span></div>
 
     <p>A first-person roguelike where the player writes their own difficulty and the game pays out in
        proportion. Runs, weapons and <span class="key">boons</span> are all rolled, not authored. Two things survive a run: the
        guns you built and the <span class="key">skill tree</span> you paid for with special runs. Everything else is gone when
        you die.</p>
 
-    <video class="clip" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Choosing a run. Every modifier on a mission raises the payout.</p>
 
     <h2>The problem</h2>
@@ -86,7 +86,7 @@
     <p class="caption">The mission console, live: pick a path, press search for a new board, or empower to push a mission further.</p>
 
     <h2>Going deeper</h2>
-    <video class="clip" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Attempting to go deeper. Special runs are the only source of skill points. 0:41.</p>
     <p>The <span class="key">special run</span> is not a mission. It is a path built from bridge pieces out in the void, each one
        shifted and tilted at random, with a chance for any piece to be missing. Monsters wait on every
@@ -99,7 +99,7 @@
        that a lucky build cannot cheese.</p>
 
     <h2>Two progressions</h2>
-    <img class="clip" src="../media/voidscape/skilltree.webp" alt="The skill tree: five rows of plus and minus buttons for max life, chance to locate paths, item drop level, boon drop chance and maximum path mods" width="1600" height="978" loading="lazy">
+    <img class="clip" data-wear="image" src="../media/voidscape/skilltree.webp" alt="The skill tree: five rows of plus and minus buttons for max life, chance to locate paths, item drop level, boon drop chance and maximum path mods" width="1600" height="978" loading="lazy">
     <p class="caption">The skill tree. Five upgrades, paid only with special runs.</p>
     <p>Two kinds of progression run through a save, and they last different lengths of time. <span class="key">Boons</span>
        last one run. They are by far the strongest modifiers in the game, and they are gone when you
@@ -112,7 +112,7 @@
        is keeping a spread of guns in the inventory, so that whatever a run rolls, there is a weapon
        that turns those boons into something.</p>
 
-    <video class="clip" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A boon offer after a fight. Take it, turn it down for 10 health, or pay gun parts to reroll.</p>
 
     <h2>Fifty-odd boons, and most of them cost something</h2>
@@ -139,10 +139,10 @@
        Specials start at a hundredth of the weight of the others, which keeps them rare without a hard
        cap.</p>
 
-    <img class="clip" src="../media/voidscape/shop.webp" alt="Shop screen for a rolled machinegun: base stats and four rolled mods" width="1482" height="988" loading="lazy">
+    <img class="clip" data-wear="image" src="../media/voidscape/shop.webp" alt="Shop screen for a rolled machinegun: base stats and four rolled mods" width="1482" height="988" loading="lazy">
     <p class="caption">A rolled machinegun in the shop. Base stats on the left, one rolled mod per row.</p>
 
-    <video class="clip" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Adding, removing, and scrapping mods at the bench.</p>
 
     <h2>The bench</h2>
@@ -169,7 +169,7 @@
     <p>Spare doorways grow side rooms: encounters, specials, and a rotating set of shops and reward
        rooms, with a symbol on the door saying which.</p>
 
-    <img class="clip" src="../media/voidscape/room.webp" alt="A generated room with catwalks and railings over a lower floor" width="1600" height="904" loading="lazy">
+    <img class="clip" data-wear="image" src="../media/voidscape/room.webp" alt="A generated room with catwalks and railings over a lower floor" width="1600" height="904" loading="lazy">
     <p class="caption">One generated room. Catwalks and drops give the dashes somewhere to go.</p>
 
     <h2>Finding your way</h2>
@@ -186,7 +186,7 @@
        which makes an encounter genuinely hard without making a single enemy stronger. A few of those
        variants roll so rarely that finding them takes many runs.</p>
 
-    <img class="clip" src="../media/voidscape/enemy.webp" alt="Mid-fight in a generated corridor, a red enemy taking hits" width="1600" height="986" loading="lazy">
+    <img class="clip" data-wear="image" src="../media/voidscape/enemy.webp" alt="Mid-fight in a generated corridor, a red enemy taking hits" width="1600" height="986" loading="lazy">
     <p class="caption">Mid-fight in a generated corridor.</p>
 
     <h2>Things floating about</h2>
@@ -228,17 +228,17 @@
        this way.</p>
     <p><a href="https://sebastianfreitas.itch.io/voidscape-prototype">Download the prototype on itch.io →</a></p>
 
-    <video class="clip" src="../media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">One full run on a short mission, from the hub out and back. 1:43, uncut.</p>
 
     <nav class="case-nav" aria-label="More work">
-      <a class="next" rel="next" href="conclusus.html">Next: Conclusus →</a>
+      <a class="next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="conclusus.html">Next: Conclusus →</a>
     </nav>
 </main>
 </div>
 
 <footer>
-  <div class="foot-text slab" data-shape="torn" data-shape-seed="44" data-shape-tear="7" data-redlines="foot-voidscape">
+  <div class="foot-text slab" data-wear="slab" data-seed="44" data-redlines="foot-voidscape">
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
   <p class="rights">The Warlocks © 2017–2026 Sebastião Freitas. All rights reserved.<br>
@@ -246,21 +246,22 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=283"></script>
-<script src="../js/site/xp.js?v=283"></script>
-<script src="../js/site/surge.js?v=283"></script>
-<script src="../js/lib/pacer.js?v=283"></script>
-<script src="../js/site/lazy-video.js?v=283"></script>
-<script src="../js/pages/play.js?v=283"></script>
-<script src="../js/forge/forge-guns.js?v=283"></script>
-<script src="../js/forge/forge-missions.js?v=283"></script>
-<script src="../js/forge/forge.js?v=283"></script>
-<script src="../js/pages/voidscape-bench.js?v=283"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=283"></script>
-<script src="../js/pages/voidscape-boons.js?v=283"></script>
-<script src="../js/pages/voidscape.js?v=283"></script>
-<script src="../js/site/shapes.js?v=283"></script>
-<script src="../js/site/redlines.js?v=283"></script>
+<script src="../js/lib/util.js?v=284"></script>
+<script src="../js/site/xp.js?v=284"></script>
+<script src="../js/site/surge.js?v=284"></script>
+<script src="../js/lib/pacer.js?v=284"></script>
+<script src="../js/site/lazy-video.js?v=284"></script>
+<script src="../js/pages/play.js?v=284"></script>
+<script src="../js/forge/forge-guns.js?v=284"></script>
+<script src="../js/forge/forge-missions.js?v=284"></script>
+<script src="../js/forge/forge.js?v=284"></script>
+<script src="../js/pages/voidscape-bench.js?v=284"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=284"></script>
+<script src="../js/pages/voidscape-boons.js?v=284"></script>
+<script src="../js/pages/voidscape.js?v=284"></script>
+<script src="../js/site/banner.js?v=284"></script>
+<script src="../js/site/shapes.js?v=284"></script>
+<script src="../js/site/redlines.js?v=284"></script>
 <script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "range");</script>
 </body>
 </html>

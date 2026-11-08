@@ -156,6 +156,8 @@
 
     const cardEl = document.createElement("div");
     cardEl.className = "rank-card slab";
+    cardEl.dataset.wear = "slab";
+    cardEl.dataset.seed = "83";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
@@ -227,6 +229,7 @@
     cardEl.appendChild(hint);
 
     document.body.appendChild(veil);
+    if (window.Shapes) Shapes.apply(veil);
     cardEl.dataset.redlines = "rank";
     if (window.RedLines) window.RedLines.draw(cardEl, { kind: "item" });
     requestAnimationFrame(() => veil.classList.add("open"));
@@ -302,10 +305,13 @@
 
     const cardEl = document.createElement("div");
     cardEl.className = "rank-card glimpse-card";
+    cardEl.dataset.wear = "card"; cardEl.setAttribute("data-wear-keep", "");
+    cardEl.dataset.seed = "87";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
     kicker.className = "type-label glimpse-kicker";
+    kicker.dataset.banner = "tab";
     kicker.textContent = "The Void";
     cardEl.appendChild(kicker);
 
@@ -326,14 +332,19 @@
     const keep = document.createElement("button");
     keep.type = "button";
     keep.className = "glimpse-btn glimpse-keep";
+    keep.dataset.wear = "button"; keep.dataset.seed = "84";
+    keep.dataset.banner = "tab"; keep.dataset.bannerOn = "before";
     keep.textContent = "Keep exploring the void";
     choices.appendChild(keep);
 
     const game = document.createElement("a");
     game.className = "glimpse-btn glimpse-game";
+    game.dataset.wear = "button"; game.dataset.seed = "85";
+    game.dataset.banner = "tab"; game.dataset.bannerOn = "before";
     game.href = "#work";
     game.textContent = "See my game projects";
     choices.appendChild(game);
+    if (window.Banner) Banner.apply(cardEl);
 
     // the Experience shape's look: one red line down the slanted left edge, from a bit above the top corner (box %, stroke stays 6 px)
     const NS = "http://www.w3.org/2000/svg";
@@ -350,6 +361,7 @@
     cardEl.appendChild(red);
 
     document.body.appendChild(veil);
+    if (window.Shapes) Shapes.apply(veil);
     requestAnimationFrame(() => veil.classList.add("open"));
 
     const openedAt = performance.now();

@@ -55,9 +55,12 @@
       const aside = document.createElement("aside");
       aside.className = "bnote deep" + (def.wide ? " wide" : "");
       aside.id = def.id;
+      aside.dataset.wear = "card";
+      aside.dataset.seed = String(90 + list.length - 1);
       aside.innerHTML = def.html;
       anchor.parentNode.appendChild(aside);
       noteEls[def.id] = aside;
+      if (window.Shapes) Shapes.apply(aside);
     }
     spawned.add(def.id);
     return true;

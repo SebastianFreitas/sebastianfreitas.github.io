@@ -16,9 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=283">
-<link rel="stylesheet" href="../css/beacon.css?v=283">
-<link rel="stylesheet" href="../css/play.css?v=283">
+<link rel="stylesheet" href="../css/style.css?v=284">
+<link rel="stylesheet" href="../css/beacon.css?v=284">
+<link rel="stylesheet" href="../css/play.css?v=284">
 </head>
 <body class="page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -27,18 +27,18 @@
   <a class="wordmark" href="../index.html">SF</a>
   <div class="xp-slot" id="xp-slot"></div>
   <nav aria-label="Site">
-    <a data-shape="torn" data-shape-seed="11" href="../index.html#bridge-hero">Bridge</a>
-    <a data-shape="torn" data-shape-seed="12" href="../index.html#work">Games</a>
-    <a data-shape="torn" data-shape-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
-    <a data-shape="torn" data-shape-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="11" href="../index.html#bridge-hero">Bridge</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="12" href="../index.html#work">Games</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="13" href="https://github.com/sebastianfreitas">GitHub</a>
+    <a data-banner="tab" data-banner-on="before" data-seed="14" href="mailto:sebsfrets@gmail.com">Email</a>
   </nav>
 </header>
 
 <div class="folder-body">
 <main class="case" id="main" data-redlines="case-sector-zero">
-  <a class="back" href="../#sector-zero">← Back to Work</a>
+  <a class="back" data-banner="tab" data-banner-on="before" data-wear="button" href="../#sector-zero">← Back to Work</a>
   <h1>Sector Zero</h1>
-  <div class="case-sub"><span class="type-label">First-person horror · Unreal 5</span></div>
+  <div class="case-sub"><span class="type-label" data-banner="tab">First-person horror · Unreal 5</span></div>
 
     <p>A first-person horror game set in a single room. A text file is the physics engine. You play
        <span class="key">Brian</span>, sent into a dead research site with no memory of arriving. The terminal, <span class="key">RealityTXT</span>,
@@ -48,7 +48,7 @@
     <p>This page runs from the goals down to the specifics. The bridge notes on the home page carry
        the short version; this is the long one.</p>
 
-    <video class="clip" src="../media/sector-zero/login.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/sector-zero/login.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Credentials come off a note in the room. Tab completion, command history, and a
        real error on a bad path.</p>
 
@@ -66,7 +66,7 @@
        anyone who reads, and the characters get to exist through the things they left behind.</p>
 
     <h2>Say nothing</h2>
-    <video class="clip" src="../media/sector-zero/checkItemsFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/sector-zero/checkItemsFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Every object has a three-character ID and a note left by whoever handled it
        last. Read it, or do not.</p>
     <p>Sector Zero is a <span class="key">sandbox</span>. The game explains almost nothing and never waits for you to do the
@@ -94,7 +94,7 @@
        stay legible.</p>
 
     <h2>Register it or lose it</h2>
-    <video class="clip" src="../media/sector-zero/createEntryFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/sector-zero/createEntryFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Look at an object, read its ID, type create. The object is now a text file,
        and the text file is now the object.</p>
     <p>The goal is simple: <span class="key">register</span> things so the storm, the chaos and the unknown cannot take them.
@@ -130,7 +130,7 @@
        fades as you get better. Early friction is realism. Late friction would just be waste.</p>
 
     <h2>The chair</h2>
-    <video class="clip" src="../media/sector-zero/chairUseFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/sector-zero/chairUseFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Kick, slide, spin, bounce. Tank controls on an office chair.</p>
     <p>Sit and the chair turns to face you, waits half a second, then eases you into the seat with
        the camera. Forward is not a speed, it is a kick in three beats: a weak push, a strong push, a
@@ -144,7 +144,7 @@
        matters.</p>
 
     <h2>Brian is an object</h2>
-    <video class="clip" src="../media/sector-zero/editplayerFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" src="../media/sector-zero/editplayerFinal.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Weight, height, sex, age, password. Save the file and Brian changes.</p>
     <p><span class="key">Brian</span> is a middle-aged man who is heavy and out of shape. He walks slowly. Crouching is slow
        and uncomfortable. That is not a movement setting, it is his <span class="key">worker record</span>: a text file with
@@ -212,13 +212,13 @@
        it.</p>
 
     <nav class="case-nav" aria-label="More work">
-      <a class="next" rel="next" href="voidscape.html">Next: VoidScape →</a>
+      <a class="next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="voidscape.html">Next: VoidScape →</a>
     </nav>
 </main>
 </div>
 
 <footer>
-  <div class="foot-text slab" data-shape="torn" data-shape-seed="43" data-shape-tear="7" data-redlines="foot-sector-zero">
+  <div class="foot-text slab" data-wear="slab" data-seed="43" data-redlines="foot-sector-zero">
   <p>Sebastião Freitas — <a href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a href="https://github.com/sebastianfreitas">GitHub</a> · <a href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a href="../cv.pdf">CV (PDF)</a></p>
   <p class="rights">The Warlocks © 2017–2026 Sebastião Freitas. All rights reserved.<br>
@@ -227,16 +227,17 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=283"></script>
-<script src="../js/site/xp.js?v=283"></script>
-<script src="../js/site/surge.js?v=283"></script>
-<script src="../js/lib/pacer.js?v=283"></script>
-<script src="../js/site/lazy-video.js?v=283"></script>
-<script src="../js/pages/play.js?v=283"></script>
-<script src="../js/pages/sector-zero-records.js?v=283"></script>
-<script src="../js/pages/sector-zero.js?v=283"></script>
-<script src="../js/site/shapes.js?v=283"></script>
-<script src="../js/site/redlines.js?v=283"></script>
+<script src="../js/lib/util.js?v=284"></script>
+<script src="../js/site/xp.js?v=284"></script>
+<script src="../js/site/surge.js?v=284"></script>
+<script src="../js/lib/pacer.js?v=284"></script>
+<script src="../js/site/lazy-video.js?v=284"></script>
+<script src="../js/pages/play.js?v=284"></script>
+<script src="../js/pages/sector-zero-records.js?v=284"></script>
+<script src="../js/pages/sector-zero.js?v=284"></script>
+<script src="../js/site/banner.js?v=284"></script>
+<script src="../js/site/shapes.js?v=284"></script>
+<script src="../js/site/redlines.js?v=284"></script>
 <script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "zero");</script>
 </body>
 </html>

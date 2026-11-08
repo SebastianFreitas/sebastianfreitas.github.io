@@ -109,6 +109,10 @@
   let capTimer = 0, barEl = null, barFill = null, barLabel = null;
 
   const btnWorld = document.getElementById("gate-world");
+  const gateBox = gate.querySelector(".gate-stage");
+  if (gateBox) { gateBox.dataset.wear = "slab"; gateBox.dataset.seed = "81"; }
+  gate.querySelectorAll(".gate-btn").forEach((b) => { b.dataset.wear = "button"; b.dataset.seed = "82"; });
+  if (window.Shapes) Shapes.apply(gate);
   if (btnWorld) {
     btnWorld.addEventListener("click", () => go({
       bridge: true, scroll: "#bridge-hero", el: btnWorld, path: PATH.world,

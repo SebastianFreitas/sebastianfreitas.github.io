@@ -96,8 +96,8 @@ html[data-hud="violet"] {
   border: var(--note-tear) solid transparent; border-left-width: 0; border-right-width: 0;
   --stroke: rgb(4 4 5 / 1);
   background: var(--stroke);
-  clip-path: polygon(0 4px, 22% 0, 52% 5px, 78% 1px, 100% 4px,
-    100% calc(100% - 4px), 74% calc(100% - 1px), 45% calc(100% - 6px), 18% calc(100% - 2px), 0 calc(100% - 5px));
+  clip-path: var(--shape, polygon(0 4px, 22% 0, 52% 5px, 78% 1px, 100% 4px,
+    100% calc(100% - 4px), 74% calc(100% - 1px), 45% calc(100% - 6px), 18% calc(100% - 2px), 0 calc(100% - 5px))); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
   max-height: min(70vh, 30rem);
   opacity: 0; visibility: hidden; pointer-events: none;
@@ -237,7 +237,7 @@ html[data-hud="violet"] {
 .bridge-scroll { isolation: isolate; padding: 0.9rem 0.55rem; color: var(--type-cream); }
 .bridge-scroll::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape-tall);
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--shape, polygon(0 0, 14% min(var(--tear), 24px), 30% 2px, 48% calc(min(var(--tear), 24px) * 0.5), 70% 1px, 84% calc(min(var(--tear), 24px) * 0.4), 100% 0, 100% 50%, 100% 100%, 78% calc(100% - calc(min(var(--tear), 24px) * 0.45)), 58% calc(100% - 2px), 38% calc(100% - min(var(--tear), 24px)), 20% calc(100% - calc(min(var(--tear), 24px) * 0.6)), 0 100%, 0 50%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   pointer-events: none;
 }
 /* ---- setting panel: centered in the open span between the two
@@ -257,7 +257,7 @@ html[data-hud="violet"] {
 }
 .modes-panel::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); opacity: 0.92; clip-path: var(--slab-scrape);
+  background: rgb(4 4 5); opacity: 0.92; clip-path: var(--shape, polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 91% 0, 100% 0, calc(100% - var(--tear)) 18%, 100% 34%, calc(100% - calc(var(--tear) * 0.5)) 50%, 100% 64%, calc(100% - calc(var(--tear) * 0.4)) 82%, calc(100% - 3px) 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%, calc(var(--tear) * 0.6) 82%, 2px 68%, var(--tear) 48%, 0 32%, calc(var(--tear) * 0.4) 14%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   transform: rotate(-3deg); pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) { .modes-panel::before { transform: none; } }
@@ -299,7 +299,7 @@ html[data-hud="violet"] {
 }
 .modes-gear::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); clip-path: var(--slab-scrape-even);
+  background: rgb(4 4 5); clip-path: var(--shape, polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, calc(100% - calc(var(--tear) * 0.4)) 14%, 100% 32%, calc(100% - var(--tear)) 48%, calc(100% - 2px) 68%, calc(100% - calc(var(--tear) * 0.6)) 82%, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 3px 100%, calc(var(--tear) * 0.4) 82%, 0 64%, calc(var(--tear) * 0.5) 50%, 0 34%, var(--tear) 18%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   transition: background-color 0.2s; pointer-events: none;
 }
 .modes-gear:hover, .modes-gear:focus-visible, #bridge-modes.open .modes-gear { opacity: 1; }
@@ -488,7 +488,7 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
 }
 .genesis-skip::before, .genesis-step::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); clip-path: var(--slab-scrape-even); pointer-events: none;
+  background: rgb(4 4 5); clip-path: var(--shape, polygon(0 0, 18% 2px, 36% 0, 55% 3px, 78% 1px, 100% 2px, calc(100% - calc(var(--tear) * 0.4)) 14%, 100% 32%, calc(100% - var(--tear)) 48%, calc(100% - 2px) 68%, calc(100% - calc(var(--tear) * 0.6)) 82%, 100% 100%, 80% calc(100% - 3px), 64% calc(100% - 1px), 50% calc(100% - 2px), 33% calc(100% - 4px), 17% calc(100% - 1px), 3px 100%, calc(var(--tear) * 0.4) 82%, 0 64%, calc(var(--tear) * 0.5) 50%, 0 34%, var(--tear) 18%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; pointer-events: none;
 }
 .genesis-skip:hover { color: var(--type-red-text); }
 .genesis-skip.genesis-pause { left: calc(50% + 10.55rem); min-width: 6rem; }
@@ -520,7 +520,7 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
 }
 .genesis-line::before {
   content: ""; position: absolute; inset: -0.5rem -1.4rem; z-index: -1;
-  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape);
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--shape, polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 91% 0, 100% 0, calc(100% - var(--tear)) 18%, 100% 34%, calc(100% - calc(var(--tear) * 0.5)) 50%, 100% 64%, calc(100% - calc(var(--tear) * 0.4)) 82%, calc(100% - 3px) 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%, calc(var(--tear) * 0.6) 82%, 2px 68%, var(--tear) 48%, 0 32%, calc(var(--tear) * 0.4) 14%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   pointer-events: none;
 }
 
@@ -541,7 +541,7 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   background: var(--type-quiet);
   overflow: hidden;
   position: relative;
-  clip-path: polygon(0 2px, 1% 0, 3% 3px, 97% 1px, 99% 0, 100% 3px, 98% 45%, 100% 70%, 99% 100%, 96% calc(100% - 2px), 4% 100%, 1% calc(100% - 1px), 0 calc(100% - 3px), 2% 55%, 0 35%);
+  clip-path: var(--shape, polygon(0 2px, 1% 0, 3% 3px, 97% 1px, 99% 0, 100% 3px, 98% 45%, 100% 70%, 99% 100%, 96% calc(100% - 2px), 4% 100%, 1% calc(100% - 1px), 0 calc(100% - 3px), 2% 55%, 0 35%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 .genesis-prog i {
   display: block; width: 0; height: 100%;
@@ -584,7 +584,7 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
 .rotate-inner { max-width: 22rem; position: relative; isolation: isolate; padding: 1.6rem 1.8rem; }
 .rotate-inner::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--slab-scrape);
+  background: rgb(4 4 5); opacity: 0.85; clip-path: var(--shape, polygon(0 3px, 14% 1px, 27% 4px, 40% 0, 61% 3px, 82% 2px, 91% 0, 100% 0, calc(100% - var(--tear)) 18%, 100% 34%, calc(100% - calc(var(--tear) * 0.5)) 50%, 100% 64%, calc(100% - calc(var(--tear) * 0.4)) 82%, calc(100% - 3px) 100%, 72% calc(100% - 1px), 58% calc(100% - 4px), 45% calc(100% - 3px), 28% 100%, 13% calc(100% - 2px), 0 100%, calc(var(--tear) * 0.6) 82%, 2px 68%, var(--tear) 48%, 0 32%, calc(var(--tear) * 0.4) 14%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   pointer-events: none;
 }
 .rotate-glyph {

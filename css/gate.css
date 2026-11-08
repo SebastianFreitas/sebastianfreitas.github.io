@@ -58,9 +58,10 @@ body.site-frozen > .topbar {
 /* a plain plate, off centre: rough top and bottom, two straight sides */
 .gate-stage::before {
   background: var(--stroke);
-  clip-path: polygon(0 6px, 11% 1px, 24% 7px, 38% 0, 52% 5px, 69% 1px, 83% 8px, 100% 3px,
+  clip-path: var(--shape, polygon(0 6px, 11% 1px, 24% 7px, 38% 0, 52% 5px, 69% 1px, 83% 8px, 100% 3px,
     100% calc(100% - 4px),
-    90% calc(100% - 7px), 77% calc(100% - 1px), 61% calc(100% - 9px), 47% calc(100% - 2px), 30% calc(100% - 6px), 14% 100%, 0 calc(100% - 3px));
+    90% calc(100% - 7px), 77% calc(100% - 1px), 61% calc(100% - 9px), 47% calc(100% - 2px), 30% calc(100% - 6px), 14% 100%, 0 calc(100% - 3px)));
+  -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 @media (max-width: 640px) {
   .gate-stage { width: min(34rem, 78vw); transform: translate(-1vw, 4vh); }
@@ -165,7 +166,7 @@ body.site-frozen > .topbar {
 }
 .gate-btn::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: transparent; clip-path: var(--btn-scrape);
+  background: transparent; clip-path: var(--shape, polygon(0% 3%, 40% 0%, 82% 2%, 100% 0%, calc(100% - 4px) 34%, 100% 62%, calc(100% - 5px) 100%, 45% 97%, 0% 100%, 1px 50%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   transition: background-color 0.2s;
 }
 .gate-btn:hover { color: var(--type-red-text); }
