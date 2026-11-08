@@ -1,10 +1,10 @@
 /* ===========================================================
-   SITE GATE — first visit only.
+   SITE GATE — shown on every homepage load.
 
-   entry.js decides in <head> whether the gate shows at all:
-   only a first visit to the bare homepage gets the boot log and
-   the two paths. Back, reload, #work / #experience links and
-   returning visitors go straight in, in their last sector.
+   entry.js classifies the load: only a first visit gets the boot
+   log; back, reload, #work / #experience links and returning
+   visitors get the panel and the loading bar at once, then enter
+   in their last sector and place.
    Escape or a top bar link leaves the gate.
    path-projects: +1 on reaching #work.
    path-world: +1 on picking Setting (bridge.js also awards it
@@ -28,6 +28,8 @@
   };
 
   let autoTimer = 0;
+  /* only a first visit gets the boot log and the scroll to the hero; every other load keeps its place */
+  const first = entry.kind === "first";
 
   /* the heavy first-time work, four tasks; onStep(done, total) after each one */
   const WARM_CAP_MS = 8000;
@@ -55,7 +57,7 @@
     document.body.classList.remove("site-frozen");
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
-    if (window.XP) XP.seen();
+    if (window.XP && entry.kind !== "deeplink") XP.seen();
   }
 
   function pick(opts) {
@@ -65,11 +67,11 @@
         bridge: opts.bridge !== false,
         auto: !!opts.auto,
         mode: opts.mode || null,
-        entry: "gate",
+        entry: first ? "gate" : entry.kind,
         view: entry.view,
       },
     }));
-    if (opts.scroll) {
+    if (opts.scroll && first) {
       const target = document.querySelector(opts.scroll);
       if (target) target.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
     }
@@ -127,19 +129,6 @@
     if (e.key !== "Escape" || gate.classList.contains("done")) return;
     e.preventDefault();
     pick({ bridge: true, mode: "void" });
-  }
-
-  /* skip the gate: no freeze, no boot, no award, same sector as last time */
-  if (entry.kind !== "first") {
-    gate.classList.add("done");
-    document.documentElement.classList.add("gate-done");
-    document.dispatchEvent(new CustomEvent("site:enter", {
-      detail: { bridge: true, auto: true, mode: entry.sector, entry: entry.kind, view: entry.view },
-    }));
-    /* the same warm-up, in idle time after load */
-    const idle = () => { if (window.requestIdleCallback) requestIdleCallback(() => warmUp(), { timeout: 3000 }); else setTimeout(() => warmUp(), 600); };
-    if (document.readyState === "complete") idle(); else addEventListener("load", idle, { once: true });
-    return;
   }
 
   addEventListener("keydown", onGateKey, true);
@@ -222,7 +211,7 @@
     if (n >= full.length) { idx++; lineEl = null; hold = 0.13; }
   }
 
-  const known = !!(window.XP && XP.known);
+  const known = !first || !!(window.XP && XP.known);
   if (known) {
     if (shellEl) shellEl.classList.add("out");
     revealPanel();

@@ -1,7 +1,6 @@
 /* ===========================================================
-   ENTRY — decides, before the body is parsed, whether this load
-   shows the gate. Loaded in <head>, right after xp.js, so the gate
-   is hidden before it can paint.
+   ENTRY — classifies this load. Every load shows the gate; only a
+   "first" visit gets the boot log. Loaded in <head>, right after xp.js.
 
      restore    Back / Forward / reload, and this tab saved a view
      deeplink   the URL targets a section (#work, #experience)
@@ -37,9 +36,6 @@ window.SiteEntry = (function () {
   else if (window.XP && XP.known) kind = "returning";
 
   const sector = "void";
-
-  if (kind !== "first") document.documentElement.classList.add("gate-done");
-
 
   return { kind, sector, view };
 })();

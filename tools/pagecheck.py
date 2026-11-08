@@ -121,17 +121,17 @@ def main():
             page.on("response", on_response)
 
             page.goto(f"{base}/#{frag}" if frag else f"{base}/")
-            if frag:
-                page.wait_for_selector(f"#{frag}.open")
             page.wait_for_load_state("load")
             page.wait_for_timeout(1500)
-            if not frag and page.query_selector("#gate-world"):
+            if page.query_selector("#gate-world"):
                 try:
                     page.wait_for_selector("#gate-panel.on", timeout=10000)
                     page.click("#gate-world")
                     page.wait_for_timeout(2500)
                 except Exception:
                     pass
+            if frag:
+                page.wait_for_selector(f"#{frag}.open")
             perf = page.evaluate("window.__pc")
             res = page.evaluate(CHECKS, bool(frag))
             browser.close()

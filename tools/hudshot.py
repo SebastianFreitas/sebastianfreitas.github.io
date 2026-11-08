@@ -84,6 +84,7 @@ def run(a):
             snap.set_view(page, "void", x)
             page.reload()
             page.wait_for_load_state("load")
+            snap.press_gate(page)
             snap.settle(page, 2500)
             if a.claimed:
                 page.evaluate("window.depthsReveal && depthsReveal()")

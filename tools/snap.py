@@ -114,6 +114,21 @@ def enter_via_gate(page, base, button="#gate-world"):
     settle(page, 2500)
 
 
+def press_gate(page, after=2500):
+    """A homepage load behind the entry gate (every load shows it): run the clock
+    until the button is ready, press it, then run `after` ms (the +1 landing;
+    0 for a scene that times itself from the press)."""
+    settle(page, GATE_BOOT)
+    page.wait_for_selector("#gate-panel.on", timeout=15000)
+    for _ in range(150):
+        if page.evaluate("!document.getElementById('gate-world').hasAttribute('aria-disabled')"):
+            break
+        page.clock.run_for(100)
+    page.click("#gate-world")
+    if after:
+        settle(page, after)
+
+
 def rest(page):
     """Wait for a smooth scroll to stop: it runs off the faked clock, so the
     shot has to wait for it in real time or it lands mid-flight."""
@@ -354,6 +369,7 @@ def bridge_camera(mode, label, pick):
         set_view(page, mode, x)
         page.reload()
         page.wait_for_load_state("load")
+        press_gate(page)
         settle(page, 2500)
         if label.startswith("bnote-"):
             open_note(page, label)
@@ -375,6 +391,7 @@ def scene_bridge_unclaimed(browser, base, out_dir):
     set_view(page, "void", world_map(page)["marks"][0]["x"])
     page.reload()
     page.wait_for_load_state("load")
+    press_gate(page)
     settle(page, 2500)
     shot(page, out_dir, "bridge-void-unclaimed")
     ctx.close()
@@ -392,6 +409,7 @@ def bridge_phone(name, viewport, mark=None):
         set_view(page, "void", x)
         page.reload()
         page.wait_for_load_state("load")
+        press_gate(page)
         settle(page, 2500)
         if mark:
             open_note(page, mark)
@@ -425,6 +443,7 @@ def genesis_beat(bid):
         page = genesis_page(browser, base)
         page.goto(f"{base}/?genesis=1&gbeat={bid}")
         page.wait_for_load_state("load")
+        press_gate(page, 0)
         settle(page, 1500)
         shot(page, out_dir, f"genesis-{bid}")
     return fn
@@ -447,6 +466,7 @@ def genesis_scene(sid):
         page = genesis_page(browser, base)
         page.goto(f"{base}/?genesis=1&gscene={sid}")
         page.wait_for_load_state("load")
+        press_gate(page, 0)
         settle(page, 120)
         wait_scene(page)
         shot(page, out_dir, f"genesis-scene-{sid}")
@@ -469,6 +489,7 @@ def work_hover_scene(browser, base, out_dir):
     ctx, page = new_ctx(browser, nav.DESKTOP)
     page.goto(f"{base}/#voidscape")
     page.wait_for_load_state("load")
+    press_gate(page)
     settle(page, 600)
     page.hover("a.obj[href='projects/voidscape.html']")
     settle(page, 1500)

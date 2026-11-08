@@ -21,7 +21,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
-- the gate, first-visit gate: js/site/entry.js (decision), js/site/intro.js (UI), css/gate.css
+- the gate (shows every visit, boot log first visit only): js/site/entry.js (load kind), js/site/intro.js (UI), css/gate.css
 - the level chip, rank card, level burst: js/site/xp.js (chip, ranks), js/site/surge.js (burst, card), css/beacon.css
 - the cutscene journal (gear/folder button and its panel): js/bridge/bridge-panel.js
 - the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
@@ -101,8 +101,8 @@ shares `Gen`:
 | File | Purpose | Publishes / uses |
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
-| `entry.js` | Head-time gate decision: `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI: boot log, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm`; index clips are not preloaded (lazy-video.js loads one when its row is on screen) | uses `SiteEntry`, `XP` |
+| `entry.js` | Head-time load kind (the gate shows for every kind; only `first` gets the boot log): `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
+| `intro.js` | Entry gate UI, every visit: boot log (first visit only), loading bar, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm` | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
@@ -473,7 +473,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | File | Purpose |
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
-| `css/gate.css` | The entry gate: boot log, then the two paths. index only |
+| `css/gate.css` | The entry gate, every visit: boot log (first visit only), bar, the button. index only |
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |

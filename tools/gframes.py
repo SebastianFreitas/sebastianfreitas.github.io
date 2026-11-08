@@ -49,6 +49,7 @@ if "--full" in opts:
             page.set_viewport_size({"width": 2000, "height": 1009})
             page.goto(f"{base}/?genesis=1&gbeat=break")
             page.wait_for_load_state("load")
+            snap.press_gate(page, 0)
             snap.settle(page, 120)
             page.evaluate("Math.random = () => 0.5")   # shake only; the scene is seeded
             for t in sorted(times):
@@ -82,6 +83,7 @@ try:
             page.goto(f"{base}/?genesis=1&gscene={scene}&gbeat={bid}" if scene
                       else f"{base}/?genesis=1&gbeat={bid}")
             page.wait_for_load_state("load")
+            snap.press_gate(page, 0)
             snap.settle(page, 120)
             if scene:
                 snap.wait_scene(page, bid)
