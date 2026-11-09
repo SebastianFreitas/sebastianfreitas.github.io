@@ -101,7 +101,35 @@ window.GenOld = (function () {
     });
     return list;
   })();
-  const ORDER = ROSTER.map((o, i) => i).sort((a, b) => ROSTER[a].lane - ROSTER[b].lane);
+  // where each kind stands on the deck at the trade beat, measured so none hides another across the frame:
+  // u = foot x as a fraction of the width around the centre, z = draw rank (low = behind), lane = ground row (-1 back, 0 mid, 1 front; flyers fly at their own height)
+  const STAND = {
+    roller: { u: -0.165, z: 13.5, lane: 1 },
+    mass: { u: -0.2222, z: 1, lane: -1 },
+    husk: { u: -0.07, z: 2, lane: -1 },
+    prism: { u: 0.20, z: 8.6, lane: -1 },
+    slab: { u: 0.245, z: 4, lane: -1 },
+    comb: { u: -0.3345, z: 5, lane: 0 },
+    blinker: { u: -0.2416, z: 6, lane: 0 },
+    strider: { u: -0.135, z: 7, lane: 0 },
+    gentleman: { u: 0.165, z: 8, lane: 0 },
+    knot: { u: -0.045, z: 12.5, lane: 1 },
+    tower: { u: -0.2575, z: 10, lane: 1 },
+    slider: { u: -0.10, z: 5.5, lane: 1 },
+    mound: { u: 0.035, z: 12, lane: 1 },
+    bloom: { u: 0.125, z: 13, lane: 1 },
+    crawler: { u: 0.30, z: 8.5, lane: 1 },
+    pearl: { u: 0.36, z: 15, lane: 1 },
+    veil: { u: -0.1426, z: 16 },
+    chime: { u: 0.0785, z: 17 },
+    eye: { u: -0.0045, z: 18 },
+    floater: { u: 0.0627, z: 19 },
+    bundle: { u: 0.22, z: 20 },
+    swarmling: { u: -0.3578, z: 21 },
+    winged: { u: -0.2788, z: 22 },
+    needle: { u: 0.30, z: 23 },
+  };
+  const ORDER = ROSTER.map((o, i) => i).sort((a, b) => STAND[ROSTER[a].kind].z - STAND[ROSTER[b].kind].z);
 
   /* ---- birth: each grows out of its lying debris part and gets up, staggered by rank ---- */
   // GenRockTitans (loads after this file) is read at call time
@@ -141,21 +169,12 @@ window.GenOld = (function () {
 
   /* ---- placement --------------------------------------------------- */
 
-  // east-goers in a fixed shuffled order, for their staggered start along the walk path
-  const EAST = ROSTER.filter(o => o.side > 0).sort((a, b) => hash1(a.idx * 5 + 2) - hash1(b.idx * 5 + 2));
   const WALK_SPAN = 1.0;
-  // start centre (world u) of an east-goer: packed in shuffled order by body width, then spread over 0.12..0.78 of the frame
-  function eastStartU(o) {
-    const w = e => 0.5 * e.hf * G.H * 1.5 + (e.move === "fly" ? 0.03 * G.W : 0);
-    const c = []; let acc = 0;
-    EAST.forEach((e, k) => { if (k) acc += 0.5 * (w(EAST[k - 1]) + w(e)); c.push(acc); });
-    return -0.38 + 0.66 * c[Math.max(0, EAST.indexOf(o))] / Math.max(1, acc);
-  }
 
   // where a being first stands on the deck (walk 0, scale 1): foot x, foot y and body height in px, for the rock titans' drop step
   function deckSpot(o) {
-    const H = G.H, splitU = o.side * (0.15 + 0.08 * hash1(o.idx * 7 + 1));
-    return { x: sx(o.side < 0 ? splitU : eastStartU(o)), y: o.move === "fly" ? DECK * H - o.airY * H : DECK * H - 2 + o.lane * 0.012 * H, h: o.hf * H };
+    const H = G.H, st = STAND[o.kind];
+    return { x: sx(st.u), y: o.move === "fly" ? DECK * H - o.airY * H : DECK * H - 2 + st.lane * 0.012 * H, h: o.hf * H };
   }
 
   function place(o, env) {
@@ -189,11 +208,11 @@ window.GenOld = (function () {
     const sy = 1;
     let x;
     if (o.side < 0) {
-      x = sx(splitU - o.gait * 2.2 * walk);
+      x = sx(STAND[o.kind].u - o.gait * 2.2 * walk);
     } else {
       if (G.beat <= G.idxOf("walk")) {
         // staggered along the path and moving at one steady pace, so they read one by one and leave in a line
-        const startU = eastStartU(o);
+        const startU = STAND[o.kind].u;
         x = sx(startU + WALK_SPAN * clamp(walk, 0, 1));
       } else {
         // root and after: the e2f713b endpoint, so the root scene is unchanged
@@ -207,7 +226,7 @@ window.GenOld = (function () {
     const phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
     const isFlyer = o.move === "fly";
     if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * (held ? 0 : o.wake < 1 ? o.wake : 1);
-    else y = deckY - 2 + o.lane * 0.012 * H;
+    else y = deckY - 2 + STAND[o.kind].lane * 0.012 * H;
     if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.since("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * (held ? 0 : o.wake < 1 ? o.wake : 1);
     if (part) {   // the cut's bottom-centre sits on the chip's pivot: the feet are offset from it by the lying rotation
       const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]), ib = part.ib;
