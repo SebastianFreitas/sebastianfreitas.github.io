@@ -1166,6 +1166,7 @@
     [[0, 0], [1, 0.035]],
     [[0, 0.035], [1, 0]]
   ];   /* straight 2 degree cuts, alternating, so the red-line side of every row is its tallest edge */
+  const WK_EDGE = [0.06, 0.94];   /* desktop: the Games rows' left and right edges as fractions of the window width (the opener plate uses them too) */
   const WK_GAP = 3, XP_GAP = 4;   /* rem: between rows, and above the Experience shape */
   const WK_LEAN = 0.035;   /* the red-line edge leans: its top corner sits this share of the row width inward */
   const WK_LAST = Math.tan(4.02 * Math.PI / 180);   /* the last row's bottom slope, which the Experience shape's top edge follows */
@@ -1206,9 +1207,9 @@
         const wide = !window.matchMedia("(max-width: 1199px)").matches;
         if (wide && pass === 0) {
           const k0 = window.Stage ? window.Stage.s() : 1, wk = el.parentNode, ws = getComputedStyle(wk), cw = document.documentElement.clientWidth;
-          const natR = wk.getBoundingClientRect().right - parseFloat(ws.paddingRight) * k0, tgt = cw * 0.94;
+          const natR = wk.getBoundingClientRect().right - parseFloat(ws.paddingRight) * k0, tgt = cw * WK_EDGE[1];
           const natL = wk.getBoundingClientRect().left + parseFloat(ws.paddingLeft) * k0;
-          el._wkExt = Math.max(0, (tgt - natR) / k0); el._wkExtL = Math.max(0, (natL - cw * 0.06) / k0);
+          el._wkExt = Math.max(0, (tgt - natR) / k0); el._wkExtL = Math.max(0, (natL - cw * WK_EDGE[0]) / k0);
           el.style.marginRight = (-el._wkExt).toFixed(1) + "px"; el.style.marginLeft = (-el._wkExtL).toFixed(1) + "px";
         } else if (!wide && (el._wkExt || el._wkExtL)) { el._wkExt = el._wkExtL = 0; el.style.marginRight = el.style.marginLeft = ""; }
         const W = el.offsetWidth, H = el.offsetHeight, flip = wide && el.classList.contains("is-flip");   /* flip: text right, picture left (css .is-flip) */
@@ -1328,14 +1329,14 @@
      Games row: the intro's margin puts XP_GAP (4rem) between that point and the row's top edge, measured across the edge (perpendicular). Phone: the box is the
      text's height and the plate is inset from the right so the whole red line shows. */
   function openerShape(el) {
-    const red = redOf(el), XH = 300;   /* desktop height in design px: the text block, its padding and the taper (the closer's 780 is for its content) */
+    const red = redOf(el), XH = 260;   /* desktop height in design px: the text block, its padding and the taper (the closer's 780 is for its content) */
     function draw() {
       const phone = window.matchMedia("(max-width: 1199px)").matches;
       const first = document.querySelector(".work > a.obj[data-wornquad]"), g = first && first._wkGeo, sec = el.parentNode;
       const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), last = rows.length ? rows[rows.length - 1] : null, lg = last && last._wkGeo;
       const k = window.Stage ? window.Stage.s() : 1, cw = document.documentElement.clientWidth / k;
       let W, H, tx, rx;
-      if (phone) { W = el.offsetWidth; H = el.offsetHeight; el.style.width = ""; el.style.marginLeft = ""; el.style.paddingLeft = ""; tx = 0.70 * W; rx = 0.94 * W; }
+      if (phone) { W = el.offsetWidth; H = el.offsetHeight; el.style.width = ""; el.style.marginLeft = ""; el.style.paddingLeft = ""; el.style.paddingTop = ""; tx = 0.70 * W; rx = 0.94 * W; }
       else {
         if (!lg) return;
         /* the closer's width and left edge (hang()), mirrored about the window centre: they place the tip and the lower-right corner; the plate itself spans the window */
@@ -1344,25 +1345,53 @@
         const cl = Math.max(last.getBoundingClientRect().left / k + lg.xbl + gx - 0.028 * cwid, 0.06 * cw);
         const off = cw - cl - cwid;
         W = cw; tx = off + 0.703 * cwid; rx = off + cwid;
-        el.style.width = W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.paddingLeft = (off + 600).toFixed(1) + "px";
+        el.style.width = W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.paddingLeft = (off + 770).toFixed(1) + "px"; el.style.paddingTop = "30px"; el.style.height = XH + "px";
       }
       if (!W || !H) return;
       const by = phone ? 0.75 * H : 0.735 * H;
-      const c = 0.33 * H;   /* the vertical sides before the slants start */
-      const ri = 0.08 * W; rx = W - ri - by * Math.tan(5 * Math.PI / 180);   /* the right side is steep: 5 degrees off vertical, like Experience's */
-      const pts = [[tx, H], [0, c], [0, 0], [W - ri, 0], [rx, by]];   /* clockwise, starting at the tip so the worn run is the long left diagonal alone and its chips bite into the plate; the top (which ends 8% of the width short of the right edge), the right side and the short bottom edge stay clean */
-      quad(el, null, pts, "--op-clip");
-      wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the long bottom diagonal alone (tip to the left side), as main has it */
-      const el0 = Math.hypot(rx - (W - ri), by), t0 = 35 / el0, t1 = 1 + 30 / el0;   /* the Experience line mirrored: it stops 35 px short of the top corner and sticks 30 px out past the bottom one */
-      const l = red.firstChild; l.setAttribute("x1", (W - ri + t0 * (rx - W + ri)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
-      l.setAttribute("x2", (W - ri + t1 * (rx - W + ri)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
+      const l = red.firstChild;
+      let pts;
+      if (phone) {
+        const c = 0.33 * H;   /* the vertical sides before the slants start */
+        const ri = 0.08 * W; rx = W - ri - by * Math.tan(5 * Math.PI / 180);   /* the right side is steep: 5 degrees off vertical, like Experience's */
+        pts = [[tx, H], [0, c], [0, 0], [W - ri, 0], [rx, by]];   /* clockwise, starting at the tip so the worn run is the long left diagonal alone and its chips bite into the plate; the top (which ends 8% of the width short of the right edge), the right side and the short bottom edge stay clean */
+        quad(el, null, pts, "--op-clip");
+        wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the bottom edge alone, with the seeded banner mask like Experience's */
+        const el0 = Math.hypot(rx - (W - ri), by), t0 = 35 / el0, t1 = 1 + 30 / el0;   /* the Experience line mirrored: it stops 35 px short of the top corner and sticks 30 px out past the bottom one */
+        l.setAttribute("x1", (W - ri + t0 * (rx - W + ri)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
+        l.setAttribute("x2", (W - ri + t1 * (rx - W + ri)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
+      } else {
+        /* desktop: the plate runs from the rows' left edge to their right edge (WK_EDGE, the same fractions the rows use): a point on the top edge at the left, a plain vertical right side, the long worn diagonal between the bottom-right corner and the point */
+        const er0 = el.getBoundingClientRect();
+        let xl = WK_EDGE[0] * cw, xr = WK_EDGE[1] * cw;
+        if (g) { const fr = first.getBoundingClientRect(); xl = fr.left / k + g.xtl - er0.left / k; xr = fr.right / k - er0.left / k; }   /* the tip sits exactly on the first row's left edge at its top, the right end on its right edge (a narrow window leaves the row wider than WK_EDGE) */
+        const byy = 245, rsl = 0.035 / 0.965;   /* one clean shard: the right end leans (top 50 px in, bottom on the row edge); the bottom is ONE straight edge at the first row's top-edge slope, so it runs parallel to the row with an even gap; the left end is the corner */
+        pts = [[xr, byy], [xl, byy - rsl * (xr - xl)], [0, 0], [W, 0]];   /* clockwise from the bottom-right corner; the top edge spans the window flush under the bridge, the sides narrow in to the rows' edges */
+        quad(el, null, pts, "--op-clip");
+        wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the bottom edge alone, with the seeded banner mask like Experience's */
+        const ins = W - xr, rs = 34 / Math.hypot(ins, byy);   /* Experience's line sits on its edge but is slid 34 px along it (measured at 2000 wide): it overshoots the top corner and stops short of the bottom one by that much */
+        l.setAttribute("x1", (W - rs * ins).toFixed(1)); l.setAttribute("y1", (rs * byy).toFixed(1));
+        l.setAttribute("x2", xr.toFixed(1)); l.setAttribute("y2", byy.toFixed(1));   /* the line ends on the bottom-right corner, never in the gap */
+      }
       if (!g) return;
       sec.style.marginBottom = "0px";
       const er = el.getBoundingClientRect(), r = first.getBoundingClientRect();
-      const px = er.left / k + pts[0][0], py = er.top / k + pts[0][1], sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
-      const ytop = r.top / k + g.ytl + sl * (px - (r.left / k + g.xtl));
-      const gap = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / Math.cos(a);
-      sec.style.marginBottom = (gap - (ytop - py)).toFixed(1) + "px";
+      const sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
+      let room = 1e9;   /* the least space between the plate's bottom corners (desktop: the bottom-right corner and the tip) and the row's top edge under them */
+      (phone ? [pts[0]] : [pts[0], pts[pts.length - 3]]).forEach(function (p) {
+        const px = er.left / k + p[0], py = er.top / k + p[1];
+        room = Math.min(room, r.top / k + g.ytl + sl * (px - (r.left / k + g.xtl)) - py);
+      });
+      const gap = 0.975 * WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / Math.cos(a);   /* measured: the rendered Games row-to-row join is 46.8 design px, 0.975 of WK_GAP */
+      sec.style.marginBottom = (gap - room).toFixed(1) + "px";
+      if (!phone) {   /* the red line's lower overshoot stays at least 14 px clear of the row's top edge (the row sits gap - room lower than measured above) */
+        const ln = red.firstChild, x2 = +ln.getAttribute("x2"), y2 = +ln.getAttribute("y2"), x1 = +ln.getAttribute("x1"), y1 = +ln.getAttribute("y1");
+        const c0 = r.top / k + g.ytl - er.top / k + sl * (x2 - (r.left / k + g.xtl - er.left / k)) + (gap - room) - y2;
+        if (c0 < 14) {
+          const dx = x2 - x1, dy = y2 - y1, f = Math.min((14 - c0) / (dy - sl * dx), 0.9);
+          ln.setAttribute("x2", (x2 - f * dx).toFixed(1)); ln.setAttribute("y2", (y2 - f * dy).toFixed(1));
+        }
+      }
     }
     draw();
     if (window.ResizeObserver) {
