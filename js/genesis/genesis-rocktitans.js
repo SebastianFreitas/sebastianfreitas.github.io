@@ -33,7 +33,7 @@ window.GenRockTitans = (function () {
   let scratch = null;
 
   function mk() { const c = document.createElement("canvas"); c.width = G.W; c.height = G.H; return c; }
-  function on(tb) { return tb >= 10; }
+  function on(tb) { return tb >= 3.45; }
 
   const tx = (t) => G.sx(0) + t.root * G.H;
   const order = (t) => t.pieces.map((p, i) => i).sort((a, b) => (t.pieces[a].z - t.pieces[b].z) || (a - b));
@@ -331,7 +331,7 @@ window.GenRockTitans = (function () {
   // grow in five held steps: snap 0 is the blast rock alone, then the body group (and the pieces whose snap has come) moves from the rock to its rest pose
   function draw(ctx, tb) {
     if (!on(tb)) return;
-    const tm = tb - 10;
+    const tm = tb - 3.45;
 
     LAYOUT.titans.forEach((t, i) => {
       const k = snaps(i, tm), rp = GenMatter.rockPose(i);

@@ -143,7 +143,7 @@
     }
   }
   // the rock where drawRocks leaves it at the first frame of matter (tb 10, a0 9.5); reads G.H like drawRocks
-  function rockPose(i) { return rockPoseAt(ROCKS[i], 9.5 - ROCKS[i].dl, 0); }
+  function rockPose(i) { return rockPoseAt(ROCKS[i], 3.45 - BLAST_TB - ROCKS[i].dl, 0); }
   // each rock has its own break (or none), cut in its own turning frame, all darker than the bridge
   const RK_LIT = "#2a2a2a", RK_MID = "#232323", RK_SHADE = "#1c1c1c", RK_DARK = "#141414";
   function drawRockAt(ctx, k, x, y, rot, s) {

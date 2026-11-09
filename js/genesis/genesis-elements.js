@@ -328,7 +328,7 @@
     const originX = G.sx(0);
     const sl = slosh(s);
     // break only: no confetti inside the old-one figures or the caption band
-    const gate = window.GenOld && GenOld.figCover && G.BEATS[G.beat].id === "break";
+    const gate = window.GenOld && GenOld.figCover && G.inBreak();
     const band = gate && GenOld.captionBand ? GenOld.captionBand() : null;
 
     // the wave's colours all go under the one deep shadow too; no layer on frames where nothing is alive

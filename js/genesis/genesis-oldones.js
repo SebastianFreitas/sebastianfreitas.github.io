@@ -1167,7 +1167,7 @@ window.GenOld = (function () {
   function riftOn() {
     const id = G.BEATS[G.beat].id;
     if (id !== "break" && id !== "walk") return false;
-    if (id === "break" && G.linear("break") <= 0.20) return false;
+    if (id === "break" && G.secs("break") <= 0.20 * G.BREAK_SECS) return false;
     if (G.reduced) return true;
     return Math.floor(G.local * 3) % 7 !== 3;
   }
@@ -1376,7 +1376,7 @@ window.GenOld = (function () {
   // the fragments are no longer drawn, so nothing covers the dust
   function figCover() { return 0; }
   // the measured caption band in canvas px, or null
-  function captionBand() { return G.BEATS[G.beat].id === "break" ? CAP_BAND : null; }
+  function captionBand() { return G.inBreak() ? CAP_BAND : null; }
 
   const CAP_CLIP = { on: false, x0: 0, x1: 0, y0: 0, y1: 0 };
 

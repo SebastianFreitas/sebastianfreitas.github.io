@@ -510,7 +510,12 @@ window.Genesis = (function () {
     if (camRateOverride != null) camRate = camRateOverride;
     const cur = BEATS[G.beat];
     const zk = (cur && ZOOM[cur.id]) || [1, 1];
+    const tbz = G.secs("break"), iBr = G.idxOf("break");
+    // break and elements zoom keep their old 6 s and 4 s, running on under matter and trade (trade's own push-in takes over by max)
+    const oldZ = tbz < 6 ? mix(1.00, 1.05, smooth(tbz / 6)) : tbz < 10 ? mix(1.05, 0.97, smooth((tbz - 6) / 4)) : 1;
     const zoom = G.reduced ? 1
+      : G.beat >= iBr && G.beat < G.idxOf("trade") ? Math.max(1, oldZ)
+      : G.beat === G.idxOf("trade") ? Math.max(1, oldZ, mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1))))
       : G.beat === G.idxOf("enter") ? ENTER_ZOOM[enterStep()]
       : Math.max(1, mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1))));   // never below 1: a pulled-back frame shows dark strips beside the sea and bridge
     return { target, rate: camRate, zoom };
@@ -605,7 +610,7 @@ window.Genesis = (function () {
     }
 
     const uDrawn = since("drawn");
-    const uBreak = since("break");
+    const uBreak = G.beat < idxOf("break") ? 0 : smooth(clamp(G.secs("break") / G.BREAK_SECS, 0, 1));   // pinned to the old 6 s
     const uWalk  = since("walk");
     const uRoot  = since("root");
     const uSwarm = since("enter");
@@ -658,7 +663,7 @@ window.Genesis = (function () {
       drawPoint(ctx, pointVis, 0, tension, implode);
 
       /* the instant the point breaks: a kick; the flash, ring and shake are drawn from tb */
-      const breakLin = linear("break");
+      const breakLin = G.beat < idxOf("break") ? 0 : clamp(G.secs("break") / G.BREAK_SECS, 0, 1);   // pinned to the old 6 s
       if (breakLin > 0.20 && !broke) {
         broke = true;
         G.zoomKick = Math.max(G.zoomKick, 0.05);

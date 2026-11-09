@@ -29,9 +29,9 @@ window.Gen = (function () {
       line: "Only a point, and all that would ever be inside it. Then the span, cold and straight: the first law." },
     { id: "drawn", dur: 7.0, tag: "I · Before the record",
       line: "Only a point, and all that would ever be inside it. Then the span, cold and straight: the first law." },
-    { id: "break", dur: 6.0, tag: "III · The breaking",
+    { id: "break", dur: 3.45, tag: "III · The breaking",
       line: "The point broke. What came out of it we cannot name. It had no colour of its own, and no shape that would hold." },
-    { id: "elements", dur: 4.0, tag: "IV · What had no body",
+    { id: "elements", dur: 0, tag: "IV · What had no body",
       line: "First came what had no body: the dust, the air, the wind, the sound, the colour and the light. No law held for long, and every law changed its mind." },
     { id: "matter", dur: 2.5, tag: "V · Matter",
       line: "Then came matter: flesh, and stone, and things that were both. It floated, it fell, it broke. Small lives crawled out of it and died where they crawled." },
@@ -384,6 +384,10 @@ window.Gen = (function () {
   };
 
   G.sx = function (u) { return (u - G.cam) * G.W + G.W * 0.5; };
+
+  /* the break plays on for 6 s of its own clock (secs("break")) though the beat is cut short: pinned ramps and gates read this */
+  G.BREAK_SECS = 6;
+  G.inBreak = function () { return G.beat >= G.idxOf("break") && G.secs("break") < G.BREAK_SECS; };
 
   G.beatDur = function (id) {
     const b = G.BEATS[G.idxOf(id)];
