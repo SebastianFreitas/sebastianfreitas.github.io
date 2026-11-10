@@ -9,8 +9,8 @@ section when you need it.
 ## Coordinator
 
 The main session plans, delegates, decides and talks to the owner; every
-token in it is paid again each turn. It never reads source, rules files,
-logs or images, runs verify only as a one-line spot check (Run step 4),
+token in it is paid again each turn. It never reads source, rules files
+or logs (pictures it may: Token rules), runs verify only as a one-line spot check (Run step 4),
 and makes at most two quick lookups (a grep, a short range) before
 delegating; more goes to `Explore`. Agent prompts name paths, never
 pasted content. Agents write the full report to a file and return at
@@ -155,7 +155,8 @@ detail: playbook "Run".
    1. **Name:** the feature in plain words, then the branch (and PR in cloud).
    2. **How it looks:** one or two screenshots the implementer took
       (tools named in `CLAUDE.md`) outside the repo, sent with
-      SendUserFile (else their paths); never Read here.
+      SendUserFile (else their paths), with one line on what this
+      window saw in them (Token rules).
    3. **Try:** one `bash` block, one command from your mode file, and
       one line on where to look and what to do.
    4. **Commit:** one `bash` block from your mode file, or which commit
@@ -180,8 +181,9 @@ Checks on finished work do not change. `reviewer` still runs where Run
 step 5 says and `review-guard.py` still refuses the commit without it:
 it reads a spec, so save the owner's words and what done means as
 `.claude/specs/raw.md`, name that and the changed paths, and fix a gap
-here. `look-judge` still judges every look. All other hooks and rules
-hold.
+here. Looks follow Token rules: this window opens the pictures itself,
+and may call `look-judge` for a second opinion. All other hooks and
+rules hold.
 The window's line is 175k; past it, hand off with a go prompt that
 starts `raw:` instead of `go:`, so the next window stays raw. The report
 keeps its five parts.
@@ -248,16 +250,26 @@ subagent runs in the foreground (playbook Delegation).
 - Numbers before pictures: a view a tool measures (pixel count, compare
   against a baseline) is judged by its number. A subagent reads a
   picture only for a look no tool measures, once, with one line on what
-  it shows, never one already described. The main session never Reads
-  an image: it passes the path on.
-- **The main session is blind to pictures.** It never says how a result
-  looks from an implementer's description or its own guess: every look
-  question (after a visual change, or when the owner asks how something
-  looks) goes to a fresh `look-judge` (Opus medium, its agent file), with
-  the shot paths and the owner's words or the plan's Pass test. Its
-  verdict is what the owner hears, with the shots sent by SendUserFile.
-  A picture the owner attached in chat is the one exception: that one
-  the main session sees.
+  it shows, never one already described.
+- **Looks are judged by someone who knows what was asked** (owner,
+  2026-11-10: the judges *"dont understand whats being asked about the
+  picutre htye have no context"*, so the owner kept resending pictures
+  in chat). An app window's main session may Read a picture itself: it
+  knows what the owner asked, what changed and what was wrong before,
+  so it opens the shots that answer a look question (after a visual
+  change, when the owner asks how something looks, before the report)
+  and says what it sees. It never says how a result looks from an
+  implementer's description or a guess. Each picture once, and only
+  the ones the question needs.
+- **A fresh `look-judge`** (Opus medium, its agent file) is the second
+  opinion: optional in an app window (use it when you directed the fix
+  and want eyes that owe it nothing), required at a plan's look phases,
+  where nobody watches and a headless phase session cannot Read
+  pictures. Its prompt always carries the context, never just paths
+  and a sentence: what the thing is and what each shot shows, the
+  owner's words on the look verbatim (earlier complaints too), what
+  changed this round, and the before or reference shot when one
+  exists. The shots go to the owner by SendUserFile either way.
 - A new file, moved function or new export gets its MAP.md row fixed in
   the same commit (branches: see your mode file). Rows hold purpose and
   exports, no line counts, no line over 300 characters (Grep prints

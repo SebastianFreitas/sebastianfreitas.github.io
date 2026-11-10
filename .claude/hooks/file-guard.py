@@ -28,6 +28,8 @@ repo is allowed.
   report file only, and nothing but prompt text kept them out of source
   (review 2026-10-05). A file outside any repo (scratchpad) stays allowed.
   A look-judge may Read images anywhere: judging pictures is its job.
+  So may an app window's main session (owner, 2026-11-10); a headless
+  plan phase (AUTOPLAN=1) may not, its looks go to the look-judge.
 - A Bash or PowerShell write to .claude/handoff.md: it skipped the cap
   above; write the handoff with Write or Edit. Main session and subagents.
 - Bash and PowerShell writes to a source or generated file (redirects, tee,
@@ -87,7 +89,7 @@ REPORT_ONLY_AGENTS = {"reviewer", "plan-reviewer", "look-judge"}
 # .godot/ shots included (phase 11 of van-interior-salvage copied shots to
 # %TEMP% only to get past the binary rule, 2026-10-07).
 IMAGE_READERS = {"look-judge"}
-MAIN_NO_READ = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tga", ".exr", ".hdr"}
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tga", ".exr", ".hdr"}
 REPORTS_REL = ".claude/specs/reports/"
 
 
@@ -404,13 +406,17 @@ def main() -> None:
         path = os.path.join(cwd, path)
     path = os.path.abspath(path)
 
-    # Main session never Reads an image, anywhere (scratchpad shots too):
-    # one picture costs more than most specs (workflow.md Token rules).
-    if tool_name == "Read" and not d.get("agent_id") and ext(path) in MAIN_NO_READ:
-        deny("Main session: images are never Read here; pass the path on "
-             "(SendUserFile for the owner, or an agent's prompt).")
+    # An app window's main session may Read an image anywhere (owner,
+    # 2026-11-10: "if the main llm wants to judge the pictures itself then
+    # it should be able to"); it holds the context a judge lacks. A
+    # headless plan phase (AUTOPLAN=1) still may not: nobody watches it, so
+    # its looks go to the look-judge (run.md "Verify in a phase").
+    if tool_name == "Read" and not d.get("agent_id") and ext(path) in IMAGE_SUFFIXES:
+        if os.environ.get("AUTOPLAN") == "1":
+            deny("Plan phase session: images are not Read here; the "
+                 "look-judge judges them (run.md \"Verify in a phase\").")
         return
-    if tool_name == "Read" and d.get("agent_id") and ext(path) in MAIN_NO_READ \
+    if tool_name == "Read" and d.get("agent_id") and ext(path) in IMAGE_SUFFIXES \
             and (d.get("agent_type") or "").split(":")[-1] in IMAGE_READERS:
         return
 

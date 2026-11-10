@@ -169,7 +169,11 @@ shows, and never re-read a picture an earlier phase or session already
 described. **The Pass test and look checks** go to the `look-judge`
 (prompt: plan path, phase, the Pass test statements this phase's
 Verification names, by number, each shot's path with its view and seed,
-the report path, earlier verdicts and owner replies), never to the
+the report path, and always the context: what the thing is and what
+each shot shows, the owner's words on the look verbatim from the Brief
+and their replies on earlier pictures, what this phase changed, earlier
+verdicts, and the before or reference shot's path when one exists),
+never to the
 implementer, which looks for defects, not for the Brief. The judge
 reports the other statements as not judged yet; only a named one can
 FAIL the phase. A FAIL gets the
