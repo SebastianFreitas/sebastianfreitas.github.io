@@ -698,6 +698,95 @@
             q.forEach(function (p, j) { const c = at(sc + dir * p[0] * LL, p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
             g.closePath(); if (!mute) g.fill();
           };
+          if (P.spread) {
+            /* row-top plates: four to seven chips on the top run (the Experience box one: three to five, on 0.12-0.88 of its top run), away from the corners: one big tear, one or two medium tears, the rest small nicks, each an angular flake; a row with a picture keeps them on its text side, clear of the picture and the corners */
+            const kr = rng(String(preset) + "|" + seed + "|k"), cn = seed === "xp-wear" ? 9 : 4 + Math.floor(kr() * 4), nmed = 1 + (kr() < 0.5 ? 1 : 0);
+            let sa = sIn + (seed === "xp-wear" ? 0.08 : 0.15) * vis, sb = sIn + (seed === "xp-wear" ? 0.92 : 0.85) * vis;
+            if (opts && opts.free) {
+              const fl = opts.free[0] * dpr, fh = opts.free[1] * dpr;
+              let a = -1, b = -1;
+              for (let s = sIn; s <= sOut; s += 1) { const x = at(s, 0)[0]; if (x >= fl && x <= fh) { if (a < 0) a = s; b = s; } }
+              if (a >= 0) { sa = a; sb = b; }
+            }
+            sa = Math.max(sa, sIn + 0.1 * vis); sb = Math.min(sb, sOut - 0.1 * vis);   /* never nearer a run end than a tenth of the run: past it the edge is a corner or off the plate */
+            /* each chip is a short stretch of the label wear's torn edge (banner.js TAB_CLIP: an uneven jagged floor, a steep wall and a long one, no symmetric V); the profile maths are ported here, seeded like the rest of this wear, since the banner's edge is a fixed clip polygon */
+            const chipEdge = function (dd, big) {
+              /* a tear: big ones have 4-7 floor vertices at uneven steps and depths (small reversals allowed) and a vertex off the line in each wall; nicks have 2-3 */
+              const k = big ? 4 + Math.floor(rnd() * 4) : 2 + Math.floor(rnd() * 2), gp = [];
+              let tot = 0;
+              for (let j = 0; j <= k; j++) { const gq = 0.35 + rnd() * 1.1; gp.push(gq); tot += gq; }
+              const fl = [];
+              let x = 0.06 + rnd() * 0.06, last = 0.5;
+              for (let j = 0; j < k; j++) {
+                x += gp[j] / tot * 0.82;
+                let h = j === 0 ? 0.55 + rnd() * 0.45 : j === k - 1 ? 0.2 + rnd() * 0.4 : 0.25 + rnd() * 0.75;
+                if (Math.abs(h - last) < 0.12) h = h > 0.6 ? h - 0.2 : h + 0.2;
+                fl.push([x, h]); last = h;
+              }
+              const xe = Math.max(x + 0.06, 0.92 + rnd() * 0.08), pr = [[0, 0]];
+              if (big) pr.push([fl[0][0] * (0.35 + rnd() * 0.3), fl[0][1] * (rnd() < 0.5 ? 0.12 + rnd() * 0.2 : 0.6 + rnd() * 0.25)]);
+              fl.forEach(function (p) { pr.push(p); });
+              if (big) { const lf = fl[fl.length - 1]; pr.push([lf[0] + (xe - lf[0]) * (0.35 + rnd() * 0.3), lf[1] * (rnd() < 0.5 ? 0.1 + rnd() * 0.25 : 0.55 + rnd() * 0.25)]); }
+              pr.push([xe, 0]);
+              const mx = Math.max.apply(null, pr.map(function (p) { return p[1]; }));
+              return pr.map(function (p) { return [p[0] / xe, p[1] / mx * dd]; });
+            };
+            const placed = [], span = sb - sa, xpw = seed === "xp-wear";
+            /* the Experience box: 6-9 chips in three uneven clusters, one per third of the run; one big tear, two or three medium tears in different clusters, the rest nicks of 6 px or more */
+            let xplan = null;
+            if (xpw) {
+              const nx = 6 + Math.floor(kr() * 4), cs = [1, 1, 1];
+              for (let j = 3; j < nx; j++) { let q = Math.floor(kr() * 3); while (cs[q] >= 4) q = (q + 1) % 3; cs[q]++; }
+              if (cs[0] === cs[1] && cs[1] === cs[2]) { cs[0]--; cs[1]++; }
+              const bc = Math.floor(kr() * 3), m3 = kr() < 0.5, mx = cs.indexOf(Math.max.apply(null, cs)), th = span / 3;
+              xplan = [];
+              for (let k = 0; k < 3; k++) {
+                const items = [];
+                for (let j = 0; j < cs[k]; j++) {
+                  const big = k === bc && j === 0, med = !big && ((j === 0) || (m3 && k === mx && j === 1));
+                  const dd = big ? (13 + kr() * 7) * dpr : med ? (9 + kr() * 5) * dpr : (6 + kr() * 3) * dpr;
+                  const LL = Math.min(big ? (40 + kr() * 50) * dpr : med ? (20 + kr() * 15) * dpr : dd * (2.5 + kr() * 2), vis * 0.07);
+                  items.push({ L: LL, dd: dd, tear: big || med });
+                }
+                let tot = 0;
+                items.forEach(function (it) { it.gap = it.L * (0.3 + kr() * 0.6); tot += it.L + it.gap; });
+                tot -= items[items.length - 1].gap;
+                let x = sa + k * th + kr() * Math.max(0, th - tot);
+                /* a chip that would pass its own third or the run's limits is dropped (narrow edges get fewer chips) */
+                const lim = Math.min(sb, sa + (k + 1) * th) + 1;
+                items.forEach(function (it) { it.c = x + it.L / 2; x += it.L + it.gap; if (it.c - it.L / 2 >= sa - 1 && it.c + it.L / 2 <= lim) xplan.push(it); });
+              }
+            }
+            for (let i = 0; i < cn; i++) {
+              if (xplan && i >= xplan.length) break;
+              /* one big tear per edge (the first), then one or two medium tears (20-35 px wide, 8-12 px deep), the rest small nicks */
+              const big = i === 0, med = !big && i <= nmed, tear = xplan ? xplan[i].tear : big || med;
+              const dd = xplan ? xplan[i].dd : big ? (13 + rnd() * 7) * dpr : med ? (8 + rnd() * 4) * dpr : (3 + rnd() * 5) * dpr;
+              const LL = xplan ? xplan[i].L : Math.min(big ? (40 + rnd() * 50) * dpr : med ? (20 + rnd() * 15) * dpr : dd * (2.5 + rnd() * 2), vis * 0.07, span * (cn > 1 ? 0.5 : 0.9));
+              let c0 = xplan ? xplan[i].c : -1;
+              for (let t = 0; t < 30 && c0 < 0; t++) {
+                let c = sa + LL / 2 + rnd() * Math.max(0, span - LL);
+                if (placed.length && rnd() < 0.5) { const q = placed[placed.length - 1]; c = q.c + (rnd() < 0.5 ? -1 : 1) * ((q.L + LL) / 2 + LL * (0.25 + rnd() * 0.9)); }
+                if (c - LL / 2 < sa - 1 || c + LL / 2 > sb + 1) continue;
+                if (placed.every(function (q) { return Math.abs(c - q.c) > (q.L + LL) / 2 + LL * 0.2; })) c0 = c;
+              }
+              if (c0 < 0 || (xplan && !placed.every(function (q) { return Math.abs(c0 - q.c) > (q.L + LL) / 2; }))) continue;
+              placed.push({ c: c0, L: LL });              const fl2 = rnd() < 0.5, pr = chipEdge(dd, tear);
+              g.beginPath();
+              [[0, -2]].concat(pr, [[1, -2]]).forEach(function (p, j) { const c = at(c0 - LL / 2 + (fl2 ? 1 - p[0] : p[0]) * LL, p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
+              g.closePath(); if (!mute) g.fill();
+              /* now and then a tiny crumb (2-3 px) right beside a chip */
+              if (!xpw && i === 0 && rnd() < 0.35) {
+                const cs = (rnd() < 0.5 ? -1 : 1), cx = c0 + cs * (LL / 2 + (3 + rnd() * 3) * dpr), cl = 5 * dpr, ch = (2 + rnd()) * dpr;
+                if (cx - cl / 2 > sa && cx + cl / 2 < sb && placed.every(function (q) { return Math.abs(cx - q.c) > q.L / 2 + cl / 2 + dpr; })) {
+                  g.beginPath();
+                  [[cx - cl / 2, -2], [cx - cl / 2, 0], [cx - cl * (0.1 + rnd() * 0.2), ch], [cx + cl / 2, 0], [cx + cl / 2, -2]].forEach(function (p, j) { const c = at(p[0], p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
+                  g.closePath(); if (!mute) g.fill();
+                }
+              }
+            }
+            el._wearChips = placed.length;
+          } else {
           mute = !on("tl"); put(sIn, 1, Math.min(dS * (2 + rnd() * 2), vis * 0.35), dS, true);
           const d2 = bd * (0.6 + rnd() * 0.4);
           mute = !on("tr"); put(sOut, -1, Math.min(d2 * (2 + rnd() * 2), vis * 0.35), d2, true);
@@ -709,6 +798,7 @@
           for (let i = 0, n = bk > 1 ? Math.round(vis / dpr / (60 * bk)) : 0; i < n; i++) {
             const dd = (1.5 + sr() * 1.5) * bk * dpr, LL = dd * (2 + sr() * 2);
             put(sIn + (0.08 + 0.84 * sr()) * vis - LL / 2, 1, LL, dd, false);
+          }
           }
           mute = false;
         } else if (sp.c === 0) { bite(sIn, 1, L, d); wearSites.push("tl"); }
@@ -1141,7 +1231,14 @@
   }
   /* wear the plate's top edge once per box size (draw runs on every resize) */
   function wearPlate(el, seed, edges, flags) {
-    if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight) wear(el, "row-top", seed, { edges: edges, flags: flags });
+    if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight) {
+      /* the chips go on the text side of the top edge: the part not under the row picture, 24 px clear of it and of the corner */
+      const shot = el.querySelector(":scope > .obj-shot"), W = el.offsetWidth, M = 24;
+      let free = null;
+      if (shot && shot.offsetWidth) free = shot.offsetLeft + shot.offsetWidth / 2 < W / 2 ? [shot.offsetLeft + shot.offsetWidth + M, W - M] : [M, shot.offsetLeft - M];
+      if (seed === "xp-wear") free = [0.12 * W, 0.88 * W];   /* the Experience box's chips sit along its top edge, clear of the red line and the right point */
+      wear(el, "row-top", seed, { edges: edges, flags: flags, free: free });
+    }
   }
   function redOf(el) {
     const NS = "http://www.w3.org/2000/svg";
@@ -1174,7 +1271,7 @@
   /* row i's polygon in px (box W x H), clockwise from the top-left point of its top run; the last point closes the left edge.
      Returns {pts, end (index where the worn top run ends), bi ([bottom-left, bottom-right] indexes: the Experience shape hangs from that run)} */
   function wkPoly(i, W, H, flip) {
-    const top = i === 0 ? [[0, 0], [W, 0.035 * W]] : WK_CRACK[i - 1].map(function (p) { return [p[0] * W, p[1] * W]; });
+    const top = i === 0 ? [[0, 0], [W, 0]] : WK_CRACK[i - 1].map(function (p) { return [p[0] * W, p[1] * W]; });
     let bot;
     if (i < WK_CRACK.length) { const A = WK_DROP(WK_CRACK[i]) * W; bot = WK_CRACK[i].map(function (p) { return [p[0] * W, H - A + p[1] * W]; }).reverse(); }
     else bot = [[W, H - WK_LAST * W], [0, H]];   /* the last row's bottom is one straight run (the Experience shape's top edge follows it) */
@@ -1324,87 +1421,9 @@
     window.addEventListener("resize", live);
   }
 
-  /* the Games opener: the Experience shape turned around (its polygon mirrored left to right, the closer's width and mirrored x on desktop but only 300 px tall, chips from its own
-     seed). The wide top edge is flat and flush under the bridge, the red line runs down the right edge, and the long edge ends in a point aimed at the first
-     Games row: the intro's margin puts XP_GAP (4rem) between that point and the row's top edge, measured across the edge (perpendicular). Phone: the box is the
-     text's height and the plate is inset from the right so the whole red line shows. */
-  function openerShape(el) {
-    const red = redOf(el), XH = 260;   /* desktop height in design px: the text block, its padding and the taper (the closer's 780 is for its content) */
-    function draw() {
-      const phone = window.matchMedia("(max-width: 1199px)").matches;
-      const first = document.querySelector(".work > a.obj[data-wornquad]"), g = first && first._wkGeo, sec = el.parentNode;
-      const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"), last = rows.length ? rows[rows.length - 1] : null, lg = last && last._wkGeo;
-      const k = window.Stage ? window.Stage.s() : 1, cw = document.documentElement.clientWidth / k;
-      let W, H, tx, rx;
-      if (phone) { W = el.offsetWidth; H = el.offsetHeight; el.style.width = ""; el.style.marginLeft = ""; el.style.paddingLeft = ""; el.style.paddingTop = ""; tx = 0.70 * W; rx = 0.94 * W; }
-      else {
-        if (!lg) return;
-        /* the closer's width and left edge (hang()), mirrored about the window centre: they place the tip and the lower-right corner; the plate itself spans the window */
-        const lx = lg.xbr - lg.xbl, ba = lg.ba * Math.PI / 180, gx = XP_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * Math.cos(ba) * Math.sin(ba);
-        const cwid = lx / 0.972; H = XH;
-        const cl = Math.max(last.getBoundingClientRect().left / k + lg.xbl + gx - 0.028 * cwid, 0.06 * cw);
-        const off = cw - cl - cwid;
-        W = cw; tx = off + 0.703 * cwid; rx = off + cwid;
-        el.style.width = W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.paddingLeft = (off + 770).toFixed(1) + "px"; el.style.paddingTop = "30px"; el.style.height = XH + "px";
-      }
-      if (!W || !H) return;
-      const by = phone ? 0.75 * H : 0.735 * H;
-      const l = red.firstChild;
-      let pts;
-      if (phone) {
-        const c = 0.33 * H;   /* the vertical sides before the slants start */
-        const ri = 0.08 * W; rx = W - ri - by * Math.tan(5 * Math.PI / 180);   /* the right side is steep: 5 degrees off vertical, like Experience's */
-        pts = [[tx, H], [0, c], [0, 0], [W - ri, 0], [rx, by]];   /* clockwise, starting at the tip so the worn run is the long left diagonal alone and its chips bite into the plate; the top (which ends 8% of the width short of the right edge), the right side and the short bottom edge stay clean */
-        quad(el, null, pts, "--op-clip");
-        wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the bottom edge alone, with the seeded banner mask like Experience's */
-        const el0 = Math.hypot(rx - (W - ri), by), t0 = 35 / el0, t1 = 1 + 30 / el0;   /* the Experience line mirrored: it stops 35 px short of the top corner and sticks 30 px out past the bottom one */
-        l.setAttribute("x1", (W - ri + t0 * (rx - W + ri)).toFixed(1)); l.setAttribute("y1", (t0 * by).toFixed(1));
-        l.setAttribute("x2", (W - ri + t1 * (rx - W + ri)).toFixed(1)); l.setAttribute("y2", (t1 * by).toFixed(1));
-      } else {
-        /* desktop: the plate runs from the rows' left edge to their right edge (WK_EDGE, the same fractions the rows use): a point on the top edge at the left, a plain vertical right side, the long worn diagonal between the bottom-right corner and the point */
-        const er0 = el.getBoundingClientRect();
-        let xl = WK_EDGE[0] * cw, xr = WK_EDGE[1] * cw;
-        if (g) { const fr = first.getBoundingClientRect(); xl = fr.left / k + g.xtl - er0.left / k; xr = fr.right / k - er0.left / k; }   /* the tip sits exactly on the first row's left edge at its top, the right end on its right edge (a narrow window leaves the row wider than WK_EDGE) */
-        const byy = 245, rsl = 0.035 / 0.965;   /* one clean shard: the right end leans (top 50 px in, bottom on the row edge); the bottom is ONE straight edge at the first row's top-edge slope, so it runs parallel to the row with an even gap; the left end is the corner */
-        pts = [[xr, byy], [xl, byy - rsl * (xr - xl)], [0, 0], [W, 0]];   /* clockwise from the bottom-right corner; the top edge spans the window flush under the bridge, the sides narrow in to the rows' edges */
-        quad(el, null, pts, "--op-clip");
-        wearPlate(el, "op-wear", [[pts[0], pts[1]]]);   /* the worn run is the bottom edge alone, with the seeded banner mask like Experience's */
-        const ins = W - xr, rs = 34 / Math.hypot(ins, byy);   /* Experience's line sits on its edge but is slid 34 px along it (measured at 2000 wide): it overshoots the top corner and stops short of the bottom one by that much */
-        l.setAttribute("x1", (W - rs * ins).toFixed(1)); l.setAttribute("y1", (rs * byy).toFixed(1));
-        l.setAttribute("x2", xr.toFixed(1)); l.setAttribute("y2", byy.toFixed(1));   /* the line ends on the bottom-right corner, never in the gap */
-      }
-      if (!g) return;
-      sec.style.marginBottom = "0px";
-      const er = el.getBoundingClientRect(), r = first.getBoundingClientRect();
-      const sl = 0.035 / 0.965, a = Math.atan(sl);   /* the first row's top edge: (xtl, 0) with the slope of its top run */
-      let room = 1e9;   /* the least space between the plate's bottom corners (desktop: the bottom-right corner and the tip) and the row's top edge under them */
-      (phone ? [pts[0]] : [pts[0], pts[pts.length - 3]]).forEach(function (p) {
-        const px = er.left / k + p[0], py = er.top / k + p[1];
-        room = Math.min(room, r.top / k + g.ytl + sl * (px - (r.left / k + g.xtl)) - py);
-      });
-      const gap = 0.975 * WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / Math.cos(a);   /* measured: the rendered Games row-to-row join is 46.8 design px, 0.975 of WK_GAP */
-      sec.style.marginBottom = (gap - room).toFixed(1) + "px";
-      if (!phone) {   /* the red line's lower overshoot stays at least 14 px clear of the row's top edge (the row sits gap - room lower than measured above) */
-        const ln = red.firstChild, x2 = +ln.getAttribute("x2"), y2 = +ln.getAttribute("y2"), x1 = +ln.getAttribute("x1"), y1 = +ln.getAttribute("y1");
-        const c0 = r.top / k + g.ytl - er.top / k + sl * (x2 - (r.left / k + g.xtl - er.left / k)) + (gap - room) - y2;
-        if (c0 < 14) {
-          const dx = x2 - x1, dy = y2 - y1, f = Math.min((14 - c0) / (dy - sl * dx), 0.9);
-          ln.setAttribute("x2", (x2 - f * dx).toFixed(1)); ln.setAttribute("y2", (y2 - f * dy).toFixed(1));
-        }
-      }
-    }
-    draw();
-    if (window.ResizeObserver) {
-      new ResizeObserver(draw).observe(el);
-      const f = document.querySelector(".work > a.obj[data-wornquad]");
-      if (f) new ResizeObserver(draw).observe(f);
-    }
-    window.addEventListener("resize", draw);
-  }
-
   /* a browser without CSS zoom (Firefox before 126) never scales the stage (it stays 1600 wide), so the scale every rect is divided by is 1 there */
   if (window.Stage && !(window.CSS && CSS.supports && CSS.supports("zoom", "1.2"))) window.Stage = { s: function () { return 1; } };
-  function boot() { wearApply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); const o = document.querySelector(".intro-plate"); if (o) openerShape(o); }
+  function boot() { wearApply(); workRows(); const x = document.querySelector(".xp-shape"); if (x) xpShape(x); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
   window.addEventListener("load", function () { wearApply(); });
