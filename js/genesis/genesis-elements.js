@@ -432,7 +432,7 @@
     if (k > 0.6) {   // it merges: a low swell a shade off the sea's own fill stays under the surface where it landed
       const zz = (0.004 + pt.size * 0.0025) * H, sw = zz * 6, sy = shAt(lx, W) + mg;
       ctx.globalAlpha = 0.55 * fade * (pt.extra ? 1 - smooth(clamp((k - 0.6) / 1, 0, 1)) : 1);
-      ctx.fillStyle = "rgb(33,38,37)";
+      ctx.fillStyle = "rgb(58,42,28)";
       ctx.beginPath();
       ctx.ellipse(lx, sy + 1, sw, zz * (0.5 + 0.25 * Math.sin(s * 1.3 + pt.jit * 40)), 0, 0, Math.PI);   // the lower half: inside the sea
       ctx.fill();
@@ -443,12 +443,12 @@
     // a splash where it enters the water: a few short upward flecks and an expanding flat ring, about 0.6 s
     const z = (0.004 + pt.size * 0.0025) * H, q = k / 0.6, yl = shAt(lx, W) + mg;
     ctx.globalAlpha = 0.6 * (1 - q) * fade;
-    ctx.fillStyle = "rgb(48,55,53)";
+    ctx.fillStyle = "rgb(42,64,72)";
     ctx.beginPath();
     const ry = z * (0.3 + 0.9 * q);
     ctx.ellipse(lx, yl + ry, z * (1.5 + 5 * q), ry, 0, 0, TAU);   // its round top sits on the sea line, not above it
     ctx.fill();
-    ctx.fillStyle = "rgb(52,59,57)";
+    ctx.fillStyle = "rgb(68,66,42)";
     const rise = z * 5 * Math.sin(Math.PI * Math.min(1, q * 1.3));
     for (let f = 0; f < 4; f++) {
       const dx = (f - 1.5) * z * (1.2 + 0.4 * ((pt.jit * 97 + f) % 1 + 1) % 1), fh = rise * (0.6 + 0.4 * (f & 1));
@@ -620,6 +620,7 @@
   // the grade's lift while matter forms: the shadow thins where the front is (its band and lip, hard-edged) and less behind it, then back to today's by SFALL[2].
   // Returns null or stops [screen x, lift] left to right (equal x = a hard edge); layerEnd and the ceiling's shadow turn them into one gradient fill
   const LIFT_SEA = 0.8, LIFT_AIR = 0.8, LIFT_BEHIND = 0.5;
+  const SEA_TINT = { over: "7,9,11", lift: "56,60,64", a: 0.75 };   // a near-neutral cool dark; a: the overlay alpha, under the usual 0.95 so the sea's own tones show through
   function liftStops(R, hx, lip, bw, lf, lb) {
     R = Math.min(R, 4 * G.W);
     const a = R - bw, b = R + lip;
@@ -716,7 +717,7 @@
       seaPlan(pt, s, ox, W, H, camOff, spW);
       if (s >= PLAN.tl && PLAN.fr) drawLanded(ctx, pt, s, W, H, fade);
     }
-    layerEnd(outer, ctx, dim, seaLift(W, H)); ctx = outer;
+    layerEnd(outer, ctx, dim, seaLift(W, H), SEA_TINT); ctx = outer;
   }
 
   // the sea body, surface line and floating-piece rings; o: W, H, t, camOff, sh (NS+1 surface ys), bottom (far edge y),
@@ -732,14 +733,14 @@
     for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k]);
     ctx.lineTo(W, vb);
     ctx.closePath();
-    ctx.fillStyle = "rgb(24,28,27)";
+    ctx.fillStyle = "rgb(20,28,46)";
     ctx.globalAlpha = 1;
     ctx.fill();
     ctx.save();
     ctx.clip();
     for (let b = 0; b < 2; b++) {   // the bands follow the surface, so no straight edge
       const bf = b ? 0.8 : 0.45;
-      ctx.fillStyle = b ? "rgb(16,18,18)" : "rgb(20,23,22)";
+      ctx.fillStyle = b ? "rgb(26,24,8)" : "rgb(10,30,28)";
       ctx.beginPath();
       ctx.moveTo(0, vb);
       for (let k = 0; k <= NS; k++) ctx.lineTo(k / NS * W, SH[k] + (vb - SH[k]) * bf);
@@ -750,18 +751,18 @@
     ctx.restore();
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { if (k) ctx.lineTo(k / NS * W, SH[k] + 1); else ctx.moveTo(0, SH[0] + 1); }
-    ctx.strokeStyle = "rgb(37,42,41)";
+    ctx.strokeStyle = "rgb(26,54,52)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     // a soft lighter band just under the surface line
     ctx.beginPath();
     for (let k = 0; k <= NS; k++) { const by = SH[k] + H * 0.012 + 1.6 * Math.sin(k * 0.45 + t * 0.5); if (k) ctx.lineTo(k / NS * W, by); else ctx.moveTo(0, by); }
-    ctx.strokeStyle = "rgb(36,41,40)";
+    ctx.strokeStyle = "rgb(34,40,70)";
     ctx.lineWidth = H * 0.016;
     ctx.stroke();
     // sheen streaks drifting steadily left: each is a tapered run of segments that follows the surface wave (so it
     // curves and tilts), some broken into dashes; the shape holds while it drifts and fades only at the ends of its life
-    ctx.fillStyle = "rgb(44,50,48)";
+    ctx.fillStyle = "rgb(48,64,34)";
     const sp = W * 1.3, ef = W * 0.08;
     for (let d = 0; d < 2; d++) {   // one path and one fill per depth: each streak a smooth lens on the surface wave
       ctx.globalAlpha = d ? 0.6 : 0.85;
@@ -787,7 +788,7 @@
       ctx.fill();
     }
     // small curved ripple arcs at several depths: far ones smaller, slower and dimmer, near ones larger and faster
-    ctx.fillStyle = "rgb(58,64,62)";
+    ctx.fillStyle = "rgb(48,70,90)";
     const rsp = W * 1.2;
     for (let k = 0; k < RIP.length; k++) {
       const r = RIP[k], dp = r.d;
@@ -812,19 +813,19 @@
       ctx.beginPath();
       ctx.ellipse(pc.x, pc.y, rx, ry, 0, 0, Math.PI);
       ctx.closePath();
-      ctx.fillStyle = "rgb(27,31,30)";
+      ctx.fillStyle = "rgb(54,34,24)";
       ctx.fill();
-      ctx.strokeStyle = "rgb(37,42,41)";
+      ctx.strokeStyle = "rgb(56,48,28)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
       if (!o.wet) continue;
       // the ceiling's pieces get the floor's full treatment: a wet lip on the near side, wavelets running out along the surface, and ripple arcs spreading from the piece
       ctx.beginPath();
       ctx.ellipse(pc.x, pc.y, rx + 3, ry + 2, 0, 0.15, Math.PI - 0.15);
-      ctx.strokeStyle = "rgb(36,41,40)";
+      ctx.strokeStyle = "rgb(34,40,70)";
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = "rgb(58,64,62)";
+      ctx.fillStyle = "rgb(48,70,90)";
       for (let sd = -1; sd <= 1; sd += 2) {
         for (let n = 0; n < 3; n++) {
           const ph = ((t * 0.35 + n / 3 + pc.x * 0.013) % 1 + 1) % 1, d = rx + 4 + ph * rx * 0.9, sg = Math.round(3 + n), wx = pc.x + sd * d - (sd < 0 ? sg * 2 : 0);
@@ -851,7 +852,7 @@
   function drawSlicks(ctx, W, H, camOff, t) {
     if (!SLK.length) {
       const r = mulberry(7731);
-      SLRIM = seaTone(1, 0, 0.3); SLTAR = seaTone(1, 0, 0.19);
+      SLRIM = seaTone(3, 0, 0.3); SLTAR = seaTone(3, 0, 0.19);
       for (let i = 0; i < 9; i++) {
         const sl = { u: (i + r() * 0.7) / 9, d: r(), sz: 0.035 + r() * 0.03, sp: 6 + r() * 7, lb: [] };
         let n = 3 + Math.floor(r() * 2);
@@ -1439,19 +1440,19 @@
     c.setTransform(outer.getTransform());
     return c;
   }
-  function layerEnd(outer, c, dim, lift) {
+  function layerEnd(outer, c, dim, lift, tint) {   // tint: optional { over: "r,g,b", lift: "r,g,b" }, only the sea passes it
     c.save();
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = "source-atop";
-    const base = Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
+    const base = tint ? tint.a : Math.max(1 - dim, 0.95);   // the deep shadow: every sea colour ends a few values off the void, whatever the dim
     c.globalAlpha = base;
-    c.fillStyle = "rgb(11,13,13)";
+    c.fillStyle = tint ? "rgb(" + tint.over + ")" : "rgb(11,13,13)";
     c.fillRect(0, 0, LAY.width, LAY.height);
     if (lift) {   // then a flat neutral grey over the sea's own shape, on the lift stops: hard-edged, strongest at the front and lip, gone with the lift
       const m = outer.getTransform(), g = c.createLinearGradient(0, 0, LAY.width, 0);
       for (let i = 0; i < lift.length; i++) {   // a hard stop (equal x) becomes a slope 0.07 of the width long, so no vertical line shows
         const sl = i && lift[i][0] === lift[i - 1][0] ? 0.07 * LAY.width : 0;
-        g.addColorStop(clamp((m.a * lift[i][0] + m.e + sl) / LAY.width, 0, 1), "rgba(60,60,60," + (0.5 * lift[i][1]).toFixed(3) + ")");
+        g.addColorStop(clamp((m.a * lift[i][0] + m.e + sl) / LAY.width, 0, 1), "rgba(" + (tint ? tint.lift : "60,60,60") + "," + (0.5 * lift[i][1]).toFixed(3) + ")");
       }
       c.globalAlpha = 1;
       c.fillStyle = g;

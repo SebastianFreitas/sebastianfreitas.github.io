@@ -69,9 +69,19 @@
     return d;
   }
 
+  // every slot recoloured into one cool dark family (the ceiling's 0.75 wash leaves a quarter): the slot's own brightness, stepped down and capped,
+  // with a small hue shift by slot (blue-grey, green-grey, warm grey, slate), so each kind keeps its own shade and none is pale or saturated
+  const TINT = [[-6, 0, 8], [-6, 6, -2], [6, 1, -6], [0, 2, 5]];
+  function cool(a) {
+    return a.map((h, i) => {
+      const c = hexRgb(h), v = 33 + (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) * 0.25, t = TINT[i % 4];
+      return "#" + c.map((_, k) => ("0" + Math.max(0, Math.min(255, Math.round(v + t[k]))).toString(16)).slice(-2)).join("");
+    });
+  }
+  let PAL = null;
   function palette() {
-    const P = window.GenEldPal;
-    return { rgba: rgba, hash: hash, obj: P.CEILOBJ, kind: P.CEILKIND };
+    if (!PAL) { const P = window.GenEldPal; PAL = { rgba: rgba, hash: hash, obj: cool(P.CEILOBJ), kind: cool(P.CEILKIND) }; }
+    return PAL;
   }
 
   const TAU = Math.PI * 2;
@@ -84,10 +94,10 @@
   function lump(ctx, x, y, rx, ry, rot) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), rot || 0, 0, TAU); ctx.fill(); }
 
   // hanger colours from the washed palette: greens, teals, a dull ochre, a muted violet (o.ci picks one)
-  const HUES = [(P) => "#7f9a7a", (P) => P.kind[0], (P) => P.kind[14], (P) => P.kind[15], (P) => P.obj[2], (P) => P.kind[12], (P) => P.kind[1]];
+  const HUES = [(P) => "#46604e", (P) => P.kind[0], (P) => P.kind[14], (P) => P.kind[15], (P) => P.obj[2], (P) => P.kind[12], (P) => P.kind[1]];
   function sprout(ctx, o, x, y, H, p, t, sc, pal) {
     const L = o.len * H * p, seg = 12, tk = o.tk || 1, w0 = Math.max(9 * sc, (5 + 3 * o.w) * tk * sc), w1 = Math.max(5 * sc, 3 * Math.min(tk, 1.4) * sc), wv = o.wv || 1, cv = o.cv === undefined ? 1 : o.cv;
-    const c0 = hexRgb(o.ci === undefined ? "#7f9a7a" : HUES[o.ci % HUES.length](pal)), col = "#" + c0.map((v) => ("0" + Math.round(v + (255 - v) * 0.4).toString(16)).slice(-2)).join("");   // pulled toward white: a dark teal stem vanished against the navy lobe
+    const c0 = hexRgb(o.ci === undefined ? "#46604e" : HUES[o.ci % HUES.length](pal)), col = "#" + c0.map((v) => ("0" + Math.round(v + (255 - v) * 0.3).toString(16)).slice(-2)).join("");   // pulled toward white: a dark teal stem vanished against the navy lobe
     const pts = [];
     for (let i = 0; i <= seg; i++) {
       const s = i / seg;

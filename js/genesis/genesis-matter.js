@@ -11,7 +11,7 @@
   // the rocks are neutral dark greys (flesh too), painted straight on the scene, lighter than the shadowed air and sea
   const FLESH_LIT = "#484848", FLESH_SHADE = "#2e2e2e", FLESH_RAW = "#565656";
   const STONE_LIT = "#464646", STONE_SHADE = "#2c2c2c", STONE_DARK = "#202020";
-  const INSECT_BODY = "#2a2622", INSECT_WING = "rgba(207,214,211,0.5)", INSECT_DEFORM = "#b0525c";
+  const INSECT_BODY = "rgb(96,96,96)", INSECT_RIM = "rgb(132,132,132)", INSECT_WING = "rgba(207,214,211,0.5)", INSECT_DEFORM = "rgb(116,116,116)";
   const AIR_COLOR = "#e8eef0", RAIN_COLOR = "#8fb6d8";
   const FIRE_LIT = "#f08a2a", FIRE_CORE = "#ffd36a", FIRE_DARK = "#b8321e";
   const LIGHT_OUTER = "#9b7cff", LIGHT_CORE = "#f4f0ff";
@@ -430,6 +430,10 @@
     ctx.ellipse(x, y, size, size * 0.6, rot, 0, 6.283);
     ctx.fillStyle = INSECT_BODY;
     ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + size * 0.2 * sn, y - size * 0.2 * cs, size * 0.55, size * 0.22, rot, 0, 6.283);
+    ctx.fillStyle = INSECT_RIM;
+    ctx.fill();
     // head(s)
     if (ins.deform === "twoHeads") {
       for (let s2 = -1; s2 <= 1; s2 += 2) {
@@ -585,14 +589,15 @@
     const outer = ctx;
     ctx = GenElem.layerBegin(outer);   // all the rest goes under the same deep shadow as the sea
     drawStormsLayer(ctx, s, false); // air, rain: behind
-    drawInsects(ctx, s);
     drawStormsLayer(ctx, s, true); // fire: in front
     drawMatterEvent(ctx, s);
 
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
     GenElem.layerEnd(outer, ctx, GenElem.dimK());
+    drawInsects(outer, s);   // after the shadow layer, which would turn them near-black
+    outer.globalAlpha = 1;
   }
 
-  window.GenMatter = { draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale };
+  window.GenMatter = { INSECT_BODY, draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale };
 })();

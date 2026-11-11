@@ -86,7 +86,7 @@ window.GenTrade = (function () {
         ctx.globalAlpha = alpha * 0.5; ctx.fillStyle = "#cfd6d3";
         ctx.beginPath(); ctx.ellipse(x - tv.size * 0.3, yy - tv.size * 0.3 * flap, tv.size * 0.5, tv.size * 0.2, 0.3, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.ellipse(x + tv.size * 0.3, yy - tv.size * 0.3 * flap, tv.size * 0.5, tv.size * 0.2, -0.3, 0, TAU); ctx.fill();
-        ctx.globalAlpha = alpha; ctx.fillStyle = "#2a2622";
+        ctx.globalAlpha = alpha; ctx.fillStyle = window.GenMatter ? GenMatter.INSECT_BODY : "rgb(96,96,96)";
         ctx.beginPath(); ctx.ellipse(x, yy, tv.size * 0.4, tv.size * 0.2, 0, 0, TAU); ctx.fill();
         break;
       }
@@ -133,7 +133,7 @@ window.GenTrade = (function () {
       const alpha = Math.min(1, tsince / 0.6) * (1 - swarmSince) * (1 - landSince) * (1 - rootSince * 0.6) * edge;
       if (alpha < 0.02) continue;
       if (shade && !lay) lay = GenElem.layerBegin(ctx);   // in the birth scene they go under the same deep shadow as the sky; no layer when none shows
-      drawTraveller(lay || ctx, tv, x, y, alpha);
+      drawTraveller(tv.type === "insect" ? ctx : (lay || ctx), tv, x, y, alpha);
     }
     if (lay) { lay.globalAlpha = 1; GenElem.layerEnd(ctx, lay, GenElem.dimK()); }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;

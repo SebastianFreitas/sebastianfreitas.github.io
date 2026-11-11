@@ -91,6 +91,8 @@
   // no picture is fetched: every item is a code-drawn cloud; IMG only gives each pool entry a distinct id for the layout's lookups
   const IMG = { tip: POOL.tip.map(() => ({})), obj: POOL.obj.map((q) => q[0]), tiny: POOL.tiny.map((q) => q[0]) };
 
+  // one cool dark family, a shade per kind (the 0.75 wash in shadow() leaves a quarter of each): blue-grey bodies, green-grey membranes, warm-grey rocks, a lighter blue-grey spiral
+  const BODY = '#4c5f72', MEMB = '#4a6a58', ROCKC = ['#483c36', '#40362f'], SPIR = '#8a867a';
   function shade(hex, f) {   // f > 0 toward white, f < 0 toward black
     const n = parseInt(hex.slice(1), 16), t = f > 0 ? 255 : 0, a = Math.abs(f);
     const c = (v) => Math.round(v + (t - v) * a);
@@ -106,8 +108,8 @@
   // a cloud's shape, built once per item in its own px (unmirrored): big = lumpy silhouette with lobes under its hang points, a flat top that
   // tucks into the band, lighter inner patches, spiral swirls; tiny = a spiral curl
   function shape(it, q, seed, noMetal, force) {
-    const w = it.w, h = it.h, hs = (n) => hash(seed + n * 1.7), P = (window.GenEldPal && window.GenEldPal.CEILCLOUD) || ["#061c48", "#164436", "#382b43"];
-    const base = P[0];   // lobe clouds are the deep navy only: db1eeb0's pick, and a cloud whose pick is not navy is removed (it.gone) after dress
+    const w = it.w, h = it.h, hs = (n) => hash(seed + n * 1.7);
+    const base = BODY;   // lobe clouds are one blue-grey: db1eeb0's pick, and a cloud whose pick is not it is removed (it.gone) after dress
     it.gone = false;
     it.fill = base; it.edge = shade(base, -0.45); it.hi = shade(base, 0.14); it.mark = shade(base, 0.3);
     it.lw = Math.max(1.5, h * 0.06);
@@ -117,13 +119,13 @@
       const R = h * 0.42, cy = h * 0.5, turns = 2 + hs(1);
       const ph = hs(3) * 6.283;
       spiral(sw, R + 2, cy, R, turns, ph);   // the curl alone: no tail
-      it.sw = sw;
+      it.sw = sw; it.mark = SPIR;
       return;
     }
     // odd kinds by seed: metal about 1 in 10 (never right after another metal), the rest the soft lobe cloud
     const kz = force === 'metal' ? 0 : hs(7);
     if (kz < 0.1 && !noMetal) {
-      const M = (window.GenEldPal && window.GenEldPal.CEILOBJ) || ["#8b7d57", "#555e69", "#818a96", "#434a54"], mc = [M[3], M[6]].filter(Boolean)[Math.floor(hs(2) * 2) % 2] || M[0];   // dark greys only: the ochre sheen shows on every rock
+      const mc = ROCKC[Math.floor(hs(2) * 2) % 2];   // dark warm greys only: the ochre sheen shows on every rock
       it.fill = mc; it.edge = shade(mc, -0.45); it.hi = shade(mc, 0.3); it.mark = mc; it.metal = true; it.type = 'metal';
       const pits = new Path2D(), lips = new Path2D(), cr = new Path2D();
       it.eyes = window.GenCeilShapes.metal(w, h, hs, p, pt, pits, lips, cr, it.m);   // eye sites on the rock's face: each a crack that opens into an eye
@@ -428,7 +430,7 @@
     // row near the screen top; each gets its depth dp (0.08 near .. 1.08 far) from its row
     const hidden = (it, row) => {
       it.front = hash(it.cl * 5.7 + 1.3) < 0.4;   // a seeded share of the groups is drawn over the band, in full colour
-      if (it.front && !it.metal) { const bs = (window.GenEldPal && window.GenEldPal.CEILCLOUD || ["#061c48"])[0]; it.fill = bs; it.edge = shade(bs, 0.5); it.hi = shade(bs, 0.14); it.mark = shade(bs, 0.3); }
+      if (it.front && !it.metal) { const bs = BODY; it.fill = bs; it.edge = shade(bs, 0.5); it.hi = shade(bs, 0.14); it.mark = shade(bs, 0.3); }
       return 0.45 + 0.1 * rnd();   // every object is drawn in front of the band, 0.45-0.55 of its painted height above its own cut line (drawOne)
     };
     let clN = 0;
@@ -448,7 +450,7 @@
             if (first < 0) first = i;
             const it = add('obj', i, x, 0, sj, rnd() < 0.5, f, V_OBJ, true, true);
             it.cl = cl; it.row = row; it.off = 0;
-            { const tf = row === 0 ? -0.45 : row === 1 ? -0.17 : 0, bs = (window.GenEldPal && window.GenEldPal.CEILCLOUD || ["#061c48"])[0];   // back darkest, mid between, front the navy; the rim is lighter so an overlap reads
+            { const tf = row === 0 ? -0.45 : row === 1 ? -0.17 : 0, bs = BODY;   // back darkest, mid between, front the navy; the rim is lighter so an overlap reads
               if (!it.metal) { it.fill = tf ? shade(bs, tf) : bs; it.edge = shade(bs, 0.5 + tf); it.hi = shade(bs, tf + 0.14); it.mark = shade(bs, tf + 0.3); } }
             if (row >= 1) it.gone = false;   // no front or mid cloud is removed: they keep the rows and every third of the screen covered
             it.dp = row === 0 ? 0.7 + 0.38 * mod(++gold * 0.618034, 1) : row === 1 ? 0.38 + 0.3 * mod(++gold * 0.618034, 1) : 0.08 + 0.28 * mod(++gold * 0.618034, 1);
@@ -551,6 +553,8 @@
       }
     }
     ITEMS = ITEMS.filter((q) => !q.gone);
+    const bodies = ITEMS.filter((q) => q.mem).sort((a, b) => a.x - b.x);   // each body takes the next-but-one murky family along the span, so neighbours never share one
+    for (let n = 0; n < bodies.length; n++) bodies[n].mem.fam = (bodies.length ? bodies[0].mem.fam : 0) + n * 2;
     // a metal rock grows a lobe down to each hanger point it does not cover (the -///- symbol drops the uncovered ones)
     for (let n = 0; n < ITEMS.length; n++) {
       const it = ITEMS[n];
@@ -715,11 +719,11 @@
       ctx.strokeStyle = it.edge; ctx.lineWidth = 2.4; ctx.stroke(it.p); ctx.stroke(it.lo);
       ctx.fillStyle = it.fill; ctx.fill(it.p); ctx.fill(it.lo);
       ctx.fillStyle = it.edge; ctx.fill(it.pits);
-      ctx.fillStyle = shade(it.fill, 0.55); ctx.fill(it.lips);
+      ctx.fillStyle = shade(it.fill, 0.3); ctx.fill(it.lips);
       ctx.strokeStyle = it.edge; ctx.lineWidth = 1.2; ctx.stroke(it.cr);
-      ctx.globalAlpha = 0.6; ctx.fillStyle = '#a89660'; ctx.fill(it.pt); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.6; ctx.fillStyle = '#8a8274'; ctx.fill(it.pt); ctx.globalAlpha = 1;
     } else {
-      if (it.mem) window.GenCeilMembrane.draw(ctx, it.mem, (window.GenEldPal && window.GenEldPal.CEILCLOUD || ['#061c48'])[0]);
+      if (it.mem) window.GenCeilMembrane.draw(ctx, it.mem, MEMB);
     }
     ctx.restore();
     ctx.restore();
@@ -812,7 +816,7 @@
     e.sp = j < 6 ? j * 1.0 / 5 * (0.8 + 0.4 * h(9)) : (j - 5) * 1.1 + 0.4 * h(9);   // gust strokes staggered; the two trickle strokes later in the slot
   }
   function paintGusts(g, W, H, u, front, yS) {   // yS squeezes the strokes toward the top so none falls below the lowest cloud bottom
-    g.fillStyle = 'rgb(215,236,245)';
+    g.fillStyle = 'rgb(88,100,110)';   // dark enough that the thin wash leaves a slate stroke, not a pale one
     const s1 = Math.floor(u / GSLOT);
     for (let s = Math.max(0, s1 - 2); s <= s1 + 1; s++) {
       const st = gustStart(s), n = 3 + Math.floor(hash(s * 9.1 + 4) * 4);
@@ -847,7 +851,7 @@
   // the band as air: four flat storm-slate layers (back darkest) hung from the top, each lower edge the clouds' line (SHC - BAND_UP H, a share of it per
   // layer) plus an erratic offset (three unrelated frequencies, each swelling and fading on its own slow clock, plus seeded jitter). The offsets stream
   // one way at a layer's own speed, the clock surging and lulling (always forward), so the edge reshapes as it travels; nothing bobs
-  const AIRC = ['rgb(20,25,31)', 'rgb(24,30,37)', 'rgb(28,35,43)', 'rgb(34,41,50)'], AIRF = [1, 0.74, 0.52, 0.3];
+  const AIRC = ['rgb(11,14,18)', 'rgb(14,18,23)', 'rgb(17,22,28)', 'rgb(21,27,33)'], AIRF = [1, 0.74, 0.52, 0.3];
   const AJN = 48, AJ = new Float32Array(AJN + 1);
   for (let i = 0; i < AJN; i++) AJ[i] = hash(i * 7.7 + 2) * 2 - 1;
   AJ[AJN] = AJ[0];
@@ -932,13 +936,13 @@
       frontPoly(pa, W, H, add, 0); frontPoly(pb, W, H, add, bw);
       po.rect(-2 * W, -H, 5 * W, 3 * H); po.addPath(pa);
       pr.addPath(pa); pr.addPath(pb);
-      c.fillStyle = 'rgba(6,7,7,0.96)'; c.fill(po, 'evenodd'); c.fill(pr, 'evenodd'); c.fill(pb);   // the full shadow everywhere, so no colour beneath shows
-      c.fillStyle = 'rgba(60,60,60,' + (0.5 * lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');   // then a flat neutral grey over the gas's own shape: lighter while it swells, gone with the lift
-      c.fillStyle = 'rgba(60,60,60,' + (0.5 * lb).toFixed(3) + ')'; c.fill(pb);
+      c.fillStyle = 'rgba(1,2,3,0.75)'; c.fill(po, 'evenodd'); c.fill(pr, 'evenodd'); c.fill(pb);   // a deep shadow everywhere that lets each object's own tone through
+      c.fillStyle = 'rgba(56,60,66,' + (0.5 * lf).toFixed(3) + ')'; c.fill(pr, 'evenodd');   // then a flat slate over the gas's own shape: lighter while it swells, gone with the lift
+      c.fillStyle = 'rgba(56,60,66,' + (0.5 * lb).toFixed(3) + ')'; c.fill(pb);
       c.setTransform(1, 0, 0, 1, 0, 0);
     } else {
-      c.globalAlpha = 0.96;
-      c.fillStyle = 'rgb(6,7,7)';
+      c.globalAlpha = 0.75;
+      c.fillStyle = 'rgb(1,2,3)';
       c.fillRect(0, 0, w, h);
     }
     c.globalCompositeOperation = 'source-over';

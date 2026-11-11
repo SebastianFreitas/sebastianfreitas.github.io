@@ -7,6 +7,10 @@
 (function () {
   const D0 = "#03050a", D1 = "#060a14", D2 = "#0a1222", D3 = "#0e1a33";
   const NAVY = "#1d3f80", OCEAN = "#3f86b5", PALE = "#8cc4dc";
+  // murky hue families (source colours: the ceiling's wash leaves about a quarter): the four fill steps D0..D3, then a lighter rim step; plum, teal, mud, moss, slate
+  const FAMS = [["#332433", "#493349", "#664766", "#7a557a", "#996b99"], ["#1d3333", "#2a4949", "#3a6666", "#467a7a", "#579999"], ["#3c2c1c", "#58402a", "#7a5a3a", "#926c46", "#b48a5c"],
+    ["#253322", "#364931", "#4b6644", "#5a7a52", "#719966"], ["#202a42", "#2e3b62", "#3e5088", "#4c62a0", "#6a85c4"]];
+  const STEP = { "#03050a": 0, "#060a14": 1, "#0a1222": 2, "#0e1a33": 3 };
 
   function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function poly(pts, close) {
@@ -151,7 +155,7 @@
     const kx = w / (dims.x1 - dims.x0), ky = h / (dims.y1 - dims.y0), xc = (dims.x0 + dims.x1) * 0.5;
     const m = KINDS[kind](r, (px, py) => [x + w * 0.5 + (px - xc) * kx * (0.55 + 0.45 * sm((py - dims.y0) / (dims.y1 - dims.y0) / 0.5)), y + (py - dims.y0) * ky - (py <= dims.y0 ? RUN : 0)]);   // the top row runs RUN px up: the band alone cuts the body
     m.k = Math.max(0.7, Math.min(1.4, h / 140));
-    m.g = null;
+    m.g = null; m.fam = Math.floor(seed * 7919) % FAMS.length;   // the ceiling re-deals it so neighbours differ
     for (let i = 0; i < m.creases.length; i++) {
       const c = m.creases[i], a = c.pts[0], b = c.pts[1], s = Math.max(1, b[1] - a[1]), q = [a[0] + (a[0] - b[0]) * 50 / s, a[1] - 50], e = [q[0], a[1] - RUN];   // the fold line carries on up past the band: a short run on its own slope, then straight up, so no long slanted ruled line
       c.path = poly([e, q].concat(c.pts), false);
@@ -163,23 +167,19 @@
 
   // paint the body in the cloud's own px (the caller has translated / mirrored and clipped at the band); everything is clipped to the body's silhouette
   function draw(ctx, m, rimEnd) {
-    const k = m.k;
+    const k = m.k, f = FAMS[(m.fam || 0) % FAMS.length];
     ctx.save(); ctx.clip(m.p); ctx.lineJoin = "round"; ctx.lineCap = "round";
     for (let i = 0; i < m.ops.length; i++) {
       const o = m.ops[i];
       ctx.save();
       if (o.clip) { ctx.beginPath(); ctx.rect(o.x === undefined ? -1e4 : o.x, o.y, o.w === undefined ? 2e4 : o.w, o.h); ctx.clip(); }
-      ctx.fillStyle = o.color; ctx.fill(o.fill);
-      ctx.strokeStyle = NAVY; ctx.globalAlpha = 0.75; ctx.lineWidth = 3.4 * k; ctx.stroke(o.rim);
-      ctx.globalAlpha = 1; ctx.strokeStyle = OCEAN; ctx.lineWidth = 1.3 * k; ctx.stroke(o.rim);
+      ctx.fillStyle = f[STEP[o.color]]; ctx.fill(o.fill);
+      ctx.strokeStyle = f[0]; ctx.lineWidth = 3.4 * k; ctx.stroke(o.rim);
+      ctx.strokeStyle = f[4]; ctx.lineWidth = 1.3 * k; ctx.stroke(o.rim);
       ctx.restore();
     }
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < m.creases.length; i++) {
-      const c = m.creases[i];
-      if (!c.g) { const a = c.pts[0], b = c.pts[c.pts.length - 1]; c.g = ctx.createLinearGradient(a[0], a[1], b[0], b[1]); c.g.addColorStop(0, c.col); c.g.addColorStop(1, hexA(rimEnd || "#061c48", 0)); }
-      ctx.strokeStyle = c.g; ctx.stroke(c.path);
-    }
+    ctx.lineWidth = 1.2; ctx.strokeStyle = f[0];
+    for (let i = 0; i < m.creases.length; i++) ctx.stroke(m.creases[i].path);
     ctx.restore();
   }
 
