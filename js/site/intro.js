@@ -53,6 +53,11 @@
     /* the cutscene's warm-up comes in stages of its own */
     if (window.Genesis && Genesis.warmSteps) Genesis.warmSteps().forEach(f => steps.push(f));
     const total = steps.length;
+    if (total < 20 && barFill && barLabel) {
+      shortList = true;
+      nextAt = 100 / total;
+      shortTimer = setInterval(shortTick, 50);
+    }
     let chain = Promise.resolve();
     steps.forEach((fn, i) => {
       chain = chain.then(() => paintedFrame()).then(() => Promise.resolve().then(fn).catch(() => {})).then(() => { if (onStep) onStep(i + 1, total); });
@@ -99,6 +104,7 @@
     filling = true;
     clearTimeout(capTimer);
     if (!barFill) { warmReady(); return; }
+    if (shortList) { real = 100; return; }
     let t = 0;
     const settle = () => { clearTimeout(t); barFill.removeEventListener("transitionend", settle); warmReady(); };
     barFill.addEventListener("transitionend", settle);
@@ -116,6 +122,20 @@
     if (barEl) setTimeout(() => barEl.classList.add("out"), 350);
   }
   let capTimer = 0, barEl = null, barFill = null, barLabel = null;
+  /* a short step list (reduced motion) would sit at 25% and leap: the shown value walks to the real one
+     in small increments and creeps toward, never reaching, the next step while a slow one is pending */
+  let shortList = false, real = 0, shown = 0, nextAt = 100, shortTimer = 0;
+  function shortTick() {
+    if (warmed) { clearInterval(shortTimer); return; }
+    if (shown < real) shown = Math.min(real, shown + 1.5);
+    else if (!filling) {
+      const cap = nextAt - 1;
+      if (shown < cap) shown += Math.max(0.05, Math.min(0.3, (cap - shown) * 0.1));
+    }
+    barFill.style.transform = "scaleX(" + shown / 100 + ")";
+    barLabel.textContent = "loading " + Math.round(shown) + "%";
+    if (filling && shown >= 100) { clearInterval(shortTimer); warmReady(); }
+  }
 
   const btnWorld = document.getElementById("gate-world");
   const gateBox = gate.querySelector(".gate-stage");
@@ -170,6 +190,7 @@
   if (btnWorld) { btnWorld.classList.add("waiting"); btnWorld.setAttribute("aria-disabled", "true"); }
   capTimer = setTimeout(warmDone, WARM_CAP_MS);
   warmUp((n, total) => {
+    if (shortList) { if (!filling) { real = n / total * 100; nextAt = Math.min(100, (n + 1) / total * 100); } return; }
     if (n < total && barFill && !filling && !warmed) {
       barFill.style.transform = "scaleX(" + (n / total) + ")";
       if (barLabel) barLabel.textContent = "loading " + Math.round(n / total * 100) + "%";
