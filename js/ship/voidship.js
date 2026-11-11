@@ -545,8 +545,6 @@ window.Voidship = (function () {
       const p = ship.fumes[i];
       if (p.age === 0) { p.w = 1 - ship.exA; p.vx += p.w * tvx; }   // nose-first puffs ride the hull frame (the old plume); off-nose ones start with the hull's speed and drift in the world
       p.age += dt;
-      // a main puff lying ahead of the hull along travel (tail-first flight) fades out fast
-      if (p.main && !p.cut && noseDot < 0.3 && tsp > 30 && (p.x - env.W * 0.5) * tvx + (p.y - ship.y) * tvy > 0) { p.cut = 1; p.life = Math.min(p.life, p.age + 0.15); }
       if (p.age >= p.life) { ship.fumes.splice(i, 1); continue; }
       // partial inertia: when the hull brakes the plume surges ahead of it,
       // when it accelerates the plume is left behind; then it settles back
@@ -661,7 +659,7 @@ window.Voidship = (function () {
       ctx.restore();
     }
 
-    if (window.VoidshipArt && !ship.flip) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
+    if (window.VoidshipArt) VoidshipArt.drawFumes(ctx, ship.fumes, { W: env.W, H: env.H, camX: env.camX, pxPerUnit, t });
     if (window.VoidshipArt && VoidshipArt.drawTether) VoidshipArt.drawTether(ctx, ship, { W: env.W, camX: env.camX, viewUnits: env.viewUnits || 2100, holdD0: BASE.holdD0, holdD1: BASE.holdD1, aimDead: BASE.aimDead });
     if (window.VoidshipArt && VoidshipArt.drawWake) VoidshipArt.drawWake(ctx, ship, { W: env.W, H: env.H, t, trailLife: BASE.trailLife, rs: L / 200 });
 
