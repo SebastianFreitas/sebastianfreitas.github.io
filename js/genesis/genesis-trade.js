@@ -5,34 +5,15 @@
 window.GenTrade = (function () {
   const G = window.Gen;
   const { clamp, hash1, mulberry } = Util;
-  const { litShade, poly, circle } = Paint;
+  const { poly, circle } = Paint;
   const sx = G.sx;
   const TAU = Math.PI * 2;
 
-  const PAL = [
-    ["#b0525c", "#6e2a33"], // flesh
-    ["#7a4a7e", "#44264a"], // bruise
-    ["#d8ccb0", "#9a8c70"], // bone
-    ["#8d918c", "#4b4f4c"], // stone
-    ["#5a5d5a", "#2e302e"], // dark stone
-    ["#8a9a6a", "#4f5a3a"], // sick
-  ];
-  const HL_DOT = "rgba(255,255,255,0.8)";
-
-  function circleSplit(ctx, x, y, r, lit, shade) {
-    if (r * 2 < 8) { circle(ctx, x, y, r, lit); return; }
-    litShade(ctx, () => { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); }, x - 0.2 * r, lit, shade);
-  }
-  function polySplit(ctx, pts, lit, shade) {
-    let lo = Infinity, hi = -Infinity;
-    for (const p of pts) { if (p[0] < lo) lo = p[0]; if (p[0] > hi) hi = p[0]; }
-    if (hi - lo < 8) { poly(ctx, pts); ctx.fillStyle = lit; ctx.fill(); return; }
-    litShade(ctx, () => poly(ctx, pts), lo + 0.4 * (hi - lo), lit, shade);
-  }
+  const BODY = "rgb(96,96,96)", FLESH = "rgb(116,116,116)", TOP = "rgb(132,132,132)";   // flat greys, drawn outside the wash: the old ones stay the brightest
 
   /* ---- the travelling stream: 200 shapes moving east or west --------- */
   const TRAV_TYPES = ["blob", "stone", "flesh", "insect", "colour", "dust"];
-  const HUES = ["230,70,60", "70,130,255", "120,214,96", "236,92,150", "245,208,107", "140,70,210"];
+  const SPECK = "rgb(72,72,72)", MOTE = "rgb(64,64,64)";   // colourless air specks, dimmer than the deck travellers
   const trnd = mulberry(9303);
   const TRAV = [];
   for (let i = 0; i < 200; i++) {
@@ -45,11 +26,11 @@ window.GenTrade = (function () {
     const air = isAir ? 0.05 + trnd() * 0.28 : trnd() * 0.02;
     const size = 2.5 + trnd() * 6;
     const ph = trnd() * TAU;
-    const hueA = Math.floor(trnd() * 6), hueB = Math.floor(trnd() * 6);
+    trnd(); trnd();   // two draws kept so every later value (and every traveller's path) stays as it was
     const pal = Math.floor(trnd() * 6);
     const endOff = trnd() * 0.35;
     const rate = 0.05 + trnd() * 0.10;
-    TRAV.push({ type, east, u0, delay, gait, air, size, ph, hueA, hueB, pal, endOff, rate });
+    TRAV.push({ type, east, u0, delay, gait, air, size, ph, pal, endOff, rate });
   }
 
   function drawTraveller(ctx, tv, x, y, alpha) {
@@ -58,27 +39,24 @@ window.GenTrade = (function () {
     const yy = y - bob;
     switch (tv.type) {
       case "blob": {
-        const [lit, shade] = PAL[tv.pal];
-        circleSplit(ctx, x, yy, tv.size, lit, shade);
-        circle(ctx, x - tv.size * 0.3, yy - tv.size * 0.3, tv.size * 0.2, HL_DOT);
+        circle(ctx, x, yy, tv.size, BODY);
+        circle(ctx, x - tv.size * 0.3, yy - tv.size * 0.3, tv.size * 0.2, TOP);
         break;
       }
       case "stone": {
-        const [lit, shade] = PAL[3];
         const pts = [];
         for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU; pts.push([x + Math.cos(a) * tv.size, yy + Math.sin(a) * tv.size]); }
-        polySplit(ctx, pts, lit, shade);
+        poly(ctx, pts); ctx.fillStyle = BODY; ctx.fill();
         break;
       }
       case "flesh": {
-        const [lit, shade] = PAL[0];
         const pts = [];
         for (let k = 0; k < 8; k++) {
           const a = (k / 8) * TAU;
           const r = tv.size * (0.8 + hash1(k * 13 + 1) * 0.4);
           pts.push([x + Math.cos(a) * r, yy + Math.sin(a) * r]);
         }
-        polySplit(ctx, pts, lit, shade);
+        poly(ctx, pts); ctx.fillStyle = FLESH; ctx.fill();
         break;
       }
       case "insect": {
@@ -91,15 +69,13 @@ window.GenTrade = (function () {
         break;
       }
       case "colour": {
-        const period = 0.6 + (tv.ph % 1);
-        const hi = ((G.t + tv.ph) % (period * 2)) < period ? tv.hueA : tv.hueB;
-        circle(ctx, x, yy, tv.size * 0.5, `rgb(${HUES[hi]})`);
+        circle(ctx, x, yy, tv.size * 0.5, SPECK);
         break;
       }
       case "dust": {
         for (let k = 0; k < 3; k++) {
           const a = tv.ph + k * 2.1;
-          circle(ctx, x + Math.cos(a) * tv.size * 0.4, yy + Math.sin(a) * tv.size * 0.4, 1, "#b9b2a3");
+          circle(ctx, x + Math.cos(a) * tv.size * 0.4, yy + Math.sin(a) * tv.size * 0.4, 1, MOTE);
         }
         break;
       }
@@ -117,8 +93,6 @@ window.GenTrade = (function () {
     const rootSince = G.since ? G.since("root") : 0;
     const W = G.W, H = G.H;
     if (W === 0) return;
-    const shade = G.sceneOf(G.beat) === "birth" && window.GenElem;
-    let lay = null;
     for (const tv of TRAV) {
       const tsince = base - 7.2 - tv.delay;
       if (tsince < 0) continue;
@@ -132,10 +106,8 @@ window.GenTrade = (function () {
       const y = G.DECK * H - 3 - tv.air * H + Math.sin(G.t * 2 + tv.ph) * (tv.air > 0.03 ? 6 : 1.5);
       const alpha = Math.min(1, tsince / 0.6) * (1 - swarmSince) * (1 - landSince) * (1 - rootSince * 0.6) * edge;
       if (alpha < 0.02) continue;
-      if (shade && !lay) lay = GenElem.layerBegin(ctx);   // in the birth scene they go under the same deep shadow as the sky; no layer when none shows
-      drawTraveller(tv.type === "insect" ? ctx : (lay || ctx), tv, x, y, alpha);
+      drawTraveller(ctx, tv, x, y, alpha);
     }
-    if (lay) { lay.globalAlpha = 1; GenElem.layerEnd(ctx, lay, GenElem.dimK()); }
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
 
