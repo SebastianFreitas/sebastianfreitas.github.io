@@ -103,14 +103,14 @@ shares `Gen`:
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time load kind (the gate shows for every kind; only `first` gets the boot log): `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI, every visit: boot log (first visit only), loading bar, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` also runs `Genesis.warm` | uses `SiteEntry`, `XP` |
+| `intro.js` | Entry gate UI, every visit: boot log (first visit only), loading bar, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` runs real steps incl. `Genesis.warmSteps()`; bar = steps done / total | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
 | `banner.js` | Seeded cream text banner: plate = main's `.xp-name` recipe, tab = nav tab; `apply` masks `[data-banner]` labels (bullet below) | `window.Banner {schema, params, ready, draw, dataURL, apply}` |
 | `shapes.js` | Seeded raster wear masks: every `[data-wear]` box gets `--wear` (PNG mask) and `--shape: none`, redrawn on resize; `wearPlate`/`quad` clip the Work rows and Experience plate; kinds mode wears 1-2 corners | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
 | `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
-| `redlines.js` | Seeded red line pieces on plates (gate, Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
+| `redlines.js` | Seeded red line pieces on plates (Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip`, shows `.obj-go`; see bullet below | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
@@ -486,7 +486,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
-| `css/art/dirt-a.webp`, `dirt-b.webp` | Static transparent dirt tiles (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-b`, `--dirt-size` in style.css `:root`; used by the wall only (gate, veils), never a plate |
+| `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. The gate is plain black with a cream CONTINUE label and a hairline bar (`css/gate.css`); no dirt, no redlines |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
 | `index.html` | Homepage; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |

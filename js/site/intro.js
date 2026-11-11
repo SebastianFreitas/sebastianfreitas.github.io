@@ -31,24 +31,33 @@
   /* only a first visit gets the boot log and the scroll to the hero; every other load keeps its place */
   const first = entry.kind === "first";
 
-  /* the heavy first-time work, four tasks; onStep(done, total) after each one */
+  /* the heavy first-time work, one step per real thing that loads; onStep(done, total) after each.
+     Steps run one after another and a painted frame passes between them, so every percentage is seen
+     before the next block of work starts (a long step cannot hide the ones before it). */
   const WARM_CAP_MS = 8000;
   function warmUp(onStep) {
-    const total = 4;
-    let n = 0;
-    const step = () => { n++; if (onStep) onStep(n, total); };
-    const run = (fn) => Promise.resolve().then(fn).catch(() => {}).then(step);
     const loaded = new Promise(res => {
       if (document.readyState === "complete") res(); else addEventListener("load", res, { once: true });
     });
-    return Promise.all([
-      run(() => Promise.all([loaded, document.fonts && document.fonts.ready])),
-      run(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
-        if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce();
-        res();
-      })))),
-      run(() => loaded.then(() => new Promise(res => setTimeout(res, 0))).then(() => window.Genesis && Genesis.warm && Genesis.warm())),
-    ]);
+    const paintedFrame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+    const firstView = () => Array.from(document.images).filter(im => {
+      const r = im.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight * 2 && im.decode;
+    }).map(im => im.decode().catch(() => {}));
+    const steps = [
+      () => document.fonts && document.fonts.ready,
+      () => loaded,
+      () => Promise.all(firstView()),
+      () => paintedFrame().then(() => { if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce(); }),
+    ];
+    /* the cutscene's warm-up comes in stages of its own */
+    if (window.Genesis && Genesis.warmSteps) Genesis.warmSteps().forEach(f => steps.push(f));
+    const total = steps.length;
+    let chain = Promise.resolve();
+    steps.forEach((fn, i) => {
+      chain = chain.then(() => paintedFrame()).then(() => Promise.resolve().then(fn).catch(() => {})).then(() => { if (onStep) onStep(i + 1, total); });
+    });
+    return chain;
   }
 
   function finish() {
@@ -111,7 +120,6 @@
   const btnWorld = document.getElementById("gate-world");
   const gateBox = gate.querySelector(".gate-stage");
   if (gateBox) { gateBox.dataset.wear = "slab"; gateBox.dataset.seed = "81"; }
-  gate.querySelectorAll(".gate-btn").forEach((b) => { b.dataset.wear = "button"; b.dataset.seed = "82"; });
   if (window.Shapes) Shapes.apply(gate);
   if (btnWorld) {
     btnWorld.addEventListener("click", () => go({
@@ -162,7 +170,7 @@
   if (btnWorld) { btnWorld.classList.add("waiting"); btnWorld.setAttribute("aria-disabled", "true"); }
   capTimer = setTimeout(warmDone, WARM_CAP_MS);
   warmUp((n, total) => {
-    if (n < total && barFill) {
+    if (n < total && barFill && !filling && !warmed) {
       barFill.style.transform = "scaleX(" + (n / total) + ")";
       if (barLabel) barLabel.textContent = "loading " + Math.round(n / total * 100) + "%";
     }

@@ -134,15 +134,12 @@
   /* the gate sits over one still frame; the loop only starts on site:enter */
   document.addEventListener("site:preload", () => {
     B.preloaded = true;
-    B.paintOnce();
   });
   function repaintUnderGate() {
     if (B.preloaded && !B.entered) B.paintOnce();
   }
-  // a resize clears the canvas; late images and fonts change the picture
+  // the gate is opaque: the warm-up (intro.js) paints the frame once after load and fonts; only a resize, which clears the canvas, repaints
   addEventListener("resize", repaintUnderGate);
-  addEventListener("load", repaintUnderGate);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(repaintUnderGate);
 
   B.pendingView = null; B.pendingQuiet = false;
   document.addEventListener("site:enter", e => {

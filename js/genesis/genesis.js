@@ -303,37 +303,43 @@ window.Genesis = (function () {
   /* build the lazy canvases and caches ahead of the first cutscene: paint the first segment's
      opening frames on a throwaway canvas, then put the state back; nothing shows. Safe twice. */
   let warmed = false;
-  function warm() {
-    if (warmed || G.active || reduced) return;
+  /* one function per opening beat, so the gate can run them a frame apart; each puts the state back */
+  function warmSteps() {
+    if (warmed || G.active || reduced) return [];
     warmed = true;
-    const keep = { active: G.active, beat: G.beat, local: G.local, W: G.W, H: G.H, cam: G.cam, camTarget: G.camTarget, zoom: G.zoom, paused: G.paused };
-    const cv = document.createElement("canvas");
-    cv.width = Math.max(2, innerWidth);
-    cv.height = Math.max(2, innerHeight);
-    const ctx = cv.getContext("2d");
-    const nSparks = G.sparks ? G.sparks.length : 0, nRings = G.rings ? G.rings.length : 0;
-    warming = true;
-    try {
-      G.active = true;
-      G.cam = 0; G.camTarget = 0; G.zoom = 1;
-      G.W = cv.width; G.H = cv.height;
-      for (const b of ["point", "drawn", "break", "walk"]) {
+    const beat = (b, work) => () => {
+      if (G.active) return;
+      const keep = { active: G.active, beat: G.beat, local: G.local, W: G.W, H: G.H, cam: G.cam, camTarget: G.camTarget, zoom: G.zoom, paused: G.paused };
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(2, innerWidth);
+      cv.height = Math.max(2, innerHeight);
+      const ctx = cv.getContext("2d");
+      const nSparks = G.sparks ? G.sparks.length : 0, nRings = G.rings ? G.rings.length : 0;
+      warming = true;
+      try {
+        G.active = true;
+        G.cam = 0; G.camTarget = 0; G.zoom = 1;
+        G.W = cv.width; G.H = cv.height;
         go(idxOf(b));
-        draw(ctx, { W: G.W, H: G.H });
+        if (work) work(); else draw(ctx, { W: G.W, H: G.H });
+      } catch (e) {
+      } finally {
+        G.active = keep.active;
+        G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
+        G.cam = keep.cam; G.camTarget = keep.camTarget; G.zoom = keep.zoom; G.paused = keep.paused;
+        if (G.sparks) G.sparks.length = Math.min(G.sparks.length, nSparks);
+        if (G.rings) G.rings.length = Math.min(G.rings.length, nRings);
+        if (window.GenArmies) GenArmies.reset();
+        broke = false;
+        resetFX();
+        warming = false;
       }
-    } catch (e) {
-    } finally {
-      G.active = keep.active;
-      G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
-      G.cam = keep.cam; G.camTarget = keep.camTarget; G.zoom = keep.zoom; G.paused = keep.paused;
-      if (G.sparks) G.sparks.length = Math.min(G.sparks.length, nSparks);
-      if (G.rings) G.rings.length = Math.min(G.rings.length, nRings);
-      if (window.GenArmies) GenArmies.reset();
-      broke = false;
-      resetFX();
-      warming = false;
-    }
+    };
+    /* the walk beat's debris is the heavy part: it is built in small steps of its own, then the beat is drawn */
+    const debris = window.GenRockTitans && GenRockTitans.debrisSteps ? GenRockTitans.debrisSteps().map((f) => beat("walk", f)) : [];
+    return ["point", "drawn", "break"].map((b) => beat(b)).concat(debris, [beat("walk")]);
   }
+  function warm() { warmSteps().forEach((f) => f()); }
 
   function segmentSeen(id) {
     return !!(window.XP && XP.has("genesis-seg-" + id));
@@ -912,6 +918,6 @@ window.Genesis = (function () {
     get active() { return G.active; },
     get pending() { return pending(); },
     get seaming() { return seaming; },
-    play, playScene, playSegment: playScene, warm, segmentSeen, skip, seek, step, draw,
+    play, playScene, playSegment: playScene, warm, warmSteps, segmentSeen, skip, seek, step, draw,
   };
 })();

@@ -3,7 +3,7 @@
    One <svg class="redlines"> per plate with a single path of flat polygons, written once and redrawn
    only when the plate's size changes. The edge is read from the plate's own ::before clip-path, and
    the svg takes the ::before's box and tilt, so the pieces stay parallel to what is drawn.
-   Plates carry data-redlines="<id>" (the seed) and data-redlines-kind="gate|obj" (default obj).
+   Plates carry data-redlines="<id>" (the seed) and data-redlines-kind="item|obj" (default obj).
    =========================================================== */
 
 window.RedLines = (function () {
@@ -13,7 +13,6 @@ window.RedLines = (function () {
 
   // sheet values at 100%: ref = the sheet's plate width; left = [start y, length]; the right vertical hangs rover past the bottom. Every stroke is RED px thick on screen (T in build), whatever the plate width.
   const PRESETS = {
-    gate: { ref: 560, gate: true, left: [[-17, 150], [200, 93]], rover: 41, rlen: 143 },
     item: { ref: 460, gate: false, left: [[-31, 44]], rover: 46, rlen: 67, smin: 0.75 }, // cards and notes: the sheet's stack plate
     obj: { ref: 860, gate: false, left: [[-14, 70], [130, 50]], rover: 22, rlen: 100, lend: 0.78 },
   };
@@ -186,48 +185,24 @@ window.RedLines = (function () {
       const ym = base + edgeY(P, W, xm), y0 = ym - Math.tan(a) * (xm - p[0]);
       return [y0, Math.hypot(p[1] - p[0], (p[1] - p[0]) * Math.tan(a)), a];
     };
-    if (c.gate) {
-      // GATE B: corner cross, shallow V, no long top piece, one short square piece at the bottom right corner
-      const vx = 0.23 * W, vy = edgeY(E.t, W, vx), lx = 0.085 * W, ly = edgeY(E.t, W, lx), rx = 0.30 * W;
-      const ry = vy + (rx - vx) * Math.tan(Math.atan2(edgeY(E.t, W, rx) - vy, rx - vx) - 13 * Math.PI / 180);
-      polys.push(taper("h", -50 * s, edgeY(E.t, W, 0), 81 * s, T, -1, 0, seed * 100 + 30, [true, true], 0));
-      polys.push(vstroke(vx, vy, lx, ly, T, true));
-      polys.push(vstroke(vx, vy, rx, ry, T));
-      const p = g.bot[0].slice();
-      p[0] = p[1] - 0.6 * (p[1] - p[0]);
-      const q = place(p, E.b, H);
-      polys.push(taper("h", p[0], q[0], q[1], T, 1, q[2], seed * 100 + 20, [true, true]));
-    } else {
-      const kv = rng(seed * 31 + 5), cap = innerHeight * 0.9;
-      const lL0 = Math.min(H * (0.6 + kv() * 0.3), cap), rL = Math.min(H * (0.6 + kv() * 0.3), cap), ly = -(10 + kv() * 20) * s;
-      const lL = c.lend ? Math.min(lL0, c.lend * H - ly) : lL0; // lend: the left line ends by this share of the plate, where an open row's page starts
-      const ry = H + c.rover * s - rL, rOn = !(c.case && Wx < W) && (c.far || ry < innerHeight); // c.far: a case plate is many screens tall, its bottom corner is far below the first screen
-      g.top.forEach((p, i) => {
-        const q = place(p, E.t, 0);
-        polys.push(taper("h", p[0], q[0], q[1], T, c.case ? 1 : -1, q[2], seed * 100 + i, [sq(p[0], 0, r), sq(p[1], 0, r)], 0)); // a case plate's top edge is the top bar's bottom edge: its pieces hang below it, not under the bar
-      });
-      g.bot.forEach((p, i) => {
-        const q = place(p, E.b, H);
-        polys.push(taper("h", p[0], q[0], q[1], T, 1, q[2], seed * 100 + 20 + i, [sq(p[0], H, r), sq(p[1], H, r)], 0));
-      });
-      // long verticals down both sides, 60-90% of the plate (one viewport at most); the right one hangs past the bottom corner
-      const rr = rng(seed * 29 + 11), ve = (x, y) => (c.case ? rr() < 0.5 : y < 70 || y > H - 70 ? sq(x, y, rr, true) : rr() < 0.5);
-      const lt = T, rt = T;
-      const lx = Math.max(0, lt + 1 - lim[0]), rx = W - Math.max(0, rt + 1 - lim[1]);
-      polys.push(taper("v", lx, ly, lL, lt, -1, 0, seed * 100 + 50, c.case ? [true, true] : [ve(0, ly), ve(0, ly + lL)], 0)); // a case's left line is one even bar
-      if (rOn) polys.push(taper("v", rx, ry, rL, rt, 1, 0, seed * 100 + 90, [ve(W, ry), ve(W, ry + rL)], 0));
-      return pathOf(polys);
-    }
-    // gate: long verticals; an end within 70 px of a corner takes that corner's cut, else a coin flip
-    const rr = rng(seed * 29 + 11);
-    const ve = (x, y) => (y < 70 || y > H - 70 ? sq(x, y, rr, true) : rr() < 0.5);
-    c.left.forEach((v, i) => {
-      const y = v[0] * s, L = v[1] * s;
-      if (i > 0 && y + L > H - 8 * s) return;
-      polys.push(taper("v", 0, y, L, T, -1, 0, seed * 100 + 50 + i, [ve(0, y), ve(0, y + L)]));
+    const kv = rng(seed * 31 + 5), cap = innerHeight * 0.9;
+    const lL0 = Math.min(H * (0.6 + kv() * 0.3), cap), rL = Math.min(H * (0.6 + kv() * 0.3), cap), ly = -(10 + kv() * 20) * s;
+    const lL = c.lend ? Math.min(lL0, c.lend * H - ly) : lL0; // lend: the left line ends by this share of the plate, where an open row's page starts
+    const ry = H + c.rover * s - rL, rOn = !(c.case && Wx < W) && (c.far || ry < innerHeight); // c.far: a case plate is many screens tall, its bottom corner is far below the first screen
+    g.top.forEach((p, i) => {
+      const q = place(p, E.t, 0);
+      polys.push(taper("h", p[0], q[0], q[1], T, c.case ? 1 : -1, q[2], seed * 100 + i, [sq(p[0], 0, r), sq(p[1], 0, r)], 0)); // a case plate's top edge is the top bar's bottom edge: its pieces hang below it, not under the bar
     });
-    const rlen = Math.min(c.rlen * s, H), ry = H + c.rover * s - rlen;
-    if (ry < innerHeight) polys.push(taper("v", W, ry, rlen, T, 1, 0, seed * 100 + 90, [ve(W, ry), ve(W, ry + rlen)], c.gate));
+    g.bot.forEach((p, i) => {
+      const q = place(p, E.b, H);
+      polys.push(taper("h", p[0], q[0], q[1], T, 1, q[2], seed * 100 + 20 + i, [sq(p[0], H, r), sq(p[1], H, r)], 0));
+    });
+    // long verticals down both sides, 60-90% of the plate (one viewport at most); the right one hangs past the bottom corner
+    const rr = rng(seed * 29 + 11), ve = (x, y) => (c.case ? rr() < 0.5 : y < 70 || y > H - 70 ? sq(x, y, rr, true) : rr() < 0.5);
+    const lt = T, rt = T;
+    const lx = Math.max(0, lt + 1 - lim[0]), rx = W - Math.max(0, rt + 1 - lim[1]);
+    polys.push(taper("v", lx, ly, lL, lt, -1, 0, seed * 100 + 50, c.case ? [true, true] : [ve(0, ly), ve(0, ly + lL)], 0)); // a case's left line is one even bar
+    if (rOn) polys.push(taper("v", rx, ry, rL, rt, 1, 0, seed * 100 + 90, [ve(W, ry), ve(W, ry + rL)], 0));
     return pathOf(polys);
   }
 

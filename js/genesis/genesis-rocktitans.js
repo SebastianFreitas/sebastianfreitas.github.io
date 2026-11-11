@@ -189,13 +189,13 @@ window.GenRockTitans = (function () {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (d[(j * w + i) * 4 + 3] > 8) low = Math.max(low, mx * (i - ox) * sn + (j - oy) * cs);
     return low;
   }
-  function buildDebris() {
-    const W = G.W, H = G.H, key = W + "|" + H;
-    if (debris && debrisKey === key) return;
+  // the build as a plan of small steps (rocks, tentacles, the add pass, parts) that share one state; debris is set only when the last one is done
+  const DEB_CHUNK = { rock: 8, tent: 8 };
+  function debrisPlan(W, H, key) {
     const cx = G.sx(0), cy = 0.46 * H, deckY = FOOT * H, list = [], pend = [];
     // 126 wedges of the 21 body rocks (6 each, cut through the rock's centre so no ring survives) and the 8 tentacles, shares still open
     let n = 0;
-    LAYOUT.titans.forEach((t) => t.body.rocks.forEach((rr) => {
+    const rockStep = (rr) => {
       const s = rr.size * H, v = GenMatter.ROCKS[rr.rock].verts, co = Math.cos(rr.rot), si = Math.sin(rr.rot);
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
       v.forEach((q) => { const px = q[0] * s * rr.sx, py = q[1] * s * rr.sy, X = px * co - py * si, Y = px * si + py * co; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); });
@@ -216,22 +216,16 @@ window.GenRockTitans = (function () {
         pend.push(trim(wc)); a += da;
       }
       n++;
-    }));
-    LAYOUT.titans.forEach((t) => (t.body.tentacles || []).forEach((q) => {
+    };
+    const tentStep = (q) => {
       const L = q.len * H, w = q.w * H, pad = Math.abs(q.curl) * H * 0.5 + w * 0.5 + 2;
       const c = document.createElement("canvas"); c.width = Math.ceil(pad * 2); c.height = Math.ceil(L) + 2;
       const g = c.getContext("2d");
       g.translate(pad - (G.sx(0) + q.x * H), 1 - (FOOT + q.dy) * H);
       drawTentacle(g, { root: 0 }, q);
       pend.push({ sp: c, ox: c.width / 2, oy: c.height });
-    }));
-    // shares of the pend by seed (N = pend + 24 parts, 158: 24 deck, 16 float, 118 out; the parts hold 16 deck and 8 float of those places): non-part deck round(0.15 N) - 16, float round(0.10 N) - 8
-    const N = pend.length + 24, nDeck = Math.round(0.15 * N) - 16, nFloat = Math.round(0.10 * N) - 8;
-    const rank = pend.map((p, i) => i).sort((a, b) => Util.hash1(a * 13 + 5) - Util.hash1(b * 13 + 5)), shareOf = [], slotOf = [], reachOf = [];
-    rank.forEach((i, r) => { shareOf[i] = r < nDeck ? "deck" : r < nDeck + nFloat ? "float" : "out"; });
-    // out chips take a stratified slot along the top edge and both side edges (seeded order), so their ray ends spread
-    const outs = pend.map((p, i) => i).filter((i) => shareOf[i] === "out").sort((a, b) => Util.hash1(a * 29 + 11) - Util.hash1(b * 29 + 11));
-    outs.forEach((i, k) => { slotOf[i] = (k + Util.hash1(i * 17 + 3)) / outs.length; reachOf[i] = (k * 0.618034) % 1; });
+    };
+    const shareOf = [], slotOf = [], reachOf = [];
     // one chip: its seeded path from the lump, tipped 60-90 deg head away from the centre, mirrored to -x (light from the left)
     const endCnt = {}, midCnt = {};
     const add = (sp, ox, oy, share, seed, part, slot, reach) => {
@@ -271,13 +265,25 @@ window.GenRockTitans = (function () {
       list.push(ch);
       return ch;
     };
-    pend.forEach((p, i) => add(p.sp, p.ox, p.oy, shareOf[i], i * 31 + 7, null, slotOf[i], reachOf[i]));
+    const addStep = () => {
+      // shares of the pend by seed (N = pend + 24 parts, 158: 24 deck, 16 float, 118 out; the parts hold 16 deck and 8 float of those places): non-part deck round(0.15 N) - 16, float round(0.10 N) - 8
+      const N = pend.length + 24, nDeck = Math.round(0.15 * N) - 16, nFloat = Math.round(0.10 * N) - 8;
+      const rank = pend.map((p, i) => i).sort((a, b) => Util.hash1(a * 13 + 5) - Util.hash1(b * 13 + 5));
+      rank.forEach((i, r) => { shareOf[i] = r < nDeck ? "deck" : r < nDeck + nFloat ? "float" : "out"; });
+      // out chips take a stratified slot along the top edge and both side edges (seeded order), so their ray ends spread
+      const outs = pend.map((p, i) => i).filter((i) => shareOf[i] === "out").sort((a, b) => Util.hash1(a * 29 + 11) - Util.hash1(b * 29 + 11));
+      outs.forEach((i, k) => { slotOf[i] = (k + Util.hash1(i * 17 + 3)) / outs.length; reachOf[i] = (k * 0.618034) % 1; });
+      pend.forEach((p, i) => add(p.sp, p.ox, p.oy, shareOf[i], i * 31 + 7, null, slotOf[i], reachOf[i]));
+    };
     // 24 parts: the 19 pieces cropped by their cut's box inside the cached ink box, plus the five's crops (m 1, cut box(0,0,1,0.35))
     // the painters move with G.t, so an ink box measured now differs from the one the titans measure later: keep none of the new ones
-    const tmp = mk(), tg = tmp.getContext("2d"), had = Object.assign({}, boxes), parts = [];
+    const tmp = mk(), tg = tmp.getContext("2d"), parts = [];
+    let had = null;
     LAYOUT.titans.forEach((t) => t.pieces.map((pc) => [t, pc]).forEach((q) => parts.push(q)));
     FIVE.forEach((kind) => parts.push([LAYOUT.titans[0], { kind: kind, m: 1, dx: 0, dy: 0, rot: 0, cut: box(0, 0, 1, 0.35) }]));
-    parts.forEach((q) => {
+    let cur = null;   // the part's chip between its two halves
+    const partA = (q) => {
+      if (!had) had = Object.assign({}, boxes);
       const t = q[0], pc = q[1];
       tg.clearRect(0, 0, W, H); drawPiece(tg, t, pc, true);
       const bb = boxes[pc.kind + "|" + pc.m + "|" + pc.dx + "|" + pc.dy + "|" + H], o = GenOld.ROSTER.find((r) => r.kind === pc.kind);
@@ -287,11 +293,44 @@ window.GenRockTitans = (function () {
       const sp = crop(tmp, px, py, Math.ceil(bb[2] * (u1 - u0)) + 2, Math.ceil(bb[3] * (v1 - v0)) + 2);
       const d = GenOld.deckSpot(o), ch = add(sp, bb[0] + (u0 + u1) / 2 * bb[2] - px, bb[1] + v1 * bb[3] - py, o.move === "fly" ? "float" : "deck", o.idx * 31 + 7, d);
       ch.idx = o.idx; ch.m = pc.m; ch.s1 = 1 / pc.m; ch.cut = pc.cut;
-      const fx = tx(t) + pc.dx * G.H, fy = (FOOT + pc.dy) * G.H; tg.clearRect(0, 0, W, H); drawPiece(tg, t, Object.assign({}, pc, { m: 1 }), true);   // measured at m 1: a walker's stride is in px, so the box does not scale with m
+      cur = ch;
+    };
+    const partB = (q) => {
+      const t = q[0], pc = q[1], ch = cur;
+      const fx =tx(t) + pc.dx * G.H, fy = (FOOT + pc.dy) * G.H; tg.clearRect(0, 0, W, H); drawPiece(tg, t, Object.assign({}, pc, { m: 1 }), true);   // measured at m 1: a walker's stride is in px, so the box does not scale with m
       const b1 = boxes[pc.kind + "|1|" + pc.dx + "|" + pc.dy + "|" + H]; ch.ib = [b1[0] - fx, b1[1] - fy, b1[2], b1[3]]; ch.fx = fx; ch.fy = fy;   // the whole body's ink box at m 1, from its feet
-    });
-    Object.keys(boxes).forEach((q) => { if (!had[q]) delete boxes[q]; });
-    debris = list; debrisKey = key;
+    };
+    const rocks = [], tents = [], steps = [];
+    LAYOUT.titans.forEach((t) => { t.body.rocks.forEach((rr) => rocks.push(rr)); (t.body.tentacles || []).forEach((q) => tents.push(q)); });
+    const group = (items, size, fn) => { for (let i = 0; i < items.length; i += size) steps.push(() => items.slice(i, i + size).forEach(fn)); };
+    group(rocks, DEB_CHUNK.rock, rockStep); group(tents, DEB_CHUNK.tent, tentStep); steps.push(addStep); parts.forEach((q) => { steps.push(() => partA(q), () => partB(q)); });
+    const finish = () => {
+      Object.keys(boxes).forEach((q) => { if (!had[q]) delete boxes[q]; });
+      debris = list; debrisKey = key;
+    };
+    const drop = () => { if (had) Object.keys(boxes).forEach((q) => { if (!had[q]) delete boxes[q]; }); };   // a dropped partial build leaves the cache as it found it
+    return { key: key, steps: steps, finish: finish, drop: drop, i: 0 };
+  }
+  // the plan being built; a size change drops it
+  let plan = null;
+  function debrisNext() {
+    const key = G.W + "|" + G.H;
+    if (debris && debrisKey === key) return;
+    if (plan && plan.key !== key) { plan.drop(); plan = null; }
+    if (!plan) plan = debrisPlan(G.W, G.H, key);
+    plan.steps[plan.i++]();
+    if (plan.i >= plan.steps.length) { const p = plan; plan = null; p.finish(); }
+  }
+  function buildDebris() {
+    const key = G.W + "|" + G.H;
+    while (!(debris && debrisKey === key)) debrisNext();
+  }
+  // one function per small step, for the gate's bar; each does the next piece of the build (nothing once built)
+  function debrisSteps() {
+    let rocks = 0, tents = 0, parts = FIVE.length;
+    LAYOUT.titans.forEach((x) => { rocks += x.body.rocks.length; tents += (x.body.tentacles || []).length; parts += x.pieces.length; });
+    const cnt = Math.ceil(rocks / DEB_CHUNK.rock) + Math.ceil(tents / DEB_CHUNK.tent) + 1 + parts * 2;
+    return Array.from({ length: cnt }, () => debrisNext);
   }
   // the lying pose of part idx at its rest (end of step 3): pivot x and y, tilt from upright (signed), mirrored, its cut, its sprite size
   function partRest(idx) {
@@ -359,5 +398,5 @@ window.GenRockTitans = (function () {
     if (!G.reduced) drawChips(ctx, G.secs("trade"), true);
   }
 
-  return { on, draw, LAYOUT, buildDebris, drawDebris, partRest };
+  return { on, draw, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest };
 })();

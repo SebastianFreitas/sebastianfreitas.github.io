@@ -79,7 +79,6 @@
   --tear:            25px;
   /* the wall's dirt as static transparent tiles (css/art/, 1440x1280, repeat-y): dry-brush, scratches and big ink marks; two tiles so no two places stamp the same picture */
   --dirt-a:          url("/css/art/dirt-a.webp");
-  --dirt-b:          url("/css/art/dirt-b.webp");
   --dirt-size:       1440px auto;
   /* pale dry-brush streaks dragged in from the torn ends of a stroke or plate; the end lengths ride --tear, so they stay out of running text */
   --paint-streaks:
