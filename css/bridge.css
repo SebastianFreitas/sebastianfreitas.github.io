@@ -19,7 +19,7 @@
   --cold: #8fb0b8;             /* a reading from outside the hull */
 }
 /* one straight red line just under the bridge's bottom edge (4px below it, so it is off screen at scroll 0), over the top of the page below; it lives outside the hero because the hero clips its own overflow */
-.bridge-line { position: relative; height: 0; z-index: 50; pointer-events: none; }
+.bridge-line { position: relative; height: 0; z-index: 2; pointer-events: none; }   /* under the fixed top bar (z 3), over the page below */
 .bridge-line::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: var(--red-line); background: var(--type-red); }
 html.genesis-on .bridge-line { display: none; }   /* the cutscene is colourless */
 #bridge-canvas {
