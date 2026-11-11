@@ -71,6 +71,13 @@
     "0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%",
     "0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%"
   ];
+  // the four top bar tabs' own torn outlines (Bridge, Games, GitHub, Email), picked by the tab's data-seed; mirrored as the fallback in css/style.css
+  const NAV_CLIP = [
+    "11px 9px, 15px 4px, 20px 5px, 30% 2px, 33% 4px, 62% 0, calc(100% - 7px) 0, calc(100% - 2px) 3px, 100% 8px, calc(100% - 2px) 40%, 100% 58%, calc(100% - 1px) 80%, calc(100% - 3px) 100%, 70% 100%, 67% calc(100% - 2px), 60% 100%, 6px 100%, 1px calc(100% - 6px), 3px 66%, 0 44%, 6px 30%",
+    "0 4px, 4px 0, 40% 1px, 43% 3px, 47% 0, calc(100% - 6px) 1px, calc(100% - 1px) 4px, calc(100% - 6px) 30%, calc(100% - 11px) 54%, calc(100% - 8px) 68%, calc(100% - 12px) 82%, calc(100% - 17px) calc(100% - 4px), 75% calc(100% - 6px), 72% calc(100% - 2px), 66% calc(100% - 6px), 30% calc(100% - 4px), 12px 100%, 0 calc(100% - 3px), 2px 60%, 0 40%, 3px 20%",
+    "3px 12px, 9px 5px, 14px 0, 50% 0, 53% 2px, 57% 0, calc(100% - 12px) 0, calc(100% - 7px) 4px, calc(100% - 2px) 3px, 100% 12px, calc(100% - 4px) 48%, calc(100% - 1px) 70%, calc(100% - 4px) 100%, 80% 100%, 77% calc(100% - 2px), 71% 100%, 20px 100%, 8px calc(100% - 3px), 1px calc(100% - 9px), 4px 62%, 1px 40%, 5px 28%",
+    "8px 6px, 12px 1px, 25% 0, 28% 2px, 33% 0, calc(100% - 14px) 2px, calc(100% - 8px) 5px, calc(100% - 4px) 3px, calc(100% - 9px) 30%, calc(100% - 5px) 52%, calc(100% - 9px) 74%, calc(100% - 7px) calc(100% - 4px), calc(100% - 12px) 100%, 50% 100%, 47% calc(100% - 2px), 42% 100%, 14px 100%, 6px calc(100% - 4px), 9px 72%, 4px 54%, 8px 34%, 5px 20%"
+  ];
   // main's .xp-name clip-path polygon (css/style.css), the plate's long edges and corners
   const PLATE_CLIP = TAB_CLIP[0];
   function clipPath2D(src, w, h) {
@@ -103,7 +110,7 @@
     k.width = cv.width; k.height = cv.height;
     const kg = k.getContext("2d");
     kg.setTransform(dpr, 0, 0, dpr, 0, 0); kg.fillStyle = "#000";
-    kg.fill(clipPath2D(plate ? PLATE_CLIP : TAB_CLIP[(Number(p.seed) || 0) % 2 ? 1 : 0], p.w, p.h));
+    kg.fill(clipPath2D(plate ? PLATE_CLIP : p.navTab != null ? NAV_CLIP[p.navTab] : TAB_CLIP[(Number(p.seed) || 0) % 2 ? 1 : 0], p.w, p.h));
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "destination-in"; g.drawImage(k, 0, 0);
     return cv;
   }
@@ -188,6 +195,7 @@
       el._bnSeed = el.dataset.bannerSeed !== undefined ? el.dataset.bannerSeed : hash(el.dataset.banner + ":" + Array.prototype.indexOf.call(all, el));
     }
     const p = params(el._bnSeed, { mode: el.dataset.banner === "tab" ? "tab" : "plate", w: w, h: h, text: "" });
+    if (el.parentNode && el.parentNode.matches("header.topbar nav")) p.navTab = ((Number(el.dataset.seed) - 11) % 4 + 4) % 4;
     el.style.setProperty("--banner", "url(" + dataURL(p, dpr) + ")");
     el._bnW = b.w; el._bnH = b.h; el._bnDpr = dpr;
   }
