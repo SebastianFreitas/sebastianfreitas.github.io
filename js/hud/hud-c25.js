@@ -432,14 +432,20 @@ window.HudC25 = (function () {
         c.fillStyle = rgba(col, weak ? 0.3 : 0.18); c.fillRect(xa + 1.5, yy, xb - xa - 2, y(ly) + Hh - yy - 0.5);
         line(xa + 1.5, yy, xb - 0.5, yy, col, weak ? 0.95 : 0.8, 1.2); }); });
     /* bus split */
-    /* the row always spans the rail 1604..1870: the loads (live: drv, thm, life as lsp, gnc, in kW) take their shares of the filled part (bus / 6, at most the rail),
-       each at least its label wide; spare (no model: the rest of the 6 kW) gets what is left, at least its label and number wide */
+    /* the row always spans the rail 1604..1870 as a stacked bar on the rail's 0..6 kW scale: the filled part S (bus / 6, at most the rail) is split by kW (live: drv, thm, life as lsp, gnc),
+       a load under its label width is pinned to the label and the rest share what is left in proportion to their kW (water-filling), so the widths sum to S;
+       spare (no model: the rest of the 6 kW) gets what is left, at least its label and number wide */
     { const RX0 = 1604, RW = 266, y = x => ycR(x) - 6 + 9, Hh = 10;
       const box = (xa, xb, a) => poly([[xa, y(xa)], [xb, y(xb)], [xb, y(xb) + Hh], [xa, y(xa) + Hh], [xa, y(xa)]], GOLD, a);
-      dyn(() => { const ls = RF.loads, tot = ls.reduce((a, l) => a + l[1], 0) || 1, mw = ls.map(l => W_(l[0], 9) + 5), spMin = W_("spare", 9) + W_("0.0", 9) + 14;
-        const S = Math.max(mw.reduce((a, b) => a + b, 0), Math.min(RW - spMin, RW * Math.min(1, RF.bus / 6))), free = S - mw.reduce((a, b) => a + b, 0);
+      dyn(() => { const ls = RF.loads, mw = ls.map(l => W_(l[0], 9) + 5), spMin = W_("spare", 9) + W_("0.0", 9) + 14;
+        const S = Math.max(mw.reduce((a, b) => a + b, 0), Math.min(RW - spMin, RW * Math.min(1, RF.bus / 6)));
+        const pin = ls.map(() => false), ws = mw.slice();
+        for (let p = 0; p < 5; p++) { let pf = 0, pk = 0, pn = 0, ch = false;
+          ls.forEach((l, i) => { if (pin[i]) pf += mw[i]; else { pk += l[1]; pn++; } });
+          ls.forEach((l, i) => { if (pin[i]) return; ws[i] = pk > 0 ? (S - pf) * l[1] / pk : (S - pf) / pn; if (ws[i] < mw[i] - 1e-9) { pin[i] = true; ws[i] = mw[i]; ch = true; } });
+          if (!ch) break; }
         let xc = RX0;
-        ls.forEach((l, i) => { const w = mw[i] + free * l[1] / tot, xa = xc + 0.5, xb = xc + w - 1.5; box(xa, xb, 0.42);
+        ls.forEach((l, i) => { const w = ws[i], xa = xc + 0.5, xb = xc + w - 1.5; box(xa, xb, 0.42);
           const xm = (xa + xb) / 2; mic(l[0], xm - W_(l[0], 9) / 2 - (i === ls.length - 1 && ts > s + 1e-6 ? 3 : 0), Math.round(y(xm) + 8), { a: 0.8 }); xc += w; });
         dash([1, 2], () => box(xc + 0.5, RX0 + RW, 0.22));
         const xs = xc + 4 + (ts > s + 1e-6 ? 4 : 0), sp = Math.max(0, 6 - RF.bus).toFixed(1); mic("spare", xs, Math.round(y(xs) + 8), { a: 0.55 }); text(sp, xs + W_("spare", 9) + 4, Math.round(y(xs) + 8), { size: 9, col: GOLD, a: 0.7 });
