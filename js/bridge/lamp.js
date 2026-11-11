@@ -20,6 +20,96 @@ window.Beacon = (function () {
   const CORE = "255,245,220";
   const HIT  = 34;   // px radius for clicking one                 // px radius for a canvas hit test
 
+  /* ---------- the bridge's mark: the HUD's gold line-work ----
+     1 px hairlines, end ticks, a small white core; no glow blobs.
+     Weights, alphas and the mono font follow js/hud/hud-c25.js. */
+  const CREAM = "238,230,208";
+  const STRUCT = 0.42;
+  const DASH = [3, 5], NODASH = [];
+  const TAU = Math.PI * 2;
+
+  function tick(ctx, x, y, a, r0, r1) {
+    const c = Math.cos(a), s = Math.sin(a);
+    ctx.moveTo(x + c * r0, y + s * r0); ctx.lineTo(x + c * r1, y + s * r1);
+  }
+
+  function drawHud(ctx, x, y, o, A, t, blink) {
+    const active = !!o.active, hover = !!o.hover, claimed = !!o.claimed;
+    const k = (o.k || 1) * (hover ? 1.35 : 1) * (active ? 1.2 : 1);
+    const R = (o.cutscene ? 21 : 12) * k, g = 0.5;   // g: half-gap angle from vertical
+    const hot = hover || active;
+    const ring = claimed ? CREAM : GOLD;
+    const aRing = claimed ? (hot ? 0.5 : 0.3) : (hot ? 0.95 : STRUCT);
+    const tickCol = claimed ? CREAM : (hover ? CORE : GOLD);
+    const aTick = claimed ? (hot ? 0.5 : 0.3) : (hover ? 0.95 : 0.5);
+    ctx.lineWidth = 1;
+    ctx.lineCap = "butt";
+
+    // the frame: two arcs ( ), gaps top and bottom, each end closed by a tick;
+    // active closes to a full circle
+    ctx.strokeStyle = `rgba(${ring},${aRing * A})`;
+    ctx.beginPath();
+    if (active) {
+      ctx.arc(x, y, R, 0, TAU);
+    } else {
+      ctx.arc(x, y, R, -Math.PI / 2 + g, Math.PI / 2 - g);
+      ctx.moveTo(x + Math.cos(Math.PI / 2 + g) * R, y + Math.sin(Math.PI / 2 + g) * R);
+      ctx.arc(x, y, R, Math.PI / 2 + g, 1.5 * Math.PI - g);
+      for (let i = 0; i < 4; i++)   // the four arc ends: -90°+g, 90°-g, 90°+g, 270°-g
+        tick(ctx, x, y, -Math.PI / 2 + Math.PI * ((i + 1) >> 1) + (i % 2 ? -g : g), R - 2.5, R + 2.5);
+    }
+    ctx.stroke();
+
+    // N / E / S / W ticks just outside the ring, clear of the core
+    ctx.strokeStyle = `rgba(${tickCol},${aTick * A})`;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) tick(ctx, x, y, i * Math.PI / 2, R + 4, R + 8);
+    ctx.stroke();
+
+    // active: a thin outer ring of dashes, turning slowly (still under reduced motion)
+    if (active) {
+      ctx.strokeStyle = `rgba(${GOLD},${0.55 * A})`;
+      ctx.setLineDash(DASH);
+      ctx.lineDashOffset = window.Bridge && Bridge.reduced ? 0 : -t * 5;
+      ctx.beginPath(); ctx.arc(x, y, R + 11, 0, TAU); ctx.stroke();
+      ctx.setLineDash(NODASH); ctx.lineDashOffset = 0;
+    }
+
+    // the core: only it pulses
+    if (claimed) {
+      ctx.strokeStyle = `rgba(${CORE},${0.5 * A})`;
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.stroke();
+    } else {
+      const ca = active ? 1 : 0.75 + 0.25 * blink;
+      ctx.fillStyle = `rgba(${CORE},${0.16 * ca * A})`;
+      ctx.beginPath(); ctx.arc(x, y, 3.6, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(${CORE},${ca * A})`;
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
+    }
+
+    // its name, on a short gold hairline lead from the frame
+    if (o.label && (hover || !claimed)) {
+      ctx.strokeStyle = `rgba(${GOLD},${STRUCT * A})`;
+      ctx.beginPath(); ctx.moveTo(x, y + R + 11.5); ctx.lineTo(x, y + R + 17.5); ctx.stroke();
+      ctx.font = `500 9.5px "IBM Plex Mono", monospace`;
+      ctx.letterSpacing = "0.8px";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillStyle = `rgba(${CREAM},${(hover ? 0.9 : 0.5) * A})`;
+      ctx.fillText(o.label.toUpperCase(), x, y + R + 19);
+      ctx.letterSpacing = "0px";
+      ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+    }
+
+    // the moment it's taken: eight gold ticks leaving, fading
+    if (o.pop > 0.001) {
+      const p = 1 - o.pop, r0 = R + 4 + p * 46 * k;
+      ctx.strokeStyle = `rgba(${GOLD},${o.pop * 0.9})`;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) tick(ctx, x, y, i * Math.PI / 4 + Math.PI / 8, r0, r0 + 6);
+      ctx.stroke();
+    }
+  }
+
   /* ---------- canvas ----------------------------------------
      opts: { t, k, alpha, active, hover, claimed, xp, phase }
        t       seconds, for the pulse
@@ -41,6 +131,8 @@ window.Beacon = (function () {
     // steady once you're reading it, a slow breathe otherwise
     const blink = active ? 1
       : 0.74 + 0.26 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.9 + phase), 1.6);
+
+    if (!o.gold) { drawHud(ctx, x, y, o, A, t, blink); return; }
 
     // a wide soft halo, so it separates from the scene behind it
     const glow = ctx.createRadialGradient(x, y, 0, x, y, 38 * k);
