@@ -149,15 +149,13 @@
     if (!to.name) return;
 
     const veil = document.createElement("div");
-    veil.className = "rank-veil";
+    veil.className = "rank-veil rank-veil-hud";
     veil.setAttribute("role", "dialog");
     veil.setAttribute("aria-modal", "true");
     veil.setAttribute("aria-label", "Rank up: you are now " + to.name);
 
     const cardEl = document.createElement("div");
-    cardEl.className = "rank-card slab";
-    cardEl.dataset.wear = "slab";
-    cardEl.dataset.seed = "83";
+    cardEl.className = "rank-card";
     veil.appendChild(cardEl);
 
     const kicker = document.createElement("p");
@@ -230,8 +228,6 @@
 
     document.body.appendChild(veil);
     if (window.Shapes) Shapes.apply(veil);
-    cardEl.dataset.redlines = "rank";
-    if (window.RedLines) window.RedLines.draw(cardEl, { kind: "item" });
     requestAnimationFrame(() => veil.classList.add("open"));
 
     document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: true } }));
@@ -296,6 +292,7 @@
       return;
     }
     glimpseOn = true;
+    Util.write(localStorage, Util.KEYS.GLIMPSE_SEEN, "1");
 
     const veil = document.createElement("div");
     veil.className = "rank-veil glimpse-veil";
@@ -424,7 +421,7 @@
 
   // only a Void-beacon segment ("birth"); the full Genesis by URL carries no segment
   document.addEventListener("site:genesis-done", e => {
-    if (e.detail && e.detail.segment === "birth" && !e.detail.url) setTimeout(glimpse, 350);
+    if (e.detail && e.detail.segment === "birth" && !e.detail.url && !Util.read(localStorage, Util.KEYS.GLIMPSE_SEEN)) setTimeout(glimpse, 350);
   });
 
   document.addEventListener("xp:surge", e => play(e.detail || {}));

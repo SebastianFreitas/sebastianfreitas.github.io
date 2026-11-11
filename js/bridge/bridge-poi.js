@@ -54,7 +54,7 @@
     const still = reduced.matches;
     for (const m of B.activeMarks()) {
       const scanning = B.scan && B.scan.m === m;
-      if (!scanning && (m.vis < 0.5 || m.fly || !unread(m))) { m.poi = 0; continue; }
+      if (!scanning && (m.vis < 0.5 || m.fly || !unread(m) || B.noteOn)) { m.poi = 0; continue; }
       const p = B.markScreen(m);
       const near = scanning || (Math.abs(p.x - B.W / 2) < range && p.y > 0 && p.y < B.H);
       if (!near) { m.poi = 0; continue; }

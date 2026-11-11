@@ -39,6 +39,7 @@
       if (e) e.classList.remove("show");
       if (e && e._red) e._red.classList.remove("show");
     }
+    B.noteOn = false;
     if (!mark) return;
     const el2 = noteEls[mark.id];
     if (!el2) return;
@@ -55,6 +56,7 @@
       measureNote(el2);
       placeNote(el2, mark);
       el2.classList.add("show");
+      B.noteOn = true;
       el2.querySelectorAll("video").forEach(v => { v.play().catch(() => {}); });
       if (mark.id === "bnote-land" && noteCat) noteCat.textContent = fmt(B.catalogued);
     }, 280);
@@ -116,10 +118,9 @@
     const note = noteEls[id];
     if (!note || note._replay) return;
     const a = document.createElement("a");
-    a.className = "type-action";
+    a.className = "nreplay";
     a.href = "#";
     a.textContent = "Watch again";
-    a.dataset.wear = "button"; a.dataset.seed = "86";
     a.addEventListener("click", e => {
       e.preventDefault();
       if (window.Genesis) Genesis.playScene(BEACON_SEGMENT[id]);

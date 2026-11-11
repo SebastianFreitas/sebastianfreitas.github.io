@@ -55,6 +55,7 @@ window.Util = (function () {
     VIEW: "arcanis.view.v1",
     SECTOR: "arcanis.sector.v1",
     GEAR_SEEN: "arcanis.gear.seen",
+    GLIMPSE_SEEN: "arcanis.glimpse.seen",
     SW_CLEANUP: "arcanis.swcleanup.v1",
     HUD_WING: "arcanis.hudwing.v1",
   };

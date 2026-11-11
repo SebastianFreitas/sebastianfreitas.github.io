@@ -158,6 +158,33 @@
 }
 .rank-veil.open { opacity: 1; }
 .rank-veil.closing { opacity: 0; transition-duration: 0.18s; }
+/* glimpse and rank veils: the bridge stays visible, lightly blurred under the bridge's near-black (the gate keeps the wall wash) */
+.glimpse-veil, .rank-veil-hud {
+  background: rgb(13 17 20 / 0.88);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.glimpse-veil::before, .rank-veil-hud::before { content: none; }
+/* rank-up card in the HUD style: hairline frame, black plate, mono type, no wear */
+.rank-veil-hud .rank-card { background: none; border: 0; }
+.rank-veil-hud .rank-card::before { background: none; -webkit-mask-image: none; mask-image: none; }
+.rank-veil-hud .rank-card::after {
+  content: ""; display: block; width: 60%; height: 7px; margin: 1rem auto 0;
+  background:
+    linear-gradient(rgb(var(--hud-gold-rgb) / 0.6), rgb(var(--hud-gold-rgb) / 0.6)) no-repeat 0 3px / 100% 1px,
+    linear-gradient(rgb(var(--hud-gold-rgb)), rgb(var(--hud-gold-rgb))) no-repeat 0 0 / 1px 7px,
+    linear-gradient(rgb(var(--hud-gold-rgb)), rgb(var(--hud-gold-rgb))) no-repeat 100% 0 / 1px 7px;
+}
+.rank-veil-hud .rank-kicker, .rank-veil-hud .rank-meta { color: var(--hud-quiet); }
+.rank-veil-hud .rank-now, .rank-veil-hud .rank-next { color: var(--hud-main); }
+.rank-veil-hud .rank-meta b { color: rgb(var(--hud-gold-rgb)); font-size: 2.2rem; font-weight: 500; letter-spacing: 0; line-height: 1; vertical-align: -0.12em; padding: 0 0.1em; }
+.rank-veil-hud .rank-hint { color: var(--hud-quiet); }
+.rank-veil-hud .rank-name { font-family: var(--type-mono); font-weight: 700; font-size: 1.35rem; letter-spacing: 0.14em; color: #fff; }
+.rank-veil-hud .rank-old { stroke: var(--hud-quiet); }
+.rank-veil-hud .rank-new { stroke: var(--hud-main); }
+@keyframes rankFillHud { to { fill: rgb(var(--hud-lamp-rgb) / 0.16); } }
+.rank-veil-hud .rank-new { animation: rankDraw 0.75s cubic-bezier(.3,.7,.3,1) 0.3s forwards, rankFillHud 0.5s ease-out 1s forwards; }
+@keyframes rankLetterHud { 0% { opacity: 0; transform: translateY(0.45em); } 100% { opacity: 1; transform: none; } }
+.rank-veil-hud .rank-word span { animation-name: rankLetterHud; }
 .rank-card {
   position: relative; box-sizing: border-box; width: min(340px, 100%); padding: 1.5rem 1.6rem 1.2rem;
   --stroke: rgb(4 4 5 / 0.92);

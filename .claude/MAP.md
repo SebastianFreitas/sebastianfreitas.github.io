@@ -657,7 +657,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
 (xp.js; `{name, ref, level, claimed, seen, readOrder}`, `readOrder` = beacon ids in read order, absent on old profiles), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
-GEAR_SEEN (bridge-panel.js), SW_CLEANUP (index.html head), HUD_WING `arcanis.hudwing.v1` (hud-c25.js; wing scale 1 / 1.25 / 1.5 / 1.75).
+GEAR_SEEN (bridge-panel.js), GLIMPSE_SEEN `arcanis.glimpse.seen` (surge.js; set when the glimpse card shows, so the cutscene's card appears once), SW_CLEANUP (index.html head), HUD_WING `arcanis.hudwing.v1` (hud-c25.js; wing scale 1 / 1.25 / 1.5 / 1.75).
 `?reset=1` wipes every key with the PREFIX.
 
 ## Future work briefs
