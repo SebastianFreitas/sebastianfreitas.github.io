@@ -156,7 +156,7 @@ window.XP = (function () {
       '<span class="xp-badge">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="" vector-effect="non-scaling-stroke"/></svg>' +
       '</span>' +
-      '<span class="xp-name" data-banner="plate"></span>' +
+      '<span class="xp-name"></span>' +
       '<span class="xp-track">' + pips + '</span>' +
       '<span class="xp-ref"></span>';
     // the level belongs to the whole site, so it lives in the top bar

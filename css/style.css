@@ -250,11 +250,9 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 .topbar .xp-chip[data-rank="sun"] { --sw: 1.5px; }
 .topbar .xp-chip[data-rank="sealed"], .topbar .xp-chip[data-rank="compass"], .topbar .xp-chip[data-rank="crest"] { --sw: 1px; }
 .topbar .xp-chip .xp-name {
-  position: relative; box-sizing: border-box; display: block; flex: 0 1 auto; min-width: 0; height: 28px; padding: 0 32px 0 37px;
-  font: 700 26px/28px var(--type-head); letter-spacing: 0.04em; text-transform: uppercase; color: #0b0b0b; background: #f1ecd8;
+  position: relative; box-sizing: border-box; display: block; flex: 0 1 auto; min-width: 0; height: 28px; padding: 0;
+  font: 700 26px/28px var(--type-head); letter-spacing: 0.04em; text-transform: uppercase; color: var(--type-cream); background: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
-  -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 .wordmark {
   font-family: var(--tab-serif);
@@ -402,13 +400,9 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 /* narrow desktop: the free column is 127px wide at 729 and 290 at 900, so the name plate shrinks (smaller type and ends) and from 889 down it goes whole rather than leave a blank plate; the track goes at 900, the rank symbol and a tighter level stack at 728 */
 @media (min-width: 641px) and (pointer: fine) and (max-width: 900px) {
   .topbar .xp-chip .xp-track { display: none; }
-  .topbar .xp-chip .xp-name { font-size: 15px; padding: 0 12px; --ml: 12px; --mr: 12px; }
+  .topbar .xp-chip .xp-name { font-size: 15px; }
 }
 @media (min-width: 641px) and (pointer: fine) and (max-width: 889px) { .topbar .xp-chip { min-height: 35px; } .topbar .xp-chip .xp-name { display: none; } }
-/* the name plate keeps its slim size, tilted a hair like the tab strips */
-@media (min-width: 890px) and (pointer: fine) {
-  .topbar .xp-chip .xp-name { transform: rotate(-1.2deg); }
-}
 @media (min-width: 641px) and (pointer: fine) and (max-width: 728px) {
   .topbar .xp-chip .xp-badge { display: none; }
   .topbar .xp-chip .xp-lv, .topbar .xp-chip .xp-ref { letter-spacing: 0.06em; }
@@ -862,7 +856,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   .topbar { gap: 8px; grid-template-columns: auto 1fr; grid-template-areas: "mark nav" "xp xp"; --bar-pb: 1.25rem; --ge: var(--gs); }
   .topbar .xp-chip { min-width: 0; }
   .topbar .xp-chip { justify-content: center; gap: 10px; top: 0; }
-  .topbar .xp-chip .xp-name { font-size: 20px; line-height: 26px; height: 26px; padding: 0 18px 0 22px; --ml: 22px; --mr: 18px; --mh: 26px; }
+  .topbar .xp-chip .xp-name { font-size: 20px; line-height: 26px; height: 26px; }
   .topbar > .wordmark { grid-area: mark; }
   .topbar > nav { grid-area: nav; }
   .topbar > .xp-slot { grid-area: xp; justify-self: stretch; width: 100%; max-width: 100%; margin: 0; }
@@ -882,7 +876,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   .topbar nav a { padding: 0.18rem 0.5rem; font-size: 0.68rem; }
   .topbar .xp-chip { font-size: 0.6rem; }
   .topbar .xp-chip .xp-badge { width: 22px; height: 22px; padding: 0; }
-  .topbar .xp-chip .xp-name { font-size: 18px; line-height: 22px; height: 22px; padding: 0 22px 0 26px; --ml: 26px; --mr: 22px; --mh: 22px; }
+  .topbar .xp-chip .xp-name { font-size: 18px; line-height: 22px; height: 22px; }
   .wordmark { font-size: 0.95rem; letter-spacing: 0.14em; }
   .topbar nav { gap: 0.35rem; flex-wrap: nowrap; }
 }
