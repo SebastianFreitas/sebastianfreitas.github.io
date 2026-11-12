@@ -1134,10 +1134,9 @@ footer, footer .rights { font-family: var(--type-read); }
 .xp-shape .xp li { grid-template-columns: 1fr var(--xp-pw, 280px); grid-template-rows: auto auto auto auto 1fr; gap: 0 1.6rem; align-items: start; padding: 0.25rem 0; margin-bottom: 0.25rem; }
 /* the plate's right edge cuts in toward the bottom, so each row gets the width that still fits inside it at its own height (px, plate-local; checked against the clip polygon) */
 @media (min-width: 1200px) {
-  .xp-shape .xp-tilt { flex-basis: 1000px; }
-  .xp-shape .xp li:nth-child(1) { width: 976px; --xp-pw: 320px; }
-  .xp-shape .xp li:nth-child(2) { width: 778px; --xp-pw: 280px; }
-  .xp-shape .xp li:nth-child(3) { width: 594px; --xp-pw: 260px; }
+  /* one compact block: a 380 px text column, a 40 px gap and one 208 px picture column (16:9) for all three rows; the block sits in the plate's middle, the third row's picture (the plate narrows downwards) sets how far right it can go */
+  .xp-shape .xp-tilt { flex-basis: 628px; }
+  .xp-shape .xp li { width: 628px; grid-template-columns: 380px 208px; column-gap: 40px; }
 }
 /* the contact strip sits under the plate on the page background, its left edge on the EXPERIENCE heading's (Shapes.xpShape sets --xp-foot-x on desktop; phones use the plate's own left padding) */
 .experience > footer { margin: 3rem 0 0 var(--xp-foot-x, calc(var(--gutter) * 0.5 + 0.8rem)); padding: 0 1.2rem 4rem 0; background: none; }
@@ -1160,11 +1159,36 @@ footer, footer .rights { font-family: var(--type-read); }
 .xp-shape .xp-link > span { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
 .xp-shape .xp-link:hover > span, .xp-shape .xp-link:focus-visible > span { transform: translateX(4px); }
 .xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
+/* desktop: EXPERIENCE is a label on the plate, out of the list: it sits under the top edge and runs parallel to it; the angle is the edge's own (--xp-dy, set from the plate's top-left drop, over the edge's run of 97.2% of the plate's full width, content box plus --xp-pl), never a fixed number */
+@media (min-width: 1200px) {
+  .xp-shape { container-type: inline-size; --xp-pl: 76px; padding: 164px 0 0 var(--xp-pl); }
+  .xp-shape .section-title { position: absolute; margin: 0; left: calc(0.028 * (100cqw + var(--xp-pl)) + 48px); top: calc(var(--xp-dy) + 22px - 48px * tan(atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); transform-origin: 0 0; transform: rotate(calc(-1 * atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); white-space: nowrap; }
+  .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 10px; }
+  .experience .xp-shape .xp-cert { margin-top: 10px; }
+}
 @media (max-width: 1199px) {
   .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
   .xp-shape .xp-pic, .xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .xp-shape .xp-cert { grid-column: 1; grid-row: auto; }
   .xp-shape .xp-pic { order: 1; margin-top: 0.6rem; }
 }
+/* desktop mouse: hovering or focusing an entry fades the Games rows' white torn paper in behind its title (the title turns dark) and a red square in beside the years, which slide right by 9 + 12 px; nothing else moves */
+@media (hover: hover) and (min-width: 1200px) {
+  .xp-shape .xp-what h3 { position: relative; isolation: isolate; width: fit-content; max-width: 100%; transition: color 0.2s; }
+  .xp-shape .xp-what h3::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    top: -0.1em; bottom: -0.08em; left: -0.25em; right: -0.25em;
+    background: #f1ecd8;
+    -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+    clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
+  }
+  .xp-shape .xp-what a.xp-link { transition: color 0.2s; }
+  .xp-shape .xp-when { display: flex; align-items: center; gap: 12px; }
+  .xp-shape .xp-when::before { content: ""; display: block; flex: none; width: 0; height: 9px; margin-right: -12px; opacity: 0; background: var(--type-red); transition: opacity 0.2s, width 0.2s, margin-right 0.2s; }
+  .xp-shape .xp li:hover .xp-what h3, .xp-shape .xp li:focus-within .xp-what h3, .xp-shape .xp li:hover .xp-what a.xp-link, .xp-shape .xp li:focus-within .xp-what a.xp-link { color: #14110c; }
+  .xp-shape .xp li:hover .xp-what h3::before, .xp-shape .xp li:focus-within .xp-what h3::before { opacity: 1; }
+  .xp-shape .xp li:hover .xp-when::before, .xp-shape .xp li:focus-within .xp-when::before { width: 9px; margin-right: 0; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .xp-shape .xp-what h3, .xp-shape .xp-what h3::before, .xp-shape .xp-what a.xp-link, .xp-shape .xp-when::before { transition: none; } }
 /* the tall red line on the plate's left edge: data-red-line="on" on section#experience shows it */
 .experience[data-red-line="off"] .xp-shape > .xp-red { display: none; }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
