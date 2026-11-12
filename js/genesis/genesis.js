@@ -349,7 +349,7 @@ window.Genesis = (function () {
   function setPause(on) {
     G.paused = !!on;
     if (pauseEl) {
-      pauseEl.textContent = G.paused ? "Play" : "Pause";
+      pauseEl.textContent = G.paused ? "play" : "pause";
       pauseEl.setAttribute("aria-pressed", G.paused ? "true" : "false");
     }
   }

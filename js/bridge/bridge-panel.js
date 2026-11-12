@@ -50,7 +50,7 @@
   function journalRow(label, play) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "modes-btn";
+    b.className = "modes-btn hud-click";
     b.textContent = label;
     b.addEventListener("pointerdown", e => e.stopPropagation());
     b.addEventListener("click", () => {
@@ -116,7 +116,7 @@
     });
     const link = document.createElement("button");
     link.type = "button";
-    link.className = "arch-link";
+    link.className = "arch-link hud-click";
     link.textContent = "journal >";
     link.addEventListener("pointerdown", e => e.stopPropagation());
     link.addEventListener("click", e => { e.stopPropagation(); if (gearBtn) gearBtn.click(); });

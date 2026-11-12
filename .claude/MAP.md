@@ -486,7 +486,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | The entry gate, every visit: boot log (first visit only), bar, the button. index only |
-| `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
+| `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
