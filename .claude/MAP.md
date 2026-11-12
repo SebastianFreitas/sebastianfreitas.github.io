@@ -108,6 +108,7 @@ shares `Gen`:
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
 | `banner.js` | Seeded cream text banner: plate = main's `.xp-name` recipe, tab = nav tab; `apply` masks `[data-banner]` labels (bullet below) | `window.Banner {schema, params, ready, draw, dataURL, apply}` |
+| `barwear.js` | Top bar, 1200 px+ fine pointer: 3-4 small glass breaks cut into the plate's wave (CSS var `--bar-cut`) in the empty stretches beside the rank slot, plus a catch-light svg `.bar-lit`; redraws on resize | `window.BarWear {apply, info}` |
 | `shapes.js` | Seeded raster wear masks (`--wear`) on every `[data-wear]` box; `wearPlate`/`quad` clip the Work rows and Experience plate; preset `row-glass` (desktop): glass breaks on their top edges (`LAYOUTS`) plus a catch-light (`wkEdgeLight`) | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
 | `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
 | `redlines.js` | Seeded red line pieces on plates (Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
@@ -568,7 +569,7 @@ ship/voidship → lib/pacer → bridge/marks → bridge/bridge-sites →
 bridge/bridge-log → bridge/bridge-voice → bridge/{bridge, bridge-notes,
 bridge-input, bridge-motifs, bridge-marks, bridge-poi, bridge-panel, bridge-depths,
 bridge-env, bridge-readout, bridge-loop} → genesis/* → site/lazy-video →
-site/embed → shared/heavylight-sprites → site/redlines →
+site/embed → shared/heavylight-sprites → site/shapes → site/barwear → site/redlines →
 site/intro`.
 
 Index loads no toys and no `play.js`: the Work rows preview on hover (`work-preview.js`). `work-preview.js` loads

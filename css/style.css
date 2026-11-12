@@ -179,7 +179,7 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
     linear-gradient(rgb(4, 4, 5), rgb(4, 4, 5));
   transition: opacity 0.3s ease;
   opacity: 0.92;
-  clip-path: polygon(0% 0px, 100% 0px, 100% calc(100% - 3px), 88% 100%, 73% calc(100% - 3px), 60% calc(100% - 2px), 49% 100%, 37% calc(100% - 4px), 22% calc(100% - 1px), 12% calc(100% - 4px), 0% calc(100% - 1px));
+  clip-path: var(--bar-cut, polygon(0% 0px, 100% 0px, 100% calc(100% - 3px), 88% 100%, 73% calc(100% - 3px), 60% calc(100% - 2px), 49% 100%, 37% calc(100% - 4px), 22% calc(100% - 1px), 12% calc(100% - 4px), 0% calc(100% - 1px)));   /* js/site/barwear.js sets --bar-cut on wide screens: the same wave plus a few glass breaks */
 }
 .topbar.is-solid::before, .page-case .topbar::before { opacity: 1; }
 /* keep the contents above the panel */
