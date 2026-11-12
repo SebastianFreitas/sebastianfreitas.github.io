@@ -298,18 +298,18 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 }
 /* the paper hover is shared: the top bar tabs and the links in the Experience shape's footer text (every rule below that lists both) */
 .topbar nav a,
-.xp-shape footer .foot-text a, .glimpse-card .glimpse-btn {
+.experience :is(footer .foot-text a, .xp-cert), .glimpse-card .glimpse-btn {
   position: relative; isolation: isolate;
   text-decoration: none;
   transition: color 0.12s ease-out, transform 0.12s ease-out;
   --tilt: -2.2deg;
 }
-.xp-shape footer .foot-text a { display: inline-block; padding: 2px 8px; color: var(--type-cream); }
+.experience :is(footer .foot-text a, .xp-cert) { display: inline-block; padding: 2px 8px; color: var(--type-cream); }
 .topbar nav a:nth-child(even),
-.xp-shape footer .foot-text a:nth-of-type(even), .glimpse-card .glimpse-btn:nth-child(even) { --tilt: 1.7deg; }
+.experience :is(footer .foot-text a, .xp-cert):nth-of-type(even), .glimpse-card .glimpse-btn:nth-child(even) { --tilt: 1.7deg; }
 /* the strip is erased at the corners with the name plate's masks, sized for a tab */
 .topbar nav a::before,
-.xp-shape footer .foot-text a::before, .glimpse-card .glimpse-btn::before {
+.experience :is(footer .foot-text a, .xp-cert)::before, .glimpse-card .glimpse-btn::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   background: none;
   -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
@@ -317,7 +317,7 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   transition: background-color 0.12s ease-out;
 }
 .topbar nav a:nth-child(even)::before,
-.xp-shape footer .foot-text a:nth-of-type(even)::before, .glimpse-card .glimpse-btn:nth-child(even)::before {
+.experience :is(footer .foot-text a, .xp-cert):nth-of-type(even)::before, .glimpse-card .glimpse-btn:nth-child(even)::before {
   clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
 /* each top bar tab has its own torn outline and tilt (the same four polygons as NAV_CLIP in js/site/banner.js, so the fallback matches the final shape) */
@@ -336,31 +336,31 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   mask: url("../art/wear/tab-tl.png") left top / var(--ml) var(--mh) no-repeat, url("../art/wear/tab-br.png") right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 / calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
 }
 /* a few px of invisible hit area so the tilted box never drops the pointer at its edge (the active tab's ::after is the sliver) */
-.topbar nav a:not(.active)::after, .xp-shape footer .foot-text a::after, .glimpse-card .glimpse-btn::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
+.topbar nav a:not(.active)::after, .experience :is(footer .foot-text a, .xp-cert)::after, .glimpse-card .glimpse-btn::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
 .topbar nav a:not(.active):last-child::after { right: 0; }
 .topbar nav a:focus-visible,
-.xp-shape footer .foot-text a:focus-visible, .glimpse-card .glimpse-btn:focus-visible { color: #f6f0da; opacity: 1; }
+.experience :is(footer .foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { color: #f6f0da; opacity: 1; }
 .topbar nav a:focus-visible::before,
-.xp-shape footer .foot-text a:focus-visible::before, .glimpse-card .glimpse-btn:focus-visible::before { background: var(--type-red); }
+.experience :is(footer .foot-text a, .xp-cert):focus-visible::before, .glimpse-card .glimpse-btn:focus-visible::before { background: var(--type-red); }
 /* the white paper strip is a pointer hover only (a touch tap would leave it stuck); red strip while pressed */
 @media (hover: hover) {
   .topbar nav a:hover,
-  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover { color: #1a1714; opacity: 1; }
+  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover { color: #1a1714; opacity: 1; }
   .topbar nav a:hover::before,
-  .xp-shape footer .foot-text a:hover::before, .glimpse-card .glimpse-btn:hover::before { background: #f1ecd8; }
+  .experience :is(footer .foot-text a, .xp-cert):hover::before, .glimpse-card .glimpse-btn:hover::before { background: #f1ecd8; }
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active,
-  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover, .xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { transform: rotate(var(--tilt)); }
+  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, .experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: rotate(var(--tilt)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active, .topbar nav a.active:hover,
-  .xp-shape footer .foot-text a:hover, .glimpse-card .glimpse-btn:hover, .xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { transform: none; }
+  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, .experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: none; }
 }
 .topbar nav a:active,
-.xp-shape footer .foot-text a:active, .glimpse-card .glimpse-btn:active { color: #f6f0da; }
+.experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { color: #f6f0da; }
 .topbar nav a:active::before,
-.xp-shape footer .foot-text a:active::before, .glimpse-card .glimpse-btn:active::before { background: var(--type-red); }
+.experience :is(footer .foot-text a, .xp-cert):active::before, .glimpse-card .glimpse-btn:active::before { background: var(--type-red); }
 .topbar nav a:focus-visible,
-.xp-shape footer .foot-text a:focus-visible, .glimpse-card .glimpse-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
+.experience :is(footer .foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
 .topbar nav a[aria-current], .topbar nav a.is-current, .topbar nav a.active { color: #1a1714; transform: rotate(-3deg); -webkit-text-stroke: 0.2px currentColor; }
 .topbar nav a[aria-current]::before, .topbar nav a.is-current::before, .topbar nav a.active::before {
   background: #f1ecd8;
@@ -673,7 +673,7 @@ body.page-case { background: #0a0d10; }
 }
 .experience { background: none; }
 .xp-what { font-family: var(--type-serif); font-size: 1.2rem; line-height: 1.3; color: var(--type-cream); }
-.xp-what strong { color: var(--type-cream); font-weight: 400; font-synthesis: none; }
+.xp-what h3 { margin: 0; font-size: inherit; color: var(--type-cream); font-weight: 400; font-synthesis: none; }
 /* rough top and bottom, straight sides; the edge differs down the stack */
 .xp li::before, .work .section-title::before, .experience .section-title::before { clip-path: var(--shape, inset(0)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
 .xp-what a { color: var(--lamp); text-decoration: underline; }
@@ -1045,9 +1045,9 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }
 .xp-shape .section-title { padding: 0; margin: 0 0 1.5rem; }
 .xp-shape .xp li { padding: 0.6rem 0; margin-bottom: 0.6rem; max-width: 44rem; }
-.xp-shape footer { background: none; padding: 0; }
-.xp-shape footer::before { content: none; }
-.xp-shape .foot-text { padding: 0; }
+.experience footer { background: none; padding: 0; }
+.experience footer::before { content: none; }
+.experience .foot-text { padding: 0; }
 @media (max-width: 1199px) {
   .xp-shape { padding: calc(var(--xp-dy) + 1.8rem) 1.2rem 5rem calc(var(--gutter) * 0.5 + 0.8rem); }
 }
@@ -1055,31 +1055,31 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 /* experience + contact type: the top bar's serif, two straight columns (Experience left, contact right) centred as a pair, every line left-aligned; they stack when the pair does not fit */
 .xp-shape { display: flex; flex-flow: row wrap; justify-content: center; align-items: flex-start; column-gap: clamp(2rem, 5vw, 5rem); row-gap: 3rem; }
 /* the slanted right edge cuts in as it goes down, so the pair is centred in the part of the shape that stays black under the contact column */
-/* desktop: the shape is one fixed 1660x780 px box (the 2000-wide look, matching Shapes.xpShape's constants), centred and cut off by the section when the window is narrower; never scaled or re-wrapped */
+/* desktop: the shape is one fixed 1660x890 px box (the 2000-wide look, matching Shapes.xpShape's constants), centred and cut off by the section when the window is narrower; never scaled or re-wrapped */
 .experience { overflow-x: clip; }
 @media (min-width: 1200px) {
-  .xp-shape { box-sizing: border-box; width: 1660px; height: 780px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 141px 0 0 56px; }
+  .xp-shape { box-sizing: border-box; width: 1660px; height: 890px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 141px 0 0 56px; }
 }
 .xp-shape .xp-tilt { flex: 0 1 clamp(22rem, 33vw, 36rem); min-width: min(22rem, 100%); max-width: 100%; text-align: left; }
-.xp-shape footer { flex: 0 1 clamp(16rem, 19vw, 22rem); min-width: min(16rem, 100%); padding: 0; text-align: left; }
-@media (min-width: 1200px) { .xp-shape .xp-tilt { flex: 0 0 576px; } .xp-shape footer { flex: 0 0 352px; } }
+.experience footer { padding: 0; text-align: left; }
+@media (min-width: 1200px) { .xp-shape .xp-tilt { flex: 0 0 576px; } }
 /* the hover padding is pulled back out with a matching negative margin, so the text of every line starts at the column edge; links and dates never split */
-.xp-shape footer .foot-text a { margin: 0 -8px; white-space: nowrap; }
-.xp-shape footer p:not(.rights):nth-of-type(2) { white-space: nowrap; }
+.experience :is(footer .foot-text a, .xp-cert) { margin: 0 -8px; white-space: nowrap; }
+.experience footer p:not(.rights):nth-of-type(2) { white-space: nowrap; }
 .xp-shape .xp-when { white-space: nowrap; }
-.xp-shape .foot-text { max-width: none; width: auto; }
+.experience .foot-text { max-width: none; width: auto; }
 .xp-shape .section-title { font-family: var(--bar-serif); font-weight: 700; font-size: 2.3rem; letter-spacing: 0.1em; line-height: 1; color: var(--type-cream); }
 .xp-shape .xp li { max-width: none; grid-template-columns: 8.5rem 1fr; gap: 0.15rem 1.4rem; }
 .xp-shape .xp-when { font-family: var(--type-mono); font-size: var(--fs-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--type-dim); padding-top: 0.45rem; border-right: 1px solid rgb(228 221 198 / 0.25); }
 .xp-shape .xp-what { font-family: var(--bar-serif); font-size: 0.82rem; letter-spacing: 0.06em; line-height: 1.3; color: var(--type-dim); }
-.xp-shape .xp-what strong { display: block; margin-bottom: 0.9rem; font-family: var(--bar-serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; line-height: 1.2; color: var(--type-cream); text-wrap: pretty; text-wrap: balance; }
+.xp-shape .xp-what h3 { display: block; margin: 0 0 0.9rem; font-family: var(--bar-serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; line-height: 1.2; color: var(--type-cream); text-wrap: pretty; text-wrap: balance; }
 .xp-shape .xp-note { max-width: 34rem; font-family: var(--type-sans); font-size: 0.88rem; color: var(--type-dim); text-wrap: pretty; }
-.xp-shape footer p:not(.rights) { font-family: var(--bar-serif); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--type-cream); text-wrap: pretty; }
-.xp-shape footer .nm { white-space: nowrap; }
-.xp-shape footer .rights { font-size: 0.7rem; color: var(--type-dim); text-wrap: balance; }
+.experience footer p:not(.rights) { font-family: var(--bar-serif); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--type-cream); text-wrap: pretty; }
+.experience footer .nm { white-space: nowrap; }
+.experience footer .rights { font-size: 0.7rem; color: var(--type-dim); text-wrap: balance; }
 @media (max-width: 1199px) {
   .xp-shape { row-gap: 2.5rem; }
-  .xp-shape .xp-tilt, .xp-shape footer { flex-basis: 100%; }
+  .xp-shape .xp-tilt { flex-basis: 100%; }
   .xp-shape .section-title { font-size: 1.7rem; }
   .xp-shape .xp li { grid-template-columns: 6.4rem 1fr; gap: 0.15rem 0.8rem; }
   .xp-shape .xp-when { letter-spacing: var(--ls-label); }
@@ -1123,13 +1123,50 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 /* Experience + contact */
 .xp-shape .section-title { font-size: 2.75rem; letter-spacing: 0.04em; line-height: 1; }
 .xp-shape .xp-what { font-family: var(--type-read); font-size: var(--fs-body); letter-spacing: 0; line-height: var(--lh-body); color: var(--ink-body); }
-.xp-shape .xp-what strong { margin-bottom: 0.35rem; font-family: var(--type-head); font-weight: 600; font-size: 1.45rem; letter-spacing: 0.03em; line-height: 1.1; text-transform: uppercase; }
+.xp-shape .xp-what h3 { margin: 0 0 0.35rem; font-family: var(--type-head); font-weight: 600; font-size: 1.45rem; letter-spacing: 0.03em; line-height: 1.1; text-transform: uppercase; }
 .xp-shape .xp-note { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); }
-.xp-shape footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); letter-spacing: 0; }
-.xp-shape footer .rights { font-family: var(--type-read); font-size: var(--fs-label); }
+.experience footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); letter-spacing: 0; }
+.experience footer .rights { font-family: var(--type-read); font-size: var(--fs-label); }
 footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); line-height: 1.5; }
 footer, footer .rights { font-family: var(--type-read); }
 @media (max-width: 1199px) { .xp-shape .section-title { font-size: 2.2rem; } }
+/* Experience rows: a 16:9 picture box at the left, year, title, note and links beside it, level and in straight columns */
+.xp-shape .xp li { grid-template-columns: 1fr var(--xp-pw, 280px); grid-template-rows: auto auto auto auto 1fr; gap: 0 1.6rem; align-items: start; padding: 0.25rem 0; margin-bottom: 0.25rem; }
+/* the plate's right edge cuts in toward the bottom, so each row gets the width that still fits inside it at its own height (px, plate-local; checked against the clip polygon) */
+@media (min-width: 1200px) {
+  .xp-shape .xp-tilt { flex-basis: 1000px; }
+  .xp-shape .xp li:nth-child(1) { width: 976px; --xp-pw: 320px; }
+  .xp-shape .xp li:nth-child(2) { width: 778px; --xp-pw: 280px; }
+  .xp-shape .xp li:nth-child(3) { width: 594px; --xp-pw: 260px; }
+}
+/* the contact strip sits under the plate on the page background, its left edge on the EXPERIENCE heading's (Shapes.xpShape sets --xp-foot-x on desktop; phones use the plate's own left padding) */
+.experience > footer { margin: 3rem 0 0 var(--xp-foot-x, calc(var(--gutter) * 0.5 + 0.8rem)); padding: 0 1.2rem 4rem 0; background: none; }
+.experience > footer .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
+.xp-shape .xp-pic { position: relative; grid-column: 2; grid-row: 1 / span 5; display: block; aspect-ratio: 16 / 9; background: #0a0a0b; overflow: hidden; }
+.xp-shape .xp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* text in the Games rows' hierarchy: mono grey years, display-face title (the organisation, a link), hook (the role), grey detail line, mono tag */
+.xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .xp-shape .xp-cert { grid-column: 1; grid-row: auto; }
+.xp-shape .xp-when { display: block; border-right: 0; padding-top: 0; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: #8f8878; text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7); }
+.xp-shape .xp-what { margin: 14px 0 0; line-height: 0.95; }
+.xp-shape .xp-what h3 { margin: 0; font-size: 2rem; font-weight: 700; line-height: 0.95; letter-spacing: 0.02em; text-wrap: wrap; }
+.xp-shape .xp-role { display: block; margin: 14px 0 0; font: 500 1.25rem/1.28 var(--type-read); color: #f1ecd8; text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7); }
+.xp-shape .xp-note { margin: 10px 0 0; max-width: none; font: 400 0.9375rem/1.45 var(--type-read); color: #8f8878; }
+.xp-shape .xp-note:empty { display: none; }
+.experience .xp-shape .xp-cert { justify-self: start; margin: 14px -8px 0; font: 600 0.75rem/1 var(--type-mono); letter-spacing: 0.16em; text-transform: uppercase; }
+/* EXPERIENCE is a subtitle: the entry titles are the biggest type in the plate */
+.xp-shape .section-title { font-family: var(--type-mono); font-weight: 500; font-size: 1rem; letter-spacing: 0.2em; margin-bottom: 1rem; color: #8f8878; }
+.xp-shape .xp-what a.xp-link { color: var(--type-cream); text-decoration: none; }
+.xp-shape .xp-link { white-space: nowrap; }
+.xp-shape .xp-link > span { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
+.xp-shape .xp-link:hover > span, .xp-shape .xp-link:focus-visible > span { transform: translateX(4px); }
+.xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
+@media (max-width: 1199px) {
+  .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
+  .xp-shape .xp-pic, .xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .xp-shape .xp-cert { grid-column: 1; grid-row: auto; }
+  .xp-shape .xp-pic { order: 1; margin-top: 0.6rem; }
+}
+/* the tall red line on the plate's left edge: data-red-line="on" on section#experience shows it */
+.experience[data-red-line="off"] .xp-shape > .xp-red { display: none; }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
 .page-case:not(.page-404) .case { --measure: 34rem; }
 

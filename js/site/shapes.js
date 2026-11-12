@@ -1500,7 +1500,7 @@
      a red line runs down the left edge from ~6% above its top. Phone: the long point becomes a mild slant. */
   function xpShape(el) {
     const red = redOf(el);
-    const XW = 1660, XH = 780, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
+    const XW = 1660, XH = 890, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
     let mode = null;
     /* desktop: the top edge is the last Work row's bottom edge moved down its normal by the row-to-row gap (perpendicular distance between two rows' parallel edges), same length;
        everything is in design px (rects divided by the stage zoom), so the result is the same at every window size. Returns {W, dy, left, top} (left/top: where the box sits, page design px) or null */
@@ -1532,6 +1532,16 @@
       quad(el, red, pts, "--xp-clip");
       wearPlate(el, "xp-wear", [[pts[0], pts[1]]]);
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
+      /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */
+      const ft = el.parentNode.querySelector(":scope > footer");
+      if (ft) {
+        if (phone) ft.style.removeProperty("--xp-foot-x");
+        else {
+          const k = window.Stage ? window.Stage.s() : 1;
+          ft.style.setProperty("--xp-foot-x", "0px");
+          ft.style.setProperty("--xp-foot-x", ((el.getBoundingClientRect().left - ft.getBoundingClientRect().left) / k + parseFloat(getComputedStyle(el).paddingLeft)).toFixed(1) + "px");
+        }
+      }
     }
     function live() { if (window.matchMedia("(max-width: 1199px)").matches || mode !== false) draw(); }
     draw();

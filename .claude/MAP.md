@@ -112,6 +112,7 @@ shares `Gen`:
 | `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
 | `redlines.js` | Seeded red line pieces on plates (Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip` (`.obj-go` is always shown); see bullet below | none |
+| `xp-slides.js` | Experience `a.xp-pic` slides through `data-slides` on row hover or focus (desktop) or while half on screen (phones); transform-only, timers, stops when hidden or reduced motion | `window.XpSlides` |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 - `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon.
@@ -489,6 +490,9 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
 | `index.html` | Homepage; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
+| `media/experience/` | `ground-1..6`, `dfblock-1..5`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`) |
+| `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
+| `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it as before (css/style.css, comment in index.html). Plate height is `XH` 890 in js/site/shapes.js and `height: 890px` in css/style.css |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
