@@ -718,6 +718,9 @@ def flow_phone(browser, base):
     tab = page.evaluate("""() => { const r = document.querySelector('a.obj[href="projects/conclusus.html"]').getBoundingClientRect();
       return r.width > 0 && r.height > 0; }""")
     check("phone: the Conclusus row is visible", tab)
+    ln = page.evaluate("""() => { const e = document.querySelector('a.obj[href="projects/conclusus.html"] > .obj-line'), cs = getComputedStyle(e);
+      return { opacity: +cs.opacity, vis: cs.visibility, h: e.offsetHeight }; }""")
+    check("phone: the detail line is shown without hover", ln["opacity"] > 0.95 and ln["vis"] != "hidden" and ln["h"] > 0, ln)
     page.wait_for_timeout(1000)
     canvases = page.evaluate("""() => Array.from(document.querySelectorAll('canvas.play'))
       .filter(c => { const r = c.getBoundingClientRect(); const cs = getComputedStyle(c);
@@ -1231,19 +1234,21 @@ def flow_cc_win(browser, base):
 
 
 def flow_work_hover(browser, base):
-    """Hovering a Work row plays its clip and shows its button; a row stays open until another row or leaving Work closes it; one row previews at a time."""
+    """Hovering a Work row plays its clip (its button is always shown); a row stays open until another row or leaving Work closes it; one row previews at a time."""
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     sel = lambda k: f"a.obj[href='projects/{k}.html']"
     read = lambda k: page.evaluate("""(k) => { const row = document.querySelector("a.obj[href='projects/" + k + ".html']"), v = row.querySelector('video'),
-      go = row.querySelector('.obj-go'), cs = getComputedStyle(go);
-      return { paused: v.paused, t: v.currentTime, goShown: cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0,
+      shown = (e) => { const cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0; };
+      return { paused: v.paused, t: v.currentTime, goShown: shown(row.querySelector('.obj-go')),
+      detailsShown: shown(row.querySelector('.obj-line')), factsShown: shown(row.querySelector('.props')),
+      lineBox: row.querySelector('.obj-line').offsetHeight > 0,
       peeking: document.querySelectorAll('.obj.is-peek').length }; }""", k)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/voidscape.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(700)
     r = read("voidscape")
-    check("work-hover: idle row: clip paused, button hidden", r["paused"] and not r["goShown"], r)
+    check("work-hover: idle row: clip paused, tag hidden, facts shown, details hidden (space reserved)", r["paused"] and not r["goShown"] and r["factsShown"] and not r["detailsShown"] and r["lineBox"], r)
     page.hover(sel("voidscape"))
     r = None
     for _ in range(10):
@@ -1252,13 +1257,13 @@ def flow_work_hover(browser, base):
         if not r["paused"] and r["t"] > 0:
             break
     check("work-hover: hover plays the clip within 2 s", not r["paused"] and r["t"] > 0, r)
-    check("work-hover: hover shows the button", r["goShown"], r)
+    check("work-hover: tag, facts and details shown on hover", r["goShown"] and r["factsShown"] and r["detailsShown"], r)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/conclusus.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.wait_for_timeout(700)
     page.hover(sel("conclusus"))
     page.wait_for_timeout(600)
     a, b = read("voidscape"), read("conclusus")
-    check("work-hover: only one row previews", a["paused"] and not a["goShown"] and not b["paused"] and b["peeking"] == 1, [a, b])
+    check("work-hover: only one row previews", a["paused"] and not b["paused"] and b["peeking"] == 1, [a, b])
     box = page.evaluate("""() => { const r = document.querySelector("a.obj[href='projects/conclusus.html']").getBoundingClientRect();
       const n = document.querySelector("a.obj[href='projects/heavylight.html']").getBoundingClientRect();
       return { x: r.left + r.width / 2, bottom: r.bottom, nextTop: n.top }; }""")
@@ -1272,11 +1277,11 @@ def flow_work_hover(browser, base):
     page.hover(sel("heavylight"))
     page.wait_for_timeout(600)
     a, b = read("conclusus"), read("heavylight")
-    check("work-hover: entering the next row swaps", a["paused"] and not a["goShown"] and b["peeking"] == 1 and b["goShown"], [a, b])
+    check("work-hover: entering the next row swaps", a["paused"] and b["peeking"] == 1 and b["goShown"], [a, b])
     page.mouse.move(2, 2)
     page.wait_for_timeout(500)
     r = read("heavylight")
-    check("work-hover: leaving Work closes it", r["paused"] and not r["goShown"] and r["peeking"] == 0, r)
+    check("work-hover: leaving Work closes it", r["paused"] and r["peeking"] == 0, r)
     ctx.close()
 
 

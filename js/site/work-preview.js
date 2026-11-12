@@ -1,7 +1,8 @@
 /* ==========================================================================
-   WORK PREVIEW — hover (or keyboard focus) on a Work row marks it (no turn), plays its
-   clip where the picture is, shows the "game page" button and the red bar; it
-   stays open until another row opens or the pointer leaves Work. A click is just the row's own link. No preview on touch.
+   WORK PREVIEW — hover (or keyboard focus) on a Work row plays its clip where the
+   picture is; it stays open until another row opens or the pointer leaves Work. The
+   text block (title label, hook, button) is always shown and never changes on hover.
+   A click is just the row's own link. No preview on touch.
    Also keeps .work.is-scrolling while the page scrolls (css/style.css holds
    the row hover then) and lands an old #<key> link on its row.
    ========================================================================== */
@@ -30,15 +31,21 @@ window.WorkPreview = (function () {
       sync();
       new MutationObserver(sync).observe(img, { attributes: true, attributeFilter: ["style"] });
     }
+    let playWait = 0;
     const start = () => {
       if (!hoverOK.matches) return;
       stops.forEach((f) => { if (f !== stop) f(); });   /* one row open at a time */
       row.classList.add("is-peek");
-      if (v.preload === "none") v.preload = "auto";
-      const p = v.play();
-      if (p) p.catch(() => {});
+      clearTimeout(playWait);
+      playWait = setTimeout(() => {   /* the clip starts once the pointer has rested; the slide and tag answer at once */
+        if (!row.classList.contains("is-peek")) return;
+        if (v.preload === "none") v.preload = "auto";
+        const p = v.play();
+        if (p) p.catch(() => {});
+      }, 400);
     };
     const stop = () => {
+      clearTimeout(playWait);
       row.classList.remove("is-peek", "is-live");
       v.pause();
       v.currentTime = 0;

@@ -115,7 +115,9 @@ def main():
             for row in ROWS:
                 sel = "#" + row
                 el = scroll_to(d, sel)
-                ActionChains(d).move_to_element_with_offset(d.find_element(By.TAG_NAME, "body"), 0, 0).perform()
+                park = ActionChains(d)   # viewport (5, 5), off every row; an offset from the scrolled body could land on the first row
+                park.w3c_actions.pointer_action.move_to_location(5, 5)
+                park.perform()
                 time.sleep(0.4)
                 shoot(d, tmp / f"ffshot-{row}-rest.png", a.wait)
                 ActionChains(d).move_to_element(el).perform()

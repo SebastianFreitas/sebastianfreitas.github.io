@@ -485,7 +485,7 @@ def project_page(name, label, viewport):
 
 
 def work_hover_scene(browser, base, out_dir):
-    """The VoidScape Work row hovered about 1.5 s: tilt, clip playing in the picture spot, page button."""
+    """The VoidScape Work row hovered about 1.5 s: level text unmoved, title banner, clip playing in the picture spot, page button shown."""
     ctx, page = new_ctx(browser, nav.DESKTOP)
     page.goto(f"{base}/#voidscape")
     page.wait_for_load_state("load")

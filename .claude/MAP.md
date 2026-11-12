@@ -111,7 +111,7 @@ shares `Gen`:
 | `shapes.js` | Seeded raster wear masks: every `[data-wear]` box gets `--wear` (PNG mask) and `--shape: none`, redrawn on resize; `wearPlate`/`quad` clip the Work rows and Experience plate; kinds mode wears 1-2 corners | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
 | `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
 | `redlines.js` | Seeded red line pieces on plates (Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
-| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip`, shows `.obj-go`; see bullet below | none |
+| `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip` (`.obj-go` is always shown); see bullet below | none |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 - `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon.
@@ -121,7 +121,7 @@ shares `Gen`:
 - `shapes.js` wear: `Shapes.wear(el, preset, seed)` paints a seeded PNG mask into `--wear` and sets `--shape: none`; 10 presets in `wearPresets` (depth as % of the short side, bites per edge, corner chips).
 - `shapes.js` wear seed: from `data-seed` or preset+index, so a box keeps its wear across reloads; `Shapes.apply(root)` wears boxes added later (gate, surge veils, bridge notes). CSS keeps a literal polygon as the no-JS fallback: `clip-path: var(--shape, <polygon>)`, `mask-image: var(--wear, none)`.
 
-- `work-preview.js`: hover or focus marks the row (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`) and shows `.obj-go` in the spot kept for it under the facts; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch
+- `work-preview.js`: hover or focus marks the row (`.is-peek`, no turn), plays its `video.obj-clip` where the picture is (`.is-live`); `.obj-go` always shows, hover underlines it; leave stops it; keeps `.work.is-scrolling`; lands an old `#<key>` link on its row. No preview on touch
 - `xp.js`: level chip (badge + 10 pips toward the next rank), `RANKS` (shape + name, one per 10 levels, `rankOf`), bar growth on a claim (no flying box or tag, never freezes the world); only the bridge awards XP, cross-tab sync, `?reset=1`
 - `xp.js` growth: `award` adds at once, `ceremony` walks the bar up one level per 600 ms (`B.barPeek` first, fill starts 400 ms later), extra awards just raise the target; `busy` while it walks; `xp:ceremony-done` at the end; `onRankUp` is the hook for ship upgrades.
 - `xp.js` publishes: `window.XP {award, has, total, rankOf, rankStep, ranks, mount, reset, …}`; fires `xp:surge` once per level filled and `xp:rankup` once per rank crossed
@@ -486,7 +486,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
-| `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. The gate is plain black with a cream CONTINUE label and a hairline bar (`css/gate.css`); no dirt, no redlines |
+| `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
 | `index.html` | Homepage; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
@@ -511,7 +511,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `.claude/plans/research/rock-titans-sketch/layout.js` | `window.TitanLayout`: the titans' sketch layout (roots, cores, pieces, filler, shears); read by titansheet.py, copied by phase 2 |
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
-| `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, no side scroll; sizes `WxH`, `@z` opened at zoom, `~z` zoomed while open; exit 1 on a fail |
+| `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, detail line hidden at rest/shown on hover, level, unmoved, no side scroll; exit 1 on a fail |
 | `tools/scrollperf.py` | Scroll-jank measure |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
@@ -519,7 +519,9 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
-- `index.html`: div.stage holds the Work rows (own zoom by --stage-s); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
+- `css/art/dirt-a.webp`: the gate is plain black with a cream CONTINUE label and a hairline bar (`css/gate.css`); no dirt, no redlines.
+- `tools/workcut.py`: sizes are `WxH`, `@z` opens at zoom, `~z` zooms while open.
+- `index.html`: `.obj-ghost` is a hidden measuring copy of main's layout. div.stage holds the Work rows (own zoom by --stage-s); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
 - `hudshot.py`: `--x <world x>`, `--site <SITES id>` (implies `--claimed`), `--read <n>`, `--burn <s>`, `--touch` (phone check, no shot); imports `tools/snap.py`
 
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);

@@ -1279,13 +1279,54 @@
     if (flip) pts[end][0] -= WK_LEAN * W; else pts[0][0] += WK_LEAN * W;   /* only the red-line edge leans */
     return { pts: pts, end: end, bi: [pts.length - 1, top.length] };
   }
+  /* mouse, wide: where the title, hook and facts are drawn (css zones block: they stay in the grid, which only holds the row's height, and move by transform). One level layout, the same
+     at rest and on hover: the title at the top-left corner of the text side, the hook under it in the same column (its width chosen once: inside the plate and SEAMGAP px clear of the
+     picture), the facts as one line at the bottom edge (turned to it by --wk-ba), the last facts dropped from view when they do not fit on the line */
+  function wkPlace(el, pts, end, bi, W, H, seam) {
+    const SEAMGAP = 40, M = 28, RG = 16, flip = el.classList.contains("is-flip"), q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
+    if (!h3 || !hk) return;
+    ["--wk-hw", "--wk-hm", "--wk-ln", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* measured at the grid's own sizes */
+    const f = function (v) { return v.toFixed(1); };
+    const bl = pts[bi[0]], br = pts[bi[1]], tl = pts[0], tr = pts[end];
+    const topY = function (x) { return tl[1] + (tr[1] - tl[1]) * (x - tl[0]) / (tr[0] - tl[0]); }, botY = function (x) { return bl[1] + (br[1] - bl[1]) * (x - bl[0]) / (br[0] - bl[0]); };
+    const L = h3.offsetLeft, Rt = hk.offsetLeft + hk.offsetWidth, tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0;
+    const mv = function (e, x, y, t) { return "translate(" + f(x - e.offsetLeft) + "px, " + f(y - e.offsetTop) + "px)" + (t ? " " + t : ""); };
+    const xr = Math.min(tr[0], br[0]) - 8, dt = q(".obj-det"), yt = Math.max(topY(L), topY(L + tw)) + M + (dt ? dt.offsetHeight + 12 : 0);   /* the title sits under the detail line */
+    /* the hook: its natural width, cut back to the plate and to SEAMGAP px short of the picture; the margin keeps the grid's height */
+    const lim = Math.min(xr, seam !== null ? seam - SEAMGAP : Infinity) - L, w = Math.max(120, Math.min(hw, Math.floor(lim)));
+    let hh2 = hh;
+    if (w < hw) { hk.style.width = w + "px"; hh2 = hk.offsetHeight; hk.style.width = ""; el.style.setProperty("--wk-hw", w + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px"); }
+    let lh2 = lh;   /* the detail line sits under the hook at the hook's width, level, and only fades in on hover */
+    if (ln) {
+      if (w < hw) { ln.style.width = w + "px"; lh2 = ln.offsetHeight; ln.style.width = ""; el.style.setProperty("--wk-lw", w + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); }
+      el.style.setProperty("--wk-ln", mv(ln, L, yt + th + RG + hh2 + (parseFloat(getComputedStyle(ln).marginTop) || 0), ""));
+    }
+    el.style.setProperty("--wk-h3", mv(h3, L, yt, ""));
+    el.style.setProperty("--wk-hk", mv(hk, L, yt + th + RG, ""));
+    if (pr) {
+      const kids = Array.prototype.slice.call(pr.querySelectorAll(":scope > div")), avail = flip ? Rt - L : Math.min(xr, seam !== null ? seam - SEAMGAP : Infinity) - L;   /* the room for the facts: text edge to the picture seam less SEAMGAP (or the plate's inset); on a flip row the text column */
+      pr.style.width = "max-content"; pr.style.maxWidth = "none"; pr.style.overflow = "visible";   /* the box is the facts' own width, so nothing is clipped */
+      kids.forEach(function (d) { d.style.display = ""; });
+      const tail = function () { let k = kids.length - 1; while (k > 0 && kids[k].style.display === "none") k--; return parseFloat(getComputedStyle(kids[k]).marginRight) || 0; };   /* the last shown fact's trailing margin is not ink */
+      for (let i = kids.length - 1; i > 0 && pr.offsetWidth - tail() > avail + 0.5; i--) kids[i].style.display = "none";
+      const ba = Math.atan((br[1] - bl[1]) / (br[0] - bl[0])), pw = pr.offsetWidth, ph = pr.offsetHeight, Ra = function (x, y) { return [x * Math.cos(ba) - y * Math.sin(ba), x * Math.sin(ba) + y * Math.cos(ba)]; };
+      const pc = [Ra(0, ph), Ra(pw, ph)], px = flip ? Rt - pw : L, py = Math.min.apply(null, pc.map(function (p) { return botY(px + p[0]) - M + 4 - p[1]; }));
+      el.style.setProperty("--wk-ba", (ba * 180 / Math.PI).toFixed(2) + "deg");
+      el._wkFxR = flip ? 0 : px + pw * Math.cos(ba);   /* the facts' right end: the tag keeps clear of it */
+      el.style.setProperty("--wk-fx", mv(pr, px, py, "rotate(var(--wk-ba))"));
+      return Math.max(0, yt + th + RG + hh2 + (ln ? (parseFloat(getComputedStyle(ln).marginTop) || 0) + lh2 : 0) + 10 - (py + Math.min(0, pw * Math.sin(ba))));   /* the facts' top must clear the detail line's last line (the hook's without one) by 10 px: the shortfall is how much taller the row must be */
+    }
+    return 0;
+  }
   function workRows() {
     const rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
     rows.forEach(function (el, i) {
       /* the row's own height: its padding scaled by a seeded factor (a different one per row), so the layout really differs */
       const hf0 = 0.35 + (rng("wk-h-" + i)() - 0.5) * 0.2;
       el.style.setProperty("--wk-hf", hf0.toFixed(2));
-      const TXT = ".obj-id, h3, .obj-line, .props > div, :scope > .obj-go",MARGIN = 6;
+      const TXT = ".obj-id, .obj-det, h3, .obj-hook, .obj-line, .props > div, :scope > .obj-go",MARGIN = 6;
+      /* zones (mouse, wider than a phone): the detail line and the title follow the row's top edge (the detail line outside the plate, the title placed from the geometry), so only the body is measured for padding */
+      const TXTZ = ":scope > .obj-hook, :scope > .obj-line, .props > div", ZQ = "(hover: hover) and (min-width: 641px)";
       /* signed distance (px, inside positive) from a point to the polygon, and the nearest edge's direction */
       function inside(poly, x, y) {
         let c = false, m = 1e9, sx = 0, sy = 0;
@@ -1298,8 +1339,51 @@
         }
         return { d: c ? m : -m, sx: sx, sy: sy };
       }
-      function draw(pass) {
+      /* the ghost (main's old text layout, hidden, out of flow): main's polygon fit runs on it, and its final height is the row's minimum height (--wk-mh) */
+      function ghostFit(wide, flip) {
+        const gh = el.querySelector(":scope > .obj-ghost"), W = el.offsetWidth;
+        if (!gh || !W) return;
+        if (!gh.querySelector(".g-go")) { const go = document.createElement("span"); go.className = "g-go"; go.textContent = "Open the game page"; gh.appendChild(go); }   /* main's button sat in flow under the facts */
+        ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wkg-" + v); gh.style.removeProperty("--wkg-" + v); });
+        el.style.removeProperty("--wk-mh");
+        const GT = ".g-id, .g-title, .g-line, .g-props > div, .g-go", gs = getComputedStyle(gh), k = window.Stage ? window.Stage.s() : 1;
+        const hd = gh.querySelector(".g-head"), turn = wide && hd ? 14 * Math.PI / 180 : 0;
+        let hx = 0, hy = 0;
+        const S = { pt: 0, pb: 0, pl: 0, pr: 0 };
+        for (let pass = 0; pass <= 5; pass++) {
+          const H = gh.offsetHeight;
+          if (pass === 5 || !H) break;
+          const all = wkPoly(i, W, H, flip).pts, er = gh.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 };
+          if (turn && pass === 0) { hd.style.left = "calc(min(var(--measure), 100%) + 2.4rem)"; hd.style.top = "2.3rem"; }   /* main's first fit ran before the row rule set the label to left 0, top 0 */
+          if (hd) { hx = hd.offsetLeft + hd.offsetWidth / 2; hy = hd.offsetTop + hd.offsetHeight / 2; }
+          if (turn) hd.style.transform = "none";   /* main measured the label straight (its row rule's translateY dropped too), then turned it here */
+          gh.querySelectorAll(GT).forEach(function (t) {
+            if (!t.getClientRects().length) return;   /* the button is display:none without a hover pointer */
+            const tn = turn && hd.contains(t);
+            const g = document.createRange(); g.selectNodeContents(t); const eb = t.getBoundingClientRect(), gb = g.getBoundingClientRect(), rr = gb.width && gb.height ? { left: Math.min(eb.left, gb.left), top: Math.min(eb.top, gb.top), width: Math.max(eb.right, gb.right) - Math.min(eb.left, gb.left), height: Math.max(eb.bottom, gb.bottom) - Math.min(eb.top, gb.top) } : eb, r = { width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
+            for (let n = 0; n <= 6; n++) for (let s = 0; s < 4; s++) {
+              const x = x0 + (s < 2 ? n / 6 * r.width : (s - 2) * r.width), y = y0 + (s < 2 ? s * r.height : n / 6 * r.height);
+              for (let u = 0; u < (tn ? 2 : 1); u++) {
+                const px = u ? hx + (x - hx) * Math.cos(turn) - (y - hy) * Math.sin(turn) : x, py = u ? hy + (x - hx) * Math.sin(turn) + (y - hy) * Math.cos(turn) : y;
+                const q = inside(all, px, py), lack = 6 - q.d;
+                if (lack <= 0) continue;
+                const side = Math.abs(q.sx) > Math.abs(q.sy) ? (py < H / 2 ? "t" : "b") : (px < W / 2 ? "l" : "r");
+                need[side] = Math.max(need[side], lack);
+              }
+            }
+          });
+          if (turn) { hd.style.transform = ""; hd.style.left = hd.style.top = ""; }
+          if (need.t + need.b + need.l + need.r <= 0.5) break;
+          if (need.t) { S.pt = parseFloat(gs.paddingTop) + Math.ceil(need.t); gh.style.setProperty("--wkg-pt", S.pt + "px"); }
+          if (need.b) { S.pb = parseFloat(gs.paddingBottom) + Math.ceil(need.b); gh.style.setProperty("--wkg-pb", S.pb + "px"); }
+          S.pl += Math.ceil(need.l); S.pr += Math.ceil(need.r);
+          gh.style.setProperty("--wkg-pl", S.pl + "px"); gh.style.setProperty("--wkg-pr", S.pr + "px");
+        }
+        if (gh.offsetHeight) el.style.setProperty("--wk-mh", gh.offsetHeight + "px");
+      }
+      function draw(pass, again) {
         pass = pass || 0;
+        if (pass === 0) ["--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* the pieces are measured at their grid places (wkPlace moves them last) */
         /* desktop: the row grows to both sides (the text column keeps its size and moves left with the row): every row runs to 6% of the screen from the right edge and its left edge sits 6% in */
         const wide = !window.matchMedia("(max-width: 1199px)").matches;
         if (wide && pass === 0) {
@@ -1309,6 +1393,7 @@
           el._wkExt = Math.max(0, (tgt - natR) / k0); el._wkExtL = Math.max(0, (natL - cw * WK_EDGE[0]) / k0);
           el.style.marginRight = (-el._wkExt).toFixed(1) + "px"; el.style.marginLeft = (-el._wkExtL).toFixed(1) + "px";
         } else if (!wide && (el._wkExt || el._wkExtL)) { el._wkExt = el._wkExtL = 0; el.style.marginRight = el.style.marginLeft = ""; }
+        if (pass === 0) ghostFit(wide, wide && el.classList.contains("is-flip"));
         const W = el.offsetWidth, H = el.offsetHeight, flip = wide && el.classList.contains("is-flip");   /* flip: text right, picture left (css .is-flip) */
         if (!W || !H) return;
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
@@ -1321,52 +1406,82 @@
         el.style.setProperty("--wk-pad", "0px");
         const all = quad(el, null, pts, "--wk-clip");   /* no red line on the Games rows (main, 2026-11-06) */
         wearPlate(el, "wk-wear-" + i, pts.slice(0, poly.end).map(function (p, j) { return [p, pts[j + 1]]; }));
+        /* the top edge's own angle and the title's place under it (css: .obj-det, h3, .obj-hook in the zones block) */
+        const zone = window.matchMedia(ZQ).matches, zh = el.querySelector(":scope > h3");
+        ["--wk-ea", "--wk-ex", "--wk-ey", "--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-ba", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { if (!zone) el.style.removeProperty(v); });
+        if (!zone) { const pp = el.querySelector(":scope > .props"); if (pp) { pp.style.width = ""; pp.style.maxWidth = ""; pp.style.overflow = ""; pp.querySelectorAll(":scope > div").forEach(function (d) { d.style.display = ""; }); } }   /* phones: the facts wrap and show whole */
+        if (zone && zh) {
+          const x0 = pts[0][0], y0 = pts[0][1], x1 = pts[poly.end][0], y1 = pts[poly.end][1], sl = (y1 - y0) / (x1 - x0), hx = zh.offsetLeft, ey = y0 + sl * (hx - x0);
+          /* ey - 5: the detail block sits 5 px higher so it clears the title at 1440x900 */
+          el.style.setProperty("--wk-ea", (Math.atan(sl) * 180 / Math.PI).toFixed(2) + "deg");
+          el.style.setProperty("--wk-ex", hx.toFixed(1) + "px"); el.style.setProperty("--wk-ey", (ey - 5).toFixed(1) + "px");        }
         const bl = pts[bi[0]], br = pts[bi[1]];
         el._wkGeo = { xtl: pts[0][0], ytl: pts[0][1], xbl: bl[0], ybl: bl[1], xbr: br[0], ybr: br[1], ba: Math.atan2(bl[1] - br[1], br[0] - bl[0]) * 180 / Math.PI };   /* the Experience shape hangs from this bottom edge (the lowest run, bottom-left to bottom-right) */
         /* every text box stays MARGIN px inside the quad: where it comes closer, the padding on that side grows by the shortfall and the row is drawn again */
-        if (pass < 5) {
+        function fitNeed(sel) {
           const er = el.getBoundingClientRect(), need = { t: 0, b: 0, l: 0, r: 0 }, k = window.Stage ? window.Stage.s() : 1;   /* rects are screen px under the stage zoom, the quad is in design px */
-          /* desktop: the label turns 14deg about its centre on hover, focus and open, so its text is also checked in that pose (measured straight, then turned here) */
-          const hd = el.querySelector(":scope > .obj-head"), turn = wide && hd ? 14 * Math.PI / 180 : 0, hx = hd ? hd.offsetLeft + hd.offsetWidth / 2 : 0, hy = hd ? hd.offsetTop + hd.offsetHeight / 2 : 0;
-          if (turn) { hd.style.transition = "none"; hd.style.transform = "none"; }
-          el.querySelectorAll(TXT).forEach(function (t) {
-            const tn = turn && hd.contains(t);
-            const g = document.createRange(); g.selectNodeContents(t); const eb = t.getBoundingClientRect(), gb = g.getBoundingClientRect(), rr = gb.width && gb.height ? { left: Math.min(eb.left, gb.left), top: Math.min(eb.top, gb.top), width: Math.max(eb.right, gb.right) - Math.min(eb.left, gb.left), height: Math.max(eb.bottom, gb.bottom) - Math.min(eb.top, gb.top) } : eb, r ={ width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
+          el.querySelectorAll(sel).forEach(function (t) {
+            if (!t.getClientRects().length) return;   /* display:none (the facts and detail lines on phones and touch) has no box: its zero rect would sit outside the quad and grow the padding for ever */
+            const g =document.createRange(); g.selectNodeContents(t); const eb = t.getBoundingClientRect(), gb = g.getBoundingClientRect(), rr = gb.width && gb.height ? { left: Math.min(eb.left, gb.left), top: Math.min(eb.top, gb.top), width: Math.max(eb.right, gb.right) - Math.min(eb.left, gb.left), height: Math.max(eb.bottom, gb.bottom) - Math.min(eb.top, gb.top) } : eb, r ={ width: rr.width / k, height: rr.height / k }, x0 = (rr.left - er.left) / k, y0 = (rr.top - er.top) / k;
             for (let k = 0; k <= 6; k++) for (let s = 0; s < 4; s++) {
               const x = x0 + (s < 2 ? k / 6 * r.width : (s - 2) * r.width), y = y0 + (s < 2 ? s * r.height : k / 6 * r.height);
-              for (let u = 0; u < (tn ? 2 : 1); u++) {
-                const px = u ? hx + (x - hx) * Math.cos(turn) - (y - hy) * Math.sin(turn) : x, py = u ? hy + (x - hx) * Math.sin(turn) + (y - hy) * Math.cos(turn) : y;
-                const q = inside(all, px, py), lack = MARGIN - q.d;
-                if (lack <= 0) continue;
-                const side = Math.abs(q.sx) > Math.abs(q.sy) ? (py < H / 2 ? "t" : "b") : (px < W / 2 ? "l" : "r");
-                need[side] = Math.max(need[side], lack);
-              }
+              const q = inside(all, x, y), lack = MARGIN - q.d;
+              if (lack <= 0) continue;
+              const side = Math.abs(q.sx) > Math.abs(q.sy) ? (y < H / 2 ? "t" : "b") : (x < W / 2 ? "l" : "r");
+              need[side] = Math.max(need[side], lack);
             }
           });
-          if (turn) { hd.style.transform = ""; void hd.offsetWidth; hd.style.transition = ""; }
-          if (need.t + need.b + need.l + need.r > 0.5) {
-            if (need.t) { S.pt = parseFloat(cs.paddingTop) + Math.ceil(need.t); el.style.setProperty("--wk-pt", S.pt + "px"); }
-            if (need.b) { S.pb = parseFloat(cs.paddingBottom) + Math.ceil(need.b); el.style.setProperty("--wk-pb", S.pb + "px"); }
-            S.pl += Math.ceil(need.l); S.pr += Math.ceil(need.r);
-            el.style.setProperty("--wk-pl", S.pl + "px"); el.style.setProperty("--wk-pr", S.pr + "px");
-            return draw(pass + 1);
-          }
+          return need;
         }
+        function growPad(need, sf) {   /* raises the padding by the shortfalls; true when it did */
+          if (need.t + need.b + need.l + need.r + sf <= 0.5) return false;
+          if (need.t) { S.pt = parseFloat(cs.paddingTop) + Math.ceil(need.t); el.style.setProperty("--wk-pt", S.pt + "px"); }
+          if (need.b || sf > 0.5) { S.pb = parseFloat(cs.paddingBottom) + Math.ceil(Math.max(need.b, sf)); el.style.setProperty("--wk-pb", S.pb + "px"); }
+          S.pl += Math.ceil(need.l); S.pr += Math.ceil(need.r);
+          el.style.setProperty("--wk-pl", S.pl + "px"); el.style.setProperty("--wk-pr", S.pr + "px");
+          return true;
+        }
+        if (pass < 5 && !zone) { if (growPad(fitNeed(TXT), 0)) return draw(pass + 1); }   /* zones: the text is drawn by transform, so it is checked after wkPlace places it */
         /* the game picture sits inside the same quad: its clip is the quad moved into the picture's own box */
         const shot = el.querySelector(":scope > .obj-shot");
+        let seam = null;
         if (shot) {
           /* the picture is fully dark under the whole text block (its widest line, measured by range), then fades in */
           const er2 = el.getBoundingClientRect(), rg = document.createRange(), k2 = window.Stage ? window.Stage.s() : 1; let tx = 0;
           if (flip) tx = W;   /* mirrored: tx is the text's reach from the row's right edge, measured from its leftmost line */
-          el.querySelectorAll(TXT).forEach(function (t) { rg.selectNodeContents(t); const rc = rg.getBoundingClientRect(); tx = flip ? Math.min(tx, (rc.left - er2.left) / k2) : Math.max(tx, (rc.right - er2.left) / k2); });
+          const pk = el.classList.contains("is-peek"), tk = [zh, el.querySelector(":scope > .obj-hook"), el.querySelector(":scope > .props")].filter(Boolean);   /* and at rest, without the slide back from a hover: a redraw while the row is hovered measures the same */
+          tk.forEach(function (t) { t.style.transition = "none"; });
+          if (pk) el.classList.remove("is-peek");
+          el.querySelectorAll(zone ? TXTZ + ", :scope > h3" : TXT).forEach(function (t) { if (!t.getClientRects().length) return; rg.selectNodeContents(t); const rc = rg.getBoundingClientRect(); tx = flip ? Math.min(tx, (rc.left - er2.left) / k2) : Math.max(tx, (rc.right - er2.left) / k2); });
+          if (pk) el.classList.add("is-peek");
+          el.getBoundingClientRect(); tk.forEach(function (t) { t.style.transition = ""; });
           if (flip) tx = W - tx;
+          if (zone && !flip && wide) { seam = tx + 16; el.style.setProperty("--wk-seam", seam.toFixed(1) + "px"); } else el.style.removeProperty("--wk-seam");   /* text on the left: where the text zone ends and the picture fades in (row px; the checker reads it). Flipped rows keep their hover text where it is */
+          /* the tag (.obj-go) hangs off the bottom edge at the seam between the text and the picture, 50 px toward the picture */
+          const tg = el.querySelector(":scope > .obj-go"), tl = pts[bi[0]], tr = pts[bi[1]];
+          if (tg) { if (zone) { const hw = tg.offsetWidth / 2 + 8, nx = flip ? null : el.nextElementSibling, nh = nx && nx.querySelector(":scope > h3"), nl = nh ? (nx.getBoundingClientRect().left + nh.offsetLeft * k2 - er2.left) / k2 - 48 / k2 : Infinity, gx = Math.max(tl[0] + hw, Math.min(tr[0] - hw, nl - hw, flip ? W - tx - 16 - 50 : tx + 16 + 50));   /* text on the left: the tag keeps 48 screen px clear of the next row's detail line (it starts at that row's title) */ el.style.setProperty("--wk-gx", gx.toFixed(1) + "px"); el.style.setProperty("--wk-gy", (tl[1] + (tr[1] - tl[1]) * (gx - tl[0]) / (tr[0] - tl[0])).toFixed(1) + "px"); } else { el.style.removeProperty("--wk-gx"); el.style.removeProperty("--wk-gy"); } }
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.width = wide && (el._wkExt || el._wkExtL) ? (W - 0.2 * (W - el._wkExt - el._wkExtL)).toFixed(1) + "px" : ""; });   /* the picture keeps its place relative to the text: it grows with the row on both sides */
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, flip ? tx + 16 - (W - m.offsetLeft - m.offsetWidth) : tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
         }
         if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
+        const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, seam) : 0;   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
+        { const tg2 = el.querySelector(":scope > .obj-go"); if (zone && zh && tg2 && el._wkFxR && el.style.getPropertyValue("--wk-gx")) {   /* the tag slides toward the picture, off the end of the facts line */
+          const hw2 = tg2.offsetWidth / 2 + 8, tl2 = pts[bi[0]], tr2 = pts[bi[1]], gx2 = Math.max(parseFloat(el.style.getPropertyValue("--wk-gx")), Math.min(tr2[0] - hw2, el._wkFxR + hw2 + 8));
+          el.style.setProperty("--wk-gx", gx2.toFixed(1) + "px"); el.style.setProperty("--wk-gy", (tl2[1] + (tr2[1] - tl2[1]) * (gx2 - tl2[0]) / (tr2[0] - tl2[0])).toFixed(1) + "px"); } }
+        if (zone && zh && pass < 5 && growPad(fitNeed(":scope > h3, :scope > .obj-hook, :scope > .obj-line, .props > div"), sf)) return draw(pass + 1);   /* main's rule: the title, hook, detail line and facts sit MARGIN px inside the plate, else the padding grows and the row is drawn again */
+        /* wkPlace runs last, so the padding check, the picture's fade and the tag all read the pieces at their grid places, as before */
       }
       draw();
-      if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el); if (document.fonts) document.fonts.ready.then(function () { draw(); });   /* and once the web fonts swap in: an id line can grow without the row's size changing */
+      if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el);
+      el._wkDraw = draw;
+      if (!window._wkLate) {   /* the page width settles after the first draw (scrollbar), and each draw measures the text at the previous draw's grid place (and the next row's): for the first ~3 s after load, when the width changes, two passes over all rows */
+        window._wkLate = true;
+        let cw0 = document.documentElement.clientWidth, n = 0;
+        const pass = function () { for (let k = 0; k < 2; k++) document.querySelectorAll(".work > a.obj[data-wornquad]").forEach(function (r) { if (r._wkDraw) r._wkDraw(); }); };
+        const poll = function () { const cw = document.documentElement.clientWidth; if (cw !== cw0) { cw0 = cw; pass(); } if (++n < 180) requestAnimationFrame(poll); };
+        requestAnimationFrame(function () { pass(); poll(); });
+      }
+      if (document.fonts) document.fonts.ready.then(function () { draw(); });   /* and once the web fonts swap in: an id line can grow without the row's size changing */
       window.addEventListener("resize", function () { const cw = document.documentElement.clientWidth; if (el._wkCw === cw) return; el._wkCw = cw; draw(); clearTimeout(el._wkRz); el._wkRz = setTimeout(function () { draw(); }, 200); });   /* page zoom while open: the capped stage keeps the row's box, so only the window says the width changed; the late pass settles the text padding once a resize or zoom crosses 1200 */
     });
   }

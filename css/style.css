@@ -536,6 +536,7 @@ body.page-case { background: #0a0d10; }
   margin: 3.4rem 0 0;
   border: 0;
 }
+.work > .obj[data-wornquad] { box-sizing: border-box; min-height: var(--wk-mh, 0px); }   /* the hidden copy's fitted height (js/site/shapes.js ghostFit) */
 /* seeded red line pieces on a plate (js/site/redlines.js): out of flow, one flat red path */
 .redlines { position: absolute; overflow: visible; pointer-events: none; z-index: 1; will-change: transform; } /* own cached surface: cheap under software compositing */
 .redlines path { fill: var(--type-red); }
@@ -543,62 +544,124 @@ body.page-case { background: #0a0d10; }
 .obj:nth-of-type(4n+2)::before { left: 0.6rem; }
 .obj:nth-of-type(4n+3)::before { left: 0.2rem; }
 .obj:nth-of-type(4n+4)::before { left: 0.9rem; }
-/* the label: the OBJ tag and the title, tilted 14deg clockwise, just right of the description (the measure plus 0.9rem, about 2rem past the longest line); it keeps its slot in the left column (the offset is relative, so no layout moves) and sits over the rail (z 2 over the rail's 1) */
-.obj-head {
-  display: flow-root; position: relative; z-index: 2; width: fit-content; max-width: 26rem;
-  left: calc(min(var(--measure), 100%) + 2.4rem); top: 2.3rem;
-  transform: rotate(0deg); transition: transform 0.12s ease-out;
+/* the text block (top to bottom): detail line, torn cream title, hook, rest, facts, red-text button. Text only; the row box and picture rules are elsewhere. Wide screens put it in --obj-col beside the picture, narrow ones run it full width */
+.obj { --obj-col: 100%; }
+@media (min-width: 1200px) { .obj { --obj-col: min(41rem, 44vw); } }
+.obj-det {
+  display: flex; align-items: center; gap: 12px; max-width: var(--obj-col);
+  font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: #8f8878;
+  text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7);
 }
-.obj-head h3 { position: relative; isolation: isolate; width: fit-content; }
-.obj-head > .obj-id { position: absolute; top: -0.95rem; left: 0; font-size: 0.72rem; font-weight: 600; line-height: 1; color: var(--type-cream); white-space: nowrap; }
-.obj-head, .obj-head > .obj-id { text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7); }
-/* the band: one torn paper strip behind the title only (the tag sits above it, unchanged in every state), the top bar tab's paper (same masks and clip); shown by opacity only */
-.obj-head h3::before {
+.obj-det i { display: block; flex: none; width: 9px; height: 9px; background: var(--type-red); }
+.obj-det .obj-id { font: inherit; letter-spacing: inherit; color: inherit; }
+.obj-det s { display: block; flex: none; width: 1px; height: 12px; background: rgba(228, 221, 198, 0.3); }
+/* the title: dark ink on one torn cream strip (the top bar tab's paper: same masks and clip), always shown, never changes */
+.obj h3 {
+  position: relative; isolation: isolate; width: fit-content; max-width: 100%;
+  margin: 19px 0 0 0.25em; font-size: clamp(2.25rem, 3vw, 3rem); line-height: 0.95; color: #14110c; text-shadow: none;
+}
+.obj h3::before {
   content: ""; position: absolute; z-index: -1; pointer-events: none;
-  top: -0.15rem; bottom: -0.1rem; left: -0.9rem; right: -0.9rem;
+  top: -0.1em; bottom: -0.08em; left: -0.25em; right: -0.25em;
   background: #f1ecd8;
-  opacity: 0;
   -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
-  transition: opacity 0.12s ease-out;
 }
-.obj:nth-of-type(even) .obj-head h3::before {
+.obj:nth-of-type(even) h3::before {
   clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
-/* white on pointer hover only (a tap would leave it stuck); red while focused by keyboard, pressed or open, with cream text */
-@media (hover: hover) {
-  :where(.work:not(.is-scrolling)) .obj:hover > .obj-head h3::before { opacity: 1; }
-  :where(.work:not(.is-scrolling)) .obj:not([aria-expanded=true]):hover > .obj-head h3 { color: #1a1714; text-shadow: none; }
+.obj-hook {
+  margin: 20px 0 0; max-width: var(--obj-col); font: 500 1.25rem/1.28 var(--type-read); color: #f1ecd8;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7);
 }
-/* the label rests straight and tilts 14deg with its paper on hover, press, focus and open (desktop only; the narrow block below sets its own tilt) */
+.obj-line {
+  margin: 14px 0 0; max-width: var(--obj-col); font: 400 0.9375rem/1.45 var(--type-read); color: #8f8878;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  transition: color 0.16s;
+}
+@media (hover: none), (max-width: 640px) { .obj > .obj-line { display: block; -webkit-line-clamp: unset; overflow: visible; } }   /* phones and touch: the detail line is always shown, wrapped and uncut */
+
+/* the ghost: a hidden copy of main's in-flow row layout, measured by script for the row's minimum height; out of flow, unseen, takes no space (reads --wkg-pt/pb/pl/pr, default 0, and the row's --wk-hf) */
+.obj-ghost {
+  position: absolute; left: 0; top: 0; width: 100%; box-sizing: border-box; visibility: hidden; pointer-events: none;
+  padding: max(calc(2rem * var(--wk-hf, 1)), var(--wkg-pt, 0px)) calc(var(--gutter) + var(--wkg-pr, 0px)) max(calc(2.25rem * var(--wk-hf, 1)), var(--wkg-pb, 0px)) calc(var(--gutter) + var(--wkg-pl, 0px));
+}
+.obj-ghost .g-head { display: flow-root; position: relative; width: fit-content; max-width: 26rem; transform: rotate(0deg); }
+.obj-ghost .g-title { width: fit-content; margin: 0.4rem 0 1.1rem; font-family: var(--type-head); font-weight: 700; font-synthesis: none; letter-spacing: 0.02em; text-transform: uppercase; line-height: 0.95; font-size: 2.5rem; }
+.obj-ghost .g-id { position: absolute; top: -0.95rem; left: 0; font-family: var(--type-mono); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; line-height: 1; white-space: nowrap; }
+.obj-ghost .g-line { margin: 0 0 1.25rem; max-width: var(--measure); font-family: var(--type-read); font-size: 1.0625rem; line-height: 1.55; }
+.obj-ghost .g-props { display: flex; flex-wrap: wrap; gap: 0 2.5rem; margin: 0; }
+.obj-ghost .g-props div { display: flex; gap: 0.5rem; }
+.obj-ghost .g-dt { font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; align-self: center; }
+.obj-ghost .g-dd { font-family: var(--type-read); font-weight: 600; font-size: 1rem; line-height: 1.6; }
+.obj-ghost .g-go { display: none; }
+@media (hover: hover) { .obj-ghost .g-go { display: table; margin-top: 1.1rem; padding: 0.5rem 0.9rem; font-family: var(--type-serif); font-size: 0.95rem; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; } }   /* main's game-page button, in flow under the facts on hover devices (added by js/site/shapes.js ghostFit) */
 @media (min-width: 1200px) {
-  .work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head { transform: rotate(14deg); }
+  .obj-ghost .g-props { max-width: var(--measure); }
+  .is-flip > .obj-ghost :is(.g-line, .g-props) { margin-left: auto; width: min(var(--measure), 100%); }   /* mirrored rows: the text column on the right, as on main */
+  .is-flip > .obj-ghost .g-head { margin-left: calc(100% - min(62ch, 100%)); }
 }
-@media (min-width: 1200px) and (hover: hover) {
-  :where(.work:not(.is-scrolling)) .obj:hover > .obj-head { transform: rotate(14deg); }
-}
-.work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3::before { opacity: 1; background: var(--type-red); }
-.work .obj:is(:focus-visible, :active, [aria-expanded=true]) > .obj-head h3 { color: #f6f0da; text-shadow: none; }
-/* narrow: the picture is no longer beside the text, so the label sits at the top of the row, right aligned, in flow */
+@media (min-width: 1200px) and (hover: hover) { .is-flip > .obj-ghost .g-go { margin-left: auto; } }
+@media (min-width: 1200px) { #sector-zero > .obj-ghost > :is(.g-head, .g-line, .g-props, .g-go) { transform: translateY(24px); } }   /* main's rule for this row: the text block sits vertically centred in the slab */
 @media (max-width: 1199px) {
-  .obj-head { left: 0; top: 0; margin-left: auto; margin-right: 0.9rem; margin-bottom: 1rem; transform: rotate(9deg); }
+  .obj-ghost .g-head { margin-left: auto; margin-right: 0.9rem; margin-bottom: 1rem; transform: rotate(9deg); }
 }
-@media (prefers-reduced-motion: reduce) { .obj-head, .obj-head h3::before { transition: none; } }
 
-.obj h3 { margin: 0.4rem 0 0.75rem; }
+/* facts: one mono line, muted keys, cream values, thin dividers */
+.props { display: flex; flex-wrap: wrap; gap: 6px 0; margin: 12px 0 0; max-width: var(--obj-col); font: 500 12px/1 var(--type-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.props { overflow: hidden; }   /* a divider sits left of its fact, outside it: the one that starts a wrapped line falls outside the box and is clipped */
+.props div { position: relative; display: flex; align-items: center; gap: 7px; margin-right: 29px; }
+.props div + div::before { content: ""; position: absolute; left: -15px; top: 0; bottom: 0; width: 1px; background: rgba(228, 221, 198, 0.3); }
+.props dt { font: inherit; letter-spacing: 0.14em; color: #8f8878; transition: color 0.16s; }
+.props dd { margin: 0; font: inherit; color: var(--type-cream); transition: color 0.16s; }
 
-.obj-line { margin: 0 0 1.25rem; max-width: var(--measure); color: var(--type-text); }
-
-/* property readout — lifted from Sector Zero's inspect mechanic */
-.props {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 2.5rem;
-  margin: 0;
+/* the tag: a small mono label that says what a click on the row does (the whole row is the link, so no button look, no underline); always visible, quiet, a little brighter on hover or focus */
+.obj-go {
+  display: block; width: fit-content; margin-top: 14px; pointer-events: none;
+  font: 600 0.75rem/1 var(--type-mono); letter-spacing: 0.16em; text-transform: uppercase; color: #8f8878; white-space: nowrap;
+  transition: color 0.16s;
 }
-.props div { display: flex; gap: 0.5rem; }
-.props dt { font-family: var(--type-mono); font-size: 0.62rem; letter-spacing: 0.22em; color: var(--type-dim); text-transform: uppercase; align-self: center; }
-.props dd { margin: 0; font-family: var(--type-sans); font-size: 1rem; line-height: 1.6; color: var(--type-text); }
+.obj-go > span { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
+.obj:focus-visible .obj-go { color: #c9c2ac; }
+.obj:focus-visible .obj-go > span { transform: translateX(4px); }
+@media (hover: hover) {
+  .obj:hover .obj-go { color: #c9c2ac; }
+  .obj:hover .obj-go > span { transform: translateX(4px); }
+}
+/* mouse, wide: at rest the title, hook and facts show; the detail line keeps its space, invisible, and fades in on hover or focus (.is-peek, work-preview.js). Phones and touch have no hover: the tag shows and the detail line is always visible, wrapped */
+/* mouse, wide: the grid holds each row's height and shapes.js places the pieces; nothing moves between rest and hover, the banner, detail line, picture and tag only fade in; Sector Zero adds its own 24 px slab offset */
+@media (hover: hover) and (min-width: 641px) {
+  /* zones (js/site/shapes.js sets --wk-ea, --wk-ex, --wk-ey, --wk-tt): the top edge's angle and the title's anchor on it; the grid below only holds the row's height */
+  .obj { display: grid; grid-template-columns: auto minmax(0, 28rem); column-gap: 2.5rem; justify-content: start; align-content: center; }   /* the row's padding is the base rule's (main's): 2rem / 2.25rem scaled by --wk-hf, raised by shapes.js until the text sits inside the plate */
+  .obj.is-flip { justify-content: end; }
+  .obj .props { white-space: nowrap; flex-wrap: nowrap; }   /* the facts are one line, always visible (wide mouse screens only; phones wrap them) */
+  /* the grid only holds the row's height; shapes.js (wkPlace) sets where each piece is drawn: --wk-h3, --wk-hk, --wk-fx, with --wk-ba the bottom edge's angle. One level layout, the same at rest and on hover: the title at the top-left corner, the hook under it (--wk-hw / --wk-hm: its width and the margin that keeps the grid's height), the facts at the bottom edge */
+  .obj { --wk-tilt: 0deg; }
+  /* rest: the title is plain cream text; hover or focus fades the torn banner in behind it and the letters turn dark; the tag fades in. Nothing moves */
+  .obj > h3 { color: var(--type-cream); transition: transform 0.3s ease, color 0.2s; }
+  .obj > h3::before { opacity: 0; transition: opacity 0.2s; }
+  .obj.is-peek > h3, .obj:focus-visible > h3, .obj:focus-within > h3 { color: #14110c; }
+  .obj.is-peek > h3::before, .obj:focus-visible > h3::before, .obj:focus-within > h3::before { opacity: 1; }
+  .obj > .obj-go { opacity: 0; transition: color 0.16s, opacity 0.2s; }
+  .obj.is-peek > .obj-go, .obj:focus-visible > .obj-go, .obj:focus-within > .obj-go { opacity: 1; }
+  .obj > h3 { grid-column: 1; grid-row: 1 / span 4; align-self: start; margin: 0 0 0 0.25em; top: 0; transform-origin: 0 0; transform: var(--wk-h3, rotate(var(--wk-tilt))); }
+  .obj > :is(.obj-hook, .obj-line, .props) { grid-column: 2; max-width: none; width: auto; transform-origin: 0 0; }
+  .obj > .obj-hook { transform: var(--wk-hk, none); width: var(--wk-hw, auto); margin-bottom: var(--wk-hm, 0px); }   /* one layout, rest and hover: the same width and line breaks */
+  .obj > .obj-line { transform: var(--wk-ln, none); width: var(--wk-lw, auto); margin-bottom: var(--wk-lm, 0px); opacity: 0; transition: opacity 0.2s; }   /* under the hook, the hook's width, level; space always reserved, only the fade changes */
+  .obj.is-peek > .obj-line, .obj:focus-visible > .obj-line, .obj:focus-within > .obj-line { opacity: 1; }
+  .obj > .props { transform: var(--wk-fx, none); }
+  .obj.is-flip .props { justify-content: flex-end; }   /* the facts hug the bottom corner on the outer (right) side */
+  /* the tag hangs off the bottom edge at the seam between text and picture (shapes.js: --wk-gx, --wk-gy), crooked a few degrees */
+  .obj > .obj-go { position: absolute; left: var(--wk-gx, 50%); top: var(--wk-gy, 100%); margin: 0; transform: translate(-50%, -50%) rotate(var(--wk-ta, -3deg)); }
+  .obj > .obj-go::before { content: ""; display: inline-block; width: 1px; height: 1.1em; margin: -0.2em 0.9em -0.2em 0; background: rgba(228, 221, 198, 0.3); vertical-align: middle; }
+  #sector-zero { --wk-ta: -3deg; } #voidscape { --wk-ta: 2.5deg; } #heavylight { --wk-ta: -2deg; } #conclusus { --wk-ta: 3deg; }
+  .obj > .obj-det { position: absolute; left: var(--wk-ex, 0px); top: calc(var(--wk-ey, 0px) - 28px); transform-origin: 0 100%; transform: translateY(56px) rotate(0deg); white-space: nowrap; max-width: none; }   /* level, and the same at rest and on hover: 28 px inside the top edge */
+  .obj .obj-hook { margin-top: 0; }
+  .obj .obj-line { margin-top: 8px; -webkit-line-clamp: 3; transition: opacity 0.2s; }
+  .obj .props { margin-top: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go, .obj-go > span { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } }
 
 /* ---------------- experience ---------------- */
 
@@ -902,7 +965,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 
 #sector-zero { --wk-pos: 50% 0%; }
-@media (min-width: 1200px) { #sector-zero > :is(.obj-head, .obj-line, .props, .obj-go) { transform: translateY(24px); } }   /* the text block sits vertically centred in the slab */
+@media (min-width: 1200px) and (hover: none) { #sector-zero > :is(.obj-det, h3, .obj-hook, .obj-line, .props, .obj-go) { transform: translateY(24px); } }   /* the text block sits vertically centred in the slab */
 #heavylight { --wk-pos: 50% 100%; }
 #conclusus { --wk-pos: 88% 50%; }
 #conclusus > :is(.obj-shot, .obj-clip) { image-rendering: pixelated; }
@@ -915,7 +978,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 
 /* text sits above the artwork */
-.obj h3, .obj-line, .obj .props {
+.obj h3, .obj-det, .obj-hook, .obj-line, .obj .props, .obj-go {
   position: relative;
   z-index: 1;
 }
@@ -953,7 +1016,6 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 /* the Work rows: a worn quad in px (Shapes.workRows sets --wk-clip, the tilt is baked in), a red line down the left edge */
 .work > .obj.slab[data-wornquad]::before { inset: calc(var(--wk-pad, 0px) * -1) 0; transform: none; clip-path: var(--wk-clip, polygon(0 3%, 100% 0, 100% 97%, 0 100%)); -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
-@media (min-width: 1200px) { .work > .obj[data-wornquad] .obj-head { left: 0; top: 0; } .work > .obj[data-wornquad] .props { max-width: var(--measure); } } /* the title sticker stays in the text column, off the picture on the right */
 .work > .obj[data-wornquad] > :is(.obj-shot, .obj-clip) { transform: none; top: calc(var(--wk-pad, 0px) * -1); height: calc(100% + var(--wk-pad, 0px) * 2); clip-path: var(--wk-shot-clip, inset(0)); }   /* as tall as the black shape (it reaches --wk-pad past the box), so the picture's edges are the shape's edges */
 
 /* desktop: the still and the clip share one box, the slab's full height out to its outer edge, centred in the picture side (the side without the text); --wk-pos tweaks the framing per row */
@@ -968,37 +1030,25 @@ transparent calc(var(--wk-tx, 18%) + 0%),
   }
 }
 
-/* hover preview (js/site/work-preview.js): the row holds still, its clip plays over the picture, a game-page button shows in its own spot under the facts (kept while hidden, so nothing moves) */
+/* hover preview (js/site/work-preview.js): the row holds still, its clip plays over the picture */
 .obj > .obj-clip { background: none; opacity: 0; transition: opacity 0.3s ease; }
-.obj > .obj-go { display: none; }
 @media (hover: hover) {
   .work > .obj.is-live > .obj-clip { opacity: 0.8; }
   .work > .obj.is-live > .obj-shot { opacity: 0; }
-  .work > .obj > .obj-go { visibility: hidden; }
-  .work > .obj.is-peek > .obj-go { visibility: visible; }
-  .work > .obj > .obj-go {
-    display: table; position: relative; z-index: 2; isolation: isolate; margin-top: 1.1rem; padding: 0.5rem 0.9rem;
-    font-family: var(--type-serif); font-size: 0.95rem; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1714;
-  }
-  .work > .obj > .obj-go::before {
-    content: ""; position: absolute; inset: 0; z-index: -1; background: #f1ecd8;
-    clip-path: polygon(0% 6%, 30% 0%, 65% 5%, 100% 0%, 100% 100%, 60% 94%, 30% 100%, 0% 95%);
-  }
 }
 @media (max-width: 1199px) and (hover: hover) { .work > .obj.is-live > .obj-clip { opacity: 0.5; } }
-/* mirrored rows (.is-flip, desktop): text column on the right, picture on the left fading toward the text, button under the text (js/site/shapes.js puts the red line on the right edge) */
+/* mirrored rows (.is-flip, desktop): text column on the right, picture on the left fading toward the text, tag under the text (js/site/shapes.js puts the red line on the right edge) */
 @media (min-width: 1200px) {
   .work > .obj.is-flip > :is(.obj-shot, .obj-clip) {
     right: auto; left: 0;
     -webkit-mask-image: linear-gradient(to left, transparent calc(var(--wk-tx, 18%) + 0%), rgba(0,0,0,0.074) calc(var(--wk-tx, 18%) + 6%), rgba(0,0,0,0.259) calc(var(--wk-tx, 18%) + 12%), rgba(0,0,0,0.500) calc(var(--wk-tx, 18%) + 18%), rgba(0,0,0,0.741) calc(var(--wk-tx, 18%) + 24%), rgba(0,0,0,0.926) calc(var(--wk-tx, 18%) + 30%), #000 calc(var(--wk-tx, 18%) + 36%));
     mask-image: linear-gradient(to left, transparent calc(var(--wk-tx, 18%) + 0%), rgba(0,0,0,0.074) calc(var(--wk-tx, 18%) + 6%), rgba(0,0,0,0.259) calc(var(--wk-tx, 18%) + 12%), rgba(0,0,0,0.500) calc(var(--wk-tx, 18%) + 18%), rgba(0,0,0,0.741) calc(var(--wk-tx, 18%) + 24%), rgba(0,0,0,0.926) calc(var(--wk-tx, 18%) + 30%), #000 calc(var(--wk-tx, 18%) + 36%));
   }
-  .work > .obj.is-flip :is(.obj-line, .props) { margin-left: auto; }
-  .work > .obj.is-flip .obj-head { margin-left: calc(100% - min(62ch, 100%)); }   /* the title sticker sits on the text column's left edge (obj-line's 62ch) */
-  .work > .obj.is-flip .obj-line, .work > .obj.is-flip .props { width: min(var(--measure), 100%); }
 }
-@media (min-width: 1200px) and (hover: hover) {
-  .work > .obj.is-flip > .obj-go { margin-left: auto; }   /* under the right-hand text column */
+@media (min-width: 1200px) and (hover: none) {
+  .work > .obj.is-flip > :is(.obj-det, .obj-hook, .obj-line, .props) { margin-left: auto; width: var(--obj-col); }   /* the text column on the right */
+  .work > .obj.is-flip > .obj-go { margin-left: calc(100% - var(--obj-col)); }
+  .work > .obj.is-flip > h3 { margin-left: calc(100% - var(--obj-col) + 0.25em); }
 }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
 .xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: calc(var(--red-line) / var(--stage-s, 1)); stroke-linecap: butt; }
@@ -1078,11 +1128,8 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .page-case:not(.page-404) .case p:not(.caption), .page-case:not(.page-404) .case li { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); max-width: min(68ch, var(--measure)); }
 .page-case:not(.page-404) .case > p:first-of-type { font-family: var(--type-read); font-size: 1.25rem; line-height: 1.5; color: var(--type-cream); }
 .page-case:not(.page-404) .case .key { font-weight: 600; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
-.page-case .back, .page-case .case-nav a, .work > .obj > .obj-go { font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em; }
+.page-case .back, .page-case .case-nav a { font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em; }
 /* Work rows */
-.work .obj h3 { font-size: 2.5rem; line-height: 0.95; letter-spacing: 0.02em; }
-.work .obj-line { font-family: var(--type-read); font-size: 1.0625rem; line-height: 1.55; }
-.work .props dd { font-family: var(--type-read); font-weight: 600; }
 /* Experience + contact */
 .xp-shape .section-title { font-size: 2.75rem; letter-spacing: 0.04em; line-height: 1; }
 .xp-shape .xp-what { font-family: var(--type-read); font-size: var(--fs-body); letter-spacing: 0; line-height: var(--lh-body); color: var(--ink-body); }
@@ -1095,7 +1142,6 @@ footer, footer .rights { font-family: var(--type-read); }
 @media (max-width: 1199px) { .xp-shape .section-title { font-size: 2.2rem; } }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
 .page-case:not(.page-404) .case { --measure: 34rem; }
-.work .obj h3 { margin-bottom: 1.1rem; }
 
 /* ---------------- banner masks: every cream label wears the seeded banner shape (js/site/banner.js sets --banner) ----------------
    The old clip-path / wear shapes above stay as the fallback until --banner exists; !important beats their per-state and nth-child selectors.
