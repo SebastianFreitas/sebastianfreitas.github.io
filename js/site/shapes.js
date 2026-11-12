@@ -45,6 +45,7 @@
     slab:       { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
     "slab-tall": { depth: 22, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
     "row-top":  { depth: 30, max: 44, spread: [3, 4], shard: [2, 4], grain: 0, edges: "t" },
+    "row-glass": { depth: 30, max: 44, spread: [3, 4], glass: true, shard: [2, 4], grain: 0, edges: "t" },
     title:      { depth: 25, ends: [2, 0, 2, 0], mid: 0.3, shard: [2, 4], grain: 0, edges: "tb" },
     item:       { depth: 22, ends: [2, 1, 2, 1], mid: 0.3, shard: [2, 4], grain: 0, edges: "trbl" },
     image:      { depth: 20, ends: [1, 1, 1, 1], mid: 0.2, shard: [2, 4], grain: 0, edges: "trbl" },
@@ -698,7 +699,176 @@
             q.forEach(function (p, j) { const c = at(sc + dir * p[0] * LL, p[1]); if (j) g.lineTo(c[0], c[1]); else g.moveTo(c[0], c[1]); });
             g.closePath(); if (!mute) g.fill();
           };
-          if (P.spread) {
+          if (P.glass && opts && opts.glass) {
+            /* glass (desktop rows and the Experience box): the top edge is dead straight but for a few small straight-faceted chips, like struck glass: one broken corner (opts.glass.c 0 left / 1 right, opts.glass.sd the unit vector down that side), one shell chip 120-260 px from it, a smaller one 45-70% along the usable run, 2-3 micro nicks (satellites beside the two, one alone). u is css px from the corner along the edge, d css px into the plate (perpendicular to the edge) */
+            const gr = rng(String(preset) + "|" + seed + "|g"), ra = function (a, b) { return a + gr() * (b - a); };
+            const gc = opts.glass, dir = gc.c ? -1 : 1, s0 = gc.c ? sOut : sIn, gm = info[0], tx = gm.ux * dir, ty = gm.uy * dir;
+            const pm = function (u, d) { return at(s0 + dir * u * dpr, d * dpr); };
+            let lb = 0, ub = vis / dpr;
+            if (opts.free) {
+              let a = -1, b = -1;
+              for (let s = sIn; s <= sOut; s += 1) { const x = at(s, 0)[0]; if (x >= opts.free[0] * dpr && x <= opts.free[1] * dpr) { const u = Math.abs(s - s0) / dpr; if (a < 0 || u < a) a = u; if (u > b) b = u; } }
+              if (a >= 0) { lb = a; ub = b; }
+            }
+            const shear = seed === "wk-wear-2";   /* only one box has the sheared corner */
+            const along = ra(45, 70), down = ra(14, 22), C = at(s0, 0), A = [C[0] + tx * along * dpr, C[1] + ty * along * dpr], B = [C[0] + gc.sd[0] * down * dpr, C[1] + gc.sd[1] * down * dpr];
+            const kf = ra(0.36, 0.5), bulge = ra(2.2, 3.4) * dpr, ddx = A[0] - B[0], ddy = A[1] - B[1], dl = Math.hypot(ddx, ddy) || 1, md = [B[0] + ddx * kf, B[1] + ddy * kf];
+            let kx = -ddy / dl, ky = ddx / dl;
+            if (Math.pow(md[0] + kx - C[0], 2) + Math.pow(md[1] + ky - C[1], 2) < Math.pow(md[0] - C[0], 2) + Math.pow(md[1] - C[1], 2)) { kx = -kx; ky = -ky; }
+            let qx = -gc.sd[1], qy = gc.sd[0];
+            if (qx * tx + qy * ty > 0) { qx = -qx; qy = -qy; }
+            if (shear) {
+            g.beginPath();
+            [[A[0] - gm.nx * 4, A[1] - gm.ny * 4], A, [md[0] + kx * bulge, md[1] + ky * bulge], B, [B[0] + qx * 4, B[1] + qy * 4], [C[0] - gc.sd[0] * 6 - tx * 6 - gm.nx * 6, C[1] - gc.sd[1] * 6 - ty * 6 - gm.ny * 6]].forEach(function (p, j) { if (j) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); });
+            g.closePath(); g.fill();
+            }
+            const spots = shear ? [[-1, along]] : [];
+            /* a chip of width w and depth D centred u px from the corner; false when it leaves the usable run or meets another */
+            const holes = [];   /* every glass break's outline in canvas px, its two ends on the edge line (the row picture is cut by the same outlines) */
+            const gfill = function (pts) {
+              holes.push(pts.map(function (p, j) { return pm(p[0], j && j < pts.length - 1 ? p[1] : 0); }));
+              g.beginPath();
+              pts.forEach(function (p, j) { const o = pm(p[0], p[1]); if (j) g.lineTo(o[0], o[1]); else g.moveTo(o[0], o[1]); });
+              g.closePath(); g.fill();
+            };
+            /* a chip of kind k (s shell, t shell with a stepped floor of three flat facets, l long shallow sliver, n narrow deeper notch, f small chip with 2-3 tiny flecks missing beside it) of width w and depth D centred c px from the corner; false when it leaves the usable run or meets another */
+            const gchip = function (c, w, D, kind, ent, ln) {
+              const u0 = c - w / 2, mf = kind === "f" ? 24 : 0;
+              if (u0 - mf < (kind === "b" ? 0 : lb + 2) || u0 + w + mf > ub - 2 || spots.some(function (q) { return u0 - mf < q[1] + 6 && u0 + w + mf > q[0] - 6; })) return false;
+              spots.push([u0 - mf, u0 + w + mf]);
+              const tn = Math.tan(ra(60, 75) * Math.PI / 180);
+              let q;
+              if (kind === "g") {
+                /* worn stretch (w about 120): one continuous outline that never returns to the edge line, a 3.5 px steep break, six straight facets of unequal length (6-38 px) on a floor drifting 2.8-4.6 px deep, one asymmetric bite (9 px wide, 8 px deep, a steep wall and a slanted one) at 61-68% along, then a 14 px climb back; x is stretched to w, depths are px. The 48 draws keep the later chips' random stream as before. */
+                for (let i = 0; i < 48; i++) gr();
+                const sx = w / 120;
+                q = [[0, 0], [3, 3.5], [17, 3], [23, 4.4], [61, 3.2], [73, 4], [75, 8], [82, 4.6], [98, 2.8], [106, 4], [120, 0]].map(function (p) { return [p[0] * sx, p[1]]; });
+                ent = true;
+              } else if (kind === "s") {
+                /* scrape: a long shallow entry, a floor D px below the edge wandering 1.5-2.5 px over 4-6 facets of unequal length with one small sharp V bite (10 px wide, 4.8 px deeper) off-centre, ending in a steep uneven step */
+                const xe = w * ra(0.32, 0.45), nf = 4 + Math.floor(gr() * 3), x1 = w * ra(0.95, 0.97), span = ra(1.5, 2.5), fx = [xe], fy = [D - span * ra(0, 0.4)];
+                for (let i = 1; i < nf; i++) { fx.push(xe + (x1 - xe) * (i + ra(-0.3, 0.3)) / nf); fy.push(D - span * (i === 1 ? 1 : ra(0, 1))); }
+                fx.push(x1); fy.push(D - span * ra(0.2, 0.8));
+                const xb = xe + (x1 - xe) * ra(0.5, 0.68);
+                let bit = false;
+                q = [[0, 0]];
+                for (let i = 0; i < fx.length; i++) {
+                  if (fx[i] >= xb && !bit) {
+                    const sl2 = (fy[i] - fy[i - 1]) / (fx[i] - fx[i - 1]), yb = fy[i - 1] + sl2 * (xb - fx[i - 1]);
+                    q.push([xb - 5, yb - sl2 * 5], [xb, yb + 4.8], [xb + 5, yb + sl2 * 5]);
+                    bit = true;
+                  }
+                  q.push([fx[i], fy[i]]);
+                }
+                q.push([w - ra(2, 3), D * ra(0.45, 0.6)], [w, 0]);
+              } else if (kind === "c") {
+                /* compound hit (w about 126, D the main depth, x stretched to w, y scaled by D/22): a second bite 12.5 deep, a ridge 5.5 px below the edge line, the main bite (22 deep, steep left wall, three facets up the right), then a small third bite (6.4 deep, 14 wide) cutting into the main bite's lip; never flipped by ent */
+                const sx = w / 126, sy = D / 22;
+                q = [[0, 0], [19, 12.5], [38, 5.5], [45, 22], [50, 21.2], [64, 16], [80, 11.5], [94, 8.2], [102, 3.8], [108, 6.4], [116, 1.2], [126, 0]].map(function (p) { return [p[0] * sx, p[1] * sy]; });
+                ent = true;
+              } else if (kind === "k") {
+                /* crumbled run (w about 90, D the deepest px, x stretched to w, y scaled by D/10.5): a steep break at the corner's end, a long facet, a small step down, a middle facet, a short one, a small step up, a shallow floor 3 px deep, then a climb back; never flipped by ent */
+                const sx = w / 90, sy = D / 10.5;
+                q = [[0, 0], [2, 10.5], [32, 8], [35, 9.4], [53, 6.2], [59, 5.2], [62, 3.3], [76, 3], [87, 3], [90, 0]].map(function (p) { return [p[0] * sx, p[1] * sy]; });
+                ent = true;
+              } else if (kind === "b") {
+                /* nibbled corner (w about 26, D the deepest px, x stretched to w, y scaled by D/8.2): the corner itself shaved 5.5 px, then three unequal bites (8.2, 7, 5.4 deep) with ridges between; placed at u 1 from the corner whatever the free run says, shaved end on the corner; never flipped by ent */
+                const sx = w / 26, sy = D / 8.2;
+                q = [[0, 0], [1, 5.5], [6, 8.2], [8.5, 4.6], [13, 7], [16, 3.6], [21, 5.4], [26, 0]].map(function (p) { return [p[0] * sx, p[1] * sy]; });
+                ent = true;
+              } else if (kind === "o") {
+                /* gouge (w about 52, D the deepest px, x stretched to w, y scaled by D/5.6): a steep entry, a floor with one small step up, trailing out shallow; never flipped by ent */
+                const sx = w / 52, sy = D / 5.6;
+                q = [[0, 0], [1.5, 5.6], [15, 5], [17, 3.6], [36, 2.4], [52, 0]].map(function (p) { return [p[0] * sx, p[1] * sy]; });
+                ent = true;
+              } else if (kind === "x") {
+                /* drag mark (w about 210, depths are px, x stretched to w): a short slope in (15 px to 5.5), a floor in three unequal stretches 7.1, 9 and 7 px deep with 2 px steps between, then a short abrupt exit; no bite; never flipped by ent */
+                const sx = w / 210;
+                q = [[0, 0], [15, 5.5], [30, 7.1], [88, 7.1], [91, 9], [150, 9], [153, 7], [206, 7], [208, 0]].map(function (p) { return [p[0] * sx, p[1]]; });
+                q.push([w, 0]);
+                ent = true;
+              } else if (kind === "y") {
+                /* sharp small chip (w about 16, depths are px, x stretched to w): a near-vertical left wall, a slanted right wall with one kink; never flipped by ent */
+                const sx = w / 16;
+                q = [[0, 0], [1, 10], [2.2, 10], [9, 6.2], [16, 0]].map(function (p) { return [p[0] * sx, p[1]]; });
+                ent = true;
+              } else if (kind === "z") {
+                /* worn stretch, plain (w about 80, depths are px, x stretched to w): a 12 px slope in, an uneven floor 6-7.6 px low, a step out; no knock; never flipped by ent */
+                const sx = w / 80;
+                q = [[0, 0], [12, 6.2], [30, 7.4], [44, 6], [60, 7.6], [79, 6.6], [80, 0]].map(function (p) { return [p[0] * sx, p[1]]; });
+                ent = true;
+              } else if (kind === "w") {
+                /* low stretch (w about 52): the edge 3-4 px low over three unequal facets, no knock; depths are px, x is stretched to w */
+                const sx = w / 52;
+                q = [[0, 0], [3, 3.4], [19, 3.9], [33, 3.1], [49, 3.7], [52, 0]].map(function (p) { return [p[0] * sx, p[1]]; });
+                ent = true;
+              } else if (kind === "v") {
+                /* triangle: straight walls to one point (blunted 2.4 px), apex at fraction ln of the width */
+                const ax = w * ln;
+                q = [[0, 0], [ax - 1.2, D], [ax + 1.2, D], [w, 0]];
+              } else if (kind === "d") {
+                /* two overlapping triangles of different sizes (a merged double hit): the big one at fraction ln, the small one on the far side, a shallow valley between */
+                const a1 = w * ln * 0.55, a2 = w * (0.62 + ln * 0.3), vx = w * (0.4 + ln * 0.25);
+                q = [[0, 0], [a1 - 1.2, D], [a1 + 1.2, D], [vx, D * 0.3], [a2 - 1, D * 0.62], [a2 + 1, D * 0.62], [w, 0]];
+              } else if (kind === "p") {
+                /* plane: a flat floor (fraction ln of the width) between two slanted walls, no step */
+                const fl = w * ln, x0 = (w - fl) * 0.42;
+                q = [[0, 0], [x0, D], [x0 + fl, D], [w, 0]];
+              } else if (kind === "m" || kind === "f") {
+                /* small chip, ln = {a: point's fraction of the width, kn: +-1 one 1.2 px kink mid-way on the longer wall (0 none)}; its own lean and depth-to-width ratio, never flipped by ent */
+                const ax = w * ln.a, kd = (ln.kn || 0) * 1.2;
+                q = [[0, 0], [ax - 1, D], [ax + 1, D], [w, 0]];
+                if (kd) { if (ln.a < 0.5) q.splice(3, 0, [(ax + 1 + w) / 2, D / 2 + kd]); else q.splice(1, 0, [(ax - 1) / 2, D / 2 + kd]); }
+                ent = true;
+              } else if (kind === "r") {
+                /* fractured big chip, facets from the description ln = {st: -1 steep wall on the left / 1 on the right, ax: point's fraction of the width (steep side frame), tip: blunt facet px, sk: kink px on the steep wall (0 none), sec: [dx px, depth fraction] a second shallower point beside the tip, k: [[t along the long wall, depth shift px]...] its facets, bite: [width px, extra depth px] a secondary bite at the long wall's lip}; drawn in the left-steep frame, mirrored for st 1; never flipped by ent */
+                const rt = ln, ax = w * rt.ax, tl = [ax - rt.tip / 2, D], tr = [ax + rt.tip / 2, D];
+                q = [[0, 0]];
+                if (rt.sk) q.push([tl[0] * 0.5 + rt.sk, D * 0.5]);
+                q.push(tl, tr);
+                let s0p = tr;
+                if (rt.sec) { s0p = [tr[0] + rt.sec[0], D * rt.sec[1]]; q.push(s0p); }
+                const wd = function (x) { return s0p[1] * (w - x) / (w - s0p[0]); };   /* depth of the straight long wall at x */
+                rt.k.forEach(function (kk) { const x = s0p[0] + kk[0] * (w - s0p[0]); q.push([x, wd(x) + kk[1]]); });
+                if (rt.bite) { const bx = w - rt.bite[0]; q.push([bx, wd(bx) + rt.bite[1]], [w - rt.bite[0] * 0.4, wd(w - rt.bite[0] * 0.4) * 0.3]); }
+                q.push([w, 0]);
+                if (rt.st > 0) q = q.map(function (p) { return [w - p[0], p[1]]; }).reverse();
+                ent = true;
+              } else { q = [[0, 0], [D / tn, D]]; if (w >= 9) q.push([w * ra(0.55, 0.7), D * ra(0.35, 0.5)]); q.push([w, 0]); }
+              if (!ent) q = q.map(function (p) { return [w - p[0], p[1]]; }).reverse();
+              holes.push(q.map(function (p) { return pm(u0 + p[0], p[1]); }));
+              g.beginPath();
+              [[0, -3]].concat(q, [[w, -3]]).forEach(function (p, j) { const o = pm(u0 + p[0], p[1]); if (j) g.lineTo(o[0], o[1]); else g.moveTo(o[0], o[1]); });
+              g.closePath();
+              g.fill();
+              if (kind === "f") {
+                /* 2-3 irregular flecks of 3-6 px, 3-6 px from the chip: one or two on the left, the rest on the right */
+                let xl = u0, xr = u0 + w;
+                [-1, 1, 1].slice(0, 2 + (gr() < 0.5 ? 1 : 0)).forEach(function (sd) {
+                  const fa = ra(3, 6), fd = ra(2.2, 4.5), gp = ra(3, 6), x = sd < 0 ? xl - gp - fa : xr + gp;
+                  if (sd < 0) xl = x; else xr = x + fa;
+                  gfill([[x, -3], [x, ra(0, 0.8)], [x + fa * ra(0.25, 0.7), fd], [x + fa, ra(0, 1)], [x + fa, -3]]);
+                });
+              }
+              return true;
+            };
+            /* one layout per box, so no two read alike: [fraction of the usable run from the text corner, kind (see gchip), width px, depth px]; wk-wear-0 four (tiny nick, ragged run, tiny nick, scrape), 1 five (notch, shell, wide sliver, flecks, notch), 2 the sheared corner plus two notches, a long sliver and a shell, 3 five spread wide (flecks, shell, stepped, shell, notch), xp-wear a shell far from a notch and a fleck chip */
+            const LAYOUTS = {
+              "wk-wear-0": [[0.07, "m", 11, 6, { a: 0.3 }], [0.22, "g", 120, 8], [0.5, "m", 13, 5.5, { a: 0.72 }], [0.76, "s", 260, 7.2]],
+              "wk-wear-1": [[0.12, "m", 12, 5.5, { a: 0.25 }], [0.72, "c", 126, 22], [0.93, "w", 52, 3.6]],
+              "wk-wear-2": [[0, "k", 90, 10], [0.8, "r", 34, 12, { st: 1, ax: 0.3, tip: 3, sk: 0, k: [[0.4, 1.5], [0.75, -1.2]] }], [0.87, "m", 10, 5, { a: 0.35 }]],
+              "wk-wear-3": [[0, "b", 26, 8.2], [0.31, "r", 37, 15, { st: -1, ax: 0.22, tip: 3.5, sk: 0, k: [[0.3, 1.8], [0.6, -1.4]] }], [0.44, "r", 28, 11, { st: -1, ax: 0.3, tip: 2.5, sk: 0, k: [[0.5, -1.2]] }], [0.9, "o", 52, 5.6]],
+              "xp-wear": [[0.1, "z", 80, 7], [0.46, "x", 210, 6.2], [0.82, "y", 16, 10]]
+            };
+            const lay = LAYOUTS[seed] || LAYOUTS["wk-wear-0"];
+            let placed = shear ? 1 : 0;
+            lay.forEach(function (e) {
+              const j = ra(-0.015, 0.015), w = e[2] * ra(0.92, 1.08), D = e[3] * ra(0.92, 1.08), ln = e[4] === undefined ? 0.5 : e[4], fr = seed !== "xp-wear" && gc.c ? 1 - e[0] - j : e[0] + j, cc = e[1] === "k" ? along + 6.5 + w / 2 : e[1] === "b" ? 1 + w / 2 : lb + fr * (ub - lb);   /* game rows: fractions run from the left end of the edge (from the right corner when the row is flipped) */
+              if (gchip(cc, w, D, e[1], gr() < 0.5, ln)) placed++;
+            });
+            el._wearChips = placed;
+            el._wearHoles = holes.map(function (h) { return h.map(function (p) { return [p[0] / dpr, p[1] / dpr]; }); });
+          } else if (P.spread) {
             /* row-top plates: four to seven chips on the top run (the Experience box one: three to five, on 0.12-0.88 of its top run), away from the corners: one big tear, one or two medium tears, the rest small nicks, each an angular flake; a row with a picture keeps them on its text side, clear of the picture and the corners */
             const kr = rng(String(preset) + "|" + seed + "|k"), cn = seed === "xp-wear" ? 9 : 4 + Math.floor(kr() * 4), nmed = 1 + (kr() < 0.5 ? 1 : 0);
             let sa = sIn + (seed === "xp-wear" ? 0.08 : 0.15) * vis, sb = sIn + (seed === "xp-wear" ? 0.92 : 0.85) * vis;
@@ -1230,15 +1400,58 @@
     return pts;
   }
   /* wear the plate's top edge once per box size (draw runs on every resize) */
-  function wearPlate(el, seed, edges, flags) {
-    if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight) {
+  function wearPlate(el, seed, edges, flags, glass) {
+    const gl = !window.matchMedia("(max-width: 1199px)").matches;
+    if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight || el._wearGl !== gl) {
+      el._wearGl = gl;
       /* the chips go on the text side of the top edge: the part not under the row picture, 24 px clear of it and of the corner */
       const shot = el.querySelector(":scope > .obj-shot"), W = el.offsetWidth, M = 24;
       let free = null;
       if (shot && shot.offsetWidth) free = shot.offsetLeft + shot.offsetWidth / 2 < W / 2 ? [shot.offsetLeft + shot.offsetWidth + M, W - M] : [M, shot.offsetLeft - M];
+      if (gl && seed !== "xp-wear") free = null;   /* glass: the breaks run along the whole edge, picture side too (the picture is cut by the same outlines) */
+      el._wearHoles = null;
       if (seed === "xp-wear") free = [0.12 * W, 0.88 * W];   /* the Experience box's chips sit along its top edge, clear of the red line and the right point */
-      wear(el, "row-top", seed, { edges: edges, flags: flags, free: free });
+      if (gl && seed === "xp-wear") free = [0.028 * W * 1.06 + 154 / (window.Stage ? window.Stage.s() : 1), W];   /* glass: nothing within 150 px of the red line */
+      wear(el, gl ? "row-glass" : "row-top", seed, { edges: edges, flags: flags, free: free, glass: gl ? glass : null });
     }
+  }
+  /* the quad's points with each glass break (its outline, both ends on the top edge) spliced into the top run (points 0..end), in order along it */
+  function wkCutTop(pts, end, holes) {
+    if (!holes || !holes.length) return pts;
+    const out = [];
+    for (let i = 0; i < pts.length; i++) {
+      out.push(pts[i]);
+      if (i >= end) continue;
+      const a = pts[i], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1;
+      const t = function (p) { return ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2; };
+      holes.map(function (h) { return t(h[0]) > t(h[h.length - 1]) ? h.slice().reverse() : h; })
+        .filter(function (h) { const m = t(h[0]); return m >= 0 && m < 1; })
+        .sort(function (p, q) { return t(p[0]) - t(q[0]); })
+        .forEach(function (h) { h.forEach(function (p) { out.push(p); }); });
+    }
+    return out;
+  }
+  /* the catch-light along the top edge of every Games row and of the Experience box (wide screens): a 1 px cream hairline just inside the cut top outline (the same points as the clip, breaks included), fading out over the last 40 px at each end; the stroke is 2 px wide on the outline and the row's own cut/mask trims the outer half (the Experience box has no mask on the svg, so it is clipped by --xp-clip). On the Experience box it starts where the glass breaks may start, clear of the red line */
+  const WK_LIT_ALPHA = 0.16, WK_LIT_FADE = 40;
+  function wkEdgeLight(el, top, clipVar) {
+    const NS = "http://www.w3.org/2000/svg";
+    let sv = el.querySelector(":scope > .wk-lit");
+    if (!top || top.length < 2) { if (sv) sv.remove(); return; }
+    if (!sv) {
+      sv = document.createElementNS(NS, "svg"); sv.setAttribute("class", "wk-lit"); sv.setAttribute("aria-hidden", "true");
+      sv.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:2";
+      sv.innerHTML = '<defs><linearGradient gradientUnits="userSpaceOnUse"><stop offset="0" stop-opacity="0"/><stop stop-opacity="1"/><stop stop-opacity="1"/><stop offset="1" stop-opacity="0"/></linearGradient></defs><polyline fill="none" stroke-linejoin="round"/>';
+      el.appendChild(sv);
+    }
+    const gr = sv.querySelector("linearGradient"), st = gr.querySelectorAll("stop"), pl = sv.querySelector("polyline"), k = window.Stage ? window.Stage.s() : 1;
+    const x0 = top[0][0], x1 = top[top.length - 1][0], len = Math.abs(x1 - x0) || 1, f = Math.min(0.5, WK_LIT_FADE / len);
+    sv.style.clipPath = clipVar ? "var(" + clipVar + ")" : "";
+    gr.id = "wk-lit-" + (el.id || "xp");
+    gr.setAttribute("x1", x0); gr.setAttribute("x2", x1); gr.setAttribute("y1", 0); gr.setAttribute("y2", 0);
+    st[1].setAttribute("offset", f); st[2].setAttribute("offset", 1 - f);
+    for (let j = 0; j < st.length; j++) st[j].style.stopColor = "var(--type-cream)";
+    pl.setAttribute("points", top.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" "));
+    pl.setAttribute("stroke", "url(#" + gr.id + ")"); pl.setAttribute("stroke-width", (2 / k).toFixed(3)); pl.setAttribute("stroke-opacity", WK_LIT_ALPHA);
   }
   function redOf(el) {
     const NS = "http://www.w3.org/2000/svg";
@@ -1420,7 +1633,8 @@
         if (i > 0) el.style.marginTop = (WK_GAP * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - WK_DROP(WK_CRACK[i - 1]) * W).toFixed(1) + "px";   /* the crack above this row: WK_GAP between the two edges */
         el.style.setProperty("--wk-pad", "0px");
         const all = quad(el, null, pts, "--wk-clip");   /* no red line on the Games rows (main, 2026-11-06) */
-        wearPlate(el, "wk-wear-" + i, pts.slice(0, poly.end).map(function (p, j) { return [p, pts[j + 1]]; }));
+        const gc = flip ? 1 : 0, ga = flip ? pts[poly.end] : pts[0], gb = flip ? pts[poly.end + 1] : pts[pts.length - 1], gn = Math.hypot(gb[0] - ga[0], gb[1] - ga[1]) || 1;
+        wearPlate(el, "wk-wear-" + i, pts.slice(0, poly.end).map(function (p, j) { return [p, pts[j + 1]]; }), undefined, { c: gc, sd: [(gb[0] - ga[0]) / gn, (gb[1] - ga[1]) / gn] });   /* glass: the broken corner is the top one on the text side */
         /* the top edge's own angle and the title's place under it (css: .obj-det, h3, .obj-hook in the zones block) */
         const zone = window.matchMedia(ZQ).matches, zh = el.querySelector(":scope > h3");
         ["--wk-ea", "--wk-ex", "--wk-ey", "--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-gt", "--wk-ba", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { if (!zone) el.style.removeProperty(v); });
@@ -1475,13 +1689,15 @@
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.width = wide && (el._wkExt || el._wkExtL) ? (W - 0.2 * (W - el._wkExt - el._wkExtL)).toFixed(1) + "px" : ""; });   /* the picture keeps its place relative to the text: it grows with the row on both sides */
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, flip ? tx + 16 - (W - m.offsetLeft - m.offsetWidth) : tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
         }
-        if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
+        const cutAll = wkCutTop(all, poly.end, el._wearHoles);   /* glass: the breaks of the plate's top edge cut through the picture too */
+        if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + cutAll.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
+        wkEdgeLight(el, wide ? cutAll.slice(0, poly.end + 1 + cutAll.length - pts.length) : null);
         const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, seam, flip) : 0;   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
         if (zone && zh && pass < 5 && growPad(fitNeed(":scope > h3, :scope > .obj-hook, :scope > .obj-line, .props > div"), sf)) return draw(pass + 1);   /* main's rule: the title, hook, detail line and facts sit MARGIN px inside the plate, else the padding grows and the row is drawn again */
         /* wkPlace runs last, so the padding check, the picture's fade and the tag all read the pieces at their grid places, as before */
       }
       draw();
-      if (window.ResizeObserver) new ResizeObserver(function () { draw(); }).observe(el);
+      if (window.ResizeObserver) { let pend = 0; new ResizeObserver(function () { if (pend) return; pend = requestAnimationFrame(function () { pend = 0; draw(); }); }).observe(el); }   /* drawn in the next frame, not inside the observer, so resizing the row never loops the observer */
       el._wkDraw = draw;
       if (!window._wkLate) {   /* the page width settles after the first draw (scrollbar), and each draw measures the text at the previous draw's grid place (and the next row's): for the first ~3 s after load, when the width changes, two passes over all rows */
         window._wkLate = true;
@@ -1530,7 +1746,16 @@
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
       const pts = phone ? [[x0, dy], [W, 0], [W, H], [0, by]] : [[x0, dy], [W, 0], [0.297 * W, H], [0, by]];
       quad(el, red, pts, "--xp-clip");
-      wearPlate(el, "xp-wear", [[pts[0], pts[1]]]);
+      const xn = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]) || 1;
+      wearPlate(el, "xp-wear", [[pts[0], pts[1]]], undefined, { c: 1, sd: [(pts[2][0] - pts[1][0]) / xn, (pts[2][1] - pts[1][1]) / xn] });
+      let lit = null;
+      if (!phone) {   /* catch-light: the cut top outline from where the glass breaks may start (150 px from the red line), the line fading in from nothing there */
+        const fx = 0.028 * W * 1.06 + 154 / (window.Stage ? window.Stage.s() : 1), cut = wkCutTop(pts, 1, el._wearHoles), top = cut.slice(0, cut.length - (pts.length - 2)), keep = [];
+        for (let i = 0; i < top.length; i++) if (top[i][0] >= fx) keep.push(top[i]);
+        if (keep.length && keep.length < top.length) { const a = pts[0], b = pts[1], t = (fx - a[0]) / (b[0] - a[0]); keep.unshift([fx, a[1] + t * (b[1] - a[1])]); }
+        lit = keep;
+      }
+      wkEdgeLight(el, lit, "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
       /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */
       const ft = el.parentNode.querySelector(":scope > footer");
@@ -1546,9 +1771,10 @@
     function live() { if (window.matchMedia("(max-width: 1199px)").matches || mode !== false) draw(); }
     draw();
     if (window.ResizeObserver) {
-      new ResizeObserver(live).observe(el);
+      let pend1 = 0, pend2 = 0;   /* one pending frame per observer: the draw resizes the box and the last row, so it runs outside the observer callback */
+      new ResizeObserver(function () { if (pend1) return; pend1 = requestAnimationFrame(function () { pend1 = 0; live(); }); }).observe(el);
       const wk = document.querySelector(".work"), rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
-      const ro = new ResizeObserver(function () { if (!window.matchMedia("(max-width: 1199px)").matches) draw(); });
+      const ro = new ResizeObserver(function () { if (pend2) return; pend2 = requestAnimationFrame(function () { pend2 = 0; if (!window.matchMedia("(max-width: 1199px)").matches) draw(); }); });
       if (wk) ro.observe(wk);
       if (rows.length) ro.observe(rows[rows.length - 1]);
     }
