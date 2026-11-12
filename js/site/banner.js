@@ -78,6 +78,13 @@
     "3px 12px, 9px 5px, 14px 0, 50% 0, 53% 2px, 57% 0, calc(100% - 12px) 0, calc(100% - 7px) 4px, calc(100% - 2px) 3px, 100% 12px, calc(100% - 4px) 48%, calc(100% - 1px) 70%, calc(100% - 4px) 100%, 80% 100%, 77% calc(100% - 2px), 71% 100%, 20px 100%, 8px calc(100% - 3px), 1px calc(100% - 9px), 4px 62%, 1px 40%, 5px 28%",
     "8px 6px, 12px 1px, 25% 0, 28% 2px, 33% 0, calc(100% - 14px) 2px, calc(100% - 8px) 5px, calc(100% - 4px) 3px, calc(100% - 9px) 30%, calc(100% - 5px) 52%, calc(100% - 9px) 74%, calc(100% - 7px) calc(100% - 4px), calc(100% - 12px) 100%, 50% 100%, 47% calc(100% - 2px), 42% 100%, 14px 100%, 6px calc(100% - 4px), 9px 72%, 4px 54%, 8px 34%, 5px 20%"
   ];
+  // one torn outline per title, picked by data-title="n" (1-based, wraps). A new title: add data-banner="tab" data-title="<n>" to it and, for a new shape, append an outline here
+  const TITLE_CLIP = [
+    "0 0, 55% 0, 58% 2px, calc(100% - 10px) 0, calc(100% - 4px) 4px, calc(100% - 8px) 30%, calc(100% - 2px) 52%, calc(100% - 6px) 74%, calc(100% - 3px) 100%, 62% 100%, 59% calc(100% - 2px), 12px 100%, 2px calc(100% - 5px), 0 60%",
+    "5px 0, 30% 0, 33% 2px, 38% 0, calc(100% - 8px) 0, 100% 6px, 100% 100%, 45% 100%, 6px 100%, 3px 72%, 7px 55%, 1px 38%, 6px 20%",
+    "4px 6px, 9px 1px, 40% 0, 43% 2px, 48% 0, 100% 0, calc(100% - 4px) 35%, 100% 55%, calc(100% - 5px) 78%, calc(100% - 2px) 100%, 70% 100%, 67% calc(100% - 2px), 28% 100%, 12px calc(100% - 3px), 7px 100%, 2px calc(100% - 4px), 3px 60%, 0 38%",
+    "5px 0, 60% 0, 63% 2px, 70% 0, calc(100% - 12px) 2px, calc(100% - 5px) 6px, calc(100% - 9px) 28%, calc(100% - 3px) 50%, calc(100% - 7px) 72%, calc(100% - 13px) calc(100% - 3px), 80% 100%, 50% calc(100% - 2px), 46% 100%, 0 100%, 2px 60%, 0 30%"
+  ];
   // main's .xp-name clip-path polygon (css/style.css), the plate's long edges and corners
   const PLATE_CLIP = TAB_CLIP[0];
   function clipPath2D(src, w, h) {
@@ -110,7 +117,7 @@
     k.width = cv.width; k.height = cv.height;
     const kg = k.getContext("2d");
     kg.setTransform(dpr, 0, 0, dpr, 0, 0); kg.fillStyle = "#000";
-    kg.fill(clipPath2D(plate ? PLATE_CLIP : p.navTab != null ? NAV_CLIP[p.navTab] : TAB_CLIP[(Number(p.seed) || 0) % 2 ? 1 : 0], p.w, p.h));
+    kg.fill(clipPath2D(plate ? PLATE_CLIP : p.navTab != null ? NAV_CLIP[p.navTab] : p.title != null ? TITLE_CLIP[p.title] : TAB_CLIP[(Number(p.seed) || 0) % 2 ? 1 : 0], p.w, p.h));
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "destination-in"; g.drawImage(k, 0, 0);
     return cv;
   }
@@ -196,6 +203,7 @@
     }
     const p = params(el._bnSeed, { mode: el.dataset.banner === "tab" ? "tab" : "plate", w: w, h: h, text: "" });
     if (el.parentNode && el.parentNode.matches("header.topbar nav")) p.navTab = ((Number(el.dataset.seed) - 11) % 4 + 4) % 4;
+    if (el.dataset.title !== undefined && Number(el.dataset.title) >= 1) p.title = ((Number(el.dataset.title) - 1) % TITLE_CLIP.length);
     el.style.setProperty("--banner", "url(" + dataURL(p, dpr) + ")");
     el._bnW = b.w; el._bnH = b.h; el._bnDpr = dpr;
   }
