@@ -175,7 +175,9 @@ window.HudModels = (function () {
   /* ---- right wing (ship). Source: hud-c25-02-models.md, "Right wing (ship)". ---- */
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const JOINT_U = 0.36;           // hull position of the blade joint, ship units (hud-c25.js paintShip; the stress sample's peak)
-  const RING_U = 0.68;            // hull position of the ring (paintShip's ellipse)
+  const RING_U = 0.43;            // hull position of the ring (paintShip's ellipse; the real ship's ring, voidship-prow.js)
+  /* the ring moved 0.68 -> 0.43, next to the joint bump; the bump's share there stays what it was at 0.68 (0.0286 of 0.843), so the ring lamp (rs > 0.6) still lights only on impact or crit */
+  const RING_SHARE = 0.034;
   const U_LO = -0.52, U_HI = 1.30;
   const CELL_D = [0.02, 0.01, 0, 0.015, -0.01, 0.005, -0.03, 0.01];
   const CAB_SET = 21.0, CAB_N = 60, CAB_STEP = 30;
@@ -224,7 +226,8 @@ window.HudModels = (function () {
     const v = clamp(0.15 + 0.55 * (i.thrust || 0) + 0.35 * (i.wear || 0), 0, 1), t = i.now || 0;
     const amp = 0.05 * (1 + 2 * clamp(i.sway || 0, 0, 1) + 2 * clamp(i.jitter || 0, 0, 1));
     const rip = amp * (0.7 * Math.sin(u * 13 - t * 0.35) + 0.3 * Math.sin(u * 29 + t * 0.5));
-    let s = 0.15 + rip + (0.3 + (v - 0.15) * 0.45) * Math.exp(-Math.pow((u - JOINT_U) / 0.12, 2) / 2);
+    const ringDip = 1 - (1 - RING_SHARE) * Math.exp(-Math.pow((u - RING_U) / 0.02, 2) / 2);
+    let s = 0.15 + rip + (0.3 + (v - 0.15) * 0.45) * Math.exp(-Math.pow((u - JOINT_U) / 0.12, 2) / 2) * ringDip;
     const m = i.impact;
     if (m && m.age < 2) {
       const us = U_LO + (clamp(m.sector || 1, 1, 8) - 0.5) / 8 * (U_HI - U_LO);

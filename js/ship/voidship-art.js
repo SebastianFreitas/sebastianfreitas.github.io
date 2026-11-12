@@ -247,7 +247,7 @@ window.VoidshipArt = (function () {
       if (!flip) { if (far) return;   // the clock spin: a steady up/down pair off the ring and the tail
         const tf = ship.turnFire || 0, dn = tf > 0 ? -1 : 1, kk = 0.55 + 0.45 * Math.abs(tf);
         if (Math.abs(tf) > 0.03) {
-          aim(0.68, -0.015 + dn * 0.17, dn, 0, 1.7, kk);
+          aim(0.43, -0.015 + dn * 0.17, dn, 0, 1.7, kk);
           aim(-0.36, -dn * (dn < 0 ? 0.31 : 0.19), -dn, 0, 4.1, kk);
         }
         return;
@@ -257,7 +257,7 @@ window.VoidshipArt = (function () {
       // the ring's one way and the tail's the other, chosen by the turn's direction d alone (dx -1 swings the nose screen-left,
       // so the ring flame points right). Side-on they point mostly at or away from the viewer: short, full length end-on.
       const d = flip.dx, kk = 0.55 + 0.45 * flipAmp, c = turn.c, s = turn.s, pt = ship.pitch || 0;
-      const rx = 0.68 * c, ry = -0.015, ro = 0.13;   // the blade ring: centre and outer radius (voidship-prow.js)
+      const rx = 0.43 * c, ry = -0.015, ro = 0.18;   // the blade ring: centre and outer radius (voidship-prow.js)
       const ls = 0.2 + 0.8 * s, endOn = 1 - ss(0.15, 0.4, c);
       const side = (sr, y, nx, seed, rk = 1) => {   // rk: the root's reach toward the viewer, in part radii
         const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr; if ((sg > 0) !== !!far) return;   // the near side lies toward local -x, so sg > 0 fires away from the viewer
@@ -424,9 +424,9 @@ window.VoidshipArt = (function () {
       const fl = 0.8 + 0.2 * Math.sin(t * 41);
       g.lineWidth = 1;
       g.strokeStyle = rgba(DRIVE_A, 0.45 * strain * fl);
-      g.beginPath(); g.moveTo(0.84 * L, -0.22 * L); g.lineTo(1.10 * L, 0.02 * L); g.lineTo(0.84 * L, 0.20 * L); g.stroke();
+      g.beginPath(); g.moveTo(1.31 * L, -0.10 * L); g.lineTo(1.37 * L, -0.06 * L); g.lineTo(1.31 * L, -0.02 * L); g.stroke();
       g.strokeStyle = rgba(WHITE, 0.22 * strain * fl);
-      g.beginPath(); g.moveTo(0.90 * L, -0.17 * L); g.lineTo(1.16 * L, 0.02 * L); g.lineTo(0.90 * L, 0.14 * L); g.stroke();
+      g.beginPath(); g.moveTo(1.34 * L, -0.09 * L); g.lineTo(1.39 * L, -0.06 * L); g.lineTo(1.34 * L, -0.03 * L); g.stroke();
     }
     close();
     if (flip) turnJets(false);   // the jet firing toward the viewer goes over the finished hull, un-squeezed by the turn, x already times c

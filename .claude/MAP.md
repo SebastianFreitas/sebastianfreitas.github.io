@@ -210,8 +210,10 @@ does not — it is pure data, no dependency on `B`.
 - `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), geometry tables (`W_FAR ENGINE HULL BELLY OPANEL W_NEAR OWING POD BRIDGE T1 T2`, `FV_*` for the turn's cross-section ends),
 - `voidship-art.js`: `drawHull(g, ship, L, t, turn)` (side view at rest, built part by part in depth mid-turn), `drawTether(g, ship, env)` (the held-pointer thrust gauge: track d0..d1, fill = live speed, tick = demand), `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS`;
 - `voidship-art.js`: local frame +x nose, +y down, units of hull length L; the shard is delegated to `voidship-prow.js` (`drawProwBack` first, `drawProw` after the turrets at rest, `drawProwTurn` in its place mid-turn: the blade as one projected solid)
-- `voidship-prow.js`: a broken-off chunk of the giant energy-giving metal Libertech built the ship around, doubling as ram and power core. Blade shapes: faces `UPPER LOWER`, tip facet `CLIP`, grind line `GRIND`,
-- `voidship-prow.js`: ember crack `EMBER_PTS` (alpha = `emberOf(ship, t)`: pulse + strain, fixed pulse under `Util.reduced()`), the hull's jaws `JAW_T JAW_B` painted over the slab; `drawProwBack` is the red glow behind it; head-on `FV_*`. Palette `RUST_* EMBER`
+- `voidship-prow.js`: a broken-off chunk of the giant energy-giving metal Libertech built the ship around, doubling as ram and power core.
+- `voidship-prow.js` rest shapes: `BODY FACETS SPURS RIDGE` (also `PROW`), two slabs `SLAB_T SLAB_S`, `STUMPS`, `GLINTS`, short ember `REST_EMBER` (alpha = `emberOf(ship, t)`: pulse + strain, fixed pulse under `Util.reduced()`)
+- `voidship-prow.js` turn tables: the same stone knife projected, a fat root filling the ring thinning to the flat tip: `PLATES SEAMS BRACES` at the root, `ring` at the hull joint (`RING_U RING_W RING_RO RING_RI`), depth `ZB`.
+- `voidship-prow.js` turn, rest: the two slabs are thin fins `FINS`; `drawProwBack` is the red glow behind it. Palette `RUST_* EMBER`
 
 ### js/forge
 
