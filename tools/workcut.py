@@ -43,11 +43,11 @@ const polyOf=el=>{const r=el.getBoundingClientRect(), k=r.width/el.offsetWidth;
 const quadsOf=(t,box)=>{
   const cs=getComputedStyle(t), M=cs.transform==='none'?new DOMMatrix():new DOMMatrix(cs.transform), og=cs.transformOrigin.split(' ').map(parseFloat);
   const keep=[t.style.transform,t.style.transition]; t.style.transition='none'; t.style.transform='none';
-  const bb=t.getBoundingClientRect(), ox=bb.left+og[0], oy=bb.top+og[1];
+  const bb=t.getBoundingClientRect(), kz=t.offsetWidth?bb.width/t.offsetWidth:1, ox=bb.left+og[0]*kz, oy=bb.top+og[1]*kz;   /* the computed transform is in design px, the rects in screen px under the stage zoom kz */
   let rs=[]; if (box) rs=[bb]; else { const w=document.createTreeWalker(t,NodeFilter.SHOW_TEXT); for (let n; (n=w.nextNode());) { if (!n.textContent.trim()) continue; const g=document.createRange(); g.selectNodeContents(n); rs.push(...g.getClientRects()); } }
   rs=rs.filter(q=>q.width>=1&&q.height>=1);
   t.style.transform=keep[0]; t.getBoundingClientRect(); t.style.transition=keep[1];
-  return rs.map(q=>[[q.left,q.top],[q.right,q.top],[q.right,q.bottom],[q.left,q.bottom]].map(([x,y])=>[ox+M.a*(x-ox)+M.c*(y-oy)+M.e, oy+M.b*(x-ox)+M.d*(y-oy)+M.f]));};
+  return rs.map(q=>[[q.left,q.top],[q.right,q.top],[q.right,q.bottom],[q.left,q.bottom]].map(([x,y])=>[ox+M.a*(x-ox)+M.c*(y-oy)+M.e*kz, oy+M.b*(x-ox)+M.d*(y-oy)+M.f*kz]));};
 const rectsOf=t=>quadsOf(t,false);
 const corners=q=>q;
 const hit=(A,B)=>{for(const Q of [A,B])for(let i=0;i<4;i++){const p=Q[i],n=Q[(i+1)%4],ax=p[1]-n[1],ay=n[0]-p[0];
@@ -85,8 +85,13 @@ const checkRow=(el,hover,fails)=>{
   const grp={details:quadsOf(det,true), title:quadsOf(h3,true), hook:rectsOf(hk), line:rectsOf(ln), facts:rectsOf(pr)};   /* boxes for the display-font lines (their glyph rects are taller than the line), the facts by their visible text */
   { const lcs=getComputedStyle(ln), hb=hk.getBoundingClientRect(), lb=ln.getBoundingClientRect();
     if (!lb.width || !lb.height) fails.push(tag+'detail line has no layout box (space not reserved)');
-    if (hover) { if (!(lcs.display!=='none'&&lcs.visibility!=='hidden'&&+lcs.opacity>0.95)) fails.push(tag+'detail line is not shown on hover (opacity '+lcs.opacity+')'); }
-    else if (lcs.visibility!=='hidden' && +lcs.opacity>0) fails.push(tag+'detail line is visible at rest (opacity '+lcs.opacity+')');
+    if (!(lcs.display!=='none'&&lcs.visibility!=='hidden'&&+lcs.opacity>0.95)) fails.push(tag+'detail line is not shown '+(hover?'on hover':'at rest')+' (opacity '+lcs.opacity+')');
+    { const sq=det&&det.querySelector('i'); if (!sq) fails.push(tag+'no red square in the OBJ line'); else { const sc=getComputedStyle(sq), so=+sc.opacity;
+      if (hover) { if (so<0.95) fails.push(tag+'red square is not shown on hover (opacity '+sc.opacity+')'); if (!sq.offsetWidth) fails.push(tag+'red square has no width on hover'); }
+      else { if (so>0) fails.push(tag+'red square is visible at rest (opacity '+sc.opacity+')');
+        if (sq.offsetWidth || parseFloat(sc.marginRight)+parseFloat(getComputedStyle(det).columnGap)>0.01) fails.push(tag+'red square takes space at rest (width '+sq.offsetWidth+', margin '+sc.marginRight+')');
+        const idl=det.querySelector('.obj-id').getBoundingClientRect().left, tq=quadsOf(h3,true).flat().map(p=>p[0]);
+        if (tq.length && Math.abs(idl-Math.min(...tq))>1) fails.push(tag+'OBJ label left '+idl.toFixed(1)+' is not the title\'s '+Math.min(...tq).toFixed(1)); } } }
     if (lcs.transform!=='none') { const m=new DOMMatrix(lcs.transform); if (Math.abs(m.b)>0.001||Math.abs(m.c)>0.001) fails.push(tag+'detail line is rotated ('+lcs.transform+')'); }
     if (Math.abs(lb.left-hb.left)>1) fails.push(tag+'detail line left edge '+Math.round(lb.left)+' is not the hook\'s '+Math.round(hb.left));
     if (grp.line.length && grp.hook.length && grp.facts.length) {
@@ -117,15 +122,12 @@ const checkRow=(el,hover,fails)=>{
   const info=[];
   { const pb=pr.getBoundingClientRect(), kids=[...pr.children], shown=kids.filter(d=>d.offsetWidth);
     for (const d of shown) { const g=document.createRange(); g.selectNodeContents(d); for (const t of g.getClientRects()) if (t.width && (t.left<pb.left-0.5 || t.right>pb.right+0.5)) fails.push(tag+'facts text is clipped: '+d.textContent.trim()+' spans '+Math.round(t.left)+'..'+Math.round(t.right)+' in box '+Math.round(pb.left)+'..'+Math.round(pb.right)); }
-    if (shown.length<kids.length) info.push(id+' dropped '+(kids.length-shown.length)+' fact(s): '+kids.filter(d=>!d.offsetWidth).map(d=>d.textContent.trim()).join(', ')); }
+    if (shown.length<kids.length) fails.push(tag+'dropped '+(kids.length-shown.length)+' fact(s): '+kids.filter(d=>!d.offsetWidth).map(d=>d.textContent.trim()).join(', ')); }
   if (go && getComputedStyle(go).position==='absolute') {
     if (!hover) { if (vis(go)) fails.push(tag+'tag is visible at rest on a mouse'); }
     else {
       if (!vis(go)) fails.push(tag+'tag is not visible');
-      const b=go.getBoundingClientRect(), q=quadsOf(go,true)[0], cx=(b.left+b.right)/2;
-      let ey=-1e9;
-      for (let j=0;j<P.length;j++) { const a=P[j], c=P[(j+1)%P.length]; if ((a[0]-cx)*(c[0]-cx)<=0 && a[0]!==c[0]) ey=Math.max(ey, a[1]+(c[1]-a[1])*(cx-a[0])/(c[0]-a[0])); }
-      if (!(b.top < ey-2*k && b.bottom > ey+2*k)) fails.push(tag+'tag does not straddle the bottom edge (tag '+Math.round(b.top)+'..'+Math.round(b.bottom)+', edge '+Math.round(ey)+')');
+      const b=go.getBoundingClientRect(), q=quadsOf(go,true)[0], flipRow=el.classList.contains('is-flip') && !matchMedia('(max-width: 1199px)').matches;   /* under 1200 px a flip row is drawn and laid out as a normal one */
       if (b.left < 0 || b.right > cw) fails.push(tag+'tag outside the window');
       for (const nm in grp) if (grp[nm].some(a=>hit(a,q))) fails.push(tag+'tag touches the '+nm);
       const nx=rows[rows.indexOf(el)+1];
@@ -133,7 +135,31 @@ const checkRow=(el,hover,fails)=>{
         const o=t.getBoundingClientRect();
         if (o.width && b.left<o.right && b.right>o.left && b.top<o.bottom && b.bottom>o.top) fails.push(tag+'tag touches the next row ('+t.tagName.toLowerCase()+')');
       }
-      info.push(id+' row '+el.offsetHeight+'px, tag '+Math.round(b.top-ey)+'..'+Math.round(b.bottom-ey)+' vs edge');
+      /* no red: cream text, a cream aria-hidden arrow, no bar */
+      const gcs=getComputedStyle(go), sp=go.querySelector(':scope > span'), dd=pr.querySelector('dd'), cream=getComputedStyle(dd).color;
+      if (!sp || sp.textContent.trim()!=='→' || sp.getAttribute('aria-hidden')!=='true') fails.push(tag+'tag has no aria-hidden arrow');
+      else { const scs=getComputedStyle(sp);
+        if (gcs.color!==cream || scs.color!==cream) fails.push(tag+'tag is not cream (text '+gcs.color+', arrow '+scs.color+', row cream '+cream+')');
+        if (scs.backgroundColor!=='rgba(0, 0, 0, 0)' || sp.offsetWidth>30) fails.push(tag+'tag arrow still has a bar ('+scs.backgroundColor+', '+sp.offsetWidth+'px wide)'); }
+      /* the facts line: ink box in the pr frame, the tag in the same frame (both turned by the bottom edge's tilt) */
+      const mp=new DOMMatrix(getComputedStyle(pr).transform), mg=new DOMMatrix(gcs.transform), ang=Math.atan2(mp.b,mp.a), ang2=Math.atan2(mg.b,mg.a), cs_=Math.cos(ang), sn=Math.sin(ang);
+      const shown=[...pr.children].filter(d=>d.offsetWidth), iw=shown[shown.length-1].offsetLeft+shown[shown.length-1].offsetWidth, ph=pr.offsetHeight;
+      if (Math.abs(ang-ang2)>0.0009) fails.push(tag+'tag tilt '+(ang2*57.3).toFixed(2)+' is not the facts\' '+(ang*57.3).toFixed(2));
+      const dx=go.offsetLeft+mg.e-(pr.offsetLeft+mp.e), dy=go.offsetTop+mg.f-(pr.offsetTop+mp.f), lx=dx*cs_+dy*sn, ly=-dx*sn+dy*cs_;
+      if (Math.abs(ly)>1.5 || Math.abs(go.offsetHeight-ph)>1.5) fails.push(tag+'tag is not on the facts baseline (offset '+ly.toFixed(1)+', height '+go.offsetHeight+' vs '+ph+')');
+      const gap=flipRow ? shown[0].offsetLeft-(lx+go.offsetWidth) : lx-iw;   /* the tag sits at the inner end: right of the facts, or left of them on a flipped row */
+      if (gap<15.5) fails.push(tag+'tag is only '+gap.toFixed(1)+'px from the facts (need 16)');
+      const dl=(p,a,c)=>Math.abs((c[0]-a[0])*(a[1]-p[1])-(a[0]-p[0])*(c[1]-a[1]))/Math.hypot(c[0]-a[0],c[1]-a[1])/k;   /* px (row units) from a point to the line a-c */
+      /* the tag's inset from the plate's inner side edge (right on a normal row, left on a flipped one): 24 +-2, and the whole tag inside the plate */
+      const O2=[go.offsetLeft+mg.e, go.offsetTop+mg.f], c2=Math.cos(ang2), s2=Math.sin(ang2), toT=(x,y)=>[r.left+(O2[0]+x*c2-y*s2)*k, r.top+(O2[1]+x*s2+y*c2)*k];
+      const tc=[toT(0,0),toT(go.offsetWidth,0),toT(0,go.offsetHeight),toT(go.offsetWidth,go.offsetHeight)];
+      const ti=Math.min(...tc.map(p=>dl(p,...(flipRow?[P[0],P[3]]:[P[1],P[2]]))));
+      if (Math.abs(ti-24)>2) fails.push(tag+'tag inset '+ti.toFixed(1)+' from the plate\'s inner edge is not 24');
+      if (!tc.every(p=>inside(P,p[0],p[1]))) fails.push(tag+'tag outside the plate');
+      const O=[(pr.offsetLeft+mp.e), (pr.offsetTop+mp.f)], toS=(x,y)=>[r.left+(O[0]+x*cs_-y*sn)*k, r.top+(O[1]+x*sn+y*cs_)*k];
+      const bot=[toS(0,ph),toS(iw,ph)].map(p=>dl(p,P[3],P[2])), side=(flipRow?[toS(iw,0),toS(iw,ph)].map(p=>dl(p,P[1],P[2])):[toS(0,0),toS(0,ph)].map(p=>dl(p,P[0],P[3]))), ib=Math.min(...bot), is=Math.min(...side);
+      if (Math.abs(ib-is)>2) fails.push(tag+'facts side inset '+is.toFixed(1)+' and bottom inset '+ib.toFixed(1)+' differ by more than 2');
+      info.push(id+' facts insets side '+is.toFixed(1)+' bottom '+ib.toFixed(1)+', tag gap '+gap.toFixed(1));
     }
   } else if (go && !hover) {
     const b=go.getBoundingClientRect();
@@ -142,14 +168,15 @@ const checkRow=(el,hover,fails)=>{
   }
   const bx=e=>{const q=e.getBoundingClientRect();return [(q.left-r.left)/k,(q.top-r.top)/k,q.width/k,q.height/k];};
   const lh=parseFloat(getComputedStyle(ln).lineHeight)||1;
-  return {boxes:{title:bx(h3),hook:bx(hk),line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
+  const sqe=det.querySelector('i'), sqs=getComputedStyle(sqe), lab=[(det.querySelector('.obj-id').getBoundingClientRect().left-r.left)/k, sqe.offsetWidth+parseFloat(sqs.marginRight)+parseFloat(getComputedStyle(det).columnGap)];   /* label left edge, square width + gap */
+  return {lab, boxes:{title:bx(h3),hook:bx(hk),line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
 };
 """
 
 JS = HELP + r"""
 if (de.scrollWidth > cw + 1) fails.push('page scrolls sideways: scrollWidth ' + de.scrollWidth + ' > ' + cw);
 if (!rows.length) fails.push('no Games rows');
-let worst=-1e9; const boxes=[];
+let worst=-1e9; const boxes=[], labs=[];
 for (const el of rows) {
   const id=el.id||'row', r=el.getBoundingClientRect(), k=r.width/el.offsetWidth;
   const P=polyOf(el);
@@ -166,16 +193,16 @@ for (const el of rows) {
     if (q.left > pl + 1) fails.push(id+': '+nm+' clips at left '+Math.round(q.left)+', polygon starts '+Math.round(pl));
   }
   const rr=checkRow(el,false,fails);
-  boxes.push(rr?rr.boxes:null);
+  boxes.push(rr?rr.boxes:null); labs.push(rr?rr.lab:null);
 }
-return {cw, rows: rows.length, margin: Math.round(-worst), boxes, fails, phone: window.__phoneChecks||0};
+return {cw, rows: rows.length, margin: Math.round(-worst), boxes, labs, fails, phone: window.__phoneChecks||0};
 """
 
 # one row in its hover state (.is-peek added by the caller): the same checks as at rest plus the tag
 # shown across the bottom edge; returns the boxes for the no-move comparison
 JS_HOVER = HELP + r"""
 const rr=checkRow(rows[arguments[0]],true,fails);
-return {fails, boxes: rr&&rr.boxes, info: rr?rr.info:[]};
+return {fails, boxes: rr&&rr.boxes, lab: rr&&rr.lab, info: rr?rr.info:[]};
 """
 
 # a viewport point that is on no Games row and no top bar tab (null if none found)
@@ -187,9 +214,9 @@ for (let y=Math.round(innerHeight/2); y<innerHeight; y+=20)
 return null;
 """
 
-# each row's tag x in row px (--wk-gx), to compare a first load with after a hover cycle
+# each row's tag x on screen, relative to its row, to compare a first load with after a hover cycle (null: no tag)
 JS_TAGX = r"""
-return Array.from(document.querySelectorAll('.work > a.obj[data-wornquad]')).map(e=>parseFloat(e.style.getPropertyValue('--wk-gx')));
+return Array.from(document.querySelectorAll('.work > a.obj[data-wornquad]')).map(e=>{ const g=e.querySelector(':scope > .obj-go'); if (!g) return null; const x=g.getBoundingClientRect().left-e.getBoundingClientRect().left; return isFinite(x) ? x : null; });
 """
 
 
@@ -268,10 +295,18 @@ def main():
                     for nm in b0:
                         if max(abs(x - y) for x, y in zip(b0[nm], hr["boxes"][nm])) > 0.5:
                             hov.append("row %d: %s box moved or resized on hover: %s -> %s" % (i, nm, [round(x, 1) for x in b0[nm]], [round(x, 1) for x in hr["boxes"][nm]]))
+                l0 = res["labs"][i]
+                if l0 and hr["lab"]:  # only the OBJ label moves: right by the square's width + gap
+                    sh = hr["lab"][0] - l0[0]
+                    if abs(sh - (hr["lab"][1] - l0[1])) > 1 or sh < 5:
+                        hov.append("row %d: OBJ label shifted %.1f px on hover, expected square width + gap %.1f" % (i, sh, hr["lab"][1] - l0[1]))
+                    print("  row %d OBJ label shift %.1f px" % (i, sh))
                 d.execute_script("document.querySelectorAll('.work > a.obj[data-wornquad]')[arguments[0]].classList.remove('is-peek')", i)
             time.sleep(0.5)
             for i, (t0, t1) in enumerate(zip(tag0, d.execute_script(JS_TAGX))):
-                if t0 is not None and t1 is not None and abs(t0 - t1) > 1:  # NaN (no tag x on this row) compares false
+                if t0 is None or t1 is None:
+                    hov.append("row %d: no tag x read: %s -> %s" % (i, t0, t1))
+                elif abs(t0 - t1) > 1:
                     hov.append("row %d: tag x moved %.1f -> %.1f after a hover cycle" % (i, t0, t1))
             fails = res["fails"] + hov +["console error: " + e for e in errs]
             head = "%-16s cw=%d rows=%d right margin=%dpx phone checks=%d" % (size, res["cw"], res["rows"], res["margin"], res["phone"])

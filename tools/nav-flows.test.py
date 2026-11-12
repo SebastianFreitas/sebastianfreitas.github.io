@@ -1242,13 +1242,17 @@ def flow_work_hover(browser, base):
       shown = (e) => { const cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0; };
       return { paused: v.paused, t: v.currentTime, goShown: shown(row.querySelector('.obj-go')),
       detailsShown: shown(row.querySelector('.obj-line')), factsShown: shown(row.querySelector('.props')),
-      lineBox: row.querySelector('.obj-line').offsetHeight > 0,
+      lineBox: row.querySelector('.obj-line').offsetHeight > 0, squareOp: +getComputedStyle(row.querySelector('.obj-det i')).opacity,
+      k: row.getBoundingClientRect().width / row.offsetWidth, sqW: row.querySelector('.obj-det i').offsetWidth, labelX: row.querySelector('.obj-det .obj-id').getBoundingClientRect().left,
+      titleX: (() => { const g = document.createRange(); g.selectNodeContents(row.querySelector('h3')); return Math.min(...[...g.getClientRects()].filter(q => q.width).map(q => q.left)); })(),
       peeking: document.querySelectorAll('.obj.is-peek').length }; }""", k)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/voidscape.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(700)
     r = read("voidscape")
-    check("work-hover: idle row: clip paused, tag hidden, facts shown, details hidden (space reserved)", r["paused"] and not r["goShown"] and r["factsShown"] and not r["detailsShown"] and r["lineBox"], r)
+    check("work-hover: idle row: clip paused, tag and red square hidden, facts and details shown", r["paused"] and not r["goShown"] and r["factsShown"] and r["detailsShown"] and r["lineBox"] and r["squareOp"] == 0, r)
+    rest = r
+    check("work-hover: idle row: the red square has zero width and the OBJ label starts at the title's left edge", rest["sqW"] == 0 and abs(rest["labelX"] - rest["titleX"]) <= 1, r)
     page.hover(sel("voidscape"))
     r = None
     for _ in range(10):
@@ -1257,7 +1261,16 @@ def flow_work_hover(browser, base):
         if not r["paused"] and r["t"] > 0:
             break
     check("work-hover: hover plays the clip within 2 s", not r["paused"] and r["t"] > 0, r)
-    check("work-hover: tag, facts and details shown on hover", r["goShown"] and r["factsShown"] and r["detailsShown"], r)
+    check("work-hover: tag, red square, facts and details shown on hover", r["goShown"] and r["factsShown"] and r["detailsShown"] and r["squareOp"] > 0.95, r)
+    tg = page.evaluate("""() => { const row = document.querySelector("a.obj[href='projects/voidscape.html']"), go = row.querySelector('.obj-go'), pr = row.querySelector('.props'),
+      mg = new DOMMatrix(getComputedStyle(go).transform), mp = new DOMMatrix(getComputedStyle(pr).transform), flip = row.classList.contains('is-flip'), W = row.offsetWidth,
+      a = Math.atan2(mg.b, mg.a), c = Math.cos(a), s = Math.sin(a), ap = Math.atan2(mp.b, mp.a), shown = [...pr.children].filter(d => d.offsetWidth), last = shown[shown.length - 1],
+      iw = last.offsetLeft + last.offsetWidth, ox = go.offsetLeft + mg.e, oy = go.offsetTop + mg.f, dx = ox - (pr.offsetLeft + mp.e), dy = oy - (pr.offsetTop + mp.f),
+      lx = dx * Math.cos(ap) + dy * Math.sin(ap), ly = -dx * Math.sin(ap) + dy * Math.cos(ap),
+      xs = [[0, 0], [go.offsetWidth, 0], [0, go.offsetHeight], [go.offsetWidth, go.offsetHeight]].map(p => ox + p[0] * c - p[1] * s);
+      return { inset: flip ? Math.min(...xs) : W - Math.max(...xs), ly: ly, tilt: Math.abs(a - ap), gap: flip ? shown[0].offsetLeft - (lx + go.offsetWidth) : lx - iw, flip: flip }; }""")
+    check("work-hover: tag 24 px (+-2) from the plate's inner edge, on the facts' baseline and tilt, 16 px or more from the facts", abs(tg["inset"] - 24) <= 2 and abs(tg["ly"]) <= 2 and tg["tilt"] < 0.001 and tg["gap"] >= 15.5, tg)
+    check("work-hover: on hover the OBJ label slides right by the square's width + 12 px gap, the title does not move", r["sqW"] > 0 and abs((r["labelX"] - rest["labelX"]) - (r["sqW"] + 12) * r["k"]) <= 1 and abs(r["titleX"] - rest["titleX"]) <= 1, r)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/conclusus.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.wait_for_timeout(700)
     page.hover(sel("conclusus"))

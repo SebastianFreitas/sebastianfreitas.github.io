@@ -1282,14 +1282,14 @@
   /* mouse, wide: where the title, hook and facts are drawn (css zones block: they stay in the grid, which only holds the row's height, and move by transform). One level layout, the same
      at rest and on hover: the title at the top-left corner of the text side, the hook under it in the same column (its width chosen once: inside the plate and SEAMGAP px clear of the
      picture), the facts as one line at the bottom edge (turned to it by --wk-ba), the last facts dropped from view when they do not fit on the line */
-  function wkPlace(el, pts, end, bi, W, H, seam) {
-    const SEAMGAP = 40, M = 28, RG = 16, flip = el.classList.contains("is-flip"), q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
+  function wkPlace(el, pts, end, bi, W, H, seam, flip) {   /* flip: the one the plate was drawn with (not the class: under 1200 px a flip row is drawn as a normal one) */
+    const SEAMGAP = 40, M = 28, RG = 16, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
     if (!h3 || !hk) return;
     ["--wk-hw", "--wk-hm", "--wk-ln", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* measured at the grid's own sizes */
     const f = function (v) { return v.toFixed(1); };
     const bl = pts[bi[0]], br = pts[bi[1]], tl = pts[0], tr = pts[end];
     const topY = function (x) { return tl[1] + (tr[1] - tl[1]) * (x - tl[0]) / (tr[0] - tl[0]); }, botY = function (x) { return bl[1] + (br[1] - bl[1]) * (x - bl[0]) / (br[0] - bl[0]); };
-    const L = h3.offsetLeft, Rt = hk.offsetLeft + hk.offsetWidth, tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0;
+    const L = h3.offsetLeft, tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0;
     const mv = function (e, x, y, t) { return "translate(" + f(x - e.offsetLeft) + "px, " + f(y - e.offsetTop) + "px)" + (t ? " " + t : ""); };
     const xr = Math.min(tr[0], br[0]) - 8, dt = q(".obj-det"), yt = Math.max(topY(L), topY(L + tw)) + M + (dt ? dt.offsetHeight + 12 : 0);   /* the title sits under the detail line */
     /* the hook: its natural width, cut back to the plate and to SEAMGAP px short of the picture; the margin keeps the grid's height */
@@ -1304,17 +1304,32 @@
     el.style.setProperty("--wk-h3", mv(h3, L, yt, ""));
     el.style.setProperty("--wk-hk", mv(hk, L, yt + th + RG, ""));
     if (pr) {
-      const kids = Array.prototype.slice.call(pr.querySelectorAll(":scope > div")), avail = flip ? Rt - L : Math.min(xr, seam !== null ? seam - SEAMGAP : Infinity) - L;   /* the room for the facts: text edge to the picture seam less SEAMGAP (or the plate's inset); on a flip row the text column */
+      const kids = Array.prototype.slice.call(pr.querySelectorAll(":scope > div")), tg = q(".obj-go"), tgw = tg ? tg.offsetWidth : 0, D = M - 4;
       pr.style.width = "max-content"; pr.style.maxWidth = "none"; pr.style.overflow = "visible";   /* the box is the facts' own width, so nothing is clipped */
       kids.forEach(function (d) { d.style.display = ""; });
       const tail = function () { let k = kids.length - 1; while (k > 0 && kids[k].style.display === "none") k--; return parseFloat(getComputedStyle(kids[k]).marginRight) || 0; };   /* the last shown fact's trailing margin is not ink */
-      for (let i = kids.length - 1; i > 0 && pr.offsetWidth - tail() > avail + 0.5; i--) kids[i].style.display = "none";
-      const ba = Math.atan((br[1] - bl[1]) / (br[0] - bl[0])), pw = pr.offsetWidth, ph = pr.offsetHeight, Ra = function (x, y) { return [x * Math.cos(ba) - y * Math.sin(ba), x * Math.sin(ba) + y * Math.cos(ba)]; };
-      const pc = [Ra(0, ph), Ra(pw, ph)], px = flip ? Rt - pw : L, py = Math.min.apply(null, pc.map(function (p) { return botY(px + p[0]) - M + 4 - p[1]; }));
+      const ba = Math.atan((br[1] - bl[1]) / (br[0] - bl[0])), ph = pr.offsetHeight, Ra = function (x, y) { return [x * Math.cos(ba) - y * Math.sin(ba), x * Math.sin(ba) + y * Math.cos(ba)]; };
+      /* the facts sit in the plate's outer bottom corner: D px above the bottom edge and D px in from the side edge (its real, leaning cut), turned to the bottom edge */
+      const A = flip ? pts[end] : pts[0], B = flip ? br : bl, el2 = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      let nx = (B[1] - A[1]) / el2, ny = -(B[0] - A[0]) / el2; if (flip ? nx > 0 : nx < 0) { nx = -nx; ny = -ny; }   /* the side edge's normal, pointing into the plate */
+      const solve = function () {
+        const iw = pr.offsetWidth - tail(), oc = flip ? [Ra(iw, 0), Ra(iw, ph)] : [Ra(0, 0), Ra(0, ph)], pc = [Ra(0, ph), Ra(iw, ph)];
+        let px = flip ? B[0] - D - iw : A[0] + D, py = 0;
+        for (let n = 0; n < 4; n++) {
+          py = Math.min.apply(null, pc.map(function (p) { return botY(px + p[0]) - D - p[1]; }));
+          px += (D - Math.min.apply(null, oc.map(function (p) { return (px + p[0] - A[0]) * nx + (py + p[1] - A[1]) * ny; }))) / nx;
+        }
+        return { px: px, py: py, iw: iw };
+      };
+      const s = solve(), px = s.px, py = s.py, iw = s.iw;   /* the facts never take the tag into account: none is dropped */
       el.style.setProperty("--wk-ba", (ba * 180 / Math.PI).toFixed(2) + "deg");
-      el._wkFxR = flip ? 0 : px + pw * Math.cos(ba);   /* the facts' right end: the tag keeps clear of it */
       el.style.setProperty("--wk-fx", mv(pr, px, py, "rotate(var(--wk-ba))"));
-      return Math.max(0, yt + th + RG + hh2 + (ln ? (parseFloat(getComputedStyle(ln).marginTop) || 0) + lh2 : 0) + 10 - (py + Math.min(0, pw * Math.sin(ba))));   /* the facts' top must clear the detail line's last line (the hook's without one) by 10 px: the shortfall is how much taller the row must be */
+      if (tg) {   /* the tag: on the facts' baseline, the same tilt, at the plate's inner end: its nearest ink D px from the plate's inner side edge (it may pass the text column) */
+        const th2 = tg.offsetHeight, ys = [0, th2].map(function (y) { return flip ? -y * Math.sin(ba) : tgw * Math.cos(ba) - y * Math.sin(ba); }), ea = flip ? [tl, bl] : [tr, br], ex = ea[0][0] + (ea[1][0] - ea[0][0]) * (py - ea[0][1]) / (ea[1][1] - ea[0][1]), edge = flip ? ex + D : ex - D;   /* the inner side edge's x at the tag's y */
+        const ox = (edge - px - (flip ? Math.min.apply(null, ys) : Math.max.apply(null, ys))) / Math.cos(ba), c = Ra(ox, 0);
+        el.style.setProperty("--wk-gt", "translate(" + f(px + c[0]) + "px, " + f(py + c[1]) + "px) rotate(var(--wk-ba))");
+      }
+      return Math.max(0, yt + th + RG + hh2 + (ln ? (parseFloat(getComputedStyle(ln).marginTop) || 0) + lh2 : 0) + 10 - (py + Math.min(0, iw * Math.sin(ba))));   /* the facts' top must clear the detail line's last line (the hook's without one) by 10 px: the shortfall is how much taller the row must be */
     }
     return 0;
   }
@@ -1408,7 +1423,7 @@
         wearPlate(el, "wk-wear-" + i, pts.slice(0, poly.end).map(function (p, j) { return [p, pts[j + 1]]; }));
         /* the top edge's own angle and the title's place under it (css: .obj-det, h3, .obj-hook in the zones block) */
         const zone = window.matchMedia(ZQ).matches, zh = el.querySelector(":scope > h3");
-        ["--wk-ea", "--wk-ex", "--wk-ey", "--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-ba", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { if (!zone) el.style.removeProperty(v); });
+        ["--wk-ea", "--wk-ex", "--wk-ey", "--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-gt", "--wk-ba", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { if (!zone) el.style.removeProperty(v); });
         if (!zone) { const pp = el.querySelector(":scope > .props"); if (pp) { pp.style.width = ""; pp.style.maxWidth = ""; pp.style.overflow = ""; pp.querySelectorAll(":scope > div").forEach(function (d) { d.style.display = ""; }); } }   /* phones: the facts wrap and show whole */
         if (zone && zh) {
           const x0 = pts[0][0], y0 = pts[0][1], x1 = pts[poly.end][0], y1 = pts[poly.end][1], sl = (y1 - y0) / (x1 - x0), hx = zh.offsetLeft, ey = y0 + sl * (hx - x0);
@@ -1457,17 +1472,11 @@
           el.getBoundingClientRect(); tk.forEach(function (t) { t.style.transition = ""; });
           if (flip) tx = W - tx;
           if (zone && !flip && wide) { seam = tx + 16; el.style.setProperty("--wk-seam", seam.toFixed(1) + "px"); } else el.style.removeProperty("--wk-seam");   /* text on the left: where the text zone ends and the picture fades in (row px; the checker reads it). Flipped rows keep their hover text where it is */
-          /* the tag (.obj-go) hangs off the bottom edge at the seam between the text and the picture, 50 px toward the picture */
-          const tg = el.querySelector(":scope > .obj-go"), tl = pts[bi[0]], tr = pts[bi[1]];
-          if (tg) { if (zone) { const hw = tg.offsetWidth / 2 + 8, nx = flip ? null : el.nextElementSibling, nh = nx && nx.querySelector(":scope > h3"), nl = nh ? (nx.getBoundingClientRect().left + nh.offsetLeft * k2 - er2.left) / k2 - 48 / k2 : Infinity, gx = Math.max(tl[0] + hw, Math.min(tr[0] - hw, nl - hw, flip ? W - tx - 16 - 50 : tx + 16 + 50));   /* text on the left: the tag keeps 48 screen px clear of the next row's detail line (it starts at that row's title) */ el.style.setProperty("--wk-gx", gx.toFixed(1) + "px"); el.style.setProperty("--wk-gy", (tl[1] + (tr[1] - tl[1]) * (gx - tl[0]) / (tr[0] - tl[0])).toFixed(1) + "px"); } else { el.style.removeProperty("--wk-gx"); el.style.removeProperty("--wk-gy"); } }
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.width = wide && (el._wkExt || el._wkExtL) ? (W - 0.2 * (W - el._wkExt - el._wkExtL)).toFixed(1) + "px" : ""; });   /* the picture keeps its place relative to the text: it grows with the row on both sides */
           el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, flip ? tx + 16 - (W - m.offsetLeft - m.offsetWidth) : tx + 16 - m.offsetLeft).toFixed(0) + "px"); });   /* the playing clip fades in from the same place as the still */
         }
         if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + all.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
-        const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, seam) : 0;   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
-        { const tg2 = el.querySelector(":scope > .obj-go"); if (zone && zh && tg2 && el._wkFxR && el.style.getPropertyValue("--wk-gx")) {   /* the tag slides toward the picture, off the end of the facts line */
-          const hw2 = tg2.offsetWidth / 2 + 8, tl2 = pts[bi[0]], tr2 = pts[bi[1]], gx2 = Math.max(parseFloat(el.style.getPropertyValue("--wk-gx")), Math.min(tr2[0] - hw2, el._wkFxR + hw2 + 8));
-          el.style.setProperty("--wk-gx", gx2.toFixed(1) + "px"); el.style.setProperty("--wk-gy", (tl2[1] + (tr2[1] - tl2[1]) * (gx2 - tl2[0]) / (tr2[0] - tl2[0])).toFixed(1) + "px"); } }
+        const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, seam, flip) : 0;   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
         if (zone && zh && pass < 5 && growPad(fitNeed(":scope > h3, :scope > .obj-hook, :scope > .obj-line, .props > div"), sf)) return draw(pass + 1);   /* main's rule: the title, hook, detail line and facts sit MARGIN px inside the plate, else the padding grows and the row is drawn again */
         /* wkPlace runs last, so the padding check, the picture's fade and the tag all read the pieces at their grid places, as before */
       }
