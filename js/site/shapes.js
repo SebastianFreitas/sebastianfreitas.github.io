@@ -725,6 +725,13 @@
             const spots = shear ? [[-1, along]] : [];
             /* a chip of width w and depth D centred u px from the corner; false when it leaves the usable run or meets another */
             const holes = [];   /* every glass break's outline in canvas px, its two ends on the edge line (the row picture is cut by the same outlines) */
+            if (shear) {
+              /* the sheared corner's visible edge, from the side point B to A on the edge line, in order from the corner; .sh (0 left / 1 right corner) tells wkCutTop it replaces the corner point */
+              const sp = [B, [md[0] + kx * bulge, md[1] + ky * bulge], A];
+              if (gc.c) sp.reverse();
+              sp.sh = gc.c ? 1 : 0;
+              holes.push(sp);
+            }
             const gfill = function (pts) {
               holes.push(pts.map(function (p, j) { return pm(p[0], j && j < pts.length - 1 ? p[1] : 0); }));
               g.beginPath();
@@ -867,7 +874,7 @@
               if (gchip(cc, w, D, e[1], gr() < 0.5, ln)) placed++;
             });
             el._wearChips = placed;
-            el._wearHoles = holes.map(function (h) { return h.map(function (p) { return [p[0] / dpr, p[1] / dpr]; }); });
+            el._wearHoles = holes.map(function (h) { const o = h.map(function (p) { return [p[0] / dpr, p[1] / dpr]; }); if (h.sh !== undefined) o.sh = h.sh; return o; });
           } else if (P.spread) {
             /* row-top plates: four to seven chips on the top run (the Experience box one: three to five, on 0.12-0.88 of its top run), away from the corners: one big tear, one or two medium tears, the rest small nicks, each an angular flake; a row with a picture keeps them on its text side, clear of the picture and the corners */
             const kr = rng(String(preset) + "|" + seed + "|k"), cn = seed === "xp-wear" ? 9 : 4 + Math.floor(kr() * 4), nmed = 1 + (kr() < 0.5 ? 1 : 0);
@@ -1418,14 +1425,14 @@
   /* the quad's points with each glass break (its outline, both ends on the top edge) spliced into the top run (points 0..end), in order along it */
   function wkCutTop(pts, end, holes) {
     if (!holes || !holes.length) return pts;
-    const out = [];
+    const out = [], sh = holes.some(function (h) { return h.sh !== undefined; }) ? holes.filter(function (h) { return h.sh !== undefined; })[0].sh : -1;   /* a sheared corner: its outline takes the corner point's place (first point of the run for 0, last for 1) */
     for (let i = 0; i < pts.length; i++) {
-      out.push(pts[i]);
+      if (sh < 0 || i !== (sh ? end : 0)) out.push(pts[i]);
       if (i >= end) continue;
       const a = pts[i], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1;
       const t = function (p) { return ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2; };
-      holes.map(function (h) { return t(h[0]) > t(h[h.length - 1]) ? h.slice().reverse() : h; })
-        .filter(function (h) { const m = t(h[0]); return m >= 0 && m < 1; })
+      holes.map(function (h) { return h.sh === undefined && t(h[0]) > t(h[h.length - 1]) ? h.slice().reverse() : h; })
+        .filter(function (h) { if (h.sh !== undefined) return i === (h.sh ? end - 1 : 0); const m = t(h[0]); return m >= 0 && m < 1; })
         .sort(function (p, q) { return t(p[0]) - t(q[0]); })
         .forEach(function (h) { h.forEach(function (p) { out.push(p); }); });
     }
