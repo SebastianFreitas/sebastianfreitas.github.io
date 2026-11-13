@@ -19,7 +19,7 @@
     if (it.imgs) return;
     it.imgs = it.list.map(function (s) {
       const im = new Image();
-      im.alt = s.a; im.decoding = "async"; im.src = s.s;
+      im.alt = s.a; if (s.t) im.title = s.t; im.decoding = "async"; im.src = s.s;
       im.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;transform:translateX(100%);will-change:transform";
       return im;
     });

@@ -493,7 +493,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
 | `index.html` | Homepage; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
-| `media/experience/` | `ground-1..6`, `dfblock-1..5`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`) |
+| `media/experience/` | `ground-1..6`, `dfblock-1..6`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`); `CREDITS.md` has the DF Block photo credits |
 | `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
 | `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it as before (css/style.css, comment in index.html). Plate height is `XH` 890 in js/site/shapes.js and `height: 890px` in css/style.css |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
