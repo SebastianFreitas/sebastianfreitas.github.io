@@ -21,7 +21,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
-- the gate (shows every visit, boot log first visit only): js/site/entry.js (load kind), js/site/intro.js (UI), css/gate.css
+- the gate (bridge-HUD style loading screen, every visit, boot log first visit only): js/site/entry.js (load kind), js/site/intro.js (UI, named steps), css/gate.css
 - the level chip, rank card, level burst: js/site/xp.js (chip, ranks), js/site/surge.js (burst, card), css/beacon.css
 - the cutscene journal (gear/folder button and its panel): js/bridge/bridge-panel.js
 - the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
@@ -103,7 +103,7 @@ shares `Gen`:
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
 | `entry.js` | Head-time load kind (the gate shows for every kind; only `first` gets the boot log): `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI, every visit: boot log (first visit only), loading bar, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` runs real steps incl. `Genesis.warmSteps()`; bar = steps done / total | uses `SiteEntry`, `XP` |
+| `intro.js` | Entry gate UI, every visit: boot log (first visit), gauge with step label, `#gate-steps` list, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` runs real steps; sets `--gate-p`, `.still`, `.gate-fade` | uses `SiteEntry`, `XP` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
@@ -486,7 +486,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | File | Purpose |
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
-| `css/gate.css` | The entry gate, every visit: boot log (first visit only), bar, the button. index only |
+| `css/gate.css` | The entry gate in the bridge HUD style (`--hud-*` tokens): dim scrim over the bridge, drawn hairline frame and corner marks (`--gate-p`), top-line gauge, step list, boot log, the button. index only |
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
@@ -526,7 +526,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
-- `css/art/dirt-a.webp`: the gate is plain black with a cream CONTINUE label and a hairline bar (`css/gate.css`); no dirt, no redlines.
+- `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with gold hairline frame, gauge and step list in the bridge HUD style (`css/gate.css`); no dirt, no redlines.
 - `tools/workcut.py`: sizes are `WxH`, `@z` opens at zoom, `~z` zooms while open.
 - `index.html`: `.obj-ghost` is a hidden measuring copy of main's layout. div.stage holds the Work rows (own zoom by --stage-s); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
 - `hudshot.py`: `--x <world x>`, `--site <SITES id>` (implies `--claimed`), `--read <n>`, `--burn <s>`, `--touch` (phone check, no shot); imports `tools/snap.py`

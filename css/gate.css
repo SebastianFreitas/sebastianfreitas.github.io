@@ -1,10 +1,11 @@
 /* =========================================================
-   the first-visit gate: boot log, then the two paths; index.html only
+   the entry gate: the bridge HUD waking up, the bridge dim behind it; index.html only
+   palette, type and strokes are the bridge's own --hud-* (declared on html in bridge.css)
    ========================================================= */
 
-/* ---------------- site gate ---------------- */
+/* the frame and its marks draw in from --gate-p (0 to 1), set on #site-gate; 1 without script */
+@property --gate-p { syntax: "<number>"; inherits: true; initial-value: 1; }
 
-html.gate-done .site-gate { display: none; }
 
 
 body.site-frozen { overflow: hidden; }
@@ -24,83 +25,143 @@ body.site-frozen > .topbar {
 }
 
 .site-gate {
+  --gate-p: 1;
+  --gate-inset: clamp(0.75rem, 2.2vw, 1.6rem);
+  --gate-top: 4.6rem;   /* clear of the fixed top bar */
+  --gate-pad: clamp(1rem, 3vw, 2.4rem);
+  --gate-line: rgb(var(--hud-gold-rgb) / var(--hud-normal-a));
   position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-  padding: clamp(1.25rem, 4vw, 2.5rem);
-  background: rgb(4, 4, 5);   /* the top bar's black, fully opaque: nothing of the bridge shows through */
+  /* a dark scrim over the bridge's still frame (about a quarter strength), darker low-left where the words sit */
+  /* opaque until the bridge step has painted the still frame (.still, set by intro.js) */
+  background: rgb(4 4 5);
   pointer-events: auto;
-  transition: opacity 0.55s ease, visibility 0.55s;
+  transition: opacity 0.55s ease, visibility 0.55s, --gate-p 0.4s ease;
 }
+/* phone width: the top bar is two rows (83px), so the frame starts lower */
+@media (max-width: 640px) { .site-gate { --gate-top: 6rem; } }
+/* portrait and phone: the bridge does not show there, so the scrim is opaque */
+.site-gate.still {
+  background:
+    linear-gradient(to top right, rgb(4 4 5 / 0.5), transparent 55%),
+    rgb(4 4 5 / 0.75);
+}
+@media (orientation: portrait) and (pointer: coarse), (max-height: 520px) and (pointer: coarse), (max-width: 640px) {
+  .site-gate, .site-gate.still { background: rgb(4 4 5); }
+}
+/* Continue: the gate is gone at once; a bare scrim copy (made by intro.js) fades out over 0.4 s so the bridge brightens into view */
 .site-gate.done {
   opacity: 0; visibility: hidden; pointer-events: none;
   display: none;
 }
-
-/* one centred stage — terminal box, then bio replaces it; one torn stroke behind it (.slab, tilt on the pseudo) */
-.gate-stage {
-  width: min(34rem, 90vw);
-  min-height: 12rem;
-  box-sizing: border-box; padding: 2.4rem 2.5rem;
-  display: flex; align-items: center; justify-content: center;
+.gate-fade {
+  position: fixed; inset: 0; z-index: 100; pointer-events: none;
+  background: linear-gradient(to top right, rgb(4 4 5 / 0.5), transparent 55%), rgb(4 4 5 / 0.75);
+  opacity: 1; transition: opacity 0.4s ease;
 }
-/* no box: the text sits on the flat black; the .slab stroke is switched off, the block is centred, 5vh lower */
-.gate-stage { position: relative; top: 5vh; }
-.site-gate .gate-stage::before { display: none; }
-@media (max-width: 640px) {
-  .gate-stage { width: min(34rem, 78vw); top: 4vh; }
+.gate-fade.out { opacity: 0; } body:has(> .gate-fade) > .topbar { z-index: 101; } /* the top bar stays above the fading scrim */
+@media (orientation: portrait) and (pointer: coarse), (max-height: 520px) and (pointer: coarse), (max-width: 640px) {
+  .gate-fade { background: rgb(4 4 5); }
 }
 
-/* ---- terminal window ---- */
-.gate-shell {
-  width: 100%;
+/* the hairline frame: four edges growing from the top-left corner round to the bottom-left */
+.site-gate::before {
+  content: ""; position: absolute; inset: var(--gate-top) var(--gate-inset) var(--gate-inset); pointer-events: none;
+  background:
+    linear-gradient(var(--gate-line), var(--gate-line)) left top / calc(100% * var(--gate-p)) var(--hud-hair) no-repeat,
+    linear-gradient(var(--gate-line), var(--gate-line)) right top / var(--hud-hair) calc(100% * var(--gate-p)) no-repeat,
+    linear-gradient(var(--gate-line), var(--gate-line)) right bottom / calc(100% * var(--gate-p)) var(--hud-hair) no-repeat,
+    linear-gradient(var(--gate-line), var(--gate-line)) left bottom / var(--hud-hair) calc(100% * var(--gate-p)) no-repeat;
+}
+/* the corner marks: a short strong L at each corner, growing with --gate-p */
+.site-gate::after {
+  content: ""; position: absolute; inset: calc(var(--gate-top) - 3px) calc(var(--gate-inset) - 3px) calc(var(--gate-inset) - 3px); pointer-events: none;
+  --m: rgb(var(--hud-gold-rgb) / var(--hud-bright-a));
+  --l: calc(14px * var(--gate-p));
+  background:
+    linear-gradient(var(--m), var(--m)) left top / var(--l) var(--hud-strong) no-repeat,
+    linear-gradient(var(--m), var(--m)) left top / var(--hud-strong) var(--l) no-repeat,
+    linear-gradient(var(--m), var(--m)) right top / var(--l) var(--hud-strong) no-repeat,
+    linear-gradient(var(--m), var(--m)) right top / var(--hud-strong) var(--l) no-repeat,
+    linear-gradient(var(--m), var(--m)) left bottom / var(--l) var(--hud-strong) no-repeat,
+    linear-gradient(var(--m), var(--m)) left bottom / var(--hud-strong) var(--l) no-repeat,
+    linear-gradient(var(--m), var(--m)) right bottom / var(--l) var(--hud-strong) no-repeat,
+    linear-gradient(var(--m), var(--m)) right bottom / var(--hud-strong) var(--l) no-repeat;
+}
+
+/* the stage has no box: its children place themselves against the gate (the bar is appended to it by intro.js) */
+.gate-stage { position: static; }
+
+/* ---- boot log and bio panel share the lower-left ---- */
+.gate-shell, .gate-panel {
+  position: absolute; left: calc(var(--gate-inset) + var(--gate-pad)); bottom: calc(var(--gate-inset) + var(--gate-pad));
+  width: min(34rem, calc(100vw - 2 * (var(--gate-inset) + var(--gate-pad))));
   text-align: left;
-  transition: opacity 0.4s ease, transform 0.4s ease;
 }
-.gate-shell.out {
-  opacity: 0; transform: translateY(-6px);
-  pointer-events: none; position: absolute; inset: 0;
-}
+.gate-shell { transition: opacity 0.4s ease, transform 0.4s ease; }
+.gate-shell.out { opacity: 0; transform: translateY(-6px); pointer-events: none; }
 
 .gate-log {
-  min-height: 9.5rem;
   display: flex; flex-direction: column; align-items: stretch; gap: 0.28rem;
 }
 .gate-log .bl {
-  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.09em;
-  text-transform: lowercase; color: var(--type-quiet); line-height: 1.5;
+  font-family: var(--type-mono); font-size: var(--hud-label-size); letter-spacing: 0.08em;
+  text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); line-height: 1.5;
   white-space: pre-wrap; word-break: break-word;
   text-align: left;
   animation: blIn 0.3s ease both;
 }
-.gate-log .bl::before { content: "> "; color: var(--type-quiet); }
-.gate-log .bl:last-child { color: var(--type-cream); }
+.gate-log .bl::before { content: "> "; color: rgb(var(--hud-gold-rgb) / var(--hud-normal-a)); }
+.gate-log .bl:last-child { color: rgb(var(--hud-cream-rgb) / var(--hud-bright-a)); }
 @keyframes blIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 
-/* ---- loading bar: a track and fill in the log's ink, with a mono label ---- */
+/* ---- load gauge: one full-width hairline along the top of the frame, label at its left end ---- */
 .gate-bar {
-  position: absolute; left: 0; right: 0; margin: 0 auto; bottom: -3.2rem;
-  width: 200px; max-width: 70%;
-  display: flex; flex-direction: column; align-items: stretch; gap: 0.45rem;
+  position: absolute; left: calc(var(--gate-inset) + var(--gate-pad)); right: calc(var(--gate-inset) + var(--gate-pad));
+  top: calc(var(--gate-top) + 0.9rem);
+  display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
   transition: opacity 0.4s ease;
 }
 .gate-bar-track {
-  position: relative; height: 1px; background: rgb(228 221 198 / 0.35);
+  position: relative; height: var(--hud-hair); background: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a));
 }
 .gate-bar-track i {
-  display: block; position: absolute; left: 0; top: -0.5px; width: 100%; height: 2px; background: #f6f0da;
+  display: block; position: absolute; left: 0; top: calc(var(--hud-hair) / 2 - var(--hud-strong) / 2); width: 100%; height: var(--hud-strong);
+  background: rgb(var(--hud-gold-rgb) / var(--hud-bright-a));
   transform: scaleX(0); transform-origin: left center;
   transition: transform 0.2s cubic-bezier(.2,.8,.3,1);
 }
-/* the tick at the fill's end: it rides the scaled fill, so it is 3px wide here and about 1px at a third of the way */
+/* the one tiny tick at the fill's end (it rides the scaled fill, so it is thin) */
 .gate-bar-track i::after {
-  content: ""; position: absolute; right: 0; top: -3px; width: 3px; height: 8px; background: #f6f0da;
+  content: ""; position: absolute; right: 0; top: -3px; width: var(--hud-strong); height: calc(var(--hud-strong) + 6px);
+  background: rgb(var(--hud-gold-rgb));
 }
 .gate-bar-label {
-  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.09em;
-  text-transform: uppercase; color: var(--type-quiet); line-height: 1.5; text-align: center;
+  font-family: var(--type-mono); font-size: var(--hud-label-size); letter-spacing: 0.08em;
+  text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); line-height: 1; text-align: left;
 }
-.gate-bar.full .gate-bar-label { color: var(--type-cream); }
+.gate-bar.full .gate-bar-label { color: rgb(var(--hud-cream-rgb) / var(--hud-bright-a)); }
 .gate-bar.out { opacity: 0; }
+
+/* ---- step list, right wing (spec 2 fills it with li[data-step]) ---- */
+.gate-steps {
+  position: absolute; right: calc(var(--gate-inset) + var(--gate-pad)); bottom: calc(var(--gate-inset) + var(--gate-pad));
+  width: min(16rem, 24vw); margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.gate-steps li {
+  display: flex; align-items: center; gap: 0.55rem;
+  font-family: var(--type-mono); font-size: var(--hud-label-size); letter-spacing: 0.08em; line-height: 1;
+  text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a));
+  transition: color 0.3s ease;
+}
+.gate-steps li::before {
+  content: ""; flex: none; width: 6px; height: 6px; box-sizing: border-box;
+  border: var(--hud-hair) solid rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); transform: rotate(45deg);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.gate-steps li.done { color: rgb(var(--hud-cream-rgb) / var(--hud-normal-a)); }
+.gate-steps li.done::before { background: rgb(var(--hud-gold-rgb)); border-color: rgb(var(--hud-gold-rgb)); }
+@media (max-width: 900px) { .gate-steps { display: none; } }
 
 /* the way in looks like it is waiting until the warm-up is done */
 .gate-btn.waiting,
@@ -108,53 +169,33 @@ body.site-frozen > .topbar {
   opacity: 0.45; box-shadow: none; animation: none; cursor: progress;
 }
 
-/* ---- bio panel (replaces terminal) ---- */
+/* ---- bio panel (replaces the log) ---- */
 .gate-panel {
-  width: 100%;
-  text-align: center;
   opacity: 0; transform: translateY(8px); pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(.2,.8,.3,1);
 }
 .gate-panel.on { opacity: 1; transform: none; pointer-events: auto; }
 
 .gate-eyebrow {
-  font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--type-quiet); margin: 0 0 0.85rem;
+  font-family: var(--type-mono); font-size: var(--hud-label-size); letter-spacing: 0.08em;
+  text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); margin: 0 0 0.85rem;
 }
 .gate-title {
   font-family: var(--type-serif); font-weight: 400;
   font-size: var(--type-page); line-height: 1.15;
-  text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 1rem;
+  text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 1.6rem;
   color: var(--type-cream);
 }
 .gate-title em {
   font-style: normal; color: var(--type-red); font-weight: 500;
 }
-.gate-lede {
-  margin: 0 0 2rem; color: var(--type-cream);
-  font-size: 0.96rem; line-height: 1.65;
-}
 .gate-actions {
-  display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap;
+  display: flex; gap: 0.9rem; justify-content: flex-start; flex-wrap: wrap;
 }
-/* a small cream paper label, the row labels' family: banner.js masks the ::before (data-banner), the text is dark */
-.gate-btn {
-  position: relative; isolation: isolate;
-  font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.12em;
-  text-transform: uppercase; cursor: pointer;
-  padding: 0.5rem 1.4rem;
-  color: #1a1714; background: none; border: 0;
+/* Continue: the shared .hud-click look (gold diamond, hair focus ring) */
+.gate-btn { text-transform: lowercase; padding: 0.5rem 0.4rem 0.5rem 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-gate, .gate-shell, .gate-panel, .gate-bar, .gate-bar-track i, .gate-steps li, .gate-steps li::before { transition: none; }
+  .gate-log .bl { animation: none; }
 }
-.gate-btn::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: #f1ecd8;
-  clip-path: var(--shape, polygon(0 6px, 7px 0, calc(100% - 9px) 0, 100% 9px, calc(100% - 3px) 50%, calc(100% - 4px) 100%, 8px 100%, 0 calc(100% - 5px), 2px 60%, 0 40%));
-  -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-}
-/* a thin red underline on hover or focus; dimmed while the warm-up runs */
-.gate-btn::after {
-  content: ""; position: absolute; left: 1.4rem; right: 1.4rem; bottom: 0.32rem; height: 1px;
-  background: var(--type-red); opacity: 0;
-}
-.gate-btn:is(:hover, :focus-visible):not(.waiting)::after { opacity: 1; }
-.gate-btn:focus-visible { outline: none; }

@@ -50,9 +50,13 @@
       () => Promise.all(firstView()),
       () => paintedFrame().then(() => { if (window.Bridge && Bridge.paintOnce) Bridge.paintOnce(); }),
     ];
-    /* the cutscene's warm-up comes in stages of its own */
-    if (window.Genesis && Genesis.warmSteps) Genesis.warmSteps().forEach(f => steps.push(f));
+    stepNames = ["type", "page", "pictures", "bridge"];
+    /* the cutscene's warm-up comes in stages of its own, all under one name */
+    if (window.Genesis && Genesis.warmSteps) Genesis.warmSteps().forEach(f => { steps.push(f); stepNames.push("cutscene"); });
     const total = steps.length;
+    buildSteps();
+    setGateP(0);
+    setLabel(0);
     if (total < 20 && barFill && barLabel) {
       shortList = true;
       nextAt = 100 / total;
@@ -60,15 +64,54 @@
     }
     let chain = Promise.resolve();
     steps.forEach((fn, i) => {
-      chain = chain.then(() => paintedFrame()).then(() => Promise.resolve().then(fn).catch(() => {})).then(() => { if (onStep) onStep(i + 1, total); });
+      chain = chain.then(() => paintedFrame()).then(() => Promise.resolve().then(fn).catch(() => {})).then(() => { if (onStep) onStep(i + 1, total, stepNames[i]); });
     });
     return chain;
+  }
+
+  /* the names of the steps, in order; one li[data-step] per distinct name in #gate-steps */
+  let stepNames = [], stepsDone = 0, stepsTotal = 1;
+  function buildSteps() {
+    const ol = document.getElementById("gate-steps");
+    if (!ol) return;
+    ol.textContent = "";
+    stepNames.filter((nm, i) => stepNames.indexOf(nm) === i).forEach(nm => {
+      const li = document.createElement("li");
+      li.dataset.step = nm;
+      li.textContent = nm;
+      if (nm === "cutscene") li.dataset.count = stepNames.filter(x => x === nm).length;
+      ol.appendChild(li);
+    });
+  }
+  function setGateP(p) { gate.style.setProperty("--gate-p", reduced ? 1 : p); }
+  /* the gauge reads the step in progress and the percent */
+  function setLabel(pct) {
+    if (barLabel) barLabel.textContent = "waking  " + (stepNames[stepsDone] || "") + "  " + Math.round(pct) + "%";
+  }
+  function stepDone(n, total) {
+    stepsDone = n; stepsTotal = total;
+    setGateP(n / total);
+    const nm = stepNames[n - 1];
+    if (stepNames[n] !== nm) {
+      const li = document.querySelector('#gate-steps li[data-step="' + nm + '"]');
+      if (li) li.classList.add("done");
+    }
+    /* the bridge's still frame shows behind the scrim only once it has been painted */
+    if (nm === "bridge") gate.classList.add("still");
   }
 
   function finish() {
     clearTimeout(autoTimer);
     removeEventListener("keydown", onGateKey, true);
     document.body.classList.remove("site-frozen");
+    /* the gate goes at once; a scrim copy fades over 0.4 s (none for reduced motion or before the still frame) */
+    if (!reduced && gate.classList.contains("still")) {
+      const fade = document.createElement("div");
+      fade.className = "gate-fade";
+      document.body.appendChild(fade);
+      requestAnimationFrame(() => requestAnimationFrame(() => fade.classList.add("out")));
+      setTimeout(() => fade.remove(), 500);
+    }
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
     if (window.XP && entry.kind !== "deeplink") XP.seen();
@@ -115,6 +158,7 @@
     if (warmed) return;
     warmed = true;
     if (barEl) barEl.classList.add("full");
+    setGateP(1);
     if (barLabel) barLabel.textContent = "ready";
     if (btnWorld) { btnWorld.classList.remove("waiting"); btnWorld.removeAttribute("aria-disabled"); }
     if (held && !gate.classList.contains("done")) pick(held);
@@ -133,13 +177,11 @@
       if (shown < cap) shown += Math.max(0.05, Math.min(0.3, (cap - shown) * 0.1));
     }
     barFill.style.transform = "scaleX(" + shown / 100 + ")";
-    barLabel.textContent = "loading " + Math.round(shown) + "%";
+    setLabel(shown);
     if (filling && shown >= 100) { clearInterval(shortTimer); warmReady(); }
   }
 
   const btnWorld = document.getElementById("gate-world");
-  const gateBox = gate.querySelector(".gate-stage");
-  if (gateBox) { gateBox.dataset.wear = "slab"; gateBox.dataset.seed = "81"; }
   if (window.Shapes) Shapes.apply(gate);
   if (btnWorld) {
     btnWorld.addEventListener("click", () => go({
@@ -183,17 +225,17 @@
   trackEl.appendChild(barFill);
   barLabel = document.createElement("span");
   barLabel.className = "gate-bar-label";
-  barLabel.textContent = "loading 0%";
   barEl.append(trackEl, barLabel);
   const stageEl = gate.querySelector(".gate-stage");
   if (stageEl) stageEl.appendChild(barEl);
   if (btnWorld) { btnWorld.classList.add("waiting"); btnWorld.setAttribute("aria-disabled", "true"); }
   capTimer = setTimeout(warmDone, WARM_CAP_MS);
   warmUp((n, total) => {
+    stepDone(n, total);
     if (shortList) { if (!filling) { real = n / total * 100; nextAt = Math.min(100, (n + 1) / total * 100); } return; }
     if (n < total && barFill && !filling && !warmed) {
       barFill.style.transform = "scaleX(" + (n / total) + ")";
-      if (barLabel) barLabel.textContent = "loading " + Math.round(n / total * 100) + "%";
+      setLabel(n / total * 100);
     }
   }).then(warmDone);
 

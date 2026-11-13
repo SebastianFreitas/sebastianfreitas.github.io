@@ -110,7 +110,7 @@ def enter_via_gate(page, base, button="#gate-world"):
     page.goto(base + "/")
     settle(page, GATE_BOOT)
     page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click(button)
+    page.click(button); page.viewport_size["width"] >= 1000 and page.mouse.move(720, 639.5)  # rest where the old gate button was: later scenes hover what is under the pointer
     settle(page, 2500)
 
 
@@ -124,7 +124,7 @@ def press_gate(page, after=2500):
         if page.evaluate("!document.getElementById('gate-world').hasAttribute('aria-disabled')"):
             break
         page.clock.run_for(100)
-    page.click("#gate-world")
+    page.click("#gate-world"); page.viewport_size["width"] >= 1000 and page.mouse.move(720, 639.5)  # same resting pointer as enter_via_gate
     if after:
         settle(page, after)
 
