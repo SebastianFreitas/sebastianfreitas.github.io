@@ -479,6 +479,17 @@ body.page-case { background: #0a0d10; }
 .type-readout, .xp-when, .caption {
   font-family: var(--type-mono); font-size: var(--fs-label); letter-spacing: var(--ls-label);
 }
+/* the site's only arrow, for links that send you somewhere: red = the link opens another page, .go-here (cream) = the link only scrolls this page */
+.go { display: inline-block; width: 22px; height: 13px; margin: -20px 0 -20px 10px; vertical-align: middle; position: relative; top: -0.08em;   /* one size everywhere; the negative block margins keep it from growing any line box */
+  background: var(--type-red);
+  clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%);
+  transition: transform 0.16s; }
+.go.go-here { background: var(--type-cream); }
+.go.go-back { margin-left: 0; margin-right: 10px; transform: scaleX(-1); }
+.xp-link > .go { margin-right: 23px; }   /* trailing room so the Experience title's box stays about as wide as with the old em-sized arrow (what sits and wraps beside it does not move) */
+a:hover > .go, a:focus-visible > .go { transform: translateX(4px); }
+a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) translateX(4px); }
+@media (prefers-reduced-motion: reduce) { .go { transition: none; } }
 /* action button: L4 cream text in the torn red box, only on .type-action; .back and .case-nav a are cream text that take the L2 cream plate on hover */
 .type-action, .back, .case-nav a {
   position: relative; display: inline-block; isolation: isolate; padding: 0.5rem 0.9rem;
@@ -610,15 +621,14 @@ body.page-case { background: #0a0d10; }
 .props dt { font: inherit; letter-spacing: 0.14em; color: #8f8878; transition: color 0.16s; }
 .props dd { margin: 0; font: inherit; color: var(--type-cream); transition: color 0.16s; }
 
-/* the tag: a small mono label that says what a click on the row does (the whole row is the link, so no button look, no underline); cream text and a cream arrow, no red */
+/* the tag: a small mono label that says what a click on the row does (the whole row is the link, so no button look, no underline); cream text and the shared red arrow (.go) */
 .obj-go {
   display: block; width: fit-content; margin-top: 14px; pointer-events: none;
   font: 600 0.75rem/1 var(--type-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--type-cream); white-space: nowrap;
 }
-.obj-go > span { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
-.obj:focus-visible .obj-go > span { transform: translateX(4px); }
+.obj:focus-visible .obj-go > .go { transform: translateX(4px); }
 @media (hover: hover) {
-  .obj:hover .obj-go > span { transform: translateX(4px); }
+  .obj:hover .obj-go > .go { transform: translateX(4px); }
 }
 /* mouse, wide: at rest the title, hook and facts show; the detail line is always shown; the red square by OBJ_000x fades in on hover or focus (.is-peek, work-preview.js). Phones and touch have no hover: the tag shows and the detail line is always visible, wrapped */
 /* mouse, wide: the grid holds each row's height and shapes.js places the pieces; nothing moves between rest and hover, the banner, detail line, picture and tag only fade in; Sector Zero adds its own 24 px slab offset */
@@ -651,7 +661,7 @@ body.page-case { background: #0a0d10; }
   .obj .obj-line { margin-top: 8px; -webkit-line-clamp: 3; transition: opacity 0.2s; }
   .obj .props { margin-top: 18px; }
 }
-@media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go, .obj-go > span { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } .obj > .obj-det i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } .obj > .obj-det i { transition: none; } }
 
 /* ---------------- experience ---------------- */
 
@@ -1156,8 +1166,6 @@ footer, footer .rights { font-family: var(--type-read); }
 .xp-shape .section-title { font-family: var(--type-mono); font-weight: 500; font-size: 1rem; letter-spacing: 0.2em; margin-bottom: 1rem; color: #8f8878; }
 .xp-shape .xp-what a.xp-link { color: var(--type-cream); text-decoration: none; }
 .xp-shape .xp-link { white-space: nowrap; }
-.xp-shape .xp-link > span[aria-hidden] { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
-.xp-shape .xp-link:hover > span[aria-hidden], .xp-shape .xp-link:focus-visible > span[aria-hidden] { transform: translateX(4px); }
 .xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
 /* desktop: EXPERIENCE is a label on the plate, out of the list: it sits under the top edge and runs parallel to it; the angle is the edge's own (--xp-dy, set from the plate's top-left drop, over the edge's run of 97.2% of the plate's full width, content box plus --xp-pl), never a fixed number */
 @media (min-width: 1200px) {

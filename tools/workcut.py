@@ -135,12 +135,12 @@ const checkRow=(el,hover,fails)=>{
         const o=t.getBoundingClientRect();
         if (o.width && b.left<o.right && b.right>o.left && b.top<o.bottom && b.bottom>o.top) fails.push(tag+'tag touches the next row ('+t.tagName.toLowerCase()+')');
       }
-      /* no red: cream text, a cream aria-hidden arrow, no bar */
-      const gcs=getComputedStyle(go), sp=go.querySelector(':scope > span'), dd=pr.querySelector('dd'), cream=getComputedStyle(dd).color;
-      if (!sp || sp.textContent.trim()!=='→' || sp.getAttribute('aria-hidden')!=='true') fails.push(tag+'tag has no aria-hidden arrow');
+      /* cream text and the shared red arrow: an empty span.go, site red, with a box */
+      const gcs=getComputedStyle(go), sp=go.querySelector(':scope > span.go'), dd=pr.querySelector('dd'), cream=getComputedStyle(dd).color;
+      if (!sp || sp.textContent.trim()!=='') fails.push(tag+'tag has no empty span.go arrow');
       else { const scs=getComputedStyle(sp);
-        if (gcs.color!==cream || scs.color!==cream) fails.push(tag+'tag is not cream (text '+gcs.color+', arrow '+scs.color+', row cream '+cream+')');
-        if (scs.backgroundColor!=='rgba(0, 0, 0, 0)' || sp.offsetWidth>30) fails.push(tag+'tag arrow still has a bar ('+scs.backgroundColor+', '+sp.offsetWidth+'px wide)'); }
+        if (gcs.color!==cream) fails.push(tag+'tag text is not cream ('+gcs.color+', row cream '+cream+')');
+        if (scs.backgroundColor!=='rgb(110, 26, 26)' || !sp.offsetWidth || !sp.offsetHeight) fails.push(tag+'tag arrow is not the red arrow ('+scs.backgroundColor+', '+sp.offsetWidth+'x'+sp.offsetHeight+')'); }
       /* the facts line: ink box in the pr frame, the tag in the same frame (both turned by the bottom edge's tilt) */
       const mp=new DOMMatrix(getComputedStyle(pr).transform), mg=new DOMMatrix(gcs.transform), ang=Math.atan2(mp.b,mp.a), ang2=Math.atan2(mg.b,mg.a), cs_=Math.cos(ang), sn=Math.sin(ang);
       const shown=[...pr.children].filter(d=>d.offsetWidth), iw=shown[shown.length-1].offsetLeft+shown[shown.length-1].offsetWidth, ph=pr.offsetHeight;
