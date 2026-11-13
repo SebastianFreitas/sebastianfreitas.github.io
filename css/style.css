@@ -1174,6 +1174,19 @@ footer, footer .rights { font-family: var(--type-read); }
   .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 10px; }
   .experience .xp-shape .xp-cert { margin-top: 10px; }
   .xp-shape .xp li { margin-bottom: calc(0.25rem + 10px); }
+  /* two groups: EXPERIENCE (the two jobs, picture beside the text, 64 px apart, looser lines) and EDUCATION in a second column 64 px to its right (picture under the text, 220 px wide so its bottom-right corner stays 60+ px inside the slanted right edge); its label sits on the same sloped edge, further along (--xp-edu-x = column left, plate px) */
+  .xp-shape { column-gap: 64px; --xp-edu-x: 700px; }
+  .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 16px; }
+  .xp-shape .xp-role { font-size: 1.3rem; line-height: 1.4; }
+  .xp-shape .xp-note { font-size: 1rem; line-height: 1.6; }
+  .experience .xp-shape .xp-cert { margin-top: 16px; }
+  .xp-shape .xp-tilt:not(.xp-edu) { flex-basis: 560px; }
+  .xp-shape .xp-tilt:not(.xp-edu) .xp li { width: 560px; grid-template-columns: 320px 208px; column-gap: 32px; margin-bottom: 64px; }
+  .xp-shape .xp-edu { flex-basis: 370px; }
+  .xp-shape .xp-edu .xp li { width: 370px; grid-template-columns: 1fr; grid-template-rows: none; }
+  .xp-shape .xp-edu .xp-pic { grid-column: 1; grid-row: auto; order: 1; width: 220px; margin-top: 24px; }
+  .xp-shape .xp-edu .xp-link { white-space: normal; }
+  .xp-shape .xp-edu .section-title { left: var(--xp-edu-x); top: calc(var(--xp-dy) + 22px - (var(--xp-edu-x) - 0.028 * (100cqw + var(--xp-pl))) * tan(atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); }
 }
 @media (max-width: 1199px) {
   .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
