@@ -116,7 +116,7 @@ shares `Gen`:
 | `xp-slides.js` | Experience `a.xp-pic` slides through `data-slides` on row hover or focus (desktop) or while half on screen (phones); transform-only, timers, stops when hidden or reduced motion | `window.XpSlides` |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
-- `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon (`NAV_CLIP` per top-bar tab; `TITLE_CLIP` per title, picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`).
+- `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon (`NAV_CLIP` per top-bar tab; `TITLE_CLIP` per title (1-4 the Games titles, 5-7 the Experience titles on `.xp-t`), picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`).
 - `banner.js` apply: `Banner.apply(root)` paints `--banner: url(png)` (alpha mask, no text) on `[data-banner="plate|tab"]`, opt. `data-banner-on="before"` and `data-banner-seed`; ResizeObserver repaint; self-boots.
 - `shapes.js`: kinds mode (opt-in `opts.kinds`) sets `el._wearSites` and `el._wearKinds`; no preset uses it yet.
 - `shapes.js`: nav links carry no `data-wear`; the tab hover paper is masked by the two old grainy PNG corners in `art/wear/` (css `.topbar nav a::before`).

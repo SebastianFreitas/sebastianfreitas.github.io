@@ -83,7 +83,10 @@
     "0 0, 55% 0, 58% 2px, calc(100% - 10px) 0, calc(100% - 4px) 4px, calc(100% - 8px) 30%, calc(100% - 2px) 52%, calc(100% - 6px) 74%, calc(100% - 3px) 100%, 62% 100%, 59% calc(100% - 2px), 12px 100%, 2px calc(100% - 5px), 0 60%",
     "5px 0, 30% 0, 33% 2px, 38% 0, calc(100% - 8px) 0, 100% 6px, 100% 100%, 45% 100%, 6px 100%, 3px 72%, 7px 55%, 1px 38%, 6px 20%",
     "4px 6px, 9px 1px, 40% 0, 43% 2px, 48% 0, 100% 0, calc(100% - 4px) 35%, 100% 55%, calc(100% - 5px) 78%, calc(100% - 2px) 100%, 70% 100%, 67% calc(100% - 2px), 28% 100%, 12px calc(100% - 3px), 7px 100%, 2px calc(100% - 4px), 3px 60%, 0 38%",
-    "5px 0, 60% 0, 63% 2px, 70% 0, calc(100% - 12px) 2px, calc(100% - 5px) 6px, calc(100% - 9px) 28%, calc(100% - 3px) 50%, calc(100% - 7px) 72%, calc(100% - 13px) calc(100% - 3px), 80% 100%, 50% calc(100% - 2px), 46% 100%, 0 100%, 2px 60%, 0 30%"
+    "5px 0, 60% 0, 63% 2px, 70% 0, calc(100% - 12px) 2px, calc(100% - 5px) 6px, calc(100% - 9px) 28%, calc(100% - 3px) 50%, calc(100% - 7px) 72%, calc(100% - 13px) calc(100% - 3px), 80% 100%, 50% calc(100% - 2px), 46% 100%, 0 100%, 2px 60%, 0 30%",
+    "0 5px, 14px 0, 22% 3px, 27% 0, 76% 1px, calc(100% - 5px) 0, 100% 7px, calc(100% - 3px) 40%, calc(100% - 8px) 62%, calc(100% - 2px) 100%, 58% calc(100% - 3px), 54% 100%, 10px calc(100% - 1px), 4px 100%, 1px 74%, 5px 50%, 0 28%",
+    "3px 2px, 35% 0, 38% 3px, 44% 1px, calc(100% - 15px) 0, calc(100% - 7px) 4px, 100% 3px, calc(100% - 4px) 26%, calc(100% - 9px) 46%, 100% 66%, calc(100% - 5px) 100%, 66% 100%, 63% calc(100% - 3px), 56% calc(100% - 1px), 18px 100%, 5px calc(100% - 4px), 0 82%, 4px 58%, 0 34%, 6px 14%",
+    "8px 3px, 18% 0, 21% 2px, 25% 0, 82% 2px, calc(100% - 6px) 0, 100% 10px, calc(100% - 3px) 30%, calc(100% - 7px) 54%, 100% 76%, calc(100% - 11px) 100%, 90% calc(100% - 3px), 38% 100%, 34% calc(100% - 3px), 30% 100%, 0 calc(100% - 6px), 3px 66%, 0 42%, 4px 24%"
   ];
   // main's .xp-name clip-path polygon (css/style.css), the plate's long edges and corners
   const PLATE_CLIP = TAB_CLIP[0];
@@ -198,8 +201,9 @@
     const w = Math.round(b.w), h = Math.round(b.h), dpr = window.devicePixelRatio || 1;
     if (!force && el._bnW !== undefined && Math.abs(el._bnW - b.w) < 1 && Math.abs(el._bnH - b.h) < 1 && el._bnDpr === dpr) return;
     if (el._bnSeed === undefined) {
-      const all = document.querySelectorAll("[data-banner]");
-      el._bnSeed = el.dataset.bannerSeed !== undefined ? el.dataset.bannerSeed : hash(el.dataset.banner + ":" + Array.prototype.indexOf.call(all, el));
+      const xpT = el.classList.contains("xp-t");   /* the .xp-t titles stay out of the positional index so adding them renumbers nothing else */
+      const all = document.querySelectorAll(xpT ? ".xp-t" : "[data-banner]:not(.xp-t)");
+      el._bnSeed = el.dataset.bannerSeed !== undefined ? el.dataset.bannerSeed : hash(el.dataset.banner + (xpT ? "xp:" : ":") + Array.prototype.indexOf.call(all, el));
     }
     const p = params(el._bnSeed, { mode: el.dataset.banner === "tab" ? "tab" : "plate", w: w, h: h, text: "" });
     if (el.parentNode && el.parentNode.matches("header.topbar nav")) p.navTab = ((Number(el.dataset.seed) - 11) % 4 + 4) % 4;

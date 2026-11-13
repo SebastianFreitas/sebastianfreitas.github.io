@@ -1058,7 +1058,7 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 /* desktop: the shape is one fixed 1660x890 px box (the 2000-wide look, matching Shapes.xpShape's constants), centred and cut off by the section when the window is narrower; never scaled or re-wrapped */
 .experience { overflow-x: clip; }
 @media (min-width: 1200px) {
-  .xp-shape { box-sizing: border-box; width: 1660px; height: 890px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 141px 0 0 56px; }
+  .xp-shape { box-sizing: border-box; width: 1660px; height: 908px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 159px 0 0 56px; }
 }
 .xp-shape .xp-tilt { flex: 0 1 clamp(22rem, 33vw, 36rem); min-width: min(22rem, 100%); max-width: 100%; text-align: left; }
 .experience footer { padding: 0; text-align: left; }
@@ -1156,15 +1156,16 @@ footer, footer .rights { font-family: var(--type-read); }
 .xp-shape .section-title { font-family: var(--type-mono); font-weight: 500; font-size: 1rem; letter-spacing: 0.2em; margin-bottom: 1rem; color: #8f8878; }
 .xp-shape .xp-what a.xp-link { color: var(--type-cream); text-decoration: none; }
 .xp-shape .xp-link { white-space: nowrap; }
-.xp-shape .xp-link > span { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
-.xp-shape .xp-link:hover > span, .xp-shape .xp-link:focus-visible > span { transform: translateX(4px); }
+.xp-shape .xp-link > span[aria-hidden] { display: inline-block; margin-left: 0.7em; transition: transform 0.16s; }
+.xp-shape .xp-link:hover > span[aria-hidden], .xp-shape .xp-link:focus-visible > span[aria-hidden] { transform: translateX(4px); }
 .xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
 /* desktop: EXPERIENCE is a label on the plate, out of the list: it sits under the top edge and runs parallel to it; the angle is the edge's own (--xp-dy, set from the plate's top-left drop, over the edge's run of 97.2% of the plate's full width, content box plus --xp-pl), never a fixed number */
 @media (min-width: 1200px) {
-  .xp-shape { container-type: inline-size; --xp-pl: 76px; padding: 164px 0 0 var(--xp-pl); }
+  .xp-shape { container-type: inline-size; --xp-pl: 76px; padding: var(--xp-pt, 182px) 0 0 var(--xp-pl); }
   .xp-shape .section-title { position: absolute; margin: 0; left: calc(0.028 * (100cqw + var(--xp-pl)) + 48px); top: calc(var(--xp-dy) + 22px - 48px * tan(atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); transform-origin: 0 0; transform: rotate(calc(-1 * atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); white-space: nowrap; }
   .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 10px; }
   .experience .xp-shape .xp-cert { margin-top: 10px; }
+  .xp-shape .xp li { margin-bottom: calc(0.25rem + 10px); }
 }
 @media (max-width: 1199px) {
   .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
@@ -1173,22 +1174,22 @@ footer, footer .rights { font-family: var(--type-read); }
 }
 /* desktop mouse: hovering or focusing an entry fades the Games rows' white torn paper in behind its title (the title turns dark) and a red square in beside the years, which slide right by 9 + 12 px; nothing else moves */
 @media (hover: hover) and (min-width: 1200px) {
-  .xp-shape .xp-what h3 { position: relative; isolation: isolate; width: fit-content; max-width: 100%; transition: color 0.2s; }
-  .xp-shape .xp-what h3::before {
+  .xp-shape .xp-what h3 { width: fit-content; max-width: 100%; }
+  .xp-shape .xp-what .xp-t { position: relative; isolation: isolate; display: inline-block; transition: color 0.2s; }
+  .xp-shape .xp-what .xp-t::before {
     content: ""; position: absolute; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.2s;
-    top: -0.1em; bottom: -0.08em; left: -0.25em; right: -0.25em;
+    top: -0.1em; bottom: -0.08em; left: -0.4em; right: -0.4em;
     background: #f1ecd8;
     -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
     clip-path: var(--shape, polygon(0 6px, 7px 0, 30% 0, 32% 2px, 36% 0, calc(100% - 9px) 0, calc(100% - 6px) 3px, calc(100% - 1px) 4px, 100% 9px, calc(100% - 3px) 50%, calc(100% - 1px) 68%, calc(100% - 5px) 80%, calc(100% - 4px) 100%, 72% 100%, 69% calc(100% - 2px), 64% 100%, 8px 100%, 0 calc(100% - 5px), 2px 70%, 0 45%, 3px 25%));
   }
-  .xp-shape .xp-what a.xp-link { transition: color 0.2s; }
   .xp-shape .xp-when { display: flex; align-items: center; gap: 12px; }
   .xp-shape .xp-when::before { content: ""; display: block; flex: none; width: 0; height: 9px; margin-right: -12px; opacity: 0; background: var(--type-red); transition: opacity 0.2s, width 0.2s, margin-right 0.2s; }
-  .xp-shape .xp li:hover .xp-what h3, .xp-shape .xp li:focus-within .xp-what h3, .xp-shape .xp li:hover .xp-what a.xp-link, .xp-shape .xp li:focus-within .xp-what a.xp-link { color: #14110c; }
-  .xp-shape .xp li:hover .xp-what h3::before, .xp-shape .xp li:focus-within .xp-what h3::before { opacity: 1; }
+  .xp-shape .xp li:hover .xp-what .xp-t, .xp-shape .xp li:focus-within .xp-what .xp-t { color: #14110c; }
+  .xp-shape .xp li:hover .xp-what .xp-t::before, .xp-shape .xp li:focus-within .xp-what .xp-t::before { opacity: 1; }
   .xp-shape .xp li:hover .xp-when::before, .xp-shape .xp li:focus-within .xp-when::before { width: 9px; margin-right: 0; opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce) { .xp-shape .xp-what h3, .xp-shape .xp-what h3::before, .xp-shape .xp-what a.xp-link, .xp-shape .xp-when::before { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .xp-shape .xp-what .xp-t, .xp-shape .xp-what .xp-t::before, .xp-shape .xp-when::before { transition: none; } }
 /* the tall red line on the plate's left edge: data-red-line="on" on section#experience shows it */
 .experience[data-red-line="off"] .xp-shape > .xp-red { display: none; }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */

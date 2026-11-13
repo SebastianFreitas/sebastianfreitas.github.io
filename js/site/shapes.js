@@ -1723,7 +1723,7 @@
      a red line runs down the left edge from ~6% above its top. Phone: the long point becomes a mild slant. */
   function xpShape(el) {
     const red = redOf(el);
-    const XW = 1660, XH = 890, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
+    const XW = 1660, XH = 908, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
     let mode = null;
     /* desktop: the top edge is the last Work row's bottom edge moved down its normal by the row-to-row gap (perpendicular distance between two rows' parallel edges), same length;
        everything is in design px (rects divided by the stage zoom), so the result is the same at every window size. Returns {W, dy, left, top} (left/top: where the box sits, page design px) or null */
@@ -1737,7 +1737,13 @@
     }
     function draw() {
       const phone = window.matchMedia("(max-width: 1199px)").matches, hg = phone ? null : hang();
-      const W = phone ? el.offsetWidth : hg ? hg.W : XW, H = phone ? el.offsetHeight : XH;
+      const W = phone ? el.offsetWidth : hg ? hg.W : XW;
+      let H = phone ? el.offsetHeight : XH;
+      if (!phone) {   /* the text block follows the heading down the sloped top edge (the CSS heading's top, plus 62 px) and the plate grows by what the text gains (+182 baseline) and by the 2 x 10 px of extra entry spacing, plus 13 px so the sloped bottom edge keeps the last picture's old clearance */
+        const d0 = hg ? hg.dy : Math.max(0, Math.tan(XANG) * -1) * (XW - 0.028 * XW), pt = d0 + 22 - 48 * (d0 / (0.972 * W)) + 62;
+        el.style.setProperty("--xp-pt", pt.toFixed(1) + "px");
+        H = XH + (pt - 182) + 33; el.style.height = H.toFixed(1) + "px";
+      } else { el.style.removeProperty("--xp-pt"); el.style.height = ""; }
       if (!W || !H) return;
       mode = phone;
       let ang = XANG;
