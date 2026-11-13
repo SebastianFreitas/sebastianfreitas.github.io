@@ -116,6 +116,7 @@ shares `Gen`:
 | `xp-slides.js` | Experience `a.xp-pic` slides through `data-slides` on row hover or focus (desktop) or while half on screen (phones); transform-only, timers, stops when hidden or reduced motion | `window.XpSlides` |
 | `devpanel.js` | TEMPORARY dev panel (FPS button, slow-frame log, debug switches, Copy report). Inert unless `?dev`, localhost or 127.0.0.1. Delete file and its tag in index.html to remove | none |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
+| `back.js` | Game pages only: "Back to Work" does `history.back()` when the referrer is the homepage (bfcache restore), else the href works | `BackLink.fromHome()` |
 - `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon (`NAV_CLIP` per top-bar tab; `TITLE_CLIP` per title (1-4 the Games titles, 5-7 the Experience titles on `.xp-t`), picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`).
 - `banner.js` apply: `Banner.apply(root)` paints `--banner: url(png)` (alpha mask, no text) on `[data-banner="plate|tab"]`, opt. `data-banner-on="before"` and `data-banner-seed`; ResizeObserver repaint; self-boots.
 - `shapes.js`: kinds mode (opt-in `opts.kinds`) sets `el._wearSites` and `el._wearKinds`; no preset uses it yet.
@@ -605,7 +606,7 @@ multiply at draw time. `Util.clamp` has no default bounds: always pass
 `0, 1`. Scripts carry `?v=N` cache-busters; bump them with
 `py -3 tools/bump.py`.
 
-Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, site/lazy-video, pages/play`, the page's toy files, then `site/redlines`; grep `<script` for exact order.
+Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, site/lazy-video, pages/play`, the page's toy files, then `site/redlines`, then `site/back`; grep `<script` for exact order.
 
 - Game page toy files, voidscape: `forge/{forge-guns, forge-missions, forge}` then `pages/{voidscape-bench, voidscape-mapgen, voidscape-boons, voidscape}`. Sector-zero: `sector-zero-records` then `sector-zero`.
 - Game page extras: Conclusus and HeavyLight add `site/embed`, then `bridge/lamp` (Conclusus) or `shared/heavylight-sprites` (HeavyLight) before their toy.
@@ -666,7 +667,8 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 All keys are in `js/lib/util.js` `Util.KEYS`: PROFILE `arcanis.profile.v1`
 (xp.js; `{name, ref, level, claimed, seen, readOrder}`, `readOrder` = beacon ids in read order, absent on old profiles), HINTS `arcanis.hints.v2` (bridge-notes.js), VIEW `arcanis.view.v1`
 session (bridge-panel/entry), SECTOR `arcanis.sector.v1` (bridge-panel/entry),
-GEAR_SEEN (bridge-panel.js), GLIMPSE_SEEN `arcanis.glimpse.seen` (surge.js; set when the glimpse card shows, so the cutscene's card appears once), SW_CLEANUP (index.html head), HUD_WING `arcanis.hudwing.v1` (hud-c25.js; wing scale 1 / 1.25 / 1.5 / 1.75).
+GEAR_SEEN (bridge-panel.js), GLIMPSE_SEEN `arcanis.glimpse.seen` (surge.js; set when the glimpse card shows, so the cutscene's card appears once), SW_CLEANUP (index.html head), HUD_WING `arcanis.hudwing.v1` (hud-c25.js; wing scale 1 / 1.25 / 1.5 / 1.75),
+ENTERED `arcanis.entered.v1` (sessionStorage; intro.js `finish()` writes it when the gate is exited, the index.html head script then adds `html.gate-skip` on later loads in the tab).
 `?reset=1` wipes every key with the PREFIX.
 
 ## Future work briefs

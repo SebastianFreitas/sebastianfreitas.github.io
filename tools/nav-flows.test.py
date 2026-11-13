@@ -257,9 +257,9 @@ def flow_back(browser, base):
     check("Back: the row led to its case page", page.url.endswith("/projects/sector-zero.html"), page.url)
     page.go_back()
     page.wait_for_timeout(300)
+    page.wait_for_timeout(SETTLE)
     g = gate_state(page)
-    check("Back: the gate shows, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
-    pass_gate(page, SETTLE)
+    check("Back: no gate, the tab already entered", not g["shown"], g)
     s = state(page)
     check("Back: on the homepage again", not page.url.endswith(".html"), page.url)
     check("Back: gate closed after the button", not s["gateShown"] and not s["frozen"], s)
@@ -277,11 +277,11 @@ def flow_reload(browser, base):
     y0 = state(page)["scrollY"]
     page.reload()
     page.wait_for_timeout(300)
+    page.wait_for_timeout(SETTLE)
     g = gate_state(page)
-    check("reload: the gate shows, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
-    pass_gate(page, SETTLE)
+    check("reload: no gate, the tab already entered", not g["shown"], g)
     s = state(page)
-    check("reload: gate closed after the button", not s["gateShown"] and not s["frozen"], s)
+    check("reload: the bridge is entered, gate closed", not s["gateShown"] and not s["frozen"], s)
     check("reload: sector is still the void", s["mode"] == "void", s["mode"])
     check("reload: scroll position kept", near(s["scrollY"], y0), f"was {y0}, now {s['scrollY']}")
     ctx.close()
@@ -295,9 +295,9 @@ def flow_worklink(browser, base):
     page.wait_for_timeout(800)
     page.goto(base + "/#conclusus")
     page.wait_for_timeout(300)
+    page.wait_for_timeout(SETTLE)
     g = gate_state(page)
-    check("top bar Work: deep link shows the gate, no boot log", g["shown"] and g["bootLines"] == 0, g)
-    pass_gate(page, SETTLE)
+    check("top bar Work: deep link shows no gate, the tab already entered", not g["shown"], g)
     page.click("header nav a[href='#work']")
     page.wait_for_timeout(SETTLE)
     s = state(page)
@@ -340,7 +340,9 @@ def flow_returning(browser, base):
             page.wait_for_timeout(1500)
         page.goto(base + "/projects/heavylight.html")
         page.wait_for_timeout(800)
-        page.goto(base + "/")                   # a fresh navigation, not Back
+        page.close()
+        page = ctx.new_page()                   # a returning visitor is a new tab: localStorage kept, sessionStorage fresh
+        page.goto(base + "/")
         page.wait_for_timeout(300)
         g = gate_state(page)
         check(f"returning ({mode}): the gate shows, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
@@ -405,12 +407,11 @@ def flow_reset(browser, base):
     page.wait_for_load_state("load")
     page.wait_for_timeout(2500)
     page.go_back()
-    page.wait_for_timeout(300)
-    pass_gate(page, SETTLE)
+    page.wait_for_timeout(SETTLE)
     s = state(page)
     check("reset: Back does not reset again",
           bool(s["stored"] and s["stored"]["seen"] and s["stored"]["level"] >= 1), s["stored"])
-    check("reset: Back closes the gate after the button", not s["gateShown"], s)
+    check("reset: Back shows no gate", not s["gateShown"], s)
     ctx.close()
 
 
@@ -819,7 +820,7 @@ def flow_rex(browser, base):
           addEventListener('pagehide', () => sessionStorage.setItem('arcanis.view.v1', view));
         }""", x)
         page.reload()
-        pass_gate(page, 1500)
+        page.wait_for_timeout(1500)
     check("rex: every kingdom paints without a page error", not errors, errors)
     restored = page.evaluate("names => names.map(n => window.depthAlpha('bnote-rex-' + n))", list(KINGDOMS))
     check("rex: a reload restores every kingdom's art", all(a == 1 for a in restored), restored)
@@ -914,7 +915,7 @@ def flow_bridge_depths(browser, base):
           all(v["cue"] and v["alpha"] == 1 for v in off_screen.values()), off_screen)
 
     page.reload()
-    pass_gate(page, SETTLE)
+    page.wait_for_timeout(SETTLE)
     restored = page.evaluate("""() => ({
       nephilim: { cue: window.depthsReport().find(n => n.id === 'bnote-bridge-nephilim').cue,
                   alpha: window.depthAlpha('bnote-bridge-nephilim') },
@@ -1316,17 +1317,57 @@ def flow_game_page_roundtrip(browser, base):
     ctx, page = new_page(browser)
     enter_via_gate(page, base)
     scroll_to(page, "work")
+    n0 = page.evaluate("history.length")
     page.click("a.obj[href='projects/voidscape.html']")
     page.wait_for_url("**/projects/voidscape.html")
+    n0 += 1
     check("roundtrip: the row leads to the game page", page.url.endswith("/projects/voidscape.html"), page.url)
+    page.click("a.back")
+    page.wait_for_url(lambda u: "/projects/" not in u)
+    page.wait_for_timeout(300)
+    page.wait_for_timeout(SETTLE)
+    g = gate_state(page)
+    check("roundtrip: Back to Work shows no gate", not g["shown"], g)
+    check("roundtrip: history did not grow", page.evaluate("history.length") == n0, page.evaluate("history.length"))
+    top = page.evaluate("document.getElementById('voidscape').getBoundingClientRect().top")
+    check("roundtrip: Work is scrolled to the VoidScape row, nothing opened", 0 <= top < 900, top)
+    ctx.close()
+
+
+def flow_gate_once(browser, base):
+    """The gate shows on a fresh tab; once passed, the homepage in the same tab shows none; a new tab shows it again."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/")
+    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    check("gate-once: a fresh context shows the gate", gate_state(page)["shown"], gate_state(page))
+    page.click("#gate-world")
+    page.wait_for_timeout(2500)
+    page.goto(base + "/#work")
+    page.wait_for_timeout(SETTLE)
+    s = state(page)
+    check("gate-once: index.html#work in the same tab shows no gate", not s["gateShown"] and not s["frozen"], s)
+    check("gate-once: ... and lands on Work", near(s["scrollY"], min(s["workTop"], s["maxScroll"])) or 0 <= s["workTop"] - s["scrollY"] <= 80, s)
+    ctx.close()
+    ctx2, page2 = new_page(browser)
+    page2.goto(base + "/")
+    page2.wait_for_selector("#gate-panel.on", timeout=10000)
+    check("gate-once: a second fresh context shows the gate again", gate_state(page2)["shown"], gate_state(page2))
+    ctx2.close()
+
+
+def flow_back_direct(browser, base):
+    """A game page opened directly, then Back to Work, lands on that game's row with the gate showing."""
+    ctx, page = new_page(browser)
+    page.goto(base + "/projects/voidscape.html")
+    page.wait_for_timeout(600)
     page.click("a.back")
     page.wait_for_url("**/#voidscape")
     page.wait_for_timeout(300)
     g = gate_state(page)
-    check("roundtrip: Back to Work shows the gate, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
+    check("back-direct: the gate shows on the first homepage visit", g["shown"] and g["bar"], g)
     pass_gate(page, SETTLE)
     top = page.evaluate("document.getElementById('voidscape').getBoundingClientRect().top")
-    check("roundtrip: Work is scrolled to the VoidScape row, nothing opened", 0 <= top < 900, top)
+    check("back-direct: lands on the VoidScape row", 0 <= top < 900, top)
     ctx.close()
 
 
@@ -1387,7 +1428,7 @@ def flow_bridge_return(browser, base):
 
 FLOWS = {
     "bridge-return": flow_bridge_return,
-    "first": flow_first, "gate-exits": flow_gate_exits, "back": flow_back,
+    "first": flow_first, "gate-exits": flow_gate_exits, "gate-once": flow_gate_once, "back-direct": flow_back_direct, "back": flow_back,
     "reload": flow_reload, "worklink": flow_worklink, "deeplink": flow_deeplink,
     "returning": flow_returning, "wordmark": flow_wordmark, "reset": flow_reset,
     "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "glimpse": flow_glimpse,"genesis-scenes": flow_genesis_scenes,"twotabs": flow_twotabs, "header": flow_header,

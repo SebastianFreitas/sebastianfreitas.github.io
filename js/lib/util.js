@@ -58,6 +58,7 @@ window.Util = (function () {
     GLIMPSE_SEEN: "arcanis.glimpse.seen",
     SW_CLEANUP: "arcanis.swcleanup.v1",
     HUD_WING: "arcanis.hudwing.v1",
+    ENTERED: "arcanis.entered.v1",   // sessionStorage: the gate was passed in this tab
   };
   function read(store, key) { try { return store.getItem(key); } catch (e) { return null; } }
   function write(store, key, value) { try { store.setItem(key, value); return true; } catch (e) { return false; } }

@@ -317,6 +317,7 @@ SET_VIEW = """({ mode, x }) => {
 
 def set_view(page, mode, x):
     page.evaluate(SET_VIEW, {"mode": mode, "x": x})
+    page.evaluate("sessionStorage.removeItem('arcanis.entered.v1')")   # the reload after it shows the gate, as every scene's baseline did
 
 # ------------------------------------------------------------------ contexts
 
@@ -342,7 +343,9 @@ def genesis_page(browser, base):
         ctx, page = new_ctx(browser)
         enter_via_gate(page, base, "#gate-world")
         _shared["genesis"] = (ctx, page)
-    return _shared["genesis"][1]
+    page = _shared["genesis"][1]
+    page.evaluate("sessionStorage.removeItem('arcanis.entered.v1')")   # the next load shows the gate, as the baselines did
+    return page
 
 
 def close_shared():

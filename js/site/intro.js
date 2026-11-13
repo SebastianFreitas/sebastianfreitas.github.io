@@ -114,6 +114,8 @@
     }
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
+    /* every exit lands here: later loads in this tab skip the gate (inline script in index.html) */
+    Util.write(sessionStorage, Util.KEYS.ENTERED, "1");
     if (window.XP && entry.kind !== "deeplink") XP.seen();
   }
 
@@ -203,6 +205,17 @@
     if (e.key !== "Escape" || gate.classList.contains("done")) return;
     e.preventDefault();
     pick({ bridge: true, mode: "void" });
+  }
+
+  /* already through the gate in this tab: same end state as an exit, no boot log, steps or fade;
+     the page's own hash scroll lands the target since the body is never frozen */
+  if (document.documentElement.classList.contains("gate-skip")) {
+    finish();
+    document.dispatchEvent(new CustomEvent("site:preload"));
+    document.dispatchEvent(new CustomEvent("site:enter", {
+      detail: { bridge: true, auto: false, mode: "void", entry: entry.kind, view: entry.view },
+    }));
+    return;
   }
 
   addEventListener("keydown", onGateKey, true);

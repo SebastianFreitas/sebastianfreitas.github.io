@@ -53,6 +53,8 @@ body.site-frozen > .topbar {
   opacity: 0; visibility: hidden; pointer-events: none;
   display: none;
 }
+/* the gate was already passed in this tab (inline head script in index.html): none of it shows */
+html.gate-skip .site-gate { display: none; }
 .gate-fade {
   position: fixed; inset: 0; z-index: 100; pointer-events: none;
   background: linear-gradient(to top right, rgb(4 4 5 / 0.5), transparent 55%), rgb(4 4 5 / 0.75);
