@@ -167,6 +167,7 @@
       idleLine();
     }
     B.log.run(dt);
+    if (B.tickArchive) B.tickArchive(dt);
 
     const moving = Math.abs(B.vel) > 200;
     if (moving !== movingNow) { movingNow = moving; host.classList.toggle("moving", moving); }

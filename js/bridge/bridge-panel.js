@@ -75,18 +75,68 @@
 
   const gearBtn = document.getElementById("modes-gear");
   /* The Data Archive under the folder: one notch per beacon, read ones lit
-     down from the top (newest cream), the count, the three latest readings
-     and a link to the journal. Redrawn on every claim. Profiles saved before
-     XP.readOrder existed list their reads first, in map order. */
+     down from the top (newest cream), the count, the nearest unread signal
+     with a live distance, the three latest readings (a press reopens that
+     reading) and the cutscenes button. Rebuilt on every claim; the distances
+     are text written from B.updateHUD (B.tickArchive), never a rebuild.
+     Profiles saved before XP.readOrder existed list their reads first, in
+     map order. */
   const arch = document.getElementById("arch");
+  const KM_SPAN = 408, NEAR_RANGE = 120;   // the "next" bar scale (never printed); the bar is empty at NEAR_RANGE
+  const kmTo = m => Math.abs(m.cam - B.camX) / (B.CAM.max - B.CAM.min) * KM_SPAN;
+  const arrowTo = m => (m.cam < B.camX ? "← " : "→ ");
+  /* printed text: an arrow and the span line's own distance and unit (HudModels.dist, as hud-c25 prints it) */
+  const kmText = m => arrowTo(m) + window.HudModels.dist(m.id, m.cam, B.camX, B.CAM.max - B.CAM.min, B.LAND, B.SLOT).label;
+  let live = null;      // what tickArchive writes: { unread, nextId, nextTxt, bar, barW, rows: [{ m, node, txt }] }
+  let archAcc = 0;
+  let toggleCuts = () => {};
+  const cutsOpen = () => !!(modesPanel && modesPanel.classList.contains("open"));
+  const nearestUnread = unread => {
+    let best = null, bd = Infinity;
+    unread.forEach(m => { const d = Math.abs(m.cam - B.camX); if (d < bd) { bd = d; best = m; } });
+    return best;
+  };
+  /* reopen a read beacon's note: no XP, no cutscene, no log line; the ship stops at the beacon */
+  function reopenReading(m) {
+    if (!window.Genesis || Genesis.active) return;
+    if (B.ship) {
+      Voidship.setThrusting(B.ship, false);
+      Voidship.clearCourse(B.ship);
+      B.ship.vel = 0; B.ship.vy = 0;
+    }
+    B.vel = 0;
+    B.activeMark = m;
+    B.camX = m.cam;
+    B.showNote(m);
+  }
+  B.tickArchive = dt => {
+    if (!live) return;
+    archAcc += dt;
+    if (archAcc < 0.2) return;
+    archAcc = 0;
+    if (live.unread.length) {
+      const n = nearestUnread(live.unread);
+      if (n.id !== live.nextId) { buildArchive(); return; }
+      const t = kmText(n);
+      if (t !== live.nextTxt.nodeValue) live.nextTxt.nodeValue = t;
+      const w = Math.round((1 - Math.min(1, kmTo(n) / NEAR_RANGE)) * 100);
+      if (w !== live.barW) { live.barW = w; live.bar.style.width = w + "%"; }
+    }
+    live.rows.forEach(r => {
+      const t = kmText(r.m);
+      if (t !== r.node.nodeValue) r.node.nodeValue = t;
+    });
+  };
   function buildArchive() {
     if (!arch || !window.XP || !B.activeMarks) return;
     const marks = B.activeMarks();
     const done = marks.filter(m => XP.has("beacon-" + m.id));   // real marks only, so count === B.beaconCount().read
+    const unread = marks.filter(m => !XP.has("beacon-" + m.id));
     const ord = XP.readOrder;
     const rank = m => ord.indexOf("beacon-" + m.id);
     done.sort((a, b) => rank(a) - rank(b));
     arch.textContent = "";
+    live = { unread, nextId: null, nextTxt: null, bar: null, barW: 0, rows: [] };
     const spine = document.createElement("div");
     spine.className = "arch-spine";
     marks.forEach((m, i) => {
@@ -96,36 +146,60 @@
     });
     const body = document.createElement("div");
     body.className = "arch-body";
-    const label = document.createElement("span");
-    label.className = "arch-label";
-    label.textContent = "archive";
-    const count = document.createElement("span");
-    count.className = "arch-count";
-    count.textContent = done.length;
-    const tot = document.createElement("small");
-    tot.textContent = " / " + marks.length + " readings";
-    count.appendChild(tot);
-    body.append(label, count);
-    done.slice(-3).reverse().forEach((m, i) => {
-      const r = document.createElement("span");
-      r.className = "arch-row";
-      r.style.opacity = [0.95, 0.7, 0.5][i];
-      const km = Math.round(Math.abs(m.cam - B.camX) / (B.CAM.max - B.CAM.min) * 408);
-      r.textContent = "> " + m.name.toLowerCase() + " · " + km + " km";
-      body.appendChild(r);
+    const el = (tag, cls, text) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text != null) e.textContent = text;
+      return e;
+    };
+    const count = el("span", "arch-count", done.length);
+    count.appendChild(el("small", null, " / " + marks.length + " readings"));
+    body.appendChild(count);
+    /* next unread signal: label, arrow + distance, a bar that fills as the ship closes in */
+    body.appendChild(el("span", "arch-lab", "next unread signal"));
+    const nxt = nearestUnread(unread);
+    if (nxt) {
+      live.nextId = nxt.id;
+      const line = el("span", "arch-next gold");
+      live.nextTxt = document.createTextNode(kmText(nxt));
+      line.appendChild(live.nextTxt);
+      const track = el("span", "arch-track");
+      live.bar = el("i");
+      live.barW = Math.round((1 - Math.min(1, kmTo(nxt) / NEAR_RANGE)) * 100);
+      live.bar.style.width = live.barW + "%";
+      track.appendChild(live.bar);
+      body.append(line, track);
+    } else {
+      body.appendChild(el("span", "arch-next", "all signals read"));
+    }
+    /* the three latest reads, newest first: a press reopens that note */
+    if (done.length) body.appendChild(el("span", "arch-lab", "read"));
+    done.slice(-3).reverse().forEach(m => {
+      const b = el("button", "arch-rd hud-click");
+      b.type = "button";
+      b.appendChild(el("span", "arch-nm", m.name.toLowerCase()));
+      const km = el("span", "arch-km gold");
+      const node = document.createTextNode(kmText(m));
+      km.appendChild(node);
+      b.appendChild(km);
+      live.rows.push({ m, node });
+      b.addEventListener("pointerdown", e => e.stopPropagation());
+      b.addEventListener("click", () => reopenReading(m));
+      body.appendChild(b);
     });
-    const link = document.createElement("button");
-    link.type = "button";
-    link.className = "arch-link hud-click";
-    link.textContent = "journal >";
-    link.addEventListener("pointerdown", e => e.stopPropagation());
-    link.addEventListener("click", e => { e.stopPropagation(); if (gearBtn) gearBtn.click(); });
+    if (unread.length)
+      body.appendChild(el("span", "arch-dim", unread.length + (unread.length === 1 ? " signal unread" : " signals unread")));
+    /* the one way to the cutscene list on wide screens */
     const order = (window.Gen && Gen.SCENE_ORDER) || Object.keys(SCENE_NAMES);
-    const scenes = order.filter(id => window.Genesis && Genesis.segmentSeen(id)).length;
-    const sub = document.createElement("span");
-    sub.className = "arch-sub";
-    sub.textContent = "intro · " + scenes + " scenes";
-    body.append(link, sub);
+    const seen = order.filter(id => window.Genesis && Genesis.segmentSeen(id)).length;
+    const cut = el("button", "arch-cut hud-click");
+    cut.type = "button";
+    cut.setAttribute("aria-expanded", cutsOpen() ? "true" : "false");
+    cut.appendChild(el("span", null, "cutscenes"));
+    cut.appendChild(el("span", "arch-km", seen + " / " + order.length));
+    cut.addEventListener("pointerdown", e => e.stopPropagation());
+    cut.addEventListener("click", e => { e.stopPropagation(); toggleCuts(); });
+    body.appendChild(cut);
     arch.append(spine, body);
   }
   document.addEventListener("xp:award", buildArchive);
@@ -151,9 +225,17 @@
     const setOpen = on => {
       modesPanel.classList.toggle("open", on);
       gearBtn.setAttribute("aria-expanded", on ? "true" : "false");
+      const cut = arch && arch.querySelector(".arch-cut");
+      if (cut) cut.setAttribute("aria-expanded", on ? "true" : "false");
       if (on) { buildJournal(); retireTip(); }
     };
     closeJournal = () => setOpen(false);
+    toggleCuts = () => setOpen(!modesPanel.classList.contains("open"));
+    /* where the archive shows, the folder is only its title: out of the tab order */
+    const narrow = matchMedia("(max-width: 900px), (max-height: 520px) and (pointer: coarse)");   /* same query as the one in bridge.css that hides .arch */
+    const syncGear = () => { gearBtn.tabIndex = narrow.matches ? 0 : -1; };
+    syncGear();
+    narrow.addEventListener("change", syncGear);
     gearBtn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); });
     gearBtn.addEventListener("click", e => {
       e.stopPropagation();

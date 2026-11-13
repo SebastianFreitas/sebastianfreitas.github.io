@@ -268,7 +268,27 @@ window.HudModels = (function () {
     });
   }
 
+  /* the span label's distance, shared by the top span line and the bridge archive panel: AU inside one landmass,
+     Gly in open space, unknown across Rex/Mainland or to the ends. Plain numbers in: the mark's id and cam,
+     the ship's cam, the camera span, the landmass cams (land {mainland, rex, unnamed}) and the slot width */
+  const AU_SPAN = 120, GLY_SPAN = 90, EDGE_SLOTS = 0.7, UNKNOWN_IDS = ["bnote-future", "bnote-root"];
+  const fmtDist = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
+  function landOf(land, slot, cam) {
+    const e = EDGE_SLOTS * slot;
+    if (Math.abs(cam - land.mainland) <= e) return { id: "main", w: 2 * e };
+    if (cam >= land.rex - e && cam <= land.unnamed + e) return { id: "rex", w: land.unnamed - land.rex + 2 * e };
+    return null;
+  }
+  function dist(markId, markCam, camX, span, land, slot) {
+    const a = landOf(land, slot, camX), b = landOf(land, slot, markCam), d = Math.abs(markCam - camX);
+    if (UNKNOWN_IDS.indexOf(markId) >= 0 || (a && b && a.id !== b.id)) return { dist: null, unit: null, label: "unknown" };
+    if (a && b) { const v = d / a.w * AU_SPAN; return { dist: v, unit: "AU", label: fmtDist(v) + " AU" }; }
+    const v = d / span * GLY_SPAN;
+    return { dist: v, unit: "Gly", label: fmtDist(v) + " Gly" };
+  }
+
   const api = {
+    dist: dist,
     RANGE: RANGE, RES_LO: RES_LO, live: live,
     resF: resF, blipAngle: blipAngle, bearingOf: bearingOf, contacts: contacts,
     strength: strength, signal: signal, VOICES: VOICES, BANDS: BANDS, ce: ce, sc: sc, driftOf: driftOf, leftLamps: leftLamps,

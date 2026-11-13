@@ -267,8 +267,8 @@ html[data-hud="violet"] {
   transition: color 0.2s, border-color 0.2s;
 }
 .bridge-scroll.hud-click:hover, .bridge-scroll.hud-click:focus-visible { border-right-color: rgb(var(--hud-gold-rgb)); }
-/* ---- setting panel: centered in the open span between the two
-   instrument banks. Cosmetic switch only — no map logic wired yet. ---- */
+/* ---- cutscene panel: top left under the top bar; on wide screens the
+   archive sits under its folder and the cutscene list opens beside it ---- */
 #bridge-modes {
   left: var(--gutter); top: 5.6rem; transform: none;
   right: auto; bottom: auto;
@@ -324,13 +324,6 @@ html[data-hud="violet"] {
 }
 #bridge-modes.open .modes-gear { color: rgb(var(--hud-gold-rgb)); }
 .modes-gear:focus-visible { outline-offset: 0; }
-/* every phone layout: a folder alone in a corner, "the work" a bare label with no rail */
-@media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
-  .modes-gear { width: 40px; padding: 0; justify-content: center; }
-  .modes-gear::before, .modes-cap { display: none; }
-  .bridge-scroll.hud-click { border-right: 0; }
-  .bridge-scroll.hud-click::before { display: none; }
-}
 @media (prefers-reduced-motion: reduce) { .modes-gear { transition: none; } }
 .modes-gear svg { display: block; width: 24px; height: 24px; order: -1; stroke: rgb(var(--hud-gold-rgb)); stroke-width: var(--hud-hair); }
 .modes-cap { font-size: var(--hud-label-size); letter-spacing: 0.08em; }
@@ -348,7 +341,6 @@ html[data-hud="violet"] {
 }
 .arch::before { top: 0; }
 .arch::after { bottom: 0; }
-#bridge-modes.open .arch { display: none; }
 .arch:empty { display: none; }
 .arch-spine {
   flex: none; width: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -362,13 +354,44 @@ html[data-hud="violet"] {
 .arch-spine i.on { width: 13px; background: rgb(var(--hud-gold-rgb)); box-shadow: 0 0 6px rgb(var(--hud-gold-rgb) / 0.7); }
 .arch-spine i.new { background: rgb(var(--hud-cream-rgb)); }
 .arch-body { display: flex; flex-direction: column; min-width: 0; }
-.arch-label { font-size: var(--hud-label-size); line-height: 1; letter-spacing: 0.08em; text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
-.arch-count { font-size: 1.8rem; line-height: 1; margin: 4px 0 10px; color: rgb(var(--hud-gold-rgb)); }
+.arch-count { font-size: 1.8rem; line-height: 1; margin: 0 0 10px; color: rgb(var(--hud-gold-rgb)); }
 .arch-count small { font-size: var(--hud-label-size); letter-spacing: 0.04em; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
-.arch-row { font-size: var(--hud-label-size); line-height: 1; letter-spacing: 0.04em; padding: 5px 0; white-space: nowrap; }
-.arch-link { margin-top: 4px; align-self: flex-start; }
-.arch-sub { font-size: var(--hud-label-size); letter-spacing: 0.04em; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
+.arch-lab { margin: 6px 0 4px; font-size: var(--hud-label-size); line-height: 1; letter-spacing: 0.08em; text-transform: lowercase; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
+.arch-next { font-size: var(--hud-value-size); line-height: 1; letter-spacing: 0.04em; white-space: nowrap; }
+.arch .gold { color: rgb(var(--hud-gold-rgb)); }
+.arch-track { display: block; height: 3px; margin: 6px 0 4px; background: rgb(var(--hud-gold-rgb) / 0.18); }
+.arch-track i { display: block; height: 100%; width: 0; background: rgb(var(--hud-gold-rgb)); }
+.arch-rd, .arch-cut { width: 100%; justify-content: space-between; padding: 5px 0; white-space: nowrap; font-size: var(--hud-label-size); text-align: left; }
+.arch-rd::before, .arch-cut::before { margin-right: -0.2rem; }
+.arch-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-transform: lowercase; }
+.arch-km { flex: none; }
+.arch-cut .arch-km { color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
+#bridge-modes.open .arch-cut { color: rgb(var(--hud-gold-rgb)); }
+.arch-cut { margin-top: 6px; }
+/* a dim line that is not a button: a short dash where the buttons have their diamond */
+.arch-dim { display: flex; align-items: center; gap: 0.55rem; padding: 5px 0; font-size: var(--hud-label-size); line-height: 1; letter-spacing: 0.04em; white-space: nowrap; color: rgb(var(--hud-cream-rgb) / var(--hud-quiet-a)); }
+.arch-dim::before { content: ""; flex: none; width: 6px; height: var(--hud-hair); background: rgb(var(--hud-gold-rgb) / 0.5); }
 @media (max-width: 900px), (max-height: 520px) and (pointer: coarse) { .arch { display: none; } }
+/* wherever the archive shows (everything but the query above): the folder is only its title, and the open list sits beside the archive */
+.modes-gear { pointer-events: none; cursor: default; }
+.modes-gear::before, .modes-cap { display: none; }
+.modes-title { display: block; font-size: var(--hud-label-size); letter-spacing: 0.08em; }
+#bridge-modes .modes-panel { left: 14.5rem; top: 44px; }
+/* where the archive is hidden: the folder is a full "cutscenes" button again */
+@media (max-width: 900px), (max-height: 520px) and (pointer: coarse) {
+  .modes-gear { pointer-events: auto; cursor: pointer; }
+  .modes-gear::before { display: block; }
+  .modes-cap { display: inline; }
+  .modes-title { display: none; }
+  #bridge-modes .modes-panel { left: 0; }
+}
+/* every phone layout: a folder alone in a corner, "the work" a bare label with no rail */
+@media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
+  .modes-gear { width: 40px; padding: 0; justify-content: center; }
+  .modes-gear::before, .modes-cap { display: none; }
+  .bridge-scroll.hud-click { border-right: 0; }
+  .bridge-scroll.hud-click::before { display: none; }
+}
 /* phone only: says what the folder is until it is used */
 .modes-tip { display: none; }
 @keyframes modes-tip-pulse {

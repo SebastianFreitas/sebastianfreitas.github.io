@@ -668,21 +668,10 @@ window.HudC25 = (function () {
     if (!best) return null;
     return Object.assign({ mark: best, dir: best.cam < B.camX ? "west" : "east" }, spanDist(B.camX, best));
   }
-  /* the span label's distance: AU inside one landmass, Gly in open space, unknown across Rex/Mainland or to the ends */
-  const AU_SPAN = 120, GLY_SPAN = 90, EDGE_SLOTS = 0.7, UNKNOWN_IDS = ["bnote-future", "bnote-root"];
-  const fmtDist = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
-  function landOf(B, cam) {
-    const L = B.LAND, e = EDGE_SLOTS * B.SLOT;
-    if (Math.abs(cam - L.mainland) <= e) return { id: "main", w: 2 * e };
-    if (cam >= L.rex - e && cam <= L.unnamed + e) return { id: "rex", w: L.unnamed - L.rex + 2 * e };
-    return null;
-  }
+  /* the span label's distance comes from HudModels.dist (shared with the bridge archive panel) */
   function spanDist(camX, mark) {
-    const B = window.Bridge, a = landOf(B, camX), b = landOf(B, mark.cam), d = Math.abs(mark.cam - camX);
-    if (UNKNOWN_IDS.indexOf(mark.id) >= 0 || (a && b && a.id !== b.id)) return { dist: null, unit: null, label: "unknown" };
-    if (a && b) { const v = d / a.w * AU_SPAN; return { dist: v, unit: "AU", label: fmtDist(v) + " AU" }; }
-    const v = d / (B.CAM.max - B.CAM.min) * GLY_SPAN;
-    return { dist: v, unit: "Gly", label: fmtDist(v) + " Gly" };
+    const B = window.Bridge;
+    return window.HudModels.dist(mark.id, mark.cam, camX, B.CAM.max - B.CAM.min, B.LAND, B.SLOT);
   }
   /* the span line's marks and pin as 0..1 of the span: live from the bridge, else the sample */
   function spanNow() {
