@@ -84,9 +84,9 @@
     "5px 0, 30% 0, 33% 2px, 38% 0, calc(100% - 8px) 0, 100% 6px, 100% 100%, 45% 100%, 6px 100%, 3px 72%, 7px 55%, 1px 38%, 6px 20%",
     "4px 6px, 9px 1px, 40% 0, 43% 2px, 48% 0, 100% 0, calc(100% - 4px) 35%, 100% 55%, calc(100% - 5px) 78%, calc(100% - 2px) 100%, 70% 100%, 67% calc(100% - 2px), 28% 100%, 12px calc(100% - 3px), 7px 100%, 2px calc(100% - 4px), 3px 60%, 0 38%",
     "5px 0, 60% 0, 63% 2px, 70% 0, calc(100% - 12px) 2px, calc(100% - 5px) 6px, calc(100% - 9px) 28%, calc(100% - 3px) 50%, calc(100% - 7px) 72%, calc(100% - 13px) calc(100% - 3px), 80% 100%, 50% calc(100% - 2px), 46% 100%, 0 100%, 2px 60%, 0 30%",
-    "12px 0, 24% 4px, 29% 1px, 61% 0, 66% 4px, 72% 1px, calc(100% - 14px) 0, 100% 3px, calc(100% - 6px) 38%, calc(100% - 10px) 56%, calc(100% - 2px) 100%, 72% calc(100% - 4px), 66% 100%, 46% calc(100% - 1px), 14% 100%, 6px calc(100% - 4px), 0 100%, 4px 62%, 1px 30%",
-    "0 0, 22% 0, 27% 1px, 50% 0, 54% 4px, 60% 1px, calc(100% - 16px) 0, 100% 0, calc(100% - 4px) 22%, calc(100% - 9px) 40%, calc(100% - 3px) 60%, calc(100% - 12px) 78%, calc(100% - 17px) 100%, 80% calc(100% - 1px), 24% 100%, 19% calc(100% - 4px), 13% 100%, 0 100%, 8px 70%, 3px 52%, 9px 40%, 0 22%",
-    "6px 4px, 11px 0, 12% 4px, 17% 1px, 41% 0, 46% 1px, 76% 4px, 81% 0, calc(100% - 3px) 0, 100% 12%, calc(100% - 8px) 26%, calc(100% - 1px) 46%, calc(100% - 5px) 70%, 100% 88%, calc(100% - 3px) 100%, 92% calc(100% - 4px), 56% 100%, 52% calc(100% - 4px), 47% 100%, 10px calc(100% - 1px), 0 100%, 3px 70%, 0 48%, 6px 30%"
+    "0 0, 18% 0, 21% 2px, 26% 0, 58% 0, 61% 3px, 66% 0, 100% 0, calc(100% - 3px) 30%, 100% 52%, calc(100% - 4px) 76%, 100% 100%, 74% calc(100% - 2px), 70% 100%, 34% 100%, 31% calc(100% - 3px), 25% 100%, 0 100%, 3px 66%, 0 40%",
+    "0 0, 36% 0, 39% 3px, 44% 0, calc(100% - 6px) 0, 100% 0, calc(100% - 4px) 24%, calc(100% - 1px) 46%, calc(100% - 5px) 68%, 100% 100%, 82% 100%, 79% calc(100% - 2px), 72% 100%, 14% 100%, 10% calc(100% - 3px), 5px 100%, 0 100%, 2px 58%, 0 34%, 4px 16%",
+    "3px 0, 14% 2px, 19% 0, 47% 0, 50% 3px, 55% 1px, 83% 0, 100% 0, calc(100% - 3px) 38%, 100% 60%, calc(100% - 5px) 84%, 100% 100%, 64% 100%, 60% calc(100% - 2px), 54% 100%, 27% 100%, 23% calc(100% - 3px), 17% 100%, 0 100%, 4px 72%, 0 48%, 3px 24%"
   ];
   // main's .xp-name clip-path polygon (css/style.css), the plate's long edges and corners
   const PLATE_CLIP = TAB_CLIP[0];
@@ -113,13 +113,9 @@
     const plate = p.mode !== "tab", ml = plate ? 37 : 18, mr = plate ? 32 : 16, mh = plate ? 28 : p.h;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.fillStyle = "#000";
-    // Experience titles 5 to 7 (G.ROUND, DF BLOCK, University) skip the shared end caps: their own polygon alone shapes both ends
-    if (p.title != null && p.title >= 4) g.fillRect(0, 0, p.w, p.h);
-    else {
-      g.fillRect(ml - 1, 0, p.w - ml - mr + 2, p.h);
-      if (tabImg["tab-tl"]) g.drawImage(tabImg["tab-tl"], 0, 0, ml, mh);
-      if (tabImg["tab-br"]) g.drawImage(tabImg["tab-br"], p.w - mr, p.h - mh, mr, mh);
-    }
+    g.fillRect(ml - 1, 0, p.w - ml - mr + 2, p.h);
+    if (tabImg["tab-tl"]) g.drawImage(tabImg["tab-tl"], 0, 0, ml, mh);
+    if (tabImg["tab-br"]) g.drawImage(tabImg["tab-br"], p.w - mr, p.h - mh, mr, mh);
     // the strip's CSS clip-path polygon cuts the corners and edges on top of the masks
     const k = document.createElement("canvas");
     k.width = cv.width; k.height = cv.height;
