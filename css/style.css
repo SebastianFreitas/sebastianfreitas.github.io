@@ -1153,6 +1153,10 @@ footer, footer .rights { font-family: var(--type-read); }
 .experience > footer .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 .xp-shape .xp-pic { position: relative; grid-column: 2; grid-row: 1 / span 5; display: block; aspect-ratio: 16 / 9; background: #0a0a0b; overflow: hidden; }
 .xp-shape .xp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* the photos rest muted and come to full colour on the entry's hover or focus (the filter is on the box, so every slide of js/site/xp-slides.js is covered) */
+.xp-shape .xp-pic { filter: saturate(0.55) brightness(0.82); transition: filter 250ms ease; }
+.xp-shape .xp li:is(:hover, :focus-within) .xp-pic { filter: none; }
+@media (prefers-reduced-motion: reduce) { .xp-shape .xp-pic { transition: none; } }
 /* text in the Games rows' hierarchy: mono grey years, display-face title (the organisation, a link), hook (the role), grey detail line, mono tag */
 .xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .xp-shape .xp-cert { grid-column: 1; grid-row: auto; }
 .xp-shape .xp-when { display: block; border-right: 0; padding-top: 0; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: #8f8878; text-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.7); }
@@ -1174,19 +1178,23 @@ footer, footer .rights { font-family: var(--type-read); }
   .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 10px; }
   .experience .xp-shape .xp-cert { margin-top: 10px; }
   .xp-shape .xp li { margin-bottom: calc(0.25rem + 10px); }
-  /* two groups: EXPERIENCE (the two jobs, picture beside the text, 64 px apart, looser lines) and EDUCATION in a second column 64 px to its right (picture under the text, 220 px wide so its bottom-right corner stays 60+ px inside the slanted right edge); its label sits on the same sloped edge, further along (--xp-edu-x = column left, plate px) */
-  .xp-shape { column-gap: 64px; --xp-edu-x: 700px; }
-  .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 16px; }
-  .xp-shape .xp-role { font-size: 1.3rem; line-height: 1.4; }
-  .xp-shape .xp-note { font-size: 1rem; line-height: 1.6; }
-  .experience .xp-shape .xp-cert { margin-top: 16px; }
-  .xp-shape .xp-tilt:not(.xp-edu) { flex-basis: 560px; }
-  .xp-shape .xp-tilt:not(.xp-edu) .xp li { width: 560px; grid-template-columns: 320px 208px; column-gap: 32px; margin-bottom: 64px; }
-  .xp-shape .xp-edu { flex-basis: 370px; }
-  .xp-shape .xp-edu .xp li { width: 370px; grid-template-columns: 1fr; grid-template-rows: none; }
-  .xp-shape .xp-edu .xp-pic { grid-column: 1; grid-row: auto; order: 1; width: 220px; margin-top: 24px; }
-  .xp-shape .xp-edu .xp-link { white-space: normal; }
-  .xp-shape .xp-edu .section-title { left: var(--xp-edu-x); top: calc(var(--xp-dy) + 22px - (var(--xp-edu-x) - 0.028 * (100cqw + var(--xp-pl))) * tan(atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); }
+  /* one row of three equal cards: G.ROUND and DF BLOCK under EXPERIENCE, UNIVERSITY OF MINHO under EDUCATION. The .xp-tilt groups and the lists dissolve, so the three entries are items of the plate's own grid; each entry takes the grid's six rows as a subgrid (photo, date, title, role, description, certificate), so the same parts start on shared lines across the cards. The top padding (--xp-pt) is kept: Shapes.xpShape reads it for the plate's height. Row 1 is the label row, zero tall, pulled up 62 px to where the label used to sit. */
+  .xp-shape { display: grid; grid-template-columns: repeat(3, 256px); grid-template-rows: 0 repeat(6, auto); justify-content: start; align-content: start; align-items: start; column-gap: 40px; row-gap: 0; }
+  .xp-shape .xp-tilt, .xp-shape .xp { display: contents; }
+  .xp-shape .section-title { position: relative; left: auto; top: auto; transform: none; grid-row: 1; align-self: start; justify-self: stretch; margin-top: -62px; display: flex; align-items: center; gap: 16px; color: var(--type-quiet); }
+  .xp-shape .section-title::after { content: ""; flex: 1 1 auto; height: 1px; background: rgb(228 221 198 / 0.16); }
+  .xp-shape #xp-h-exp { grid-column: 1 / span 2; }
+  .xp-shape #xp-h-edu { grid-column: 3; }
+  .xp-shape .xp li { display: grid; width: auto; margin: 0; padding: 0; grid-row: 2 / span 6; grid-template-columns: minmax(0, 1fr); grid-template-rows: subgrid; column-gap: 0; row-gap: 0; }
+  .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(1) { grid-column: 1; }
+  .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(2) { grid-column: 2; }
+  .xp-shape .xp-edu li { grid-column: 3; }
+  .xp-shape .xp-pic { grid-column: 1; grid-row: 1; order: 0; width: 100%; margin: 0; }
+  .xp-shape .xp-when { grid-row: 2; margin-top: 18px; }
+  .xp-shape .xp-what { grid-row: 3; margin-top: 12px; }
+  .xp-shape .xp-role { grid-row: 4; margin-top: 12px; font-size: 1.3rem; line-height: 1.4; }
+  .xp-shape .xp-note { grid-row: 5; margin-top: 16px; font-size: 1rem; line-height: 1.6; }
+  .experience .xp-shape .xp-cert { grid-row: 6; margin-top: 16px; }
 }
 @media (max-width: 1199px) {
   .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
