@@ -1,6 +1,6 @@
 {
   "master": "C:/Users/Traff/Desktop/sebas/claude-workflow",
-  "commit": "ec1ff3ecf9e15fb4a65b3b2167d46197d07f835d",
+  "commit": "58e21f06c7c4c5b85a2ea2b0c31af6ffcceba95c",
   "files": {
     ".claude/agents/implementer-wt.md": "a038933da542bbf478763467c6d24786512502b239a1ae238423aa584841bc18",
     ".claude/agents/implementer.md": "bc10b52bd70bb7d9b67ba556cf135bc29f28dea80d3d84858d7a283eebed9004",
@@ -13,10 +13,10 @@
     ".claude/hooks/file-guard.py": "db9f112cccbef1f5b248bdcf993fa226ed838540cf5841d55d9339ad441e8e5c",
     ".claude/hooks/git-guard.py": "01908a6081787d77657ad3b4a3f12b98e91feb4d3d7d7181a69a6e2b35874a42",
     ".claude/hooks/go-check.py": "b84d896e559ac8f0cf7ccc6fd78c4a7fbfb2f3cbbccc4bd2c5b5159606db19c8",
-    ".claude/hooks/guard_config.py": "d14e39e7e70e1433cd202961718c54f23a9a030bc2b35c52c47a2ee6baf6b520",
-    ".claude/hooks/hooks.py": "081e21d2b5f573c94ca9922c5231a3377ed4c7dc83d2aa9216847b2c91adda49",
+    ".claude/hooks/guard_config.py": "a2f76c4f087495d93ef6386ed68c1c5d4f523c51ee9ac636d62742c6faf41c14",
+    ".claude/hooks/hooks.py": "3a04feafc4ce7cd2d10c60d97636d286d55169a4471fcd835423ee31d6cd8bfe",
     ".claude/hooks/poll-guard.py": "5522911e9c6a52815dddc5b4d5408bedc7d754d462f9ad7cfac2f43d68498785",
-    ".claude/hooks/raw-mode.py": "455f5489315479f9eb028b1cec7bf997bf39c5207c80a89167c9511d98e29e55",
+    ".claude/hooks/raw-mode.py": "271d6885217d7e6ff24cf6345d133ccb02546c8ad08359529f5f4b1a8ca4ec61",
     ".claude/hooks/reply-cap.py": "7434c6ba93bbf24ddc874f2abaa2cdbbd21155d11e3e0eb1eded2f3e3397bfe9",
     ".claude/hooks/review-guard.py": "fcf48082fc7d1b4c8f2486e1a82dba9bf86ddeb9af459d7da4d875f31f016aa9",
     ".claude/hooks/run.sh": "c24f9c69af6cb369f81153d75aeb942fbb45a1ee8b0c066e74179ac17a594adf",

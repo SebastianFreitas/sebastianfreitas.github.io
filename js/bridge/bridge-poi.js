@@ -60,7 +60,8 @@
       if (!near) { m.poi = 0; continue; }
       m.poi = still ? 1 : Math.min(1, (m.poi || 0) + dt / LOCK_SECS);
       const k = 1 - m.poi;
-      const r = (scanning ? 64 : 30) + 40 * k * k;
+      const hk = B.phone ? 1 : HudC25.k();   // the HUD size factor: the marker grows with the HUD
+      const r = ((scanning ? 64 : 30) + 40 * k * k) * hk;
       const frac = scanning ? Math.min(1, B.scan.t / SCAN_SECS) : 0;
       ctx.save();
       ctx.strokeStyle = `rgb(${rgb})`;
@@ -71,10 +72,10 @@
       bracket(p.x, p.y, r);
       if (!scanning) {
         /* the spotted beacon: caption above, its name below the brackets, never through them */
-        ctx.font = "10px ui-monospace, monospace";
-        ctx.fillText("POINT OF INTEREST", p.x, p.y - r - 8);
-        ctx.font = "11px ui-monospace, monospace";
-        ctx.fillText(m.name.toUpperCase(), p.x, p.y + r + 16);
+        ctx.font = `${10 * hk}px ui-monospace, monospace`;
+        ctx.fillText("POINT OF INTEREST", p.x, p.y - r - 8 * hk);
+        ctx.font = `${11 * hk}px ui-monospace, monospace`;
+        ctx.fillText(m.name.toUpperCase(), p.x, p.y + r + 16 * hk);
       } else {
         /* a sweep line crossing the bracketed box, then the plate: clear of the ship, above the beacon (below it when the bar is in the way) */
         const sy = p.y - r + 2 * r * (still ? frac : (B.scan.t * 2.2) % 1);

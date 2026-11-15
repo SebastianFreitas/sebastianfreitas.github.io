@@ -136,7 +136,7 @@ shares `Gen`:
 | `instruments.js` | The HUD's clock, alarms and sys-model host (tiles gone) | `window.Instruments {draw, alarmLevel, registerTiles, alert, impact, setRepair, now}` |
 | `tiles-sys.js` | The ship-systems model (no painters) | registers `{tickSys, impact, setRepair, sys, repairState}` |
 | `hud-models.js` | Wing readings as shared functions (old tiles and hud-c25 call the same); exports listed below | `window.HudModels` |
-| `hud-c25.js` | C25 HUD line art on one canvas, values from one data object | `window.HudC25` `{mount, draw, resize, report, nearestUnread}` |
+| `hud-c25.js` | C25 HUD line art on one canvas, values from one data object | `window.HudC25` `{mount, draw, resize, report, nearestUnread, wing, k}` |
 
 - `instruments.js`: `draw` ticks `t` (`now`), the sys model and `tickAlarms` (env rules) → `arbitrate` (one warning at a time); `alert` crit sets `HudModels.critUntil`; `registerTiles` holds the sys model's factory
 - `hud-models.js` left: `dist, contacts, blipAngle, bearingOf, strength, signal, resF, RES_LO, ce, sc, driftOf, leftLamps, live, sys`.

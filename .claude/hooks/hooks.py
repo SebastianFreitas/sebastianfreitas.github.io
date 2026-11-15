@@ -34,6 +34,8 @@ import runpy
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from guard_config import RAW_TEXT, lazy_raw  # noqa: E402
 
 # event -> [(tool matcher or None, script)]; guards before context-watch,
 # so a refused call is never measured as if it ran.
@@ -113,8 +115,8 @@ def passthrough(code, out, err):
     sys.exit(code)
 
 
-def dispatch_tool(ev, d, scripts):
-    contexts, system = [], []
+def dispatch_tool(ev, d, scripts, note=""):
+    contexts, system = [note] if note else [], []
     for script in scripts:
         code, out, err = run_script(script, d)
         if code == 2:
@@ -128,6 +130,8 @@ def dispatch_tool(ev, d, scripts):
             continue
         hso = j.get("hookSpecificOutput") or {}
         if hso.get("permissionDecision") in ("deny", "ask") or j.get("decision") == "block":
+            if note:
+                j.setdefault("hookSpecificOutput", {})["additionalContext"] = note
             passthrough(0, json.dumps(j), "")
         if hso.get("additionalContext"):
             contexts.append(str(hso["additionalContext"]))
@@ -208,7 +212,11 @@ def main():
     if not scripts:
         return
     if ev in ("PreToolUse", "PostToolUse"):
-        dispatch_tool(ev, d, scripts)
+        # a sub-chat's first message comes through the app's queue, so
+        # raw-mode.py never saw it: the first tool call reads it (once) and
+        # this reply tells the model it is raw
+        note = RAW_TEXT if lazy_raw(d.get("transcript_path")) else ""
+        dispatch_tool(ev, d, scripts, note)
     elif ev in ("Stop", "SubagentStop"):
         dispatch_stop(ev, d, scripts)
     else:

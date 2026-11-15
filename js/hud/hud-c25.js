@@ -13,7 +13,7 @@ window.HudC25 = (function () {
   const BAR_B = 58.7;
   const WSTEPS = [1, 1.25, 1.5, 1.75];
   let wsv = WSTEPS.indexOf(+Util.read(localStorage, Util.KEYS.HUD_WING)) >= 0 ? +Util.read(localStorage, Util.KEYS.HUD_WING) : 1, wk = wsv, hov = -1;   // wing scale: the stored step, and the drawn one (the largest step <= it that fits this screen)
-  let cv = null, c = null, W = 0, H = 0, dpr = 1, s = 1, ts = 1, barB = BAR_B;
+  let cv = null, c = null, W = 0, H = 0, dpr = 1, s = 1, sB = 1, ts = 1, barB = BAR_B;
   let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null, beadSig = "";
   let painted = false;   // true once a frame has painted since mount
   let probe = false;   // true only while report() repaints the live layer to record text boxes
@@ -850,17 +850,17 @@ window.HudC25 = (function () {
     const spanY = barB + 29.8 * s, s0 = s, ts0 = ts;
     blk = 0;
     const at_ = (ox, oyy, f) => { blk++; c.save(); c.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oyy); f(); c.restore(); };
-    s = s0 * wk; ts = Math.max(s, 0.9);   // the wings draw at the wing scale, anchored to their corners; the log and span line keep s
+    s = sB * wk; ts = Math.max(s, 0.9);   // the wings and the log draw at the HUD scale (uncapped base x step), anchored to their corners / bottom centre; the span line keeps the capped s
     at_(0, H - 1009 * s, paintLeft); at_(W - 2000 * s, H - 1009 * s, paintRight);
+    at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? 50 * s - 13 * sB : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them
     s = s0; ts = ts0;
-    at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? (50 * wk - 13) * s : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them
     at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
     if (ph === "d") paintMarks();
   }
   /* ---- wing size: one SIZE - + stepper above the left wing's top-left, in screen px ---- */
-  const wingOk = v => { const q = Math.min(1, W / 2000, H / 1009); return XL * q * v + 12 <= W / 2; };   // the left wing's inner edge (its floor line and readouts end at XL) keeps 12 px of the centre; the right wing mirrors it
+  const wingOk = v => { const q = Math.min(W / 2000, H / 1009); return XL * q * v + 12 <= W / 2; };   // the left wing's inner edge (its floor line and readouts end at XL) keeps 12 px of the centre; the right wing mirrors it
   const wingFit = () => { wk = WSTEPS.filter(v => v <= wsv && (v === 1 || wingOk(v))).pop(); };
-  const marks = () => { const sw = Math.min(1, W / 2000, H / 1009) * wk, y = H - 237 * sw - 33, i = WSTEPS.indexOf(wk), up = WSTEPS[i + 1];
+  const marks = () => { const sw = Math.min(W / 2000, H / 1009) * wk, y = H - 237 * sw - 33, i = WSTEPS.indexOf(wk), up = WSTEPS[i + 1];
     return [{ d: -1, x: 14 + 47, y, on: i > 0 }, { d: 1, x: 14 + 69, y, on: up != null && wingOk(up) }]; };   // cells 22 px wide, centred on x
   function paintMarks() {
     c.save(); c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -892,7 +892,8 @@ window.HudC25 = (function () {
   function resize(w, h, d, bb) {
     if (phone()) return;
     W = w; H = h; dpr = d || 1; barB = bb == null ? BAR_B : bb; wingFit();
-    s = Math.min(1, W / 2000, H / 1009); ts = Math.max(s, 0.9);
+    sB = Math.min(W / 2000, H / 1009); s = Math.min(1, sB); ts = Math.max(s, 0.9);
+    document.documentElement.style.setProperty("--hud-k", +(Math.max(1, sB) * wk).toFixed(4));   // the DOM parts' size factor, written on resize / step only
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + "px"; cv.style.height = H + "px";
     rebuildStat();
   }
@@ -929,7 +930,7 @@ window.HudC25 = (function () {
         const g2 = Math.max(Math.max(a.sl, b.sl) - Math.min(a.sr, b.sr), Math.max(a.st, b.st) - Math.min(a.sb, b.sb));   // the pair's gap in the 2000 x 1009 layout
         if (Math.max(-ox, -oy) < (g2 < 12 && (Math.min(a.sb, b.sb) - Math.max(a.st, b.st) > 0 || Math.min(a.sr, b.sr) - Math.max(a.sl, b.sl) > 0) ? 1 : pad)) hits.push('"' + a.s + '" x "' + b.s + '" @' + Math.round((Math.max(a.l, b.l) + Math.min(a.r, b.r)) / 2) + "," + Math.round((Math.max(a.t, b.t) + Math.min(a.b, b.b)) / 2)); }
       sh.forEach(b => { if (Math.min(a.r, b.r) - Math.max(a.l, b.l) > -1 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > -1) hits.push('"' + a.s + '" x ' + b.s + " @" + Math.round(a.l) + "," + Math.round(a.t)); }); });
-    const sw = s * wk, oy0 = H - 1009 * sw, wing = {};
+    const sw = sB * wk, oy0 = H - 1009 * sw, wing = {};
     Object.keys(ext).forEach(k => { const e = ext[k]; wing["L." + k] = [e[0] * sw, oy0 + e[2] * sw, e[1] * sw, oy0 + e[3] * sw].map(v => +v.toFixed(1));
       if (k === "str" || k === "brg") return;   // bearing ticks: not screen boxes (see leftBoxes)
       if (e[0] * sw < 0 || e[1] * sw > W || oy0 + e[2] * sw < 0 || oy0 + e[3] * sw > H) out.push("ext:" + k); });
@@ -987,6 +988,6 @@ window.HudC25 = (function () {
     const sc = sizeChecks();
     return { phone: phone(), painted, W, H, dpr, s, ts, barBottom: barB, span: Object.assign({ y: barB + 29.8 * s, x0, x1: x0 + 1600 * s }, lastSpan, { box: sc.spanBox }), log: lastLog, left: LF && LF.rep, right: RF && RF.rep, textMin: sc.textMin, textHits: sc.textHits, paint: sc.paint };
   }
-  const api = { mount, draw, resize, report, sampleData, nearestUnread, wing: () => wk };
+  const api = { mount, draw, resize, report, sampleData, nearestUnread, wing: () => wk, k: () => Math.max(1, sB) * wk };
   return api;
 })();

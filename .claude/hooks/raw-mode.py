@@ -16,13 +16,10 @@ Rules: workflow.md "Raw mode". Never fails the hook: any error exits 0.
 """
 import json
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import raw_flag, raw_mode  # noqa: E402
-
-ON = re.compile(r"\s*raw\s*(:|$)", re.I)
+from guard_config import RAW_ON as ON, RAW_TEXT, lazy_raw, raw_flag, raw_mode  # noqa: E402
 
 
 def main():
@@ -32,15 +29,16 @@ def main():
         pass
     d = json.load(sys.stdin)
     path = d.get("transcript_path")
+    if lazy_raw(path):
+        print(RAW_TEXT)
+        return
     if not path or raw_mode(path) or not ON.match(d.get("prompt") or ""):
         return
     flag = raw_flag(path)
     os.makedirs(os.path.dirname(flag), exist_ok=True)
     with open(flag, "w", encoding="utf-8"):
         pass
-    print("RAW MODE on for this window: read .claude/rules/workflow.md "
-          "'Raw mode' and do every step here; only the reviewer and "
-          "look-judge run, on finished work.")
+    print(RAW_TEXT)
 
 
 try:

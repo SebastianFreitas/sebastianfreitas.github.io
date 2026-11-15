@@ -392,6 +392,10 @@ html[data-hud="violet"] {
   .bridge-scroll.hud-click { border-right: 0; }
   .bridge-scroll.hud-click::before { display: none; }
 }
+/* the HUD's size factor (--hud-k, set by hud-c25.js on resize and size steps): the archive folder, its list and "the work" grow with the wings; zoom re-lays out, so the text stays crisp. Not on phone and narrow layouts. */
+@media (min-width: 901px) and (not ((max-height: 520px) and (pointer: coarse))) {
+  #bridge-modes .modes-gear, #bridge-modes .arch, #bridge-modes .modes-panel, .bridge-scroll { zoom: var(--hud-k, 1); }
+}
 /* phone only: says what the folder is until it is used */
 .modes-tip { display: none; }
 @keyframes modes-tip-pulse {

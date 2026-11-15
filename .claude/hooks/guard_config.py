@@ -10,6 +10,7 @@ path, where `*` also crosses `/`.
 import fnmatch
 import json
 import os
+import re
 
 CONFIG_PATH = ".claude/project/file-guard.json"
 
@@ -25,7 +26,65 @@ def raw_flag(transcript_path: str) -> str:
     return os.path.join(p, "raw-mode")
 
 
+RAW_ON = re.compile(r"(?:\s*<system-reminder>.*?</system-reminder>)*\s*(?:Background \([^)\n]*\):.*?\n\s*)?(?:Task:\s*)?raw\s*(:|$)", re.I | re.S)  # skips the app's leading reminder blocks, the "Background (from the session ...): <text>" paragraph and the "Task:" label it puts before a sub-chat's brief
+RAW_TEXT = ("RAW MODE on for this window: read .claude/rules/workflow.md "
+            "'Raw mode' and do every step here; only the reviewer and "
+            "look-judge run, on finished work.")
+_ECHOES = ("<command-name>", "<local-command-caveat>", "<local-command-stdout>")
+
+
+def first_prompt(transcript_path: str) -> str:
+    """Text of the transcript's first real user prompt ("" if none). Reads
+    lines only until that one; any error gives ""."""
+    try:
+        with open(transcript_path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(e, dict) or e.get("type") != "user" or e.get("isMeta"):
+                    continue
+                c = (e.get("message") or {}).get("content")
+                if isinstance(c, list):
+                    c = "\n".join(b.get("text") or "" for b in c
+                                  if isinstance(b, dict) and b.get("type") == "text")
+                if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(_ECHOES):
+                    continue
+                return c
+    except (OSError, ValueError, AttributeError):
+        pass
+    return ""
+
+
+def lazy_raw(transcript_path: str | None) -> bool:
+    """Once per main-window transcript with no flag: turn raw mode on if its
+    first prompt matches RAW_ON (desktop-app sub-chats get their first
+    message through a queue, so raw-mode.py never sees it). True only when
+    this call set the flag. A marker beside the flag stops any later read."""
+    try:
+        if not transcript_path:
+            return False
+        flag = raw_flag(transcript_path)
+        if os.path.basename(os.path.dirname(os.path.normpath(transcript_path))) == "subagents":
+            return False
+        marker = os.path.join(os.path.dirname(flag), "raw-checked")
+        if os.path.exists(flag) or os.path.exists(marker):
+            return False
+        os.makedirs(os.path.dirname(flag), exist_ok=True)
+        with open(marker, "w", encoding="utf-8"):
+            pass
+        if not RAW_ON.match(first_prompt(transcript_path)):
+            return False
+        with open(flag, "w", encoding="utf-8"):
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def raw_mode(transcript_path: str | None) -> bool:
+    lazy_raw(transcript_path)
     return bool(transcript_path) and os.path.exists(raw_flag(transcript_path))
 
 
