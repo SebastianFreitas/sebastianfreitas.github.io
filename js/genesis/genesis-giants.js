@@ -201,5 +201,99 @@ window.GenGiants = (function () {
     ctx.restore();
   }
 
-  return { draw };
+  /* the killer's return: giant C (the hull that stands nearest the right frame edge) looms back behind the four rock
+     titans in the matter beat, in held steps, secs("break") 3.85 in / 4.25 full / 5.45 out / 5.85 gone. It rises from
+     the right edge; its inner edge is rooted at sx(0) + KILLER_SIDE * 0.6 * H. Same body, value and layer as in the break. */
+  const KILLER_SIDE = 1;
+  function loom(ctx, W, H, ts) {
+    if (G.reduced || ts < 3.85 || ts >= 5.85) return;
+    if (!SH) build();
+    const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
+    if (!pal) return;
+    const s = Math.min(W / 2000, H / 1009), oy = (H - 1009 * s) / 2;
+    let lo = Infinity, hi = -Infinity;
+    for (const p of SH.hull.concat(SH.slab)) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); }
+    const s2 = s * 1.3, bw = (hi - lo) / 4 * s2;   // drawn 1.3x the break size so it fills the top right; body width on screen
+    const out = (ts < 4.25 || ts >= 5.45) ?0.25 * bw : 0;   // the held partial step: pushed back out past the edge
+    const dx = G.sx(0) + KILLER_SIDE * (0.35 * H + out) - (1000 + (lo + 1100) / 4) * s2;
+    const MC = p => [dx + s2 * (1000 + (p[0] + 1100) / 4), oy - 0.08 * H + s2 * (p[1] + 1100) / 4];
+    drawC(ctx, MC, 1, pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop
+  }
+
+  /* giant D, the Ringed Drift: the survivor titan's (rings, GenRockTitans.SURVIVOR) giant. Three floating masses that
+     hold open holes: a wide lump with a through-hole and a notch cut to the backdrop, a tall tilted loop split and
+     slipped aside, a pinched waist between them, and two small knots hanging below. Drawn once into a sprite in design
+     units (D_H tall, foot at the bottom), flat fills from the dark tier-3 steps, no outline. */
+  const D_H = 1000, D_W = 900;
+  let DSP = null;
+  function blob(cx, cy, rx, ry, a, wob) {
+    const pts = [], n = wob.length, c = Math.cos(a), s = Math.sin(a);
+    for (let i = 0; i < n; i++) {
+      const t = i / n * Math.PI * 2, x = Math.cos(t) * rx * wob[i], y = Math.sin(t) * ry * wob[i];
+      pts.push([cx + x * c - y * s, cy + x * s + y * c]);
+    }
+    return catmull(pts, true, 8);
+  }
+  function dPoly(ctx, polys) {
+    ctx.beginPath();
+    for (const p of polys) { p.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); }
+  }
+  function buildD(T) {
+    const c = document.createElement("canvas");
+    c.width = D_W; c.height = D_H;
+    const ctx = c.getContext("2d");
+    const fill = (polys, col, rule) => { ctx.fillStyle = col; dPoly(ctx, polys); ctx.fill(rule || "evenodd"); };
+    // the wide lump: through-hole, and a notch cut from the rim through the hole to the backdrop
+    const lump = blob(330, 700, 320, 230, -0.08, [1, 0.9, 1.08, 0.95, 1.02, 0.88, 1.06, 0.96, 1, 0.92]);
+    const lumpHole = blob(380, 690, 140, 80, 0.2, [1, 1.1, 0.92, 1.05, 0.95, 1.08]);
+    const notch = [[10, 560], [250, 640], [330, 700], [220, 760], [60, 640]];
+    // the tall loop, cut in two across its middle; the upper part slides aside
+    const loopA = blob(610, 330, 200, 290, 0.35, [1, 0.94, 1.06, 0.9, 1.04, 0.97, 1.08, 0.92]);
+    const loopHole = blob(610, 330, 78, 180, 0.35, [1, 1.08, 0.94, 1.06, 0.92, 1.04]);
+    const cutA = [[300, 330], [900, 200], [900, 262], [300, 392]];
+    // the pinched waist joining them
+    const waist = blob(500, 520, 90, 120, 0.5, [1, 0.6, 1.1, 0.55, 1, 0.62, 1.08, 0.58]);
+    // two knots hanging under the lump
+    const k1 = blob(520, 905, 52, 66, 0.3, [1, 0.8, 1.1, 0.9, 1.05, 0.85]);
+    const k2 = blob(250, 960, 34, 38, 0, [1, 0.85, 1.1, 0.9, 1.05, 0.8]);
+    // lower loop part first, then the lump and waist, then the slipped upper part
+    ctx.save();
+    // loop lower half: everything of the loop below the cut line
+    ctx.save();
+    dPoly(ctx, [[[300, 392], [900, 262], [900, D_H], [300, D_H]]]);
+    ctx.clip();
+    fill([loopA, loopHole], T[1]);
+    ctx.restore();
+    // loop upper half, slipped up and aside
+    ctx.save();
+    dPoly(ctx, [[[0, 0], [D_W, 0], [900, 200], [300, 330]]]);
+    ctx.clip();
+    ctx.translate(34, -40);
+    fill([loopA, loopHole], T[1]);
+    ctx.restore();
+    fill([waist], T[0]);
+    fill([lump, lumpHole], T[0]);
+    // a flat darker band across the lump, held inside it
+    ctx.save();
+    dPoly(ctx, [lump, lumpHole]);
+    ctx.clip("evenodd");
+    fill([band(catmull([[40, 800], [300, 840], [640, 780]], false, 14), 26, 8, 14)], T[2], "nonzero");
+    ctx.restore();
+    // the notch, cut through to the backdrop
+    ctx.globalCompositeOperation = "destination-out";
+    fill([notch], "#000", "nonzero");
+    ctx.globalCompositeOperation = "source-over";
+    fill([k1], T[0]);
+    fill([k2], T[1]);
+    ctx.restore();
+    return c;
+  }
+  function drawD(ctx, x, footY, scale) {
+    const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
+    if (!pal) return;
+    if (!DSP) DSP = buildD(pal.steps);
+    ctx.drawImage(DSP, x - D_W * scale / 2, footY - D_H * scale, D_W * scale, D_H * scale);
+  }
+
+  return { draw, loom, KILLER_SIDE, drawD, D_H, D_W };
 })();

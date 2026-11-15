@@ -1,7 +1,7 @@
 /* genesis-rocktitans.js: the four rock titans at rest (plan rock-titans, phase 2), painted as tools/titansheet.py paints them.
    Old-one pieces around a rock mountain, colourless, held. LAYOUT is a literal copy of the approved sketch layout (ef65899). */
 window.GenRockTitans = (function () {
-  const G = window.Gen, FOOT = 0.64, TH = 40;
+  const G = window.Gen, FOOT = 0.64, TH = 40, SURVIVOR = 1;
   const TINT = [6, 14, 30, 0.2];
   const FILT = "grayscale(1) brightness(0.23)";
   const Q = Math.PI / 2;
@@ -365,7 +365,110 @@ window.GenRockTitans = (function () {
       drawChip(ctx, ch, step, drift);
     });
   }
-  function drawDebris(ctx, tt) { drawChips(ctx, tt, false); }
+  function drawDebris(ctx, tt) {
+    drawChips(ctx, tt, false);
+    if (G.reduced || tt < 1.6 || tt >= 3.0) return;
+    // the leftover, in front of the debris: two fifths of the bare rock body, no old-one parts (they are born from the debris), still, at the clash point, in lighter fills
+    const t = LAYOUT.titans[SURVIVOR];
+    ctx.save();
+    ctx.translate(G.sx(0), FOOT * G.H); ctx.scale(0.4, 0.4); ctx.translate(-tx(t), -FOOT * G.H);
+    const body = titanCache(t, 5, "|" + t.pieces.map((p, j) => j).join("||") + "|");
+    const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
+    if (pal) {
+      // the silhouette in giant D's body value (its lump step), built once; the rock body shows over it faintly
+      if (!leftTint || leftTint.src !== body) {
+        const c = document.createElement("canvas");
+        c.width = body.width; c.height = body.height;
+        const g = c.getContext("2d");
+        g.drawImage(body, 0, 0);
+        g.globalCompositeOperation = "source-in"; g.fillStyle = pal.steps[3]; g.fillRect(0, 0, c.width, c.height);
+        leftTint = { src: body, c };
+      }
+      ctx.drawImage(leftTint.c, 0, 0);
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.drawImage(body, 0, 0);
+    ctx.restore();
+  }
+  let leftTint = null;
+
+  // the titan rooted on the killer giant's side (root KILLER_SIDE * 0.6); it dies in break secs 4.65 to 5.85 and takes no part in the clash
+  const victim = () => LAYOUT.titans.findIndex((t) => Math.abs(t.root - (window.GenGiants ? GenGiants.KILLER_SIDE : 1) * 0.6) < 1e-6);
+  // the fire eats the titan from the top down in three held steps (4.55, 4.95, 5.35); each step the eaten third breaks into chunks of its own fills that fall in held steps to the rail
+  const FIRE_T = [4.55, 4.95, 5.35];
+  // chunks per step: [x across the titan's width (0..1), y fraction in the eaten band, half size], in H
+  const CRUMB = [[0.1, 0.2, 0.02], [0.25, 0.7, 0.028], [0.4, 0.3, 0.018], [0.55, 0.8, 0.026], [0.78, 0.4, 0.022], [0.18, 0.9, 0.016], [0.62, 0.55, 0.03], [0.9, 0.85, 0.017]];
+  const FALL = [0, 0.15, 0.4, 0.75, 1];   // held 0.1 s steps of the fall toward the rail; gone at 0.5 s
+  // the victim's ink bounds [x0, y0, x1, y1] in px, read once per size from the pixels its cache holds
+  let vb = null, vbKey = "";
+  function victimBounds(t, c) {
+    const key = t.family + "|" + G.W + "|" + G.H;
+    if (vb && vbKey === key) return vb;
+    const w = c.width, h = c.height, d = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    let x0 = w, x1 = -1, y0 = h, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    vb = x1 < 0 ? [0, 0, 1, 1] : [x0, y0, x1, y1]; vbKey = key;
+    return vb;
+  }
+  const crumbPath = (ctx, ox, oy, r) => {
+    ctx.beginPath();
+    ctx.moveTo(ox - r, oy); ctx.lineTo(ox - r * 0.3, oy - r); ctx.lineTo(ox + r, oy - r * 0.4); ctx.lineTo(ox + r * 0.6, oy + r); ctx.lineTo(ox - r * 0.5, oy + r * 0.7); ctx.closePath();
+  };
+  function drawVictim(ctx, t, ts) {
+    const H = G.H, pal = window.GenEldPal ? GenEldPal.TIER3 : null;
+    if (ts >= 5.85) return;
+    const c = titanCache(t, 5, ""), b = victimBounds(t, c), bw = b[2] - b[0], bh3 = (b[3] - b[1]) / 3;
+    const n = ts < FIRE_T[1] ? 1 : ts < FIRE_T[2] ? 2 : 3, yl = b[1] + bh3 * n;   // the fire's front; what is above it is eaten
+    if (n < 3) { ctx.save(); ctx.beginPath(); ctx.rect(0, yl, G.W, G.H - yl); ctx.clip(); ctx.drawImage(c, 0, 0); ctx.restore(); }
+    if (pal) {
+      ctx.save();
+      ctx.fillStyle = pal.steps[1];   // the loom's own hull value, paler than the titan
+      const x0 = b[0] - 0.03 * H, w = bw + 0.06 * H, tn = 6, dip = [0.045, 0.02, 0.055, 0.03, 0.05, 0.025];   // six tongues, each reaching a little over the titan's remaining top
+      ctx.beginPath();
+      ctx.moveTo(x0, 0); ctx.lineTo(x0 + w, 0);
+      for (let i = tn - 1; i >= 0; i--) {
+        const xm = x0 + w * (i + 0.5) / tn, hw = w / tn * 0.5;
+        ctx.lineTo(xm + hw, yl - 0.01 * H); ctx.lineTo(xm + hw * 0.2 * (i % 2 ? 1 : -1), yl + dip[i] * H); ctx.lineTo(xm - hw, yl - 0.01 * H);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    for (let k = 0; k < n; k++) {
+      const age = ts - FIRE_T[k], fs = Math.floor(age / 0.1 + 1e-6);
+      if (fs >= 5) continue;
+      const y0 = b[1] + bh3 * k;
+      CRUMB.forEach((q, i) => {
+        const r = q[2] * H, ox = b[0] + q[0] * bw, oy = y0 + q[1] * bh3, f = FALL[fs];
+        const dx = (i % 2 ? 1 : -1) * f * 0.03 * H, dy = f * Math.max(0, b[3] - oy);
+        ctx.save();
+        ctx.translate(dx, dy);
+        if (pal) { ctx.fillStyle = pal.steps[2]; crumbPath(ctx, ox, oy, r * 1.3); ctx.fill(); }   // a one-step lighter edge so a chunk reads against the backdrop
+        crumbPath(ctx, ox, oy, r);
+        ctx.clip();
+        ctx.drawImage(c, 0, 0);
+        ctx.restore();
+      });
+    }
+  }
+
+  /* the survivor's growth (trade secs tt): from the burst (1.6) a fifth-size leftover of the SURVIVOR titan holds at the clash point to 3.0; it snaps to giant D at
+     3.0 / 3.4 / 3.8 / 4.2 (heights in H below), holds to 5.4, then slides out of frame in held steps (5.4, 5.8) and is gone at 6.2. Steps 0 and 1 are smaller than a
+     titan and are drawn with the titans; steps 2 and 3 and the exit are drawn behind the bridge in the giants' layer (bigD). */
+  const D_STEP = [0.25, 0.45, 0.9, 1.5], D_X = [0, 0, 0.25, 0.5];
+  const dStep = (tt) => (tt < 3.0 || tt >= 6.2) ? -1 : Math.min(3, Math.floor((tt - 3.0) / 0.4 + 1e-6));
+  function placeD(ctx, tt, st) {
+    if (!window.GenGiants) return;
+    const H = G.H, h = D_STEP[st] * H, w = h * GenGiants.D_W / GenGiants.D_H;
+    let cx = G.sx(0) + D_X[st] * H;
+    if (tt >= 5.4) cx = G.W - (tt < 5.8 ? 0.7 : 0.3) * H + w / 2;
+    GenGiants.drawD(ctx, cx, FOOT * H, h / GenGiants.D_H);
+  }
+  function bigD(ctx) {
+    if (G.reduced) return;
+    const tt = G.secs("trade"), st = dStep(tt);
+    if (st >= 2) placeD(ctx, tt, st);
+  }
 
   // grow in five held steps: snap 0 is the blast rock alone, then the body group (and the pieces whose snap has come) moves from the rock to its rest pose
   function draw(ctx, tb) {
@@ -374,11 +477,13 @@ window.GenRockTitans = (function () {
 
     LAYOUT.titans.forEach((t, i) => {
       const k = snaps(i, tm), rp = GenMatter.rockPose(i);
+      if (i === victim() && !G.reduced) { const ts = G.secs("break"); if (ts >= FIRE_T[0]) { drawVictim(ctx, t, ts); return; } }
       if (k === 0) { if (rp) GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], rp.x, rp.y, rp.rot, rp.size); return; }
       const tt = G.secs("trade");
       if (k === 5 && tt >= 0) {
         // the clash: held 0.4 s steps from the roots to one point, no fight; gone at the burst (reduced motion: gone from trade 0)
-        if (tt < 1.6 && !G.reduced) ctx.drawImage(titanCache(t, k, ""), (G.sx(0) - tx(t)) * Math.min(3, Math.floor(tt / 0.4)) / 3, 0);
+        if (tt < 1.6 && !G.reduced && i !== victim()) ctx.drawImage(titanCache(t, k, ""), (G.sx(0) - tx(t)) * Math.min(3, Math.floor(tt / 0.4)) / 3, 0);
+        if (i === SURVIVOR && !G.reduced && tt >= 3.0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
         return;
       }
       const c = titanCache(t, k, "");
@@ -398,5 +503,5 @@ window.GenRockTitans = (function () {
     if (!G.reduced) drawChips(ctx, G.secs("trade"), true);
   }
 
-  return { on, draw, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest };
+  return { on, draw, bigD, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest, get VICTIM() { return victim(); }, SURVIVOR };
 })();

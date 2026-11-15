@@ -327,7 +327,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-ceilkinds3.js` | ceiling hanger worm (pale ringed, tapered, on metal rocks) and the eye drawer for metal rocks' eye sites (crack that opens into one of four looks, one open at a time via a module scheduler; no slit hanger) | `window.GenCeilHang3` (`kinds`, `eye`, `eyeSite`) |
 | `genesis-ceilkinds2.js` | extra ceiling hangers (bead chain, stepped bar, pointed teeth, pendulum), seeded; not in the GenCeilKinds deck | `window.GenCeilHang` (`kinds`) |
 | `genesis-tier3.js` | tier 3, the sky shadows (plan phase 16) | `window.GenTier3` |
-| `genesis-giants.js` | the three break-beat giants A, B, C (specs 8, 9) | `window.GenGiants` (`draw(ctx,W,H,tb)`) |
+| `genesis-giants.js` | the three break-beat giants A, B, C, the loom and giant D | `window.GenGiants {draw, loom, KILLER_SIDE, drawD, D_H, D_W}` |
 | `genesis-void.js` | Far realms, motes, the monumental span (`paintSpan`, `paintLimb`, `hh` shared with the homepage bridge) | `window.GenVoid` |
 | `genesis-flesh.js` | the Primordisentia: `fleshGeom fleshPath drawFlesh` (lobes, veins, eyes, mouths; `calm` arg = smooth still ball, eyes and mouths shut, dark top band), `drawPatches` (the old ones' colours), `drawSouls`, `drawCry`, `drawSeal` (the gold womb) | `window.GenFlesh` |
 | `genesis-soup.js` | `soup` beat inside the womb: red dots eat the blue in held steps; `drawBackdrop`, `finalReds` (post-eat layout), `shaded`, `PAL` shared with later inside beats | `window.GenSoup` |
@@ -344,7 +344,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
-| `genesis-rocktitans.js` | Four rock titans: grow from the blast rocks in matter, meet at one point in trade and burst into debris the old ones grow from; see bullet | `window.GenRockTitans {on, draw, LAYOUT, buildDebris, drawDebris, partRest}` |
+| `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, drawDebris, partRest, VICTIM, SURVIVOR}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
 | `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
@@ -419,6 +419,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-ritual.js`: `drawOver` (teaching/pact/blessing/help beams, Velindra's blades, the four ritual beams, latched flashes)
 - `genesis-saga.js`: `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`;
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
+- `genesis-giants.js`: `loom(ctx,W,H,ts)` is the killer giant C, back at secs("break") 3.85 to 5.85 s; `drawD(ctx,x,footY,scale)` is the fourth giant D, the survivor titan's (rings) body, a cached sprite D_W x D_H = 900 x 1000 design units, called from GenRockTitans (leftover steps and `bigD`).
+- `genesis-rocktitans.js`: `bigD(ctx)` draws giant D's big steps and exit in the giants' layer; `SURVIVOR` is the titan index that becomes D; the 0.4 scale leftover is drawn at the end of `drawDebris`, in front of the debris.
 - `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 10 in the blast rocks' slot (before `drawSpan`); pieces cached as cropped sprites; one per-titan cache per snap k, drawn under a rock-to-titan group transform.
 - `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash (titans or `drawRocks`), titans in the fight, the depths, the saga, the now-fade),
 - `genesis.js`: the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input

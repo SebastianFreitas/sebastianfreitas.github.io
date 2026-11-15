@@ -676,6 +676,8 @@ window.Genesis = (function () {
         G.rings.push({ x: sx(0), y: 0.46 * G.H, r: 6, a: 1, grey: true });
       }
       const tbs = G.secs("break");
+      if (window.GenGiants && tbs >= 3.85 && tbs < 5.85) { ctx.save(); unzoom(ctx, z); GenGiants.loom(ctx, G.W, G.H, tbs); ctx.restore(); }   // the killer giant looms back behind the standing titans (10.4 to 5.85 s)
+      if (tbs >= 8.95 && tbs < 12.15) { ctx.save(); unzoom(ctx, z); GenRockTitans.bigD(ctx); ctx.restore(); }   // the survivor, grown past a titan into giant D (trade 3.8 to 6.2 s), behind the bridge
       if (GenRockTitans.on(tbs)) GenRockTitans.draw(ctx, tbs);   // rest-pose rock titans take the rocks' slot
       else if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, tbs);   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
       GenVoid.drawSpan(ctx, uDrawn);

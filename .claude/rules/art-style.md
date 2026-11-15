@@ -148,7 +148,10 @@ reaching up, with tier 3's potential in it.
   a brim cut by the screen edge. Hard to see. Exception, owner's call
   (2026-11-06): the three break-beat giants (`GenGiants`) are drawn whole as on
   the owner's sketch sheet, only during the explosion, passing behind the
-  bridge.
+  bridge. Second exception, owner's call (2026-11-13): giant C looms
+  again in the matter beat to kill one rock titan, and the fourth giant
+  (`drawD`), grown from the surviving titan, is shown whole for about a
+  second before it leaves.
 - **Farthest value step.** 1–2 flat steps off the backdrop (#0d1114), in
   3–4 stepped fog layers at most; behind a caption, within one step.
 - **Absence as presence.** A tier-3 being may be a region where the far
