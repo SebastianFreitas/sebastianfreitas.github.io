@@ -75,13 +75,23 @@ window.HudC25 = (function () {
     c.beginPath(); c.arc(cx, cy, r, a0, a1); c.stroke(); c.setLineDash([]);
   }
   function dot(x, y, r, col, a) { c.fillStyle = rgba(col || GOLD, a == null ? 1 : a); c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill(); }
+  /* text-path caches (same pixels): widths by font + spacing + string, the header boxes, the newest log line's cut; all cleared by clearTx() on rebuildStat and when fonts load */
+  const twC = new Map(); let hdrC = null, hxC = null; const nwC = new Map(); let cutC = {};
+  const clearTx = () => { twC.clear(); nwC.clear(); hdrC = null; hxC = null; cutC = {}; };
+  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", clearTx);
+  const setF = (font, ls) => { if (c.font !== font) c.font = font; if (c.letterSpacing !== ls) c.letterSpacing = ls; };
+  function tw(font, ls, str) {
+    const key = font + "|" + ls + "|" + str, hit = twC.get(key); if (hit !== undefined) return hit;
+    setF(font, ls); const w = c.measureText(str).width;
+    if (twC.size > 2000) twC.clear(); twC.set(key, w); return w;
+  }
   function text(str, x, y, o) {
     o = o || {}; const size = o.size || LABEL, k = ts / s;
-    c.font = `${o.weight || "500"} ${size * k}px "IBM Plex Mono", monospace`;
-    c.letterSpacing = ((o.ls != null ? o.ls : (size <= 11 ? 0.8 : 0.2)) * k) + "px";
+    const fnt = `${o.weight || "500"} ${size * k}px "IBM Plex Mono", monospace`, lsp = ((o.ls != null ? o.ls : (size <= 11 ? 0.8 : 0.2)) * k) + "px";
+    setF(fnt, lsp);
     c.textAlign = o.align || "left"; c.textBaseline = "alphabetic";
     c.fillStyle = rgba(o.col || GREY, o.a != null ? o.a : 0.78);
-    const tm = c.measureText(str), w = tm.width, x0 = x, y0 = y;
+    const tm = (ph === "s" || probe) ? c.measureText(str) : null, w = tm ? tm.width : tw(fnt, lsp, str), x0 = x, y0 = y;
     if (ts > s + 1e-6) {   /* text grew past its anchor: clear earlier labels in the same block (gap 3) */
       const fs = size * k, al = c.textAlign, ls = bxS[blk] || (bxS[blk] = []), ld = bxD[blk] || (bxD[blk] = []), all = ls.concat(ld);
       for (let pass = 0; pass < 4; pass++) { let moved = false;
@@ -103,7 +113,7 @@ window.HudC25 = (function () {
         tb = scrBox(tl, y - ka, tl + w, y + kd), sl = (al === "right" ? x0 - w / k : al === "center" ? x0 - w / k / 2 : x0);
       (ph === "s" ? txS : txD).push({ s: str.slice(0, 24), sk: size, px: size * ts, blk, l: tb[0], t: tb[1], r: tb[2], b: tb[3], sl, sr: sl + w / k, st: y0 - ka / k, sb: y0 + kd / k });
     }
-    c.fillText(str, x, y); c.letterSpacing = "0px"; return w;
+    c.fillText(str, x, y); return w;
   }
   /* a drawn shape's box (ship silhouette, chevrons) for report().textHits: text meeting it counts as a hit */
   const shape = (nm, l, t, r, b) => { if (ph === "s" || probe) { const q = scrBox(l, t, r, b); (ph === "s" ? shS : shD).push({ s: nm, l: q[0], t: q[1], r: q[2], b: q[3] }); } };
@@ -114,8 +124,8 @@ window.HudC25 = (function () {
     return [Math.min(x1, x2, x3, x4) / dpr, Math.min(y1, y2, y3, y4) / dpr, Math.max(x1, x2, x3, x4) / dpr, Math.max(y1, y2, y3, y4) / dpr];
   }
   function W_(str, size) {
-    const k = ts / s; c.font = `500 ${size * k}px "IBM Plex Mono", monospace`; c.letterSpacing = ((size <= 11 ? 0.8 : 0.2) * k) + "px";
-    const w = c.measureText(str).width; c.letterSpacing = "0px"; return w;
+    const k = ts / s;
+    return tw(`500 ${size * k}px "IBM Plex Mono", monospace`, ((size <= 11 ? 0.8 : 0.2) * k) + "px", str);
   }
   const glow = (col, f) => { c.save(); c.shadowColor = rgba(col, 0.45); c.shadowBlur = 5 * s; const r = f(); c.restore(); return r; };
   const dash = (pat, f) => { c.save(); c.setLineDash(pat); f(); c.restore(); };
@@ -249,7 +259,9 @@ window.HudC25 = (function () {
     const ox = 76, oy = 850, rr = v => v <= 16 ? 5 + v * 1.9 : Math.min(40, 35.4 * Math.sqrt(v / 16)), FLR = LF.floor;   // past the sketch's str 16 the lobe grows with sqrt, capped at the ring
     const dd = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
     const sv = b => Math.abs(dd(b, b0)) < 0.1 ? LF.str : 2.2 + 2.2 * LF.spectrum[(Math.round(b / 10) % 32 + 32) % 32] + 11 * Math.exp(-Math.pow(dd(b, b0) / 13, 2)) + (b1 == null ? 0 : 2.2 * Math.exp(-Math.pow(dd(b, b1) / 12, 2)));
-    const hdrB = () => lbS.filter(r => r.t > 795 && r.t < 812 && r.l < 24 + W_("field", LBL()) + 8 + W_("one source", LBL()) + 3);   // header boxes the lobe must clear
+    const hdrB = () => { const key = LBL() + "|" + ts / s;
+      if (ph === "d" && hdrC && hdrC.key === key) return hdrC.v;
+      const v = lbS.filter(r => r.t > 795 && r.t < 812 && r.l < 24 + W_("field", LBL()) + 8 + W_("one source", LBL()) + 3); if (ph === "d") hdrC = { key, v }; return v; };   // header boxes the lobe must clear
     const pt = b => { let r = rr(sv(b)); const a = rad(b - 90), sa = Math.sin(a), x = ox + Math.cos(a) * r;
       hdrB().forEach(h => { if (sa < -0.01 && x > h.l - 6 && x < h.r + 6) r = Math.min(r, (oy - (h.b + 3 + 6)) / -sa); });   // peak plus its glow (6) stays 3 px under the header
       return [ox + Math.cos(a) * r, oy + sa * r]; };
@@ -264,7 +276,8 @@ window.HudC25 = (function () {
       if (LF.rep) { const top = Math.min(Math.min(...L.map(p => p[1])) - 0.75, Math.min(...hot.map(p => p[1])) - 6);   // highest painted y of the lobe incl. glow
         LF.rep.lobe = { top: +top.toFixed(1), peak: +Math.max(...hot.map(p => Math.hypot(p[0] - ox, p[1] - oy))).toFixed(1) }; }
       /* the needle stays inside the ring; the bearing number sits outside it, opposite the needle, slid round the ring off the header and the rails' labels */
-      const na = rad(b0 - 90), hx = 24 + W_("field", LBL()) + 8 + W_("one source", LBL()), hdr = lbS.filter(r => r.t > 795 && r.t < 812 && r.l < hx + 3), tipAt = n => [ox + Math.cos(na) * n, oy + Math.sin(na) * n];
+      const hk = LBL() + "|" + ts / s; if (!hxC || hxC.key !== hk) { const hx_ = 24 + W_("field", LBL()) + 8 + W_("one source", LBL()); hxC = { key: hk, hx: hx_, hdr: lbS.filter(r => r.t > 795 && r.t < 812 && r.l < hx_ + 3) }; }
+      const na = rad(b0 - 90), hx = hxC.hx, hdr = hxC.hdr, tipAt = n => [ox + Math.cos(na) * n, oy + Math.sin(na) * n];
       const inner = Math.min(rr(FLR), rr(LF.str)), north = dd(b0, 0) <= 45;   // near north the needle stops at the inner ring
       let nl = Math.max(2, rr(LF.str) - 4); if (north) nl = Math.min(nl, inner); while (nl > 2 && hdr.some(r => { const q = tipAt(nl); return q[0] > r.l - 3 && q[0] < r.r + 3 && q[1] > r.t - 3 && q[1] < r.b + 3; })) nl -= 0.5;   // tip stays 3 px off the header text
       const tp = tipAt(nl);
@@ -572,7 +585,6 @@ window.HudC25 = (function () {
   }
 
   /* ======================= LOG (bottom centre) ======================= */
-  const cutC = {};
   function paintLog() {
     stat_(() => line(777, FL + 0.5, 1224, FL + 0.5, GOLD, STRUCT));
     dyn(() => {
@@ -592,9 +604,14 @@ window.HudC25 = (function () {
       let end = null, cut = false;
       if (nw) {
         let nt = shownOf(nw); const room = nowLeft - 8 - 818;
-        c.font = `500 ${13 * k}px "IBM Plex Mono", monospace`; c.letterSpacing = (0.3 * k) + "px";
-        if (c.measureText(nt).width > room) { cut = true; while (nt.length > 1 && c.measureText(nt + "…").width > room) nt = nt.slice(0, -1); nt += "…"; }
-        c.letterSpacing = "0px";
+        const nk = nt + "|" + k + "|" + room, nh = nwC.get(nk);
+        if (nh) { nt = nh.t; cut = nh.cut; }
+        else {
+          c.font = `500 ${13 * k}px "IBM Plex Mono", monospace`; c.letterSpacing = (0.3 * k) + "px";
+          if (c.measureText(nt).width > room) { cut = true; while (nt.length > 1 && c.measureText(nt + "…").width > room) nt = nt.slice(0, -1); nt += "…"; }
+          c.letterSpacing = "0px";
+          if (nwC.size > 200) nwC.clear(); nwC.set(nk, { t: nt, cut });
+        }
         glow(CREAM, () => { text(mark(nw), 792, 986, { size: 13, col: mark(nw) === "!" ? CREAM : GOLD, a: 1 });
           const w = text(nt, 808, 986, { size: 13, col: CREAM, a: 1, ls: 0.3 });
           if (nw.typing) line(810 + w, 988.5, 818 + w, 988.5, CREAM, 0.9, STRONG);
@@ -898,8 +915,8 @@ window.HudC25 = (function () {
     rebuildStat();
   }
   function rebuildStat() {
-    const live = c;
-    stat = document.createElement("canvas"); stat.width = cv.width; stat.height = cv.height;
+    const live = c; clearTx();
+    stat =document.createElement("canvas"); stat.width = cv.width; stat.height = cv.height;
     c = stat.getContext("2d"); bxS = []; lbS = []; rbS = []; txS = []; shS = []; ph = "s"; paintAll(); ph = "d"; c = live; dirty = false;
   }
   function draw(env) {

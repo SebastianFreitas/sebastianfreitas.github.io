@@ -282,7 +282,7 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 |---|---|
 | `world.js` | Core | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw, F, P, …}` |
 | `vortex.js` | `drawVortex(x, y, R, opts)`: a flat layered cloud mass (`VORTEX_LAYERS`, deepest first, each a `layerPath` with a pinwheel hole) with hard radial shade and puffs pulled in; opts `seed outer layers alpha puffs`; first used by the Watcher |
-| `void.js` | `drawVoid`, `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture` |
+| `void.js` | `drawVoid` (parked homepage bridge: base fill + blobs blit from an offscreen cache, redrawn when a blob moves 1 device px or size/DPR/camX change; `B.idleCache === false` draws directly; stats in `P.voidBackStats`), `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture` |
 | `watcher.js` | `WATCHER_SHARDS`/`WATCHER_CRACKS`, `drawWatcher` (calls `P.drawVortex`, `P.serusPhase`/`P.drawSerus`), `RED_STAR`, `drawRedStar` |
 | `serus.js` | `serusPhase`, `drawSerus` (the alien coiled in the Watcher) |
 | `nephilim.js` | `NEPHILIM` anchor, `nephRng`, `NEPH_*`, `nephWalk`, `nephRibbon`, `flatVolume`, `drawNephilim` |

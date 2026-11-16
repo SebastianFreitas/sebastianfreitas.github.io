@@ -249,10 +249,12 @@ window.World = (function () {
     const { ctx, W, H } = F;
 
     ctx.globalAlpha = 1; ctx.lineWidth = 1;
-    ctx.fillStyle = v.dt != null ? "#0e1115" : "#0d1114";
-    ctx.fillRect(0, 0, W, H);
+    const bgCol = v.dt != null ? "#0e1115" : "#0d1114";
+    // parked homepage bridge: base fill + blobs blit from a cache (void.js)
+    const parked = v.dt != null && mode === "void" && window.Bridge && Bridge.idleCache !== false && Bridge.atRest && Bridge.atRest();
+    if (!parked) { ctx.fillStyle = bgCol; ctx.fillRect(0, 0, W, H); }
 
-    P.drawVoid();
+    P.drawVoid(parked ? bgCol : null);
 
     P.drawChaos();
     P.drawPresences();

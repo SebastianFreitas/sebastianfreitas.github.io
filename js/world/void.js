@@ -21,20 +21,55 @@
   const FRAG_CHUNK = 5400;
 
   /* ---- draw: stars ---- */
-  function drawVoid() {
+  function paintBlobs(g, pos) {
+    for (let i = 0; i < blobs.length; i++) {
+      const b = blobs[i], x = pos[i * 3], y = pos[i * 3 + 1], rad = pos[i * 3 + 2];
+      if (!onScreen(x, rad)) continue;
+      g.fillStyle = `rgba(${b.hue},${b.a * 0.3})`;
+      g.beginPath(); g.arc(x, y, rad * 0.8, 0, 6.283); g.fill();
+      g.beginPath(); g.arc(x, y, rad * 0.5, 0, 6.283); g.fill();
+    }
+  }
+
+  /* parked: the base fill and the blobs (the layers before the first per-tick one) live in an offscreen
+     canvas the size of the main one; it is redrawn only when a blob moved a device pixel or an input changed */
+  const back = { cv: null, g: null, key: "", pos: new Float64Array(blobs.length * 3), renders: 0 };
+  P.voidBackStats = back;
+
+  function drawVoid(bg) {
     const { ctx, W, H, camX, t, vel, dtNow, V } = F;
     const s = scale(), span = W * 2.4, off = camX * 0.06 * s;
-    for (const b of blobs) {
+    const pos = back.cur || (back.cur = new Float64Array(blobs.length * 3));
+    for (let i = 0; i < blobs.length; i++) {
+      const b = blobs[i];
       b.y += b.vy * 1.2 * dtNow;   // 0.02 per frame at 60 fps, now per second
       if (b.y > 1.3) b.y = -0.25; if (b.y < -0.3) b.y = 1.25;
-      const x = ((b.u * span - off) % span + span) % span - span * 0.2;
-      const rad = b.rad * Math.max(W, H);
-      if (!onScreen(x, rad)) continue;
-      const y = b.y * H;
-      ctx.fillStyle = `rgba(${b.hue},${b.a * 0.3})`;
-      ctx.beginPath(); ctx.arc(x, y, rad * 0.8, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.arc(x, y, rad * 0.5, 0, 6.283); ctx.fill();
+      pos[i * 3] = ((b.u * span - off) % span + span) % span - span * 0.2;
+      pos[i * 3 + 1] = b.y * H;
+      pos[i * 3 + 2] = b.rad * Math.max(W, H);
     }
+    if (bg) {
+      const cvs = ctx.canvas, tf = ctx.getTransform(), dpr = tf.a;
+      const key = [cvs.width, cvs.height, W, H, tf.a, tf.d, tf.e, tf.f, bg].join();
+      let stale = !back.cv || back.key !== key;
+      if (!stale) for (let i = 0; i < pos.length; i++) {
+        if (Math.abs(pos[i] - back.pos[i]) * dpr >= 1) { stale = true; break; }
+      }
+      if (stale) {
+        if (!back.cv) { back.cv = document.createElement("canvas"); back.g = back.cv.getContext("2d"); }
+        if (back.cv.width !== cvs.width) back.cv.width = cvs.width;
+        if (back.cv.height !== cvs.height) back.cv.height = cvs.height;
+        const g = back.g;
+        g.setTransform(tf);
+        g.globalAlpha = 1;
+        g.fillStyle = bg; g.fillRect(0, 0, W, H);
+        paintBlobs(g, pos);
+        back.pos.set(pos); back.key = key; back.renders++;
+      }
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(back.cv, 0, 0);
+      ctx.restore();
+    } else paintBlobs(ctx, pos);
     const off2 = camX * 0.14 * s;
     const streak = Math.min(60, Math.abs(vel) / V.maxFling * 220);
     ctx.strokeStyle = "#c6ccc6"; ctx.fillStyle = "#c6ccc6";

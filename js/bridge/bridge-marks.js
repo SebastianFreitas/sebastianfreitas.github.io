@@ -10,10 +10,13 @@
 
   /* ---- markers ---- */
   let markDebug = 0;
-  window.beaconReport = () => activeMarks().map(m => {
+  window.beaconReport = () => `active=${activeMarks().length} total=${B.MARKS ? B.MARKS.length : "?"}\n` + activeMarks().map(m => {
     const p = markScreen(m);
-    return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`;
-  }).join("\n") + `\ncamX=${B.camX.toFixed(0)} frozen=${B.frozen} W=${B.W} H=${B.H}`;
+    return `${m.id}  x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} vis=${(+m.vis).toFixed(2)} onscreen=${onScreen(p.x, 60)}`
+      + ` unseen=${!!m.unseen} fly=${m.fly ? m.fly.t.toFixed(2) : "no"} shown=${(m.shown ?? 1).toFixed(2)} pop=${(+m.pop).toFixed(2)}`;
+  }).join("\n") + `\ncamX=${B.camX.toFixed(0)} frozen=${B.frozen} W=${B.W} H=${B.H}`
+    + ` bridgeReady=${B.bridgeReady} hidden=${document.hidden} markDebug=${markDebug.toFixed(2)}\n`
+    + (window.pacingReport ? JSON.stringify(pacingReport()) : "");
 
   /* the boxes the cues keep clear of: the Data Archive panel (left) and "The
      Work" tab (right), as bottoms in canvas pixels. Measured on resize, load
@@ -124,7 +127,7 @@
   }
 
   function drawMarks(dt) {
-    let shown = 0;
+    let shown = 0, expected = 0;
     cueSide.l.length = 0; cueSide.r.length = 0;
     for (const m of activeMarks()) {
       if (m.fly) {
@@ -133,6 +136,7 @@
         else if (m.fly.t < 0) continue;                       // still waiting its turn inside the root
       }
       const p = markScreen(m);
+      if (Number.isFinite(p.x) && Number.isFinite(p.y) && onScreen(p.x, 60)) expected++;
       if (m.unseen) {
         if (p.x > 0 && p.x < B.W) m.unseen = false;   // first sight just drops the cue — the node was already there
         else {
@@ -172,8 +176,10 @@
     layCues(cueSide.l, false, dt);
     layCues(cueSide.r, true, dt);
     if (B.drawPoi) B.drawPoi(dt);
-    // if none ever appear, say so once — beaconReport() has the detail
-    if (!shown && markDebug < 4 && (markDebug += dt) >= 4)
+    // beacons that should be on screen but none drew: say so once, after 4 s in a row
+    if (shown > 0 || expected === 0) markDebug = 0;
+    else if (markDebug < 4 && B.bridgeReady && !document.hidden && !B.frozen && !B.held
+      && (markDebug += Math.min(dt, 0.25)) >= 4)
       console.warn("no marks drawn in 4s — run beaconReport() for why");
   }
   B.drawMarks = drawMarks;
