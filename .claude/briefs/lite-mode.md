@@ -25,7 +25,7 @@ Firefox in `WebRender (Software)` mode draws the page on the CPU. The owner's ma
 ## Where to look
 - `js/site/folders.js`: `caseAnim` is the sweep; `is-scrolling` sits on `.work`.
 - `css/folder.css`: the wash, smoke and glow, baked to `css/art/wash.webp` and `css/art/folder-glow.webp`.
-- `js/site/devpanel.js`: temporary frame timing to borrow from, if it has not been removed.
+- `js/site/devpanel.js`: temporary frame timing to borrow from. Removed 2026-11-15; read it with `git show aac55d87:js/site/devpanel.js`.
 
 ## How to test
 Turn off `Use hardware acceleration when available` in Firefox, restart, and confirm `about:support` says `WebRender (Software)`. Automated Firefox here does not show the owner's numbers, so judge in the owner's real browser. Turn acceleration back on afterwards.
