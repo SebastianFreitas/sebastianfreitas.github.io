@@ -503,6 +503,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
 | `projects/heavylight.html` | Case page for HeavyLight, a 2D puzzle platformer where light carries momentum (Unity, WebGL); toy `js/pages/heavylight.js` |
 | `404.html` | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
+| `og-image.jpg` | Link-preview share image (1200x630 JPEG of the Games rows), named by og:image in index.html and 404.html |
 | `tools/nav-flows.test.py` | Playwright flows (Work-row hover, case-page click and beacon-nav flows: see `--list`; `work-hover` checks the hover preview); starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
 | `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>`; `work-hover` scene (VoidScape row hovered 1.5 s); also 404, glimpse/rank cards, footer, phone scenes; `capture` flags `--only`, `--phone-width <px>`, `--reduced-motion` |
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
