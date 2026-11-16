@@ -17,7 +17,14 @@ window.WorkPreview = (function () {
     scrollEnd = setTimeout(() => work.classList.remove("is-scrolling"), 150);
   }, { passive: true });
 
-  const stops = [];
+  const stops = [], holds = [], closes = [];
+  /* a real move is a changed screen position: boundary events from content scrolling under a still pointer do not count */
+  let px = NaN, py = NaN, moved = false;
+  const track = (e) => { moved = e.clientX !== px || e.clientY !== py; px = e.clientX; py = e.clientY; };
+  window.addEventListener("pointermove", track, true);
+  window.addEventListener("pointerdown", track, true);
+  window.addEventListener("pointerover", (e) => { if (px !== px) { px = e.clientX; py = e.clientY; } }, true);   /* first known position, not a move */
+  document.addEventListener("visibilitychange", () => { if (document.hidden) holds.forEach((f) => f()); });
   work.querySelectorAll(":scope > a.obj[data-wornquad]").forEach((row) => {
     const v = row.querySelector(":scope > video.obj-clip");
     if (!v) return;
@@ -31,34 +38,72 @@ window.WorkPreview = (function () {
       sync();
       new MutationObserver(sync).observe(img, { attributes: true, attributeFilter: ["style"] });
     }
-    let playWait = 0;
-    const start = () => {
-      if (!hoverOK.matches) return;
-      stops.forEach((f) => { if (f !== stop) f(); });   /* one row open at a time */
-      row.classList.add("is-peek");
-      clearTimeout(playWait);
-      playWait = setTimeout(() => {   /* the clip starts once the pointer has rested; the slide and tag answer at once */
-        if (!row.classList.contains("is-peek")) return;
+    let playWait = 0, wraps = 0, lastT = 0, inView = true;
+    const go = (delay) => {   /* play after the rest (or at once on a resume), if the row is on screen and the tab visible */
+      if (!v.paused || playWait) return;
+      playWait = setTimeout(() => {
+        playWait = 0;
+        if (!row.classList.contains("is-peek") || !inView || document.hidden) return;
         if (v.preload === "none") v.preload = "auto";
         const p = v.play();
         if (p) p.catch(() => {});
-      }, 400);
+      }, delay);
+    };
+    const hold = () => { clearTimeout(playWait); playWait = 0; v.pause(); };   /* keeps the frame and the row's look */
+    const start = (focused) => {
+      if (!hoverOK.matches) return;
+      stops.forEach((f) => { if (f !== stop) f(); });   /* one row open at a time */
+      row.classList.add("is-peek");
+      if (focused) { wraps = 0; go(v.currentTime > 0 ? 0 : 400); }   /* a pointer enter alone starts no clip: only a real move does */
     };
     const stop = () => {
       clearTimeout(playWait);
+      playWait = 0;
       row.classList.remove("is-peek", "is-live");
       v.pause();
       v.currentTime = 0;
+      wraps = 0;
+      lastT = 0;
+    };
+    const close = () => {   /* a scroll moved the pointer to another row: close the look, keep the frame */
+      hold();
+      row.classList.remove("is-peek", "is-live");
     };
     stops.push(stop);
+    closes.push(close);
+    holds.push(hold);
     v.addEventListener("playing", () => { if (row.classList.contains("is-peek")) row.classList.add("is-live"); });
-    row.addEventListener("pointerenter", (e) => { if (e.pointerType !== "touch") start(); });
-    row.addEventListener("focus", () => { if (row.matches(":focus-visible")) start(); });
+    v.addEventListener("timeupdate", () => {   /* two loops with no move, then hold */
+      if (v.currentTime < lastT && ++wraps >= 2) hold();
+      lastT = v.currentTime;
+    });
+    if (window.IntersectionObserver) {
+      new IntersectionObserver((es) => {
+        inView = es[es.length - 1].isIntersecting;
+        if (!inView) hold();
+      }).observe(row);
+    }
+    row.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "touch" || !hoverOK.matches) return;
+      if (e.clientX === px && e.clientY === py) closes.forEach((f) => { if (f !== close) f(); });   /* a scroll brought this row under a still pointer */
+      row.classList.add("is-peek");
+    });
+    row.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "touch" || !moved || !row.classList.contains("is-peek")) return;
+      stops.forEach((f) => { if (f !== stop) f(); });   /* one row open at a time, closed on a real move only */
+      wraps = 0;
+      go(v.currentTime > 0 && row.classList.contains("is-live") ? 0 : 400);
+    });
+    row.addEventListener("focus", () => { if (row.matches(":focus-visible")) start(true); });
     row.addEventListener("blur", stop);
   });
 
   /* a row stays open after the pointer leaves it: until another row opens or the pointer leaves Work */
-  work.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") stops.forEach((f) => f()); });
+  work.addEventListener("pointerleave", (e) => {
+    if (e.pointerType === "touch") return;
+    const still = e.clientX === px && e.clientY === py;   /* the page scrolled away under a still pointer: close every row, keep the frames */
+    (still ? closes : stops).forEach((f) => f());
+  });
 
   /* an old #sector-zero style link scrolls to its row and opens nothing */
   const land = () => {
