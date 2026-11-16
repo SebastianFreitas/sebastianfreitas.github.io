@@ -46,7 +46,7 @@
      and when a cutscene ends; rows do nothing while one is running. */
   const SCENE_NAMES = { birth: "Birth", root: "Root", rex: "Rex", valkhar: "Valkhar", mainland: "Mainland" };
   const modesList = document.getElementById("modes-list");
-  let closeJournal = () => {};
+  let closeJournal = play => { play(); };
   function journalRow(label, play) {
     const b = document.createElement("button");
     b.type = "button";
@@ -55,15 +55,14 @@
     b.addEventListener("pointerdown", e => e.stopPropagation());
     b.addEventListener("click", () => {
       if (!window.Genesis || Genesis.active) return;
-      closeJournal();
-      play();
+      closeJournal(play);
     });
     modesList.appendChild(b);
   }
   function buildJournal() {
     if (!modesList) return;
     modesList.textContent = "";
-    journalRow("Full intro", () => Genesis.play({ thenMode: "void", thenCamX: LAND.bridge }));
+    journalRow("Full intro", () => { Genesis.play({ thenMode: "void", thenCamX: LAND.bridge }); return Genesis.active; });
     const order = (window.Gen && Gen.SCENE_ORDER) || Object.keys(SCENE_NAMES);
     order.forEach(id => {
       if (window.Genesis && Genesis.segmentSeen(id))
@@ -198,7 +197,7 @@
     cut.appendChild(el("span", null, "cutscenes"));
     cut.appendChild(el("span", "arch-km", seen + " / " + order.length));
     cut.addEventListener("pointerdown", e => e.stopPropagation());
-    cut.addEventListener("click", e => { e.stopPropagation(); toggleCuts(); });
+    cut.addEventListener("click", e => { e.stopPropagation(); toggleCuts(cut); });
     body.appendChild(cut);
     arch.append(spine, body);
   }
@@ -222,15 +221,37 @@
       modesPanel.classList.add("tip-done");
       Util.write(localStorage, TIPK, "1");
     };
-    const setOpen = on => {
+    /* the control that opened the list, so closing can give focus back to it */
+    let opener = null;
+    const list = modesPanel.querySelector(".modes-panel");
+    const rendered = b => b && b.isConnected && b.getClientRects().length > 0;
+    const refocus = () => {
+      const a = document.activeElement;
+      if (a && a !== document.body && !list.contains(a)) return;
+      const cut = arch && arch.querySelector(".arch-cut");
+      const t = rendered(opener) ? opener : rendered(cut) ? cut : gearBtn;
+      t.focus({ preventScroll: true });
+    };
+    const setOpen = (on, from, quiet) => {
+      const was = modesPanel.classList.contains("open");
+      if (on && !was) opener = from || null;
       modesPanel.classList.toggle("open", on);
       gearBtn.setAttribute("aria-expanded", on ? "true" : "false");
       const cut = arch && arch.querySelector(".arch-cut");
       if (cut) cut.setAttribute("aria-expanded", on ? "true" : "false");
       if (on) { buildJournal(); retireTip(); }
+      else if (was && !quiet) refocus();
     };
-    closeJournal = () => setOpen(false);
-    toggleCuts = () => setOpen(!modesPanel.classList.contains("open"));
+    /* the HUD is hidden while a cutscene plays, which drops focus to the page: give it back when the scene ends */
+    let owed = false;
+    document.addEventListener("site:genesis-done", () => {
+      if (!owed) return;
+      owed = false;
+      requestAnimationFrame(() => { if (!document.activeElement || document.activeElement === document.body) refocus(); });
+    });
+    /* armed only when the row's scene really starts (play returns true), so a skipped scene leaves nothing owed */
+    closeJournal = play => { owed = true; setOpen(false); if (!play()) owed = false; };
+    toggleCuts = from => setOpen(!modesPanel.classList.contains("open"), from);
     /* where the archive shows, the folder is only its title: out of the tab order */
     const narrow = matchMedia("(max-width: 900px), (max-height: 520px) and (pointer: coarse)");   /* same query as the one in bridge.css that hides .arch */
     const syncGear = () => { gearBtn.tabIndex = narrow.matches ? 0 : -1; };
@@ -239,11 +260,26 @@
     gearBtn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); });
     gearBtn.addEventListener("click", e => {
       e.stopPropagation();
-      setOpen(!modesPanel.classList.contains("open"));
+      setOpen(!modesPanel.classList.contains("open"), gearBtn);
     });
     // picking a row closes it (journalRow), and so does a tap anywhere else
+    // focus that was in the list when such a tap began goes back to the opener once the tap's own focus change has settled
+    let armed = false;
+    const settle = () => {
+      if (!armed) return;
+      armed = false;
+      if (!document.activeElement || document.activeElement === document.body) refocus();
+    };
+    document.addEventListener("click", settle, true);
+    document.addEventListener("pointercancel", settle, true);
     document.addEventListener("pointerdown", e => {
-      if (!modesPanel.contains(e.target)) setOpen(false);
+      armed = false;
+      if (!modesPanel.contains(e.target)) {
+        const was = modesPanel.classList.contains("open");
+        const inside = was && list.contains(document.activeElement);
+        setOpen(false, null, true);
+        armed = inside;
+      }
     });
     addEventListener("keydown", e => { if (e.key === "Escape") setOpen(false); });
   }

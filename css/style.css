@@ -527,6 +527,7 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
 
 /* ---------------- project objects ---------------- */
 
+.work:focus { outline: none; }
 .work { display: grid; gap: 0; overflow-x: clip; }   /* the oversized Conclusus art must not widen the page */
 .work .section-title { margin-bottom: 0; }
 

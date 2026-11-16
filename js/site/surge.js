@@ -141,6 +141,64 @@
     return out;
   }
 
+  /* focus goes back to what had it when a card opened, but only if it would otherwise be lost */
+  const openers = new WeakMap();   // veil -> the element focused when it opened
+  function usable(el) {
+    return !!el && el.isConnected && el.getClientRects().length > 0 && !el.disabled;
+  }
+  function lost(veil) {
+    const a = document.activeElement;
+    return !a || a === document.body || veil.contains(a);
+  }
+  const ringed = new WeakMap();    // veil -> whether the opener showed the focus ring when the card opened
+  function opener(veil) {
+    const a = document.activeElement;
+    const el = a && a !== document.body ? a : null;
+    let on = false;
+    try { on = !!el && el.matches(":focus-visible"); } catch (e) {}
+    ringed.set(veil, on);
+    return el;
+  }
+  function target(el) {
+    // an opener inside a card that has since closed: use that card's own opener
+    for (let i = 0; el && i < 4; i++) {
+      const v = el.closest && el.closest(".rank-veil");
+      if (!v || (v.isConnected && !v.classList.contains("closing"))) break;
+      el = openers.get(v) || null;
+    }
+    if (!el) return null;
+    if (usable(el)) return el;
+    const same = el.id && document.getElementById(el.id);
+    return usable(same) ? same : null;
+  }
+  function giveBack(veil, ev, to) {
+    if (!lost(veil)) return;
+    const t = to || target(openers.get(veil));
+    // only a key close draws the keyboard ring; no event: the opener looks as it did before the card opened
+    const key = ev && (ev.type === "keydown" || ev.type === "keyup" || (ev.type === "click" && ev.detail === 0));
+    const ring = ev ? !!key : !!ringed.get(veil);
+    if (t) try { t.focus({ preventScroll: true, focusVisible: ring }); } catch (e) {}
+    // the closing key's release must not act on the element that now has focus
+    if (ev && ev.type === "keydown" && !to) {
+      const stop = k => { if (k.key !== ev.key) return; k.preventDefault(); off(); };
+      const off = () => { document.removeEventListener("keyup", stop, true); clearTimeout(tm); };
+      const tm = setTimeout(off, 1500);
+      document.addEventListener("keyup", stop, true);
+    }
+    // a mouse close: the click's own focus change runs after pointerdown, so check again after the gesture
+    if (ev && ev.type === "pointerdown") {
+      const off = () => {
+        document.removeEventListener("click", fire, true);
+        document.removeEventListener("pointercancel", fire, true);
+        document.removeEventListener("pointerdown", off, true);
+      };
+      const fire = e => { off(); giveBack(veil, e, to); };
+      document.addEventListener("click", fire, true);
+      document.addEventListener("pointercancel", fire, true);
+      document.addEventListener("pointerdown", off, true);
+    }
+  }
+
   let card = null;
   function rankUp(detail) {
     if (card) card.close(true);
@@ -226,6 +284,7 @@
     hint.textContent = Util.coarse() ? "Tap to continue" : "Click to continue";
     cardEl.appendChild(hint);
 
+    openers.set(veil, opener(veil));
     document.body.appendChild(veil);
     if (window.Shapes) Shapes.apply(veil);
     requestAnimationFrame(() => veil.classList.add("open"));
@@ -242,12 +301,13 @@
     let closed = false;
     let autoTimer = null;
 
-    function close(instant) {
+    function close(instant, ev) {
       if (closed) return;
       closed = true;
       clearTimeout(autoTimer);
       document.removeEventListener("keydown", onKey);
       card = null;
+      giveBack(veil, ev);
       document.dispatchEvent(new CustomEvent("xp:freeze", { detail: { on: false } }));
       document.dispatchEvent(new CustomEvent("xp:card-closed"));
       if (instant) {
@@ -261,13 +321,13 @@
     function onKey(e) {
       if (performance.now() - openedAt <= 450) return;
       if (e.key === " " || e.key === "Spacebar" || e.key === "Enter" || e.key === "Escape") e.preventDefault();
-      close(false);
+      close(false, e);
     }
 
     veil.addEventListener("pointerdown", e => {
       e.preventDefault();
       e.stopPropagation();
-      if (performance.now() - openedAt > 450) close(false);
+      if (performance.now() - openedAt > 450) close(false, e);
     });
     document.addEventListener("keydown", onKey);
 
@@ -357,6 +417,7 @@
     red.appendChild(line);
     cardEl.appendChild(red);
 
+    openers.set(veil, opener(veil));
     document.body.appendChild(veil);
     if (window.Shapes) Shapes.apply(veil);
     requestAnimationFrame(() => veil.classList.add("open"));
@@ -364,13 +425,14 @@
     const openedAt = performance.now();
     let closed = false;
 
-    function close() {
+    function close(ev, work) {
       if (closed) return;
       closed = true;
       glimpseOn = false;
       document.removeEventListener("keydown", onKey);
       removeEventListener("wheel", onScroll);
       removeEventListener("touchmove", onScroll);
+      giveBack(veil, ev, work);
       veil.classList.add("closing");
       setTimeout(() => veil.remove(), 200);
     }
@@ -385,30 +447,31 @@
       }
       if (performance.now() - openedAt <= 450) return;
       if (e.key === " " || e.key === "Spacebar" || e.key === "Enter" || e.key === "Escape") e.preventDefault();
-      close();
+      close(e);
     }
-    function onScroll() { close(); }   // passive: the page still scrolls
+    function onScroll(e) { close(e); }   // passive: the page still scrolls
 
-    function toWork() {
-      close();
+    function toWork(e) {
       const work = document.getElementById("work");
+      if (work) work.tabIndex = -1;
+      close(e, work);
       if (!work) return;
       const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
       work.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
     }
-    game.addEventListener("click", e => { e.preventDefault(); toWork(); });
-    keep.addEventListener("click", e => { e.preventDefault(); close(); });
+    game.addEventListener("click", e => { e.preventDefault(); toWork(e); });
+    keep.addEventListener("click", e => { e.preventDefault(); close(e); });
     [game, keep].forEach(btn => btn.addEventListener("keydown", e => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
       e.stopPropagation();
-      if (btn === game) toWork(); else close();
+      if (btn === game) toWork(e); else close(e);
     }));
     veil.addEventListener("pointerdown", e => {
       if (choices.contains(e.target)) { e.stopPropagation(); return; }
       e.preventDefault();
       e.stopPropagation();
-      if (performance.now() - openedAt > 450) close();
+      if (performance.now() - openedAt > 450) close(e);
     });
     document.addEventListener("keydown", onKey);
     addEventListener("wheel", onScroll, { passive: true });

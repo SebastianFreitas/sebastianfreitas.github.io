@@ -30,6 +30,8 @@ window.Genesis = (function () {
   const overlay = document.getElementById("genesis");
   const tagEl   = document.getElementById("genesis-tag");
   const lineEl  = document.getElementById("genesis-line");
+  const sayEl   = document.getElementById("genesis-say");   // screen-reader live region, outside the aria-hidden overlay
+  function say(t) { if (sayEl && sayEl.textContent !== t) sayEl.textContent = t; }
   const copyEl  = overlay && overlay.querySelector(".genesis-copy");
   const ticksEl = document.getElementById("genesis-ticks");
   const trackEl = document.getElementById("genesis-track");
@@ -66,6 +68,7 @@ window.Genesis = (function () {
       copyEl.classList.remove("on");
       copyEl.classList.add("out");
       if (tagEl) tagEl.textContent = "";
+      say("");
       return;
     }
     if (!immediate && copyEl.classList.contains("on") && tagEl && lineEl
@@ -75,6 +78,7 @@ window.Genesis = (function () {
       copyEl.style.alignSelf = b.id === "trade" ? "flex-start" : "";   // trade: off the gentleman, who climbs out right of centre
       if (tagEl) tagEl.textContent = b.tag;
       if (lineEl) lineEl.textContent = b.line;
+      say(b.tag ? b.tag + ". " + b.line : b.line);
       requestAnimationFrame(() => copyEl.classList.add("on"));
     };
     if (immediate || !copyEl.classList.contains("on")) { show(); return; }
@@ -220,6 +224,7 @@ window.Genesis = (function () {
     }
     if (tagEl) tagEl.textContent = "";
     if (lineEl) lineEl.textContent = "";
+    say("");
     document.documentElement.classList.remove("genesis-on");
     if (host) host.classList.remove("is-cinematic");
     const doneSeg = seg;
