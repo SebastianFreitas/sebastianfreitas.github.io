@@ -1005,7 +1005,7 @@ CC_HEAD = "() => { const r = document.getElementById('cc-taught').getBoundingCli
 
 
 def flow_cc_read_xp(browser, base):
-    """Conclusus gives its reading XP at "What it taught me", not on load."""
+    """Conclusus pays no XP (bridge-only): not on load, not at "What it taught me"."""
     for viewport, label in ((DESKTOP, "desktop"), (PHONE, "phone")):
         ctx, page = new_page(browser, viewport)
         goto_cc(page, base)
@@ -1039,7 +1039,7 @@ def flow_cc_read_xp(browser, base):
         check(f"cc-read-xp: heading reached mid-screen or the page bottom ({label})", crossed or bottom, h)
         check(f"cc-read-xp: not owned before the heading ({label})", not early)
         page.wait_for_timeout(500)
-        check(f"cc-read-xp: owned after the heading ({label})", page.evaluate(CC_OWNED), h)
+        check(f"cc-read-xp: not owned after the heading, XP is bridge-only ({label})", not page.evaluate(CC_OWNED), h)
         ctx.close()
     ctx, page = new_page(browser, DESKTOP)
     goto_cc(page, base)
@@ -1047,7 +1047,7 @@ def flow_cc_read_xp(browser, base):
     check("cc-read-xp: not owned after load (jump)", not page.evaluate(CC_OWNED))
     page.evaluate("window.scrollTo({ top: document.getElementById('cc-taught').getBoundingClientRect().top + scrollY - innerHeight / 4, behavior: 'instant' })")
     page.wait_for_timeout(600)
-    check("cc-read-xp: owned after jumping past the heading", page.evaluate(CC_OWNED))
+    check("cc-read-xp: not owned after jumping past the heading, XP is bridge-only", not page.evaluate(CC_OWNED))
     ctx.close()
 
 
@@ -1144,7 +1144,7 @@ def flow_cc_keys(browser, base):
     click_beat("play")
     page.wait_for_timeout(1500)
     owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus"])
-    check("cc-keys: play-conclusus owned", owned == ["play-conclusus"], owned)
+    check("cc-keys: play-conclusus not owned, XP is bridge-only", owned == [], owned)
     r = page.evaluate(CC_REPORT)
     check("cc-keys: play beat done", r["beats"]["play"]["done"], r["beats"]["play"])
     check("cc-keys: key 1 unlocked", r["beats"]["key1"]["locked"] is False, r["beats"]["key1"])
@@ -1154,7 +1154,7 @@ def flow_cc_keys(browser, base):
         page.wait_for_timeout(1500)
         kid = f"play-cc-key{n}"
         owned = page.evaluate(CC_PLAY_OWNED, [kid])
-        check(f"cc-keys: {kid} owned", owned == [kid], owned)
+        check(f"cc-keys: {kid} not owned, XP is bridge-only", owned == [], owned)
         r = page.evaluate(CC_REPORT)
         check(f"cc-keys: key {n} done", r["beats"][f"key{n}"]["done"], r["beats"][f"key{n}"])
         check(f"cc-keys: tray == {n}", r["tray"] == n, r["tray"])
@@ -1168,7 +1168,7 @@ def flow_cc_keys(browser, base):
 
 
 def flow_cc_win(browser, base):
-    """Conclusus: fresh storage, play beat, keys 1-3, then the door: all 5 play-* ids owned, the door stays open and won, he reappears."""
+    """Conclusus: fresh storage, play beat, keys 1-3, then the door: no play-* id owned (XP is bridge-only), the door stays open and won, he reappears."""
     ctx, page = new_page(browser, DESKTOP)
     goto_cc(page, base)
     page.wait_for_timeout(1500)
@@ -1223,7 +1223,7 @@ def flow_cc_win(browser, base):
     check("cc-win: tray emptied", r["tray"] == 0, r["tray"])
 
     owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus", "play-cc-key1", "play-cc-key2", "play-cc-key3", "play-cc-win"])
-    check("cc-win: all 5 play-* ids owned", len(owned) == 5, owned)
+    check("cc-win: no play-* id owned after the win", owned == [], owned)
 
     vis = page.evaluate("() => [getComputedStyle(document.querySelector('.play-hint')).visibility, getComputedStyle(document.querySelector('.cc-tray')).visibility]")
     check("cc-win: hint and tray hidden", vis == ["hidden", "hidden"], vis)
