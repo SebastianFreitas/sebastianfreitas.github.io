@@ -873,8 +873,9 @@
               const j = ra(-0.015, 0.015), w = e[2] * ra(0.92, 1.08), D = e[3] * ra(0.92, 1.08), ln = e[4] === undefined ? 0.5 : e[4], fr = seed !== "xp-wear" && gc.c ? 1 - e[0] - j : e[0] + j, cc = e[1] === "k" ? along + 6.5 + w / 2 : e[1] === "b" ? 1 + w / 2 : lb + fr * (ub - lb);   /* game rows: fractions run from the left end of the edge (from the right corner when the row is flipped) */
               if (gchip(cc, w, D, e[1], gr() < 0.5, ln)) placed++;
             });
+            const hs = holes.map(function (h) { const o = h.map(function (p) { return [p[0] / dpr, p[1] / dpr]; }); if (h.sh !== undefined) o.sh = h.sh; return o; });
             el._wearChips = placed;
-            el._wearHoles = holes.map(function (h) { const o = h.map(function (p) { return [p[0] / dpr, p[1] / dpr]; }); if (h.sh !== undefined) o.sh = h.sh; return o; });
+            el._wearHoles = hs;
           } else if (P.spread) {
             /* row-top plates: four to seven chips on the top run (the Experience box one: three to five, on 0.12-0.88 of its top run), away from the corners: one big tear, one or two medium tears, the rest small nicks, each an angular flake; a row with a picture keeps them on its text side, clear of the picture and the corners */
             const kr = rng(String(preset) + "|" + seed + "|k"), cn = seed === "xp-wear" ? 9 : 4 + Math.floor(kr() * 4), nmed = 1 + (kr() < 0.5 ? 1 : 0);
@@ -1770,6 +1771,49 @@
       }
       wkEdgeLight(el, lit, "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
+      /* desktop: the cards' text sits on top (the date 28 px under the label row) and each card's pictures are a column of stacked tiles under it: one level top line shared by the three columns (24 px under the lowest text line), running down past the plate's bottom where the plate's own outline cuts them; neighbouring columns touch, every edge is a plain cut leaning like the red-line edge (pts[0] to pts[3]); phone: the photo is a plain 16:9 box again */
+      const SL = ["--xs-l", "--xs-t", "--xs-w", "--xs-h", "--xs-clip"], lis = el.querySelectorAll(".xp li");
+      if (phone) {
+        el.style.removeProperty("--xp-when-mt");
+        lis.forEach(function (li) { const p = li.querySelector(".xp-pic"); if (p) { SL.forEach(function (n) { p.style.removeProperty(n); }); const st = p.querySelector(".xp-strip"); if (st) st.remove(); } });
+      } else if (lis.length) {
+        const k = window.Stage ? window.Stage.s() : 1, er = el.getBoundingClientRect(), s = (0 - x0) / (by - dy), cards = [], whens = el.querySelectorAll(".xp-when");
+        let lab = 0, low = 0;
+        el.querySelectorAll(".section-title").forEach(function (h) { lab = Math.max(lab, (h.getBoundingClientRect().bottom - er.top) / k); });
+        if (whens.length) el.style.setProperty("--xp-when-mt", ((parseFloat(getComputedStyle(whens[0]).marginTop) || 0) + lab + 28 - (whens[0].getBoundingClientRect().top - er.top) / k).toFixed(1) + "px");
+        lis.forEach(function (li) {
+          const lr = li.getBoundingClientRect();
+          cards.push({ li: li, x: (lr.left - er.left) / k, w: lr.width / k });
+          Array.prototype.forEach.call(li.children, function (c) { if (!c.classList.contains("xp-pic")) low = Math.max(low, (c.getBoundingClientRect().bottom - er.top) / k); });
+        });
+        const yLvl = low + 24, yTop = yLvl - 110, hh = Math.max(0, H - yTop), sd = s * hh;   /* the columns start 110 px above the old level line, behind the lower text, under the css fade (180 px: full 70 px under the old line) */
+        cards.forEach(function (c, i) {
+          const pic = c.li.querySelector(".xp-pic"); if (!pic) return;
+          const nx = cards[i + 1], half = nx ? (nx.x - c.x - c.w) / 2 : 20, pv = cards[i - 1], phalf = pv ? (c.x - pv.x - pv.w) / 2 : 20;
+          const ul = (pv ? pv.x + pv.w + phalf : pts[0][0] + s * (yLvl - pts[0][1])) + s * (yTop - yLvl), ur = (nx ? c.x + c.w + half + 0.6 : c.x + c.w + half - 7) + s * (yTop - yLvl);   /* the edges stay on their lines, taken at the old level and moved up to the new top; a column with a right neighbour runs 0.6 px under it (the neighbour paints on top, so no plate hairline shows) */
+          const l = Math.min(ul, ul + sd), cw = Math.max(ur, ur + sd) - l, w = ur - ul, th = w * 0.62, pad = Math.abs(s) * th + 2;
+          pic.style.setProperty("--xs-l", l.toFixed(1) + "px"); pic.style.setProperty("--xs-t", yTop.toFixed(1) + "px");
+          pic.style.setProperty("--xs-w", cw.toFixed(1) + "px"); pic.style.setProperty("--xs-h", hh.toFixed(1) + "px");
+          pic.style.setProperty("--xs-clip", "polygon(" + [[ul - l, 0], [ur - l, 0], [ur + sd - l, hh], [ul + sd - l, hh]].map(function (p) { return p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px"; }).join(", ") + ")");
+          /* the strip: the card's pictures (its img, then data-slides) as tiles, column width by 0.62 of it, touching, repeated from the first until the column passes the plate's bottom; tiles below the first load lazily */
+          if (!pic._xpSrc) {
+            let list = []; try { list = JSON.parse(pic.getAttribute("data-slides") || "[]"); } catch (e) { list = []; }
+            const f = pic.querySelector(":scope > img");
+            pic._xpSrc = (f ? [{ s: f.getAttribute("src"), a: f.alt, t: f.title }] : []).concat(list.map(function (q) { return { s: q.s, a: q.a, t: q.t }; }));
+          }
+          const src = pic._xpSrc; if (!src.length || !(th > 0)) return;
+          let st = pic.querySelector(".xp-strip"); if (!st) { st = document.createElement("div"); st.className = "xp-strip"; pic.appendChild(st); }
+          const n = Math.ceil(hh / th) + 1;   /* one tile more than the column shows: the film strip (xp-slides.js) slides it in from below */
+          st._xp = { th: th, ul: ul, s: s, pad: pad, l: l }; st._gen = (st._gen || 0) + 1; st._k = 0; st._sl = false; st.style.transition = "none"; st.style.transform = "";
+          while (st.children.length > n) st.lastChild.remove();
+          while (st.children.length < n) {
+            const j = st.children.length, q = src[j % src.length], im = new Image();
+            im.alt = q.a || ""; if (q.t) im.title = q.t; im.decoding = "async"; if (j) im.loading = "lazy"; im.src = q.s;
+            st.appendChild(im);
+          }
+          for (let j = 0; j < n; j++) { const q = src[j % src.length], t = st.children[j]; t.alt = q.a || ""; if (q.t) t.title = q.t; else t.removeAttribute("title"); if (t.getAttribute("src") !== q.s) t.src = q.s; st.children[j].style.cssText ="position:absolute;object-fit:cover;top:" + (j * th).toFixed(1) + "px;left:" + (ul + s * (j * th + th / 2) - pad - l).toFixed(1) + "px;width:" + (w + 2 * pad).toFixed(1) + "px;height:" + (th + 0.5).toFixed(1) + "px"; }
+        });
+      }
       /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */
       const ft = document.querySelector("footer.xp-foot");
       if (ft) {
