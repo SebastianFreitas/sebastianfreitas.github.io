@@ -16,11 +16,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=331">
-<link rel="stylesheet" href="../css/beacon.css?v=331">
-<link rel="stylesheet" href="../css/play.css?v=331">
+<link rel="stylesheet" href="../css/style.css?v=332">
+<link rel="stylesheet" href="../css/beacon.css?v=332">
+<link rel="stylesheet" href="../css/play.css?v=332">
+<link rel="stylesheet" href="../css/game-pages.css?v=332">
 </head>
-<body class="page-case">
+<body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="topbar">
@@ -37,74 +38,95 @@
 <div class="folder-body">
 <main class="case" id="main" data-redlines="case-conclusus">
   <a class="back" data-banner="tab" data-banner-on="before" data-wear="button" href="../#conclusus"><span class="go go-back" aria-hidden="true"></span>Back to Work</a>
-  <h1>Conclusus</h1>
-  <div class="case-sub"><span class="type-label" data-banner="tab">Precision platformer · Unity</span></div>
-
-    <p>A precision platformer built on the <a href="heavylight.html">HeavyLight</a> base. Thirty levels, a symbol to carry to a door, pins that launch you, a <span class="key">shadow</span> you plant and teleport back to, and silhouettes that switch between safe and deadly every 1.2 seconds.</p>
+  <header class="gp-head">
+    <img class="gp-art" src="../media/conclusus/conclususFrontPage.webp" alt="" style="--gp-pos:85% 50%">
+    <div class="gp-det"><i></i><span>OBJ_0003</span><s></s><span>Shipped, playable</span></div>
+    <h1>Conclusus</h1>
+    <p class="gp-lead">A precision platformer on the <a href="heavylight.html">HeavyLight</a> base. Thirty short levels, one hit kills, and four mechanics to combine: pins, a <span class="key">shadow</span> you teleport back to, silhouettes and lit platforms.</p>
+    <dl class="gp-meta">
+      <div><dt>Genre</dt><dd>Precision platformer</dd></div>
+      <div><dt>Engine</dt><dd>Unity 2021, WebGL</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Role</dt><dd>Solo</dd></div>
+    </dl>
+  </header>
 
     <div class="embed embed-shell"
          data-src="https://itch.io/embed-upload/14396412?color=141a1d"
          data-title="Play Conclusus in your browser"
-         style="background-image:url('../media/conclusus/conclususFrontPage.webp')">
+         style="background-image:url('../media/conclusus/shadow.jpg')">
       <button type="button" class="embed-play" data-wear="button">Play Conclusus</button>
     </div>
     <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/conlusus">itch.io</a>.</p>
 
     <h2>The brief</h2>
-    <p><span class="key">HeavyLight</span> ran on one mechanic, which meant its level design had to carry the whole game. For <span class="key">Conclusus</span> I chose the opposite: several mechanics that players already understand, so each level could combine them instead of inventing something new. That took weight off the level design and let me spend it where I am strongest, on the feel of the controls and on the look of the game.</p>
-    <p>It is a game of technical difficulty rather than puzzles. The levels are short, one hit kills, and the retry is instant, so the challenge is execution.</p>
+    <p>HeavyLight ran on one mechanic, so its levels carried the whole game. <span class="key">Conclusus</span> does the opposite: four mechanics players already understand, combined a new way in every level.</p>
+    <p>No puzzles. Levels are short, one hit kills and the retry takes about a second, so the challenge is execution.</p>
+    <figure class="gp-dia">
+      <div class="gp-dia-body">
+        <div class="gp-dia-rail gp-dia-red gp-dia-from-2 gp-dia-to-1"><span>One hit: restart</span></div>
+        <ol class="gp-dia-flow">
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="7" width="42" height="34"/><path class="gp-dia-dim" stroke-dasharray="2 4" d="M12 33h8v-9h10v-8h6"/><rect class="gp-dia-solid" x="8" y="31" width="4" height="4"/><rect x="36" y="12" width="5" height="8"/></svg><b>Read</b><span>Find the symbol, the door and what kills.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34l7-7 7 7-7 7z"/><path d="M22 26L39 9"/><path d="M28 9h11v11"/><path class="gp-dia-dim" d="M4 18h9M4 24h5"/></svg><b>Run</b><span>Pins, the shadow, the silhouettes. All execution.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5l14 19-14 19-14-19z"/><path class="gp-dia-solid" d="M24 18l4.5 6-4.5 6-4.5-6z"/><path class="gp-dia-dim" d="M3 24h3M42 24h3"/></svg><b>Symbol</b><span>Touch it and it flies to the door.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M12 42V17a12 12 0 0 1 24 0v25"/><path d="M5 42h38"/><rect class="gp-dia-solid" x="22" y="24" width="4" height="4"/></svg><b>Door</b><span>It opens and the next level fades in.</span></li>
+        </ol>
+        <div class="gp-dia-rail gp-dia-under gp-dia-from-4 gp-dia-to-1"><span>Next level</span></div>
+      </div>
+      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. The red path is the one players take most: one hit, about a second, and the level is reset for another try.</figcaption>
+    </figure>
 
     <h2>The controls</h2>
-    <p>The <span class="key">character controller</span> is the one from HeavyLight, carried over untouched. Coyote time and a jump buffer of 0.15 seconds each, a jump that reaches its apex in 0.4 seconds with 1.75 times gravity on the way up, and a deceleration high enough that you stop the frame you release the key. Move with A and D or the arrows, jump with Space, W or Up, and use the shadow with S or Down.</p>
-    <p>Any hazard kills in one touch. You respawn at the start of the level in about a second, with the shadow, the platforms and the symbol reset with you.</p>
+    <p>The <span class="key">controller</span> is HeavyLight's, untouched: coyote time and a jump buffer of 0.15 seconds each, an apex in 0.4 seconds, and a stop the frame you release the key.</p>
 
     <h2>Key and door</h2>
-    <p>Every level ends at a door with a spinning <span class="key">symbol</span> somewhere in the level. Touch the symbol and it glides to the door over one second, and the door opens. In ten levels the symbol is split into three pieces that must be collected in order, each playing its own note.</p>
+    <p>Every level hides a spinning <span class="key">symbol</span> and ends at a door. Ten levels split the symbol into three pieces, taken in order.</p>
     <video class="clip" data-wear="image" src="../media/conclusus/pieces.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A symbol in three pieces. Each one is collected in order, and the door opens on the third.</p>
-    <p>Twenty levels add a second condition: every platform in the level has to be lit at the same moment. Stepping on a platform lights a shard on it, and the light fades over about five seconds. The route through the level becomes a race to reach the last platform before the first goes dark. When the last one lights with the symbol in place, a chime and a burst of particles tell you the door is open.</p>
+    <p>Twenty levels add a second lock: every platform lit at the same moment. A platform lights when you step on it and fades in about five seconds, so the route becomes a race back to the first.</p>
     <video class="clip" data-wear="image" src="../media/conclusus/platforms.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Lighting every platform before the first one goes dark. The door opens on the last.</p>
 
     <h2>Pins</h2>
-    <p><span class="key">Pins</span> are the first mechanic the game introduces. There are 88 of them. Touching one snaps you to it, cancels your momentum and fires you in the direction it points. For the next second your fall speed is held close to zero, so you hang in the air with time to steer toward the next pin or a platform. The pin spins, plays its animation and springs as you leave.</p>
-    <p>Chains of pins are how the game does its flying sections. The float window after each launch is what keeps them readable at speed.</p>
+    <p>A <span class="key">pin</span> snaps you in, cancels your momentum and fires you where it points.</p>
+    <p>Then it holds your fall for a second, long enough to aim at the next one. Chains of pins are the flying sections.</p>
     <video class="clip" data-wear="image" src="../media/conclusus/pins.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">A chain of pins to the door. Each launch holds the fall for a second, long enough to line up the next one.</p>
+    <p class="caption">A chain of pins to the door. Each launch holds the fall for a second.</p>
 
     <h2>The shadow</h2>
-    <p>The main mechanic. Press S while standing on the ground and a grass green copy of you stays where you were. Press S again from anywhere in the level and you teleport back into it, keeping your speed and facing. Only one <span class="key">shadow</span> exists at a time, and walking back into it on foot also uses it up. Placing plays a grass footstep and teleporting plays another, with a particle burst on arrival.</p>
-    <p>The shadow is unlocked by a pickup in level 7, with a short tutorial that fades in. From then on the levels are built around it: cross a gap of silhouettes once by pin, plant the shadow, collect the symbol, and jump straight back.</p>
+    <p>The main mechanic: a checkpoint you place yourself.</p>
+    <figure class="gp-stage">
+      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click anywhere to teleport</span><span class="gp-stage-status"></span></div>
+      <div class="gp-stage-box"><canvas></canvas></div>
+      <p class="caption">The shadow stands on the ledge nearest the pointer, and a click teleports you into it.</p>
+    </figure>
+    <p>Press S on the ground and a green copy of you stays behind. Press S again from anywhere and you are back in it, speed kept. One <span class="key">shadow</span> at a time, unlocked in level 7. Where to plant it is the decision.</p>
     <video class="clip" data-wear="image" src="../media/conclusus/shadow.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Plant the shadow, take the pins up to the symbol, then teleport straight back to it and walk to the door.</p>
 
     <h2>The silhouettes</h2>
-    <p>The last mechanic keeps the theme of other selves. The late levels hold figures shaped like your shadow. All of them switch state together every 1.2 seconds: green means safe, and touching one teleports you into it and removes it; silver means deadly, and touching one kills you. The switch is fixed and synchronised, so a level can be read, timed and learned.</p>
-    <p>There are 40 silhouettes in the game, first appearing in level 16 and filling levels 25 to 30, where the timing of the switch becomes the whole level.</p>
+    <p>Figures shaped like your shadow, all switching together every 1.2 seconds.</p>
+    <p>Green is safe: touch one and you teleport into it. Silver kills. The switch never drifts, so a level can be read, timed and learned. Levels 25 to 30 are built on that beat.</p>
     <video class="clip" data-wear="image" src="../media/conclusus/silhouettes.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">A silhouette on every platform. Green ones teleport you in, silver ones kill, and they all switch together every 1.2 seconds.</p>
+    <p class="caption">A silhouette on every platform, green and silver on one beat.</p>
 
     <h2>Thirty levels</h2>
-    <p>Thirty levels in three chapters, each chapter closing with a heavier rain. The first levels teach walking, jumping and pins. Level 7 gives you the shadow, level 16 gives you a double jump and the first silhouettes, and the last six levels combine everything. Progress is a single saved number, and a level select with thirty buttons opens them in order.</p>
-    <p>There is no optional content. The journal, secret levels and collectibles from HeavyLight were cut on purpose, and the time went into mechanics and polish instead.</p>
+    <p>Three chapters and no optional content.</p>
+    <p>The first levels teach jumping and pins. Level 7 gives the shadow, level 16 the double jump and the first silhouettes, and the last six combine everything. HeavyLight's journal, secrets and collectibles were cut on purpose.</p>
     <img class="clip" data-wear="image" src="../media/conclusus/levels.webp" alt="The level select: thirty numbered buttons in three rows, 1 to 25 green, 26 outlined, 27 to 30 dark, with the ESC, WASD, space and arrow keys drawn below" width="1600" height="900" loading="lazy">
-    <p class="caption">The level select. Thirty buttons that open in order. Here 26 is next and the last four are still locked.</p>
-
-    <h2>The polish</h2>
-    <p>Most of the time saved by reusing the base went into how the game looks and feels. The whole game is drawn from one palette file. Every platform picks one of five grass sprites or four floor sprites when it appears, so no two levels tile the same way. The symbol wobbles and reverses on random timings. Spike balls spin and bob, each at its own height. Rain falls through every level.</p>
-    <p>Finishing a level is an event. Your input locks, the bloom ramps from 1.5 to 50 in half a second, the rain doubles, and the level fades out over three seconds before the next fades in. At the end of a chapter the rain pours at twenty times its speed. The soundtrack is one track, Waves, by George Tantchev.</p>
-
-    <h2>Under the hood</h2>
-    <p>Unity 2021.3 with the Universal Render Pipeline, a Bloom volume, Cinemachine and the new Input System, built for WebGL. All thirty levels are objects in one scene that get switched on and off rather than loaded, and every mechanic implements its own Reset, so a restart puts the shadow, the platforms, the symbol and every silhouette back in one call. Sprites are 32 pixels and sort by height. The build checks which site it runs on, and a copy uploaded elsewhere sends you to a gif and quits.</p>
+    <p class="caption">The level select: 26 is next, the last four are locked.</p>
 
     <h2>Built on HeavyLight</h2>
-    <p>I wrote <span class="key">HeavyLight</span> as a base rather than a one off, and <span class="key">Conclusus</span> was the proof. The controller, the level switching, the reset convention and the door logic came over as they were, and the pins, the shadow, the silhouettes and the lit platforms went on top without touching them. Thirty levels and four new mechanics took less time than the original twenty.</p>
+    <p>I wrote <span class="key">HeavyLight</span> as a base, and Conclusus was the proof.</p>
+    <p>The controller, the level switching, the reset and the door logic came over untouched, and the four new mechanics went on top. Thirty levels took less time than the original twenty. The time saved went into the look: one palette, rain in every level, and a bloom that flares at the end of each one.</p>
 
     <h2 id="cc-taught">What it taught me</h2>
-    <p><span class="key">Conclusus</span> started from a base and a deadline rather than from a locked concept, and the <span class="key">shadow</span>, its best idea, was found during production. Since then I prototype the core mechanic first and test it before building levels around it. The rest of the plan held: several mechanics instead of one, familiar rules instead of a novel one, and the saved time spent on colour, sound and the feel of every jump.</p>
+    <p>The <span class="key">shadow</span>, the game's best idea, was found during production.</p>
+    <p>Since then I prototype the core mechanic first and test it before building levels around it.</p>
 
     <nav class="case-nav" aria-label="More work">
-      <a class="next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="heavylight.html">Next: HeavyLight<span class="go" aria-hidden="true"></span></a>
+      <a class="gp-up" data-banner="tab" data-banner-on="before" data-wear="button" href="../#conclusus"><span class="go go-back" aria-hidden="true"></span>Back to Work</a>
+      <a class="next gp-next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="heavylight.html"><small>Next game</small><b>HeavyLight</b><span class="go" aria-hidden="true"></span></a>
     </nav>
 </main>
 </div>
@@ -119,20 +141,20 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=331"></script>
-<script src="../js/site/xp.js?v=331"></script>
-<script src="../js/site/surge.js?v=331"></script>
-<script src="../js/lib/pacer.js?v=331"></script>
-<script src="../js/site/embed.js?v=331"></script>
-<script src="../js/site/lazy-video.js?v=331"></script>
-<script src="../js/bridge/lamp.js?v=331"></script>
-<script src="../js/pages/play.js?v=331"></script>
-<script src="../js/pages/conclusus.js?v=331"></script>
-<script src="../js/site/banner.js?v=331"></script>
-<script src="../js/site/shapes.js?v=331"></script>
-<script src="../js/site/barwear.js?v=331"></script>
-<script src="../js/site/redlines.js?v=331"></script>
-<script src="../js/site/back.js?v=331"></script>
-<script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "conclusus");</script>
+<script src="../js/lib/util.js?v=332"></script>
+<script src="../js/site/xp.js?v=332"></script>
+<script src="../js/site/surge.js?v=332"></script>
+<script src="../js/lib/pacer.js?v=332"></script>
+<script src="../js/site/embed.js?v=332"></script>
+<script src="../js/site/lazy-video.js?v=332"></script>
+<script src="../js/bridge/lamp.js?v=332"></script>
+<script src="../js/pages/play.js?v=332"></script>
+<script src="../js/pages/conclusus.js?v=332"></script>
+<script src="../js/site/banner.js?v=332"></script>
+<script src="../js/site/shapes.js?v=332"></script>
+<script src="../js/site/barwear.js?v=332"></script>
+<script src="../js/site/redlines.js?v=332"></script>
+<script src="../js/site/back.js?v=332"></script>
+<script>if (window.Play) Play.stage(document.querySelector("figure.gp-stage"), "conclusus");</script>
 </body>
 </html>

@@ -217,9 +217,9 @@ def shot(page, out_dir, name, full_page=False):
                     caret="hide", full_page=full_page)
 
 
-# Inked (non-transparent) pixels on the case-page toy canvas plus its page tiles, or null with no toy.
-TOY_INK = """() => { const c = document.querySelector('canvas.play');
-  if (!c || c.hidden) return null;
+# Inked (non-transparent) pixels on the case-page toy canvas (the inline stage's, else the page strip's) plus its page tiles, or null with no toy.
+TOY_INK = """() => { const c = document.querySelector('figure.gp-stage canvas') || document.querySelector('canvas.play');
+  if (!c || c.hidden || !c.offsetWidth) return null;
   const count = k => { const d = k.getContext('2d').getImageData(0, 0, k.width, k.height).data;
     let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; };
   let n = count(c);
@@ -533,8 +533,13 @@ def toy_page(name):
         page.wait_for_load_state("load")
         settle(page, 1000)
         lo, hi = 0, page.evaluate("Math.max(0, document.documentElement.scrollHeight - innerHeight)")
+        # an inline stage only builds and paints on screen: each stop scrolls it into view, higher or lower in the viewport
+        box = page.evaluate("(() => { const f = document.querySelector('figure.gp-stage'); if (!f) return null; const r = f.getBoundingClientRect(); return { top: r.top + scrollY, h: r.height, ih: innerHeight }; })()")
         for label, frac in TOY_STOPS:
-            toy_frame(page, round(lo + frac * (hi - lo)))
+            if box:
+                toy_frame(page, max(0, round(box["top"] - 40 - frac * (box["ih"] - box["h"] - 80))))
+            else:
+                toy_frame(page, round(lo + frac * (hi - lo)))
             ink = toy_ink(page)
             if ink is None:
                 raise RuntimeError(f"no toy canvas on {name}")

@@ -71,7 +71,13 @@
 
   // home layout: the objects sit in a grid in the free strip right of the text
   function place(V) {
-    if (V.band.w >= 100) { stripX0 = V.band.x0 + 8; stripX1 = V.band.x1 - 8; }
+    if (V.band.w >= 100) {
+      stripX0 = V.band.x0 + 8; stripX1 = V.band.x1 - 8;
+      // the opener plate overhangs the column into the band, so start the grid clear of its right edge
+      const head = document.querySelector('main.case > .gp-head');
+      const clear = head ? head.getBoundingClientRect().right + 16 : 0;
+      if (clear > stripX0 && stripX1 - clear >= 90) stripX0 = clear;
+    }
     else { stripX0 = V.main.x + 660; stripX1 = V.R - 24; }
     const x0 = stripX0, x1 = stripX1;
     const cols = Math.max(1, Math.floor((x1 - x0) / 96));

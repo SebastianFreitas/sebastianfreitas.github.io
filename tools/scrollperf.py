@@ -167,7 +167,7 @@ def run_once(browser, base, page_name, want_sites):
     page.wait_for_load_state("load")
     page.wait_for_timeout(2500)
     toy = bool(page.evaluate(
-        "(() => { const c = document.querySelector('canvas.play');"
+        "(() => { const c = document.querySelector('figure.gp-stage canvas') || document.querySelector('canvas.play');"
         " return !!c && !c.hidden && getComputedStyle(c).display !== 'none'; })()"))
 
     cdp = None

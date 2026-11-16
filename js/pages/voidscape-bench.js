@@ -1,75 +1,84 @@
-/* voidscape-bench.js — the VoidScape crafting bench inline on the case page.
-   Paints Forge.bench onto the <canvas id="void-bench"> after the crafting
-   write-up. No rAF loop while off screen or idle: it draws once on resize,
-   scroll-in and pointer input, and only loops while a button is flashing. */
+/* voidscape-bench.js — the VoidScape crafting bench as a stage toy ("vs-bench", Play.stage) in
+   "The bench". Paints Forge.bench into the stage canvas. The gun built here is the gun the range
+   below fires: every finished change hands it to PlayRange.arm. Gun parts pay for the changes
+   (Forge.bench.parts). Nothing animates at idle; only a flashing button needs frames. */
 window.VoidBench = (function () {
-  const cv = document.getElementById("void-bench");
-  if (!cv || !window.Forge) return { gun: () => (window.Forge ? Forge.gun() : null) };
-  const B = Forge.bench;
-  const g = cv.getContext("2d");
-  const MAX_SCALE = 1.4;
-  let scale = 1, ox = 0, visible = false, raf = 0, prev = 0;
+  const P = window.Play, F = window.Forge;
+  if (!P || !F) return { gun: () => (F ? F.gun() : null) };
+  const B = F.bench;
+  const START_PARTS = 30;
+  const BTN = [{ k: "add", y: 140 }, { k: "remove", y: 168 }, { k: "scrap", y: 196 }];   // bench-space button rows (forge.js)
+  const BTN_W = 190, BTN_H = 24;
 
-  function size() {
-    const w = cv.clientWidth || B.W;
-    scale = Math.min(w / B.W, MAX_SCALE);
-    ox = (w - B.W * scale) / 2;
-    const h = Math.round(B.H * scale + 16);
-    const d = window.devicePixelRatio || 1;
-    cv.style.height = h + "px";
-    cv.width = Math.round(w * d);
-    cv.height = Math.round(h * d);
-    g.setTransform(d, 0, 0, d, 0, 0);
-    paint();
+  let V = null, scale = 1, ox = 0, oy = 0, hover = -1, changed = false;
+  B.parts(START_PARTS);
+
+  function layout(v) {
+    V = v;
+    scale = Math.min(V.W * 0.86 / B.W, V.H * 0.8 / B.H, 2.4);
+    ox = Math.round((V.W - B.W * scale) / 2);
+    oy = Math.round((V.H - B.H * scale) / 2);
+  }
+  function setup(v) { layout(v); status(); }
+  function status() { if (V) V.status("Gun parts: " + B.parts()); }
+
+  function step(dt) { B.step(dt); status(); }
+  function atRest() { return !B.lively(); }
+
+  function bracket(ctx) {
+    const b = BTN[0], L = 8, T = 2, pad = 4;
+    const l = ox + (-pad) * scale, t = oy + (b.y - pad) * scale;
+    const r = ox + (BTN_W + pad) * scale, bt = oy + (b.y + BTN_H + pad) * scale;
+    ctx.fillStyle = "#f1ecd8";
+    for (const [x, y, dx, dy] of [[l, t, 1, 1], [r, t, -1, 1], [l, bt, 1, -1], [r, bt, -1, -1]]) {
+      ctx.fillRect(dx > 0 ? x : x - L, dy > 0 ? y : y - T, L, T);
+      ctx.fillRect(dx > 0 ? x : x - T, dy > 0 ? y : y - L, T, L);
+    }
   }
 
-  function paint() {
-    g.clearRect(0, 0, cv.width, cv.height);
-    g.save();
-    g.translate(ox, 8);
-    g.scale(scale, scale);
-    B.draw(g, 0, 0);
-    g.restore();
+  function draw(ctx) {
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.scale(scale, scale);
+    B.draw(ctx, 0, 0);
+    ctx.restore();
+    if (!changed) bracket(ctx);
   }
 
-  function frame(now) {
-    raf = 0;
-    const dt = prev ? Math.min((now - prev) / 1000, 0.1) : 0.016;
-    prev = now;
-    B.step(dt);
-    paint();
-    if (visible && B.lively()) raf = requestAnimationFrame(frame);
-    else prev = 0;
+  const buttonAt = (x, y) => BTN.findIndex(b => x >= ox && x <= ox + BTN_W * scale && y >= oy + b.y * scale && y <= oy + (b.y + BTN_H) * scale);
+  const local = (x, y) => ({ x: (x - ox) / scale, y: (y - oy) / scale });
+
+  function press(x, y) {
+    const p = local(x, y);
+    return !!B.hit(p.x, p.y);
   }
-  function wake() {
-    if (!raf && visible) raf = requestAnimationFrame(frame);
+  function move(x, y) {
+    const h = buttonAt(x, y);
+    V.cursor(h >= 0);
+    if (h === hover) return false;
+    hover = h;
+    return true;
   }
 
-  function local(e) {
-    const r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left - ox) / scale, y: (e.clientY - r.top - 8) / scale };
-  }
-  cv.addEventListener("pointerdown", function (e) {
-    const p = local(e);
-    if (B.hit(p.x, p.y)) { e.preventDefault(); paint(); wake(); }
-  });
-  cv.addEventListener("pointermove", function (e) {
-    const p = local(e);
-    cv.style.cursor = B.over(p.x, p.y) ? "pointer" : "";
-  });
-
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(function (es) {
-      visible = es[0].isIntersecting;
-      if (visible) { paint(); wake(); }
-    }).observe(cv);
-  } else visible = true;
+  // a finished bench change: the gun built here is the one the range fires
   document.addEventListener("forge:gun", function () {
+    changed = true;
     document.dispatchEvent(new CustomEvent("voidbench:gun"));
+    if (window.PlayRange) PlayRange.arm(F.gun());
   });
-  window.addEventListener("resize", size);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(paint);
-  size();
 
-  return { gun: () => Forge.gun() };
+  function report() {
+    const g = F.gun();
+    const r = V ? V.canvas.getBoundingClientRect() : null, k = r ? r.width / V.W : 1;
+    const at = b => ({ x: r.left + (ox + BTN_W / 2 * scale) * k, y: r.top + (oy + (b.y + BTN_H / 2) * scale) * k });
+    return {
+      gun: { type: g.type, level: g.level, mods: g.mods.length },
+      parts: B.parts(),
+      marker: !changed,
+      targets: r ? { add: at(BTN[0]), remove: at(BTN[1]), scrap: at(BTN[2]) } : null,
+    };
+  }
+
+  P.register({ name: "vs-bench", seed: 9, tick: 250, setup, step, draw, resize: layout, atRest, press, move });
+  return { gun: () => F.gun(), report };
 })();

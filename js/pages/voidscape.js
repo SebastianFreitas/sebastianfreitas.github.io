@@ -1,8 +1,8 @@
-/* js/pages/voidscape.js — VoidScape case-page toy: "the range". A gun mount in the
-   bottom-left corner aims at the pointer and fires while the mouse is held on empty
-   page; bullets are physics bodies that ricochet off the screen edges, enemies drift
-   in from the right, and every six kills a boon is offered in a small card (see
-   voidscape-boons.js for the pool and the build resolver). */
+/* js/pages/voidscape.js — VoidScape case-page toy: "the range", a small inline stage
+   (Play.stage). A gun mount in the bottom-left corner aims at the pointer and fires
+   while the mouse is held; bullets are physics bodies that ricochet off the stage's four
+   walls, and enemies drift in from the right (see voidscape-boons.js for the build
+   resolver). The bench hands it a gun with PlayRange.arm(gun). */
 (function () {
   'use strict';
   const U = window.Util, P = window.Play, FG = window.ForgeGuns, RB = window.RangeBoons;
@@ -16,108 +16,83 @@
     enemy: '#d92b2b', bone: ['#d9d2c4', '#8d8578'], red: ['#6a1a14', '#3a0609'],
     cone: ['#5a0d10', '#2c0507'], text: '#e8e6d8',
   };
-  const OFFER_EVERY = 6, HEAL_EVERY = 10, QUIET_AFTER = 40;
+  const HEAL_EVERY = 10, QUIET_AFTER = 40, MAX_ENEMIES = 4;
 
   // current viewport state (set in setup, refreshed every step call — same object throughout)
   let V;
 
   // build state
-  let gun, boons, pool, B;
-  let hp, kills, pending, offerBoon, rerolls;
+  let gun, B, armGun, armCount = 0;
+  let hp, kills;
 
   // live objects
   let bullets, ebullets, enemies, pops, fx, delayed;
 
   // mount + input
-  let mount, firing, shotAcc, armed, lastShot, spawnAcc, lost, hitCool;
-
-  // DOM
-  let card, ocard, hint, tip;
+  let mount, firing, shotAcc, fired, lastShot, spawnAcc, lost, hitCool, aimHas;
 
   // the gun built on the inline bench, else a random one (no bench / not reporting yet)
   function pickGun() {
     const vb = window.VoidBench;
     return (vb && vb.gun && vb.gun()) || FG.randomGun();
   }
-  // a bench change lands on the next shot: swap the gun, rebuild, keep boons
+  // a bench change lands on the next shot: swap the gun, rebuild
   document.addEventListener('voidbench:gun', function () {
     if (!B || !window.VoidBench) return;
     const g = window.VoidBench.gun();
     if (!g) return;
     gun = g;
-    B = RB.build(gun, boons);
+    B = RB.build(gun);
     hp = Math.min(hp, B.maxHp);
     refresh();
   });
 
+  // the stage is the whole field: walls on its four sides, no page blocks
+  function fit(v) {
+    v.L = 0; v.R = v.W; v.top = 0; v.vis = []; v.free = () => true;
+  }
+
   function setup(v) {
-    V = v;
-    gun = pickGun();
-    boons = [];
-    pool = RB.BOONS.slice();
-    B = RB.build(gun, boons);
+    V = v; fit(V);
+    gun = armGun || pickGun();
+    B = RB.build(gun);
     hp = B.maxHp;
-    kills = 0; pending = 0; offerBoon = null; rerolls = 0;
+    kills = 0;
     bullets = []; ebullets = []; enemies = []; pops = []; fx = []; delayed = [];
-    mount = { x: Math.max(V.L + 40, V.gutter * 0.5 + 2), y: V.H - 48, ang: 0 };
-    firing = false; shotAcc = 0; armed = false; lastShot = 0; spawnAcc = 0; lost = 0; hitCool = 0;
-
-    card = document.createElement('aside');
-    card.className = 'play-ui range';
-    card.innerHTML =
-      '<h3>The range</h3>' +
-      '<div class="row"><span class="k">gun</span><span class="gun"></span></div>' +
-      '<div class="row"><span class="k">health</span><span class="hp"></span></div>' +
-      '<div class="bar"><i></i></div>' +
-      '<p class="mods dim one"></p>' +
-      '<p class="boons"></p>' +
-      '<div class="row"><span class="k">kills</span><span class="kills"></span></div>' +
-      '<p class="tip dim">hold the mouse on empty page to fire · bullets bounce off the screen edges · heads crit</p>';
-    Play.mount(card);
-    tip = card.querySelector('.tip');
-
-    ocard = document.createElement('aside');
-    ocard.className = 'play-ui offer';
-    ocard.hidden = true;
-    ocard.innerHTML =
-      '<h3>Boon</h3>' +
-      '<p class="dim">take it, or turn it down for 10 health</p>' +
-      '<button class="take" type="button"></button>' +
-      '<button class="reroll minor" type="button">reroll</button>' +
-      '<button class="deny minor" type="button">refuse · −10 health</button>';
-    Play.mount(ocard);
-    ocard.querySelector('.take').addEventListener('click', takeBoon);
-    ocard.querySelector('.reroll').addEventListener('click', rerollBoon);
-    ocard.querySelector('.deny').addEventListener('click', denyBoon);
-
-    hint = document.createElement('p');
-    hint.className = 'play-hint';
-    hint.textContent = 'the range · hold to fire';
-    Play.mount(hint);
-    hint.style.bottom = (card.offsetHeight + 24) + 'px';
-
+    mount = { x: 40, y: V.H - 34, ang: 0 };
+    firing = false; shotAcc = 0; fired = false; lastShot = 0; spawnAcc = 0; lost = 0; hitCool = 0; aimHas = false;
+    // three enemies stand still until the first shot, clear of the gun and the arrow hint
+    const sk = mkEnemy('skull', V.W * 0.5, V.H - 36, 68, 68, 50, false, false);
+    sk.hop = 0.4 + V.rnd() * 0.5;
+    const co = mkEnemy('cone', V.W * 0.64, V.H * 0.3, 72, 88, 50, false, false);
+    co.y0 = co.y; co.fireT = 1.2 + V.rnd() * 0.8;
+    const tr = mkEnemy('triangle', V.W * 0.84, V.H * 0.6, 62, 62, 50, false, false);
+    tr.state = 'rest'; tr.stateT = 1.2;
+    enemies.push(sk, co, tr);
     refresh();
   }
 
-  // redraw the build card; called whenever hp/kills/boons change, not every frame
+  // the run's numbers go in the stage's status slot; called whenever hp/kills change, not every frame
   function refresh() {
-    card.querySelector('.gun').textContent = gun.base.name + ' · lvl ' + (gun.level - 9);
-    card.querySelector('.hp').textContent = hp + '/' + B.maxHp;
-    card.querySelector('.bar i').style.transform = 'scaleX(' + (hp / B.maxHp) + ')';
-    card.querySelector('.mods').textContent = gun.mods.map(m => m.text).join(' · ') || 'no mods';
-    card.querySelector('.boons').textContent = boons.length
-      ? 'boons: ' + boons.map(b => b.name).join(' · ')
-      : 'boons: none yet';
-    card.querySelector('.kills').textContent = kills;
+    V.status('kills ' + kills + ' · health ' + hp + '/' + B.maxHp);
   }
 
   function press(x, y, v) { firing = true; return true; }
-  function release(v) { firing = false; }
+  function release(x, y, v) {
+    if (!firing) return false;
+    firing = false;
+  }
+  // false when the aim did not change and nothing is held, so the stage skips the frame
+  function move(x, y, v) {
+    const has = x >= 0;
+    const ang = has ? Math.atan2(y - mount.y, x - mount.x) : mount.ang;
+    if (!firing && has === aimHas && ang === mount.ang) return false;
+    aimHas = has; mount.ang = ang;
+  }
 
   // fire one trigger pull: B.bullets physical shots plus any cold projectiles
   function shoot() {
-    if (!armed) tip.hidden = true;
-    armed = true; lastShot = 0; hint.hidden = true;
+    fired = true; lastShot = 0;
     const sp = B.speed * SPD;
     const mx = mount.x + Math.cos(mount.ang) * 30, my = mount.y + Math.sin(mount.ang) * 30;
     for (let k = 0; k < B.bullets; k++) {
@@ -148,7 +123,7 @@
   }
 
   function step(dt, v) {
-    V = v;
+    V = v; fit(V);
     if (V.pointer.has) mount.ang = Math.atan2(V.pointer.y - mount.y, V.pointer.x - mount.x);
 
     if (lost > 0) lost -= dt;
@@ -161,22 +136,17 @@
 
     stepBullets(dt);
     stepEnemyBullets(dt);
-    if (lastShot >= QUIET_AFTER) {
+    if (fired && lastShot >= QUIET_AFTER) {
       for (const e of enemies) { e.vx = 120; e.x += e.vx * dt; }
       enemies = enemies.filter(e => e.x <= V.R + 40);
     } else {
-      stepEnemies(dt);
+      if (fired) stepEnemies(dt);
       stepSpawn(dt);
     }
     stepDelayed(dt);
     stepFx(dt);
     stepPops(dt);
 
-    if (pending > 0 && !offerBoon && lost <= 0) {
-      offerBoon = RB.offer(pool, V.rnd);
-      if (!offerBoon) pending = 0;
-      else showOffer();
-    }
   }
 
   // sub-stepped bullet motion: ricochets off the screen and enemies
@@ -350,8 +320,6 @@
       }
     }
     if (kills % HEAL_EVERY === 0) { hp = Math.min(B.maxHp, hp + 15); pushPop(mount.x, mount.y - 20, '+15', COLS.poison, false); }
-    if (kills % OFFER_EVERY === 0) pending++;
-    if (kills === 1) P.award('play-voidscape', 'VoidScape range', e.x, e.y);
     refresh();
   }
 
@@ -455,10 +423,10 @@
   }
 
   function stepSpawn(dt) {
-    if (!armed) return;
+    if (!fired) return;
     spawnAcc += dt;
     const every = Math.max(1.2, 2.4 - kills * 0.03);
-    if (spawnAcc >= every && enemies.length < 7) { spawnEnemy(); spawnAcc = 0; }
+    if (spawnAcc >= every && enemies.length < MAX_ENEMIES) { spawnEnemy(); spawnAcc = 0; }
   }
 
   function stepSkull(e, dt) {
@@ -589,16 +557,13 @@
     refresh();
   }
 
-  // the run is over: clear the field, drop every boon, and roll a fresh gun
+  // the run is over: clear the field and roll a fresh gun (an armed gun stays)
   function lose() {
     lost = 1.6;
     enemies = []; bullets = []; ebullets = [];
-    boons = []; pool = RB.BOONS.slice();
-    gun = pickGun();
-    B = RB.build(gun, boons);
-    hp = B.maxHp; kills = 0; pending = 0;
-    offerBoon = null;
-    ocard.hidden = true;
+    gun = armGun || pickGun();
+    B = RB.build(gun);
+    hp = B.maxHp; kills = 0;
     refresh();
   }
 
@@ -618,41 +583,6 @@
     pops = pops.filter(p => p.t > 0);
   }
 
-  function showOffer() {
-    rerolls = 0;
-    ocard.querySelector('.take').innerHTML = '<b>' + offerBoon.name + '</b>' + offerBoon.desc;
-    ocard.querySelector('.reroll').disabled = false;
-    ocard.hidden = false;
-    ocard.style.bottom = (card.offsetHeight + 24) + 'px';
-  }
-  function takeBoon() {
-    boons.push(offerBoon);
-    pool = pool.filter(b => b !== offerBoon);
-    B = RB.build(gun, boons);
-    if (B.heal) { hp = B.maxHp; B.heal = false; }
-    hp = Math.min(hp, B.maxHp);
-    done();
-  }
-  function denyBoon() {
-    pool = pool.filter(b => b !== offerBoon);
-    hp = Math.max(1, hp - 10);
-    done();
-  }
-  function rerollBoon() {
-    if (rerolls >= 2) return;
-    rerolls++;
-    const next = RB.offer(pool.filter(b => b !== offerBoon), V.rnd);
-    if (next) offerBoon = next;
-    ocard.querySelector('.take').innerHTML = '<b>' + offerBoon.name + '</b>' + offerBoon.desc;
-    if (rerolls >= 2) ocard.querySelector('.reroll').disabled = true;
-  }
-  function done() {
-    offerBoon = null;
-    pending--;
-    ocard.hidden = true;
-    refresh();
-  }
-
   function draw(ctx, v) {
     drawBullets(ctx);
     drawFx(ctx);
@@ -660,6 +590,16 @@
     drawMount(ctx);
     drawPops(ctx);
     if (lost > 0) drawLost(ctx);
+    if (!fired) drawMarker(ctx);
+  }
+
+  // a cream arrow over the mount, pointing up into the stage, until the first shot
+  function drawMarker(ctx) {
+    const x = mount.x + 60, y = mount.y - 70;
+    ctx.fillStyle = '#f1ecd8';
+    ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 10, y + 4); ctx.lineTo(x + 3, y + 4);
+    ctx.lineTo(x + 3, y + 16); ctx.lineTo(x - 3, y + 16); ctx.lineTo(x - 3, y + 4); ctx.lineTo(x - 10, y + 4);
+    ctx.closePath(); ctx.fill();
   }
 
   // dominant-damage colour, plus a 2-segment tail derived from the current velocity
@@ -846,20 +786,40 @@
   }
 
   function atRest(v) {
-    return !firing && bullets.length === 0 && ebullets.length === 0 && enemies.length === 0
+    return !firing && bullets.length === 0 && ebullets.length === 0 && (enemies.length === 0 || !fired)
       && fx.length === 0 && pops.length === 0 && delayed.length === 0 && lost <= 0;
   }
 
   function resize(v) {
-    mount.x = Math.max(v.L + 40, v.gutter * 0.5 + 2);
-    mount.y = v.H - 48;
+    fit(v);
+    mount.x = 40;
+    mount.y = v.H - 34;
     for (const e of enemies) clampEnemyToScreen(e);
   }
 
+  // test hook: every position in viewport CSS px; targets = the gun mount and the field's centre
   function report() {
-    return { gun: gun.type, boons: boons.map(b => b.id), hp, kills, bullets: bullets.length, enemies: enemies.length };
+    const r = V.canvas.getBoundingClientRect(), k = r.width / V.W;
+    const at = (x, y) => ({ x: r.left + x * k, y: r.top + y * k });
+    return {
+      gun: gun.type, hp, kills, bullets: bullets.length, enemies: enemies.length,
+      armed: armCount,
+      targets: { mount: at(mount.x, mount.y), field: at(V.W / 2, V.H / 2) },
+    };
   }
 
-  P.register({ name: 'range', seed: 41, setup, step, draw, atRest, press, release, resize });
-  window.PlayRange = { report };
+  // the bench hands the range a gun: the same object, a fresh run
+  function arm(g) {
+    armGun = g; armCount++;
+    if (!V) return;
+    gun = g;
+    B = RB.build(gun);
+    bullets = []; ebullets = []; delayed = [];
+    hp = B.maxHp; kills = 0;
+    refresh();
+    V.wake();
+  }
+
+  P.register({ name: 'range', seed: 41, setup, step, draw, atRest, press, move, release, resize });
+  window.PlayRange = { report, arm, gun: () => gun };
 })();

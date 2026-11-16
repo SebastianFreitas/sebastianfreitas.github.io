@@ -445,10 +445,185 @@
   }
 
   // case-page toys give no XP any more (the bridge is the only place that does); kept so callers don't break
+  // owner, 2026-11-16, asked "Should game-page toys and reading give XP again?": "Bridge only"
   function award() {}
+
+  // an inline 16:9 stage inside a game page's text (figure.gp-stage > canvas): a registered spec
+  // runs on its own small canvas, only on screen, and at rest only a slow tick (spec.tick ms)
+  const stages = new WeakMap();   // stageEl -> V, or null while waiting for the width query
+  function stage(stageEl, name) {
+    if (!stageEl) return null;
+    if (stages.get(stageEl)) return stages.get(stageEl);
+    const canvas = stageEl.querySelector("canvas");
+    const toy = toys[name];
+    if (!canvas || !toy) return null;
+    const spec = toy.spec;
+    const mq = matchMedia("(min-width: " + MIN_W + "px)");
+    if (!mq.matches) {
+      if (stages.has(stageEl)) return null;
+      stages.set(stageEl, null);
+      const onMq = () => {
+        if (!mq.matches) return;
+        mq.removeEventListener("change", onMq);
+        stages.delete(stageEl);
+        stage(stageEl, name);
+      };
+      mq.addEventListener("change", onMq);
+      return null;
+    }
+
+    const reduced = U.reduced();
+    const ctx = canvas.getContext("2d");
+    const box = stageEl.querySelector(".gp-stage-box") || canvas;
+    const statusEl = stageEl.querySelector(".gp-stage-status");
+    const tickMs = spec.tick || 250;
+    let cursorOn = false;
+    let shown = false, resting = false, timer = 0, lastAt = performance.now();
+    let pacer = null;
+    const V = {
+      W: 0, H: 0, dpr: 1, t: 0, dt: 0, rnd: U.mulberry(spec.seed || 1),
+      pointer: { x: -1, y: -1, down: false, has: false },
+      reduced, canvas, ctx, el: stageEl,
+      wake() { wakeUp(); },
+      cursor(on) { if (on !== cursorOn) { cursorOn = on; canvas.style.cursor = on ? "pointer" : ""; } },
+      status(text) { if (statusEl && statusEl.textContent !== text) statusEl.textContent = text; },
+    };
+    stages.set(stageEl, V);
+
+    // true when the box has a size and it (or dpr) changed; the backing store follows
+    function size() {
+      const w = box.clientWidth, h = box.clientHeight;
+      if (!w || !h) return false;
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      if (w === V.W && h === V.H && dpr === V.dpr) return false;
+      V.W = w; V.H = h; V.dpr = dpr;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      return true;
+    }
+
+    function paint(dt) {
+      lastAt = performance.now();
+      V.dt = dt; V.t += dt;
+      spec.step && spec.step(dt, V);
+      ctx.clearRect(0, 0, V.W, V.H);
+      spec.draw(ctx, V);
+    }
+
+    function stopTimer() { if (timer) { clearTimeout(timer); timer = 0; } }
+    function live() { return shown && !document.hidden; }
+
+    // after a frame: at rest -> one slow timer; otherwise the Pacer chain runs
+    function settle() {
+      if (!live()) return;
+      if (spec.atRest && spec.atRest(V)) {
+        resting = true;
+        if (!timer) timer = setTimeout(tick, tickMs);
+      } else {
+        resting = false;
+        pacer.start();
+      }
+    }
+
+    function tick() {
+      timer = 0;
+      if (!live()) return;
+      paint(Math.min((performance.now() - lastAt) / 1000, 1));
+      settle();
+    }
+
+    function wakeUp() {
+      if (reduced || !live()) return;
+      stopTimer();
+      resting = false;
+      pacer.start();
+    }
+
+    // enter the screen / tab visible again: one frame at once, then run or tick
+    function resume() {
+      if (!live()) return;
+      stopTimer();
+      paint(0);
+      settle();
+    }
+
+    if (!size()) { V.W = box.clientWidth; V.H = box.clientHeight; }
+    spec.setup && spec.setup(V);
+    paint(0);
+
+    function refit() {
+      if (!size()) return;
+      spec.resize && spec.resize(V);
+      if (reduced || live()) paint(0);
+    }
+    if (window.ResizeObserver) new ResizeObserver(refit).observe(box);
+    addEventListener("resize", refit);
+    if (reduced) return V;   // a still frame only: no loop, no input
+
+    pacer = Pacer.create({
+      paint: dt => {
+        paint(Math.min(Math.max(dt, 0), 1 / 20));
+        if (spec.atRest && spec.atRest(V)) {
+          resting = true;
+          if (live() && !timer) timer = setTimeout(tick, tickMs);
+        }
+      },
+      atRest: () => false,
+      alive: () => shown && !document.hidden && !resting,
+      scrollWake: false,
+    });
+
+    new IntersectionObserver(es => {
+      const now = es[es.length - 1].isIntersecting;
+      if (now === shown) return;
+      shown = now;
+      if (shown) resume(); else stopTimer();
+    }, { threshold: 0 }).observe(stageEl);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopTimer(); else resume();
+    });
+
+    function local(e) {
+      const r = canvas.getBoundingClientRect();
+      V.pointer.x = e.clientX - r.left; V.pointer.y = e.clientY - r.top; V.pointer.has = true;
+    }
+    // a stage handler that returns false changed nothing the stage draws: no wake, no paint.
+    // Any other return value wakes the stage and paints as before.
+    canvas.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      local(e); V.pointer.down = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      const r = spec.press && spec.press(V.pointer.x, V.pointer.y, V);
+      if (r !== false) wakeUp();
+      if (r) e.preventDefault();
+    });
+    canvas.addEventListener("pointermove", e => {
+      local(e);
+      if (spec.move && spec.move(V.pointer.x, V.pointer.y, V) === false) return;
+      wakeUp();
+    }, { passive: true });
+    canvas.addEventListener("pointerup", e => {
+      local(e); V.pointer.down = false;
+      if (spec.release && spec.release(V.pointer.x, V.pointer.y, V) === false) return;
+      wakeUp();
+    });
+    canvas.addEventListener("pointerleave", () => {
+      V.pointer.x = -1; V.pointer.y = -1; V.pointer.has = false;
+      if (spec.move && spec.move(-1, -1, V) === false) return;
+      wakeUp();
+    });
+    canvas.addEventListener("pointercancel", () => {
+      V.pointer.x = -1; V.pointer.y = -1; V.pointer.down = false; V.pointer.has = false;
+      if (spec.release && spec.release(-1, -1, V) === false) return;
+      wakeUp();
+    });
+    return V;
+  }
 
   // true once the toy `name` has painted two frames (or has no built toy to wait for)
   function painted(name) { const h = handle(name); return !h || h.painted(); }
 
-  window.Play = { register, start: register, open, close, mount, handle, painted, get current() { return current; }, sprite, blit, glow, award, MIN_W };
+  window.Play = { register, start: register, open, close, mount, handle, painted, stage, get current() { return current; }, sprite, blit, glow, award, MIN_W };
 })();

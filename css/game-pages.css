@@ -1,0 +1,299 @@
+/* game pages: one shared art style for projects/*.html, matching the homepage Games rows (black plate, mono label line, condensed title,
+   cream lead, grey detail, mono facts strip, the picture fading into the plate), with one small touch of red and room to breathe.
+   Loaded after play.css. Every rule starts with G = .page-game.page-case:not(.page-404) main.case, which is (0,4,1) like the style.css rules
+   it replaces (.page-case:not(.page-404) .case p:not(.caption), .case > p:first-of-type, the Conclusus 18vh and h2 margins, the nth-of-type
+   widths, the under-900 p margins), and wins them by coming later or by one more type selector. Sections stay flat children of main (toys read
+   main.children). Per-page art sits in the "per page" part; .gp-narrow caps 4:3 and taller media. Red only on .gp-det i, .embed-play::after, the existing .go arrows and one .gp-dia-red rail per diagram. Nothing animates at idle. */
+
+.page-game.page-case:not(.page-404) main.case {
+  --gp-1: 0.5rem; --gp-2: 1rem; --gp-3: 1.5rem; --gp-4: 2.5rem; --gp-5: 4rem; --gp-6: 7rem;
+  --gp-label: #8f8878; --gp-body: #bdb59e; --gp-lead: #f1ecd8; --gp-hair: rgba(228, 221, 198, 0.3); --gp-plate: rgb(4 4 5);
+  --measure: 36rem; --gp-pad: var(--gutter);
+  padding-top: calc(clamp(2rem, 6vh, 4rem) + 1.2rem);
+  counter-reset: gp;
+}
+@media (min-width: 1200px) {   /* the column pulls in to 2.5rem a side; --gp-pad follows so the opener still bleeds to the column edges */
+  .page-game.page-case:not(.page-404) main.case { --gp-pad: var(--gp-4); padding-inline: var(--gp-pad); }
+}
+
+/* ---- opener ---- */
+.page-game.page-case:not(.page-404) main.case > .gp-head {
+  position: relative; isolation: isolate; display: flex; flex-direction: column;
+  margin: var(--gp-2) calc(-1 * var(--gp-pad)) 0; padding: var(--gp-4) var(--gp-pad) var(--gp-3);
+  min-height: min(62vh, 620px);
+  clip-path: polygon(0 6px, 38% 0, 100% 4px, 100% calc(100% - 5px), 55% 100%, 0 calc(100% - 3px));
+}
+.page-game.page-case:not(.page-404) main.case > .gp-head::before { content: ""; position: absolute; inset: 0; z-index: -2; background: var(--gp-plate); }
+.page-game.page-case:not(.page-404) main.case > .gp-head::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: rgba(228, 221, 198, 0.16);
+  clip-path: polygon(0 6px, 38% 0, 100% 4px, 100% 5px, 38% 1px, 0 7px);
+}
+.page-game.page-case:not(.page-404) main.case .gp-art {
+  position: absolute; right: 0; top: 0; width: 58%; height: 100%; object-fit: cover; object-position: var(--gp-pos, center); z-index: -1; max-width: none; margin: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent 8%, #000 30%); mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent 8%, #000 30%); -webkit-mask-composite: source-in; mask-composite: intersect;   /* second layer: the picture also fades out towards the bottom edge, so the facts strip always sits on clean plate */
+}
+.page-game.page-case:not(.page-404) main.case .gp-det {
+  display: flex; align-items: center; gap: 12px;
+  font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label);
+}
+.page-game.page-case:not(.page-404) main.case .gp-det i { display: block; width: 9px; height: 9px; background: var(--type-red); }
+.page-game.page-case:not(.page-404) main.case .gp-det s { display: block; width: 1px; height: 12px; background: var(--gp-hair); text-decoration: none; }
+.page-game.page-case:not(.page-404) main.case .gp-head h1 {
+  font-family: var(--type-head); font-weight: 700; text-transform: uppercase; color: var(--type-cream);
+  font-size: clamp(3.2rem, 6vw, 5.75rem); line-height: 0.9; letter-spacing: 0.02em; margin: var(--gp-3) 0;
+}
+.page-game.page-case:not(.page-404) main.case .gp-head p.gp-lead {
+  font: 500 1.25rem/1.4 var(--type-read); color: var(--gp-lead); max-width: 30rem; margin: 0;
+}
+.page-game.page-case:not(.page-404) main.case .gp-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 0; overflow: hidden; margin: auto 0 0; padding-top: var(--gp-4);
+  font: 500 12px/1 var(--type-mono); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.page-game.page-case:not(.page-404) main.case .gp-meta div { position: relative; display: flex; align-items: center; gap: 7px; margin-right: 29px; }
+.page-game.page-case:not(.page-404) main.case .gp-meta div + div::before { content: ""; position: absolute; left: -15px; top: 0; bottom: 0; width: 1px; background: var(--gp-hair); }
+.page-game.page-case:not(.page-404) main.case .gp-meta dt { font: inherit; letter-spacing: 0.14em; color: var(--gp-label); }
+.page-game.page-case:not(.page-404) main.case .gp-meta dd { margin: 0; font: inherit; color: var(--type-cream); }
+@media (max-width: 899px) {
+  .page-game.page-case:not(.page-404) main.case > .gp-head { min-height: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-art {
+    position: static; order: -1; flex: none; width: calc(100% + 2 * var(--gp-pad)); height: clamp(140px, 42vw, 280px); margin: calc(-1 * var(--gp-4)) calc(-1 * var(--gp-pad)) var(--gp-3);
+    /* under 900 px the picture is a band across the top of the plate at full strength, never behind the text; the desktop mask stays (in from the left, out at the bottom) */
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-meta { flex-direction: column; flex-wrap: nowrap; gap: var(--gp-1) 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-meta div { display: grid; grid-template-columns: 6.5rem 1fr; align-items: baseline; margin-right: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-meta div + div::before { content: none; }
+  .page-game.page-case:not(.page-404) main.case .gp-meta dd { line-height: 1.3; }
+}
+
+/* ---- sections ---- */
+.page-game.page-case:not(.page-404) main.case > h2 {
+  counter-increment: gp; font-family: var(--type-head); font-weight: 700; text-transform: uppercase; color: var(--type-cream);
+  font-size: clamp(2rem, 3.2vw, 2.75rem); line-height: 1; letter-spacing: 0.03em; margin: var(--gp-6) 0 var(--gp-3);
+}
+.page-game.page-case:not(.page-404) main.case > h2::before {
+  content: counter(gp, decimal-leading-zero); display: block; width: 3rem; border-top: 1px solid var(--gp-hair);
+  padding-top: var(--gp-2); margin-bottom: var(--gp-2);
+  font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label);
+}
+.page-game.page-case:not(.page-404) main.case > p {
+  font: 400 1.0625rem/1.65 var(--type-read); color: var(--gp-body); max-width: var(--measure); margin: 0 0 var(--gp-2);
+}
+.page-game.page-case:not(.page-404) main.case > .gp-head + p { margin-top: var(--gp-4); }
+.page-game.page-case:not(.page-404) main.case > h2 + p,
+.page-game.page-case:not(.page-404) main.case > .case-sub + p {
+  font: 500 1.25rem/1.4 var(--type-read); color: var(--gp-lead); max-width: var(--measure); margin-bottom: var(--gp-3);
+}
+.page-game.page-case:not(.page-404) main.case > p.caption,
+.page-game.page-case:not(.page-404) main.case > .gp-stage > p.caption {
+  font: 400 0.72rem/1.6 var(--type-mono); letter-spacing: 0; text-transform: none; color: var(--gp-label); max-width: 44rem; margin: 0 0 var(--gp-4);
+}
+
+/* ---- media ---- */
+.page-game.page-case:not(.page-404) main.case > .clip,
+.page-game.page-case:not(.page-404) main.case > .embed { margin: var(--gp-4) 0 var(--gp-2); }
+.page-game.page-case:not(.page-404) main.case > .clip { outline: 1px solid var(--line); outline-offset: -1px; }
+.page-game.page-case:not(.page-404) main.case > .clip.gp-narrow { max-width: 50rem; }   /* 4:3 and taller media */
+.page-game.page-case:not(.page-404) main.case .embed-shell::before { content: none; }
+.page-game.page-case:not(.page-404) main.case .embed-shell { box-shadow: 0 0 0 1px var(--line); }
+.page-game.page-case:not(.page-404) main.case .embed-play {
+  font-family: var(--type-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.16em; color: var(--type-cream); display: flex; align-items: center; justify-content: center; gap: 14px;   /* square and label centred as one group on the plate */
+}
+.page-game.page-case:not(.page-404) main.case .embed-play::before {
+  width: 15rem; max-width: none; height: 3rem; background: var(--gp-plate); border: 1px solid var(--gp-hair); box-sizing: border-box;
+  clip-path: none; -webkit-mask-image: none; mask-image: none;
+}
+.page-game.page-case:not(.page-404) main.case .embed-play::after {
+  content: ""; order: -1; flex: none; width: 9px; height: 9px;
+  background: var(--type-red);
+}
+.page-game.page-case:not(.page-404) main.case .embed-play:hover,
+.page-game.page-case:not(.page-404) main.case .embed-play:focus-visible { color: var(--type-tag-ink); }
+.page-game.page-case:not(.page-404) main.case .embed-play:hover::before,
+.page-game.page-case:not(.page-404) main.case .embed-play:focus-visible::before { background: var(--type-tag-bg); }
+
+/* ---- per page ---- */
+/* HeavyLight: from 900 px up the title screen is drawn at its own pixel size, anchored right and top, so the lit lamp and crate sit in the opaque half; a third mask layer hides everything left of the picture's own left edge */
+@media (min-width: 900px) {
+  .page-game.page-case:not(.page-404) main.case[data-redlines="case-heavylight"] .gp-art {
+    --gp-edge: linear-gradient(270deg, #000 520px, transparent 650px);
+    object-fit: none; object-position: right -928px top -299px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent 8%, #000 30%), var(--gp-edge);
+    mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent 8%, #000 30%), var(--gp-edge);
+  }
+}
+/* 900 to 1099 px: the man in red (413 to 452 px from the plate's right edge) would sit under the lead text, so the layer ends earlier and hides him whole */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .page-game.page-case:not(.page-404) main.case[data-redlines="case-heavylight"] .gp-art { --gp-edge: linear-gradient(270deg, #000 362px, transparent 404px); }
+}
+
+/* ---- end nav ---- */
+.page-game.page-case:not(.page-404) main.case > .case-nav {
+  margin-top: var(--gp-6); padding: var(--gp-4) 0 var(--gp-5); border-top: 1px solid var(--line);   /* bottom room: the links sat 3 px above the footer band */
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+.page-game.page-case:not(.page-404) main.case .gp-next { text-align: right; }
+.page-game.page-case:not(.page-404) main.case .gp-next small {
+  display: block; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label); margin-bottom: var(--gp-1);
+  transition: color 0.2s ease;
+}
+.page-game.page-case:not(.page-404) main.case .gp-next b {
+  font-family: var(--type-head); font-weight: 700; font-size: 2.5rem; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; color: var(--type-cream);
+}
+.page-game.page-case:not(.page-404) main.case .gp-next:hover small,
+.page-game.page-case:not(.page-404) main.case .gp-next:focus-visible small, .page-game.page-case:not(.page-404) main.case .gp-next:hover b, .page-game.page-case:not(.page-404) main.case .gp-next:focus-visible b { color: inherit; }   /* the title too: cream on the cream hover paper made it vanish */
+
+/* ---- slots (markup in the comments; none used yet) ---- */
+/* <figure class="gp-figure"><div class="gp-figure-body">…</div><figcaption class="gp-cap"><b>FIG. 01</b> Caption</figcaption></figure> */
+.page-game.page-case:not(.page-404) main.case .gp-figure { margin: var(--gp-5) 0; }
+.page-game.page-case:not(.page-404) main.case .gp-figure-body { background: var(--gp-plate); border: 1px solid var(--line); padding: var(--gp-4); min-height: 12rem; }
+.page-game.page-case:not(.page-404) main.case .gp-cap { font: 400 0.72rem/1.6 var(--type-mono); color: var(--gp-label); margin-top: var(--gp-2); }
+.page-game.page-case:not(.page-404) main.case .gp-cap b { color: var(--type-cream); letter-spacing: 0.2em; font-weight: 500; }
+
+/* ---- diagrams (gp-dia): a gameplay loop as a row of numbered steps, arrows between them, and up to two "back" rails that close the loop.
+   Text is HTML (real type sizes at every width, stacks on phones); only the step pictograms are inline SVG. Nothing animates.
+   <figure class="gp-dia">
+     <div class="gp-dia-body">
+       <div class="gp-dia-rail gp-dia-red gp-dia-from-2 gp-dia-to-1"><span>One hit: restart</span></div>     rail above the row, step 2 back to step 1
+       <ol class="gp-dia-flow">
+         <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true">…</svg><b>Read</b><span>One short line.</span></li>     2 to 6 steps, numbered by the sheet
+       </ol>
+       <div class="gp-dia-rail gp-dia-under gp-dia-from-4 gp-dia-to-1"><span>Next level</span></div>          rail under the row
+     </div>
+     <figcaption class="gp-cap"><b>FIG. 01</b> One sentence.</figcaption>
+   </figure>
+   Rails always run back, from a later step to an earlier one; the arrow (the site's .go arrow) lands on the earlier step. gp-dia-red (one rail per diagram at most) turns
+   that rail's arrow and label square --type-red: the only red. Under 900 px the steps stack, the arrows point down and the rails become side
+   brackets (above -> left, under -> right) with the label turned along them, so a rail label stays under about 20 characters. */
+.page-game.page-case:not(.page-404) main.case .gp-dia { margin: var(--gp-4) 0 var(--gp-5); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-body {
+  --gp-dia-gap: 3.5rem; --gp-dia-port: 2.25rem; --gp-dia-rail: 2.75rem;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0 var(--gp-dia-gap);
+  background: var(--gp-plate); border: 1px solid var(--line); padding: var(--gp-4); counter-reset: gp-dia;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow { display: contents; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow > li {
+  grid-row: 2; position: relative; display: flex; flex-direction: column; align-items: flex-start; list-style: none; margin: 0; padding: var(--gp-3);
+  border: 1px solid var(--gp-hair); counter-increment: gp-dia;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow > li::before { content: counter(gp-dia, decimal-leading-zero); font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; color: var(--gp-label); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow > li + li::after, .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after {   /* the site's .go arrow, one definition, turned by transforms; origin 0 0 + a translate keeps it on whole pixels so left/top place the box it covers on screen */
+  content: ""; position: absolute; width: 22px; height: 13px; background: var(--type-cream); transform-origin: 0 0;
+  clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%);
+  top: calc(50% - 6.5px); left: calc(-0.5 * var(--gp-dia-gap) - 12px);
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-ico {
+  display: block; flex: none; width: 3rem; height: 3rem; margin: var(--gp-3) 0 var(--gp-2); overflow: visible;
+  fill: none; stroke: var(--type-cream); stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-ico .gp-dia-dim { stroke: var(--gp-label); }                       /* secondary lines inside a pictogram */
+.page-game.page-case:not(.page-404) main.case .gp-dia-ico .gp-dia-solid { fill: var(--type-cream); stroke: none; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow b { font-family: var(--type-head); font-weight: 700; font-size: 1.5rem; line-height: 1; letter-spacing: 0.04em; text-transform: uppercase; color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow li > span { font: 400 0.9375rem/1.45 var(--type-read); color: var(--gp-body); margin-top: var(--gp-1); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail {   /* a three-sided bracket from step "from" back to step "to"; its label sits on the far line */
+  grid-row: 1; grid-column: var(--a, 1) / var(--b, 3); position: relative; height: var(--gp-dia-rail); margin: 0 var(--gp-dia-port);
+  border: 1px solid var(--gp-hair); border-bottom: 0; display: flex; justify-content: center; align-items: flex-start;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under { grid-row: 3; border: 1px solid var(--gp-hair); border-top: 0; align-items: flex-end; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span {
+  display: flex; align-items: center; gap: 9px; padding: 0 var(--gp-2); background: var(--gp-plate); transform: translateY(-50%); white-space: nowrap;
+  font: 500 12px/1 var(--type-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gp-label);
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateY(50%); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail::before, .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after {   /* points down the left leg; the shaft is centred on the hairline; tip on the earlier step. Built from a box (shaft) and a border triangle (head), not a rotated clip-path: those paint on whole pixels, so the head stays one flat colour at any fractional layout position (the rotated clip-path left the wings at 75% in Firefox and Chromium) */
+  content: ""; position: absolute; left: -7px; background: none; clip-path: none; transform: none; width: 0; height: 0; border: 0 solid transparent;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail::before { left: -3px; top: calc(100% - 22px); width: 5px; height: 12px; background: var(--gp-arrow, var(--type-cream)); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail::after { top: calc(100% - 10px); border-width: 10px 6px 0 7px; border-top-color: var(--gp-arrow, var(--type-cream)); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::before { top: 10px; }   /* points up */
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { top: 0; border-width: 0 6px 10px 7px; border-bottom-color: var(--gp-arrow, var(--type-cream)); border-top-color: transparent; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red { --gp-arrow: var(--type-red); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-to-1 { --a: 1; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-to-2 { --a: 2; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-to-3 { --a: 3; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-to-4 { --a: 4; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-to-5 { --a: 5; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-from-2 { --b: 3; }   /* --b is the grid line after the step */
+.page-game.page-case:not(.page-404) main.case .gp-dia-from-3 { --b: 4; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-from-4 { --b: 5; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-from-5 { --b: 6; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-from-6 { --b: 7; }
+/* via rail: one red rail fed by the steps between "from" and "to". The body's unused ::before/::after become two 1 px drops into steps 2 and 3, placed like the rail's own right leg
+   (step right edge minus the port); the 1 px top margin keeps each off the hairline, so no pixel is painted twice. The label moves onto the stretch every death shares,
+   between the left leg and the first drop, centred there (25% of the rail minus half the drop's distance from the centre). */
+.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before,
+.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after {
+  content: ""; grid-row: 1; justify-self: end; width: 0; margin: 1px var(--gp-dia-port) 0 0; border-right: 1px solid var(--gp-hair);
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before { grid-column: 2; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after { grid-column: 3; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via > span {
+  position: absolute; top: 0; left: calc(25% - (var(--gp-dia-gap) / 2 + var(--gp-dia-port)) / 2); transform: translate(-50%, -50%);
+}
+@media (min-width: 900px) and (max-width: 1199px) {
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body { --gp-dia-gap: 2.5rem; --gp-dia-port: 1.5rem; padding: var(--gp-3); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li { padding: var(--gp-2); }
+}
+@media (max-width: 899px) {   /* stacked: [left bracket] [steps] [right bracket] */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body {
+    --gp-dia-gap: 2.25rem; --gp-dia-port: 1.5rem; --gp-dia-rail: 1.5rem;
+    grid-auto-flow: row; grid-template-columns: var(--gp-dia-rail) minmax(0, 1fr) var(--gp-dia-rail); grid-auto-columns: auto; gap: var(--gp-dia-gap) 0; padding: var(--gp-3) var(--gp-1);
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li { grid-row: auto; grid-column: 2; display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); column-gap: var(--gp-2); align-items: start; padding: var(--gp-2); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li::before, .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li > b, .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li > span { grid-column: 2; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li > b { margin-top: var(--gp-1); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-ico { grid-column: 1; grid-row: 1 / span 3; width: 2.5rem; height: 2.5rem; margin: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li + li::after {   /* the arrow points down */
+    top: calc(-0.5 * var(--gp-dia-gap) - 12px); left: calc(50% - 6.5px); transform: translateX(13px) rotate(90deg);
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail, .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under {
+    grid-column: 1; grid-row: var(--a, 1) / var(--b, 3); height: auto; margin: var(--gp-dia-port) 0;
+    border: 1px solid var(--gp-hair); border-right: 0; align-items: center; justify-content: flex-start;
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under { grid-column: 3; border: 1px solid var(--gp-hair); border-left: 0; justify-content: flex-end; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span { writing-mode: vertical-rl; padding: var(--gp-1) 0; font-size: 10px; letter-spacing: 0.12em; transform: translateX(-50%) rotate(180deg); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateX(50%); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail::before { display: none; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after { left: auto; right: 0; top: -7px; width: 22px; height: 13px; border: 0; background: var(--gp-arrow, var(--type-cream)); clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { right: auto; left: 0; top: -7px; border: 0; transform: translateX(22px) scaleX(-1); }
+  /* the drops become arms from the bracket's line into steps 2 and 3, 1.5rem above each step's bottom like the bracket's own bottom arm; 1 px off the vertical line.
+     The label sits below the top arm with 1.5rem of bare line, on the stretch above the first arm. */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before,
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after {
+    grid-column: 1; justify-self: stretch; align-self: end; width: auto; height: 0; margin: 0 0 var(--gp-dia-port) 1px; border-right: 0; border-bottom: 1px solid var(--gp-hair);
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before { grid-row: 2; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after { grid-row: 3; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via { align-items: flex-start; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via > span { position: static; margin-top: var(--gp-dia-port); transform: translateX(-50%) rotate(180deg); }
+  .page-game.page-case:not(.page-404) main.case .gp-stage { display: none; }   /* the play stage is desktop only */
+}
+
+
+/* <figure class="gp-stage"><div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: …</span><span class="gp-stage-status"></span></div><div class="gp-stage-box"><canvas></canvas></div><p class="caption">…</p></figure> */
+.page-game.page-case:not(.page-404) main.case > figure.gp-stage { width: 100%; max-width: 72rem; margin: var(--gp-4) 0 0; padding: 0; }
+.page-game.page-case:not(.page-404) main.case .gp-stage-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--gp-2); white-space: nowrap; margin-bottom: var(--gp-2);
+  font: 500 0.72rem/1.6 var(--type-mono); letter-spacing: 0; text-transform: none;
+}
+.page-game.page-case:not(.page-404) main.case .gp-stage-label { display: inline-flex; align-items: center; gap: 14px; color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-stage-label > i { flex: none; width: 9px; height: 9px; background: var(--type-red); }
+.page-game.page-case:not(.page-404) main.case .gp-stage-status { color: var(--gp-label); font-variant-numeric: tabular-nums; text-align: right; }
+.page-game.page-case:not(.page-404) main.case .gp-stage-box {
+  position: relative; aspect-ratio: 16 / 9; background: var(--gp-plate); margin: 0 0 var(--gp-2);
+  box-shadow: inset 0 0 0 1px rgba(228, 221, 198, 0.15); user-select: none;
+}
+.page-game.page-case:not(.page-404) main.case .gp-stage-box > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* <dl class="gp-facts"><div><dt>Levels</dt><dd>30</dd></div>…</dl> */
+.page-game.page-case:not(.page-404) main.case .gp-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin: var(--gp-4) 0;
+}
+.page-game.page-case:not(.page-404) main.case .gp-facts > div { background: var(--gp-plate); padding: var(--gp-3); }
+.page-game.page-case:not(.page-404) main.case .gp-facts dt { font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label); }
+.page-game.page-case:not(.page-404) main.case .gp-facts dd { margin: var(--gp-1) 0 0; font-family: var(--type-head); font-weight: 700; font-size: 1.5rem; line-height: 1.1; color: var(--type-cream); }
+
+/* <div class="gp-nums"><div><b>30</b><span>Levels</span></div>…</div> */
+.page-game.page-case:not(.page-404) main.case .gp-nums { display: flex; flex-wrap: wrap; gap: var(--gp-4) var(--gp-5); margin: var(--gp-4) 0; }
+.page-game.page-case:not(.page-404) main.case .gp-nums > div b { display: block; font-family: var(--type-head); font-weight: 700; font-size: clamp(3rem, 5vw, 4.5rem); line-height: 0.9; color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-nums > div span { display: block; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label); margin-top: var(--gp-1); }

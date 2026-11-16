@@ -30,7 +30,8 @@ Drawing anything (Rex kingdoms, Mainland factions, any new place):
 `.claude/rules/art-style.md`. Instruments, sites, readings, HUD tiles:
 `.claude/rules/instruments.md`. They load only when a matching file is
 read, and you delegate reading, so read them yourself before designing
-in those areas.
+in those areas. Game pages (`projects/*.html`, `css/game-pages.css`):
+`.claude/rules/game-pages.md`.
 
 ## Verify
 

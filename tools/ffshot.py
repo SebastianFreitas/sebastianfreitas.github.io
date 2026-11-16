@@ -9,6 +9,7 @@ Playwright's bundled Firefox missed row-art bugs twice that the real install sho
 Serves the worktree itself (nav-flows' start_server), picks the gate's world button when
 the gate shows. Prints the png path(s), the Firefox version, innerWidth x innerHeight and
 console errors (window errors caught by a probe; Firefox gives Selenium no console log).
+Firefox cannot go under 500 px wide; use Playwright for 390.
 Full-viewport shots. Exits 1 on errors or a missing firefox.exe.
 """
 import argparse

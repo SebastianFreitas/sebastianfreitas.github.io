@@ -16,11 +16,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=331">
-<link rel="stylesheet" href="../css/beacon.css?v=331">
-<link rel="stylesheet" href="../css/play.css?v=331">
+<link rel="stylesheet" href="../css/style.css?v=332">
+<link rel="stylesheet" href="../css/beacon.css?v=332">
+<link rel="stylesheet" href="../css/play.css?v=332">
+<link rel="stylesheet" href="../css/game-pages.css?v=332">
 </head>
-<body class="page-case">
+<body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="topbar">
@@ -37,54 +38,78 @@
 <div class="folder-body">
 <main class="case" id="main" data-redlines="case-heavylight">
   <a class="back" data-banner="tab" data-banner-on="before" data-wear="button" href="../#heavylight"><span class="go go-back" aria-hidden="true"></span>Back to Work</a>
-  <h1>HeavyLight</h1>
-  <div class="case-sub"><span class="type-label" data-banner="tab">2D puzzle platformer · Unity</span></div>
-
-    <p>A 2D puzzle platformer built on one rule: <span class="key">light has weight</span>. Lamps push whatever stands in their beam, crates and you included. Every puzzle in the game is a consequence of that single rule.</p>
+  <header class="gp-head">
+    <img class="gp-art" src="../media/heavylight/heavylightFrontPage.webp" alt="" style="--gp-pos:50% 100%">
+    <div class="gp-det"><i></i><span>OBJ_0004</span><s></s><span>Shipped, playable</span></div>
+    <h1>HeavyLight</h1>
+    <p class="gp-lead">A 2D puzzle platformer built on one rule: <span class="key">light has weight</span>. Lamps push whatever stands in their beam, crates and you&nbsp;included.</p>
+    <dl class="gp-meta">
+      <div><dt>Genre</dt><dd>2D puzzle platformer</dd></div>
+      <div><dt>Engine</dt><dd>Unity, WebGL</dd></div>
+      <div><dt>Language</dt><dd>C#</dd></div>
+      <div><dt>Role</dt><dd>Solo</dd></div>
+    </dl>
+  </header>
 
     <div class="embed embed-shell"
          data-src="https://itch.io/embed-upload/6434502?color=002f4b"
          data-title="Play HeavyLight in your browser"
-         style="background-image:url('../media/heavylight/heavylightFrontPage.webp')">
+         style="background-image:url('../media/heavylight/lamps.jpg')">
       <button type="button" class="embed-play" data-wear="button">Play HeavyLight</button>
     </div>
     <p class="caption">Playable here. Also on <a href="https://sebastianfreitas.itch.io/heavylight">itch.io</a>.</p>
 
     <h2>The brief</h2>
-    <p><span class="key">HeavyLight</span> was a challenge I set myself: make a game fast, under tight constraints, and keep it simple. One mechanic, some physics, and a lot of level design. It went from nothing to a finished web build in under four weeks.</p>
+    <p><span class="key">HeavyLight</span> was a challenge I set myself: one mechanic, some physics, a lot of level design. Built in under four&nbsp;weeks.</p>
+    <p>Every level is one loop and one decision: where to step out.</p>
+    <figure class="gp-dia">
+      <div class="gp-dia-body">
+        <div class="gp-dia-rail gp-dia-red gp-dia-from-4 gp-dia-to-1"><span>Wrong spot: restart</span></div>
+        <ol class="gp-dia-flow">
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 13V4h9M35 4h9v9M44 35v9h-9M13 44H4v-9"/><path d="M18 36V23a6 6 0 0 1 12 0v13"/><path class="gp-dia-dim" d="M12 36h24"/></svg><b>Read</b><span>Find the lamps, crates, exit.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 25h8v10H4zM12 25l8-5v20l-8-5"/><path class="gp-dia-dim" d="M25 24l18-5M25 30h18M25 36l18 5"/><circle cx="10" cy="9" r="6"/><path d="M10 6v3h3"/></svg><b>Switch</b><span>Press&nbsp;E. The timer starts.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path class="gp-dia-dim" d="M3 5h42M3 43h42"/><rect class="gp-dia-solid" x="5" y="20" width="8" height="8"/><path d="M17 17h14v14H17zM17 17l14 14M31 17L17 31"/><path d="M35 24h9M39 19l5 5-5 5"/></svg><b>Ride</b><span>Beams push you and crates.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path class="gp-dia-dim" d="M3 5h21M3 43h21"/><path class="gp-dia-dim" stroke-dasharray="3 4" d="M24 5v38"/><path d="M5 24h13M13 19l5 5-5 5"/><rect class="gp-dia-solid" x="28" y="20" width="8" height="8"/><path d="M42 5v38"/></svg><b>Stop</b><span>Step out and you stop dead.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M5 42h38"/><path d="M17 42V11h17v31"/><path d="M4 28h17M16 23l5 5-5 5"/><path d="M39 8h7M42.5 4.5v7"/></svg><b>Exit</b><span>Next level: one new thing.</span></li>
+        </ol>
+        <div class="gp-dia-rail gp-dia-under gp-dia-from-4 gp-dia-to-2"><span>Next lamp</span></div>
+      </div>
+      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. Stop in the wrong spot and R&nbsp;resets the room, crates and all.</figcaption>
+    </figure>
 
     <h2>The rule</h2>
-    <p>A lamp's <span class="key">beam</span> is a physical force. Stand in a sideways beam and it carries you along it. Stand under a lamp aimed up and it lifts you. You can nudge inside a beam but you cannot fight it, and the moment you step out you stop dead, so where a beam ends matters as much as where it starts.</p>
-    <p><span class="key">Crates</span> go further. A crate treats the beam as its new down. Point a lamp sideways and the crate falls sideways. Point it up and the crate climbs. Switch it off and the crate drops back to the floor.</p>
+    <p>A <span class="key">beam</span> is a physical force you cannot fight. Where it ends matters as much as where it starts: step out and you&nbsp;stop&nbsp;dead.</p>
+    <figure class="gp-stage">
+      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click a lamp to switch it on</span><span class="gp-stage-status">Lamps off</span></div>
+      <div class="gp-stage-box"><canvas></canvas></div>
+      <p class="caption">A room in the game's own tiles: the player between two wall lamps, a crate over a floor lamp.</p>
+    </figure>
+    <p><span class="key">Crates</span> treat the beam as their new down: aim a lamp sideways and the crate falls&nbsp;sideways.</p>
 
     <h2>Lamps</h2>
-    <p>Most lamps start off. Walk up, press E, and the beam comes on for a set number of seconds, then clicks off on its own. Press again to cut it early. Some lamps blink on a cycle instead and cannot be touched. Timers and blink cycles are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
-    <video class="clip" data-wear="image" src="../media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">Lamps at work. The upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across the room and sets it down on the far ledge, right under the key.</p>
+    <p>Timers are the whole difficulty curve: the same lamp is a lift in one level and a trap in the next.</p>
+    <video class="clip gp-narrow" data-wear="image" src="../media/heavylight/lamps.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <p class="caption">Upward beams lift the player to the crate's ledge, then a sideways beam carries the crate across to the key.</p>
 
     <h2>One new thing per level</h2>
-    <p>Twenty levels, and every one adds something the last did not have. The first few are only walking and jumping. Then the first lamp, then timers, then crates, then spikes, then beams that push down instead of up. By the end you are chaining lamps on timers while a crate falls in three directions. Nothing is introduced twice. That is what kept the game short and what made the level design take most of the four weeks.</p>
-
-    <h2>The journal</h2>
-    <p>ESC opens the <span class="key">journal</span>, which is the pause menu and the level select in one. Every level has a mark: reached, passed, or fully completed. Fully completed means you found every clue in it. Any level can be replayed from the journal, and R restarts the current one, crates and all.</p>
-    <img class="clip" data-wear="image" src="../media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
-    <p class="caption">The journal. A full red frame is a level with every clue found, a half frame is passed, plain is reached, dark is not yet.</p>
+    <p>Twenty levels, each adding one thing: the first lamp, timers, crates, spikes, beams that push down. Nothing is introduced&nbsp;twice.</p>
 
     <h2>The clues</h2>
-    <p>There is a story, and it is optional. Small glowing wisps sit around each level. Touch one and it bursts into a line of thought from the <span class="key">man in red</span>, an investigator sent to an old town on a case everyone called normal. The houses carry the same symbols as a notebook he cannot read, and every house with the symbols was left in a hurry. Some wisps are red, and those speak in a different voice.</p>
-    <p>Find every clue in every level and the ending changes. Three secret levels open after the last one, and the thing behind the barred door makes an offer. Leave, fight, or sign.</p>
-
-    <h2>Under the hood</h2>
-    <p>The base is Unity's 2D platformer template, rebuilt where it mattered. The controller got coyote time, a jump buffer, a variable height jump and an input curve of my own. The beam push, the crate gravity, the lamp timers, the clue system and the journal are all mine. The build is WebGL and checks which site it runs on. A copy uploaded somewhere else sends you to a gif and quits.</p>
+    <p>The story is optional. Touch a wisp and it bursts into a thought from the <span class="key">man in red</span>, an investigator on a case everyone called normal.</p>
+    <p>Find them all and three secret levels open, ending on a choice: leave, fight, or&nbsp;sign.</p>
+    <img class="clip gp-narrow" data-wear="image" src="../media/heavylight/journal.webp" alt="The journal: twenty numbered level buttons in two rows, some with a full red frame, most with a half frame, two dark" width="941" height="704" loading="lazy">
+    <p class="caption">The journal, on&nbsp;ESC: a full red frame is every clue found, half is passed, plain is reached.</p>
 
     <h2>Built to be reused</h2>
-    <p>I wrote it as a base rather than a one-off. The follow-up, <a href="conclusus.html">Conclusus</a>, reused it for 30 levels and four new mechanics and took less time to build than the original. That was the actual test of whether the base was any good.</p>
+    <p>I wrote it as a base, not a one-off. <a href="conclusus.html">Conclusus</a> reused it for 30&nbsp;levels and four new mechanics, in less time.</p>
+    <p>Under it: Unity's 2D platformer template and my own controller.</p>
 
     <h2>What it taught me</h2>
-    <p>The camera is the one system I left to the engine's stock tools, and it is the one that fought me the whole way: per-level bounds, a preview pan to the exit at the start of each level, and a reset dance every time the player died. Since then, anything that has to feel right I write myself.</p>
+    <p>I left the camera to the engine's stock tools, and it fought me the whole way. Since then, anything that has to feel right I write myself.</p>
 
     <nav class="case-nav" aria-label="More work">
-      <a class="next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="sector-zero.html">Next: Sector Zero<span class="go" aria-hidden="true"></span></a>
+      <a class="gp-up" data-banner="tab" data-banner-on="before" data-wear="button" href="../#heavylight"><span class="go go-back" aria-hidden="true"></span>Back to Work</a>
+      <a class="next gp-next" data-banner="tab" data-banner-on="before" data-wear="button" rel="next" href="sector-zero.html"><small>Next game</small><b>Sector Zero</b><span class="go" aria-hidden="true"></span></a>
     </nav>
 </main>
 </div>
@@ -99,20 +124,20 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=331"></script>
-<script src="../js/site/xp.js?v=331"></script>
-<script src="../js/site/surge.js?v=331"></script>
-<script src="../js/lib/pacer.js?v=331"></script>
-<script src="../js/site/embed.js?v=331"></script>
-<script src="../js/site/lazy-video.js?v=331"></script>
-<script src="../js/pages/play.js?v=331"></script>
-<script src="../js/shared/heavylight-sprites.js?v=331"></script>
-<script src="../js/pages/heavylight.js?v=331"></script>
-<script src="../js/site/banner.js?v=331"></script>
-<script src="../js/site/shapes.js?v=331"></script>
-<script src="../js/site/barwear.js?v=331"></script>
-<script src="../js/site/redlines.js?v=331"></script>
-<script src="../js/site/back.js?v=331"></script>
-<script>if (window.Play && matchMedia("(min-width: 900px)").matches) Play.open(document.getElementById("main"), "heavylight");</script>
+<script src="../js/lib/util.js?v=332"></script>
+<script src="../js/site/xp.js?v=332"></script>
+<script src="../js/site/surge.js?v=332"></script>
+<script src="../js/lib/pacer.js?v=332"></script>
+<script src="../js/site/embed.js?v=332"></script>
+<script src="../js/site/lazy-video.js?v=332"></script>
+<script src="../js/pages/play.js?v=332"></script>
+<script src="../js/shared/heavylight-sprites.js?v=332"></script>
+<script src="../js/pages/heavylight.js?v=332"></script>
+<script src="../js/site/banner.js?v=332"></script>
+<script src="../js/site/shapes.js?v=332"></script>
+<script src="../js/site/barwear.js?v=332"></script>
+<script src="../js/site/redlines.js?v=332"></script>
+<script src="../js/site/back.js?v=332"></script>
+<script>if (window.Play) Play.stage(document.querySelector("figure.gp-stage"), "heavylight");</script>
 </body>
 </html>

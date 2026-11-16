@@ -181,7 +181,8 @@ def pass_gate(page, wait=2500):
     """Any later visit: the gate shows with no boot log; wait for the button to be ready, press it."""
     page.wait_for_selector("#gate-panel.on", timeout=10000)
     page.wait_for_function("!document.getElementById('gate-world').hasAttribute('aria-disabled')", timeout=15000)
-    page.click("#gate-world")
+    # a DOM click: a gate that auto-continued in the tick it turned ready is already closed, and a closed gate ignores the press
+    page.evaluate("document.getElementById('gate-world').click()")
     page.wait_for_timeout(wait)
 
 
@@ -196,7 +197,14 @@ def gate_state(page):
 def goto_cc(page, base):
     """Load the Conclusus page and let its play layer start."""
     page.goto(base + "/projects/conclusus.html")
-    page.wait_for_selector("#cc-taught")
+    page.wait_for_selector("figure.gp-stage", state="attached")
+    page.wait_for_timeout(1500)
+
+
+def goto_hl(page, base):
+    """Load the HeavyLight page and let its stage start."""
+    page.goto(base + "/projects/heavylight.html")
+    page.wait_for_selector("figure.gp-stage", state="attached")
     page.wait_for_timeout(1500)
 
 # ------------------------------------------------------------------ flows
@@ -998,7 +1006,8 @@ def flow_links(browser, base):
 
 
 CC_OWNED = "() => !!(window.XP && XP.has('proj-conclusus'))"
-CC_PLAY_IDS = ("play-conclusus", "play-cc-key1", "play-cc-key2", "play-cc-key3", "play-cc-timed", "play-cc-win")
+CC_PLAY_IDS = ("play-conclusus",)
+HL_REPORT = "() => { const P = window.PlayHeavyLight; return P && P.report ? P.report() : null; }"
 CC_PLAY_OWNED = "ids => ids.filter(id => window.XP && XP.has(id))"
 CC_REPORT = "() => { const P = window.PlayConclusus; return P && P.report ? P.report() : null; }"
 CC_HEAD = "() => { const r = document.getElementById('cc-taught').getBoundingClientRect(); return { top: r.top, mid: innerHeight / 2, y: scrollY }; }"
@@ -1052,32 +1061,23 @@ def flow_cc_read_xp(browser, base):
 
 
 def flow_cc_scroll_pays_nothing(browser, base):
-    """Conclusus: scrolling the whole page and back owns no play-* XP and takes no key."""
+    """Conclusus: scrolling the whole page and back owns no play-* XP and teleports nothing."""
     ctx, page = new_page(browser, DESKTOP)
     goto_cc(page, base)
     page.wait_for_timeout(1500)
     r = page.evaluate(CC_REPORT)
     check("cc-scroll-pays-nothing: report() present", r is not None)
-    check("cc-scroll-pays-nothing: not revealed on open", r and not r.get("revealed"), r and r.get("rev"))
     page.mouse.move(DESKTOP["width"] - 60, DESKTOP["height"] / 2)
-    revealed_seen = False
     last_y = None
     still = 0
-    for i in range(200):
+    for _ in range(200):
         page.mouse.wheel(0, 240)
         page.wait_for_timeout(120)
         y = page.evaluate("() => scrollY")
-        if i % 5 == 0:
-            rr = page.evaluate(CC_REPORT)
-            if rr and rr.get("revealed"):
-                revealed_seen = True
         still = still + 1 if y == last_y else 0
         last_y = y
         if still >= 3:
             break
-    rr = page.evaluate(CC_REPORT)
-    if rr and rr.get("revealed"):
-        revealed_seen = True
     page.wait_for_timeout(800)
     last_y = None
     still = 0
@@ -1090,147 +1090,179 @@ def flow_cc_scroll_pays_nothing(browser, base):
         if y == 0 or still >= 3:
             break
     page.wait_for_timeout(800)
-    check("cc-scroll-pays-nothing: revealed while scrolling", revealed_seen)
     owned = page.evaluate(CC_PLAY_OWNED, list(CC_PLAY_IDS))
     check("cc-scroll-pays-nothing: no play-* XP owned", owned == [], owned)
     r = page.evaluate(CC_REPORT)
-    beats = r["beats"]
-    check("cc-scroll-pays-nothing: keys 1-3 not done",
-          all(k in beats and beats[k] and not beats[k]["done"] for k in ("key1", "key2", "key3")), beats)
-    check("cc-scroll-pays-nothing: still revealed after scrolling back", r["revealed"])
-    h2y = page.evaluate("() => document.getElementById('cc-taught').getBoundingClientRect().top + scrollY")
-    check("cc-scroll-pays-nothing: a platform at or below the 'What it taught me' h2",
-          any(p["y"] >= h2y for p in r["plats"]), {"h2y": h2y, "max_y": max((p["y"] for p in r["plats"]), default=None)})
+    check("cc-scroll-pays-nothing: no teleport, marker still shown", r is not None and r["teleports"] == 0 and r["marker"] is True, r)
     ctx.close()
 
 
-def flow_cc_keys(browser, base):
-    """Conclusus: the play beat unlocks key 1; keys 1-3 fly to the tray in order; a locked key does nothing."""
+def cc_stage_view(page):
+    """Scroll the Conclusus stage to mid-viewport and let it paint."""
+    page.evaluate("() => { const r = document.querySelector('figure.gp-stage').getBoundingClientRect(); window.scrollTo({ top: scrollY + r.top + r.height / 2 - innerHeight / 2, behavior: 'instant' }); }")
+    page.wait_for_timeout(700)
+
+
+def hl_stage_view(page):
+    """Scroll the HeavyLight stage to mid-viewport and let it paint."""
+    page.evaluate("() => { const r = document.querySelector('figure.gp-stage').getBoundingClientRect(); window.scrollTo({ top: scrollY + r.top + r.height / 2 - innerHeight / 2, behavior: 'instant' }); }")
+    page.wait_for_timeout(700)
+
+
+def hl_click(page, lamp_id):
+    """Click a HeavyLight lamp at its fresh report() centre (viewport px); returns the report read just before the click."""
+    r = page.evaluate(HL_REPORT)
+    lamp = next(l for l in r["lamps"] if l["id"] == lamp_id)
+    page.mouse.click(lamp["cx"], lamp["cy"])
+    return r
+
+
+def cc_click(page, kind):
+    """Click a stage target (report().targets[kind], viewport coordinates), polling up to 4 s for it; None (a failed check) when there is none."""
+    r = None
+    for _ in range(80):
+        r = page.evaluate(CC_REPORT)
+        if r and r["targets"].get(kind):
+            break
+        page.wait_for_timeout(50)
+    t = r and r["targets"].get(kind)
+    if not t:
+        check(f"cc: stage target {kind} available to click", False, r)
+        return None
+    page.mouse.click(t["x"], t["y"])
+    return t
+
+
+def flow_cc_teleport(browser, base):
+    """Conclusus teleport toy: a click on a ledge puts the man there, facing the way he went; the award fires once; no XP."""
     ctx, page = new_page(browser, DESKTOP)
     goto_cc(page, base)
-    page.wait_for_timeout(1500)
-
-    def click_beat(kind):
-        r = page.evaluate(CC_REPORT)
-        b = r["beats"][kind]
-        if b is None:
-            check(f"cc-keys: {kind} beat present", False, r["beats"])
-            return None
-        page.evaluate("y => window.scrollTo(0, Math.max(0, y - innerHeight / 2))", b["y"])
-        page.wait_for_timeout(900)
-        r = page.evaluate(CC_REPORT)
-        b = r["beats"][kind]
-        sy = page.evaluate("() => scrollY")
-        page.mouse.click(b["x"], b["y"] - sy)
-        return b
+    cc_stage_view(page)
 
     r = page.evaluate(CC_REPORT)
-    check("cc-keys: tray empty before any click", r["tray"] == 0, r["tray"])
-    check("cc-keys: tray has 3 canvases",
-          page.evaluate("() => document.querySelectorAll('.cc-tray canvas').length") == 3)
-    check("cc-keys: fly overlay present", page.evaluate("() => !!document.querySelector('canvas.cc-fly')"))
+    check("cc-teleport: stage built, 0 teleports, marker shown", r is not None and r["teleports"] == 0 and r["marker"] is True, r)
+    page.evaluate("() => { window.__awards = []; const a = Play.award; Play.award = function (id) { window.__awards.push(id); return a.apply(this, arguments); }; }")
 
-    click_beat("key2")
-    page.wait_for_timeout(1500)
-    owned = page.evaluate(CC_PLAY_OWNED, ["play-cc-key2"])
-    check("cc-keys: locked key 2 not owned", owned == [], owned)
+    t = cc_click(page, "tl")
+    page.wait_for_timeout(150)
     r = page.evaluate(CC_REPORT)
-    check("cc-keys: locked key 2 leaves tray empty", r["tray"] == 0, r["tray"])
-    check("cc-keys: key 2 not done", not r["beats"]["key2"]["done"], r["beats"]["key2"])
-    check("cc-keys: key 1 locked before play", r["beats"]["key1"]["locked"], r["beats"]["key1"])
-    vis = page.evaluate("() => getComputedStyle(document.querySelector('.cc-tray')).visibility")
-    check("cc-keys: tray visible after reveal", vis == "visible", vis)
+    if t and r:
+        m = r["man"]
+        check("cc-teleport: click tl puts the man on it, facing left, 1 teleport, marker gone",
+              abs(m["x"] - t["x"]) <= 4 and abs(m["y"] - t["y"]) <= 4 and m["face"] == -1 and r["teleports"] == 1 and r["marker"] is False, [m, t, r["teleports"]])
+        check("cc-teleport: the teleport draws a burst", r["bursts"] > 0, r["bursts"])
+    awards = page.evaluate("() => window.__awards")
+    check("cc-teleport: Play.award called once with play-conclusus", awards == ["play-conclusus"], awards)
 
-    click_beat("play")
-    page.wait_for_timeout(1500)
-    owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus"])
-    check("cc-keys: play-conclusus not owned, XP is bridge-only", owned == [], owned)
+    t = cc_click(page, "tr")
+    page.wait_for_timeout(150)
     r = page.evaluate(CC_REPORT)
-    check("cc-keys: play beat done", r["beats"]["play"]["done"], r["beats"]["play"])
-    check("cc-keys: key 1 unlocked", r["beats"]["key1"]["locked"] is False, r["beats"]["key1"])
-
-    for n in (1, 2, 3):
-        click_beat(f"key{n}")
-        page.wait_for_timeout(1500)
-        kid = f"play-cc-key{n}"
-        owned = page.evaluate(CC_PLAY_OWNED, [kid])
-        check(f"cc-keys: {kid} not owned, XP is bridge-only", owned == [], owned)
-        r = page.evaluate(CC_REPORT)
-        check(f"cc-keys: key {n} done", r["beats"][f"key{n}"]["done"], r["beats"][f"key{n}"])
-        check(f"cc-keys: tray == {n}", r["tray"] == n, r["tray"])
-        if n < 3:
-            nxt = r["beats"][f"key{n + 1}"]
-            check(f"cc-keys: key {n + 1} unlocked", nxt["locked"] is False, nxt)
-
-    hint = page.evaluate("() => document.querySelector('.play-hint').textContent")
-    check("cc-keys: hint after key 3", hint == "three keys: open the door", hint)
+    if t and r:
+        m = r["man"]
+        check("cc-teleport: click tr puts the man on it, facing right, 2 teleports",
+              abs(m["x"] - t["x"]) <= 4 and abs(m["y"] - t["y"]) <= 4 and m["face"] == 1 and r["teleports"] == 2, [m, t, r["teleports"]])
+    awards = page.evaluate("() => window.__awards")
+    check("cc-teleport: still one award call after the second teleport", awards == ["play-conclusus"], awards)
     ctx.close()
 
 
-def flow_cc_win(browser, base):
-    """Conclusus: fresh storage, play beat, keys 1-3, then the door: no play-* id owned (XP is bridge-only), the door stays open and won, he reappears."""
+def flow_cc_idle(browser, base):
+    """Conclusus teleport toy: after a click and the mouse leaving, bursts end and nothing paints at rest."""
     ctx, page = new_page(browser, DESKTOP)
     goto_cc(page, base)
-    page.wait_for_timeout(1500)
-
-    def click_beat(kind):
+    cc_stage_view(page)
+    cc_click(page, "tl")
+    page.mouse.move(5, 5)
+    r = None
+    for _ in range(40):
+        page.wait_for_timeout(50)
         r = page.evaluate(CC_REPORT)
-        b = r["beats"][kind]
-        if b is None:
-            check(f"cc-win: {kind} beat present", False, r["beats"])
-            return None
-        page.evaluate("y => window.scrollTo(0, Math.max(0, y - innerHeight / 2))", b["y"])
-        page.wait_for_timeout(900)
-        r = page.evaluate(CC_REPORT)
-        b = r["beats"][kind]
-        sy = page.evaluate("() => scrollY")
-        page.mouse.click(b["x"], b["y"] - sy)
-        return b
-
+        if r and r["bursts"] == 0:
+            break
+    check("cc-idle: bursts reach 0 within 2 s", r is not None and r["bursts"] == 0, r and r["bursts"])
+    snap = "() => document.querySelector('figure.gp-stage canvas').toDataURL()"
+    d0, img0 = r and r["draws"], page.evaluate(snap)
+    page.wait_for_timeout(1000)
     r = page.evaluate(CC_REPORT)
-    check("cc-win: door beat present", r["beats"]["door"] is not None, r["beats"])
-    check("cc-win: door locked before keys", r["beats"]["door"]["locked"] is True, r["beats"]["door"])
-    check("cc-win: at most 5 silhouettes", len(r["sils"]) <= 5, len(r["sils"]))
+    img1 = page.evaluate(snap)
+    check("cc-idle: draws unchanged over 1 s", r is not None and r["draws"] == d0, [d0, r and r["draws"]])
+    check("cc-idle: the canvas is unchanged over 1 s", img0 == img1)
+    ctx.close()
 
-    click_beat("door")
-    page.wait_for_timeout(1500)
-    owned = page.evaluate(CC_PLAY_OWNED, ["play-cc-win"])
-    check("cc-win: play-cc-win not owned while locked", owned == [], owned)
-    r = page.evaluate(CC_REPORT)
-    check("cc-win: locked door starts nothing", r["win"] is None, r["win"])
 
-    click_beat("play")
-    page.wait_for_timeout(1500)
-    for n in (1, 2, 3):
-        click_beat(f"key{n}")
-        page.wait_for_timeout(1500)
+def flow_hl_ride(browser, base):
+    """HeavyLight stage: a click on the left or right lamp lights its beam and the man rides it, then stops dead when the beam ends; no XP."""
+    ctx, page = new_page(browser, DESKTOP)
+    goto_hl(page, base)
+    hl_stage_view(page)
+    r = page.evaluate(HL_REPORT)
+    check("hl-ride: stage built (ready, painted)", r is not None and r["ready"] and r["painted"], r)
+    check("hl-ride: marker shown and 0 clicks before any click", r and r["marker"] and r["clicks"] == 0, r)
+    for n, lamp_id in ((1, "left"), (2, "right")):
+        hl_click(page, lamp_id)
+        page.wait_for_timeout(200)
+        r1 = page.evaluate(HL_REPORT)
+        page.wait_for_timeout(600)
+        r2 = page.evaluate(HL_REPORT)
+        lamp = next(l for l in r1["lamps"] if l["id"] == lamp_id)
+        check(f"hl-ride: {lamp_id} beam is on after the click", lamp["on"], r1["lamps"])
+        check(f"hl-ride: {lamp_id}: the man moves and x changes between 200 and 800 ms",
+              r1["man"]["moving"] and r2["man"]["moving"] and r1["man"]["x"] != r2["man"]["x"], (r1["man"], r2["man"]))
+        check(f"hl-ride: {lamp_id}: clicks reads {n}", r2["clicks"] == n, r2["clicks"])
+        check(f"hl-ride: {lamp_id}: marker gone after the click", not r2["marker"], r2["marker"])
+        stopped = None
+        for _ in range(22):  # 200 + 600 ms already waited since the click: 3 s in all
+            page.wait_for_timeout(100)
+            stopped = page.evaluate(HL_REPORT)
+            if not stopped["man"]["moving"]:
+                break
+        check(f"hl-ride: {lamp_id}: the man stops within 3 s of the click", not stopped["man"]["moving"], stopped["man"])
+        page.wait_for_timeout(300)
+        after = page.evaluate(HL_REPORT)
+        check(f"hl-ride: {lamp_id}: x unchanged over the next 300 ms", after["man"]["x"] == stopped["man"]["x"], (stopped["man"], after["man"]))
+        page.wait_for_timeout(300)
+    owned = page.evaluate(CC_PLAY_OWNED, ["play-heavylight"])
+    check("hl-ride: no play-* XP owned (bridge-only)", owned == [], owned)
+    ctx.close()
 
-    r = page.evaluate(CC_REPORT)
-    check("cc-win: door open after key 3", r["door"]["open"], r["door"])
-    check("cc-win: door unlocked", r["beats"]["door"]["locked"] is False, r["beats"]["door"])
-    check("cc-win: tray full", r["tray"] == 3, r["tray"])
 
-    click_beat("door")
-    page.wait_for_timeout(300)
-    r = page.evaluate(CC_REPORT)
-    check("cc-win: win sequence running", r["win"] is not None, r["win"])
-    page.wait_for_timeout(3500)
+def flow_hl_crate(browser, base):
+    """HeavyLight stage: the floor beam lifts the crate toward the ceiling within 1 s, it falls back within 4 s of the click and rests at its start y by 6 s."""
+    ctx, page = new_page(browser, DESKTOP)
+    goto_hl(page, base)
+    hl_stage_view(page)
+    r0 = page.evaluate(HL_REPORT)
+    y0 = r0["crate"]["y"]
+    hl_click(page, "floor")
+    up_at = down_at = None
+    back_y = None
+    for i in range(1, 61):
+        page.wait_for_timeout(100)
+        r = page.evaluate(HL_REPORT)
+        c = r["crate"]
+        t = i * 0.1
+        if up_at is None and c["g"] == "up" and c["y"] < y0:
+            up_at = t
+        if up_at is not None and down_at is None and c["g"] == "down":
+            down_at = t
+        if abs(c["y"] - y0) <= 2 and down_at is not None:
+            back_y = c["y"]
+            break
+    check("hl-crate: g reads 'up' and the crate is higher within 1 s", up_at is not None and up_at <= 1.0, {"up_at": up_at, "y0": y0})
+    check("hl-crate: g reads 'down' again within 4 s of the click", down_at is not None and down_at <= 4.0, {"down_at": down_at})
+    check("hl-crate: back at its start y (+-2 px) within 6 s", back_y is not None, {"y0": y0, "last": c["y"]})
+    ctx.close()
 
-    r = page.evaluate(CC_REPORT)
-    check("cc-win: sequence finished", r["win"] is None, r["win"])
-    check("cc-win: door stays open", r["door"]["open"], r["door"])
-    check("cc-win: won", r["door"]["won"] and r["beats"]["door"]["done"], r["door"])
-    check("cc-win: tray emptied", r["tray"] == 0, r["tray"])
 
-    owned = page.evaluate(CC_PLAY_OWNED, ["play-conclusus", "play-cc-key1", "play-cc-key2", "play-cc-key3", "play-cc-win"])
-    check("cc-win: no play-* id owned after the win", owned == [], owned)
-
-    vis = page.evaluate("() => [getComputedStyle(document.querySelector('.play-hint')).visibility, getComputedStyle(document.querySelector('.cc-tray')).visibility]")
-    check("cc-win: hint and tray hidden", vis == ["hidden", "hidden"], vis)
-
-    click_beat("door")
-    page.wait_for_timeout(300)
-    check("cc-win: second door click starts nothing", page.evaluate(CC_REPORT)["win"] is None)
+def flow_hl_phone(browser, base):
+    """HeavyLight on a phone: the stage figure has a zero-size rect, report() is null or not ready, and there is no canvas.play."""
+    ctx, page = new_page(browser, PHONE)
+    goto_hl(page, base)
+    box = page.evaluate("() => { const f = document.querySelector('figure.gp-stage'); const r = f && f.getBoundingClientRect(); return r ? [r.width, r.height] : null; }")
+    check("hl-phone: the stage figure has a zero-size rect", box is not None and box[0] == 0 and box[1] == 0, box)
+    r = page.evaluate(HL_REPORT)
+    check("hl-phone: report() is null or not ready", r is None or not r.get("ready"), r)
+    check("hl-phone: no canvas.play", page.locator("canvas.play").count() == 0)
     ctx.close()
 
 
@@ -1307,6 +1339,10 @@ def flow_game_page_loads(browser, base):
         page.wait_for_timeout(600)
         check(f"game-page: {c} stays on its page", page.url.endswith(f"/projects/{c}.html"), page.url)
         back = page.locator("a.back")
+        if c in ("conclusus", "heavylight"):
+            stage = page.evaluate("() => { const c = document.querySelector('figure.gp-stage canvas'); return !!c && c.getContext('2d') !== null; }")
+            check(f"game-page: {c} has the stage canvas, not canvas.play",
+                  stage and page.locator("canvas.play").count() == 0, stage)
         check(f"game-page: {c} has Back to Work to /#{c}", back.count() == 1 and back.first.get_attribute("href") == f"../#{c}",
               back.first.get_attribute("href") if back.count() else None)
     ctx.close()
@@ -1426,6 +1462,119 @@ def flow_bridge_return(browser, base):
     ctx.close()
 
 
+def goto_vs(page, base):
+    """Load the VoidScape page and let its three stages start."""
+    page.goto(base + "/projects/voidscape.html")
+    page.wait_for_selector("figure.gp-stage", state="attached")
+    page.wait_for_timeout(1500)
+
+
+def vs_stage_view(page, stage_id):
+    """Scroll a VoidScape stage to mid-viewport and let it paint."""
+    page.evaluate("id => { const r = document.getElementById(id).getBoundingClientRect(); window.scrollTo({ top: scrollY + r.top + r.height / 2 - innerHeight / 2, behavior: 'instant' }); }", stage_id)
+    page.wait_for_timeout(700)
+
+
+def flow_vs_range(browser, base):
+    """VoidScape range stage: holding the pointer on it fires bullets; after release they run out and the stage goes quiet."""
+    ctx, page = new_page(browser, DESKTOP)
+    goto_vs(page, base)
+    vs_stage_view(page, "vs-range-stage")
+    r = page.evaluate("() => PlayRange.report()")
+    t = r["targets"]["field"]
+    page.mouse.move(t["x"], t["y"])
+    page.mouse.down()
+    peak = 0
+    for _ in range(10):
+        page.wait_for_timeout(100)
+        peak = max(peak, page.evaluate("() => PlayRange.report().bullets"))
+    held = page.evaluate("() => PlayRange.report().bullets")
+    check("vs-range: bullets > 0 while held (~1 s)", held > 0 and peak > 0, [held, peak])
+    page.mouse.up()
+    page.mouse.move(5, 5)
+    n = None
+    for _ in range(60):
+        page.wait_for_timeout(100)
+        n = page.evaluate("() => PlayRange.report().bullets")
+        if n == 0:
+            break
+    check("vs-range: bullets run out within 6 s of release", n == 0, n)
+    page.wait_for_timeout(1000)
+    n2 = page.evaluate("() => PlayRange.report().bullets")
+    check("vs-range: no new bullets over the next 1 s (the stage is quiet)", n2 == 0, n2)
+    ctx.close()
+
+
+def flow_vs_bench_arms_range(browser, base):
+    """VoidScape bench stage: a click on add arms the range with the bench's gun."""
+    ctx, page = new_page(browser, DESKTOP)
+    goto_vs(page, base)
+    vs_stage_view(page, "vs-bench-stage")
+    a0 = page.evaluate("() => PlayRange.report().armed")
+    t = page.evaluate("() => VoidBench.report().targets.add")
+    page.mouse.move(t["x"], t["y"])
+    page.wait_for_timeout(150)
+    page.mouse.click(t["x"], t["y"])
+    a1 = a0
+    for _ in range(20):
+        page.wait_for_timeout(100)
+        a1 = page.evaluate("() => PlayRange.report().armed")
+        if a1 > a0:
+            break
+    check("vs-bench-arms-range: armed grows after the add click", a1 > a0, [a0, a1])
+    same = page.evaluate("() => PlayRange.gun() === VoidBench.gun()")
+    check("vs-bench-arms-range: PlayRange.gun() === VoidBench.gun()", same is True, same)
+    ctx.close()
+
+
+def flow_vs_map_roll(browser, base):
+    """VoidScape map stage: a click rolls a new plan; every step climbs above the one before and the last is the boss."""
+    ctx, page = new_page(browser, DESKTOP)
+    goto_vs(page, base)
+    vs_stage_view(page, "vs-map-stage")
+    r0 = page.evaluate("() => VoidMapgen.report()")
+    t = r0["targets"]["roll"]
+    page.mouse.move(t["x"], t["y"])
+    page.wait_for_timeout(150)
+    page.mouse.click(t["x"], t["y"])
+    page.wait_for_timeout(1500)
+    r1 = page.evaluate("() => VoidMapgen.report()")
+    check("vs-map-roll: rolls grows after the click", r1["rolls"] > r0["rolls"], [r0["rolls"], r1["rolls"]])
+    check("vs-map-roll: the plan differs", r1["plan"] != r0["plan"], [len(r0["plan"]), len(r1["plan"])])
+    ys = [s["y"] for s in r1["plan"]]
+    check("vs-map-roll: every step sits above the one before", len(ys) > 1 and all(b < a for a, b in zip(ys, ys[1:])), ys)
+    check("vs-map-roll: the last step is the boss", r1["plan"][-1]["kind"] == "boss", r1["plan"][-1])
+    ctx.close()
+
+
+def flow_vs_idle(browser, base):
+    """VoidScape stages: with no pointer they paint only on the at-rest tick; no console error; hidden at 390 wide."""
+    ctx, page = new_page(browser, DESKTOP)
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+    goto_vs(page, base)
+    snap = "() => ['vs-bench-stage', 'vs-map-stage', 'vs-range-stage'].map(id => document.getElementById(id).querySelector('canvas').toDataURL())"
+    for sid in ("vs-bench-stage", "vs-map-stage", "vs-range-stage"):
+        vs_stage_view(page, sid)
+        page.mouse.move(5, 5)
+        page.wait_for_timeout(1500)
+        d0 = page.evaluate("() => VoidMapgen.report().draws")
+        img0 = page.evaluate(snap)
+        page.wait_for_timeout(1000)
+        d1 = page.evaluate("() => VoidMapgen.report().draws")
+        img1 = page.evaluate(snap)
+        check(f"vs-idle: {sid}: map draws unchanged over 1 s", d0 == d1, [d0, d1])
+        check(f"vs-idle: {sid}: all three canvases unchanged over 1 s", img0 == img1)
+    check("vs-idle: no console error", errors == [], errors)
+    ctx.close()
+    ctx, page = new_page(browser, PHONE)
+    goto_vs(page, base)
+    boxes = page.evaluate("() => [...document.querySelectorAll('figure.gp-stage')].map(f => { const r = f.getBoundingClientRect(); return [r.width, r.height]; })")
+    check("vs-idle: at 390 wide all three figure.gp-stage are hidden", len(boxes) == 3 and all(w == 0 or h == 0 for w, h in boxes), boxes)
+    ctx.close()
+
+
 FLOWS = {
     "bridge-return": flow_bridge_return,
     "first": flow_first, "gate-exits": flow_gate_exits, "gate-once": flow_gate_once, "back-direct": flow_back_direct, "back": flow_back,
@@ -1434,10 +1583,12 @@ FLOWS = {
     "genesis": flow_genesis, "genesis-segment": flow_genesis_segment, "glimpse": flow_glimpse,"genesis-scenes": flow_genesis_scenes,"twotabs": flow_twotabs, "header": flow_header,
     "shell": flow_shell, "phone": flow_phone, "rex": flow_rex,
     "watcher": flow_watcher, "bridge": flow_bridge_depths, "landdepths": flow_land_depths, "links": flow_links, "cc-read-xp": flow_cc_read_xp, "cc-scroll-pays-nothing": flow_cc_scroll_pays_nothing,
-    "cc-keys": flow_cc_keys,
-    "cc-win": flow_cc_win,
+    "hl-ride": flow_hl_ride, "hl-crate": flow_hl_crate, "hl-phone": flow_hl_phone,
+    "cc-teleport": flow_cc_teleport,
+    "cc-idle": flow_cc_idle,
     "work-hover": flow_work_hover, "game-page-loads": flow_game_page_loads, "game-page-roundtrip": flow_game_page_roundtrip,
     "loop-pause": flow_loop_pause,
+    "vs-range": flow_vs_range, "vs-bench-arms-range": flow_vs_bench_arms_range, "vs-map-roll": flow_vs_map_roll, "vs-idle": flow_vs_idle,
 }
 
 

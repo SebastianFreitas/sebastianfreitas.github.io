@@ -18,6 +18,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
 - the navigation bar (beacon positions): the span line at the top of the HUD (js/hud/hud-c25.js)
 - the sys bank, systems monitor: the HUD's right wing (js/hud/hud-c25.js); sys model js/hud/tiles-sys.js `tickSys`, alarm clock js/hud/instruments.js
+- the dude (Conclusus) = the man on the stage toy, `cc_idle1` in `js/pages/conclusus.js`
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
@@ -227,7 +228,9 @@ The VoidScape bench/console/floor plan; only `projects/voidscape.html` loads it 
 |---|---|---|
 | `forge-guns.js` | The one `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
 | `forge-missions.js` | `RUN_MODS`, `rollRunMod`, `regood`, `makeMission`, floor plan `genPlan` | `window.ForgeMissions`; uses `ForgeGuns` |
-| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock`; `bench` and `map` (the inline mission console) seams | `window.Forge`; driven by `voidscape-bench.js` and `voidscape-mapgen.js` |
+| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock`; `bench` seam | `window.Forge`; driven by `voidscape-bench.js` |
+
+- `forge.js`: optional parts pool `Forge.bench.parts(n)`: add and remove charge `cost()`, scrap refunds it, "NEED PARTS" when short; `null` keeps the sector bench free
 
 ### Archived (archive/gamedev/, loaded by no page)
 
@@ -434,15 +437,15 @@ only ever read `V` from `Play` and never reach into the bridge.
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `play.js` | Shared play layer, now a registry: canvas, view `V`, tiles, sprites, a no-op `award` | `window.Play {register (start alias), open, close, mount, handle, current, painted(toy), sprite, blit, glow, award, MIN_W}` |
-| `heavylight.js` | The case-page toy; registers `heavylight` instead of starting | `window.PlayHeavyLight {play, on, report}` |
-| `conclusus.js` | Document-space case-page toy; registers `conclusus` | `window.PlayConclusus {report}` |
+| `play.js` | Shared play layer, now a registry: canvas, view `V`, tiles, sprites, inline stages, a no-op `award` | `window.Play {register (start alias), open, stage, close, mount, handle, current, painted(toy), sprite, blit, glow, award, MIN_W}` |
+| `heavylight.js` | HeavyLight toy: a small room on the inline stage (`Play.stage`, "The rule"): wall lamps push the player along their beam, the floor lamp flips the crate's gravity | `window.PlayHeavyLight {report}` (`move` returns `false` on no change) |
+| `conclusus.js` | Conclusus toy on the inline stage (`Play.stage`): ledges over the whole plate; the man teleports into a green copy on the ledge nearest the pointer (the game's shadow) | `window.PlayConclusus {report}` (with `targets`; `move` returns `false` on no change) |
 | `sector-zero.js` | Viewport space; registers `zero` | `window.PlayZero {report, thunder}` |
 | `sector-zero-records.js` | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
-| `voidscape-boons.js` | 34 boons from the game's list `{id, w, name, desc, fx}`; `build(gun, boons)` → the effective build from a `ForgeGuns` gun, its mods and the boons; weighted `offer(pool, rnd)` | `window.RangeBoons` |
-| `voidscape-mapgen.js` | The mission console inline on the VoidScape page: sizes `#void-mapgen`, paints `Forge.map` (random first missions, SEARCH and EMPOWER, no room plan), no rAF when idle | `window.VoidMapgen` |
-| `voidscape-bench.js` | The crafting bench inline on the VoidScape page: sizes `#void-bench`, paints `Forge.bench` while visible, input; `gun()`; fires `voidbench:gun` | `window.VoidBench` |
-| `voidscape.js` | The range, viewport space | `window.PlayRange {report}` |
+| `voidscape-boons.js` | `build(gun)` → the effective build the range reads, from a `ForgeGuns` gun's base stats and its mods (the boon pool and picker are gone; the crafting bench replaced them) | `window.RangeBoons` |
+| `voidscape-mapgen.js` | The map stage toy `vs-map` (`#vs-map-stage`): a click rolls a new map | `window.VoidMapgen {report}` |
+| `voidscape-bench.js` | The crafting bench as the stage toy `vs-bench` (`#vs-bench-stage`): paints `Forge.bench` with a 30-part pool, arms the range on each change, fires `voidbench:gun` | `window.VoidBench {gun, report}` |
+| `voidscape.js` | The range on its own stage (`#vs-range-stage`, toy `range`), started from `projects/voidscape.html` | `window.PlayRange {report, arm, gun}` |
 
 - `play.js`: `Play.start(spec)` mounts one fixed canvas behind the page (`.play`, z -1, pointer-events none; input is read on `window`, only presses on `body`/`html`/`main.case` count, panels are `.play-ui`),
 - `play.js`: builds the view `V` (`W H top sy t dt pointer rnd blocks vis band main gutter free blockAt cursor wake`;
@@ -452,28 +455,24 @@ only ever read `V` from `Play` and never reach into the bridge.
 - `play.js`: each cleared and painted per frame through `spec.drawDoc(ctx, V)` in page coordinates;
 - `play.js`: `sprite(pal, def, scale)` pixel-sprite cache (2x default), `blit`, `glow` (with a `doc: true` toy: 4 px radius buckets drawn at the exact radius, 128-entry oldest-first cache), `award` (a no-op now: only the bridge gives XP). Desktop only (`min-width: 900px`);
 - `play.js`: a still frame under reduced motion
-- `heavylight.js`: no border; the beam runs to the viewport edge or the first shelf tile,
-- `heavylight.js`: three built gutter chunks (`CHUNKS[k]`: cells, lamps right/up/wall/floor, a crate) each with a step list (`EVENTS[k].steps`: light/wait/slide/lift/drop/release/goal, run by `runSteps`);
-- `heavylight.js`: event 3 slides the crate, lifts it on a floor lamp and hands it off onto the symbol tile, which then glows faintly; an event plays once when its chunk enters the middle third, pauses off-screen, and a click on a lamp replays a settled chunk (0.3 s fade out/in);
-- `heavylight.js`: hover over a lamp gives a pointer and a .14 head glow; reduced motion is one still frame posed by `poseStill` (events frozen at 0.9/0.4/2.05 s); the toy fires only `play-heavylight`, never `play-heavylight-tower` (that id stays listed elsewhere, D64);
-- `heavylight.js`: `window.PlayHeavyLight {report, on, play}`
-- `conclusus.js`: Document space (`doc: true`: platforms, twins, silhouettes, spikes, keys, door, player, bursts and beacons paint in page coords in `drawDoc` on the play tiles, `docX0` = leftmost platform/spike x − 128; rain alone in `draw`):
-- `conclusus.js`: up to 60 grass platforms beside the page blocks, each with a planted green twin; on open only the player and his platform draw;
-- `conclusus.js`: the reveal (`revealY` = bottom of the `.embed-shell` block, set in `layout`, passes mid-viewport) fades everything else and the hint in over 0.6 s (`rev`), never hides, and clicks wait for it (reduced motion starts revealed);
-- `conclusus.js`: after it, when the player's platform leaves the eye band (30-62 % of the viewport) he teleports (16-particle bursts, ≤120 live) to the platform nearest the band's centre (46 %) and plants a twin where he stood, paying nothing (no key, no XP);
-- `conclusus.js`: click a twin or the shadow he left: the first such click is the play beat (`playBeat`: awards `play-conclusus`, hint "click the key to take it", unlocks key 1;
-- `conclusus.js`: its beacon hangs 72 px over `playTarget()`, the twin on `playPlat` = first platform at or below the "The brief" h2, or the nearest twin while he stands there; keys carry `locked`); a green silhouette (never awards; silver = the 1.2 s cycle's deadly half;
-- `conclusus.js`: up to 5 on the platforms between the "The silhouettes" h2 and the next h2, beat platforms skipped; one he jumps into returns after 4 s once he has left its platform, fading in 0.6 s and clearing the twin there);
-- `conclusus.js`: door on `placeBeat("What it taught me" h2)`: locked = dim arch at 55 %, lit over 0.6 s when key 3 lands (`door.lit`), then `doorReady()`;
-- `conclusus.js`: its click (`startWin`, `won`/`winSeq` fly→walk→fade→gone) flies the 3 keys tray→`doorSlot` in 1 s, hides tray and hint, `walkIn` 64 px left of the arch at 120 px/s, `enterArch` awards `play-cc-win` + rain surge, his twin stays in the arch, `reappear` near 46 %;
-- `conclusus.js`: clicks and teleports locked meanwhile; stays won (no restart); a relayout mid-win `finishWin`s; reduced motion: frozen full level, no beacons/hint/tray/clicks;
-- `conclusus.js`: `report()` = `{player, twins, beats{play (live twin target),key1..3 (locked),door}, door{open, won}, win, tray, revealed, rev, plats, sils}`;
-- `conclusus.js`: spinning symbol, spike balls, 32 light motes born at the top-right corner drifting down-left on straight rays (`ray`, the game's RainEffect cone); sprites 2x (`CPAL`)
+- `play.js`: `Play.stage(figureEl, name)` runs a registered toy in an inline `figure.gp-stage` canvas sized by `.gp-stage-box` (stage-local input, frames only on screen, `spec.tick` 250 ms at rest, dt capped at 1 s); returns null under 900 px and builds once if the window widens
+- `play.js`: a stage handler (`move`, `press`) returning `false` changed nothing, so `Play.stage` skips the wake and the paint; any other return paints. `award` stays a no-op: owner, 2026-11-16, "Should game-page toys and reading give XP again?": "Bridge only"
+- `play.js`: a stage toy may set `spec.tick` to 2^31-1 for no at-rest paints (Conclusus); a pointer event paints one frame unless the handler returned `false`
+- `heavylight.js`: a room of 18 x 9 tiles (`COLS`, `ROWS`) in the game's tiles on the inline stage in "The rule" (`figure.gp-stage`; no stage under 900 px); the player stands between a wall lamp and a lamp on the pillar's face, a crate stands over a floor lamp
+- `heavylight.js`: a click on a lamp runs its beam 2.5 s (`ON_FOR`; 0.15 s fade in, 0.25 s fade out); the player slides along a wall lamp's beam and stops where it ends or a wall meets him; the floor lamp flips the crate's gravity to the beam's direction (up to the ceiling, then back down)
+- `heavylight.js`: hover over a lamp gives a pointer and a brighter glow; the status slot reads "Beam N.N s" or "Lamps off"; the toy fires only `play-heavylight`, never `play-heavylight-tower` (that id stays listed elsewhere, D64)
+- `heavylight.js`: `report()` = ready, painted, clicks, marker, lamps `{id, on, left, cx, cy}` (viewport px), man `{x, y, moving}`, crate `{x, y, g}`; toyshot shoots the ride mid-push
+- `conclusus.js`: 7-8 ledges on three tiers (`cc_plat_*`, 256x144 grid); hover = a dim green copy (`cc_greenA`) on the nearest ledge; click = the man teleports into it, green bursts at both ends, no cooldown; cream marker on the top-left ledge until the first teleport
+- `conclusus.js`: spec `tick` 2^31-1, so no at-rest paints (frames only while a burst lives or on a pointer event); the first teleport calls `P.award('play-conclusus')` (a no-op); the status slot stays empty
+- `conclusus.js`: `report()` = man, ghost, marker, teleports, bursts, draws, ledges, `targets {tl, tr, ledges}`, all viewport px; toyshot beats idle, hover, tp, after
 - `sector-zero.js`: the room's objects float in the strip right of the text (terminal, chair, bucket, screwdriver, lantern, four crates, light switch; flat lit/shade boxes, scale 1.3); click = the record types out in a `.play-ui.record` card at 0.03 s/char;
 - `sector-zero.js`: the thunder loop (lower of two d100, losers drift, one turns red and creeps to the pointer, spring home, 0.5 s blackout; stronger comes back sooner); lantern flicker layers, screwdriver charge/throw/return, chair spin, the switch dims the room
-- `voidscape.js`: a gun mount bottom-left aims at the pointer, hold on empty page to fire a `ForgeGuns.randomGun()`;
-- `voidscape.js`: bullets ricochet off the screen edges only (page blocks are not walls), fire explodes on every bounce, cold chills/freezes, poison and bleed tick, headshots crit, damage pops; skulls hop, cones hover and shoot back, triangles lunge and self-destruct;
-- `voidscape.js`: enemies are pushed out of page blocks; every 6 kills one boon is offered (take / reroll x2 / refuse for 10 health) in `.play-ui.offer`, the build card is `.play-ui.range`; 0 health = run lost, new gun, boons gone; the range goes quiet 40 s after the last shot
+- `voidscape.js`: a gun mount bottom-left of the stage aims at the pointer, hold on the stage to fire; the gun is the bench's (`arm(g)` takes it and starts a fresh run, a change lands on the next shot), else a `ForgeGuns.randomGun()`;
+- `voidscape.js`: the stage is the whole field, bullets ricochet off its four sides, fire explodes on every bounce, cold chills/freezes, poison and bleed tick, headshots crit, damage pops; skulls hop, cones hover and shoot back, triangles lunge and self-destruct;
+- `voidscape.js`: no build card, boon offer or `placeHint()` any more; 0 health = run lost, boons gone; the range goes quiet 40 s after the last shot
+- `voidscape.js`: `report()` gives gun, hp, kills, bullets, enemies, armed and viewport-px `targets {mount, field}`
+- `voidscape-bench.js`: calls `PlayRange.arm(Forge.gun())` on each change; `report()` gives gun, parts, marker and `targets {add, remove, scrap}`; the cream marker sits on ADD NEW MODIFIER until the gun first changes
+- `voidscape-mapgen.js`: the map comes from `ForgeMissions.genPlan` (main path only, laid out climbing, the boss in red on top); `report()` gives `plan` (steps with kind and viewport x, y), `rolls`, `marker`, `draws`, `targets {roll, steps}`; no `Play.award`
 
 ### js/shared
 
@@ -494,6 +493,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/gate.css` | The entry gate in the bridge HUD style (`--hud-*` tokens): dim scrim over the bridge, drawn hairline frame and corner marks (`--gate-p`), top-line gauge, step list, boot log, the button. index only |
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (see bullet below), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
+| `css/game-pages.css` | Shared game-page art style, loaded after `play.css`: tokens, `header.gp-head` opener, section counters, media, end `nav.case-nav`, CSS-only slots (`gp-figure`, `gp-facts`, `gp-nums`). Rules prefixed `.page-game.page-case main.case`. Game pages only |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
@@ -503,11 +503,11 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it as before (css/style.css, comment in index.html). Plate height is `XH` 890 in js/site/shapes.js and `height: 890px` in css/style.css |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
-| `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); toy `js/pages/voidscape.js` |
+| `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); three stages (`#vs-bench-stage`, `#vs-map-stage`, `#vs-range-stage`), bench and range started by `Play.stage(...)` in the page script, the map from its own JS |
 | `projects/heavylight.html` | Case page for HeavyLight, a 2D puzzle platformer where light carries momentum (Unity, WebGL); toy `js/pages/heavylight.js` |
 | `404.html` | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
+| `tools/nav-flows.test.py` | Playwright flows (Work-row hover, case-page click and beacon-nav flows: see `--list`; `work-hover` checks the hover preview); starts its own server on a free port; `ROOT` is the repo root |
 | `og-image.jpg` | Link-preview share image (1200x630 JPEG of the Games rows), named by og:image in index.html and 404.html |
-| `tools/nav-flows.test.py` | Playwright flows (Work-row hover, case-page click and beacon-nav flows: see `--list`; `work-hover` checks the hover preview); starts its own server on a free port; `ROOT` is the repo root; Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-keys`, `cc-win` |
 | `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>`; `work-hover` scene (VoidScape row hovered 1.5 s); also 404, glimpse/rank cards, footer, phone scenes; `capture` flags `--only`, `--phone-width <px>`, `--reduced-motion` |
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/merge-cachebust.py` | Git merge driver for `*.html`: merges with every `?v=` number treated as equal, then writes the highest back, so bumps never conflict; installed by `try.py` |
@@ -517,7 +517,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/banner-lab.html` | Banner lab page (`py -3 serve.py`, `/tools/banner-lab.html`): loads `js/site/shapes.js`, `js/site/banner.js` and `banner-lab.js`; dark tool page; `?sheet=N&seed=S[&set=k:v,..]` renders only the sheet onto `#cv` |
 | `tools/banner-lab.js` | `window.BannerLab`: a control and lock per `Banner.schema` key, seed, Plate/Tab presets, sheet of seeded variants, PNG export at 2x/4x, state in URL hash |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
-| `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`) |
+| `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`); Conclusus beats, HeavyLight ride shot, FAIL on a console error |
 | `tools/bannersheet.py` | Headless banner-lab sheet PNG: `py -3 tools/bannersheet.py <out.png> [--n 24] [--seed 1] [--set key=val ...] [--preset plate\|tab] [--scale 2] [--compare ref.png]`; compare = ref left, generated right; exits 1 on a blank canvas or console error |
 | `tools/plateref.py` | Shoots the live name plate and nav tab as ref PNGs: `py -3 tools/plateref.py <plate.png> <tab.png>`; refs for `bannersheet.py --compare` |
 | `tools/titansheet.py` | `py -3 tools/titansheet.py <out_dir> [--layout path]`: 2000x1009 sketch sheet of the four rock titans (plan rock-titans phase 1) with per-titan and per-piece numbers; exit 1 on a console error or a failed size, gap, share or top check |
@@ -525,7 +525,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
 | `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, detail line hidden at rest/shown on hover, level, unmoved, no side scroll; exit 1 on a fail |
-| `tools/scrollperf.py` | Scroll-jank measure |
+| `tools/scrollperf.py` | Scroll-jank measure (finds the toy canvas `figure.gp-stage canvas` or `canvas.play`) |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
 | `tools/try_project.py` | Portfolio hooks for the shared `try.py`/`try_commit.py` |
@@ -533,6 +533,11 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
 - `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with gold hairline frame, gauge and step list in the bridge HUD style (`css/gate.css`); no dirt, no redlines.
+- `css/game-pages.css`: ends with a "per page" part for rules only one page needs, keyed `main.case[data-redlines="case-<page>"]` (HeavyLight's opener); `.clip.gp-narrow` caps 4:3 or taller media at 50rem. Game pages carry no `<style>` block
+- `css/game-pages.css`: `gp-dia` = gameplay-loop diagram (figure.gp-dia > .gp-dia-body > .gp-dia-rail + ol.gp-dia-flow > li); steps numbered by counter `gp-dia`; rails placed by gp-dia-from-N / gp-dia-to-N; stacks under 900 px. Used on all four game pages (FIG. 01 on each)
+- `css/game-pages.css`: `gp-dia-via` = a via rail (with `gp-dia-from-N` / `gp-dia-to-N`): the steps between from and to take 1 px drops (phones: arms); its label sits left of the first drop; uses `:has()` (Firefox 121+)
+- `css/game-pages.css`: `figure.gp-stage` = the inline toy stage `Play.stage` fills (label row with its `.gp-stage-status` slot, `.gp-stage-box` sizes the canvas, caption); hidden under 900 px. `projects/conclusus.html` uses it in "The shadow"
+- `projects/heavylight.html`: uses `media/heavylight/lamps.jpg`
 - `css/bridge.css`: the notes' reading-window override block (bezel, `.nhead`, HUD palette) sits under the `---- reading window` comment.
 - `tools/workcut.py`: sizes are `WxH`, `@z` opens at zoom, `~z` zooms while open.
 - `index.html`: `.obj-ghost` is a hidden measuring copy of main's layout. div.stage holds the Work rows (own zoom by --stage-s); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
@@ -540,10 +545,13 @@ Data read by both the bridge and a case page. No drawing, no state.
 
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);
 - `tools/snap.py`: imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js`
-- `tools/toyshot.py`: `py -3 tools/toyshot.py <page> [--out PATH.png] [--t MS] [--y PX\|FRAC] [--click-beat KIND]... [--show-beat KIND]` writes a viewport shot (default `snapshots/toys/<page>-<y>.png`, or `<page>-beat-<kind>[-after-<kinds>].png`), prints the inked px count;
+- `tools/nav-flows.test.py`: Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-teleport`, `cc-idle`; HeavyLight flows `hl-ride`, `hl-crate`, `hl-phone`; `cc-read-xp` expects no XP on game pages (owner: "Bridge only")
+- `tools/nav-flows.test.py`: VoidScape flows `vs-range` (hold-fire bullets), `vs-bench-arms-range`, `vs-map-roll` (a roll that climbs to the boss), `vs-idle` (idle paint, hidden at 390 wide); no flow expects XP
+- `tools/toyshot.py`: `py -3 tools/toyshot.py <page> [--out PATH.png] [--t MS] [--y PX\|FRAC] [--beat idle|hover|tp|after]` writes a viewport shot (default `snapshots/toys/<page>-<y>.png`, or `<page>-beat-<kind>.png`), prints the inked px count;
+- `tools/toyshot.py`: conclusus beats `idle hover tp after` from `PlayConclusus.report().targets` (hover = mouse on tl, tp = click tr, shot mid-burst, after = 1500 ms later); a missing report or target exits 1; exits 1 on a blank/missing toy or a console error; imports `tools/snap.py`
+- `tools/toyshot.py`: heavylight with no `--y` and no beat is shot mid-ride (stage mid-viewport, lamp `left` clicked, about 1000 ms of frames, `snapshots/toys/heavylight-ride.png`); prints FAIL and exits 1 on no report or lamp, a blank canvas, a console error, or `man.moving` false
 - `media/genesis-ceiling/`: removed 2026-11-15, nothing loaded it (owner's OK; restore with `git show aac55d87:<path>`): `back-cloud.png`, `back-cloud-gold.png` (rejected band), `layers.png` (layered try), `sprites/`, `ceil72-*.webp`, `ceil72.json`.
   - Since 2026-10-28 genesis-ceiling.js draws every cloud in code; its inlined `POOL` came from `ceil72.json` (the chosen "layers72" ceiling as trimmed sprites).
-- `tools/toyshot.py`: beats come from `PlayConclusus.report().beats` (`play key1 key2 key3 door`): each click scrolls it to mid-viewport, runs 900 ms, re-reads, clicks, runs 1500 ms; a null beat exits 1; exits 1 on a blank/missing toy or a console error; imports `tools/snap.py`
 - `tools/scrollperf.py`: `py -3 tools/scrollperf.py <page> [--bar] [--runs N]`, headed Chromium 1440x900 DPR 1 in real time, wheel 120 px / 16 ms to the bottom and back; injected probe rAF loop (frame intervals), per-callback ms of the toy's rAF (stack in `pacer.js`/`js/pages/`),
 - `tools/scrollperf.py`: layout reads inside toy frames (+ sites in an extra attribution run), longtask / long-animation-frame / layout-shift, CDP Layout/RecalcStyle/Script deltas; median of runs to `snapshots/perf/<page>-<stamp>.json`; `--bar` prints D37 PASS/FAIL, exits 1 on a FAIL
 - `tools/cleanup.py`: `py -3 tools/cleanup.py [--dry-run] [--idle-hours 24] [--keep B] [--quiet]`; candidates are local `claude/*`, `worktree-*`, `plan-*` branches or any branch whose worktree is under `.claude/worktrees/`;
@@ -627,7 +635,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
 | Ship art and fumes | `js/ship/voidship-art.js` (the dark wedge hull, wings, engine) and `js/ship/voidship-prow.js` (the red shard and the jaws that grip it); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero storm (archived) | `archive/gamedev/js/gamedev/storm.js` |
-| VoidScape bench / console / floor plan | `js/forge/forge.js` (+ `forge-guns.js`, `forge-missions.js`); driven by `js/pages/voidscape-bench.js` and `voidscape-mapgen.js` |
+| VoidScape bench / console / floor plan | `js/forge/forge.js` (+ `forge-guns.js`, `forge-missions.js`); driven by `js/pages/voidscape-bench.js` |
 | Game-themed backdrops (archived) | `archive/gamedev/js/gamedev/zones.js`, `archive/gamedev/js/bridge/planet.js` |
 | Game Dev background (archived) | `archive/gamedev/js/gdworld/` |
 | Landmarks / beacons | `js/bridge/marks.js` `MARKS`; gated extras `js/depths/*` |
@@ -650,7 +658,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`/`onRankUp`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1`, `?gbeat=<name>` and `?gscene=<id>` in `genesis-state.js` |
-| Case-page toys (lamps, shadow walker, records, the range) | `js/pages/<page>.js` |
+| Case-page toys (lamps, the stage toy, records, the range) | `js/pages/<page>.js` |
 
 - Environment model / place readings: one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate`; the four Game Dev sites' physics and their `lines()` live in `bridge-sites.js` `GD_SITES`
 - Cutscene: cast painters `genesis-figures.js` + `genesis-titans.js`, the five gods `genesis-gods.js`, Obrokxus's later forms `genesis-obrok.js`; the old ones `genesis-oldones.js`;
@@ -662,9 +670,9 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Shared workflow (synced with the owner's other projects): synced paths and hashes in `.claude/workflow.lock`; the shared rules are `.claude/rules/workflow.md`; `session-start.py` `workflow_sync_lines` prints `WORKFLOW SYNC:` on drift;
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
-- Case-page toys (lamps, shadow walker, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
-- Case-page toys (lamps, shadow walker, records, the range): give no XP (`Play.award` is a no-op). Conclusus: a document-space toy (`doc: true`, page-coordinate `.play-tiles`), beats unlock in order (twin → 3 keys by click into a tray → door → win)
-- Conclusus toy: progress survives relayout, cached glow sprites in `play.js`
+- Case-page toys (lamps, the stage toy, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
+- Case-page toys (lamps, the stage toy, records, the range): give no XP (`Play.award` is a no-op). Conclusus: the stage's teleport toy, a green copy of the man on the nearest ledge, a click teleports him into it
+- Conclusus toy: resize only rescales (the man's spot, facing, marker and teleport count survive); cached glow sprites in `play.js`
 
 ### Storage keys
 
