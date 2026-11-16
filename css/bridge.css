@@ -180,24 +180,6 @@ html[data-hud="violet"] {
   color: var(--type-cream); background: rgb(var(--lamp-rgb) / 0.08);
   padding: 0 0.28em;
 }
-/* the clip is opt-in: preload="none" in the markup, so nothing is
-   fetched or decoded until it is actually asked for */
-.bnote .clipbox { margin: 0 0 1.1rem; }
-.bnote .clipbox .clip {
-  display: block; width: 100%; height: auto;
-  background: var(--stroke);
-}
-.bnote .clipbox figcaption {
-  font-family: var(--mono); font-size: 0.6rem; line-height: 1.5;
-  letter-spacing: 0.06em; color: var(--type-quiet); margin: 0.5rem 0 0;
-}
-/* an empty clipbox is a placeholder: frame it so the missing media is obvious */
-.bnote .clipbox.todo {
-  padding: 1.6rem 0.8rem;
-  background: var(--stroke);
-  text-align: center;
-}
-.bnote .clipbox.todo figcaption { margin: 0; }
 /* ---- reading window: a readings monitor, in the HUD's own palette and type (--hud-* only, so h / ?hud= restyle it) ---- */
 /* ---- reading card: gold line-work drawn on the scene (the archive's spine and ring), no box; legibility from one edgeless dark fade ---- */
 .bnote {
@@ -246,7 +228,6 @@ html[data-hud="violet"] {
 .bnote a.nreplay:hover { color: #fff; text-decoration: none; }
 .bnote a.nreplay:focus-visible { color: #fff; text-decoration: none; outline: 1px solid rgb(var(--hud-gold-rgb) / 0.7); outline-offset: 3px; }
 .bnote code { background: rgb(var(--hud-lamp-rgb) / 0.08); }
-.bnote .clipbox figcaption { color: var(--hud-label); }
 .bnote.deep { scrollbar-color: var(--hud-mk) transparent; }
 .bnote.deep::-webkit-scrollbar-thumb { background: var(--hud-mk); }
 .bnote .key, .bnote em.key { color: var(--hud-main); text-decoration: underline 1px rgb(var(--hud-lamp-rgb) / 0.4); }

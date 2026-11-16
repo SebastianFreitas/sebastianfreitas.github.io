@@ -489,7 +489,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
 | `css/gate.css` | The entry gate in the bridge HUD style (`--hud-*` tokens): dim scrim over the bridge, drawn hairline frame and corner marks (`--gate-p`), top-line gauge, step list, boot log, the button. index only |
-| `css/bridge.css` | Everything hero/cockpit: HUD, notes (reading-window override block after `.bnote .clipbox.todo`: bezel, `.nhead`, HUD palette), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
+| `css/bridge.css` | Everything hero/cockpit: HUD, notes (see bullet below), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
@@ -530,6 +530,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
 - `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with gold hairline frame, gauge and step list in the bridge HUD style (`css/gate.css`); no dirt, no redlines.
+- `css/bridge.css`: the notes' reading-window override block (bezel, `.nhead`, HUD palette) sits under the `---- reading window` comment.
 - `tools/workcut.py`: sizes are `WxH`, `@z` opens at zoom, `~z` zooms while open.
 - `index.html`: `.obj-ghost` is a hidden measuring copy of main's layout. div.stage holds the Work rows (own zoom by --stage-s); each Work row has its hover clip (`video.obj-clip`) and button (`span.obj-go`). Inline head script is only the service-worker purge
 - `hudshot.py`: `--x <world x>`, `--site <SITES id>` (implies `--claimed`), `--read <n>`, `--burn <s>`, `--touch` (phone check, no shot); imports `tools/snap.py`

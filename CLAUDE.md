@@ -36,8 +36,8 @@ in those areas.
 
 - Test only the flows you touched: `py -3 tools/nav-flows.test.py <flow>`
   (`--list` names them). Run the full suite only before a commit that
-  touches navigation, the gate or storage. Known failures on `main`:
-  `gate-exits`, and `worklink` "lands on Work" (72 px short).
+  touches navigation, the gate or storage. Known failure on `main`:
+  `gate-exits`.
 - Anything that paints or styles: `py -3 tools/snap.py capture <name>`
   before and after (about 3.5 min, 50 scenes), then
   `py -3 tools/snap.py compare <before> <after>`: `same` on every scene
