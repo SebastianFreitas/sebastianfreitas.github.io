@@ -1771,7 +1771,7 @@
       wkEdgeLight(el, lit, "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
       /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */
-      const ft = el.parentNode.querySelector(":scope > footer");
+      const ft = document.querySelector("footer.xp-foot");
       if (ft) {
         if (phone) ft.style.removeProperty("--xp-foot-x");
         else {

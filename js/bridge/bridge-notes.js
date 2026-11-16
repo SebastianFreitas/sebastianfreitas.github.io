@@ -46,7 +46,7 @@
     noteTimer = setTimeout(() => {
       /* the monitor's header strip: the beacon's name and a status line, built once from the note's own title */
       if (!el2.querySelector(".nhead")) {
-        const h = el2.querySelector("h3"), hd = document.createElement("div");
+        const h = el2.querySelector("h2, h3"), hd = document.createElement("div");
         hd.className = "nhead";
         hd.innerHTML = '<span class="nname"></span><span class="nstat">Reading complete</span>';
         hd.firstChild.textContent = h ? h.textContent : "";

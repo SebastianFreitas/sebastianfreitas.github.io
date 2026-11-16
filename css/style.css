@@ -298,18 +298,18 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
 }
 /* the paper hover is shared: the top bar tabs and the links in the Experience shape's footer text (every rule below that lists both) */
 .topbar nav a,
-.experience :is(footer .foot-text a, .xp-cert), .glimpse-card .glimpse-btn {
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert), .glimpse-card .glimpse-btn {
   position: relative; isolation: isolate;
   text-decoration: none;
   transition: color 0.12s ease-out, transform 0.12s ease-out;
   --tilt: -2.2deg;
 }
-.experience :is(footer .foot-text a, .xp-cert) { display: inline-block; padding: 2px 8px; color: var(--type-cream); }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert) { display: inline-block; padding: 2px 8px; color: var(--type-cream); }
 .topbar nav a:nth-child(even),
-.experience :is(footer .foot-text a, .xp-cert):nth-of-type(even), .glimpse-card .glimpse-btn:nth-child(even) { --tilt: 1.7deg; }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):nth-of-type(even), .glimpse-card .glimpse-btn:nth-child(even) { --tilt: 1.7deg; }
 /* the strip is erased at the corners with the name plate's masks, sized for a tab */
 .topbar nav a::before,
-.experience :is(footer .foot-text a, .xp-cert)::before, .glimpse-card .glimpse-btn::before {
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert)::before, .glimpse-card .glimpse-btn::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   background: none;
   -webkit-mask-image: var(--wear, none); mask-image: var(--wear, none); -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
@@ -317,7 +317,7 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   transition: background-color 0.12s ease-out;
 }
 .topbar nav a:nth-child(even)::before,
-.experience :is(footer .foot-text a, .xp-cert):nth-of-type(even)::before, .glimpse-card .glimpse-btn:nth-child(even)::before {
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):nth-of-type(even)::before, .glimpse-card .glimpse-btn:nth-child(even)::before {
   clip-path: var(--shape, polygon(0 8px, 5px 0, 55% 0, 58% 2px, 61% 0, calc(100% - 7px) 0, calc(100% - 2px) 2px, 100% 8px, calc(100% - 4px) 46%, 100% 64%, calc(100% - 2px) 82%, calc(100% - 8px) 100%, 40% 100%, 37% calc(100% - 2px), 33% 100%, 22% calc(100% - 1px), 18% 100%, 6px 100%, 0 calc(100% - 7px), 2px 66%, 0 42%, 3px 22%));
 }
 /* each top bar tab has its own torn outline and tilt (the same four polygons as NAV_CLIP in js/site/banner.js, so the fallback matches the final shape) */
@@ -336,31 +336,31 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   mask: url("../art/wear/tab-tl.png") left top / var(--ml) var(--mh) no-repeat, url("../art/wear/tab-br.png") right bottom / var(--mr) var(--mh) no-repeat, linear-gradient(#000, #000) left calc(var(--ml) - 1px) top 0 / calc(100% - var(--ml) - var(--mr) + 2px) 100% no-repeat;
 }
 /* a few px of invisible hit area so the tilted box never drops the pointer at its edge (the active tab's ::after is the sliver) */
-.topbar nav a:not(.active)::after, .experience :is(footer .foot-text a, .xp-cert)::after, .glimpse-card .glimpse-btn::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
+.topbar nav a:not(.active)::after, :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert)::after, .glimpse-card .glimpse-btn::after { content: ""; position: absolute; inset: -4px; z-index: -2; }
 .topbar nav a:not(.active):last-child::after { right: 0; }
 .topbar nav a:focus-visible,
-.experience :is(footer .foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { color: #f6f0da; opacity: 1; }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { color: #f6f0da; opacity: 1; }
 .topbar nav a:focus-visible::before,
-.experience :is(footer .foot-text a, .xp-cert):focus-visible::before, .glimpse-card .glimpse-btn:focus-visible::before { background: var(--type-red); }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):focus-visible::before, .glimpse-card .glimpse-btn:focus-visible::before { background: var(--type-red); }
 /* the white paper strip is a pointer hover only (a touch tap would leave it stuck); red strip while pressed */
 @media (hover: hover) {
   .topbar nav a:hover,
-  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover { color: #1a1714; opacity: 1; }
+  :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover { color: #1a1714; opacity: 1; }
   .topbar nav a:hover::before,
-  .experience :is(footer .foot-text a, .xp-cert):hover::before, .glimpse-card .glimpse-btn:hover::before { background: #f1ecd8; }
+  :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):hover::before, .glimpse-card .glimpse-btn:hover::before { background: #f1ecd8; }
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active,
-  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, .experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: rotate(var(--tilt)); }
+  :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: rotate(var(--tilt)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .topbar nav a:not(.active):hover, .topbar nav a:not(.active):active, .topbar nav a.active:hover,
-  .experience :is(footer .foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, .experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: none; }
+  :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):hover, .glimpse-card .glimpse-btn:hover, :is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { transform: none; }
 }
 .topbar nav a:active,
-.experience :is(footer .foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { color: #f6f0da; }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):active, .glimpse-card .glimpse-btn:active { color: #f6f0da; }
 .topbar nav a:active::before,
-.experience :is(footer .foot-text a, .xp-cert):active::before, .glimpse-card .glimpse-btn:active::before { background: var(--type-red); }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):active::before, .glimpse-card .glimpse-btn:active::before { background: var(--type-red); }
 .topbar nav a:focus-visible,
-.experience :is(footer .foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert):focus-visible, .glimpse-card .glimpse-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: -1px; }
 .topbar nav a[aria-current], .topbar nav a.is-current, .topbar nav a.active { color: #1a1714; transform: rotate(-3deg); -webkit-text-stroke: 0.2px currentColor; }
 .topbar nav a[aria-current]::before, .topbar nav a.is-current::before, .topbar nav a.active::before {
   background: #f1ecd8;
@@ -1053,12 +1053,12 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 }
 .xp-shape > .xp-red { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
 .xp-shape > .xp-red line { stroke: var(--type-red); stroke-width: calc(var(--red-line) / var(--stage-s, 1)); stroke-linecap: butt; }
-.experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: clamp(3rem, 8vh, 6rem); }
+.experience { padding-top: clamp(2rem, 5vh, 4rem); padding-bottom: 0; }
 .xp-shape .section-title { padding: 0; margin: 0 0 1.5rem; }
 .xp-shape .xp li { padding: 0.6rem 0; margin-bottom: 0.6rem; max-width: 44rem; }
-.experience footer { background: none; padding: 0; }
-.experience footer::before { content: none; }
-.experience .foot-text { padding: 0; }
+footer.xp-foot { background: none; padding: 0; }
+footer.xp-foot::before { content: none; }
+.xp-foot .foot-text { padding: 0; }
 @media (max-width: 1199px) {
   .xp-shape { padding: calc(var(--xp-dy) + 1.8rem) 1.2rem 5rem calc(var(--gutter) * 0.5 + 0.8rem); }
 }
@@ -1072,22 +1072,22 @@ transparent calc(var(--wk-tx, 18%) + 0%),
   .xp-shape { box-sizing: border-box; width: 1660px; height: 908px; max-width: none; left: 50%; margin-left: -830px; flex-wrap: nowrap; justify-content: flex-start; column-gap: 46px; padding: 159px 0 0 56px; }
 }
 .xp-shape .xp-tilt { flex: 0 1 clamp(22rem, 33vw, 36rem); min-width: min(22rem, 100%); max-width: 100%; text-align: left; }
-.experience footer { padding: 0; text-align: left; }
+footer.xp-foot { padding: 0; text-align: left; }
 @media (min-width: 1200px) { .xp-shape .xp-tilt { flex: 0 0 576px; } }
 /* the hover padding is pulled back out with a matching negative margin, so the text of every line starts at the column edge; links and dates never split */
-.experience :is(footer .foot-text a, .xp-cert) { margin: 0 -8px; white-space: nowrap; }
-.experience footer p:not(.rights):nth-of-type(2) { white-space: nowrap; }
+:is(.experience, footer.xp-foot) :is(.foot-text a, .xp-cert) { margin: 0 -8px; white-space: nowrap; }
+footer.xp-foot p:not(.rights):nth-of-type(2) { white-space: nowrap; }
 .xp-shape .xp-when { white-space: nowrap; }
-.experience .foot-text { max-width: none; width: auto; }
+.xp-foot .foot-text { max-width: none; width: auto; }
 .xp-shape .section-title { font-family: var(--bar-serif); font-weight: 700; font-size: 2.3rem; letter-spacing: 0.1em; line-height: 1; color: var(--type-cream); }
 .xp-shape .xp li { max-width: none; grid-template-columns: 8.5rem 1fr; gap: 0.15rem 1.4rem; }
 .xp-shape .xp-when { font-family: var(--type-mono); font-size: var(--fs-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--type-dim); padding-top: 0.45rem; border-right: 1px solid rgb(228 221 198 / 0.25); }
 .xp-shape .xp-what { font-family: var(--bar-serif); font-size: 0.82rem; letter-spacing: 0.06em; line-height: 1.3; color: var(--type-dim); }
 .xp-shape .xp-what h3 { display: block; margin: 0 0 0.9rem; font-family: var(--bar-serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; line-height: 1.2; color: var(--type-cream); text-wrap: pretty; text-wrap: balance; }
 .xp-shape .xp-note { max-width: 34rem; font-family: var(--type-sans); font-size: 0.88rem; color: var(--type-dim); text-wrap: pretty; }
-.experience footer p:not(.rights) { font-family: var(--bar-serif); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--type-cream); text-wrap: pretty; }
-.experience footer .nm { white-space: nowrap; }
-.experience footer .rights { font-size: 0.7rem; color: var(--type-dim); text-wrap: balance; }
+footer.xp-foot p:not(.rights) { font-family: var(--bar-serif); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--type-cream); text-wrap: pretty; }
+footer.xp-foot .nm { white-space: nowrap; }
+footer.xp-foot .rights { font-size: 0.7rem; color: var(--type-dim); text-wrap: balance; }
 @media (max-width: 1199px) {
   .xp-shape { row-gap: 2.5rem; }
   .xp-shape .xp-tilt { flex-basis: 100%; }
@@ -1106,8 +1106,8 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 @media (min-width: 1200px) {
   .stage { overflow-x: visible; zoom: var(--stage-s, 1); width: 1600px; margin-inline: auto; --gutter: 5rem; --type-page: 2.4rem; --type-section: 1.9rem; --type-card: 2rem; }
   .stage .work, .stage .experience { padding-top: 0; padding-bottom: 0; background: none; }
-  .stage .experience { padding-top: 0; padding-bottom: 4.5rem; background: none; }   /* the shape hangs up over the last row's bottom corner: the section's own ground would paint over the row there */
-  .stage { background: none; } body:has(> .stage) { overflow-x: clip; }
+  .stage .experience { padding-top: 0; padding-bottom: 0; background: none; }   /* the shape hangs up over the last row's bottom corner: the section's own ground would paint over the row there */
+  .stage { background: none; } body:has(.stage) { overflow-x: clip; }
   .stage .experience, .stage .work { overflow-x: visible; }   /* the shape is placed from the window, not the 1600 box (no CSS zoom: the box is narrower than the window); the Work rows run to 94% of the window too, past the box once it is wider than 1920 css px (wide screen or page zoom under 100%): clipping .work cut every row flat there, so the body clips instead (tools/workcut.py checks it) */
 }
 
@@ -1136,8 +1136,8 @@ transparent calc(var(--wk-tx, 18%) + 0%),
 .xp-shape .xp-what { font-family: var(--type-read); font-size: var(--fs-body); letter-spacing: 0; line-height: var(--lh-body); color: var(--ink-body); }
 .xp-shape .xp-what h3 { margin: 0 0 0.35rem; font-family: var(--type-head); font-weight: 600; font-size: 1.45rem; letter-spacing: 0.03em; line-height: 1.1; text-transform: uppercase; }
 .xp-shape .xp-note { font-family: var(--type-read); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-body); }
-.experience footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); letter-spacing: 0; }
-.experience footer .rights { font-family: var(--type-read); font-size: var(--fs-label); }
+footer.xp-foot p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); letter-spacing: 0; }
+footer.xp-foot .rights { font-family: var(--type-read); font-size: var(--fs-label); }
 footer p:not(.rights) { font-family: var(--type-read); font-weight: 600; font-size: var(--fs-body); line-height: 1.5; }
 footer, footer .rights { font-family: var(--type-read); }
 @media (max-width: 1199px) { .xp-shape .section-title { font-size: 2.2rem; } }
@@ -1150,8 +1150,11 @@ footer, footer .rights { font-family: var(--type-read); }
   .xp-shape .xp li { width: 628px; grid-template-columns: 380px 208px; column-gap: 40px; }
 }
 /* the contact strip sits under the plate on the page background, its left edge on the EXPERIENCE heading's (Shapes.xpShape sets --xp-foot-x on desktop; phones use the plate's own left padding) */
-.experience > footer { margin: 3rem 0 0 var(--xp-foot-x, calc(var(--gutter) * 0.5 + 0.8rem)); padding: 0 1.2rem 4rem 0; background: none; }
-.experience > footer .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
+footer.xp-foot { margin: 3rem var(--gutter) 0 calc(var(--gutter) + var(--xp-foot-x, calc(var(--gutter) * 0.5 + 0.8rem))); padding: 0 1.2rem calc(4rem + clamp(3rem, 8vh, 6rem)) 0; background: none; }
+@media (min-width: 1200px) {   /* the strip is outside the zoomed stage, so it takes the stage's own box: 1600 px wide, zoomed, centred, its left edge as a padding */
+  footer.xp-foot { zoom: var(--stage-s, 1); box-sizing: border-box; width: 1600px; margin: 3rem auto 0; padding: 0 calc(1.2rem + 5rem) calc(4rem + 4.5rem) var(--xp-foot-x, 92px); }
+}
+footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 .xp-shape .xp-pic { position: relative; grid-column: 2; grid-row: 1 / span 5; display: block; aspect-ratio: 16 / 9; background: #0a0a0b; overflow: hidden; }
 .xp-shape .xp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* the photos rest muted and come to full colour on the entry's hover or focus (the filter is on the box, so every slide of js/site/xp-slides.js is covered) */
