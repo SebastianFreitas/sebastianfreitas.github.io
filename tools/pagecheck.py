@@ -123,10 +123,10 @@ def main():
             page.goto(f"{base}/#{frag}" if frag else f"{base}/")
             page.wait_for_load_state("load")
             page.wait_for_timeout(1500)
-            if page.query_selector("#gate-world"):
+            if page.query_selector("#site-gate"):
                 try:
-                    page.wait_for_selector("#gate-panel.on", timeout=10000)
-                    page.click("#gate-world")
+                    # the gate fills its bar and opens by itself (real clock here)
+                    page.wait_for_function("document.getElementById('site-gate').classList.contains('done')", timeout=20000)
                     page.wait_for_timeout(2500)
                 except Exception:
                     pass

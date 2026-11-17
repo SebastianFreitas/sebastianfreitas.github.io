@@ -78,7 +78,8 @@
   }
   B.atRest = atRest;
 
-  B.pacer = Pacer.create({ paint: render, atRest, alive: () => B.visible && !B.portrait && !document.hidden && !B.held });
+  B.liveFrames = 0;
+  B.pacer = Pacer.create({ paint: (dt) => { render(dt); if (++B.liveFrames === 2) document.dispatchEvent(new Event("bridge:live")); }, atRest, alive: () => B.visible && !B.portrait && !document.hidden && !B.held });
   // the folder opening holds the hero loop from the click to the end of the sweep
   B.hold = (on) => { B.held = !!on; if (!on) B.startLoop(); };
 
@@ -145,6 +146,7 @@
     if (B.ship) B.ship.alpha = 1;
     for (const m of activeMarks()) m.vis = onScreen(markScreen(m).x, 60) ? 1 : 0;
     render(0);
+    if (!B.bridgeReady && B.drawInstruments) B.drawInstruments(0);   // the HUD's first paint and static layers; hidden until the bridge goes live
   }
   B.paintOnce = paintOnce;
 

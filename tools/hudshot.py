@@ -46,10 +46,7 @@ REPORT = "() => window.HudC25 ? HudC25.report() : null"
 
 def enter(page, base):
     page.goto(base + "/")
-    snap.settle(page, snap.GATE_BOOT)
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-world")
-    snap.settle(page, 2500)
+    snap.press_gate(page)
 
 
 def run(a):

@@ -22,7 +22,7 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the cockpit, the HUD: js/hud/ (tiles and framework), css/bridge.css; HUD tiles row in "Where things live"
 - the bridge, the hero: js/bridge/ (the index.html canvas world, ship, marks, notes), css/bridge.css
 - beacon (the code says lamp): js/bridge/lamp.js (adblockers drop "beacon"); beacon claims in bridge-marks.js; roster js/bridge/marks.js
-- the gate (bridge-HUD style loading screen, every visit, boot log first visit only): js/site/entry.js (load kind), js/site/intro.js (UI, named steps), css/gate.css
+- the gate (loading screen once per tab: name, line and one centred progress bar, opens by itself): js/site/entry.js (load kind), js/site/intro.js (bar, steps, exit), css/gate.css
 - the level chip, rank card, level burst: js/site/xp.js (chip, ranks), js/site/surge.js (burst, card), css/beacon.css
 - the cutscene journal (gear/folder button and its panel): js/bridge/bridge-panel.js
 - the readout, the log, the voice: js/bridge/bridge-log.js (typed queue), bridge-voice.js (what it says), bridge-readout.js (HUD glue)
@@ -103,8 +103,8 @@ shares `Gen`:
 | File | Purpose | Publishes / uses |
 |---|---|---|
 | `xp.js` | Site-wide progression | `window.XP` |
-| `entry.js` | Head-time load kind (the gate shows for every kind; only `first` gets the boot log): `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
-| `intro.js` | Entry gate UI, every visit: boot log (first visit), gauge with step label, `#gate-steps` list, the one button (`#gate-world`), exits. Must load last: dispatches `site:preload` synchronously. `warmUp` runs real steps; sets `--gate-p`, `.still`, `.gate-fade` | uses `SiteEntry`, `XP` |
+| `entry.js` | Head-time load kind (the gate shows once per tab, for every kind): `restore` / `deeplink` / `returning` / `first` | `window.SiteEntry {kind, sector, view}` |
+| `intro.js` | Entry gate, once per tab: warm chain under one progress bar, idle runner after it, fill glide, exit; loads last | `window.gateGone`, event `gate:gone`; uses `SiteEntry`, `XP`, `Genesis.warmStep` |
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
@@ -127,6 +127,11 @@ shares `Gen`:
 - `shapes.js`: nav links carry no `data-wear`; the tab hover paper is masked by the two old grainy PNG corners in `art/wear/` (css `.topbar nav a::before`).
 - `shapes.js` wear: `Shapes.wear(el, preset, seed)` paints a seeded PNG mask into `--wear` and sets `--shape: none`; 10 presets in `wearPresets` (depth as % of the short side, bites per edge, corner chips).
 - `shapes.js` wear seed: from `data-seed` or preset+index, so a box keeps its wear across reloads; `Shapes.apply(root)` wears boxes added later (gate, surge veils, bridge notes). CSS keeps a literal polygon as the no-JS fallback: `clip-path: var(--shape, <polygon>)`, `mask-image: var(--wear, none)`.
+- `intro.js` chain: `#gate-bar-fill` moves by the CSS `gate-creep` first (reduced motion: `setFill`), then a Web Animations glide on its transform (compositor), re-planned at each warm-up step's end; one step per painted frame, each with a timeout and a `gate:<name>` measure.
+- `intro.js` open: the gate opens by itself when full (8 s cap); an exit (Escape, top bar link) stops the chain and hands its unrun steps to the runner. Dispatches `site:preload` synchronously, so it loads last.
+- `intro.js` idle runner: runs left-over gate steps and `Genesis.warmStep` units (`idle:` measures), one per `requestIdleCallback`, only when the last unit's cost fits before the next painted frame.
+- `intro.js` runner pacing: at N > 1 refreshes per paint the room is `B.pacer.lastPaint` + N refreshes; on the 2 s cap it waits a painted frame and asks again; paused while hidden, Genesis plays or the gate is held.
+- `intro.js` exit: removes the gate at once, fades a copy (`.gate-fade`) over 0.5 s, then fires `gate:gone` on `document` once and sets `window.gateGone`; the runner resumes on it.
 
 - `work-preview.js`: hover or focus marks the row (`.is-peek`, no turn); its `video.obj-clip` plays where the picture is (`.is-live`) only after a real pointer move over the row, or on focus; `.obj-go` always shows, hover underlines it. No preview on touch.
 - `work-preview.js` one row at a time: a scroll under a still pointer starts no clip; the hover look moves to the row under the pointer, the others close (a scroll out of Work closes all). A closed clip pauses, keeps its time: a real move over its row resumes it, over another row rewinds it.
@@ -159,7 +164,7 @@ does not — it is pure data, no dependency on `B`.
 
 | File | Purpose | Publishes on `B` / `window` |
 |---|---|---|
-| `bridge.js` | Core | `window.Bridge` |
+| `bridge.js` | Core | `window.Bridge`, `B.startWarm()` (gate starts the live loop under the cover), events `bridge:live` (after the live loop's second frame; also `bridge:arrive`, `B.liveFrames`) |
 | `bridge-notes.js` | Notes: `hostBox`, `showNote`, `measureNote`, `placeNote`, `selectMark`, `fileMark`, `clearMark`; hints `HINT_STEPS`/`hintDone` | `B.hostBox showNote measureNote placeNote selectMark clearMark hintDone noteEls` |
 | `bridge-input.js` | Pointer/burn input | `B.markAt clientToCourse courseForMark stopSteering beginBurn endBurn retargetFromPointer coversViewport` |
 | `bridge-motifs.js` | The four motif drawers lifted from `archive/gamedev` | `window.BridgeMotifs {draw}` |
@@ -169,7 +174,7 @@ does not — it is pure data, no dependency on `B`.
 | `bridge-depths.js` | `spawnDepth`, `revealDepths` (runs once at load, again on `pageshow`/`storage`); debug `depthsReport`, `depthsReveal`, `depthAlpha` (read by `js/world`) | `B.spawnDepth revealDepths`; `window.depthAlpha` |
 | `bridge-env.js` | The environment model | `B.env stepEnv`; `window.envReport` |
 | `bridge-readout.js` | `B.voice = BridgeVoice.create` (voice state carries `env`) | `B.takeDamage runRepair checkRegion reportFiled updateHUD drawInstruments` |
-| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce`, tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer) |
+| `bridge-loop.js` | Movement `step`, `atRest`, `B.pacer = Pacer.create`, `render`, `paintOnce` (also the HUD's first paint), tail `syncPhone()` + topbar observer; debug `pacingReport shipReport` | `B.step atRest render paintOnce B.hold(on) B.held` (hold rests the pacer) |
 | `bridge-sites.js` | The places that bend the instruments | `window.BridgeSites {SITES, GD_SITES, lines}` |
 | `bridge-voice.js` | What the readout says per region (`ZONES`, merges in `BridgeSites.lines()` as `site:<id>`), warn/err/crit odds | `window.BridgeVoice {create(S)}` |
 | `bridge-log.js` | The typed-out readout queue | `window.BridgeLog {create(el)}` → `{push, run, setMax, idle, lines}`; types with a null `el` too |
@@ -493,7 +498,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | File | Purpose |
 |---|---|
 | `css/style.css` | Base site: topbar, sections, project pages, small screens. Tokens, breakpoints and the z-index ladder are documented at the top |
-| `css/gate.css` | The entry gate in the bridge HUD style (`--hud-*` tokens): dim scrim over the bridge, drawn hairline frame and corner marks (`--gate-p`), top-line gauge, step list, boot log, the button. index only |
+| `css/gate.css` | The entry gate: dim scrim over the bridge, the centred name, line and 2 px bar (cream fill on a faint track, `scaleX` transition). index only |
 | `css/bridge.css` | Everything hero/cockpit: HUD, notes (see bullet below), the shared HUD scale (`--hud-label-size`, `--hud-value-size`, `--hud-quiet-a`...) and clickable class `.hud-click`, setting panel, boot terminal, genesis overlay (slim top controls, no bars). index only |
 | `css/beacon.css` | Level chip and pips, surge burst, rank card |
 | `css/game-pages.css` | Shared game-page art style, loaded after `play.css`: tokens, `header.gp-head` opener, section counters, media, end `nav.case-nav`, CSS-only slots (`gp-figure`, `gp-facts`, `gp-nums`). Rules prefixed `.page-game.page-case main.case`. Game pages only |
@@ -535,7 +540,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
-- `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with gold hairline frame, gauge and step list in the bridge HUD style (`css/gate.css`); no dirt, no redlines.
+- `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with the name, the line and one centred cream hairline bar (`css/gate.css`); no dirt, no redlines.
 - `css/game-pages.css`: ends with a "per page" part for rules only one page needs, keyed `main.case[data-redlines="case-<page>"]` (HeavyLight's opener); `.clip.gp-narrow` caps 4:3 or taller media at 50rem. Game pages carry no `<style>` block
 - `css/game-pages.css`: `gp-dia` = gameplay-loop diagram (figure.gp-dia > .gp-dia-body > .gp-dia-rail + ol.gp-dia-flow > li); steps numbered by counter `gp-dia`; rails placed by gp-dia-from-N / gp-dia-to-N; stacks under 900 px. Used on all four game pages (FIG. 01 on each)
 - `css/game-pages.css`: `gp-dia-via` = a via rail (with `gp-dia-from-N` / `gp-dia-to-N`): the steps between from and to take 1 px drops (phones: arms); its label sits left of the first drop; uses `:has()` (Firefox 121+)

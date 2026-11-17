@@ -38,24 +38,37 @@ window.GenRockTitans = (function () {
   const tx = (t) => G.sx(0) + t.root * G.H;
   const order = (t) => t.pieces.map((p, i) => i).sort((a, b) => (t.pieces[a].z - t.pieces[b].z) || (a - b));
 
-  // the piece's unrotated ink box as drawn alone, measured once per piece and size
+  // the piece's unrotated ink box as drawn alone, measured once per piece and size; only a window round the piece is painted and
+  // scanned, grown until the ink stays well inside it (a window edge that is not the canvas edge), so the box equals the full scan's
   function inkBox(pc, oc, x, y, h, p) {
     const W = G.W, H = G.H, key = pc.kind + "|" + pc.m + "|" + pc.dx + "|" + pc.dy + "|" + H;
     if (boxes[key]) return boxes[key];
     if (!scratch) scratch = document.createElement("canvas");
-    scratch.width = W; scratch.height = H;
-    const g = scratch.getContext("2d", { willReadFrequently: true });
-    g.filter = FILT; GenOld.drawKind(g, pc.kind, oc, x, y, h, p);
-    const d = g.getImageData(0, 0, W, H).data; let x0 = W, x1 = -1, y0 = H, y1 = -1;
-    for (let k = 0; k < W * H; k++) if (d[k * 4 + 3] > TH) { const yy = (k / W) | 0, xx = k % W; if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
-    return (boxes[key] = [x0, y0, x1 - x0 + 1, y1 - y0 + 1]);
+    for (let R = 3 * h + 0.1 * H; ; R *= 2) {
+      const rx0 = Math.max(0, Math.floor(x - R)), ry0 = Math.max(0, Math.floor(y - R)), rx1 = Math.min(W, Math.ceil(x + R)), ry1 = Math.min(H, Math.ceil(y + 0.5 * R));
+      const w = rx1 - rx0, hh = ry1 - ry0, full = rx0 === 0 && ry0 === 0 && rx1 === W && ry1 === H;
+      scratch.width = w; scratch.height = hh;
+      const g = scratch.getContext("2d", { willReadFrequently: true });
+      g.translate(-rx0, -ry0); g.filter = FILT; GenOld.drawKind(g, pc.kind, oc, x, y, h, p);
+      const d = new Uint32Array(g.getImageData(0, 0, w, hh).data.buffer); let x0 = w, x1 = -1, y0 = hh, y1 = -1;
+      for (let yy = 0; yy < hh; yy++) for (let xx = 0, k = yy * w; xx < w; xx++, k++) if ((d[k] >>> 24) > TH) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+      const mg = 0.25 * R;
+      if (!full && (x1 < 0 || (rx0 > 0 && x0 < mg) || (rx1 < W && x1 >= w - mg) || (ry0 > 0 && y0 < mg) || (ry1 < H && y1 >= hh - mg))) continue;
+      return (boxes[key] = [x0 + rx0, y0 + ry0, x1 - x0 + 1, y1 - y0 + 1]);
+    }
   }
 
-  function drawPiece(g, t, pc, up) {
+  // the painter's arguments for a piece standing at its place
+  function pieceArgs(t, pc) {
     const H = G.H, base = GenOld.ROSTER.find((o) => o.kind === pc.kind);
     const oc = Object.assign({}, base, { lit: grey(175), shade: grey(117), dressed: false });
     const x = tx(t) + pc.dx * H, y = (FOOT + pc.dy) * H, h = pc.m * base.hf * H;
     const p = { x: x, y: y, rimX: x, rimY: y, phase: 0, scale: 1, sy: 1, rot: 0, a: 1, e: 1, look: 0, gest: 0, kneel: 0, make: 0, clipY: null, pinU: -1, steps: 0, length: 0 };
+    return { oc: oc, x: x, y: y, h: h, p: p };
+  }
+
+  function drawPiece(g, t, pc, up) {
+    const { oc, x, y, h, p } = pieceArgs(t, pc);
     g.save(); g.filter = FILT;
     g.translate(x, y); g.rotate(up ? 0 : pc.rot || 0); g.translate(-x, -y);
     if (pc.cut) {
@@ -175,9 +188,9 @@ window.GenRockTitans = (function () {
   }
   // the canvas cut to its ink, pivot at the ink's bottom-centre
   function trim(c) {
-    const w = c.width, h = c.height, d = c.getContext("2d").getImageData(0, 0, w, h).data;
+    const w = c.width, h = c.height, d = new Uint32Array(c.getContext("2d").getImageData(0, 0, w, h).data.buffer);
     let x0 = w, x1 = -1, y0 = h, y1 = -1;
-    for (let k = 0; k < w * h; k++) if (d[k * 4 + 3] > 8) { const yy = (k / w) | 0, xx = k % w; if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+    for (let yy = 0; yy < h; yy++) for (let xx = 0, k = yy * w; xx < w; xx++, k++) if ((d[k] >>> 24) > 8) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
     if (x1 < 0) return { sp: crop(c, 0, 0, 1, 1), ox: 0, oy: 1 };
     const sp = crop(c, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     return { sp: sp, ox: sp.width / 2, oy: sp.height };
@@ -190,7 +203,7 @@ window.GenRockTitans = (function () {
     return low;
   }
   // the build as a plan of small steps (rocks, tentacles, the add pass, parts) that share one state; debris is set only when the last one is done
-  const DEB_CHUNK = { rock: 8, tent: 8 };
+  const DEB_CHUNK = { rock: 1, tent: 2, add: 16 };
   function debrisPlan(W, H, key) {
     const cx = G.sx(0), cy = 0.46 * H, deckY = FOOT * H, list = [], pend = [];
     // 126 wedges of the 21 body rocks (6 each, cut through the rock's centre so no ring survives) and the 8 tentacles, shares still open
@@ -273,37 +286,40 @@ window.GenRockTitans = (function () {
       // out chips take a stratified slot along the top edge and both side edges (seeded order), so their ray ends spread
       const outs = pend.map((p, i) => i).filter((i) => shareOf[i] === "out").sort((a, b) => Util.hash1(a * 29 + 11) - Util.hash1(b * 29 + 11));
       outs.forEach((i, k) => { slotOf[i] = (k + Util.hash1(i * 17 + 3)) / outs.length; reachOf[i] = (k * 0.618034) % 1; });
-      pend.forEach((p, i) => add(p.sp, p.ox, p.oy, shareOf[i], i * 31 + 7, null, slotOf[i], reachOf[i]));
     };
+    const addChunk = (i0) => { pend.slice(i0, i0 + DEB_CHUNK.add).forEach((p, j) => { const i = i0 + j; add(p.sp, p.ox, p.oy, shareOf[i], i * 31 + 7, null, slotOf[i], reachOf[i]); }); };
     // 24 parts: the 19 pieces cropped by their cut's box inside the cached ink box, plus the five's crops (m 1, cut box(0,0,1,0.35))
     // the painters move with G.t, so an ink box measured now differs from the one the titans measure later: keep none of the new ones
-    const tmp = mk(), tg = tmp.getContext("2d"), parts = [];
+    const parts = [];
     let had = null;
     LAYOUT.titans.forEach((t) => t.pieces.map((pc) => [t, pc]).forEach((q) => parts.push(q)));
     FIVE.forEach((kind) => parts.push([LAYOUT.titans[0], { kind: kind, m: 1, dx: 0, dy: 0, rot: 0, cut: box(0, 0, 1, 0.35) }]));
     let cur = null;   // the part's chip between its two halves
     const partA = (q) => {
       if (!had) had = Object.assign({}, boxes);
-      const t = q[0], pc = q[1];
-      tg.clearRect(0, 0, W, H); drawPiece(tg, t, pc, true);
+      const t = q[0], pc = q[1], a = pieceArgs(t, pc);
+      inkBox(pc, a.oc, a.x, a.y, a.h, a.p);
       const bb = boxes[pc.kind + "|" + pc.m + "|" + pc.dx + "|" + pc.dy + "|" + H], o = GenOld.ROSTER.find((r) => r.kind === pc.kind);
       const us = pc.cut.map((p) => p[0]), vs = pc.cut.map((p) => p[1]);
       const u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us), v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
       const px = Math.floor(bb[0] + u0 * bb[2]), py = Math.floor(bb[1] + v0 * bb[3]);
-      const sp = crop(tmp, px, py, Math.ceil(bb[2] * (u1 - u0)) + 2, Math.ceil(bb[3] * (v1 - v0)) + 2);
+      // the piece is painted straight into its crop (clipped to the canvas, as the full-size canvas it was cropped from was)
+      const sp = document.createElement("canvas"); sp.width = Math.ceil(bb[2] * (u1 - u0)) + 2; sp.height = Math.ceil(bb[3] * (v1 - v0)) + 2;
+      const sg = sp.getContext("2d"); sg.translate(-px, -py); sg.beginPath(); sg.rect(0, 0, W, H); sg.clip();
+      drawPiece(sg, t, pc, true);
       const d = GenOld.deckSpot(o), ch = add(sp, bb[0] + (u0 + u1) / 2 * bb[2] - px, bb[1] + v1 * bb[3] - py, o.move === "fly" ? "float" : "deck", o.idx * 31 + 7, d);
       ch.idx = o.idx; ch.m = pc.m; ch.s1 = 1 / pc.m; ch.cut = pc.cut;
       cur = ch;
     };
     const partB = (q) => {
       const t = q[0], pc = q[1], ch = cur;
-      const fx =tx(t) + pc.dx * G.H, fy = (FOOT + pc.dy) * G.H; tg.clearRect(0, 0, W, H); drawPiece(tg, t, Object.assign({}, pc, { m: 1 }), true);   // measured at m 1: a walker's stride is in px, so the box does not scale with m
-      const b1 = boxes[pc.kind + "|1|" + pc.dx + "|" + pc.dy + "|" + H]; ch.ib = [b1[0] - fx, b1[1] - fy, b1[2], b1[3]]; ch.fx = fx; ch.fy = fy;   // the whole body's ink box at m 1, from its feet
+      const fx = tx(t) + pc.dx * G.H, fy = (FOOT + pc.dy) * G.H, p1 = Object.assign({}, pc, { m: 1 }), a = pieceArgs(t, p1);   // measured at m 1: a walker's stride is in px, so the box does not scale with m
+      const b1 = inkBox(p1, a.oc, a.x, a.y, a.h, a.p); ch.ib = [b1[0] - fx, b1[1] - fy, b1[2], b1[3]]; ch.fx = fx; ch.fy = fy;   // the whole body's ink box at m 1, from its feet
     };
     const rocks = [], tents = [], steps = [];
     LAYOUT.titans.forEach((t) => { t.body.rocks.forEach((rr) => rocks.push(rr)); (t.body.tentacles || []).forEach((q) => tents.push(q)); });
     const group = (items, size, fn) => { for (let i = 0; i < items.length; i += size) steps.push(() => items.slice(i, i + size).forEach(fn)); };
-    group(rocks, DEB_CHUNK.rock, rockStep); group(tents, DEB_CHUNK.tent, tentStep); steps.push(addStep); parts.forEach((q) => { steps.push(() => partA(q), () => partB(q)); });
+    group(rocks, DEB_CHUNK.rock, rockStep); group(tents, DEB_CHUNK.tent, tentStep); steps.push(addStep); for (let i = 0; i < rocks.length * 6 + tents.length; i += DEB_CHUNK.add) steps.push(() => addChunk(i)); parts.forEach((q) => { steps.push(() => partA(q), () => partB(q)); });
     const finish = () => {
       Object.keys(boxes).forEach((q) => { if (!had[q]) delete boxes[q]; });
       debris = list; debrisKey = key;
@@ -329,7 +345,7 @@ window.GenRockTitans = (function () {
   function debrisSteps() {
     let rocks = 0, tents = 0, parts = FIVE.length;
     LAYOUT.titans.forEach((x) => { rocks += x.body.rocks.length; tents += (x.body.tentacles || []).length; parts += x.pieces.length; });
-    const cnt = Math.ceil(rocks / DEB_CHUNK.rock) + Math.ceil(tents / DEB_CHUNK.tent) + 1 + parts * 2;
+    const cnt = Math.ceil(rocks / DEB_CHUNK.rock) + Math.ceil(tents / DEB_CHUNK.tent) + 1 + Math.ceil((rocks * 6 + tents) / DEB_CHUNK.add) + parts * 2;
     return Array.from({ length: cnt }, () => debrisNext);
   }
   // the lying pose of part idx at its rest (end of step 3): pivot x and y, tilt from upright (signed), mirrored, its cut, its sprite size

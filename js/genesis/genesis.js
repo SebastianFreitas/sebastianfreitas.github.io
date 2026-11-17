@@ -237,6 +237,7 @@ window.Genesis = (function () {
   function play(opts) {
     if (G.active) return;
     if (reduced && !FORCE) return;
+    warm();   // whatever is still cold is built before the first frame, not mid-play
     G.thenMode = (opts && opts.thenMode) || "void";
     G.thenCamX = opts && opts.thenCamX;
     if (G.thenCamX == null && window.World && G.thenMode === "void")
@@ -305,46 +306,89 @@ window.Genesis = (function () {
     return true;
   }
 
-  /* build the lazy canvases and caches ahead of the first cutscene: paint the first segment's
-     opening frames on a throwaway canvas, then put the state back; nothing shows. Safe twice. */
-  let warmed = false;
-  /* one function per opening beat, so the gate can run them a frame apart; each puts the state back */
-  function warmSteps() {
-    if (warmed || G.active || reduced) return [];
-    warmed = true;
-    const beat = (b, work) => () => {
-      if (G.active) return;
-      const keep = { active: G.active, beat: G.beat, local: G.local, W: G.W, H: G.H, cam: G.cam, camTarget: G.camTarget, zoom: G.zoom, paused: G.paused };
-      const cv = document.createElement("canvas");
-      cv.width = Math.max(2, innerWidth);
-      cv.height = Math.max(2, innerHeight);
-      const ctx = cv.getContext("2d");
-      const nSparks = G.sparks ? G.sparks.length : 0, nRings = G.rings ? G.rings.length : 0;
-      warming = true;
-      try {
-        G.active = true;
-        G.cam = 0; G.camTarget = 0; G.zoom = 1;
-        G.W = cv.width; G.H = cv.height;
-        go(idxOf(b));
-        if (work) work(); else draw(ctx, { W: G.W, H: G.H });
-      } catch (e) {
-      } finally {
-        G.active = keep.active;
-        G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
-        G.cam = keep.cam; G.camTarget = keep.camTarget; G.zoom = keep.zoom; G.paused = keep.paused;
-        if (G.sparks) G.sparks.length = Math.min(G.sparks.length, nSparks);
-        if (G.rings) G.rings.length = Math.min(G.rings.length, nRings);
-        if (window.GenArmies) GenArmies.reset();
-        broke = false;
-        resetFX();
-        warming = false;
-      }
-    };
-    /* the walk beat's debris is the heavy part: it is built in small steps of its own, then the beat is drawn */
-    const debris = window.GenRockTitans && GenRockTitans.debrisSteps ? GenRockTitans.debrisSteps().map((f) => beat("walk", f)) : [];
-    return ["point", "drawn", "break"].map((b) => beat(b)).concat(debris, [beat("walk")]);
+  /* build the lazy canvases and caches ahead of the first cutscene: paint the opening frames on a
+     throwaway canvas at the size and DPR the bridge draws at, then put the state back; nothing shows.
+     Each stage is warm only once it really finished, and only for that size: a resize makes it cold. */
+  let ws = { key: null, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, debFail: -1, tried: {} };
+  function warmSize() {
+    const b = window.Bridge;
+    const dpr = b && b.W ? b.dpr : 1;
+    return { W: Math.max(2, b && b.W ? b.W : innerWidth), H: Math.max(2, b && b.H ? b.H : innerHeight), dpr: dpr };
   }
-  function warm() { warmSteps().forEach((f) => f()); }
+  function warmSkipped(forced) {
+    return G.active || (reduced && !forced) || innerWidth <= 640 || innerHeight > innerWidth || !!(window.Bridge && Bridge.portrait);
+  }
+  /* paints beat b (or runs work in it) at size z; true when it ran through */
+  function warmBeat(z, b, work) {
+    if (G.active) return false;
+    const keep = { active: G.active, beat: G.beat, local: G.local, W: G.W, H: G.H, cam: G.cam, camTarget: G.camTarget, zoom: G.zoom, paused: G.paused };
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(z.W * z.dpr);
+    cv.height = Math.round(z.H * z.dpr);
+    const ctx = cv.getContext("2d");
+    ctx.setTransform(z.dpr, 0, 0, z.dpr, 0, 0);
+    const nSparks = G.sparks ? G.sparks.length : 0, nRings = G.rings ? G.rings.length : 0;
+    let ok = false;
+    warming = true;
+    try {
+      G.active = true;
+      G.cam = 0; G.camTarget = 0; G.zoom = 1;
+      G.W = z.W; G.H = z.H;
+      go(idxOf(b));
+      if (work) work(); else draw(ctx, { W: G.W, H: G.H });
+      ok = true;
+    } catch (e) {
+    } finally {
+      G.active = keep.active;
+      G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
+      G.cam = keep.cam; G.camTarget = keep.camTarget; G.zoom = keep.zoom; G.paused = keep.paused;
+      if (G.sparks) G.sparks.length = Math.min(G.sparks.length, nSparks);
+      if (G.rings) G.rings.length = Math.min(G.rings.length, nRings);
+      if (window.GenArmies) GenArmies.reset();
+      broke = false;
+      resetFX();
+      warming = false;
+    }
+    return ok;
+  }
+  /* runs the next cold unit (point, drawn, break, each debris step, walk); true while units remain */
+  function warmStep(forced) {
+    if (warmSkipped(forced === true)) return false;
+    const z = warmSize(), key = z.W + "|" + z.H + "|" + z.dpr;
+    if (ws.key !== key) ws = { key: key, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, debFail: -1, tried: {} };
+    for (const b of ["point", "drawn", "break"]) {
+      if (ws[b] || ws.tried[b]) continue;
+      ws.tried[b] = true;   // a stage that throws is not retried until warm() resets this, so the gate never loops
+      ws[b] = warmBeat(z, b);
+      return true;
+    }
+    const rt = window.GenRockTitans;
+    if (rt && rt.debrisSteps) {
+      const units = rt.debrisSteps();
+      ws.debN = units.length;
+      if (ws.deb < ws.debN) {
+        if (!warmBeat(z, "walk", units[ws.deb]) && ws.debFail < 0) ws.debFail = ws.deb;
+        ws.deb++;
+        return true;
+      }
+    }
+    if (!ws.walk && !ws.tried.walk) {
+      ws.tried.walk = true;
+      ws.walk = warmBeat(z, "walk");
+      return true;
+    }
+    return false;
+  }
+  /* one function per unit, so the gate can run them a frame apart */
+  function warmSteps() {
+    if (warmSkipped()) return [];
+    const n = 4 + (window.GenRockTitans && GenRockTitans.debrisSteps ? GenRockTitans.debrisSteps().length : 0);
+    return Array.from({ length: n }, () => warmStep);
+  }
+  function warm() {
+    ws.tried = {};   // a stage the gate gave up on is still cold: play() tries it again
+    if (ws.debFail >= 0) { ws.deb = ws.debFail; ws.debFail = -1; }
+    let guard = 4000; while (guard-- > 0 && warmStep(true)); }
 
   function segmentSeen(id) {
     return !!(window.XP && XP.has("genesis-seg-" + id));
@@ -911,12 +955,17 @@ window.Genesis = (function () {
     const d = e.detail || {};
     if (G.active) return;
     const segId = G.SCENE;
+    /* a URL-started play waits for the gate and its fade to be gone (gate:gone; window.gateGone if it already fired) */
+    const afterGate = fn => {
+      if (window.gateGone) setTimeout(fn, 80);
+      else document.addEventListener("gate:gone", () => setTimeout(fn, 80), { once: true });
+    };
     if (segId) {
-      setTimeout(() => { if (!G.active) playScene(segId, true); }, 80);
+      afterGate(() => { if (!G.active) playScene(segId, true); });
       return;
     }
     if (FORCE) {
-      setTimeout(() => { if (!G.active) play({ thenMode: "void" }); }, 80);
+      afterGate(() => { if (!G.active) play({ thenMode: "void" }); });
       return;
     }
   });
@@ -925,6 +974,6 @@ window.Genesis = (function () {
     get active() { return G.active; },
     get pending() { return pending(); },
     get seaming() { return seaming; },
-    play, playScene, playSegment: playScene, warm, warmSteps, segmentSeen, skip, seek, step, draw,
+    play, playScene, playSegment: playScene, warm, warmStep, warmSteps, segmentSeen, skip, seek, step, draw,
   };
 })();

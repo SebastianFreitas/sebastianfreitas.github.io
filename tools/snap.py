@@ -54,7 +54,7 @@ from playwright.sync_api import sync_playwright
 
 CLOCK_START = 1_700_000_000_000   # installed before the first navigation
 CLOCK_PAUSE = 1_700_000_010_000   # the instant every page is frozen at
-GATE_BOOT = 4000                  # ms of frames: the gate types itself in under this
+GATE_BOOT = 4000                  # ms of frames: the gate's warm-up runs in under this
 FRAME = 16                        # ms: the faked clock's own frame interval
 OPENING = 96                      # ms: the jump that opens a scene, past the site's dt clamp
 OBSERVE = 400                     # ms of real time: long enough for observers to land
@@ -103,28 +103,126 @@ def settle(page, ms):
     page.clock.run_for(ms)
 
 
-def enter_via_gate(page, base, button="#gate-world"):
-    """nav-flows' enter_via_gate, waited out on the faked clock instead of on
-    the wall: the gate types itself on timers, which only run when asked, and
-    any real second that reaches a page moves its frames out of step."""
-    page.goto(base + "/")
-    settle(page, GATE_BOOT)
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click(button); page.viewport_size["width"] >= 1000 and page.mouse.move(720, 639.5)  # rest where the old gate button was: later scenes hover what is under the pointer
-    settle(page, 2500)
+# The gate opens the site by itself, inside the warm-up budget, so the page's own
+# site:enter would land earlier than the old Continue click did and move every
+# scene's clock. It is held back here and let go at the old click's instant.
+HOLD_ENTER = """(() => {
+  let held = null, released = false;
+  document.addEventListener('site:enter', e => {
+    if (released || document.documentElement.classList.contains('gate-skip')) return;
+    e.stopImmediatePropagation();
+    held = e.detail;
+  }, true);
+  window.__snapRelease = () => {
+    released = true;
+    if (!held) return false;
+    const d = held; held = null;
+    document.dispatchEvent(new CustomEvent('site:enter', { detail: d }));
+    return true;
+  };
+})();"""
+
+# css/gate.css reserves a scrollbar gutter on html so the page doesn't jump sideways when the
+# gate frees the scroll. This browser hides its scrollbars, so there the 15 px is an empty strip
+# that narrows every page (text re-wraps on phones) against main. Captures cancel it; the two
+# gate scenes keep it (new_ctx(gutter=True)).
+NO_GUTTER = """(() => {
+  const add = () => {
+    const s = document.createElement('style');
+    s.textContent = 'html { scrollbar-gutter: auto !important; }';
+    document.documentElement.appendChild(s);
+  };
+  if (document.documentElement) add();
+  else new MutationObserver((_, o) => { if (document.documentElement) { o.disconnect(); add(); } })
+    .observe(document, { childList: true });
+})();"""
+
+# js/site/intro.js ends the bar on `animation.finished` (its last ease to full), and a Web
+# Animation runs on real compositor time, which the stopped clock doesn't reach: the gate
+# closed at a different faked instant each load (about 100 ms apart), so everything it
+# lets go (the idle warm-up units and their Math.random draws, the fade clone) moved.
+# Here a short animation's `finished` is a faked timer of its own duration instead.
+# The same file reads the first-paint entry's real startTime against the faked
+# performance.now() when the entry exists yet (a race), so those entries are hidden and
+# the gate anchors on its own first painted frame.
+WAAPI_FAKED = """(() => {
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function (kf, opts) {
+    const a = animate.call(this, kf, opts);
+    const d = typeof opts === 'number' ? opts : opts && opts.duration;
+    if (d > 0 && d <= 1000) {
+      const p = new Promise(res => setTimeout(res, d));
+      Object.defineProperty(a, 'finished', { get: () => p });
+    }
+    return a;
+  };
+  const get = performance.getEntriesByName.bind(performance);
+  performance.getEntriesByName = (n, t) => /^first(-contentful)?-paint$/.test(n) ? [] : get(n, t);
+})();"""
+PHONE_REST = (69.3, 802.0)        # where the old Continue click left the pointer on a phone
 
 
-def press_gate(page, after=2500):
-    """A homepage load behind the entry gate (every load shows it): run the clock
-    until the button is ready, press it, then run `after` ms (the +1 landing;
-    0 for a scene that times itself from the press)."""
-    settle(page, GATE_BOOT)
+ENTER_AFTER = 60_000   # faked ms after this page load that site:enter is let go, later than either gate needs (the slowest scene's gate opened at about 48 s)
+SCENE = ""             # the scene being captured, for the missed-alignment warning
+
+
+def press_old_gate(page):
+    """remove once the gate rework is on main: main's gate has no .done state; its button
+    is clicked once #gate-panel is on (site:enter stays held)."""
     page.wait_for_selector("#gate-panel.on", timeout=15000)
     for _ in range(150):
         if page.evaluate("!document.getElementById('gate-world').hasAttribute('aria-disabled')"):
             break
         page.clock.run_for(100)
-    page.click("#gate-world"); page.viewport_size["width"] >= 1000 and page.mouse.move(720, 639.5)  # same resting pointer as enter_via_gate
+    page.click("#gate-world")
+
+
+def wait_gate_open(page):
+    """The gate fills its bar and opens by itself: run the faked clock until it is gone,
+    then run on to ENTER_AFTER ms after this page load, reseed, and let the held site:enter go there."""
+    rest = (720, 639.5) if page.viewport_size["width"] >= 1000 else PHONE_REST
+    if page.evaluate("!!document.getElementById('gate-world') && !document.getElementById('gate-bar')"):
+        press_old_gate(page)
+    else:
+        page.wait_for_selector("#gate-bar", state="attached", timeout=15000)
+        for _ in range(300):
+            if page.evaluate("document.getElementById('site-gate').classList.contains('done')"):
+                break
+            page.clock.run_for(100)
+    page.mouse.move(*rest)   # rest where the old gate button was: later scenes hover
+    left = ENTER_AFTER - page.evaluate("Date.now() - window.__snapT0")
+    if left > 0:
+        page.clock.run_for(left)
+    else:
+        print(f"WARN {SCENE}: gate opened {-left} ms past ENTER_AFTER, enter not aligned", file=sys.stderr)
+    page.evaluate(SEED)
+    # the branch's bridge loop runs under the gate (main's starts at enter): pin its
+    # clock, and every infinite CSS animation, to 0 at the release on both trees
+    page.evaluate("""(() => {
+      if (window.Bridge && typeof window.Bridge.t === 'number') window.Bridge.t = 0;
+      document.getAnimations().forEach(a => {
+        if (a instanceof CSSAnimation && a.effect && a.effect.getComputedTiming().iterations === Infinity) a.currentTime = 0;
+      });
+    })()""")
+    page.evaluate("window.__snapRelease && window.__snapRelease()")
+
+
+def enter_via_gate(page, base, button=None):
+    """nav-flows' enter_via_gate, waited out on the faked clock instead of on
+    the wall: the gate's bar moves on timers and frames, which only run when
+    asked, and any real second that reaches a page moves its frames out of step."""
+    page.goto(base + "/")
+    settle(page, GATE_BOOT)
+    wait_gate_open(page)
+    settle(page, 2500)
+
+
+def press_gate(page, after=2500):
+    """A homepage load behind the entry gate (every load shows it): run the clock
+    until the gate has opened by itself, then run `after` ms (the +1 landing;
+    0 for a scene that times itself from the opening)."""
+    settle(page, GATE_BOOT)
+    wait_gate_open(page)
     if after:
         settle(page, after)
 
@@ -157,7 +255,7 @@ def watch_errors(page):
 REDUCED_MOTION = False   # --reduced-motion: every scene that doesn't set its own
 
 
-def new_ctx(browser, viewport=None, **opts):
+def new_ctx(browser, viewport=None, gutter=False, **opts):
     if REDUCED_MOTION:
         opts.setdefault("reduced_motion", "reduce")
     ctx = browser.new_context(viewport=viewport or nav.DESKTOP, **opts)
@@ -166,9 +264,16 @@ def new_ctx(browser, viewport=None, **opts):
     ctx.clock.pause_at(CLOCK_PAUSE)    # stopped before the first page exists
     ctx.add_init_script(nav.INIT)
     ctx.add_init_script(SEED)
+    ctx.add_init_script(HOLD_ENTER)
+    ctx.add_init_script(WAAPI_FAKED)
+    if not gutter:
+        ctx.add_init_script(NO_GUTTER)
     ctx.route("**/*.mp4", lambda route: route.abort())   # posters only, see PARK_VIDEO
     page = ctx.new_page()
     watch_errors(page)
+    # the faked clock carries across loads but a new document starts on a stale Date.now, so the
+    # load's instant is read once the page is up, not in an init script (see ENTER_AFTER)
+    page.on("domcontentloaded", lambda p: p.evaluate("window.__snapT0 = Date.now()"))
     return ctx, page
 
 
@@ -427,11 +532,10 @@ def scene_bridge_phone_landscape(browser, base, out_dir):
 
 def gate_scene(name, viewport):
     def fn(browser, base, out_dir):
-        ctx, page = new_ctx(browser, viewport)
+        ctx, page = new_ctx(browser, viewport, gutter=True)
         page.goto(base + "/")
-        settle(page, GATE_BOOT)
-        page.wait_for_selector("#gate-panel.on", timeout=15000)
-        settle(page, 500)
+        page.wait_for_selector("#gate-bar", state="attached", timeout=15000)
+        settle(page, 300)
         shot(page, out_dir, name)
         ctx.close()
     return fn
@@ -607,9 +711,12 @@ def scenes():
 # ------------------------------------------------------------------ capture
 
 
-def capture(name, only=None):
+def capture(name, only=None, root=None):
+    global SCENE
     out_dir = SHOTS / name
     out_dir.mkdir(parents=True, exist_ok=True)
+    if root:
+        nav.ROOT = str(Path(root).resolve())   # serve that checkout's files, read-only
     chosen = [(n, fn) for n, fn in scenes() if not only or only in n]
     if not chosen:
         print(f"no scene matches {only!r} - use: py -3 tools/snap.py list")
@@ -621,6 +728,7 @@ def capture(name, only=None):
             browser = p.chromium.launch(args=CHROME)
             for n, fn in chosen:
                 t0 = time.time()
+                SCENE = n
                 ERRORS.clear()
                 try:
                     fn(browser, base, out_dir)
@@ -683,7 +791,7 @@ def compare(a, b, threshold):
 # ------------------------------------------------------------------ cli
 
 USAGE = """usage:
-  py -3 tools/snap.py capture <name> [--only <substring>] [--phone-width <px>] [--reduced-motion]
+  py -3 tools/snap.py capture <name> [--only <substring>] [--phone-width <px>] [--reduced-motion] [--root <dir>]
   py -3 tools/snap.py compare <a> <b> [--threshold 0.5]
   py -3 tools/snap.py list"""
 
@@ -706,11 +814,16 @@ def main():
             i = rest.index("--phone-width")
             nav.PHONE = {"width": int(rest[i + 1]), "height": 667}
             del rest[i:i + 2]
+        root = None
+        if "--root" in rest:
+            i = rest.index("--root")
+            root = rest[i + 1]
+            del rest[i:i + 2]
         if "--only" in rest:
             i = rest.index("--only")
             only = rest[i + 1] if len(rest) > i + 1 else None
             rest = rest[:i]
-        return capture(rest[0], only)
+        return capture(rest[0], only, root)
     if cmd == "compare" and len(rest) >= 2:
         threshold = 0.5
         if "--threshold" in rest:

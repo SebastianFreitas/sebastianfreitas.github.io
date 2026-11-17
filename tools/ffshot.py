@@ -3,11 +3,11 @@
 Playwright's bundled Firefox missed row-art bugs twice that the real install showed.
 
   py -3 tools/ffshot.py [--path /] [--size 2000x1009] [--scroll SEL] [--hover SEL]
-                        [--wait MS] [--out PATH.png]
+                        [--wait MS] [--out PATH.png] [--gate]
   py -3 tools/ffshot.py --games      each homepage Games row at rest and hovered, plus 390x844
 
-Serves the worktree itself (nav-flows' start_server), picks the gate's world button when
-the gate shows. Prints the png path(s), the Firefox version, innerWidth x innerHeight and
+Serves the worktree itself (nav-flows' start_server), waits out the loading gate (it opens
+by itself); --gate shoots the gate itself mid-fill. Prints the png path(s), the Firefox version, innerWidth x innerHeight and
 console errors (window errors caught by a probe; Firefox gives Selenium no console log).
 Firefox cannot go under 500 px wide; use Playwright for 390.
 Full-viewport shots. Exits 1 on errors or a missing firefox.exe.
@@ -52,17 +52,68 @@ def set_viewport(d, w, h):
     d.set_window_size(w + (w - iw), h + (h - ih))
 
 
+GATE_SCALE = """
+const f = document.getElementById('gate-bar-fill'), g = document.getElementById('site-gate');
+if (!f || !g || g.classList.contains('done') || document.documentElement.classList.contains('gate-done')) return null;
+const m = /matrix\\(([^,]+)/.exec(getComputedStyle(f).transform);
+return m ? +m[1] : 0;
+"""
+
+
+def gate_scale(d):
+    try:
+        return d.execute_script(GATE_SCALE)
+    except Exception:
+        return None
+
+
+def gate_shot(d, base, path, out):
+    """Shoot the gate with its fill between 0.3 and 0.8; the page's errors (a list) when one was saved, else None. The page load
+    strategy is "none", so polling starts at the gate's first frames. Each try is a fresh tab
+    (the gate shows once per tab)."""
+    for _ in range(3):
+        d.switch_to.new_window("tab")
+        d.get(base + path)
+        s = None
+        end = time.time() + 20
+        while time.time() < end:
+            s = gate_scale(d)
+            if s is not None:   # the gate exists: the page is this tab's; hook errors once (from here on)
+                d.execute_script("if (window.__errs) return;" + PROBE)
+            if s is not None and 0.3 <= s <= 0.8:
+                break
+            if s is not None and s > 0.8:
+                s = None
+                break
+            time.sleep(0.01)
+        else:
+            s = None
+        if s is None:
+            d.close()
+            d.switch_to.window(d.window_handles[-1])
+            continue
+        d.save_screenshot(str(out))
+        after = gate_scale(d)
+        if after is None:   # the gate went during the capture: the shot may show the bridge
+            out.unlink(missing_ok=True)
+            continue
+        print(out)
+        print("gate scaleX %.3f at the poll, %.3f after the capture" % (s, after))
+        return d.execute_script("return window.__errs || []")
+    return None
+
+
 def load(d, base, path):
     d.get(base + path)
     d.execute_script(PROBE)
     try:
-        d.find_element(By.CSS_SELECTOR, "#gate-world")
-        for _ in range(100):
-            if d.execute_script("var p=document.getElementById('gate-panel');return !!p&&p.classList.contains('on')"):
-                break
-            time.sleep(0.1)
-        d.find_element(By.CSS_SELECTOR, "#gate-world").click()
-        time.sleep(2.5)
+        if d.find_elements(By.CSS_SELECTOR, "#gate-bar"):
+            # the gate opens the site by itself when the bar fills
+            for _ in range(300):
+                if d.execute_script("return document.documentElement.classList.contains('gate-done')"):
+                    break
+                time.sleep(0.1)
+            time.sleep(1.0)
     except Exception:
         pass
     d.execute_script(PROBE)
@@ -91,6 +142,7 @@ def main():
     ap.add_argument("--wait", type=int, default=500)
     ap.add_argument("--out")
     ap.add_argument("--games", action="store_true")
+    ap.add_argument("--gate", action="store_true")   # shoot the loading gate at about 40-66% filled
     a = ap.parse_args()
 
     if not os.path.exists(FIREFOX):
@@ -105,12 +157,23 @@ def main():
     opts.add_argument(prof)
     tmp = Path(tempfile.gettempdir())
     httpd, base = nav.start_server()
+    if a.gate:
+        opts.page_load_strategy = "none"
     d = webdriver.Firefox(options=opts, service=Service())
     errors = []
     try:
         print("Firefox " + d.capabilities.get("browserVersion", "?"))
         w, h = parse_size(a.size)
         set_viewport(d, w, h)
+        if a.gate:
+            errors = gate_shot(d, base, a.path, Path(a.out) if a.out else tmp / "ffshot.png")
+            if errors is None:
+                print("gate shot missed: 3 tries, the gate was never caught with its fill between 0.3 and 0.8")
+                return 1
+            print("inner " + "x".join(str(v) for v in d.execute_script("return [innerWidth, innerHeight]")))
+            for e in errors:
+                print("console error: " + e)
+            return 1 if errors else 0
         load(d, base, a.path)
         if a.games:
             for row in ROWS:

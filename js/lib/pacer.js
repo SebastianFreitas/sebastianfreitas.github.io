@@ -13,8 +13,10 @@ window.Pacer = (function () {
     let armed = false, idleTimer = 0;   // an rAF callback is pending / an idle wake is pending
     let last = performance.now();
     /* pace the scene by display refreshes, not by a ms slot: paint every Nth
-       refresh, N = floor(Hz / 60), so every painted frame is the same length.
-       60 Hz → 60 fps, 75 → 75, 120 → 60, 144 → 72, 165 → 82.5, 240 → 60.
+       refresh so every painted frame is the same length. Up to 60 Hz N = 1;
+       above it N = ceil(Hz / 60) when that keeps at least 45 fps: 120 Hz → 60 fps,
+       144 → 48, 165 → 55, 240 → 60. A rate where that falls under 45 (75 Hz would
+       give 37.5) keeps floor(Hz / 60) with the 60 fps ceiling below, as before.
        The refresh interval is measured from rAF timestamps and kept up to date,
        so moving the window to another monitor re-picks N. */
     const REFRESH_WINDOW = 15;        // intervals kept for the measurement
@@ -26,6 +28,7 @@ window.Pacer = (function () {
     let refreshMs = 1000 / 60;        // measured refresh interval
     let refreshN = 1;                 // paint every refreshN refreshes
     let refreshMeasured = false;
+    let evenPace = false;             // N is the even-cadence ceil(Hz / 60): the 60 fps ceiling is not needed
     let pendingN = 0;                 // a new N waits for a second measurement to agree
     let sinceMeasure = 0;             // intervals recorded since the last measurement
     let prevStamp = -1;               // previous rAF timestamp; -1 = none yet
@@ -74,14 +77,24 @@ window.Pacer = (function () {
         if (Math.abs(x - m) <= m * REFRESH_BAND) { sum += x; count++; }
       }
       refreshMs = sum / count;
-      const n = Math.max(1, Math.floor(1000 / refreshMs / 60 + 0.03));   // 3% margin: 59.94 and 119.88 Hz panels keep their N
+      const hz = 1000 / refreshMs;
+      let n = Math.max(1, Math.floor(hz / 60 + 0.03));   // 3% margin: 59.94 and 119.88 Hz panels keep their N
+      let even = false;
+      if (hz / n > 60 * 1.03) {
+        // over the cap: every Nth refresh with N = ceil(Hz / 60) gives equal gaps, unless that is under 45 fps
+        const c = Math.ceil(hz / 60 - 0.03);
+        if (hz / c >= 45) { n = c; even = true; }
+      }
       if (!refreshMeasured) {
+        evenPace = even;
         refreshN = n;
         refreshMeasured = true;
         pendingN = 0;
       } else if (n === refreshN) {
+        evenPace = even;
         pendingN = 0;
       } else if (n === pendingN) {
+        evenPace = even;
         refreshN = n;
         pendingN = 0;
       } else {
@@ -123,7 +136,7 @@ window.Pacer = (function () {
         arm();
         return;
       }
-      if (paintDue && now < paintDue - PAINT_EARLY_MS) {
+      if (!evenPace && paintDue && now < paintDue - PAINT_EARLY_MS) {
         // on a refresh boundary but under the 60 fps ceiling: wait for the next one
         arm();
         return;
@@ -157,11 +170,11 @@ window.Pacer = (function () {
         measured: refreshMeasured,
         idle: idleNow,
         fps: idleNow ? +(1000 / IDLE_PARK_MS).toFixed(2)
-                     : +Math.min(hz / refreshN, 1000 / PAINT_MS).toFixed(2),
+                     : +(evenPace ? hz / refreshN : Math.min(hz / refreshN, 1000 / PAINT_MS)).toFixed(2),
         cap: idleNow ? 1000 / IDLE_PARK_MS : 60,
       };
     }
-    return { start, wake, report, get running() { return running; }, get idle() { return idleNow; } };
+    return { start, wake, report, get running() { return running; }, get lastPaint() { return last; }, get idle() { return idleNow; } };
   }
   return { create };
 })();

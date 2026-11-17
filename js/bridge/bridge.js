@@ -77,8 +77,11 @@
   function resize() {
     B.dpr = Math.min(devicePixelRatio || 1, 2);
     B.W = host.clientWidth; B.H = host.clientHeight;
-    cv.width = B.W * B.dpr; cv.height = B.H * B.dpr;
-    ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
+    const pw = B.W * B.dpr, ph = B.H * B.dpr;
+    if (cv.width !== pw || cv.height !== ph) {   // setting the size clears the canvas: only when it changed
+      cv.width = pw; cv.height = ph;
+      ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
+    }
     // seat the voidship under the boot veil so it never pops in later
     if (B.ship) Voidship.resize(B.ship, B.W, B.H);
   }
@@ -122,21 +125,30 @@
     B.saveView();
   }
 
-  function startLoop() {
+  function startLoop(warm) {
     if (!B.pacer) return;   // an observer can fire between scripts, before bridge-loop.js has made the pacer; site:enter starts it later
     if (B.pacer.running) { B.pacer.start(); return; }   // start() on a running pacer just unparks
-    if (!B.entered) return;
+    if (!B.entered && warm !== true) return;
     if (!B.visible || B.portrait || document.hidden) return;
+    B.liveFrames = 0;
     B.pacer.start();
   }
-  B.startLoop = startLoop;
+  B.startLoop = () => startLoop();
+  /* the gate starts the live loop while it still covers the bridge; "bridge:live" fires after the loop's second frame */
+  B.startWarm = () => startLoop(true);
 
   /* the gate sits over one still frame; the loop only starts on site:enter */
   document.addEventListener("site:preload", () => {
     B.preloaded = true;
   });
+  let repaintQueued = false;
   function repaintUnderGate() {
-    if (B.preloaded && !B.entered) B.paintOnce();
+    if (repaintQueued) return;
+    repaintQueued = true;   // one repaint per frame however many resize events fire
+    requestAnimationFrame(() => {
+      repaintQueued = false;
+      if (B.preloaded && !B.entered) B.paintOnce();
+    });
   }
   // the gate is opaque: the warm-up (intro.js) paints the frame once after load and fonts; only a resize, which clears the canvas, repaints
   addEventListener("resize", repaintUnderGate);

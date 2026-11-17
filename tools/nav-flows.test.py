@@ -169,20 +169,23 @@ def near(a, b):
     return a is not None and b is not None and abs(a - b) <= TOL
 
 
-def enter_via_gate(page, base, button="#gate-world"):
-    """First visit: wait for the gate's buttons, pick one, let the +1 land."""
+def wait_gate_done(page):
+    """The gate opens by itself when its bar is full: wait for it to be gone."""
+    page.wait_for_function("document.getElementById('site-gate').classList.contains('done')", timeout=30000)
+
+
+def enter_via_gate(page, base, button=None):
+    """First visit: the gate fills its bar and opens by itself; let the +1 land."""
     page.goto(base + "/")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click(button)
+    page.wait_for_selector("#gate-bar", timeout=10000)
+    wait_gate_done(page)
     page.wait_for_timeout(2500)
 
 
 def pass_gate(page, wait=2500):
-    """Any later visit: the gate shows with no boot log; wait for the button to be ready, press it."""
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.wait_for_function("!document.getElementById('gate-world').hasAttribute('aria-disabled')", timeout=15000)
-    # a DOM click: a gate that auto-continued in the tick it turned ready is already closed, and a closed gate ignores the press
-    page.evaluate("document.getElementById('gate-world').click()")
+    """Any later visit: the gate shows its bar and opens by itself."""
+    page.wait_for_selector("#gate-bar", timeout=10000)
+    wait_gate_done(page)
     page.wait_for_timeout(wait)
 
 
@@ -190,8 +193,8 @@ def gate_state(page):
     return page.evaluate("""() => { const g = document.getElementById('site-gate');
       return { shown: !!g && getComputedStyle(g).display !== 'none',
                hiddenAtParse: window.__gateHiddenAtParse,
-               bootLines: document.querySelectorAll('#gate-log .bl').length,
-               bar: !!document.querySelector('.gate-bar') }; }""")
+               text: (g.querySelector('.gate-eyebrow')||{}).textContent,
+               bar: !!document.querySelector('.gate-bar[role=progressbar]') }; }""")
 
 
 def goto_cc(page, base):
@@ -217,8 +220,8 @@ def flow_first(browser, base):
     page.wait_for_timeout(300)
     s = state(page)
     check("first visit shows the gate", s["gateShown"], s)
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-world")
+    page.wait_for_selector("#gate-bar", timeout=10000)
+    wait_gate_done(page)
     page.wait_for_timeout(2500)
     s = state(page)
     check("gate closes after picking Setting", not s["gateShown"] and not s["frozen"], s)
@@ -235,7 +238,7 @@ def flow_gate_exits(browser, base):
     """The gate can be left without picking: Escape, or a top bar link."""
     ctx, page = new_page(browser)
     page.goto(base + "/")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.wait_for_selector("#gate-bar", timeout=10000)
     page.keyboard.press("Escape")
     page.wait_for_timeout(1500)
     s = state(page)
@@ -245,7 +248,7 @@ def flow_gate_exits(browser, base):
 
     ctx, page = new_page(browser)
     page.goto(base + "/")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.wait_for_selector("#gate-bar", timeout=10000)
     page.click("header nav a[href='#work']")
     page.wait_for_timeout(SETTLE)
     s = state(page)
@@ -321,7 +324,7 @@ def flow_deeplink(browser, base):
     page.goto(base + "/#voidscape")
     page.wait_for_timeout(300)
     g = gate_state(page)
-    check("deep link: the gate shows, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
+    check("deep link: the gate shows, the bar", g["shown"] and g["bar"], g)
     pass_gate(page, SETTLE)
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(400)
@@ -353,7 +356,7 @@ def flow_returning(browser, base):
         page.goto(base + "/")
         page.wait_for_timeout(300)
         g = gate_state(page)
-        check(f"returning ({mode}): the gate shows, bar and no boot log", g["shown"] and g["bar"] and g["bootLines"] == 0, g)
+        check(f"returning ({mode}): the gate shows, the bar", g["shown"] and g["bar"], g)
         check(f"returning ({mode}): gate painted at parse", g["hiddenAtParse"] is False, g)
         pass_gate(page, SETTLE)
         s = state(page)
@@ -406,8 +409,8 @@ def flow_reset(browser, base):
           page.evaluate("localStorage.getItem('other.key')") == "keep",
           page.evaluate("localStorage.getItem('other.key')"))
     page.evaluate("localStorage.removeItem('other.key')")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-world")
+    page.wait_for_selector("#gate-bar", timeout=10000)
+    wait_gate_done(page)
     page.wait_for_timeout(2500)
     page.evaluate("XP.award('beacon-bnote-bridge', 1, 'The Bridge')")   # a bridge beacon: the one grant left
     page.wait_for_timeout(500)
@@ -553,8 +556,8 @@ def flow_glimpse(browser, base):
 
     ctx, page = new_page(browser)
     page.goto(base + "/?gscene=birth")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
-    page.click("#gate-world")
+    page.wait_for_selector("#gate-bar", timeout=10000)
+    wait_gate_done(page)
     page.wait_for_function("Genesis.active === true", timeout=12000)
     page.wait_for_timeout(1500)
     page.evaluate("Genesis.skip()")
@@ -598,9 +601,9 @@ def flow_genesis_scenes(browser, base):
         ctx.close()
     ctx, page = new_page(browser)
     page.goto(base + "/?genesis=1&gbeat=corrupt")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.wait_for_selector("#gate-bar", timeout=10000)
     page.evaluate("window.__seam = false; setInterval(() => { if (Genesis.seaming) window.__seam = true; }, 25)")
-    page.click("#gate-world")                # the gate's Setting button starts the forced Genesis
+    wait_gate_done(page)                # the gate opening by itself starts the forced Genesis
     page.wait_for_function("Gen.beat === Gen.idxOf('dot')", timeout=60000)
     page.wait_for_timeout(1500)
     check("full play: the seam into dot was a fade", page.evaluate("window.__seam") is True, None)
@@ -1374,9 +1377,9 @@ def flow_gate_once(browser, base):
     """The gate shows on a fresh tab; once passed, the homepage in the same tab shows none; a new tab shows it again."""
     ctx, page = new_page(browser)
     page.goto(base + "/")
-    page.wait_for_selector("#gate-panel.on", timeout=10000)
+    page.wait_for_selector("#gate-bar", timeout=10000)
     check("gate-once: a fresh context shows the gate", gate_state(page)["shown"], gate_state(page))
-    page.click("#gate-world")
+    wait_gate_done(page)
     page.wait_for_timeout(2500)
     page.goto(base + "/#work")
     page.wait_for_timeout(SETTLE)
@@ -1386,7 +1389,7 @@ def flow_gate_once(browser, base):
     ctx.close()
     ctx2, page2 = new_page(browser)
     page2.goto(base + "/")
-    page2.wait_for_selector("#gate-panel.on", timeout=10000)
+    page2.wait_for_selector("#gate-bar", timeout=10000)
     check("gate-once: a second fresh context shows the gate again", gate_state(page2)["shown"], gate_state(page2))
     ctx2.close()
 
