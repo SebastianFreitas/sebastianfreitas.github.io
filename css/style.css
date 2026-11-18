@@ -654,6 +654,8 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj > :is(.obj-hook, .obj-line, .props) { grid-column: 2; max-width: none; width: auto; transform-origin: 0 0; }
   .obj > .obj-hook { transform: var(--wk-hk, none); width: var(--wk-hw, auto); margin-bottom: var(--wk-hm, 0px); }   /* one layout, rest and hover: the same width and line breaks */
   .obj > .obj-line { transform: var(--wk-ln, none); width: var(--wk-lw, auto); margin-bottom: var(--wk-lm, 0px); }   /* under the hook, the hook's width, level; always shown, the same at rest and on hover */
+  .obj > .obj-det { transition: margin-left 0.2s; }   /* flipped rows: on hover the label's left margin gives back the square's growth (--wk-dm), so its right end stays */
+  .obj.is-peek > .obj-det, .obj:focus-visible > .obj-det, .obj:focus-within > .obj-det { margin-left: var(--wk-dm, 0px); }
   .obj > .obj-det i { width: 0; margin-right: -12px; opacity: 0; transition: opacity 0.2s, width 0.2s, margin-right 0.2s; }   /* at rest the red square takes no space (width 0, its 12 px gap cancelled) so OBJ_000x starts at the title's edge; on hover it grows in and the label slides right by 9 + 12 px */
   .obj.is-peek > .obj-det i, .obj:focus-visible > .obj-det i, .obj:focus-within > .obj-det i { width: 9px; margin-right: 0; opacity: 1; }
   .obj > .props { transform: var(--wk-fx, none); }

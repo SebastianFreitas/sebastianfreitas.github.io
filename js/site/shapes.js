@@ -1503,8 +1503,8 @@
   /* mouse, wide: where the title, hook and facts are drawn (css zones block: they stay in the grid, which only holds the row's height, and move by transform). One level layout, the same
      at rest and on hover: the title at the top-left corner of the text side, the hook under it in the same column (its width chosen once: inside the plate and SEAMGAP px clear of the
      picture), the facts as one line at the bottom edge (turned to it by --wk-ba), the last facts dropped from view when they do not fit on the line */
-  function wkPlace(el, pts, end, bi, W, H, seam, flip) {   /* flip: the one the plate was drawn with (not the class: under 1200 px a flip row is drawn as a normal one) */
-    const M = 28, RG = 16, DD = 24, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
+  function wkPlace(el, pts, end, bi, W, H, wide, flip) {   /* flip: the one the plate was drawn with (not the class: under 1200 px a flip row is drawn as a normal one) */
+    const M = 28, RG = 16, BWMAX = 720, TS = 1.15, TG = 6, LG = 10, SH = 0.045, DD = 24, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
     if (!h3 || !hk) return;
     ["--wk-hw", "--wk-hm", "--wk-ln", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* measured at the grid's own sizes */
     const f = function (v) { return v.toFixed(1); };
@@ -1514,7 +1514,7 @@
     const k = window.Stage ? window.Stage.s() : 1, rgn = document.createRange(), ink = function (e) { rgn.selectNodeContents(e); return rgn.getBoundingClientRect().width / k; };   /* a block's widest line (rects are screen px under the stage zoom) */
     const tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0, dt = q(".obj-det");
     const mv = function (e, x, y, t) { return "translate(" + f(x - e.offsetLeft) + "px, " + f(y - e.offsetTop) + "px)" + (t ? " " + t : ""); };
-    /* top block: the detail line parallel to the top edge, just inside it and DD px from the text side's edge (the right one on flipped rows); its right end is the origin there, so a hover grows it leftward */
+    /* top block: the detail line parallel to the top edge, just inside it and DD px from the text side's edge (the right one on flipped rows); its right end is the origin there, and a hover grows it leftward (--wk-dm, css) */
     let dBottom = -Infinity;
     if (dt) {
       const dw = dt.offsetWidth, dh = dt.offsetHeight, ea = Math.atan((tr[1] - tl[1]) / (tr[0] - tl[0])), ox = flip ? dw : 0;
@@ -1526,21 +1526,42 @@
       }
       dBottom = dy + Math.max.apply(null, dc.map(function (c) { return c[1]; }));
       el.style.setProperty("--wk-do", flip ? "100% 0" : "0 0");
+      el.style.setProperty("--wk-dm", flip ? "-21px" : "0px");   /* flipped: the label grows 21 px (square 9 + gap 12) on hover; its left margin gives that back so the right end stays put and the growth goes toward the row's centre */
       el.style.setProperty("--wk-dt", "translate(" + f(dx - ox) + "px, " + f(dy) + "px) rotate(" + (ea * 180 / Math.PI).toFixed(2) + "deg)");
     }
     /* middle block: title, hook and detail line as one group, its centre at the centre of the text half (left half, right on flipped rows), left-aligned inside; the hook is cut back to fit that half */
-    const hy = (topY(W / 2) + botY(W / 2)) / 2, xa = flip ? W / 2 : leftX(hy), xb = flip ? rightX(hy) : seam != null ? Math.min(W / 2, seam - 40 + DD) : W / 2, cx = (xa + xb) / 2;   /* text on the left: the group stays 40 px clear of the picture seam (only a narrow text half moves it off the half's centre) */
-    const w = Math.max(120, Math.min(hw, Math.floor(xb - xa - 2 * DD)));
-    let hh2 = hh, hi = ink(hk);
-    if (w < hw) { hk.style.width = w + "px"; hh2 = hk.offsetHeight; hi = ink(hk); hk.style.width = ""; el.style.setProperty("--wk-hw", w + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px"); }
-    let lh2 = lh, li = 0;   /* the detail line sits under the hook at the hook's width, level, and only fades in on hover */
-    if (ln) {
-      if (w < hw) { ln.style.width = w + "px"; lh2 = ln.offsetHeight; li = ink(ln); ln.style.width = ""; el.style.setProperty("--wk-lw", w + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); } else li = ink(ln);
+    const hy = (topY(W / 2) + botY(W / 2)) / 2;
+    let hh2 = hh, lh2 = lh, thh = th, tg1 = 0, lg = 0, ts = 1, L = 0, h3t = "", yt = 0, gh = 0, clamped = false;
+    if (wide) {
+      /* the block is one fixed width per row (BW), so the title starts on the same x in every normal row and ends on the same x in every mirrored one; the extreme edges are used, not the edge at this row's height, so the rows agree */
+      const xa = flip ? W / 2 : WK_LEAN * W, xb = flip ? (1 - WK_LEAN) * W : W / 2, cx = (xa + xb) / 2;   /* the text half is fixed by the row's width alone (the lean is the same in every row), so the block sits on the same x in every row; the picture seam is derived from the block afterwards (the caller) */
+      const BW = Math.max(120, Math.min(BWMAX, Math.floor(xb - xa - 2 * DD)));
+      L = cx - BW / 2 + (flip ? -1 : 1) * SH * W; tg1 = TG; lg = LG;   /* further into the text half: SH of the row's width (mirrored rows mirror it) */
+      el._wkBlockR = L + BW; el._wkBlockL = L;
+      hk.style.width = BW + "px"; hh2 = hk.offsetHeight; hk.style.width = ""; el.style.setProperty("--wk-hw", BW + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px");
+      /* the detail line sits under the hook at the block's width, level, and only fades in on hover */
+      if (ln) { ln.style.width = BW + "px"; lh2 = ln.offsetHeight; ln.style.width = ""; el.style.setProperty("--wk-lw", BW + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); }
+      ts = Math.min(TS, BW / tw); thh = th * ts;   /* the title is scaled by a transform, so the grid (the row's height) does not change */
+      gh = thh + tg1 + hh2 + (ln ? lg + lh2 : 0); const yc = hy - gh / 2; yt = Math.max(yc, dBottom + 12); clamped = yt > yc;
+      hk.style.width = BW + "px"; const ti = ink(hk); hk.style.width = "";   /* the tagline's own line: the title's middle sits over its middle (left-aligned on every row), but never left of the block's left edge */
+      const tl0 = Math.max(L, L + ti / 2 - tw * ts / 2);
+      const t0 = h3.style.transform, t1 = h3.style.transition; h3.style.transition = "none"; h3.style.transform = "none"; const hl = (h3.getBoundingClientRect().left - el.getBoundingClientRect().left) / k; h3.style.transform = t0; h3.getBoundingClientRect(); h3.style.transition = t1;   /* the title's real (fractional) left in the row: offsetLeft is rounded */
+      h3t = "translate(" + f(tl0 - hl) + "px, " + f(yt - h3.offsetTop) + "px) scale(" + ts.toFixed(3) + ")";
+    } else {   /* under 1200 px: the block as on main (centred on the text half, title at its own size, the hook cut back to fit) */
+      el._wkBlockR = el._wkBlockL = null;
+      const xa = flip ? W / 2 : leftX(hy), xb = flip ? rightX(hy) : W / 2, cx = (xa + xb) / 2, w = Math.max(120, Math.min(hw, Math.floor(xb - xa - 2 * DD)));
+      let hi = ink(hk), li = 0;
+      if (w < hw) { hk.style.width = w + "px"; hh2 = hk.offsetHeight; hi = ink(hk); hk.style.width = ""; el.style.setProperty("--wk-hw", w + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px"); }
+      if (ln) {
+        if (w < hw) { ln.style.width = w + "px"; lh2 = ln.offsetHeight; li = ink(ln); ln.style.width = ""; el.style.setProperty("--wk-lw", w + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); } else li = ink(ln);
+      }
+      tg1 = RG; lg = ln ? parseFloat(getComputedStyle(ln).marginTop) || 0 : 0;
+      gh = th + tg1 + hh2 + (ln ? lg + lh2 : 0); L = cx - Math.max(tw, hi, li) / 2; const yc = hy - gh / 2; yt = Math.max(yc, dBottom + 12); clamped = yt > yc;
+      h3t = mv(h3, L, yt, "");
     }
-    const lm = ln ? parseFloat(getComputedStyle(ln).marginTop) || 0 : 0, gh = th + RG + hh2 + (ln ? lm + lh2 : 0), L = cx - Math.max(tw, hi, li) / 2, yc = hy - gh / 2, yt = Math.max(yc, dBottom + 12), clamped = yt > yc;
-    if (ln) el.style.setProperty("--wk-ln", mv(ln, L, yt + th + RG + hh2 + lm, ""));
-    el.style.setProperty("--wk-h3", mv(h3, L, yt, ""));
-    el.style.setProperty("--wk-hk", mv(hk, L, yt + th + RG, ""));
+    if (ln) el.style.setProperty("--wk-ln", mv(ln, L, yt + thh + tg1 + hh2 + lg, ""));
+    el.style.setProperty("--wk-h3", h3t);
+    el.style.setProperty("--wk-hk", mv(hk, L, yt + thh + tg1, ""));
     if (pr) {
       const kids = Array.prototype.slice.call(pr.querySelectorAll(":scope > div")), tg = q(".obj-go"), tgw = tg ? tg.offsetWidth : 0, D = M - 4;
       pr.style.width = "max-content"; pr.style.maxWidth = "none"; pr.style.overflow = "visible";   /* the box is the facts' own width, so nothing is clipped */
@@ -1648,6 +1669,7 @@
         } else if (!wide && (el._wkExt || el._wkExtL)) { el._wkExt = el._wkExtL = 0; el.style.marginRight = el.style.marginLeft = ""; }
         if (pass === 0) ghostFit(wide, wide && el.classList.contains("is-flip"));
         const W = el.offsetWidth, H = el.offsetHeight, flip = wide && el.classList.contains("is-flip");   /* flip: text right, picture left (css .is-flip) */
+        el.classList.toggle("is-mirror", flip);   /* the hook the mirrored text css keys on (wkPlace lays the block out mirrored only then) */
         if (!W || !H) return;
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
         if (!el._wk || el._wk.W !== W) ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wk-" + v); });
@@ -1717,7 +1739,19 @@
         const cutAll = wkCutTop(all, poly.end, el._wearHoles);   /* glass: the breaks of the plate's top edge cut through the picture too */
         if (shot) el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-shot-clip", "polygon(" + cutAll.map(function (p) { return (p[0] - m.offsetLeft).toFixed(1) + "px " + (p[1] - m.offsetTop).toFixed(1) + "px"; }).join(", ") + ")"); });   /* each (the still and the clip) in its own box: Conclusus draws them at different sizes */
         wkEdgeLight(el, wide ? cutAll.slice(0, poly.end + 1 + cutAll.length - pts.length) : null);
-        const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, seam, flip) : 0;   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
+        const sf = zone && zh ? wkPlace(el, pts, poly.end, bi, W, H, wide, flip) : 0;
+        if (zone && zh && shot && wide && el._wkBlockR != null) {   /* the seam follows the block: 40 px past its picture-side edge, or 16 px past the OBJ and engine lines' reach if that is further (mirrored rows: the same, measured from the left) */
+          const er3 = el.getBoundingClientRect(), rg3 = document.createRange(), k3 = window.Stage ? window.Stage.s() : 1, pk3 = el.classList.contains("is-peek"), tk3 = [el.querySelector(":scope > .obj-det"), el.querySelector(":scope > .props")].filter(Boolean);
+          tk3.forEach(function (t) { t.style.transition = "none"; });
+          if (pk3) el.classList.remove("is-peek");
+          let reach = flip ? W : 0;
+          el.querySelectorAll(":scope > .obj-det, :scope > .props > div").forEach(function (t) { if (!t.getClientRects().length) return; rg3.selectNodeContents(t); const rc3 = rg3.getBoundingClientRect(); reach = flip ? Math.min(reach, (rc3.left - er3.left) / k3) : Math.max(reach, (rc3.right - er3.left) / k3); });
+          if (pk3) el.classList.add("is-peek");
+          el.getBoundingClientRect(); tk3.forEach(function (t) { t.style.transition = ""; });
+          seam = flip ? Math.min(el._wkBlockL - 40, reach - 16) : Math.max(el._wkBlockR + 40, reach + 16);
+          el.style.setProperty("--wk-seam", seam.toFixed(1) + "px");
+          el.querySelectorAll(":scope > :is(.obj-shot, .obj-clip)").forEach(function (m) { m.style.setProperty("--wk-tx", Math.max(0, flip ? m.offsetLeft + m.offsetWidth - seam : seam - m.offsetLeft).toFixed(0) + "px"); });
+        }   /* the facts sit at the bottom edge; a row too short for them to clear the hook grows by the shortfall and is measured once more */
         if (zone && zh && pass < 5 && growPad(fitNeed(":scope > h3, :scope > .obj-hook, :scope > .obj-line, .props > div"), sf)) return draw(pass + 1);   /* main's rule: the title, hook, detail line and facts sit MARGIN px inside the plate, else the padding grows and the row is drawn again */
         /* wkPlace runs last, so the padding check, the picture's fade and the tag all read the pieces at their grid places, as before */
       }

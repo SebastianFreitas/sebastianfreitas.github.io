@@ -43,7 +43,7 @@ const polyOf=el=>{const r=el.getBoundingClientRect(), k=r.width/el.offsetWidth;
 const quadsOf=(t,box)=>{
   const cs=getComputedStyle(t), M=cs.transform==='none'?new DOMMatrix():new DOMMatrix(cs.transform), og=cs.transformOrigin.split(' ').map(parseFloat);
   const keep=[t.style.transform,t.style.transition]; t.style.transition='none'; t.style.transform='none';
-  const bb=t.getBoundingClientRect(), kz=t.offsetWidth?bb.width/t.offsetWidth:1, ox=bb.left+og[0]*kz, oy=bb.top+og[1]*kz;   /* the computed transform is in design px, the rects in screen px under the stage zoom kz */
+  const bb=t.getBoundingClientRect(), kz=window.Stage?window.Stage.s():(t.offsetWidth?bb.width/t.offsetWidth:1), ox=bb.left+og[0]*kz, oy=bb.top+og[1]*kz;   /* the computed transform is in design px, the rects in screen px under the stage zoom kz */
   let rs=[]; if (box) rs=[bb]; else { const w=document.createTreeWalker(t,NodeFilter.SHOW_TEXT); for (let n; (n=w.nextNode());) { if (!n.textContent.trim()) continue; const g=document.createRange(); g.selectNodeContents(n); rs.push(...g.getClientRects()); } }
   rs=rs.filter(q=>q.width>=1&&q.height>=1);
   t.style.transform=keep[0]; t.getBoundingClientRect(); t.style.transition=keep[1];
@@ -94,9 +94,9 @@ const checkRow=(el,hover,fails)=>{
           const ang=Math.atan2(dq[1][1]-dq[0][1],dq[1][0]-dq[0][0])*180/Math.PI, edx=(x,y)=>{const xs=[];for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];if((yi>y)!==(yj>y))xs.push(xi+(xj-xi)*(y-yi)/(yj-yi));}return fl?Math.max(...xs)-x:x-Math.min(...xs);}, dxe=Math.min(...dq.map(p=>edx(p[0],p[1])));   /* horizontal gap from the label's nearest corner to the plate's text-side edge at that height */
           if (!isNaN(ea) && Math.abs(ang-ea)>0.5) fails.push(tag+'OBJ label angle '+ang.toFixed(2)+' is not parallel to the top edge '+ea);
           if (Math.abs(dxe/k-24)>4) fails.push(tag+'OBJ label is '+(dxe/k).toFixed(1)+'px from the '+(fl?'right':'left')+' edge (need 24, +-4)');
-          const gx=[...quadsOf(h3,true).flat(),...grp.hook.flat(),...grp.line.flat()].map(p=>p[0]), gc=(Math.min(...gx)+Math.max(...gx))/2;   /* the text group's centre is the centre of the text half, within 30 px (x zoom); a row whose half is narrower than the seam allows is moved off it on purpose */
-          const sm=parseFloat(el.style.getPropertyValue('--wk-seam')), lo=Math.min(...P.map(p=>p[0])), hi=Math.max(...P.map(p=>p[0])), mid=(lo+hi)/2, hc=fl?(mid+hi)/2:(lo+mid)/2;
-          if ((isNaN(sm) || sm-40+24>=r.width/2/k) && Math.abs(gc-hc)>30*k) fails.push(tag+'text group centre '+Math.round(gc-r.left)+' is '+Math.round(Math.abs(gc-hc)/k)+'px off the text half centre '+Math.round(hc-r.left)+' (allow 30)'); } } } }
+          const hb2=hk.getBoundingClientRect(), lb2=ln.getBoundingClientRect(), gx=[...quadsOf(h3,true).flat().map(p=>p[0]),hb2.left,hb2.right,lb2.left,lb2.right], gc=(Math.min(...gx)+Math.max(...gx))/2;   /* the block's element boxes (title, hook, detail line): their centre is the centre of the text half, within 30 px (x zoom). The half runs from the plate's inner-edge lean (3.5 % of the row) to the row's middle (the right half on mirrored rows) */
+          const ln_=0.035*r.width, sh=matchMedia('(max-width: 1199px)').matches?0:0.045*r.width, hc=(fl?(r.left+r.width/2+r.right-ln_)/2-sh:(r.left+ln_+r.left+r.width/2)/2+sh);   /* the block sits 4.5 % of the row's width further in than the half's centre (wkPlace SH) */
+          if (Math.abs(gc-hc)>30*k) fails.push(tag+'text group centre '+Math.round(gc-r.left)+' is '+Math.round(Math.abs(gc-hc)/k)+'px off the text half centre '+Math.round(hc-r.left)+' (allow 30)'); } } } }
     if (lcs.transform!=='none') { const m=new DOMMatrix(lcs.transform); if (Math.abs(m.b)>0.001||Math.abs(m.c)>0.001) fails.push(tag+'detail line is rotated ('+lcs.transform+')'); }
     if (Math.abs(lb.left-hb.left)>1) fails.push(tag+'detail line left edge '+Math.round(lb.left)+' is not the hook\'s '+Math.round(hb.left));
     if (grp.line.length && grp.hook.length && grp.facts.length) {
@@ -118,12 +118,13 @@ const checkRow=(el,hover,fails)=>{
   const seam=parseFloat(el.style.getPropertyValue('--wk-seam'));
   if (!isNaN(seam)) {
     const flip=el.classList.contains('is-flip');
-    for (const nm of ['hook','line']) {
+    for (const nm of ['title','hook','line']) {
       const xs=grp[nm].flatMap(q=>q.map(p=>(p[0]-r.left)/k));
       const clear=flip ? Math.min(...xs)-seam : seam-Math.max(...xs);
-      if (clear < 39.5) fails.push(tag+(nm==='line'?'detail line':nm)+' '+(flip?'left':'right')+' edge is only '+Math.round(clear)+'px clear of the picture seam '+Math.round(seam)+' (need 40)');
+      if (clear < 39.5) fails.push(tag+(nm==='line'?'detail line':nm)+' '+(flip?'left':'right')+' edge is only '+clear.toFixed(2)+'px clear of the picture seam '+Math.round(seam)+' (need 40)');
     }
   }
+  else if (el.classList.contains('is-flip') && !matchMedia('(max-width: 1199px)').matches && el.querySelector(':scope > .obj-shot')) fails.push(tag+'mirrored row has no picture seam (--wk-seam), so its clearance from the picture is not checked');
   const info=[];
   { const pb=pr.getBoundingClientRect(), kids=[...pr.children], shown=kids.filter(d=>d.offsetWidth);
     for (const d of shown) { const g=document.createRange(); g.selectNodeContents(d); for (const t of g.getClientRects()) if (t.width && (t.left<pb.left-0.5 || t.right>pb.right+0.5)) fails.push(tag+'facts text is clipped: '+d.textContent.trim()+' spans '+Math.round(t.left)+'..'+Math.round(t.right)+' in box '+Math.round(pb.left)+'..'+Math.round(pb.right)); }
@@ -173,8 +174,10 @@ const checkRow=(el,hover,fails)=>{
   }
   const bx=e=>{const q=e.getBoundingClientRect();return [(q.left-r.left)/k,(q.top-r.top)/k,q.width/k,q.height/k];};
   const lh=parseFloat(getComputedStyle(ln).lineHeight)||1;
-  const sqe=det.querySelector('i'), sqs=getComputedStyle(sqe), lab=[(det.querySelector('.obj-id').getBoundingClientRect().left-r.left)/k, sqe.offsetWidth+parseFloat(sqs.marginRight)+parseFloat(getComputedStyle(det).columnGap)];   /* label left edge, square width + gap */
-  return {lab, boxes:{title:bx(h3),hook:bx(hk),line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
+  const sqe=det.querySelector('i'), sqs=getComputedStyle(sqe), lab=[(det.querySelector('.obj-id').getBoundingClientRect().left-r.left)/k, sqe.offsetWidth+parseFloat(sqs.marginRight)+parseFloat(getComputedStyle(det).columnGap),
+    el.style.getPropertyValue('--wk-do').startsWith('100%'), (()=>{const q=quadsOf(det,true).flat(),ea=parseFloat(el.style.getPropertyValue('--wk-ea'))*Math.PI/180;return Math.max(...q.map(p=>p[0]*Math.cos(ea)+p[1]*Math.sin(ea)))/k;})(), quadsOf(det,true).flat().every(([x,y])=>inside(P,x,y))];   /* label left edge, square width + gap, flipped row, the label's far end along its own axis (row px), whole label inside the plate */
+  const hkr=document.createRange(); hkr.selectNodeContents(hk); const hki=hkr.getBoundingClientRect();   /* the tagline's own ink: left x and width (row px) */
+  return {lab, boxes:{title:bx(h3),hook:bx(hk),hookInk:[(hki.left-r.left)/k,hki.width/k],line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
 };
 """
 
@@ -200,6 +203,14 @@ for (const el of rows) {
   const rr=checkRow(el,false,fails);
   boxes.push(rr?rr.boxes:null); labs.push(rr?rr.lab:null);
 }
+{ /* the block's edges: the tagline's left edge (hook box and description edge) is the same (1 px) in every normal row, the same on mirrored rows (left-aligned too); the title's middle is over the tagline's middle (1 px) on every wide row, or, when the tagline is narrower than the title, its left edge is on the tagline's left edge */
+  const mir=el=>el.classList.contains('is-flip')&&!matchMedia('(max-width: 1199px)').matches, eg={false:[],true:[]};
+  rows.forEach((el,i)=>{ const b=boxes[i]; if (b) { eg[mir(el)].push([el.id, b.hook[0], b.hookInk[0]]);
+    if (!matchMedia('(max-width: 1199px)').matches) { const tc=b.title[0]+b.title[2]/2, hc=b.hookInk[0]+b.hookInk[1]/2;
+      if (b.hookInk[1]<b.title[2]-1) { if (Math.abs(b.title[0]-b.hookInk[0])>1) fails.push(el.id+': tagline is narrower than the title, but the title left '+b.title[0].toFixed(1)+' is not the tagline left '+b.hookInk[0].toFixed(1)+' (allow 1)'); }
+      else if (Math.abs(tc-hc)>1) fails.push(el.id+': title centre '+tc.toFixed(1)+' is not the tagline centre '+hc.toFixed(1)+' (allow 1)'); } } });
+  for (const fl of [false,true]) { const g=eg[fl]; if (g.length>1 && !matchMedia('(max-width: 1199px)').matches) {   /* under 1200 px the middle block is main's: centred per row, not one edge */ const xs=g.map(e=>e[1]); if (Math.max(...xs)-Math.min(...xs)>1) fails.push('block '+(fl?'mirrored':'normal')+' left edge differs between rows: '+g.map(e=>e[0]+' '+e[1].toFixed(1)).join(', ')); }
+    for (const e of g) if (Math.abs(e[2]-e[1])>1) fails.push(e[0]+': tagline ink left '+e[2].toFixed(1)+' is not the block\'s left edge '+e[1].toFixed(1)); } }
 return {cw, rows: rows.length, margin: Math.round(-worst), boxes, labs, fails, phone: window.__phoneChecks||0};
 """
 
@@ -301,7 +312,12 @@ def main():
                         if max(abs(x - y) for x, y in zip(b0[nm], hr["boxes"][nm])) > 0.5:
                             hov.append("row %d: %s box moved or resized on hover: %s -> %s" % (i, nm, [round(x, 1) for x in b0[nm]], [round(x, 1) for x in hr["boxes"][nm]]))
                 l0 = res["labs"][i]
-                if l0 and hr["lab"]:  # only the OBJ label moves: right by the square's width + gap
+                if l0 and hr["lab"] and l0[2]:  # mirrored row: the label's far end stays put (1 px along its axis) and the whole label stays inside the plate; it grows toward the centre
+                    mv = hr["lab"][3] - l0[3]
+                    if abs(mv) > 1 or not hr["lab"][4]:
+                        hov.append("row %d: mirrored OBJ label end moved %.1f px on hover (max 1) or the label left the plate (inside=%s)" % (i, mv, hr["lab"][4]))
+                    print("  row %d (mirrored) OBJ label end moves %.2f px" % (i, mv))
+                elif l0 and hr["lab"]:  # only the OBJ label moves: right by the square's width + gap
                     sh = hr["lab"][0] - l0[0]
                     if abs(sh - (hr["lab"][1] - l0[1])) > 1 or sh < 5:
                         hov.append("row %d: OBJ label shifted %.1f px on hover, expected square width + gap %.1f" % (i, sh, hr["lab"][1] - l0[1]))
