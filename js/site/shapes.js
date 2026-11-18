@@ -1504,24 +1504,41 @@
      at rest and on hover: the title at the top-left corner of the text side, the hook under it in the same column (its width chosen once: inside the plate and SEAMGAP px clear of the
      picture), the facts as one line at the bottom edge (turned to it by --wk-ba), the last facts dropped from view when they do not fit on the line */
   function wkPlace(el, pts, end, bi, W, H, seam, flip) {   /* flip: the one the plate was drawn with (not the class: under 1200 px a flip row is drawn as a normal one) */
-    const SEAMGAP = 40, M = 28, RG = 16, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
+    const M = 28, RG = 16, DD = 24, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
     if (!h3 || !hk) return;
     ["--wk-hw", "--wk-hm", "--wk-ln", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* measured at the grid's own sizes */
     const f = function (v) { return v.toFixed(1); };
     const bl = pts[bi[0]], br = pts[bi[1]], tl = pts[0], tr = pts[end];
     const topY = function (x) { return tl[1] + (tr[1] - tl[1]) * (x - tl[0]) / (tr[0] - tl[0]); }, botY = function (x) { return bl[1] + (br[1] - bl[1]) * (x - bl[0]) / (br[0] - bl[0]); };
-    const L = h3.offsetLeft, tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0;
+    const leftX = function (y) { return tl[0] + (bl[0] - tl[0]) * (y - tl[1]) / (bl[1] - tl[1]); }, rightX = function (y) { return tr[0] + (br[0] - tr[0]) * (y - tr[1]) / (br[1] - tr[1]); };
+    const k = window.Stage ? window.Stage.s() : 1, rgn = document.createRange(), ink = function (e) { rgn.selectNodeContents(e); return rgn.getBoundingClientRect().width / k; };   /* a block's widest line (rects are screen px under the stage zoom) */
+    const tw = h3.offsetWidth, th = h3.offsetHeight, hw = hk.offsetWidth, hh = hk.offsetHeight, lh = ln ? ln.offsetHeight : 0, dt = q(".obj-det");
     const mv = function (e, x, y, t) { return "translate(" + f(x - e.offsetLeft) + "px, " + f(y - e.offsetTop) + "px)" + (t ? " " + t : ""); };
-    const xr = Math.min(tr[0], br[0]) - 8, dt = q(".obj-det"), yt = Math.max(topY(L), topY(L + tw)) + M + (dt ? dt.offsetHeight + 12 : 0);   /* the title sits under the detail line */
-    /* the hook: its natural width, cut back to the plate and to SEAMGAP px short of the picture; the margin keeps the grid's height */
-    const lim = Math.min(xr, seam !== null ? seam - SEAMGAP : Infinity) - L, w = Math.max(120, Math.min(hw, Math.floor(lim)));
-    let hh2 = hh;
-    if (w < hw) { hk.style.width = w + "px"; hh2 = hk.offsetHeight; hk.style.width = ""; el.style.setProperty("--wk-hw", w + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px"); }
-    let lh2 = lh;   /* the detail line sits under the hook at the hook's width, level, and only fades in on hover */
-    if (ln) {
-      if (w < hw) { ln.style.width = w + "px"; lh2 = ln.offsetHeight; ln.style.width = ""; el.style.setProperty("--wk-lw", w + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); }
-      el.style.setProperty("--wk-ln", mv(ln, L, yt + th + RG + hh2 + (parseFloat(getComputedStyle(ln).marginTop) || 0), ""));
+    /* top block: the detail line parallel to the top edge, just inside it and DD px from the text side's edge (the right one on flipped rows); its right end is the origin there, so a hover grows it leftward */
+    let dBottom = -Infinity;
+    if (dt) {
+      const dw = dt.offsetWidth, dh = dt.offsetHeight, ea = Math.atan((tr[1] - tl[1]) / (tr[0] - tl[0])), ox = flip ? dw : 0;
+      const dc = [[-ox, 0], [dw - ox, 0], [-ox, dh], [dw - ox, dh]].map(function (p) { return [p[0] * Math.cos(ea) - p[1] * Math.sin(ea), p[0] * Math.sin(ea) + p[1] * Math.cos(ea)]; });
+      let dx = flip ? tr[0] - DD : tl[0] + DD, dy = 0;
+      for (let n = 0; n < 4; n++) {
+        dy = topY(dx) + 18 / Math.cos(ea);
+        dx += flip ? Math.min.apply(null, dc.map(function (c) { return rightX(dy + c[1]) - DD - (dx + c[0]); })) : DD - Math.min.apply(null, dc.map(function (c) { return dx + c[0] - leftX(dy + c[1]); }));
+      }
+      dBottom = dy + Math.max.apply(null, dc.map(function (c) { return c[1]; }));
+      el.style.setProperty("--wk-do", flip ? "100% 0" : "0 0");
+      el.style.setProperty("--wk-dt", "translate(" + f(dx - ox) + "px, " + f(dy) + "px) rotate(" + (ea * 180 / Math.PI).toFixed(2) + "deg)");
     }
+    /* middle block: title, hook and detail line as one group, its centre at the centre of the text half (left half, right on flipped rows), left-aligned inside; the hook is cut back to fit that half */
+    const hy = (topY(W / 2) + botY(W / 2)) / 2, xa = flip ? W / 2 : leftX(hy), xb = flip ? rightX(hy) : seam != null ? Math.min(W / 2, seam - 40 + DD) : W / 2, cx = (xa + xb) / 2;   /* text on the left: the group stays 40 px clear of the picture seam (only a narrow text half moves it off the half's centre) */
+    const w = Math.max(120, Math.min(hw, Math.floor(xb - xa - 2 * DD)));
+    let hh2 = hh, hi = ink(hk);
+    if (w < hw) { hk.style.width = w + "px"; hh2 = hk.offsetHeight; hi = ink(hk); hk.style.width = ""; el.style.setProperty("--wk-hw", w + "px"); el.style.setProperty("--wk-hm", (hh - hh2) + "px"); }
+    let lh2 = lh, li = 0;   /* the detail line sits under the hook at the hook's width, level, and only fades in on hover */
+    if (ln) {
+      if (w < hw) { ln.style.width = w + "px"; lh2 = ln.offsetHeight; li = ink(ln); ln.style.width = ""; el.style.setProperty("--wk-lw", w + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); } else li = ink(ln);
+    }
+    const lm = ln ? parseFloat(getComputedStyle(ln).marginTop) || 0 : 0, gh = th + RG + hh2 + (ln ? lm + lh2 : 0), L = cx - Math.max(tw, hi, li) / 2, yc = hy - gh / 2, yt = Math.max(yc, dBottom + 12), clamped = yt > yc;
+    if (ln) el.style.setProperty("--wk-ln", mv(ln, L, yt + th + RG + hh2 + lm, ""));
     el.style.setProperty("--wk-h3", mv(h3, L, yt, ""));
     el.style.setProperty("--wk-hk", mv(hk, L, yt + th + RG, ""));
     if (pr) {
@@ -1550,7 +1567,7 @@
         const ox = (edge - px - (flip ? Math.min.apply(null, ys) : Math.max.apply(null, ys))) / Math.cos(ba), c = Ra(ox, 0);
         el.style.setProperty("--wk-gt", "translate(" + f(px + c[0]) + "px, " + f(py + c[1]) + "px) rotate(var(--wk-ba))");
       }
-      return Math.max(0, yt + th + RG + hh2 + (ln ? (parseFloat(getComputedStyle(ln).marginTop) || 0) + lh2 : 0) + 10 - (py + Math.min(0, iw * Math.sin(ba))));   /* the facts' top must clear the detail line's last line (the hook's without one) by 10 px: the shortfall is how much taller the row must be */
+      return Math.max(0, yt + gh + 10 - (py + Math.min(0, iw * Math.sin(ba)))) * (clamped ? 1 : 2);   /* the facts' top must clear the detail line's last line (the hook's without one) by 10 px: the shortfall is how much taller the row must be */
     }
     return 0;
   }

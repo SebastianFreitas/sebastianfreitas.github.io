@@ -90,8 +90,13 @@ const checkRow=(el,hover,fails)=>{
       if (hover) { if (so<0.95) fails.push(tag+'red square is not shown on hover (opacity '+sc.opacity+')'); if (!sq.offsetWidth) fails.push(tag+'red square has no width on hover'); }
       else { if (so>0) fails.push(tag+'red square is visible at rest (opacity '+sc.opacity+')');
         if (sq.offsetWidth || parseFloat(sc.marginRight)+parseFloat(getComputedStyle(det).columnGap)>0.01) fails.push(tag+'red square takes space at rest (width '+sq.offsetWidth+', margin '+sc.marginRight+')');
-        const idl=det.querySelector('.obj-id').getBoundingClientRect().left, tq=quadsOf(h3,true).flat().map(p=>p[0]);
-        if (tq.length && Math.abs(idl-Math.min(...tq))>1) fails.push(tag+'OBJ label left '+idl.toFixed(1)+' is not the title\'s '+Math.min(...tq).toFixed(1)); } } }
+        { const ea=parseFloat(el.style.getPropertyValue('--wk-ea')), fl=el.style.getPropertyValue('--wk-do').startsWith('100%'), dq=quadsOf(det,true).flat();   /* OBJ label hugs the text-side edge and runs parallel to the top edge */
+          const ang=Math.atan2(dq[1][1]-dq[0][1],dq[1][0]-dq[0][0])*180/Math.PI, edx=(x,y)=>{const xs=[];for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];if((yi>y)!==(yj>y))xs.push(xi+(xj-xi)*(y-yi)/(yj-yi));}return fl?Math.max(...xs)-x:x-Math.min(...xs);}, dxe=Math.min(...dq.map(p=>edx(p[0],p[1])));   /* horizontal gap from the label's nearest corner to the plate's text-side edge at that height */
+          if (!isNaN(ea) && Math.abs(ang-ea)>0.5) fails.push(tag+'OBJ label angle '+ang.toFixed(2)+' is not parallel to the top edge '+ea);
+          if (Math.abs(dxe/k-24)>4) fails.push(tag+'OBJ label is '+(dxe/k).toFixed(1)+'px from the '+(fl?'right':'left')+' edge (need 24, +-4)');
+          const gx=[...quadsOf(h3,true).flat(),...grp.hook.flat(),...grp.line.flat()].map(p=>p[0]), gc=(Math.min(...gx)+Math.max(...gx))/2;   /* the text group's centre is the centre of the text half, within 30 px (x zoom); a row whose half is narrower than the seam allows is moved off it on purpose */
+          const sm=parseFloat(el.style.getPropertyValue('--wk-seam')), lo=Math.min(...P.map(p=>p[0])), hi=Math.max(...P.map(p=>p[0])), mid=(lo+hi)/2, hc=fl?(mid+hi)/2:(lo+mid)/2;
+          if ((isNaN(sm) || sm-40+24>=r.width/2/k) && Math.abs(gc-hc)>30*k) fails.push(tag+'text group centre '+Math.round(gc-r.left)+' is '+Math.round(Math.abs(gc-hc)/k)+'px off the text half centre '+Math.round(hc-r.left)+' (allow 30)'); } } } }
     if (lcs.transform!=='none') { const m=new DOMMatrix(lcs.transform); if (Math.abs(m.b)>0.001||Math.abs(m.c)>0.001) fails.push(tag+'detail line is rotated ('+lcs.transform+')'); }
     if (Math.abs(lb.left-hb.left)>1) fails.push(tag+'detail line left edge '+Math.round(lb.left)+' is not the hook\'s '+Math.round(hb.left));
     if (grp.line.length && grp.hook.length && grp.facts.length) {

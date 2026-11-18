@@ -661,7 +661,7 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj.is-flip .props { justify-content: flex-end; }   /* the facts hug the bottom corner on the outer (right) side */
   /* the tag sits on the facts' baseline at the text column's inner end, with the facts' tilt (shapes.js: --wk-gt) */
   .obj > .obj-go { position: absolute; left: 0; top: 0; margin: 0; transform-origin: 0 0; transform: var(--wk-gt, none); }
-  .obj > .obj-det { position: absolute; left: var(--wk-ex, 0px); top: calc(var(--wk-ey, 0px) - 28px); transform-origin: 0 100%; transform: translateY(56px) rotate(0deg); white-space: nowrap; max-width: none; }   /* level, and the same at rest and on hover: 28 px inside the top edge */
+  .obj > .obj-det { position: absolute; left: 0; top: 0; margin: 0; transform-origin: var(--wk-do, 0 0); transform: var(--wk-dt, none); white-space: nowrap; max-width: none; }   /* top block: parallel to the top edge, just inside it, against the side edge on the text side (shapes.js wkPlace: --wk-dt, --wk-do); the same at rest and on hover */
   .obj .obj-hook { margin-top: 0; }
   .obj .obj-line { margin-top: 8px; -webkit-line-clamp: 3; transition: opacity 0.2s; }
   .obj .props { margin-top: 18px; }
