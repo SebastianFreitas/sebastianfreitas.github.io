@@ -29,15 +29,18 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the places that bend the instruments: js/bridge/bridge-sites.js (SITES, GD_SITES), bridge-env.js
 - depth nodes, lore beacons: js/depths/ (depths.js core, one file per cluster), js/depths/lore.js (Rex, Watcher, Void, Mainland notes)
 - Game Dev sector (cut from the site): archive/gamedev/ (planet.js, gdworld/, zones.js, storm.js); see archive/gamedev/README.md
+- Local archive pile (untracked, outside the repo): `C:/Users/Traff/Desktop/sebas/portfolio-archive/`, see its `LOG.md`; open only when the owner names it
 - Eroded banners (rejected worn box ends): archive/eroded-banners/ (tools/worn.py, its caps, CSS diff, README.md); open only when the owner names it
 - Red side lines (owner's tuned red line pieces on rank card, glimpse card, gate, Work rows): archive/red-side-lines/ (js/redlines.js, css/redlines.css, README.md); never delete; open only when the owner names it
 - the bench, the run console (VoidScape): js/forge/forge.js, forge-guns.js, forge-missions.js
 - Work row preview: `a.obj` rows in section#work on index.html show a clip and a game-page button on hover (js/site/work-preview.js, css/style.css)
 - Sector Zero storm (archived): archive/gamedev/js/gamedev/storm.js
-- the case pages, a page's toy: standalone pages `projects/<key>.html`; toy js/pages/<page>.js registers on js/pages/play.js, css/play.css- the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
+- the case pages, a page's toy: standalone pages `projects/<key>.html`; toy js/pages/<page>.js registers on js/pages/play.js, css/play.css
+- the cutscene, the Genesis: js/genesis/ (BEATS in genesis-state.js, overlay css in css/bridge.css)
 - the span, the live span: js/genesis/genesis-void.js (monumental span, far realms)
 - the sea, the river (the banded strip at the genesis frame bottom): js/genesis/genesis-elements.js (seaK, drawSea; drawn every frame from genesis.js)
-- the ceiling mass (drifting clouds along the top, grow with the sea): js/genesis/genesis-ceiling.js (GenCeiling.draw: the floor sea mirrored overhead via GenElem.paintSea dir -1 and the floor's own water line (seaLine); objects sit in it as pieces, arrival = GenElem.seaLevel; drift + wobble)
+- the ceiling mass (drifting clouds along the top, grow with the sea): js/genesis/genesis-ceiling.js (GenCeiling.draw: every cloud drawn in code since 2026-10-28, no sprites; drift + wobble)
+- genesis-ceiling.js arrival follows GenElem.seaLevel, the floor's own water level; the air rolls out to the floor's line at rest via GenElem.seaLineRest; objects sit in it as pieces
 - genesis-ceiling.js resolveHangers (end of prep): hangers that cross a rock are shortened to the nearest hit or dropped (never across a rock's own eye), roots spaced in layout order, tips capped at 0.28 H
 - genesis-ceiling.js resolveHangers (cont.): hangers hidden under another cloud body re-rooted onto it (farthest free anchor) or dropped; bare big front clouds keep their own hanger; tiny-cloud tails mirrored or cut when they cross a rock; the left rock slides to close a band sliver.
 - genesis-ceiling.js drawSprites paints rocks, hangers and eyes before the cloud bodies (extras sit behind the clouds)
@@ -118,7 +121,9 @@ shares `Gen`:
 | `xp-slides.js` | Experience `a.xp-pic` picture animation on row hover or focus (desktop) or while half on screen (phones); transform-only, timers, stops when hidden or reduced motion; detail in the bullet below | `window.XpSlides` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 | `back.js` | Game pages only: "Back to Work" does `history.back()` when the referrer is the homepage (bfcache restore), else the href works | `BackLink.fromHome()` |
-- `banner.js`: plate = tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`; tab = art/wear tab PNGs + nav polygon (`NAV_CLIP` per top-bar tab; `TITLE_CLIP` per title (1-4 the Games titles, 5-7 the Experience titles on `.xp-t`), picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`).
+- `banner.js` plate: tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`
+- `banner.js` tab: art/wear tab PNGs + nav polygon (`NAV_CLIP` per top-bar tab)
+- `banner.js` titles: `TITLE_CLIP` per title (1-4 the Games titles, 5-7 the Experience titles on `.xp-t`), picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`
 - `banner.js` apply: `Banner.apply(root)` paints `--banner: url(png)` (alpha mask, no text) on `[data-banner="plate|tab"]`, opt. `data-banner-on="before"` and `data-banner-seed`; ResizeObserver repaint; self-boots.
 - `shapes.js` row-glass: preset for the Work rows (desktop), glass breaks on their top edges (`LAYOUTS`) plus a catch-light (`wkEdgeLight`); `wearPlate`/`quad` clip the rows and the Experience plate.
 - `xp-slides.js`: at 1200 px and up the `.xp-strip` tiles slide up one tile per step and the top tile moves to the end (a stop or resize finishes on a whole tile); below 1200 px the sideways slideshow through `data-slides`.
@@ -237,8 +242,8 @@ The VoidScape bench/console/floor plan; only `projects/voidscape.html` loads it 
 | File | Purpose | Publishes |
 |---|---|---|
 | `forge-guns.js` | The one `rnd`/`rint`/`pick`, `MAX_MODS`/`MAX_PATH_MODS`/`MAX_EMPOWER`, weapon tables, `rollMod`, `makeGun`, `randomGun`, `stats` | `window.ForgeGuns` |
-| `forge-missions.js` | `RUN_MODS`, `rollRunMod`, `regood`, `makeMission`, floor plan `genPlan` | `window.ForgeMissions`; uses `ForgeGuns` |
-| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`, `step`, `draw`, `hit`, `over`, `lively`, `report`, `unlock`; `bench` seam | `window.Forge`; driven by `voidscape-bench.js` |
+| `forge-missions.js` | The floor plan `genPlan` | `window.ForgeMissions {genPlan}`; uses `ForgeGuns` |
+| `forge.js` | Bench and console state, `tile`, `drawBench`, `cellColor`/`drawPlanArea`, `drawConsole`; `bench` seam | `window.Forge {gun, bench {W, H, step, draw, hit, over, lively, parts}}`; driven by `voidscape-bench.js` |
 
 - `forge.js`: optional parts pool `Forge.bench.parts(n)`: add and remove charge `cost()`, scrap refunds it, "NEED PARTS" when short; `null` keeps the sector bench free
 
@@ -297,7 +302,7 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 |---|---|
 | `world.js` | Core | `window.World {SLOT, LAND, BOUNDS, DECK, VIEW_UNITS, chaosAt, futureAt, draw, F, P, …}` |
 | `vortex.js` | `drawVortex(x, y, R, opts)`: a flat layered cloud mass (`VORTEX_LAYERS`, deepest first, each a `layerPath` with a pinwheel hole) with hard radial shade and puffs pulled in; opts `seed outer layers alpha puffs`; first used by the Watcher |
-| `void.js` | `drawVoid` (parked homepage bridge: base fill + blobs blit from an offscreen cache, redrawn when a blob moves 1 device px or size/DPR/camX change; `B.idleCache === false` draws directly; stats in `P.voidBackStats`), `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture` |
+| `void.js` | `drawVoid` (parked homepage bridge: base fill + blobs from an offscreen cache; bullets below), `drawChaos`, `drawTendrils`, `drawPresences`, `drawFragments` (`FRAGMENTS`), `drawFuture` |
 | `watcher.js` | `WATCHER_SHARDS`/`WATCHER_CRACKS`, `drawWatcher` (calls `P.drawVortex`, `P.serusPhase`/`P.drawSerus`), `RED_STAR`, `drawRedStar` |
 | `serus.js` | `serusPhase`, `drawSerus` (the alien coiled in the Watcher) |
 | `nephilim.js` | `NEPHILIM` anchor, `nephRng`, `NEPH_*`, `nephWalk`, `nephRibbon`, `flatVolume`, `drawNephilim` |
@@ -306,6 +311,8 @@ by the game's weight at the camera. Nothing here reads `Bridge`.
 | `rex.js` | `fillRidge` wrapper, `drawRex`, `drawHell`, `rexInterior`, `drawRexPlaces` (reads `window.RexArt`) |
 | `city.js` | `drawBand`, `drawCityNear`, `drawLandPlace` (reads `window.LandArt`), `drawRoot`, `drawBridge` (`GenVoid.paintSpan` into a stage; the hero blits the top, `#bridge-legs` the bottom) |
 
+- `void.js` `drawVoid`: the cache is redrawn when a blob moves 1 device px or size/DPR/camX change
+- `void.js` `drawVoid`: `B.idleCache === false` draws directly; stats in `P.voidBackStats`
 - `world.js`: `VIEW_UNITS`, `SLOT`, `LAND`, `BOUNDS`, `DECK`, `FLOOR`, `BAY`, `chaosAt`, `futureAt`, seeded `city` and particle arrays, Rex consts `REX_BANDS`/`REX_FROM`/`REX_END`/`HELL_AT`/`rexHeight`/`REX_PLACES`, `rexSprite` cache, `depthAlpha`/`setA`/`faded`,
 - `world.js`: `MAIN_PAR` + faction anchors, `F`, `P`, `scale`/`wx`/`onScreen`, `draw` (paint order lives here; a gamedev frame is handed to `GdWorld.draw`)
 
@@ -337,7 +344,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-ceilkinds.js` | registry of ceiling hanging objects; draws sprout, tuft, fin | `window.GenCeilKinds` (`add list pick deck palette hues`) |
 | `genesis-ceilclouds.js` | one opaque ceiling cloud design from the owner sketch: three flat stacked layers (CEILCLOUD tones), each swaying on its own, cached geometry, layer-tagged underside anchors for hanging objects | `window.GenCeilClouds` (`add list deck`) |
 | `genesis-ceilmembrane.js` | `GenCeilMembrane.build(kind, x, y, w, h, seed)` / `draw`: navy ceiling cloud body as one membrane, five painters (bundle, B4, strand, slab, split; `shape` in genesis-ceiling.js picks by seed); loads before genesis-ceiling.js | `window.GenCeilMembrane` |
-| `genesis-ceilkinds-plant.js` / `-metal.js` / `-cloud.js` / `-odd.js` | family files, load after the registry and before genesis-ceiling.js; each calls `GenCeilKinds.add` (stubs until specs 9-12) | none |
+| `genesis-ceilkinds-plant.js` / `-metal.js` / `-cloud.js` / `-odd.js` | family files, load after the registry and before genesis-ceiling.js; each calls `GenCeilKinds.add` (built: plant, metal, odd, cloud) | none |
+| `genesis-ceiling.js` | the ceiling mass: every cloud drawn in code, hangers and eyes (see "Owner's words" bullets for `resolveHangers`, `drawSprites`) | `window.GenCeiling = { draw, sets }` |
 | `genesis-ceilshapes.js` | the ceiling's flat metal stones as Path2D: stepped slab and the -///- symbol, chipped edges, one sheen band; `glass` still exported but no longer drawn on the ceiling | `window.GenCeilShapes` (`metal`, `glass`) |
 | `genesis-ceilkinds3.js` | ceiling hanger worm (pale ringed, tapered, on metal rocks) and the eye drawer for metal rocks' eye sites (crack that opens into one of four looks, one open at a time via a module scheduler; no slit hanger) | `window.GenCeilHang3` (`kinds`, `eye`, `eyeSite`) |
 | `genesis-ceilkinds2.js` | extra ceiling hangers (bead chain, stepped bar, pointed teeth, pendulum), seeded; not in the GenCeilKinds deck | `window.GenCeilHang` (`kinds`) |
@@ -359,7 +367,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
-| `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, drawDebris, partRest, VICTIM, SURVIVOR}` |
+| `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, debrisSteps, drawDebris, partRest}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
 | `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
@@ -435,7 +443,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-saga.js`: `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`;
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
 - `genesis-giants.js`: `loom(ctx,W,H,ts)` is the killer giant C, back at secs("break") 3.85 to 5.85 s; `drawD(ctx,x,footY,scale)` is the fourth giant D, the survivor titan's (rings) body, a cached sprite D_W x D_H = 900 x 1000 design units, called from GenRockTitans (leftover steps and `bigD`).
-- `genesis-rocktitans.js`: `bigD(ctx)` draws giant D's big steps and exit in the giants' layer; `SURVIVOR` is the titan index that becomes D; the 0.4 scale leftover is drawn at the end of `drawDebris`, in front of the debris.
+- `genesis-rocktitans.js`: `bigD(ctx)` draws giant D's big steps and exit in the giants' layer; the file's own `SURVIVOR` (not exported) is the titan index that becomes D; the 0.4 scale leftover is drawn at the end of `drawDebris`, in front of the debris.
 - `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 10 in the blast rocks' slot (before `drawSpan`); pieces cached as cropped sprites; one per-titan cache per snap k, drawn under a rock-to-titan group transform.
 - `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash (titans or `drawRocks`), titans in the fight, the depths, the saga, the now-fade),
 - `genesis.js`: the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input
@@ -506,7 +514,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/game-pages.css` | Shared game-page art style, loaded after `play.css`: tokens, `header.gp-head` opener, section counters, media, end `nav.case-nav`, CSS-only slots (`gp-figure`, `gp-facts`, `gp-nums`). Rules prefixed `.page-game.page-case main.case`. Game pages only |
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
-| `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
+| `wash.webp`, `folder-glow.webp` (were in `css/art/`) | Archived outside the repo under `portfolio-archive/2026-11-18-review/`; no longer used |
 | `index.html` | Homepage; Experience plate (G.Round, DF Block) and a small University plate (`.xp-edu-plate`) under it; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
 | `media/experience/` | `ground-1..6`, `dfblock-1..6`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`); `CREDITS.md` has the DF Block photo credits |
 | `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
@@ -521,7 +529,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/snap.py` | Screenshot regression; case-page scenes load `/#<name>`; `work-hover` scene (VoidScape row hovered 1.5 s); also 404, glimpse/rank cards, footer, phone scenes; `capture` flags `--only`, `--phone-width <px>`, `--reduced-motion` |
 | `tools/bump.py` | Sets every `?v=` across the HTML pages; works from any cwd |
 | `tools/merge-cachebust.py` | Git merge driver for `*.html`: merges with every `?v=` number treated as equal, then writes the highest back, so bumps never conflict; installed by `try.py` |
-| `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <index.html[#case]> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
+| `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <page> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
 | `tools/hudshot.py` | Bridge HUD shots into `snapshots/<run>/`, prints `HudC25.report()`: `--c25` (no-op), `--size WxH`, `--at <mark>`, `--x`, `--site`, `--claimed`, `--read`, `--burn`, `--touch` (prints `phone:`, `canvas:`, `painted:`); exits 1 on a console error |
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
 | `tools/banner-lab.html` | Banner lab page (`py -3 serve.py`, `/tools/banner-lab.html`): loads `js/site/shapes.js`, `js/site/banner.js` and `banner-lab.js`; dark tool page; `?sheet=N&seed=S[&set=k:v,..]` renders only the sheet onto `#cv` |
@@ -542,6 +550,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
+- `tools/pagecheck.py`: `<page>` is `index.html`, `index.html#<row id>` or a game page such as `projects/sector-zero.html`
 - `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with the name, the line and one centred cream hairline bar (`css/gate.css`); no dirt, no redlines.
 - `css/game-pages.css`: ends with a "per page" part for rules only one page needs, keyed `main.case[data-redlines="case-<page>"]` (HeavyLight's opener); `.clip.gp-narrow` caps 4:3 or taller media at 50rem. Game pages carry no `<style>` block
 - `css/game-pages.css`: `gp-dia` = gameplay-loop diagram (figure.gp-dia > .gp-dia-body > .gp-dia-rail + ol.gp-dia-flow > li); steps numbered by counter `gp-dia`; rails placed by gp-dia-from-N / gp-dia-to-N; stacks under 900 px. Used on all four game pages (FIG. 01 on each)
@@ -628,7 +637,7 @@ multiply at draw time. `Util.clamp` has no default bounds: always pass
 `0, 1`. Scripts carry `?v=N` cache-busters; bump them with
 `py -3 tools/bump.py`.
 
-Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, site/lazy-video, pages/play`, the page's toy files, then `site/redlines`, then `site/back`; grep `<script` for exact order.
+Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, site/lazy-video, pages/play`, the page's toy files, then `site/banner, site/shapes, site/barwear, site/redlines, site/back`; grep `<script` for exact order.
 
 - Game page toy files, voidscape: `forge/{forge-guns, forge-missions, forge}` then `pages/{voidscape-bench, voidscape-mapgen, voidscape-boons, voidscape}`. Sector-zero: `sector-zero-records` then `sector-zero`.
 - Game page extras: Conclusus and HeavyLight add `site/embed`, then `bridge/lamp` (Conclusus) or `shared/heavylight-sprites` (HeavyLight) before their toy.
@@ -663,7 +672,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Saved phase specs | `.claude/plans/<name>.spec-<phase>-<k>.md`: a design-only session's finished implementer specs, listed in the next session's phase brief, deleted in the commit that lands them |
 | Shared workflow (synced with the owner's other projects) | master repo `C:/Users/Traff/Desktop/sebas/claude-workflow` (`files/` mirrors the project root, `sync.py status\|push\|pull <project>`) |
 | Plan runner logs | `.claude/autoplan/<plan>/<timestamp>/` (gitignored): one stream-json `.jsonl` per headless session |
-| Eldritch lore (tiers 1–3, old ones, why they dress, where clothes come from) | `.claude/lore/eldritch.md`; art rules `.claude/rules/art-style.md` "Eldritch"; plan `.claude/plans/genesis-eldritch.md`; new beats after `womb` `.claude/plans/genesis-eldritch-beats.md` |
+| Eldritch lore (tiers 1–3, old ones, why they dress, where clothes come from) | `.claude/lore/eldritch.md`; art rules `.claude/rules/art-style.md` "Eldritch"; plan genesis-eldritch.md; new beats after `womb` genesis-eldritch-beats.md (archived, `portfolio-archive/2026-11-18-review/`) |
 | Cutscene review | `py -3 tools/gframes.py <run> [beats]` (frame sheets per beat); `py -3 tools/jscheck.py <files> --eval "<js>" --shot out.png` (headless load + draw check; there is no node) |
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`/`onRankUp`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
@@ -680,6 +689,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Shared workflow (synced with the owner's other projects): synced paths and hashes in `.claude/workflow.lock`; the shared rules are `.claude/rules/workflow.md`; `session-start.py` `workflow_sync_lines` prints `WORKFLOW SYNC:` on drift;
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
+- `.claude/hooks/hooks_test.py`: `py -3 .claude/hooks/hooks_test.py [-k name]` runs the hook cases (blocking hooks, then prompt and session hooks)
 - Case-page toys (lamps, the stage toy, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
 - Case-page toys (lamps, the stage toy, records, the range): give no XP (`Play.award` is a no-op). Conclusus: the stage's teleport toy, a green copy of the man on the nearest ledge, a click teleports him into it
 - Conclusus toy: resize only rescales (the man's spot, facing, marker and teleport count survive); cached glow sprites in `play.js`

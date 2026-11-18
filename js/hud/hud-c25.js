@@ -76,8 +76,8 @@ window.HudC25 = (function () {
   }
   function dot(x, y, r, col, a) { c.fillStyle = rgba(col || GOLD, a == null ? 1 : a); c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill(); }
   /* text-path caches (same pixels): widths by font + spacing + string, the header boxes, the newest log line's cut; all cleared by clearTx() on rebuildStat and when fonts load */
-  const twC = new Map(); let hdrC = null, hxC = null; const nwC = new Map(); let cutC = {};
-  const clearTx = () => { twC.clear(); nwC.clear(); hdrC = null; hxC = null; cutC = {}; };
+  const twC = new Map(); let hdrC = null, hxC = null; const nwC = new Map(); const cutC = new Map();
+  const clearTx = () => { twC.clear(); nwC.clear(); hdrC = null; hxC = null; cutC.clear(); };
   if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", clearTx);
   const setF = (font, ls) => { if (c.font !== font) c.font = font; if (c.letterSpacing !== ls) c.letterSpacing = ls; };
   function tw(font, ls, str) {
@@ -593,11 +593,11 @@ window.HudC25 = (function () {
       const mark = l => /^(warn|err|crit)/.test(l.kind || "") ? "!" : ">", shownOf = l => l.text.slice(0, l.shown == null ? l.text.length : l.shown);
       const pcut = [];
       prior.forEach((l, i) => { const y = 905 + (i - (n - 4)) * 15, a = [QUIET, 0.5, 0.64, 0.8][Math.max(0, Math.min(3, i - (n - 4)))];
-        let pt = shownOf(l); const key = pt + "|" + k, hit = cutC[key];
+        let pt = shownOf(l); const key = pt + "|" + k, hit = cutC.get(key);
         if (hit) { pt = hit.t; pcut[i] = hit.cut; }
         else { const room = 1206 - 806; c.font = `500 ${10 * k}px "IBM Plex Mono", monospace`; c.letterSpacing = (0.4 * k) + "px";
           let cu = false; if (c.measureText(pt).width > room) { cu = true; while (pt.length > 1 && c.measureText(pt + "…").width > room) pt = pt.slice(0, -1); pt += "…"; }
-          c.letterSpacing = "0px"; pcut[i] = cu; if (l.typing !== true) cutC[key] = { t: pt, cut: cu }; }
+          c.letterSpacing = "0px"; pcut[i] = cu; if (l.typing !== true) { if (cutC.size > 200) cutC.clear(); cutC.set(key, { t: pt, cut: cu }); } }
         c.save(); c.beginPath(); c.rect(780, y - 14, 1214 - 780, 20); c.clip();
         text(mark(l), 792, y, { size: 10, col: mark(l) === "!" ? CREAM : GOLD, a }); text(pt, 806, y, { size: 10, col: GREY, a, ls: 0.4 }); c.restore(); });
       const nowLeft = 1208 - W_(D.now, LBL());

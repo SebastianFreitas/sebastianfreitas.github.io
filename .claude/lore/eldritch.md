@@ -2,8 +2,9 @@
 
 The world behind the genesis cutscene's old ones, the bridge and the sky
 shadows. Written 2026-09-25 (plan phase 3,
-`.claude/plans/genesis-eldritch.md`; research in
-`.claude/plans/research/03-lore.md`). Art rules live in
+genesis-eldritch.md; research in
+research/03-lore.md; both archived outside the repo under
+`portfolio-archive/2026-11-18-review/`). Art rules live in
 `.claude/rules/art-style.md` "Eldritch"; this file is what is *true*, so
 the art and any copy can agree. Nothing here goes on the site verbatim:
 it is a reference for painters and writers.
@@ -65,7 +66,8 @@ the same blindness.
    first, like a garment on a form; lives are spun, measured and cut.
    The first two souls to remember are Rex and Obrokxus, and they are
    the lights that tear out at `birth`. Beats and captions in
-   `.claude/plans/genesis-eldritch-beats.md`.
+   genesis-eldritch-beats.md (archived outside the repo under
+   `portfolio-archive/2026-11-18-review/`).
 10. **The leaving.** Once the cycle runs, most old ones go. They live
     their own lives and rule their own civilizations all over the void.
     A very small share stay: few, but among the most powerful, the ones

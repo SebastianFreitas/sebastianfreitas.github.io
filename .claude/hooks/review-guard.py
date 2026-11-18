@@ -43,8 +43,12 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import (generated_globs, load_config, map_rule,  # noqa: E402
-                          matches_any, source_rule)
+try:
+    from guard_config import (generated_globs, load_config, map_rule,  # noqa: E402
+                              matches_any, source_rule)
+except ImportError as e:  # an older guard_config.py: this guard cannot run, the others still do
+    sys.stderr.write("review-guard.py: guard_config.py is older than this file (%s): guard off\n" % e)
+    sys.exit(0)
 
 LINES = 150
 FILES = 3

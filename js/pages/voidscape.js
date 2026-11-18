@@ -799,6 +799,7 @@
 
   // test hook: every position in viewport CSS px; targets = the gun mount and the field's centre
   function report() {
+    if (!V) return null;   // the range never started (window under 900 px)
     const r = V.canvas.getBoundingClientRect(), k = r.width / V.W;
     const at = (x, y) => ({ x: r.left + x * k, y: r.top + y * k });
     return {

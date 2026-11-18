@@ -65,7 +65,11 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import load_config, matches_any, raw_mode, source_rule  # noqa: E402
+try:
+    from guard_config import load_config, matches_any, raw_mode, source_rule  # noqa: E402
+except ImportError as e:  # an older guard_config.py: this guard cannot run, the others still do
+    sys.stderr.write("file-guard.py: guard_config.py is older than this file (%s): guard off\n" % e)
+    sys.exit(0)
 
 BINARY_SUFFIXES = {
     ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tga", ".exr", ".hdr",

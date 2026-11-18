@@ -474,6 +474,7 @@
 
     const reduced = U.reduced();
     const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
     const box = stageEl.querySelector(".gp-stage-box") || canvas;
     const statusEl = stageEl.querySelector(".gp-stage-status");
     const tickMs = spec.tick || 250;
@@ -535,7 +536,8 @@
     }
 
     function wakeUp() {
-      if (reduced || !live()) return;
+      if (still) { paint(1 / 60); return; }
+      if (!live()) return;
       stopTimer();
       resting = false;
       pacer.start();
@@ -560,8 +562,10 @@
     }
     if (window.ResizeObserver) new ResizeObserver(refit).observe(box);
     addEventListener("resize", refit);
-    if (reduced) return V;   // a still frame only: no loop, no input
+    // reduced motion, or no Pacer / IntersectionObserver: no loop; input paints one frame per event
+    const still = reduced || !window.Pacer || !window.IntersectionObserver;
 
+    if (!still) {
     pacer = Pacer.create({
       paint: dt => {
         paint(Math.min(Math.max(dt, 0), 1 / 20));
@@ -584,6 +588,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) stopTimer(); else resume();
     });
+    }
 
     function local(e) {
       const r = canvas.getBoundingClientRect();

@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=337">
-<link rel="stylesheet" href="../css/beacon.css?v=337">
-<link rel="stylesheet" href="../css/play.css?v=337">
-<link rel="stylesheet" href="../css/game-pages.css?v=337">
+<link rel="stylesheet" href="../css/style.css?v=338">
+<link rel="stylesheet" href="../css/beacon.css?v=338">
+<link rel="stylesheet" href="../css/play.css?v=338">
+<link rel="stylesheet" href="../css/game-pages.css?v=338">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -81,33 +81,33 @@
 
     <h2>Key and door</h2>
     <p>Every level hides a spinning <span class="key">symbol</span> and ends at a door. Ten levels split the symbol into three pieces, taken in order.</p>
-    <video class="clip" data-wear="image" src="../media/conclusus/pieces.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="A symbol in three pieces, collected in order" src="../media/conclusus/pieces.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A symbol in three pieces. Each one is collected in order, and the door opens on the third.</p>
     <p>Twenty levels add a second lock: every platform lit at the same moment. A platform lights when you step on it and fades in about five seconds, so the route becomes a race back to the first.</p>
-    <video class="clip" data-wear="image" src="../media/conclusus/platforms.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="Lighting every platform before the first one goes dark" src="../media/conclusus/platforms.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Lighting every platform before the first one goes dark. The door opens on the last.</p>
 
     <h2>Pins</h2>
     <p>A <span class="key">pin</span> snaps you in, cancels your momentum and fires you where it points.</p>
     <p>Then it holds your fall for a second, long enough to aim at the next one. Chains of pins are the flying sections.</p>
-    <video class="clip" data-wear="image" src="../media/conclusus/pins.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="A chain of pins to the door" src="../media/conclusus/pins.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A chain of pins to the door. Each launch holds the fall for a second.</p>
 
     <h2>The shadow</h2>
     <p>The main mechanic: a checkpoint you place yourself.</p>
     <figure class="gp-stage">
       <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click anywhere to teleport</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas></canvas></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A shadow stands on the ledge nearest the pointer; click anywhere to teleport into it."></canvas></div>
       <p class="caption">The shadow stands on the ledge nearest the pointer, and a click teleports you into it.</p>
     </figure>
     <p>Press S on the ground and a green copy of you stays behind. Press S again from anywhere and you are back in it, speed kept. One <span class="key">shadow</span> at a time, unlocked in level 7. Where to plant it is the decision.</p>
-    <video class="clip" data-wear="image" src="../media/conclusus/shadow.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="Plant the shadow, take the pins up, then teleport back to it" src="../media/conclusus/shadow.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Plant the shadow, take the pins up to the symbol, then teleport straight back to it and walk to the door.</p>
 
     <h2>The silhouettes</h2>
     <p>Figures shaped like your shadow, all switching together every 1.2 seconds.</p>
     <p>Green is safe: touch one and you teleport into it. Silver kills. The switch never drifts, so a level can be read, timed and learned. Levels 25 to 30 are built on that beat.</p>
-    <video class="clip" data-wear="image" src="../media/conclusus/silhouettes.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="A silhouette on every platform, green and silver on one beat" src="../media/conclusus/silhouettes.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A silhouette on every platform, green and silver on one beat.</p>
 
     <h2>Thirty levels</h2>
@@ -141,20 +141,19 @@
 </footer>
 
 
-<script src="../js/lib/util.js?v=337"></script>
-<script src="../js/site/xp.js?v=337"></script>
-<script src="../js/site/surge.js?v=337"></script>
-<script src="../js/lib/pacer.js?v=337"></script>
-<script src="../js/site/embed.js?v=337"></script>
-<script src="../js/site/lazy-video.js?v=337"></script>
-<script src="../js/bridge/lamp.js?v=337"></script>
-<script src="../js/pages/play.js?v=337"></script>
-<script src="../js/pages/conclusus.js?v=337"></script>
-<script src="../js/site/banner.js?v=337"></script>
-<script src="../js/site/shapes.js?v=337"></script>
-<script src="../js/site/barwear.js?v=337"></script>
-<script src="../js/site/redlines.js?v=337"></script>
-<script src="../js/site/back.js?v=337"></script>
+<script src="../js/lib/util.js?v=338"></script>
+<script src="../js/site/xp.js?v=338"></script>
+<script src="../js/site/surge.js?v=338"></script>
+<script src="../js/lib/pacer.js?v=338"></script>
+<script src="../js/site/embed.js?v=338"></script>
+<script src="../js/site/lazy-video.js?v=338"></script>
+<script src="../js/pages/play.js?v=338"></script>
+<script src="../js/pages/conclusus.js?v=338"></script>
+<script src="../js/site/banner.js?v=338"></script>
+<script src="../js/site/shapes.js?v=338"></script>
+<script src="../js/site/barwear.js?v=338"></script>
+<script src="../js/site/redlines.js?v=338"></script>
+<script src="../js/site/back.js?v=338"></script>
 <script>if (window.Play) Play.stage(document.querySelector("figure.gp-stage"), "conclusus");</script>
 </body>
 </html>

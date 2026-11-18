@@ -24,8 +24,8 @@ window.BackLink = (function () {
     }
   }
 
-  var a = document.querySelector("a.back");
-  if (a) a.addEventListener("click", onClick);
+  var links = document.querySelectorAll("a.back, a.gp-up");
+  for (var i = 0; i < links.length; i++) links[i].addEventListener("click", onClick);
 
   return { fromHome: fromHome };
 })();

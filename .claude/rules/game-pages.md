@@ -31,7 +31,7 @@ widths, the under-900 px `margin-block`). Tokens are set on G.
   - `h1`, `p.gp-lead` (the old first paragraph, moved in unchanged).
   - `dl.gp-meta`: `<div><dt>Genre</dt><dd>..</dd></div>` x4: Genre, Engine, Language, Role.
 - Sections stay flat children of main: `h2` (auto counter `01`, `02`, with a
-  hair rule above), `p` (one measure), `h2 + p` and `.case-sub + p` (lead),
+  hair rule above), `p` (one measure), `h2 + p` (lead),
   `p.caption`.
 - Media: `.clip`, `.embed` (`.embed-shell`, `.embed-play`: plate rect, cream label).
 - End `nav.case-nav`: left `a.gp-up` = `<span class="go go-back">` + "Back to
@@ -43,7 +43,7 @@ widths, the under-900 px `margin-block`). Tokens are set on G.
   - `figure.gp-stage` > `.gp-stage-head` (`.gp-stage-label` = `<i></i>` + one how-to line; `.gp-stage-status`), `.gp-stage-box` > `canvas`, then the caption. Copy the markup from the comment block above the stage rules in `css/game-pages.css`. Hidden under 900 px. `Play.stage(figureEl, name)` runs it (`js/pages/play.js`).
   - `dl.gp-facts` > `div` > `dt`, `dd`
   - `div.gp-nums` > `div` > `b`, `span`
-- Section lead (`h2 + p`, `.case-sub + p`) and body share `--measure` (36rem, 576 px): one right edge.
+- Section lead (`h2 + p`) and body share `--measure` (36rem, 576 px): one right edge.
   Only the opener's `p.gp-lead` is narrower (30rem), because it sits beside the picture.
 - A `p` right after `header.gp-head` gets `--gp-4` above it from the sheet; no inline style.
 - `p.caption` has `--gp-4` under it. Every `main > .clip` has a 1 px `--line` outline (inset).

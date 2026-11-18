@@ -334,7 +334,8 @@ window.GenRockTitans = (function () {
     if (debris && debrisKey === key) return;
     if (plan && plan.key !== key) { plan.drop(); plan = null; }
     if (!plan) plan = debrisPlan(G.W, G.H, key);
-    plan.steps[plan.i++]();
+    plan.steps[plan.i]();
+    plan.i++;   // after the step ran: one that throws is run again by the next call
     if (plan.i >= plan.steps.length) { const p = plan; plan = null; p.finish(); }
   }
   function buildDebris() {
@@ -519,5 +520,5 @@ window.GenRockTitans = (function () {
     if (!G.reduced) drawChips(ctx, G.secs("trade"), true);
   }
 
-  return { on, draw, bigD, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest, get VICTIM() { return victim(); }, SURVIVOR };
+  return { on, draw, bigD, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest };
 })();

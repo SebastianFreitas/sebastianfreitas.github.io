@@ -4,7 +4,7 @@
   const DW = 1600, root = document.documentElement;
   let s = 1;
   function set() {
-    s = window.innerWidth >= 1200 ? Math.min(1.2, root.clientWidth / DW) : 1;   /* no 0.75 floor: from 1200 to 1215 the scrollbar leaves under 1200 and the stage must still fit */
+    s = window.matchMedia("(min-width: 1200px)").matches ? Math.min(1.2, root.clientWidth / DW) : 1;   /* no 0.75 floor: from 1200 to 1215 the scrollbar leaves under 1200 and the stage must still fit */
     root.style.setProperty("--stage-s", s.toFixed(4));
   }
   set();

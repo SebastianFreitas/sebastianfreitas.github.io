@@ -24,7 +24,7 @@ Firefox in `WebRender (Software)` mode draws the page on the CPU. The owner's ma
 
 ## Where to look
 - `js/site/folders.js`: `caseAnim` is the sweep; `is-scrolling` sits on `.work`.
-- `css/folder.css`: the wash, smoke and glow, baked to `css/art/wash.webp` and `css/art/folder-glow.webp`.
+- `css/folder.css`: the wash, smoke and glow, baked to `wash.webp` and `folder-glow.webp` (archived outside the repo under `portfolio-archive/2026-11-18-review/`).
 - `js/site/devpanel.js`: temporary frame timing to borrow from. Removed 2026-11-15; read it with `git show aac55d87:js/site/devpanel.js`.
 
 ## How to test

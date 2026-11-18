@@ -250,7 +250,6 @@ window.GenGiants = (function () {
     // the tall loop, cut in two across its middle; the upper part slides aside
     const loopA = blob(610, 330, 200, 290, 0.35, [1, 0.94, 1.06, 0.9, 1.04, 0.97, 1.08, 0.92]);
     const loopHole = blob(610, 330, 78, 180, 0.35, [1, 1.08, 0.94, 1.06, 0.92, 1.04]);
-    const cutA = [[300, 330], [900, 200], [900, 262], [300, 392]];
     // the pinched waist joining them
     const waist = blob(500, 520, 90, 120, 0.5, [1, 0.6, 1.1, 0.55, 1, 0.62, 1.08, 0.58]);
     // two knots hanging under the lump

@@ -34,8 +34,11 @@ clears the toy canvas on resize. tools/toyshot.py shoots one toy quickly.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
+import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -159,11 +162,26 @@ WAAPI_FAKED = """(() => {
   const get = performance.getEntriesByName.bind(performance);
   performance.getEntriesByName = (n, t) => /^first(-contentful)?-paint$/.test(n) ? [] : get(n, t);
 })();"""
-PHONE_REST = (69.3, 802.0)        # where the old Continue click left the pointer on a phone
+# The faked clock's requestIdleCallback hands out an idle period with no time left. js/site/intro.js's
+# idle runner then asks again at once (it waits for 8 ms of room while the bridge paints), and in
+# phone portrait the bridge paints nothing and gives no room either: the same-instant timer
+# re-queues itself and the first clock step never returns. A real browser gives such a period
+# up to 50 ms, so in portrait on a touch device the callback gets that.
+IDLE_PORTRAIT = """(() => {
+  if (!matchMedia('(orientation: portrait) and (pointer: coarse)').matches) return;
+  window.requestIdleCallback = (cb, o) => setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 1);
+})();"""
+# An idle page (no animation loop, e.g. /#voidscape on a Work row) makes the faked clock's run_for
+# slow: about 4.7 s real per faked second (23.4 s for run_for(5000)). One empty rAF loop keeps it
+# fast (1.9 s for the same step). It reads and paints nothing. It is per scene (new_ctx(keepalive=True),
+# only work-hover) because it changes the frames of animated scenes.
+KEEPALIVE = "(function t(){requestAnimationFrame(t)})();"
+PHONE_REST = (69.3, 802.0)       # where the old Continue click left the pointer on a phone
 
 
 ENTER_AFTER = 60_000   # faked ms after this page load that site:enter is let go, later than either gate needs (the slowest scene's gate opened at about 48 s)
-SCENE = ""             # the scene being captured, for the missed-alignment warning
+SCENE_DEADLINE = 150.0   # real seconds one scene may take before its browser is killed
+SCENE = ""           # the scene being captured, for the missed-alignment warning
 
 
 def press_old_gate(page):
@@ -189,6 +207,8 @@ def wait_gate_open(page):
             if page.evaluate("document.getElementById('site-gate').classList.contains('done')"):
                 break
             page.clock.run_for(100)
+        else:
+            raise RuntimeError("the loading gate never reached .done in 30 s of faked time")
     page.mouse.move(*rest)   # rest where the old gate button was: later scenes hover
     left = ENTER_AFTER - page.evaluate("Date.now() - window.__snapT0")
     if left > 0:
@@ -255,7 +275,7 @@ def watch_errors(page):
 REDUCED_MOTION = False   # --reduced-motion: every scene that doesn't set its own
 
 
-def new_ctx(browser, viewport=None, gutter=False, **opts):
+def new_ctx(browser, viewport=None, gutter=False, keepalive=False, **opts):
     if REDUCED_MOTION:
         opts.setdefault("reduced_motion", "reduce")
     ctx = browser.new_context(viewport=viewport or nav.DESKTOP, **opts)
@@ -266,8 +286,11 @@ def new_ctx(browser, viewport=None, gutter=False, **opts):
     ctx.add_init_script(SEED)
     ctx.add_init_script(HOLD_ENTER)
     ctx.add_init_script(WAAPI_FAKED)
+    ctx.add_init_script(IDLE_PORTRAIT)
     if not gutter:
         ctx.add_init_script(NO_GUTTER)
+    if keepalive:
+        ctx.add_init_script(KEEPALIVE)
     ctx.route("**/*.mp4", lambda route: route.abort())   # posters only, see PARK_VIDEO
     page = ctx.new_page()
     watch_errors(page)
@@ -366,8 +389,10 @@ def js_block(source, opener, closer):
     return source[i:j + len(closer)]
 
 
-MARKS_SRC_FILE = (ROOT / "js" / "bridge" / "marks.js").read_text(encoding="utf-8")
-BEATS_SRC_FILE = (ROOT / "js" / "genesis" / "genesis-state.js").read_text(encoding="utf-8")
+# the marks and beats come from the checkout that is served: --root's, else this one
+SRC_ROOT = Path(sys.argv[sys.argv.index("--root") + 1]).resolve() if "--root" in sys.argv[:-1] else ROOT
+MARKS_SRC_FILE = (SRC_ROOT / "js" / "bridge" / "marks.js").read_text(encoding="utf-8")
+BEATS_SRC_FILE = (SRC_ROOT / "js" / "genesis" / "genesis-state.js").read_text(encoding="utf-8")
 
 MARKS_SRC = js_block(MARKS_SRC_FILE, "const MARKS = [", "\n  ];")
 BEATS_SRC = js_block(BEATS_SRC_FILE, "G.BEATS = [", "\n  ];")
@@ -593,7 +618,7 @@ def project_page(name, label, viewport):
 
 def work_hover_scene(browser, base, out_dir):
     """The VoidScape Work row hovered about 1.5 s: level text unmoved, title banner, clip playing in the picture spot, page button shown."""
-    ctx, page = new_ctx(browser, nav.DESKTOP)
+    ctx, page = new_ctx(browser, nav.DESKTOP, keepalive=True)
     page.goto(f"{base}/#voidscape")
     page.wait_for_load_state("load")
     press_gate(page)
@@ -723,19 +748,47 @@ def capture(name, only=None, root=None):
         return 2
     failed = []
     httpd, base = nav.start_server()
+    mark = f"--snap-run-{os.getpid()}"   # tags this run's browser processes so a timer can find them
+
+    def launch(p):
+        return p.chromium.launch(args=CHROME + [mark])
+
+    def kill_browser():
+        # the sync API is not thread-safe: the timer only kills the processes; the stuck call then raises
+        if sys.platform == "win32":
+            subprocess.run(["powershell", "-NoProfile", "-Command",
+                            f"Get-CimInstance Win32_Process | Where-Object {{ $_.ProcessId -ne $PID -and $_.CommandLine -match '(^|\\s)\\-\\-snap-run-{os.getpid()}(\\s|$)' }}"
+                            " | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
+                           capture_output=True)
+        else:
+            subprocess.run(["pkill", "-9", "-f", "--", f"(^| ){mark}( |$)"], capture_output=True)
+
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(args=CHROME)
+            browser = launch(p)
             for n, fn in chosen:
                 t0 = time.time()
                 SCENE = n
                 ERRORS.clear()
+                timer = threading.Timer(SCENE_DEADLINE, kill_browser)
+                timer.start()
                 try:
                     fn(browser, base, out_dir)
                     print(f"  {n:34} {time.time() - t0:6.1f}s")
                 except Exception as e:
                     failed.append(n)
-                    print(f"FAIL {n}: {type(e).__name__}: {e}".splitlines()[0])
+                    why = (f"no result within {SCENE_DEADLINE:.0f} s" if time.time() - t0 >= SCENE_DEADLINE
+                           else f"{type(e).__name__}: {e}")
+                    print(f"FAILED {n}: {why}".splitlines()[0])
+                    kill_browser()
+                    _shared.clear()
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
+                    browser = launch(p)
+                finally:
+                    timer.cancel()
                 if ERRORS:
                     if n not in failed:
                         failed.append(n)
@@ -745,6 +798,8 @@ def capture(name, only=None, root=None):
     finally:
         httpd.shutdown()
     print(f"\n{len(chosen) - len(failed)}/{len(chosen)} scene(s) into {out_dir}")
+    if failed:
+        print("FAILED scenes: " + ", ".join(failed))
     return 1 if failed else 0
 
 # ------------------------------------------------------------------ compare

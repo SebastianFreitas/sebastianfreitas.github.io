@@ -1,8 +1,11 @@
 """The project's .claude/project/file-guard.json, shared by the hooks that
 read it (file-guard, session-start, git-guard, review-guard). Not a hook
 itself: hooks.py never runs it. Keys are documented in file-guard.py;
-this file only loads them and matches globs. It also holds the raw-mode
-flag check (raw-mode.py sets the flag).
+this file loads them and matches globs. It also owns raw mode's shared
+parts: the RAW_ON regex, RAW_TEXT, reading a transcript's first prompt,
+the flag path, lazy_raw (sets the flag from a sub-chat's queued first
+prompt) and raw_mode (the flag check). raw-mode.py sets the flag for a
+typed prompt.
 
 Globs are fnmatch (case-sensitive) on the forward-slash root-relative
 path, where `*` also crosses `/`.
@@ -26,7 +29,7 @@ def raw_flag(transcript_path: str) -> str:
     return os.path.join(p, "raw-mode")
 
 
-RAW_ON = re.compile(r"(?:\s*<system-reminder>.*?</system-reminder>)*\s*(?:Background \([^)\n]*\):.*?\n\s*)?(?:Task:\s*)?raw\s*(:|$)", re.I | re.S)  # skips the app's leading reminder blocks, the "Background (from the session ...): <text>" paragraph and the "Task:" label it puts before a sub-chat's brief
+RAW_ON = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>)*\s*(?:Background \([^)\n]*\):(?:(?!\n[ \t]*\n).)*\n[ \t]*\n\s*)?(?:Task:[ \t]*)?raw[ \t]*(:|$)", re.I | re.S)  # skips the app's leading reminder blocks, the "Background (from the session ...): <text>" paragraph (up to its blank line) and the "Task:" label it puts before a sub-chat's brief; only the prompt's own first line may be raw
 RAW_TEXT = ("RAW MODE on for this window: read .claude/rules/workflow.md "
             "'Raw mode' and do every step here; only the reviewer and "
             "look-judge run, on finished work.")

@@ -37,8 +37,7 @@ in those areas. Game pages (`projects/*.html`, `css/game-pages.css`):
 
 - Test only the flows you touched: `py -3 tools/nav-flows.test.py <flow>`
   (`--list` names them). Run the full suite only before a commit that
-  touches navigation, the gate or storage. Known failure on `main`:
-  `gate-exits`.
+  touches navigation, the gate or storage.
 - Anything that paints or styles: `py -3 tools/snap.py capture <name>`
   before and after (about 3.5 min, 50 scenes), then
   `py -3 tools/snap.py compare <before> <after>`: `same` on every scene

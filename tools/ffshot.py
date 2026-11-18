@@ -113,10 +113,14 @@ def load(d, base, path):
                 if d.execute_script("return document.documentElement.classList.contains('gate-done')"):
                     break
                 time.sleep(0.1)
+            else:
+                print("WARNING: the loading gate of " + path + " never opened in 30 s")
+                return False
             time.sleep(1.0)
     except Exception:
         pass
     d.execute_script(PROBE)
+    return True
 
 
 def scroll_to(d, sel):
@@ -174,7 +178,8 @@ def main():
             for e in errors:
                 print("console error: " + e)
             return 1 if errors else 0
-        load(d, base, a.path)
+        if not load(d, base, a.path):
+            return 1
         if a.games:
             for row in ROWS:
                 sel = "#" + row
@@ -188,7 +193,8 @@ def main():
                 time.sleep(0.6)
                 shoot(d, tmp / f"ffshot-{row}-hover.png", a.wait)
             set_viewport(d, 390, 844)
-            load(d, base, a.path)
+            if not load(d, base, a.path):
+                return 1
             scroll_to(d, "#" + ROWS[0])
             shoot(d, tmp / "ffshot-sector-zero-390x844.png", a.wait)
         else:

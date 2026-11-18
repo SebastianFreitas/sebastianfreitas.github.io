@@ -134,6 +134,10 @@
     const ord = XP.readOrder;
     const rank = m => ord.indexOf("beacon-" + m.id);
     done.sort((a, b) => rank(a) - rank(b));
+    /* a rebuild destroys the focused button: remember which, and refocus its twin below */
+    const fa = document.activeElement;
+    const focusRd = fa && arch.contains(fa) && fa.classList.contains("arch-rd") ? fa.dataset.mark : null;
+    const focusCut = !!(fa && arch.contains(fa) && fa.classList.contains("arch-cut"));
     arch.textContent = "";
     live = { unread, nextId: null, nextTxt: null, bar: null, barW: 0, rows: [] };
     const spine = document.createElement("div");
@@ -176,6 +180,7 @@
     done.slice(-3).reverse().forEach(m => {
       const b = el("button", "arch-rd hud-click");
       b.type = "button";
+      b.dataset.mark = m.id;
       b.appendChild(el("span", "arch-nm", m.name.toLowerCase()));
       const km = el("span", "arch-km gold");
       const node = document.createTextNode(kmText(m));
@@ -200,6 +205,11 @@
     cut.addEventListener("click", e => { e.stopPropagation(); toggleCuts(cut); });
     body.appendChild(cut);
     arch.append(spine, body);
+    if (focusCut) cut.focus({ preventScroll: true });
+    else if (focusRd != null) {
+      const rds = Array.prototype.slice.call(arch.querySelectorAll(".arch-rd"));
+      (rds.find(r => r.dataset.mark === focusRd) || rds[rds.length - 1] || cut).focus({ preventScroll: true });
+    }
   }
   document.addEventListener("xp:award", buildArchive);
   document.addEventListener("site:genesis-done", buildArchive);

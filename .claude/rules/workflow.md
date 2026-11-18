@@ -14,8 +14,8 @@ or logs (pictures it may: Token rules), runs verify only as a one-line spot chec
 and makes at most two quick lookups (a grep, a short range) before
 delegating; more goes to `Explore`. Agent prompts name paths, never
 pasted content. Agents write the full report to a file and return at
-most about 150 words plus its path (`reply-cap.py` sends a longer one
-back once); every `Explore` or `general-purpose` prompt ends with the
+most about 150 words plus its path (`reply-cap.py` sends one over 250
+words back once); every `Explore` or `general-purpose` prompt ends with the
 playbook's report line (playbook Delegation).
 
 ## Shared files
@@ -132,7 +132,7 @@ branch checked first. This window only manages, never reads a spec or a
 diff (about 3k tokens per spec, so 20 fit under its 175k line). Step
 detail: playbook "Run".
 
-3. **Implement:** one foreground `implementer` per spec, the prompt only
+3. **Implement:** one `implementer` per spec, the prompt only
    "Your spec is `.claude/specs/<k>.md`: read it and implement it".
    Parallel specs (where the handoff says so) are several calls in one
    message. Blocked: one `Explore`, a narrower spec, a fresh
@@ -225,7 +225,8 @@ window 120k; Explore, Plan, general-purpose and claude-code-guide 100k,
 plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
 subagent at 1.25 times its line is denied further tools: the prompt was
 too wide; next time name file, function and range, or split. Every
-subagent runs in the foreground (playbook Delegation).
+subagent runs in the background; the main session waits for the
+harness's exit notice and never polls (playbook Delegation).
 
 - Main session past its line: finish only the current atomic step,
   verify, commit (keep `.claude/specs/`: pending specs and any report

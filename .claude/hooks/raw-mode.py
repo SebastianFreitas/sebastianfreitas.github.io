@@ -11,6 +11,10 @@ The flag changes three guards, main session only:
 - context-watch: the window's line is RUN_LIMIT, and it does its own
   reading.
 
+A desktop-app sub-chat gets its first message through a queue, so this
+hook never sees it: hooks.py reads it on the first tool call instead
+(guard_config.lazy_raw) and sets the same flag.
+
 Every other hook, review-guard's reviewer included, works as usual.
 Rules: workflow.md "Raw mode". Never fails the hook: any error exits 0.
 """
@@ -19,7 +23,11 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import RAW_ON as ON, RAW_TEXT, lazy_raw, raw_flag, raw_mode  # noqa: E402
+try:
+    from guard_config import RAW_ON as ON, RAW_TEXT, lazy_raw, raw_flag, raw_mode  # noqa: E402
+except ImportError as e:  # an older guard_config.py: raw mode cannot start, the other hooks still run
+    sys.stderr.write("raw-mode.py: guard_config.py is older than this file (%s): raw mode off\n" % e)
+    sys.exit(0)
 
 
 def main():

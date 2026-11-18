@@ -1409,7 +1409,7 @@
   }
   /* wear the plate's top edge once per box size (draw runs on every resize) */
   function wearPlate(el, seed, edges, flags, glass) {
-    const gl = !window.matchMedia("(max-width: 1199px)").matches;
+    const gl = window.matchMedia("(min-width: 1200px)").matches;
     if (el._wearW !== el.offsetWidth || el._wearH !== el.offsetHeight || el._wearGl !== gl) {
       el._wearGl = gl;
       /* the chips go on the text side of the top edge: the part not under the row picture, 24 px clear of it and of the corner */
@@ -1638,7 +1638,7 @@
         pass = pass || 0;
         if (pass === 0) ["--wk-h3", "--wk-hk", "--wk-ln", "--wk-fx", "--wk-hw", "--wk-hm", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* the pieces are measured at their grid places (wkPlace moves them last) */
         /* desktop: the row grows to both sides (the text column keeps its size and moves left with the row): every row runs to 6% of the screen from the right edge and its left edge sits 6% in */
-        const wide = !window.matchMedia("(max-width: 1199px)").matches;
+        const wide = window.matchMedia("(min-width: 1200px)").matches;
         if (wide && pass === 0) {
           const k0 = window.Stage ? window.Stage.s() : 1, wk = el.parentNode, ws = getComputedStyle(wk), cw = document.documentElement.clientWidth;
           const natR = wk.getBoundingClientRect().right - parseFloat(ws.paddingRight) * k0, tgt = cw * WK_EDGE[1];
@@ -1768,7 +1768,7 @@
       return sub;
     }
     function draw() {
-      const phone = window.matchMedia("(max-width: 1199px)").matches, hg = phone ? null : hang();
+      const phone = !window.matchMedia("(min-width: 1200px)").matches, hg = phone ? null : hang();
       const W = phone ? el.offsetWidth : hg ? hg.W : XW;
       let H = phone ? el.offsetHeight : XH;
       if (!phone) {   /* the text block follows the heading down the sloped top edge (the CSS heading's top, plus 62 px) and the plate grows by what the text gains (+182 baseline) and by the 2 x 10 px of extra entry spacing, plus 13 px so the sloped bottom edge keeps the last picture's old clearance */
@@ -1842,14 +1842,16 @@
           const src = pic._xpSrc; if (!src.length || !(th > 0)) return;
           let st = pic.querySelector(".xp-strip"); if (!st) { st = document.createElement("div"); st.className = "xp-strip"; pic.appendChild(st); }
           const n = Math.ceil(hh / th) + 1;   /* one tile more than the column shows: the film strip (xp-slides.js) slides it in from below */
-          st._xp = { th: th, ul: ul, s: s, pad: pad, l: l }; st._gen = (st._gen || 0) + 1; st._k = 0; st._sl = false; st.style.transition = "none"; st.style.transform = "";
+          const same = st._xp && st._xp.th === th && st.children.length === n;   /* a redraw that changes neither the tile height nor the count leaves a running strip where it is */
+          st._xp = { th: th, ul: ul, s: s, pad: pad, l: l };
+          if (!same) { st._gen = (st._gen || 0) + 1; st._k = 0; st._sl = false; st.style.transition = "none"; st.style.transform = ""; }
           while (st.children.length > n) st.lastChild.remove();
           while (st.children.length < n) {
             const j = st.children.length, q = src[j % src.length], im = new Image();
             im.alt = q.a || ""; if (q.t) im.title = q.t; im.decoding = "async"; if (j) im.loading = "lazy"; im.src = q.s;
             st.appendChild(im);
           }
-          for (let j = 0; j < n; j++) { const q = src[j % src.length], t = st.children[j]; t.alt = q.a || ""; if (q.t) t.title = q.t; else t.removeAttribute("title"); if (t.getAttribute("src") !== q.s) t.src = q.s; st.children[j].style.cssText ="position:absolute;object-fit:cover;top:" + (j * th).toFixed(1) + "px;left:" + (ul + s * (j * th + th / 2) - pad - l).toFixed(1) + "px;width:" + (w + 2 * pad).toFixed(1) + "px;height:" + (th + 0.5).toFixed(1) + "px"; }
+          for (let j = 0; j < n; j++) { const jj = st._k + j, q = src[jj % src.length], t = st.children[j]; t.alt = q.a || ""; if (q.t) t.title = q.t; else t.removeAttribute("title"); if (t.getAttribute("src") !== q.s) t.src = q.s; st.children[j].style.cssText ="position:absolute;object-fit:cover;top:" + (jj * th).toFixed(1) + "px;left:" + (ul + s * (jj * th + th / 2) - pad - l).toFixed(1) + "px;width:" + (w + 2 * pad).toFixed(1) + "px;height:" + (th + 0.5).toFixed(1) + "px"; }
         });
       }
       return low;
@@ -1893,13 +1895,13 @@
         }
       }
     }
-    function live() { if (window.matchMedia("(max-width: 1199px)").matches || mode !== false) draw(); }
+    function live() { if (!window.matchMedia("(min-width: 1200px)").matches || mode !== false) draw(); }
     draw();
     if (window.ResizeObserver) {
       let pend1 = 0, pend2 = 0;   /* one pending frame per observer: the draw resizes the box and the last row, so it runs outside the observer callback */
       new ResizeObserver(function () { if (pend1) return; pend1 = requestAnimationFrame(function () { pend1 = 0; live(); }); }).observe(el);
       const wk = document.querySelector(".work"), rows = document.querySelectorAll(".work > a.obj[data-wornquad]");
-      const ro = new ResizeObserver(function () { if (pend2) return; pend2 = requestAnimationFrame(function () { pend2 = 0; if (!window.matchMedia("(max-width: 1199px)").matches) draw(); }); });
+      const ro = new ResizeObserver(function () { if (pend2) return; pend2 = requestAnimationFrame(function () { pend2 = 0; if (window.matchMedia("(min-width: 1200px)").matches) draw(); }); });
       if (wk) ro.observe(wk);
       if (rows.length) ro.observe(rows[rows.length - 1]);
     }

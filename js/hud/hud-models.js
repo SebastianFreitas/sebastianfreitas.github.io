@@ -1,7 +1,7 @@
 /* hud-models.js — the left-wing readings as shared functions. The old tiles
    (instruments.js tickAlarms) and hud-c25.js call the
    same ones. Nothing here reaches into Bridge: callers pass values in.
-   Source of truth: .claude/plans/research/hud-c25-02-models.md, "Left wing".
+   Source of truth: hud-c25-02-models.md, "Left wing" (archived outside the repo, portfolio-archive/2026-11-18-review/).
 
    Lamp states: 0 off, 1 lit, 2 burst, 3 red (rad only). Burst holds while the
    rule's error level holds and for 1.1 s after a lamp turns on.

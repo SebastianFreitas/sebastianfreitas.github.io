@@ -42,7 +42,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from guard_config import load_config, matches_any, quiet_globs, quiet_line  # noqa: E402
+try:
+    from guard_config import load_config, matches_any, quiet_globs, quiet_line  # noqa: E402
+except ImportError as e:  # an older guard_config.py: no session context, nothing is refused
+    sys.stderr.write("session-start.py: guard_config.py is older than this file (%s): hook off\n" % e)
+    sys.exit(0)
 
 LIMIT = 9500          # hook output over 10,000 chars becomes a 2,000-char preview
 HANDOFF_HEAD_LINES = 4   # non-blank lines of the handoff printed

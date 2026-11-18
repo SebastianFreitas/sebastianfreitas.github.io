@@ -52,10 +52,20 @@ Never fails the hook: any error exits 0 (and allows the tool).
 import json
 import os
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import raw_mode  # noqa: E402
+try:
+    from guard_config import raw_mode, first_prompt  # noqa: E402
+except ImportError as e:  # an older guard_config.py: run as if raw mode were off
+    sys.stderr.write("context-watch.py: guard_config.py is older than this file (%s): raw-mode check off\n" % e)
+
+    def raw_mode(transcript_path):
+        return False
+
+    def first_prompt(transcript_path):
+        return ""
 
 LIMIT = 120_000       # app windows that are not a prepared run
 RUN_LIMIT = 175_000   # a prepared run's window, or a plan run's supervisor
@@ -202,6 +212,25 @@ def tier_of(used, limit, soft):
     return 0
 
 
+def handoff_roots(d, text):
+    """Folders to look for .claude/handoff.md in: the path the go prompt
+    names after "Checkout", the git top level of cwd, then cwd."""
+    cwd = d.get("cwd") or os.getcwd()
+    roots = []
+    m = re.search(r"\bCheckout\s+(\S+?)[.,;]?(?:\s+on\s+branch\b|\s*$|\s)", text, re.I)
+    if m:
+        roots.append(m.group(1).strip("\"'"))
+    try:
+        top = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=5).stdout.strip()
+        if top:
+            roots.append(top)
+    except Exception:
+        pass
+    roots.append(cwd)
+    return roots
+
+
 def main_line(d, state):
     """(limit, kind) for this app window; kind is "run", "supervisor", "raw"
     or ""."""
@@ -222,18 +251,37 @@ def main_line(d, state):
     text = d.get("prompt") or ""
     if not text and d.get("tool_name") in ("Bash", "PowerShell"):
         text = (d.get("tool_input") or {}).get("command") or ""
+    # the app queues a sub-chat's first message, so no UserPromptSubmit
+    # carries it: a tool call then reads it from the transcript
+    # the window's kind is decided from its first prompt once: "checked"
+    # stops later tool calls re-reading the transcript and the handoff
+    submit = d.get("hook_event_name") == "UserPromptSubmit"
+    if submit:
+        go_text = text
+        state["main"]["checked"] = True
+    elif d.get("tool_name") and not state["main"].get("checked"):
+        go_text = first_prompt(d.get("transcript_path") or "")
+        state["main"]["checked"] = True
+    else:
+        go_text = ""
     if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
         kind = "supervisor"
-    elif d.get("hook_event_name") == "UserPromptSubmit" and RUN_PROMPT.search(text):
+    elif go_text and RUN_PROMPT.search(go_text):
         # only the go prompt makes a run window: a handoff that merely
         # exists (the prepare window that just wrote it, another
         # session's checkout) does not
         try:
-            hand = os.path.join(d.get("cwd") or os.getcwd(), ".claude", "handoff.md")
-            with open(hand, encoding="utf-8", errors="ignore") as f:
-                if f.readline().strip() == "Run: prepared":
-                    kind = "run"
-        except OSError:
+            for root in handoff_roots(d, go_text):
+                try:
+                    with open(os.path.join(root, ".claude", "handoff.md"),
+                              encoding="utf-8-sig", errors="ignore") as f:
+                        first = next((ln.strip() for ln in f if ln.strip()), "")
+                    if first == "Run: prepared":
+                        kind = "run"
+                        break
+                except OSError:
+                    continue
+        except Exception:
             pass
     if kind:
         # the line moved: tiers crossed under the old line no longer hold
@@ -410,6 +458,14 @@ def ledger_messages(path):
 def on_main(d, ev, path):
     parts = []
     state = read_state(path)
+    if ev == "UserPromptSubmit" and not state["main"].get("run"):
+        # a fresh window's go prompt can arrive before the transcript has
+        # any usage: file the line now, no later prompt retries it
+        used = context_tokens(path) if os.path.exists(path) else None
+        if used is None:
+            main_line(d, state)
+            if state["main"].get("run"):
+                write_state(path, state)
     if os.path.exists(path):
         used = context_tokens(path)
         if used is not None:

@@ -72,7 +72,7 @@ _MODEL = "claude-opus-5-5"  # set by main() from --model; safety_commit's traile
 
 
 def model_display_name(model_id: str) -> str:
-    """'claude-fable-5-1' -> 'Claude Fable 5.1'; ids not starting with 'claude-' come back as they are."""
+    """'claude-fable-5-2' -> 'Claude Fable 5.2'; ids not starting with 'claude-' come back as they are."""
     if not model_id.startswith("claude-"):
         return model_id
     family, *version = model_id[len("claude-"):].split("-")

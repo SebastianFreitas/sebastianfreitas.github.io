@@ -47,7 +47,9 @@ CASES = ["sector-zero", "voidscape", "conclusus", "heavylight"]
 NEXT = {"sector-zero": "voidscape", "voidscape": "conclusus",
         "conclusus": "heavylight", "heavylight": "sector-zero"}
 TOL = 4          # px of slack when comparing scroll positions
-SETTLE = 2000    # ms: long enough for any smooth scroll to finish
+GATE_CAP_MS = 8000   # the gate's own cap, WARM_CAP_MS in js/site/intro.js
+GATE_MIN_MS = 1200   # the gate's minimum time, MIN_MS in js/site/intro.js
+SETTLE = 2000   # ms: long enough for any smooth scroll to finish
 
 # ------------------------------------------------------------------ server
 
@@ -135,7 +137,9 @@ STATE = """
     maxScroll: Math.round(maxScroll),
     workTop: top('work'),
     experienceTop: top('experience'),
-    mode: 'void',
+    mode: (() => { if (window.Bridge && Bridge.saveView) Bridge.saveView();
+      try { return (JSON.parse(sessionStorage.getItem('arcanis.view.v1') || 'null') || {}).mode || null; }
+      catch (e) { return null; } })(),
     heroPosition: hero ? getComputedStyle(hero).position : null,
     genesisActive: window.Genesis ? Genesis.active : null,
     genesisFlag: window.XP ? XP.has('genesis') : null,
@@ -170,11 +174,23 @@ def near(a, b):
 
 
 def wait_gate_done(page):
-    """The gate opens by itself when its bar is full: wait for it to be gone."""
-    page.wait_for_function("document.getElementById('site-gate').classList.contains('done')", timeout=30000)
+    """The gate opens by itself when its bar is full: wait for it to be gone.
+    It may take at most its own cap (WARM_CAP_MS 8000, js/site/intro.js) plus a margin."""
+    try:
+        page.wait_for_function("document.getElementById('site-gate').classList.contains('done')",
+                               timeout=GATE_CAP_MS + 1500)
+    except Exception as e:
+        check("the gate opens within its own cap", False, f"not done after {GATE_CAP_MS + 1500} ms: {e}")
 
 
-def enter_via_gate(page, base, button=None):
+def lands_on_work(page, s):
+    """The designed landing: Work's top sits just under the top bar (or the page ends first)."""
+    h = page.evaluate("document.querySelector('header').getBoundingClientRect().height")
+    want = min(s["workTop"] - h, s["maxScroll"])
+    return abs(s["scrollY"] - want) <= TOL, f"scrollY {s['scrollY']}, Work top {s['workTop']}, bar {h}, want {want:.0f}"
+
+
+def enter_via_gate(page, base):
     """First visit: the gate fills its bar and opens by itself; let the +1 land."""
     page.goto(base + "/")
     page.wait_for_selector("#gate-bar", timeout=10000)
@@ -214,7 +230,7 @@ def goto_hl(page, base):
 
 
 def flow_first(browser, base):
-    """First visit: the gate shows once; picking Setting goes to the void bridge only."""
+    """First visit: the gate shows once; the gate opens by itself onto the void bridge."""
     ctx, page = new_page(browser)
     page.goto(base + "/")
     page.wait_for_timeout(300)
@@ -224,25 +240,33 @@ def flow_first(browser, base):
     wait_gate_done(page)
     page.wait_for_timeout(2500)
     s = state(page)
-    check("gate closes after picking Setting", not s["gateShown"] and not s["frozen"], s)
+    check("gate closes by itself", not s["gateShown"] and not s["frozen"], s)
     check("sector is the void", s["mode"] == "void", s["mode"])
     check("visitor is marked as seen", bool(s["stored"] and s["stored"]["seen"]), s["stored"])
     claimed = s["stored"]["claimed"] if s["stored"] else []
-    check("Setting path awards nothing (XP is bridge only)",
+    check("The gate awards nothing (XP is bridge only)",
           "path-world" not in claimed and (s["stored"]["level"] == 0), s["stored"])
-    check("Game Dev path NOT awarded by picking Setting", "path-projects" not in claimed, claimed)
+    check("Game Dev path NOT awarded by the gate", "path-projects" not in claimed, claimed)
     ctx.close()
 
 
 def flow_gate_exits(browser, base):
-    """The gate can be left without picking: Escape, or a top bar link."""
+    """The gate can be left early: Escape, or a top bar link. Each must close it well inside the gate's own minimum time."""
+    def gone_early(page):
+        try:        # the gate's own run takes at least GATE_MIN_MS from its first frame
+            page.wait_for_function("document.getElementById('site-gate').classList.contains('done')",
+                                   timeout=GATE_MIN_MS - 400)
+            return True
+        except Exception:
+            return False
+
     ctx, page = new_page(browser)
     page.goto(base + "/")
     page.wait_for_selector("#gate-bar", timeout=10000)
     page.keyboard.press("Escape")
-    page.wait_for_timeout(1500)
+    early = gone_early(page)
     s = state(page)
-    check("Escape closes the gate", not s["gateShown"] and not s["frozen"], s)
+    check("Escape closes the gate itself, inside the gate's minimum time", early and not s["gateShown"] and not s["frozen"], s)
     check("Escape enters the void", s["mode"] == "void", s["mode"])
     ctx.close()
 
@@ -250,10 +274,12 @@ def flow_gate_exits(browser, base):
     page.goto(base + "/")
     page.wait_for_selector("#gate-bar", timeout=10000)
     page.click("header nav a[href='#work']")
+    early = gone_early(page)
     page.wait_for_timeout(SETTLE)
     s = state(page)
-    check("top bar 'Work' works while the gate is up", not s["gateShown"] and not s["frozen"], s)
-    check("... and lands on Work", near(s["scrollY"], min(s["workTop"], s["maxScroll"])), s)
+    check("top bar 'Work' closes the gate itself, inside the gate's minimum time", early and not s["gateShown"] and not s["frozen"], s)
+    ok, why = lands_on_work(page, s)
+    check("... and lands on Work", ok, why)
     ctx.close()
 
 
@@ -273,7 +299,7 @@ def flow_back(browser, base):
     check("Back: no gate, the tab already entered", not g["shown"], g)
     s = state(page)
     check("Back: on the homepage again", not page.url.endswith(".html"), page.url)
-    check("Back: gate closed after the button", not s["gateShown"] and not s["frozen"], s)
+    check("Back: gate closed by itself", not s["gateShown"] and not s["frozen"], s)
     check("Back: sector is still the void", s["mode"] == "void", s["mode"])
     check("Back: scroll position kept", near(s["scrollY"], y0), f"was {y0}, now {s['scrollY']}")
     check("Back: no cutscene", not s["genesisActive"], s["genesisActive"])
@@ -313,8 +339,8 @@ def flow_worklink(browser, base):
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("top bar Work: no gate", not s["gateShown"] and not s["frozen"], s)
-    gap = s["workTop"] - s["scrollY"]       # the header's scroll-padding leaves Work a little under the top
-    check("top bar Work: lands on Work", -TOL <= gap <= 80 or s["scrollY"] >= s["maxScroll"] - TOL, s)
+    ok, why = lands_on_work(page, s)
+    check("top bar Work: lands on Work", ok, why)
     ctx.close()
 
 
@@ -329,7 +355,7 @@ def flow_deeplink(browser, base):
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(400)
     s = state(page)
-    check("deep link: gate closed after the button", not s["gateShown"] and not s["frozen"], s)
+    check("deep link: gate closed by itself", not s["gateShown"] and not s["frozen"], s)
     r = page.evaluate("""() => { const row = document.getElementById('voidscape'), v = row.querySelector('video');
       return { top: Math.round(row.getBoundingClientRect().top), vh: innerHeight, url: location.pathname,
                open: document.querySelectorAll('.open, .folder-body').length }; }""")
@@ -341,30 +367,28 @@ def flow_deeplink(browser, base):
 
 def flow_returning(browser, base):
     """A returning visitor opening the bare homepage sees the gate without the boot log, then the last sector."""
-    for button, mode in (("#gate-world", "void"),):
-        ctx, page = new_page(browser)
-        enter_via_gate(page, base, button)
-        if mode == "void":
-            page.keyboard.press("Escape")       # skip the cutscene if it is playing
-            page.wait_for_timeout(400)
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(1500)
-        page.goto(base + "/projects/heavylight.html")
-        page.wait_for_timeout(800)
-        page.close()
-        page = ctx.new_page()                   # a returning visitor is a new tab: localStorage kept, sessionStorage fresh
-        page.goto(base + "/")
-        page.wait_for_timeout(300)
-        g = gate_state(page)
-        check(f"returning ({mode}): the gate shows, the bar", g["shown"] and g["bar"], g)
-        check(f"returning ({mode}): gate painted at parse", g["hiddenAtParse"] is False, g)
-        pass_gate(page, SETTLE)
-        s = state(page)
-        check(f"returning ({mode}): gate closed after the button", not s["gateShown"] and not s["frozen"], s)
-        check(f"returning ({mode}): opens in the last sector", s["mode"] == mode, s["mode"])
-        check(f"returning ({mode}): starts at the top", s["scrollY"] <= TOL, s["scrollY"])
-        check(f"returning ({mode}): no cutscene", not s["genesisActive"], s["genesisActive"])
-        ctx.close()
+    ctx, page = new_page(browser)
+    enter_via_gate(page, base)
+    page.keyboard.press("Escape")       # skip the cutscene if it is playing
+    page.wait_for_timeout(400)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1500)
+    page.goto(base + "/projects/heavylight.html")
+    page.wait_for_timeout(800)
+    page.close()
+    page = ctx.new_page()                   # a returning visitor is a new tab: localStorage kept, sessionStorage fresh
+    page.goto(base + "/")
+    page.wait_for_timeout(300)
+    g = gate_state(page)
+    check("returning: the gate shows, the bar", g["shown"] and g["bar"], g)
+    check("returning: gate painted at parse", g["hiddenAtParse"] is False, g)
+    pass_gate(page, SETTLE)
+    s = state(page)
+    check("returning: gate closed by itself", not s["gateShown"] and not s["frozen"], s)
+    check("returning: opens in the void", s["mode"] == "void", s["mode"])
+    check("returning: starts at the top", s["scrollY"] <= TOL, s["scrollY"])
+    check("returning: no cutscene", not s["genesisActive"], s["genesisActive"])
+    ctx.close()
 
 
 def flow_wordmark(browser, base):
@@ -429,8 +453,8 @@ def flow_reset(browser, base):
 def flow_genesis(browser, base):
     """The cutscene plays once, counted from its start, without moving the page."""
     ctx, page = new_page(browser)
-    enter_via_gate(page, base, "#gate-world")
-    check("Setting does not autoplay the cutscene", state(page)["genesisActive"] is not True, None)
+    enter_via_gate(page, base)
+    check("the gate does not autoplay the cutscene", state(page)["genesisActive"] is not True, None)
     page.evaluate("Genesis.play({ thenMode: 'void' })")     # what the Genesis mode button calls
     page.wait_for_timeout(300)
     s = state(page)
@@ -454,7 +478,7 @@ def flow_genesis(browser, base):
 def flow_genesis_segment(browser, base):
     """The Void beacon plays the birth segment once, then its note opens; later claims only show the note."""
     ctx, page = new_page(browser)
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     claim = "(() => { const m = Bridge.MARKS.find(m => m.id === 'bnote-void'); Bridge.camX = m.cam; Bridge.selectMark(m); })()"
     note = "document.getElementById('bnote-void').classList.contains('show')"
     check("segment: not seen on a fresh profile", page.evaluate("Genesis.segmentSeen('birth')") is False, None)
@@ -490,7 +514,7 @@ def flow_genesis_segment(browser, base):
 def flow_glimpse(browser, base):
     """The Void beacon's segment ends on the glimpse card; a wheel closes it and the page scrolls; the Root beacon shows none."""
     ctx, page = new_page(browser)
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     claim = "(id) => { const m = Bridge.MARKS.find(m => m.id === id); Bridge.camX = m.cam; Bridge.selectMark(m); }"
     card = "!!document.querySelector('.glimpse-veil.open')"
     page.evaluate(claim, "bnote-void")
@@ -511,7 +535,7 @@ def flow_glimpse(browser, base):
 
     for how in ("line", "veil"):
         ctx, page = new_page(browser)
-        enter_via_gate(page, base, "#gate-world")
+        enter_via_gate(page, base)
         page.evaluate(claim, "bnote-void")
         page.wait_for_function("Genesis.active === true", timeout=12000)
         page.wait_for_timeout(1500)
@@ -534,7 +558,7 @@ def flow_glimpse(browser, base):
         ctx.close()
 
     ctx, page = new_page(browser, PHONE)
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.evaluate(claim, "bnote-void")
     page.wait_for_function("Genesis.active === true", timeout=12000)
     page.wait_for_timeout(1500)
@@ -545,7 +569,7 @@ def flow_glimpse(browser, base):
     ctx.close()
 
     ctx, page = new_page(browser)
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.evaluate(claim, "bnote-root")
     page.wait_for_function("Genesis.active === true", timeout=12000)
     page.wait_for_timeout(1500)
@@ -572,7 +596,7 @@ def flow_genesis_scenes(browser, base):
     for note_id, scene in (("bnote-void", "birth"), ("bnote-root", "root"),
                            ("bnote-rex", "rex"), ("bnote-rex-valkhar", "valkhar")):
         ctx, page = new_page(browser)        # a fresh context: every beacon is a first claim
-        enter_via_gate(page, base, "#gate-world")
+        enter_via_gate(page, base)
         if note_id == "bnote-rex-valkhar":   # a depth node: file the beacons it hangs off so it spawns
             page.evaluate("""(() => {
                 const need = id => { const d = Depths.nodes().find(n => n.id === id); if (d) d.after.forEach(need);
@@ -763,7 +787,7 @@ def flow_rex(browser, base):
     """Claiming Rex spawns its three layers, then the kingdoms, each at the spot measured in flight."""
     ctx, page = new_page(browser)
     page.goto(base + "/?reset=1")
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.keyboard.press("Escape")       # skip the cutscene if it is playing
     page.wait_for_timeout(400)
     page.keyboard.press("Escape")
@@ -842,7 +866,7 @@ def flow_watcher(browser, base):
     """Claiming the Watcher spawns the Red Star and Serus, each at the spot measured in flight."""
     ctx, page = new_page(browser)
     page.goto(base + "/?reset=1")
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.keyboard.press("Escape")       # skip the cutscene if it is playing
     page.wait_for_timeout(400)
     page.keyboard.press("Escape")
@@ -879,7 +903,7 @@ def flow_bridge_depths(browser, base):
     """The Void beacon opens the Nephilim, the Administration and the Void Vikings, each pinned where it was placed; the Bridge beacon unlocks nothing."""
     ctx, page = new_page(browser)
     page.goto(base + "/?reset=1")
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.keyboard.press("Escape")       # skip the cutscene if it is playing
     page.wait_for_timeout(400)
     page.keyboard.press("Escape")
@@ -944,7 +968,7 @@ def flow_land_depths(browser, base):
     """Mainland beacon opens the Shattered, LiberTech, the Sigil of the First Dawn, the Divine Accord and the Gore-Engine Legion, each pinned where it was placed."""
     ctx, page = new_page(browser)
     page.goto(base + "/?reset=1")
-    enter_via_gate(page, base, "#gate-world")
+    enter_via_gate(page, base)
     page.keyboard.press("Escape")       # skip the cutscene if it is playing
     page.wait_for_timeout(400)
     page.keyboard.press("Escape")
@@ -1281,14 +1305,15 @@ def flow_work_hover(browser, base):
       lineBox: row.querySelector('.obj-line').offsetHeight > 0, squareOp: +getComputedStyle(row.querySelector('.obj-det i')).opacity,
       k: row.getBoundingClientRect().width / row.offsetWidth, sqW: row.querySelector('.obj-det i').offsetWidth, labelX: row.querySelector('.obj-det .obj-id').getBoundingClientRect().left,
       titleX: (() => { const g = document.createRange(); g.selectNodeContents(row.querySelector('h3')); return Math.min(...[...g.getClientRects()].filter(q => q.width).map(q => q.left)); })(),
-      peeking: document.querySelectorAll('.obj.is-peek').length }; }""", k)
+      peeking: document.querySelectorAll('.obj.is-peek').length,
+      detAng: (() => { const m = new DOMMatrix(getComputedStyle(row.querySelector('.obj-det')).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; })(), ea: parseFloat(row.style.getPropertyValue('--wk-ea')) }; }""", k)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/voidscape.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(700)
     r = read("voidscape")
     check("work-hover: idle row: clip paused, tag and red square hidden, facts and details shown", r["paused"] and not r["goShown"] and r["factsShown"] and r["detailsShown"] and r["lineBox"] and r["squareOp"] == 0, r)
     rest = r
-    check("work-hover: idle row: the red square has zero width and the OBJ label starts at the title's left edge", rest["sqW"] == 0 and abs(rest["labelX"] - rest["titleX"]) <= 1, r)
+    check("work-hover: idle row: the red square has zero width and the OBJ label runs parallel to the box's top edge (own block, not at the title's left edge)", rest["sqW"] == 0 and abs(rest["detAng"] - rest["ea"]) <= 0.5 and abs(rest["labelX"] - rest["titleX"]) > 1, r)
     page.hover(sel("voidscape"))
     r = None
     for _ in range(10):
@@ -1370,6 +1395,16 @@ def flow_game_page_roundtrip(browser, base):
     check("roundtrip: history did not grow", page.evaluate("history.length") == n0, page.evaluate("history.length"))
     top = page.evaluate("document.getElementById('voidscape').getBoundingClientRect().top")
     check("roundtrip: Work is scrolled to the VoidScape row, nothing opened", 0 <= top < 900, top)
+    page.click("a.obj[href='projects/voidscape.html']")
+    page.wait_for_url("**/projects/voidscape.html")
+    page.click("a.gp-up")
+    page.wait_for_url(lambda u: "/projects/" not in u)
+    page.wait_for_timeout(300)
+    page.wait_for_timeout(SETTLE)
+    check("roundtrip: the end link shows no gate and history did not grow",
+          not gate_state(page)["shown"] and page.evaluate("history.length") == n0, page.evaluate("history.length"))
+    top = page.evaluate("document.getElementById('voidscape').getBoundingClientRect().top")
+    check("roundtrip: the end link lands on the VoidScape row", 0 <= top < 900, top)
     ctx.close()
 
 
@@ -1385,7 +1420,8 @@ def flow_gate_once(browser, base):
     page.wait_for_timeout(SETTLE)
     s = state(page)
     check("gate-once: index.html#work in the same tab shows no gate", not s["gateShown"] and not s["frozen"], s)
-    check("gate-once: ... and lands on Work", near(s["scrollY"], min(s["workTop"], s["maxScroll"])) or 0 <= s["workTop"] - s["scrollY"] <= 80, s)
+    ok, why = lands_on_work(page, s)
+    check("gate-once: ... and lands on Work", ok, why)
     ctx.close()
     ctx2, page2 = new_page(browser)
     page2.goto(base + "/")

@@ -79,8 +79,7 @@
   font: 400 1.0625rem/1.65 var(--type-read); color: var(--gp-body); max-width: var(--measure); margin: 0 0 var(--gp-2);
 }
 .page-game.page-case:not(.page-404) main.case > .gp-head + p { margin-top: var(--gp-4); }
-.page-game.page-case:not(.page-404) main.case > h2 + p,
-.page-game.page-case:not(.page-404) main.case > .case-sub + p {
+.page-game.page-case:not(.page-404) main.case > h2 + p {
   font: 500 1.25rem/1.4 var(--type-read); color: var(--gp-lead); max-width: var(--measure); margin-bottom: var(--gp-3);
 }
 .page-game.page-case:not(.page-404) main.case > p.caption,

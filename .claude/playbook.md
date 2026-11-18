@@ -6,11 +6,12 @@ read its matching section too.
 
 ## Delegation
 
-- Every subagent call is foreground (`run_in_background: false`;
-  `.claude/hooks/agent-guard.py` refuses the rest): the window has
-  nothing else to do, and a background subagent's hand-back lands in a
-  new turn that the Stop guard fights. Parallel calls are several Agent
-  calls in one message: they run together and return together.
+- Subagents run in the background (the desktop app's Agent tool has no
+  other mode; `.claude/hooks/agent-guard.py` refuses only an explicit
+  `run_in_background` other than false): the harness reports each
+  exit, the main session waits for that notice and never polls.
+  Parallel calls are several Agent calls in one message: they run
+  together and return together.
 - **Reports:** every agent writes its full report to a file and returns
   at most about 150 words: a status or verdict line, the files changed,
   each blocker or must-fix finding in one line (at most five), and the
@@ -75,7 +76,7 @@ Opus thinks and judges (main, plan runs, `plan-writer`, Plan,
 The reviewers moved to Opus because Sonnet 5.5 misses more on hard
 reviews and more of its comments are noise; it matches Opus on
 spec-driven code at half the cost (owner, 2026-10-05). When the owner
-picks Fable (`claude-fable-5-1`) for a session, only the main session
+picks Fable (`claude-fable-5-2`) for a session, only the main session
 and the agents that inherit its model (`plan-writer`, Plan,
 general-purpose, a built-in Explore) become Fable; the agent files that
 name `opus` or `sonnet` keep that model. Fable manages, writes specs and
@@ -128,8 +129,8 @@ Write and never read back; longer means two specs. Every spec has:
   only on the owner's OK: the owner runs it, or replies "merge it" /
   "land it" and you run it (`git-guard.py` checks their latest message).
 - **Autoplan:** `py -3 tools/autoplan.py [<name>] [--dry-run]
-  [--max-sessions N] [--budget USD] [--effort medium] [--line 160000]
-  [--kill 185000] [--force]`. The window that launches it (or whose go
+  [--max-sessions N] [--budget USD] [--effort medium] [--line 175000]
+  [--kill 200000] [--force]`. The window that launches it (or whose go
   prompt runs a plan) is a plan run's supervisor, with a 175k line.
   Started by the app session in the
   background (`run_in_background`) with `--max-sessions 1`, one phase
@@ -146,6 +147,9 @@ Write and never read back; longer means two specs. Every spec has:
   ("Shared files" below). After committing a sync
   in a project, its `main` must be pushed: new app sessions start from
   `origin/main` and never see an unpushed sync.
+- **Hook tests:** `py -3 .claude/hooks/hooks_test.py` (`-k <text>` runs
+  the cases whose name has it; stdlib only, temp copies, never touches the
+  real session). A hook change is not committed until it exits 0.
 
 ## Shared files
 

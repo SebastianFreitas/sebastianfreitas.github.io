@@ -1,75 +1,6 @@
-/* js/forge/forge-missions.js — VoidScape mission rolls and the floor-plan generator (pure; loads after forge-guns.js, before forge.js) */
+/* js/forge/forge-missions.js — VoidScape floor-plan generator (pure; loads after forge-guns.js, before forge.js) */
 window.ForgeMissions = (function () {
-  const { clamp } = Util;
-  const { rnd, rint, pick, MAX_PATH_MODS } = ForgeGuns;
-
-  /* ---- run-modifier table ---- */
-  const RUN_MODS = [
-    { text: "Weapon level", lo: 1, hi: 4, op: "plus", w: 100 },
-    { text: "Mission length", lo: 1, hi: 9, op: "plus", w: 100 },
-    { text: "Double drop chance", lo: 0, hi: 0, op: "non", w: 25 },
-    { text: "Monsters potentially found per room", lo: 2, hi: 5, op: "plus", w: 100 },
-    { text: "All side rooms are special", lo: 0, hi: 0, op: "non", w: 25 },
-    { text: "Chance for encounters to drop health", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Danger", lo: 0, hi: 0, op: "non", w: 4 },
-    { text: "Movement speed", lo: 10, hi: 49, op: "red", w: 100 },
-    { text: "Located boons", lo: 2, hi: 3, op: "plus", w: 50 },
-    { text: "ERROR", lo: 0, hi: 0, op: "non", w: 4 },
-    { text: "Located additional rewards", lo: 0, hi: 0, op: "non", w: 10 },
-    { text: "Gun parts drops", lo: 1, hi: 4, op: "plus", w: 100 },
-    { text: "50% reduced healing", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monster health", lo: 15, hi: 99, op: "plus", w: 250 },
-    { text: "Monster damage", lo: 1, hi: 9, op: "plus", w: 250 },
-    { text: "Monster action speed", lo: 1, hi: 24, op: "inc", w: 250 },
-    { text: "Cannot use grenade", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "UnknownX", lo: 0, hi: 0, op: "non", w: 8 },
-    { text: "UnknownY", lo: 0, hi: 0, op: "non", w: 8 },
-    { text: "Monsters are immune to fire damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to cold damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to poison damage", lo: 0, hi: 0, op: "non", w: 100 },
-    { text: "Monsters are immune to physical damage", lo: 0, hi: 0, op: "non", w: 100 },
-  ];
-
-  function rollRunMod(exclude) {
-    const candidates = RUN_MODS.filter(m => !exclude.includes(m.text));
-    const cand = pick(candidates, m => m.w);
-    if (cand.op === "non") return { text: cand.text, val: 0, line: cand.text };
-    const val = rint(cand.lo, cand.hi);
-    let line;
-    if (cand.op === "plus") line = `+${val} ${cand.text}`;
-    else if (cand.op === "inc") line = `${val}% INCREASED ${cand.text}`;
-    else line = `${val}% REDUCED ${cand.text}`;
-    return { text: cand.text, val, line };
-  }
-
-  function regood(m) {
-    const n = m.mods.length;
-    const has = name => m.mods.some(mm => mm.text === name);
-    const depth = m.len;
-    const elite = 5 + n + rint(1, Math.max(2, n));
-    const special = has("All side rooms are special") ? 75 : 25 + 2 * n + rint(1, 4 * n);
-    const z = (2 * n + rint(1, 2 * n)) * (has("Double drop chance") ? 2 : 1);
-    const drop = (1 + z * 3 / 100).toFixed(2);
-    m.good = [`${depth} DEPTH LEVEL`, `${elite}% ELITE CHANCE`, `${special}% SPECIAL ROOMS`, `${drop}% WEAPON DROP`];
-  }
-
-  function makeMission() {
-    const weights = [0, 10, 20, 10, 4, 2, 1];
-    const idx = pick(weights.map((w, i) => i), i => weights[i]);
-    const n = clamp(idx, 1, 1 + MAX_PATH_MODS);
-    const mods = [];
-    const names = [];
-    for (let i = 0; i < n; i++) {
-      const m = rollRunMod(names);
-      names.push(m.text);
-      mods.push(m);
-    }
-    let len = rint(10, 20);
-    for (const m of mods) if (m.text === "Mission length") len += m.val;
-    const mission = { mods, len, lines: null };
-    regood(mission);
-    return mission;
-  }
+  const { rnd, rint } = ForgeGuns;
 
   /* ---- floor-plan generator ---- */
   const DIRS = [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }]; // E N W S
@@ -165,5 +96,5 @@ window.ForgeMissions = (function () {
     return { cells: all, minX, maxX, minY, maxY };
   }
 
-  return { RUN_MODS, rollRunMod, regood, makeMission, genPlan };
+  return { genPlan };
 })();

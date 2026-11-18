@@ -33,6 +33,9 @@ window.Pacer = (function () {
     let sinceMeasure = 0;             // intervals recorded since the last measurement
     let prevStamp = -1;               // previous rAF timestamp; -1 = none yet
     let refreshCount = 0;             // refreshes since the last paint
+    const SLOW_PAINT_MS = 3;          // a paint this long can drop the refresh that lands during it
+    let paintedMs = 0;                // length of the paint on the previous frame; 0 = none
+    let warmFrames = 0;               // frames seen before the first measurement
     /* and never paint more than 60 times a second, whatever the panel runs at:
        past that a faster screen only repaints the same picture and the fans
        hear it. N keeps painted frames on refresh boundaries; this keeps their
@@ -83,7 +86,7 @@ window.Pacer = (function () {
       if (hz / n > 60 * 1.03) {
         // over the cap: every Nth refresh with N = ceil(Hz / 60) gives equal gaps, unless that is under 45 fps
         const c = Math.ceil(hz / 60 - 0.03);
-        if (hz / c >= 45) { n = c; even = true; }
+        if (hz / c >= 45 * 0.97) { n = c; even = true; }   // same 3% margin: 90 Hz sits exactly on 45
       }
       if (!refreshMeasured) {
         evenPace = even;
@@ -108,7 +111,10 @@ window.Pacer = (function () {
       let refreshes = 1;
       if (prevStamp >= 0) {
         const delta = now - prevStamp;
-        if (delta >= REFRESH_MIN_MS && delta <= REFRESH_MAX_MS) {
+        /* a frame after a slow paint is stretched by the paint, not by the panel:
+           once N > 1 there are plain frames in between, so it is left out */
+        const stretched = refreshN > 1 && paintedMs > SLOW_PAINT_MS;
+        if (delta >= REFRESH_MIN_MS && delta <= REFRESH_MAX_MS && !stretched) {
           refreshSamples.push(delta);
           if (refreshSamples.length > REFRESH_WINDOW) refreshSamples.shift();
           sinceMeasure++;
@@ -122,7 +128,14 @@ window.Pacer = (function () {
         refreshes = Math.max(1, Math.round(delta / refreshMs));
       }
       prevStamp = now;
+      paintedMs = 0;
       refreshCount += refreshes;
+      /* before the first measurement paint only once, then let a few clean frames
+         through: a paint on every one would stretch them and read half the rate */
+      if (!refreshMeasured && refreshSamples.length < REFRESH_FIRST && warmFrames++ > 0 && warmFrames <= 2 * REFRESH_FIRST) {
+        arm();
+        return;
+      }
 
       if (!idleNow) {
         if (now - lastInput > IDLE_AFTER_MS && now - lastScroll > SCROLL_HOLD_MS && opts.atRest()) idleNow = true;
@@ -146,7 +159,9 @@ window.Pacer = (function () {
       const raw = Math.min((now - last) / 1000, 1 / 20);
       last = now;
       if (idleNow) parkIdle(); else arm();
+      const t0 = performance.now();
       opts.paint(raw);
+      paintedMs = performance.now() - t0;
     }
     function start() {
       if (running) { unpark(); return; }

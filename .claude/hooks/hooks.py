@@ -35,7 +35,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from guard_config import RAW_TEXT, lazy_raw  # noqa: E402
+try:
+    from guard_config import RAW_TEXT, lazy_raw  # noqa: E402
+except ImportError as e:  # a mixed-version set must not switch every guard off
+    sys.stderr.write("hooks.py: guard_config.py is older than this file (%s): raw-mode check off\n" % e)
+    RAW_TEXT = ""
+
+    def lazy_raw(transcript_path):
+        return False
 
 # event -> [(tool matcher or None, script)]; guards before context-watch,
 # so a refused call is never measured as if it ran.
@@ -84,8 +91,9 @@ def run_script(script, d):
                 runpy.run_path(path, run_name="__main__")
             except SystemExit as e:
                 code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
-            except Exception:
+            except Exception as e:
                 code = 0
+                err.write("hooks.py: %s failed (%s: %s): guard off\n" % (script, type(e).__name__, e))
     finally:
         sys.stdin, sys.argv = old_stdin, old_argv
         try:

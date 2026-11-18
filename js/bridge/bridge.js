@@ -77,11 +77,11 @@
   function resize() {
     B.dpr = Math.min(devicePixelRatio || 1, 2);
     B.W = host.clientWidth; B.H = host.clientHeight;
-    const pw = B.W * B.dpr, ph = B.H * B.dpr;
+    const pw = Math.round(B.W * B.dpr), ph = Math.round(B.H * B.dpr);
     if (cv.width !== pw || cv.height !== ph) {   // setting the size clears the canvas: only when it changed
       cv.width = pw; cv.height = ph;
-      ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
     }
+    ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);   // the ratio can change while the backing size does not
     // seat the voidship under the boot veil so it never pops in later
     if (B.ship) Voidship.resize(B.ship, B.W, B.H);
   }

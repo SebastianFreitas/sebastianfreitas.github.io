@@ -309,7 +309,7 @@ window.Genesis = (function () {
   /* build the lazy canvases and caches ahead of the first cutscene: paint the opening frames on a
      throwaway canvas at the size and DPR the bridge draws at, then put the state back; nothing shows.
      Each stage is warm only once it really finished, and only for that size: a resize makes it cold. */
-  let ws = { key: null, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, debFail: -1, tried: {} };
+  let ws = { key: null, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, tried: {} };
   function warmSize() {
     const b = window.Bridge;
     const dpr = b && b.W ? b.dpr : 1;
@@ -338,6 +338,7 @@ window.Genesis = (function () {
       if (work) work(); else draw(ctx, { W: G.W, H: G.H });
       ok = true;
     } catch (e) {
+      console.warn("genesis warm " + b + (work ? " step" : "") + ": " + (e && e.message || e));   // once: the stage is not retried at this size
     } finally {
       G.active = keep.active;
       G.beat = keep.beat; G.local = keep.local; G.W = keep.W; G.H = keep.H;
@@ -355,10 +356,10 @@ window.Genesis = (function () {
   function warmStep(forced) {
     if (warmSkipped(forced === true)) return false;
     const z = warmSize(), key = z.W + "|" + z.H + "|" + z.dpr;
-    if (ws.key !== key) ws = { key: key, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, debFail: -1, tried: {} };
+    if (ws.key !== key) ws = { key: key, point: false, drawn: false, break: false, walk: false, deb: 0, debN: -1, tried: {} };
     for (const b of ["point", "drawn", "break"]) {
       if (ws[b] || ws.tried[b]) continue;
-      ws.tried[b] = true;   // a stage that throws is not retried until warm() resets this, so the gate never loops
+      ws.tried[b] = true;   // a stage that throws is not retried at this size, so neither the gate nor play() loops
       ws[b] = warmBeat(z, b);
       return true;
     }
@@ -367,8 +368,9 @@ window.Genesis = (function () {
       const units = rt.debrisSteps();
       ws.debN = units.length;
       if (ws.deb < ws.debN) {
-        if (!warmBeat(z, "walk", units[ws.deb]) && ws.debFail < 0) ws.debFail = ws.deb;
-        ws.deb++;
+        // a failing step stops the rest of the debris units: one warning per load (the step stays un-advanced for the cutscene)
+        if (warmBeat(z, "walk", units[ws.deb])) ws.deb++;
+        else { ws.deb = ws.debN; ws.tried.walk = true; }   // the walk draw would build the debris again and warn a second time
         return true;
       }
     }
@@ -386,9 +388,19 @@ window.Genesis = (function () {
     return Array.from({ length: n }, () => warmStep);
   }
   function warm() {
-    ws.tried = {};   // a stage the gate gave up on is still cold: play() tries it again
-    if (ws.debFail >= 0) { ws.deb = ws.debFail; ws.debFail = -1; }
     let guard = 4000; while (guard-- > 0 && warmStep(true)); }
+  /* after a real resize every stage is cold: re-warm it one unit per idle slot, so play() finds it done and
+     does not block its first frame. Stops when warm, when a play starts, or when the tab is hidden. */
+  let rewarmT = 0;
+  function rewarm() {
+    if (document.hidden || !warmStep()) return;
+    if (window.requestIdleCallback) requestIdleCallback(rewarm, { timeout: 1000 });
+    else setTimeout(rewarm, 50);
+  }
+  addEventListener("resize", () => {
+    clearTimeout(rewarmT);
+    rewarmT = setTimeout(rewarm, 400);   // after the bridge has taken the new size
+  });
 
   function segmentSeen(id) {
     return !!(window.XP && XP.has("genesis-seg-" + id));

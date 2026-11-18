@@ -58,8 +58,8 @@ backdrop never competes with them.
 
 ## Eldritch (the genesis cutscene)
 
-Owner's calls, 2026-09-25 (plan: `.claude/plans/genesis-eldritch.md`,
-reasons in `.claude/plans/research/01-style.md`). The rules above still
+Owner's calls, 2026-09-25 (plan genesis-eldritch.md, reasons in research/01-style.md, both archived
+outside the repo under `portfolio-archive/2026-11-18-review/`). The rules above still
 hold except where a line here says otherwise.
 
 **Scope.** The old ones, what lives on the bridge, the sky shadows.

@@ -2,10 +2,13 @@
 
     py -3 tools/pagecheck.py <page> [--phone] [--reduced-motion]
 
-page is index.html or index.html#sector-zero (any case name). Prints one line
-each for weight, perf, scroll, hidden, clipped, bare and tilted, and up to 8
-offending elements under hidden, clipped and bare. Exit 1 on scroll, hidden,
-clipped or bare above 0. Real clock, no screenshots, nothing written.
+page is index.html, index.html#sector-zero (any Work row id) or a game page
+such as projects/sector-zero.html. The #<row> form loads the homepage at that
+row and counts under hidden if the row is not scrolled into view (Work rows do
+not open any more). Prints one line each for weight, perf, scroll, hidden,
+clipped, bare and tilted, and up to 8 offending elements under hidden, clipped
+and bare. Exit 1 on scroll, hidden, clipped or bare above 0, and 1 if the gate
+never opens. Real clock, no screenshots, nothing written.
 """
 from __future__ import annotations
 
@@ -32,7 +35,7 @@ PERF_INIT = """
 })();
 """
 
-CHECKS = """(isCase) => {
+CHECKS = """([isCase, frag]) => {
   const vw = innerWidth;
   const label = el => el.tagName.toLowerCase()
     + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '')
@@ -43,6 +46,10 @@ CHECKS = """(isCase) => {
   };
   const out = { scroll: document.documentElement.scrollWidth > vw, hidden: [], clipped: [], bare: [], tilted: 0 };
 
+  if (frag) {
+    const row = document.getElementById(frag), rr = row && row.getBoundingClientRect();
+    if (!rr || rr.bottom <= 0 || rr.top >= innerHeight) out.hidden.push('#' + frag + ' not scrolled into view');
+  }
   let sel = '.obj h3, .obj-line, .obj-id, .xp-what strong, .xp-what a, footer a';
   if (isCase) sel += ', .case h1';
   document.querySelectorAll(sel).forEach(el => {
@@ -54,6 +61,7 @@ CHECKS = """(isCase) => {
   document.querySelectorAll('h1, h2, h3, p, li, a, strong, .key, .obj-id').forEach(el => {
     if (!shown(el)) return;
     const r = el.getBoundingClientRect();
+    if (el.closest('.skip')) return;   // the skip link waits above the page until focused
     for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
       const s = getComputedStyle(p);
       const clips = s.overflowX !== 'visible' || s.overflowY !== 'visible';
@@ -68,7 +76,8 @@ CHECKS = """(isCase) => {
 
   document.querySelectorAll('.work, .experience, footer, .page-case').forEach(root => {
     root.querySelectorAll('h1, h2, h3, p, li, a, strong, .key, .obj-id').forEach(el => {
-      if (el.closest('.slab, .case, .folder-body') || !shown(el)) return;
+      // backed: black slabs, the Experience box's black shape, the solid footer and top bar
+      if (el.closest('.slab, .case, .folder-body, .xp-shape, footer, .topbar, .skip') || !shown(el)) return;
       if (!(el.textContent || '').trim()) return;
       out.bare.push(label(el));
     });
@@ -94,8 +103,9 @@ def main():
         print(__doc__)
         return 2
     name, _, frag = pages[0].partition("#")
-    if name != "index.html":
-        print("page must be index.html or index.html#<case>")
+    game = name.startswith("projects/") and name.endswith(".html")
+    if name != "index.html" and not (game and not frag):
+        print("page must be index.html, index.html#<row> or projects/<name>.html")
         return 2
 
     httpd, base = nav.start_server()
@@ -120,20 +130,20 @@ def main():
                 sizes[KINDS.get(r.request.resource_type, "other")] += n
             page.on("response", on_response)
 
-            page.goto(f"{base}/#{frag}" if frag else f"{base}/")
+            page.goto(f"{base}/{name if game else ''}#{frag}" if frag else f"{base}/{name if game else ''}")
             page.wait_for_load_state("load")
             page.wait_for_timeout(1500)
             if page.query_selector("#site-gate"):
+                # the gate fills its bar and opens by itself (real clock here)
                 try:
-                    # the gate fills its bar and opens by itself (real clock here)
                     page.wait_for_function("document.getElementById('site-gate').classList.contains('done')", timeout=20000)
-                    page.wait_for_timeout(2500)
                 except Exception:
-                    pass
-            if frag:
-                page.wait_for_selector(f"#{frag}.open")
+                    print("gate: never opened within 20 s")
+                    browser.close()
+                    return 1
+                page.wait_for_timeout(2500)
             perf = page.evaluate("window.__pc")
-            res = page.evaluate(CHECKS, bool(frag))
+            res = page.evaluate(CHECKS, [game or bool(frag), frag])
             browser.close()
     finally:
         httpd.shutdown()

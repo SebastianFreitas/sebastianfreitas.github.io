@@ -261,7 +261,7 @@
     gate.classList.add("done");
     document.documentElement.classList.add("gate-done");
     /* every exit lands here: later loads in this tab skip the gate (inline script in index.html) */
-    Util.write(sessionStorage, Util.KEYS.ENTERED, "1");
+    try { Util.write(sessionStorage, Util.KEYS.ENTERED, "1"); } catch (e) {}   // the bare global throws where site storage is blocked
     if (window.XP && entry.kind !== "deeplink") XP.seen();
     if (fade) setTimeout(() => { fade.remove(); gone(); }, FADE_MS + 120);
     else gone();
@@ -316,8 +316,6 @@
     });
   }
 
-  if (window.Shapes) Shapes.apply(gate);
-
   /* the wordmark on the homepage goes to the top, never reloads */
   const mark = document.querySelector(".topbar .wordmark");
   if (mark) mark.addEventListener("click", e => {
@@ -361,11 +359,23 @@
   document.dispatchEvent(new CustomEvent("site:preload"));
 
   /* the cap is an early exit like Escape: no ease, hold or wait, straight to the fade */
-  capTimer = setTimeout(() => {
-    if (filling || gate.classList.contains("done")) return;
-    filling = true;
-    pick({ bridge: true, scroll: "#bridge-hero", mode: "void" });
-  }, WARM_CAP_MS);
+  function armCap() {
+    capTimer = setTimeout(() => {
+      if (filling || gate.classList.contains("done")) return;
+      /* a hidden tab paints no frames, so nobody has seen the gate: the cap starts again when the tab is shown */
+      if (document.hidden) {
+        document.addEventListener("visibilitychange", function onVis() {
+          if (document.hidden) return;
+          document.removeEventListener("visibilitychange", onVis);
+          if (!filling && !gate.classList.contains("done")) armCap();
+        });
+        return;
+      }
+      filling = true;
+      pick({ bridge: true, scroll: "#bridge-hero", mode: "void" });
+    }, WARM_CAP_MS);
+  }
+  armCap();
   plan(0);
   chain = warmUp(n => { if (!filling) plan(n); });
   chain.done.then(warmDone);

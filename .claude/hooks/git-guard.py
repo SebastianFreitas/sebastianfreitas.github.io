@@ -44,7 +44,11 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guard_config import load_config, matches_any, quiet_globs, quiet_line  # noqa: E402
+try:
+    from guard_config import load_config, matches_any, quiet_globs, quiet_line  # noqa: E402
+except ImportError as e:  # an older guard_config.py: this guard cannot run, the others still do
+    sys.stderr.write("git-guard.py: guard_config.py is older than this file (%s): guard off\n" % e)
+    sys.exit(0)
 
 QUOTED = re.compile(r'"[^"]*"|\'[^\']*\'')
 

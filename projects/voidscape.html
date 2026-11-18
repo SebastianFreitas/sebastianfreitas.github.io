@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=337">
-<link rel="stylesheet" href="../css/beacon.css?v=337">
-<link rel="stylesheet" href="../css/play.css?v=337">
-<link rel="stylesheet" href="../css/game-pages.css?v=337">
+<link rel="stylesheet" href="../css/style.css?v=338">
+<link rel="stylesheet" href="../css/beacon.css?v=338">
+<link rel="stylesheet" href="../css/play.css?v=338">
+<link rel="stylesheet" href="../css/game-pages.css?v=338">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -48,7 +48,7 @@
     <dl class="gp-meta"><div><dt>Genre</dt><dd>First-person roguelike</dd></div><div><dt>Engine</dt><dd>Unity</dd></div><div><dt>Language</dt><dd>C#</dd></div><div><dt>Role</dt><dd>Solo, everything</dd></div></dl>
   </header>
 
-    <video class="clip" data-wear="image" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="Choosing a run: every modifier raises the payout" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Choosing a run: every modifier on a mission raises the payout.</p>
 
     <h2>The problem</h2>
@@ -87,7 +87,7 @@
     <p>The <span class="key">special run</span> is a path of bridge pieces out in the void, each shifted and tilted at random,
        some missing. Monsters turn elite as you near the end, and a boss group holds the last piece.</p>
 
-    <video class="clip" data-wear="image" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="Attempting to go deeper" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Attempting to go deeper, the only source of skill points.</p>
 
     <p>Each level of depth is longer and harder, and pays one <span class="key">skill point</span>. Points buy the only
@@ -104,7 +104,7 @@
     <p>Most boons are flat numbers, so a boon is only as good as the gun that scales it. The long game
        is keeping a spread of guns, so whatever a run rolls, one of them can use it.</p>
 
-    <video class="clip" data-wear="image" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="A boon offer: take it, refuse it, or reroll" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">A boon offer: take it, refuse it for 10 health, or pay gun parts to reroll.</p>
 
     <h2>Fifty-odd boons, and most of them cost something</h2>
@@ -129,12 +129,12 @@
        price climbs with every use, and scrapping pays parts back, so a near miss is still worth
        something.</p>
     <figure class="gp-stage" id="vs-bench-stage">
-      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: craft a gun, then fire it below</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas></canvas></div>
+      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: craft a gun, then fire it below</span><span class="gp-stage-status" aria-live="polite"></span></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A gun bench: craft a gun, then fire it at the range below."></canvas></div>
       <p class="caption">The gun built here is the gun the range below fires.</p>
     </figure>
 
-    <video class="clip" data-wear="image" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="Adding, removing and scrapping mods at the bench" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Adding, removing and scrapping mods at the bench.</p>
 
     <p>Four weapon slots and eight saved layouts persist between runs, so building a gun is a decision
@@ -145,7 +145,7 @@
        is always the boss.</p>
     <figure class="gp-stage" id="vs-map-stage">
       <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click to roll a new map</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas></canvas></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A generated map with stairs at the bottom and a boss room at the top; click to roll a new one."></canvas></div>
       <p class="caption">Stairs at the bottom, a boss room at the top, and every step between climbs.</p>
     </figure>
     <p>Because the path only goes up, the space around a new room is almost always empty, so tiles
@@ -177,7 +177,7 @@
        when stats go extreme took longer than any other system.</p>
     <figure class="gp-stage" id="vs-range-stage">
       <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: hold to fire, aim with the pointer</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas></canvas></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A shooting range: a sniper round ricochets off all four walls; hold to fire, aim with the pointer."></canvas></div>
       <p class="caption">A sniper round ricochets off all four walls; fire bursts on every bounce, and a headshot crits.</p>
     </figure>
 
@@ -192,7 +192,7 @@
        architecture: a new modifier is a table row, a new room is a prefab.</p>
     <p><a href="https://sebastianfreitas.itch.io/voidscape-prototype">Download the prototype on itch.io<span class="go go-here" aria-hidden="true"></span></a></p>
 
-    <video class="clip" data-wear="image" src="../media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <video class="clip" data-wear="image" aria-label="One full run on a short mission, uncut" src="../media/voidscape/run.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">One full run on a short mission, from the hub out and back, uncut.</p>
 
     <nav class="case-nav" aria-label="More work">
@@ -211,24 +211,24 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=337"></script>
-<script src="../js/site/xp.js?v=337"></script>
-<script src="../js/site/surge.js?v=337"></script>
-<script src="../js/lib/pacer.js?v=337"></script>
-<script src="../js/site/lazy-video.js?v=337"></script>
-<script src="../js/pages/play.js?v=337"></script>
-<script src="../js/forge/forge-guns.js?v=337"></script>
-<script src="../js/forge/forge-missions.js?v=337"></script>
-<script src="../js/forge/forge.js?v=337"></script>
-<script src="../js/pages/voidscape-bench.js?v=337"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=337"></script>
-<script src="../js/pages/voidscape-boons.js?v=337"></script>
-<script src="../js/pages/voidscape.js?v=337"></script>
-<script src="../js/site/banner.js?v=337"></script>
-<script src="../js/site/shapes.js?v=337"></script>
-<script src="../js/site/barwear.js?v=337"></script>
-<script src="../js/site/redlines.js?v=337"></script>
-<script src="../js/site/back.js?v=337"></script>
+<script src="../js/lib/util.js?v=338"></script>
+<script src="../js/site/xp.js?v=338"></script>
+<script src="../js/site/surge.js?v=338"></script>
+<script src="../js/lib/pacer.js?v=338"></script>
+<script src="../js/site/lazy-video.js?v=338"></script>
+<script src="../js/pages/play.js?v=338"></script>
+<script src="../js/forge/forge-guns.js?v=338"></script>
+<script src="../js/forge/forge-missions.js?v=338"></script>
+<script src="../js/forge/forge.js?v=338"></script>
+<script src="../js/pages/voidscape-bench.js?v=338"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=338"></script>
+<script src="../js/pages/voidscape-boons.js?v=338"></script>
+<script src="../js/pages/voidscape.js?v=338"></script>
+<script src="../js/site/banner.js?v=338"></script>
+<script src="../js/site/shapes.js?v=338"></script>
+<script src="../js/site/barwear.js?v=338"></script>
+<script src="../js/site/redlines.js?v=338"></script>
+<script src="../js/site/back.js?v=338"></script>
 <script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); Play.stage(document.getElementById("vs-range-stage"), "range"); }</script>
 </body>
 </html>

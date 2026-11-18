@@ -73,7 +73,9 @@ def main():
           "The owner is in another session or folder: stop, say which "
           "checkout and branch the prompt names and where this session "
           "is, and do nothing else. Never switch checkout or branch to "
-          "match the prompt (.claude/rules/workflow.md 'The go prompt').")
+          "match the prompt, except as your mode file says (a new chat "
+          "merging the named branch for a plain handoff; cloud 'continue "
+          "PR #<n>') (.claude/rules/workflow.md 'The go prompt').")
 
 
 try:
