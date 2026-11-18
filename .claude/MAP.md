@@ -123,6 +123,8 @@ shares `Gen`:
 - `shapes.js` row-glass: preset for the Work rows (desktop), glass breaks on their top edges (`LAYOUTS`) plus a catch-light (`wkEdgeLight`); `wearPlate`/`quad` clip the rows and the Experience plate.
 - `xp-slides.js`: at 1200 px and up the `.xp-strip` tiles slide up one tile per step and the top tile moves to the end (a stop or resize finishes on a whole tile); below 1200 px the sideways slideshow through `data-slides`.
 - `shapes.js` slices: text on top; at 1200 px and up `xpShape` sets each card's `--xs-*` (position, size, clip in plate px) and builds its `.xp-strip` film strip of tiles from `a.xp-pic._xpSrc` in a leaning column clip with straight cuts; below 1200 px the strip and `--xs-*` are removed.
+- `shapes.js` slice fit: `clipConvex()` intersects each strip clip with the plate quad so no picture shows outside the plate; `draw()` sets `--xp-W` (plate width), and the two columns (G.Round, DF Block), their gap and the left padding are fractions of it in `style.css`.
+- `shapes.js` University plate: `eduDraw()` sizes the University plate (`.xp-edu-plate`, a second `.xp-shape` under the box, 0.4 of its width, own `--eu-W`) with `quad`/`wearPlate`, and runs `stripsFor()` (the strip loop shared with the Experience box) on it.
 - `shapes.js`: kinds mode (opt-in `opts.kinds`) sets `el._wearSites` and `el._wearKinds`; no preset uses it yet.
 - `shapes.js`: nav links carry no `data-wear`; the tab hover paper is masked by the two old grainy PNG corners in `art/wear/` (css `.topbar nav a::before`).
 - `shapes.js` wear: `Shapes.wear(el, preset, seed)` paints a seeded PNG mask into `--wear` and sets `--shape: none`; 10 presets in `wearPresets` (depth as % of the short side, bites per edge, corner chips).
@@ -505,7 +507,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `css/art/wash.webp`, `folder-glow.webp` | Baked wash and a nine-sliced inner glow, both no longer used; images so the sweep does not repaint gradients each frame |
-| `index.html` | Homepage; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
+| `index.html` | Homepage; Experience plate (G.Round, DF Block) and a small University plate (`.xp-edu-plate`) under it; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
 | `media/experience/` | `ground-1..6`, `dfblock-1..6`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`); `CREDITS.md` has the DF Block photo credits |
 | `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
 | `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it as before (css/style.css, comment in index.html). Plate height is `XH` 890 in js/site/shapes.js and `height: 890px` in css/style.css |

@@ -1736,6 +1736,20 @@
       const sx = gap * Math.sin(a), sy = gap * Math.cos(a), lx = g.xbr - g.xbl, W = lx / 0.972;
       return { W: W, dy: ta * lx, left: Math.max(r.left / k + g.xbl + sx - 0.028 * W, 0.06 * document.documentElement.clientWidth / k), top: r.top / k + g.ybr + sy };
     }
+    function clipConvex(sub, clp) {   /* Sutherland-Hodgman: polygon sub cut to the convex polygon clp (both in plate px) */
+      let ar = 0; for (let i = 0; i < clp.length; i++) { const a = clp[i], b = clp[(i + 1) % clp.length]; ar += a[0] * b[1] - b[0] * a[1]; }
+      const sg = ar < 0 ? -1 : 1;
+      for (let i = 0; i < clp.length && sub.length; i++) {
+        const a = clp[i], b = clp[(i + 1) % clp.length], out = [], d = function (p) { return sg * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])); };
+        for (let j = 0; j < sub.length; j++) {
+          const p = sub[j], q = sub[(j + 1) % sub.length], dp = d(p), dq = d(q);
+          if (dp >= 0) out.push(p);
+          if ((dp >= 0) !== (dq >= 0)) { const t = dp / (dp - dq); out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]); }
+        }
+        sub = out;
+      }
+      return sub;
+    }
     function draw() {
       const phone = window.matchMedia("(max-width: 1199px)").matches, hg = phone ? null : hang();
       const W = phone ? el.offsetWidth : hg ? hg.W : XW;
@@ -1750,11 +1764,12 @@
       let ang = XANG;
       if (phone) { const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"); ang = rows.length ? -WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180 : -3 * Math.PI / 180; }
       if (hg) {
+        el.style.setProperty("--xp-W", hg.W.toFixed(1) + "px");   /* the columns, their gap and the left padding are fractions of the plate's width (css) */
         el.style.width = hg.W.toFixed(1) + "px"; el.style.left = "0px"; el.style.marginLeft = "0px"; el.style.marginTop = "0px";
         const er = el.getBoundingClientRect(), k = window.Stage ? window.Stage.s() : 1;
         el.style.marginLeft = (hg.left - er.left / k).toFixed(1) + "px";
         el.style.marginTop = (hg.top - er.top / k).toFixed(1) + "px";
-      } else { el.style.width = ""; el.style.left = ""; el.style.marginLeft = ""; el.style.marginTop = ""; }
+      } else { el.style.removeProperty("--xp-W"); el.style.width = ""; el.style.left = ""; el.style.marginLeft = ""; el.style.marginTop = ""; }
       const x0 = 0.028 * W;
       const dy = hg ? hg.dy : Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
@@ -1771,14 +1786,20 @@
       }
       wkEdgeLight(el, lit, "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
-      /* desktop: the cards' text sits on top (the date 28 px under the label row) and each card's pictures are a column of stacked tiles under it: one level top line shared by the three columns (24 px under the lowest text line), running down past the plate's bottom where the plate's own outline cuts them; neighbouring columns touch, every edge is a plain cut leaning like the red-line edge (pts[0] to pts[3]); phone: the photo is a plain 16:9 box again */
+      /* desktop: the cards' text sits on top (the date 28 px under the label row) and each card's pictures are a column of stacked tiles under it: one level top line shared by the columns (24 px under the lowest text line), running down past the plate's bottom where the plate's own outline cuts them; neighbouring columns touch, every edge is a plain cut leaning like the red-line edge (pts[0] to pts[3]); phone: the photo is a plain 16:9 box again */
+      stripsFor(el, pts, H, x0, dy, by, phone);
+      footerFix(el, phone);
+      eduDraw(hg);
+    }
+    function stripsFor(el, pts, H, x0, dy, by, phone) {   /* returns the lowest text line (plate px), 0 on phones */
       const SL = ["--xs-l", "--xs-t", "--xs-w", "--xs-h", "--xs-clip"], lis = el.querySelectorAll(".xp li");
+      let low = 0;
       if (phone) {
         el.style.removeProperty("--xp-when-mt");
         lis.forEach(function (li) { const p = li.querySelector(".xp-pic"); if (p) { SL.forEach(function (n) { p.style.removeProperty(n); }); const st = p.querySelector(".xp-strip"); if (st) st.remove(); } });
       } else if (lis.length) {
         const k = window.Stage ? window.Stage.s() : 1, er = el.getBoundingClientRect(), s = (0 - x0) / (by - dy), cards = [], whens = el.querySelectorAll(".xp-when");
-        let lab = 0, low = 0;
+        let lab = 0;
         el.querySelectorAll(".section-title").forEach(function (h) { lab = Math.max(lab, (h.getBoundingClientRect().bottom - er.top) / k); });
         if (whens.length) el.style.setProperty("--xp-when-mt", ((parseFloat(getComputedStyle(whens[0]).marginTop) || 0) + lab + 28 - (whens[0].getBoundingClientRect().top - er.top) / k).toFixed(1) + "px");
         lis.forEach(function (li) {
@@ -1794,7 +1815,7 @@
           const l = Math.min(ul, ul + sd), cw = Math.max(ur, ur + sd) - l, w = ur - ul, th = w * 0.62, pad = Math.abs(s) * th + 2;
           pic.style.setProperty("--xs-l", l.toFixed(1) + "px"); pic.style.setProperty("--xs-t", yTop.toFixed(1) + "px");
           pic.style.setProperty("--xs-w", cw.toFixed(1) + "px"); pic.style.setProperty("--xs-h", hh.toFixed(1) + "px");
-          pic.style.setProperty("--xs-clip", "polygon(" + [[ul - l, 0], [ur - l, 0], [ur + sd - l, hh], [ul + sd - l, hh]].map(function (p) { return p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px"; }).join(", ") + ")");
+          pic.style.setProperty("--xs-clip", "polygon(" + clipConvex([[ul, yTop], [ur, yTop], [ur + sd, yTop + hh], [ul + sd, yTop + hh]], pts).map(function (p) { return (p[0] - l).toFixed(1) + "px " + (p[1] - yTop).toFixed(1) + "px"; }).join(", ") + ")");   /* the column's parallelogram cut by the plate quad, in the pic's own px */
           /* the strip: the card's pictures (its img, then data-slides) as tiles, column width by 0.62 of it, touching, repeated from the first until the column passes the plate's bottom; tiles below the first load lazily */
           if (!pic._xpSrc) {
             let list = []; try { list = JSON.parse(pic.getAttribute("data-slides") || "[]"); } catch (e) { list = []; }
@@ -1814,6 +1835,36 @@
           for (let j = 0; j < n; j++) { const q = src[j % src.length], t = st.children[j]; t.alt = q.a || ""; if (q.t) t.title = q.t; else t.removeAttribute("title"); if (t.getAttribute("src") !== q.s) t.src = q.s; st.children[j].style.cssText ="position:absolute;object-fit:cover;top:" + (j * th).toFixed(1) + "px;left:" + (ul + s * (j * th + th / 2) - pad - l).toFixed(1) + "px;width:" + (w + 2 * pad).toFixed(1) + "px;height:" + (th + 0.5).toFixed(1) + "px"; }
         });
       }
+      return low;
+    }
+    /* the University plate: under the Experience box, 0.4 of its width (the same top-edge slope, the same left lean); desktop height follows its text (the label row, date, name, BSc line) plus one picture; phone: the phone quad of the Experience box */
+    function eduDraw(hg) {
+      const ed = document.querySelector(".xp-edu-plate"); if (!ed) return;
+      const phone = !hg, k = window.Stage ? window.Stage.s() : 1;
+      let We = 0, He = 0;
+      if (phone) {
+        ["--eu-W", "--xp-pt"].forEach(function (n) { ed.style.removeProperty(n); }); ["width", "height", "left", "marginLeft"].forEach(function (n) { ed.style[n] = ""; });
+        We = ed.offsetWidth; He = ed.offsetHeight;
+      } else {
+        We = hg.W * 0.4;
+        ed.style.setProperty("--eu-W", We.toFixed(1) + "px");
+        ed.style.width = We.toFixed(1) + "px"; ed.style.left = "0px"; ed.style.marginLeft = document.querySelector(".xp-shape").style.marginLeft;
+        const d0 = hg.dy / (0.972 * hg.W) * 0.972 * We, pt = d0 + 22 - 48 * (d0 / (0.972 * We)) + 62;
+        ed.style.setProperty("--xp-pt", pt.toFixed(1) + "px");
+        const x0 = 0.028 * We, low0 = stripsFor(ed, [[x0, d0], [We, 0], [We, 600], [0, 480]], 600, x0, d0, 480, false);
+        He = low0 + 24 + 70 + 250; ed.style.height = He.toFixed(1) + "px";
+      }
+      if (!We || !He) return;
+      const x0 = 0.028 * We, d0 = phone ? Math.max(0, -Math.tan(-3 * Math.PI / 180)) * (We - x0) : hg.dy / (0.972 * hg.W) * (We - x0), by = phone ? 0.95 * He : 0.8 * He;
+      if (phone) { const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"); if (rows.length) ed.style.setProperty("--xp-dy", (Math.max(0, Math.tan(WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180)) * (We - x0)).toFixed(1) + "px"); }
+      const dyE = phone ? parseFloat(ed.style.getPropertyValue("--xp-dy")) || d0 : d0, pts = phone ? [[x0, dyE], [We, 0], [We, He], [0, by]] : [[x0, dyE], [We, 0], [0.94 * We, He], [0, by]];
+      quad(ed, null, pts, "--xp-clip");
+      const xn = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]) || 1;
+      wearPlate(ed, "edu-wear", [[pts[0], pts[1]]], undefined, { c: 1, sd: [(pts[2][0] - pts[1][0]) / xn, (pts[2][1] - pts[1][1]) / xn] });
+      ed.style.setProperty("--xp-dy", dyE.toFixed(1) + "px");
+      stripsFor(ed, pts, He, x0, dyE, by, phone);
+    }
+    function footerFix(el, phone) {
       /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */
       const ft = document.querySelector("footer.xp-foot");
       if (ft) {

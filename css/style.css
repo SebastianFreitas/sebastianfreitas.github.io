@@ -1181,26 +1181,27 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 .xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
 /* desktop: EXPERIENCE is a label on the plate, out of the list: it sits under the top edge and runs parallel to it; the angle is the edge's own (--xp-dy, set from the plate's top-left drop, over the edge's run of 97.2% of the plate's full width, content box plus --xp-pl), never a fixed number */
 @media (min-width: 1200px) {
-  .xp-shape { container-type: inline-size; --xp-pl: 76px; padding: var(--xp-pt, 182px) 0 0 var(--xp-pl); }
+  .xp-shape { container-type: inline-size; --xp-pl: calc(var(--xp-W, 1660px) * 0.0458); padding: var(--xp-pt, 182px) 0 0 var(--xp-pl); }
   .xp-shape .section-title { position: absolute; margin: 0; left: calc(0.028 * (100cqw + var(--xp-pl)) + 48px); top: calc(var(--xp-dy) + 22px - 48px * tan(atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); transform-origin: 0 0; transform: rotate(calc(-1 * atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); white-space: nowrap; }
   .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note { margin-top: 10px; }
   .experience .xp-shape .xp-cert { margin-top: 10px; }
   .xp-shape .xp li { margin-bottom: calc(0.25rem + 10px); }
-  /* one row of three equal cards: G.ROUND and DF BLOCK under EXPERIENCE, UNIVERSITY OF MINHO under EDUCATION. The .xp-tilt groups and the lists dissolve, so the three entries are items of the plate's own grid; each entry takes the grid's six rows as a subgrid (photo, date, title, role, description, certificate), so the same parts start on shared lines across the cards. The top padding (--xp-pt) is kept: Shapes.xpShape reads it for the plate's height. Row 1 is the label row, zero tall, pulled up 62 px to where the label used to sit. */
-  .xp-shape { display: grid; grid-template-columns: repeat(3, 256px); grid-template-rows: 0 repeat(6, auto); justify-content: start; align-content: start; align-items: start; column-gap: 40px; row-gap: 0; }
+  /* one row of two equal cards, G.ROUND and DF BLOCK under EXPERIENCE (UNIVERSITY OF MINHO has its own .xp-edu-plate). The .xp-tilt groups and the lists dissolve, so the entries are items of the plate's own grid; each entry takes the grid's six rows as a subgrid (photo, date, title, role, description, certificate), so the same parts start on shared lines across the cards. The top padding (--xp-pt) is kept: Shapes.xpShape reads it for the plate's height. Row 1 is the label row, zero tall, pulled up 62 px to where the label used to sit. */
+  .xp-shape { display: grid; grid-template-columns: repeat(2, calc(var(--xp-W, 1660px) * 0.28)); grid-template-rows: 0 repeat(6, auto); justify-content: start; align-content: start; align-items: start; column-gap: calc(var(--xp-W, 1660px) * 0.03); row-gap: 0; }
   .xp-shape .xp-tilt, .xp-shape .xp { display: contents; }
-  .xp-shape .section-title { position: relative; left: auto; top: auto; transform: none; grid-row: 1; align-self: start; justify-self: stretch; margin-top: -62px; display: flex; align-items: center; gap: 16px; color: var(--type-quiet); }
+  .xp-shape .section-title { position: relative; left: auto; top: auto; transform-origin: 0 0; transform: rotate(calc(-1 * atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); grid-row: 1; align-self: start; justify-self: stretch; margin-top: -62px; display: flex; align-items: center; gap: 16px; color: var(--type-quiet); }
   .xp-shape .section-title::after { content: ""; flex: 1 1 auto; height: 1px; background: rgb(228 221 198 / 0.16); }
   .xp-shape #xp-h-exp { grid-column: 1 / span 2; }
-  .xp-shape #xp-h-edu { grid-column: 3; }
+  .xp-shape #xp-h-edu { grid-column: 1; }
+  .xp-shape.xp-edu-plate { --xp-pl: calc(var(--eu-W, 660px) * 0.0458); grid-template-columns: calc(var(--eu-W, 660px) * 0.6); margin-top: 1.5rem; }
   .xp-shape .xp li { display: grid; width: auto; margin: 0; padding: 0; grid-row: 2 / span 6; grid-template-columns: minmax(0, 1fr); grid-template-rows: subgrid; column-gap: 0; row-gap: 0; }
   /* clicks pass through the card's box to its photo slice behind it; the card's own text and links stay clickable */
   .xp-shape .xp li { pointer-events: none; }
   .xp-shape .xp li > * { pointer-events: auto; }
   .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(1) { grid-column: 1; }
   .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(2) { grid-column: 2; }
-  .xp-shape .xp-edu li { grid-column: 3; }
-  /* the card's pictures are a column under its text (Shapes.xpShape sets --xs-*, in plate px, and builds the .xp-strip of stacked tiles); the plate's own outline cuts it at the bottom; its img is only the first tile's source */
+  .xp-shape .xp-edu li { grid-column: 1; }
+  /* the card's pictures are a column under its text (Shapes.xpShape sets --xs-*, in plate px, and builds the .xp-strip of stacked tiles); Shapes.xpShape intersects its clip with the plate quad (left edge, bottom, right diagonal), so no picture pixel shows outside the plate; its img is only the first tile's source */
   .xp-shape .xp-pic { position: absolute; grid-area: auto; z-index: -1; left: var(--xs-l, 0px); top: var(--xs-t, 0px); width: var(--xs-w, 256px); height: var(--xs-h, 144px); aspect-ratio: auto; margin: 0; background: none; clip-path: var(--xs-clip, none); }
   /* the column's top dissolves into the black under the text: a fixed 180 px eased (cubic) fade on the clip, so the strip slides under it */
   .xp-shape .xp-pic { -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.008) 36px, rgba(0,0,0,0.064) 72px, rgba(0,0,0,0.216) 108px, rgba(0,0,0,0.512) 144px, #000 180px); mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.008) 36px, rgba(0,0,0,0.064) 72px, rgba(0,0,0,0.216) 108px, rgba(0,0,0,0.512) 144px, #000 180px); }
@@ -1213,7 +1214,7 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
   .xp-shape .xp-when { grid-row: 2; margin-top: var(--xp-when-mt, 162px); }
   .xp-shape .xp-what { grid-row: 3; margin-top: 12px; }
   .xp-shape .xp-role { grid-row: 4; margin-top: 12px; font-size: 1.3rem; line-height: 1.4; }
-  .xp-shape .xp-note { grid-row: 5; margin-top: 16px; font-size: 1rem; line-height: 1.6; }
+  .xp-shape .xp-note { grid-row: 5; margin-top: 16px; font-size: 1rem; line-height: 1.6; max-width: 60ch; }
   .experience .xp-shape .xp-cert { grid-row: 6; margin-top: 16px; }
 }
 @media (max-width: 1199px) {
@@ -1241,6 +1242,8 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) { .xp-shape .xp-what .xp-t, .xp-shape .xp-what .xp-t::before, .xp-shape .xp-when::before { transition: none; } }
 /* the tall red line on the plate's left edge: data-red-line="on" on section#experience shows it */
 .experience[data-red-line="off"] .xp-shape > .xp-red { display: none; }
+/* the University block: its own small plate under the Experience box (Shapes.xpShape sizes and clips it) */
+@media (max-width: 1199px) { .xp-shape.xp-edu-plate { margin-top: 1.5rem; } }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
 .page-case:not(.page-404) .case { --measure: 34rem; }
 
