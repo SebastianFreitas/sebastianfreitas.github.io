@@ -108,7 +108,7 @@ shares `Gen`:
 | `surge.js` | Level burst at the chip on `xp:surge` (no label while `html.bar-peek`); the rank card on `xp:rankup` (the only thing that sends `xp:freeze`, dismissed by click/key or after 3.8 s); `glimpse` card after the Void segment | `window.Surge {play, rankUp, glimpse}` |
 | `embed.js` | Click-to-load itch.io iframes | `window.Embed {reset}` |
 | `stage.js` | Work + Experience scale: sets `--stage-s` = min(window / 1600, 1.2) on `<html>` from 1200px up (css `.stage` zooms by it, laid out 1600px wide), 1 below; rects read under it are screen px, divide by `Stage.s()` | `window.Stage {s}` |
-| `creep.js` | Homepage creeper frame: three seeded canvases (far, mid, near) of dead thorn briars along the screen edges, painted once per size (DPR up to 1.5); scrolling only fades and scales them, closing in toward the footer; hidden while `#bridge-hero` covers the viewport | `window.Creep {paint, update}` |
+| `creep.js` | Homepage page-darkness gradient from the bridge's bottom colour down to the boxes' black (never darker), still; `?bg=1` shows an owner tuning panel, localStorage `bgTune2` | `window.Creep {place}` |
 | `banner.js` | Seeded cream text banner: plate = main's `.xp-name` recipe, tab = nav tab; `apply` masks `[data-banner]` labels (bullet below) | `window.Banner {schema, params, ready, draw, dataURL, apply}` |
 | `barwear.js` | Top bar, 1200 px+ fine pointer: 3-4 small glass breaks cut into the plate's wave (CSS var `--bar-cut`) in the empty stretches beside the rank slot, plus a catch-light svg `.bar-lit`; redraws on resize | `window.BarWear {apply, info}` |
 | `shapes.js` | Seeded raster wear masks (`--wear`) on `[data-wear]` boxes; clips the Work rows and Experience plate with glass-break edges | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
@@ -656,7 +656,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Readout text | `js/bridge/bridge-voice.js` `ZONES`; site lines in `js/bridge/bridge-sites.js` `lines()`; glue and hull damage in `bridge-readout.js` |
 | HUD | `js/hud/hud-c25.js`, models `hud-models.js`, sys model `tiles-sys.js`; clock and alarms `instruments.js` |
 | Main rAF loop | `js/lib/pacer.js` (`frame`), created in `bridge-loop.js` as `B.pacer`; other loops in `intro.js`, `surge.js`, `xp.js` |
-| Storage keys | `js/lib/util.js` `KEYS` (never type a key literal) |
+| Storage keys | `js/lib/util.js` `KEYS` (never type a key literal); exception: `bgTune2` (`js/site/creep.js`, only with `?bg=1`) |
 | Entry gate | decision `js/site/entry.js`, UI `js/site/intro.js`, CSS `css/gate.css` + `css/bridge.css` boot terminal, bridge defers in `bridge.js` `readyBridge` |
 | Cutscene | `js/genesis/` (see table) |
 | Plan phase state (one phase per session) | `.claude/plans/<name>.state.md`, committed, exists only while that plan runs |
