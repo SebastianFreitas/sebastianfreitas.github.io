@@ -1173,9 +1173,10 @@ footer.xp-foot { margin: 3rem var(--gutter) 0 calc(var(--gutter) + var(--xp-foot
   footer.xp-foot { zoom: var(--stage-s, 1); box-sizing: border-box; width: 1600px; margin: 3rem auto 0; padding: 0 calc(1.2rem + 5rem) calc(4rem + 4.5rem) var(--xp-foot-x, 92px); }
 }
 footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
+footer.xp-foot .rights.edu { margin-bottom: 0.4rem; }
 .xp-shape .xp-pic { position: relative; grid-column: 2; grid-row: 1 / span 5; display: block; aspect-ratio: 16 / 9; background: #0a0a0b; overflow: hidden; }
 .xp-shape .xp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* the photos rest muted and come to full colour on the entry's hover or focus (the filter is on the box, so every slide of js/site/xp-slides.js is covered) */
+/* the photos rest muted and come to full colour on the entry's hover or focus (phone only; desktop darkens the img itself) */
 .xp-shape .xp-pic { filter: saturate(0.55) brightness(0.82); transition: filter 250ms ease; }
 .xp-shape .xp li:is(:hover, :focus-within) .xp-pic { filter: none; }
 @media (prefers-reduced-motion: reduce) { .xp-shape .xp-pic { transition: none; } }
@@ -1193,46 +1194,84 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 .xp-shape .xp-what a.xp-link { color: var(--type-cream); text-decoration: none; }
 .xp-shape .xp-link { white-space: nowrap; }
 .xp-shape .xp-link:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
+@media (hover: hover) {   /* the Experience arrow shows only where a row can be hovered or focused (opacity, so nothing shifts); touch keeps it */
+  .xp-shape .xp-link > .go { opacity: 0; transition: transform 0.16s, opacity 0.16s; }
+  .xp-shape .xp li:is(:hover, :focus-within) .xp-link > .go { opacity: 1; }
+}
 /* desktop: EXPERIENCE is a label on the plate, out of the list: it sits under the top edge and runs parallel to it; the angle is the edge's own (--xp-dy, set from the plate's top-left drop, over the edge's run of 97.2% of the plate's full width, content box plus --xp-pl), never a fixed number */
 @media (min-width: 1200px) {
-  .xp-shape { container-type: inline-size; --xp-pl: calc(var(--xp-W, 1660px) * 0.0458); padding: var(--xp-pt, 182px) 0 0 var(--xp-pl); }
+  .xp-shape { container-type: inline-size; --xp-pl: calc(var(--xp-W, 1660px) * 0.0458); padding: calc(var(--xp-pt, 182px) - var(--xp-g, 0.8rem) - 0.95 * var(--xp-ts, 3rem)) 0 0 var(--xp-pl); }   /* the heading is hidden: the rows start where its top was */
   .xp-shape .section-title { margin: 0; white-space: nowrap; }
-  /* one row of two equal cards, G.ROUND and DF BLOCK under EXPERIENCE (UNIVERSITY OF MINHO has its own .xp-edu-plate). The .xp-tilt groups and the lists dissolve, so the entries are items of the plate's own grid; each entry takes the grid's six rows as a subgrid (photo, date, title, role, description, certificate), so the same parts start on shared lines across the cards. The top padding (--xp-pt) is kept: Shapes.xpShape reads it for the plate's height. Row 1 is the label row, zero tall, pulled up 62 px to where the label used to sit. */
+  /* the cards under EXPERIENCE: G.ROUND and DF BLOCK. The .xp-tilt groups and the lists dissolve, so the entries are items of the plate's own grid; each entry takes the grid's six rows as a subgrid (photo, date, title, role, description, certificate), so the same parts start on shared lines across the cards. The top padding (--xp-pt) is kept: Shapes.xpShape reads it for the plate's height. Row 1 is the label row, zero tall, pulled up 62 px to where the label used to sit. */
   .xp-shape { display: grid; grid-template-columns: repeat(2, calc(var(--xp-W, 1660px) * 0.28)); grid-template-rows: 0 repeat(6, auto); justify-content: start; align-content: start; align-items: start; column-gap: calc(var(--xp-W, 1660px) * 0.03); row-gap: 0; }
   .xp-shape .xp-tilt, .xp-shape .xp { display: contents; }
-  .xp-shape .section-title { position: relative; left: auto; top: auto; transform-origin: 0 0; transform: rotate(calc(-1 * atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))))); grid-row: 1; align-self: start; justify-self: stretch; margin-top: -62px; display: flex; align-items: center; gap: 16px; color: var(--type-quiet); }
-  .xp-shape .section-title::after { content: ""; flex: 1 1 auto; height: 1px; background: rgb(228 221 198 / 0.16); }
-  .xp-shape #xp-h-exp { grid-column: 1 / span 2; }
-  .xp-shape #xp-h-edu { grid-column: 1; }
-  .xp-shape.xp-edu-plate { --xp-pl: calc(var(--eu-W, 660px) * 0.0458); grid-template-columns: calc(var(--eu-W, 660px) * 0.6); margin-top: 1.5rem; }
+  /* the label sits at the plate's top-left: its top-left point is --xp-g under the leaning top edge, at the cards' text column (--xp-pl; --xp-cx is that column's distance past the edge's start, in plate widths); leaning with the top edge (--xp-th, its own angle), in the Games title's type on the black (no paper) */
+  .xp-shape { --xp-th: atan2(var(--xp-dy), 0.972 * (100cqw + var(--xp-pl))); --xp-g: 0.8rem; --xp-ts: clamp(2.25rem, 3vw, 3rem); --xp-cx: 0.0178; }
+  .xp-shape .section-title { position: absolute; grid-area: auto; left: var(--xp-pl); top: calc(var(--xp-dy) - var(--xp-cx) * (100cqw + var(--xp-pl)) * tan(var(--xp-th)) + var(--xp-g)); right: auto; transform-origin: 0 0; transform: rotate(calc(-1 * var(--xp-th))); margin: 0; padding: 0; display: block; font-family: var(--type-head); font-size: var(--xp-ts); font-weight: 700; letter-spacing: 0.02em; line-height: 0.95; color: var(--type-cream); }
   .xp-shape .xp li { display: grid; width: auto; margin: 0; padding: 0; grid-row: 2 / span 6; grid-template-columns: minmax(0, 1fr); grid-template-rows: subgrid; column-gap: 0; row-gap: 0; }
   /* clicks pass through the card's box to its photo slice behind it; the card's own text and links stay clickable */
   .xp-shape .xp li { pointer-events: none; }
   .xp-shape .xp li > * { pointer-events: auto; }
-  .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(1) { grid-column: 1; }
-  .xp-shape .xp-tilt:not(.xp-edu) li:nth-child(2) { grid-column: 2; }
-  .xp-shape .xp-edu li { grid-column: 1; }
-  /* the card's pictures are a column under its text (Shapes.xpShape sets --xs-*, in plate px, and builds the .xp-strip of stacked tiles); Shapes.xpShape intersects its clip with the plate quad (left edge, bottom, right diagonal), so no picture pixel shows outside the plate; its img is only the first tile's source */
-  .xp-shape .xp-pic { position: absolute; grid-area: auto; z-index: -1; left: var(--xs-l, 0px); top: var(--xs-t, 0px); width: var(--xs-w, 256px); height: var(--xs-h, 144px); aspect-ratio: auto; margin: 0; background: none; clip-path: var(--xs-clip, none); }
-  /* the column's top dissolves into the black under the text: a fixed 180 px eased (cubic) fade on the clip, so the strip slides under it */
-  .xp-shape .xp-pic { -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.008) 36px, rgba(0,0,0,0.064) 72px, rgba(0,0,0,0.216) 108px, rgba(0,0,0,0.512) 144px, #000 180px); mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.008) 36px, rgba(0,0,0,0.064) 72px, rgba(0,0,0,0.216) 108px, rgba(0,0,0,0.512) 144px, #000 180px); }
-  .xp-shape a.xp-pic > img { display: none; }
-  .xp-shape .xp-strip { position: absolute; inset: 0; }
-  .xp-shape a.xp-pic[href*="gameround"] img { object-position: 50% 30%; }
-  .xp-shape a.xp-pic[href*="dfblock"] img { object-position: 50% 50%; }
-  .xp-shape a.xp-pic[href*="uminho"] img { object-position: 50% 40%; }
   .xp-shape .section-title { text-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.9), 0 0 1rem rgba(0, 0, 0, 0.7); }
-  .xp-shape .xp-when { grid-row: 2; margin-top: var(--xp-when-mt, 162px); }
+  /* each date sits right above its own title (12px margin) and leans with the top edge; the first row's also clears the label (see below) */
+  .xp-shape .xp-when { grid-row: 2; margin-top: 12px; }
   .xp-shape .xp-what { grid-row: 3; margin-top: 12px; }
   .xp-shape .xp-role { grid-row: 4; margin-top: 12px; font-size: 1.3rem; line-height: 1.4; }
-  .xp-shape .xp-note { grid-row: 5; margin-top: 16px; font-size: 1rem; line-height: 1.6; max-width: 60ch; }
+  .xp-shape .xp-note { grid-row: 5; margin-top: 16px; font-size: 1rem; line-height: 1.6; max-width: 42ch; }
   .experience .xp-shape .xp-cert { grid-row: 6; margin-top: 16px; }
+  /* Experience only: two columns, G.ROUND (left) and DF Block (right); under G.ROUND's text the empty .xp-games box holds the game tile strip, full column width, about 200 px tall; the first date starts under the label */
+  .xp-shape { grid-template-columns: repeat(2, calc(var(--xp-W, 1660px) * 0.3)); grid-template-rows: auto; column-gap: calc(var(--xp-W, 1660px) * 0.07); }
+  .xp-shape .xp li { grid-row: 1; grid-template-rows: none; grid-template-columns: minmax(0, 1fr); margin: 0; }
+  .xp-shape .xp li:nth-child(1) { grid-column: 1; }
+  .xp-shape .xp li:nth-child(2) { grid-column: 2; }
+  .xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .experience .xp-shape .xp-cert { grid-row: auto; }
+  .xp-shape .xp li .xp-when { margin-top: calc(var(--xp-dy) + 2 * var(--xp-g) + 0.95 * var(--xp-ts) - var(--xp-pt, 182px)); }
+  .xp-shape .xp-games { grid-column: 1; grid-row: auto; width: calc(var(--xp-W, 1660px) * 0.34); margin-top: 28px; }
+  /* DF Block's one photo (the camera): static, Shapes.colsFor sizes and cuts the img to the plate's outline; darkened so the text reads, its left and bottom fading into the black like the Games rows' pictures */
+  .xp-shape .xp-pic { position: absolute; z-index: -1; display: block; pointer-events: none; background: none; filter: none; overflow: hidden; aspect-ratio: auto; margin: 0;
+    -webkit-mask-image: linear-gradient(to right, transparent var(--xp-ax, 0px), rgba(0,0,0,0.02) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.12), rgba(0,0,0,0.06) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.24), rgba(0,0,0,0.1) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.3), rgba(0,0,0,0.6) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.38), #000 calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.46)); mask-image: linear-gradient(to right, transparent var(--xp-ax, 0px), rgba(0,0,0,0.02) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.12), rgba(0,0,0,0.06) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.24), rgba(0,0,0,0.1) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.3), rgba(0,0,0,0.6) calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.38), #000 calc(var(--xp-ax, 0px) + var(--xp-aw, 900px) * 0.46)); }   /* the left fade, from the text's left edge: dark behind the words, clear toward the camera */
+  .xp-shape .xp-pic img { position: absolute; max-width: none; object-fit: cover; filter: brightness(0.97) saturate(0.6); opacity: 0; transition: opacity 1000ms ease;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 55%, transparent), linear-gradient(to right, transparent 0, #000 140px); -webkit-mask-composite: source-in; mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 55%, transparent), linear-gradient(to right, transparent 0, #000 140px); mask-composite: intersect; }   /* the img's own top, bottom and left edges all fade: no straight line where a photo ends */
+  .xp-shape .xp-pic img.on { opacity: 1; }   /* xp-pic.js moves .on from one photo to the next: a slow cross-fade, opacity only */
+  @media (prefers-reduced-motion: reduce) { .xp-shape .xp-pic img { transition: none; } }
+  /* G.ROUND's branding (its own logo, gameround.co) dimmed and desaturated in the open space right of its text, above the game strip; the mask fades every side so it ends before the text, the tiles, the red line and the diagonal */
+  .xp-shape .xp > li:nth-child(1)::after { content: ""; position: absolute; z-index: -1; pointer-events: none; left: calc(var(--xp-W, 1660px) * 0.16); top: calc(var(--xp-W, 1660px) * 0.077); width: calc(var(--xp-W, 1660px) * 0.24); aspect-ratio: 1; background: url("../media/experience/ground-brand.webp") center / cover; filter: saturate(0.4) brightness(0.55); opacity: 0.5;
+    -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent); mask-image: radial-gradient(closest-side, #000 35%, transparent); }
+  .xp-shape .xp li:nth-child(2) .xp-what, .xp-shape .xp li:nth-child(2) .xp-note { text-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.95), 0 0 1.2rem rgba(0, 0, 0, 0.8); }   /* DF text over the photo: a tight dark halo, not a darker photo */
+  .xp-shape .xp li:is(:hover, :focus-within) .xp-what .xp-t { text-shadow: none; }
 }
 @media (max-width: 1199px) {
   .xp-shape .xp li { grid-template-columns: 1fr; grid-template-rows: none; gap: 0.15rem; }
   .xp-shape .xp-pic, .xp-shape .xp-when, .xp-shape .xp-what, .xp-shape .xp-role, .xp-shape .xp-note, .xp-shape .xp-cert { grid-column: 1; grid-row: auto; }
-  .xp-shape .xp-pic { order: 1; margin-top: 0.6rem; }
+  .xp-shape .xp-pic { order: 1; margin-top: 0.6rem; clip-path: polygon(0 0, 100% 6%, 100% 100%, 0 94%); }   /* DF Block: one photo, cut slanted, under its text */
+  .xp-shape .xp-pic img:not(:first-child) { display: none; }   /* phone: the camera only (xp-pic.js does not run) */
+  .xp-shape .xp-games { grid-column: 1; width: 100%; margin-top: 0.6rem; margin-bottom: 1.4rem; }
 }
+/* G.Round's game tile strip (js/site/xp-games.js only drives the arrows): a snap row of plain 460:215 Steam headers (three whole at 1660, the box widens into the column gap), arrows in a row above the tiles, no scrollbar, hard edges */
+.xp-games { position: relative; min-width: 0; padding-top: 34px; }
+.xp-games .xg-row { display: flex; gap: 12px; margin: 0; padding: 0; list-style: none; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.xp-games .xg-row::-webkit-scrollbar { display: none; }
+.xp-games .xg-row > li { flex: 0 0 156px; margin: 0; scroll-snap-align: start; }
+.xp-games .xg-tile { position: relative; display: block; width: 156px; color: #8f8878; text-decoration: none; }
+.xp-games .xg-tile img { display: block; width: 156px; aspect-ratio: 460 / 215; object-fit: cover; object-position: 50% 50%; background: #0a0a0b; filter: saturate(0.55) brightness(0.82); transition: filter 250ms ease; }
+.xp-games .xg-name { display: block; margin-top: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; transition: color 250ms ease; }
+.xp-games .xg-go { position: absolute; left: 0; top: 0; padding: 6px 8px; background: rgb(10 10 11 / 0.85); color: #f1ecd8; font: 600 11px/1 var(--type-mono); letter-spacing: 0.16em; opacity: 0; transition: opacity 200ms ease; }
+.xp-games .xg-plain { display: flex; align-items: flex-end; width: 156px; aspect-ratio: 460 / 215; box-sizing: border-box; padding: 10px; background: #0a0a0b; overflow: hidden; }
+.xp-games .xg-pname { font: 500 12px/1.5 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; overflow-wrap: anywhere; }
+.xp-games .xg-tile:is(:hover, :focus-visible) img { filter: none; }
+.xp-games .xg-tile:is(:hover, :focus-visible) .xg-name { color: #f1ecd8; }
+.xp-games .xg-tile:is(:hover, :focus-visible) .xg-go { opacity: 1; }
+.xp-games .xg-tile:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 3px; }
+.xp-games .xg-btn { position: absolute; top: 50px; z-index: 1; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 0; background: none; cursor: pointer; transition: opacity 200ms ease; }   /* centred on the tile pictures: 34px row offset + half of the 156px / 460:215 picture, minus half the button */
+.xp-games .xg-btn .go { margin: 0; top: 0; filter: drop-shadow(0 0 3px rgb(10 10 11 / 0.9)); }
+.xp-games .xg-btn:is(:hover, :focus-visible) .go { transform: translateX(4px); }
+.xp-games .xg-btn.xg-prev:is(:hover, :focus-visible) .go { transform: scaleX(-1) translateX(4px); }
+.xp-games .xg-prev { left: 0; }
+.xp-games .xg-next { right: 0; }
+.xp-games .xg-btn:disabled { opacity: 0; pointer-events: none; }
+.xp-games .xg-btn:focus-visible { outline: 1px solid #e4ddc6; outline-offset: 2px; }
+@media (max-width: 640px) { .xp-games .xg-btn { display: none; } }
+@media (prefers-reduced-motion: reduce) { .xp-games * { transition: none !important; } }
 /* desktop mouse: hovering or focusing an entry fades the Games rows' white torn paper in behind its title (the title turns dark) and a red square in beside the years, which slide right by 9 + 12 px; nothing else moves */
 @media (hover: hover) and (min-width: 1200px) {
   .xp-shape .xp-what h3 { width: fit-content; max-width: 100%; }
@@ -1253,8 +1292,6 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) { .xp-shape .xp-what .xp-t, .xp-shape .xp-what .xp-t::before, .xp-shape .xp-when::before { transition: none; } }
 /* the tall red line on the plate's left edge: data-red-line="on" on section#experience shows it */
 .experience[data-red-line="off"] .xp-shape > .xp-red { display: none; }
-/* the University block: its own small plate under the Experience box (Shapes.xpShape sizes and clips it) */
-@media (max-width: 1199px) { .xp-shape.xp-edu-plate { margin-top: 1.5rem; } }
 /* reading measure in rem, so the wider faces keep about 65-75 characters a line; the long/short stroke variety scales from it */
 .page-case:not(.page-404) .case { --measure: 34rem; }
 
@@ -1268,3 +1305,6 @@ footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
   mask: var(--banner) center / 100% 100% no-repeat !important;
   clip-path: none !important;
 }
+
+/* the Experience heading stays for screen readers only */
+.experience .xp-shape .section-title { position: absolute; left: auto; top: auto; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

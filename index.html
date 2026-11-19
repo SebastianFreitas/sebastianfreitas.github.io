@@ -20,13 +20,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=343">
-<link rel="stylesheet" href="css/gate.css?v=343">
-<link rel="stylesheet" href="css/beacon.css?v=343">
-<link rel="stylesheet" href="css/bridge.css?v=343">
-<script src="js/lib/util.js?v=343"></script>
-<script src="js/site/xp.js?v=343"></script>
-<script src="js/site/entry.js?v=343"></script>
+<link rel="stylesheet" href="css/style.css?v=344">
+<link rel="stylesheet" href="css/gate.css?v=344">
+<link rel="stylesheet" href="css/beacon.css?v=344">
+<link rel="stylesheet" href="css/bridge.css?v=344">
+<script src="js/lib/util.js?v=344"></script>
+<script src="js/site/xp.js?v=344"></script>
+<script src="js/site/entry.js?v=344"></script>
 <script>
 /* the gate was passed in this tab: skip it before first paint (css/gate.css, js/site/intro.js) */
 try { if (Util.read(sessionStorage, Util.KEYS.ENTERED)) document.documentElement.classList.add("gate-skip"); } catch (e) {}
@@ -373,33 +373,50 @@ try { if (Util.read(sessionStorage, Util.KEYS.ENTERED)) document.documentElement
   <h2 class="section-title" id="xp-h-exp" data-wear="title" data-seed="30">Experience</h2>
   <ul class="xp" aria-labelledby="xp-h-exp">
     <li data-wear="item" data-seed="31">
-      <a class="xp-pic" href="https://gameround.co/" target="_blank" rel="noopener" tabindex="-1" data-slides='[{"s":"media/experience/ground-2.webp","a":"Ikonei Island: An Earthlock Adventure"},{"s":"media/experience/ground-3.webp","a":"Coridden"},{"s":"media/experience/ground-4.webp","a":"The Necromancer&#39;s Tale"},{"s":"media/experience/ground-5.webp","a":"Candle Knight"},{"s":"media/experience/ground-6.webp","a":"Blue Wednesday"}]'><img src="media/experience/ground-1.webp" alt="Die in the Dungeon" loading="lazy" decoding="async"></a>
       <span class="xp-when">2022 — 2024</span>
       <div class="xp-what"><h3><a class="xp-link" href="https://gameround.co/" target="_blank" rel="noopener"><span class="xp-t" data-banner="tab" data-banner-on="before" data-wear="paper" data-title="5" data-seed="34">G.Round</span><span class="go" aria-hidden="true"></span></a></h3></div>
       <span class="xp-role">QA &amp; Systems Analyst (freelance)</span>
       <span class="xp-note">Top 4.3% globally. 28&nbsp;pre-release titles, 12&nbsp;reports picked up and implemented by studios.</span>
       <a class="xp-cert" data-banner-seed="2742199329" data-banner="tab" data-banner-on="before" href="ground-certificate.pdf">Certificate (PDF)</a>
+      <div class="xp-games" role="group" aria-label="Games tested at G.ROUND; each links to its Steam page">
+        <button type="button" class="xg-btn xg-prev" aria-label="Previous game" disabled><span class="go go-back" aria-hidden="true"></span></button>
+        <ul class="xg-row">
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2564120/" target="_blank" rel="noopener"><img src="media/experience/ground-25.webp" alt="Project K1" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Project K1</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1550730/" target="_blank" rel="noopener"><img src="media/experience/ground-2.webp" alt="Ikonei Island: An Earthlock Adventure" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Ikonei Island: An Earthlock Adventure</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1656930/" target="_blank" rel="noopener"><img src="media/experience/ground-3.webp" alt="Coridden" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Coridden</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2302770/" target="_blank" rel="noopener"><img src="media/experience/ground-24.webp" alt="Space Gears" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Space Gears</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1636620/" target="_blank" rel="noopener"><img src="media/experience/ground-23.webp" alt="Cognition Method" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Cognition Method</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1892750/" target="_blank" rel="noopener"><img src="media/experience/ground-26.webp" alt="Regulator City" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Regulator City</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1603870/" target="_blank" rel="noopener"><img src="media/experience/ground-22.webp" alt="Dad&#x27;s Dice: History of Legends" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Dad's Dice: History of Legends</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1583850/" target="_blank" rel="noopener"><img src="media/experience/ground-21.webp" alt="Asleep" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Asleep</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1930770/" target="_blank" rel="noopener"><img src="media/experience/ground-20.webp" alt="Jello" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Jello</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2199330/" target="_blank" rel="noopener"><img src="media/experience/ground-19.webp" alt="Aestik" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Aestik</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2102320/" target="_blank" rel="noopener"><img src="media/experience/ground-18.webp" alt="MISTROGUE: Mist and the Living Dungeons" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">MISTROGUE: Mist and the Living Dungeons</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2181950/" target="_blank" rel="noopener"><img src="media/experience/ground-17.webp" alt="Zero Division" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Zero Division</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1737530/" target="_blank" rel="noopener"><img src="media/experience/ground-16.webp" alt="DarkTimes: Wrath of the Raven" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">DarkTimes: Wrath of the Raven</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1946760/" target="_blank" rel="noopener"><img src="media/experience/ground-15.webp" alt="Mechanical Sunset" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Mechanical Sunset</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1628120/" target="_blank" rel="noopener"><img src="media/experience/ground-14.webp" alt="Rollers of the Realm: Reunion" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Rollers of the Realm: Reunion</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2026820/" target="_blank" rel="noopener"><img src="media/experience/ground-1.webp" alt="Die in the Dungeon" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Die in the Dungeon</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2129160/" target="_blank" rel="noopener"><img src="media/experience/ground-6.webp" alt="Blue Wednesday" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Blue Wednesday</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2247570/" target="_blank" rel="noopener"><img src="media/experience/ground-13.webp" alt="Don Duality" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Don Duality</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1785420/" target="_blank" rel="noopener"><img src="media/experience/ground-12.webp" alt="Orten Was The Case" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Orten Was The Case</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1950490/" target="_blank" rel="noopener"><img src="media/experience/ground-11.webp" alt="Nova: Cloudwalker&#x27;s Tale" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Nova: Cloudwalker's Tale</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/2221780/" target="_blank" rel="noopener"><img src="media/experience/ground-10.webp" alt="Metavoidal" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Metavoidal</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1605520/" target="_blank" rel="noopener"><img src="media/experience/ground-9.webp" alt="The Black Pepper Crew" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">The Black Pepper Crew</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1479810/" target="_blank" rel="noopener"><img src="media/experience/ground-8.webp" alt="Legendary Hoplite" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Legendary Hoplite</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1315320/" target="_blank" rel="noopener"><img src="media/experience/ground-4.webp" alt="The Necromancer&#x27;s Tale" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">The Necromancer's Tale</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1545080/" target="_blank" rel="noopener"><img src="media/experience/ground-7.webp" alt="Arran: The Book of Heroes" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Arran: The Book of Heroes</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+          <li><a class="xg-tile" href="https://store.steampowered.com/app/1879680/" target="_blank" rel="noopener"><img src="media/experience/ground-5.webp" alt="Candle Knight" style="object-position: 50% 50%" loading="eager" decoding="async"><span class="xg-name">Candle Knight</span><span class="xg-go" aria-hidden="true">STEAM ↗</span></a></li>
+        </ul>
+        <button type="button" class="xg-btn xg-next" aria-label="Next game"><span class="go" aria-hidden="true"></span></button>
+      </div>
     </li>
     <li data-wear="item" data-seed="32">
-      <a class="xp-pic" href="https://dfblock.pt/" target="_blank" rel="noopener" tabindex="-1" data-slides='[{"s":"media/experience/dfblock-2.webp","a":"Hands wiring an alarm board in its metal box beside a cable reel","t":"Photo: Baba ferdi2, CC BY-SA 4.0, via Wikimedia Commons"},{"s":"media/experience/dfblock-3.webp","a":"Two dome CCTV cameras on a building corner","t":"Photo: KRoock74, CC BY-SA 3.0, via Wikimedia Commons"},{"s":"media/experience/dfblock-4.webp","a":"Blue boom lift with its basket raised at a building facade","t":"Photo: Dwight Burdette, CC BY 3.0, via Wikimedia Commons"},{"s":"media/experience/dfblock-5.webp","a":"CCTV control room monitor wall","t":"Photo: Mark Yeomans, CC BY-SA 4.0, via Wikimedia Commons"},{"s":"media/experience/dfblock-6.webp","a":"Open alarm cabinet with circuit boards and a transformer","t":"Photo: Ps14159, CC BY-SA 4.0, via Wikimedia Commons"}]'><img src="media/experience/dfblock-1.webp" alt="Open alarm control panel with its board, wiring and two backup batteries" title="Photo: YellowstoneNPS, Public domain, via Wikimedia Commons" loading="lazy" decoding="async"></a>
+      <a class="xp-pic" href="https://dfblock.pt/" target="_blank" rel="noopener" tabindex="-1"><img src="media/experience/dfblock-3.webp" alt="Two dome CCTV cameras on a building corner" title="Photo: KRoock74, CC BY-SA 3.0, via Wikimedia Commons" decoding="async" class="on"><img data-src="media/experience/dfblock-1.webp" alt="Technician working on an alarm panel" title="Photo: YellowstoneNPS, public domain, via Wikimedia Commons" decoding="async"><img data-src="media/experience/dfblock-4.webp" alt="Aerial work platform at a library building" title="Photo: Dwight Burdette, CC BY 3.0, via Wikimedia Commons" decoding="async"><img data-src="media/experience/dfblock-5.webp" alt="CCTV control room monitor wall" title="Photo: Mark Yeomans, CC BY-SA 4.0, via Wikimedia Commons" decoding="async"></a>
       <span class="xp-when">2025 — 2026</span>
       <div class="xp-what"><h3><a class="xp-link" href="https://dfblock.pt/" target="_blank" rel="noopener"><span class="xp-t" data-banner="tab" data-banner-on="before" data-wear="paper" data-title="6" data-seed="35">DF Block</span><span class="go" aria-hidden="true"></span></a></h3></div>
       <span class="xp-role">Security Systems Technician</span>
       <span class="xp-note">100+&nbsp;interlocking hardware nodes deployed across retail sites; on-call fault diagnosis.</span>
-    </li>
-  </ul>
-  </div>
-</div>
-<div class="xp-shape xp-edu-plate">
-  <div class="xp-tilt xp-edu">
-  <h2 class="section-title" id="xp-h-edu" data-wear="title" data-seed="37">Education</h2>
-  <ul class="xp" aria-labelledby="xp-h-edu">
-    <li data-wear="item" data-seed="33">
-      <a class="xp-pic" href="https://www.uminho.pt/" target="_blank" rel="noopener" tabindex="-1" data-slides='[{"s":"media/experience/uminho-2.webp","a":"University of Minho, Gualtar campus building above brick steps"},{"s":"media/experience/uminho-3.webp","a":"University of Minho, Gualtar campus entrance sign"}]'><img src="media/experience/uminho-1.webp" alt="University of Minho, Gualtar campus courtyard" loading="lazy" decoding="async"></a>
-      <span class="xp-when">2026</span>
-      <div class="xp-what"><h3><a class="xp-link" href="https://www.uminho.pt/" target="_blank" rel="noopener"><span class="xp-t" data-banner="tab" data-banner-on="before" data-wear="paper" data-title="7" data-seed="36">University of Minho</span><span class="go" aria-hidden="true"></span></a></h3></div>
-      <span class="xp-role">BSc Computer Engineering</span>
-      <span class="xp-note"></span>
     </li>
   </ul>
   </div>
@@ -411,6 +428,7 @@ try { if (Util.read(sessionStorage, Util.KEYS.ENTERED)) document.documentElement
   <div class="foot-text">
   <p><span class="nm">Sebastião Freitas —</span> <a data-banner-seed="1852102715" data-banner="tab" data-banner-on="before" href="mailto:sebsfrets@gmail.com">sebsfrets@gmail.com</a></p>
   <p><a data-banner-seed="1835325096" data-banner="tab" data-banner-on="before" href="https://github.com/sebastianfreitas">GitHub</a> · <a data-banner-seed="1885657953" data-banner="tab" data-banner-on="before" href="https://www.linkedin.com/in/sebastianfreitas/">LinkedIn</a> · <a data-banner-seed="1868880334" data-banner="tab" data-banner-on="before" href="cv.pdf">CV (PDF)</a></p>
+  <p class="rights edu">BSc Computer Engineering · University of Minho · 2026</p>
   <p class="rights">The Warlocks © 2017–2026 Sebastião Freitas. All rights reserved.<br>
      Original setting, lore, characters, and written material by Sebastião Freitas.<br>
      Pictures: <a href="https://commons.wikimedia.org/wiki/File:Dan_Brown,_Electronics_Technician,_works_on_an_alarm_panel_(51186221188).jpg" target="_blank" rel="noopener">YellowstoneNPS, public domain</a> · <a href="https://commons.wikimedia.org/wiki/File:Burglar_Alarm_Installation_Training.jpg" target="_blank" rel="noopener">Baba ferdi2, CC BY-SA 4.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Dome_CCTV_cameras.JPG" target="_blank" rel="noopener">KRoock74, CC BY-SA 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Aerial_work_platform_at_Shapiro_Science_Library,_919_South_University_Street,_Ann_Arbor,_Michigan_-_panoramio.jpg" target="_blank" rel="noopener">Dwight Burdette, CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:CCTV_control_room_monitor_wall.jpg" target="_blank" rel="noopener">Mark Yeomans, CC BY-SA 4.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Insides_of_a_SMS_Senator_II_Control_Panel.jpg" target="_blank" rel="noopener">Ps14159, CC BY-SA 4.0</a><br>
@@ -418,121 +436,122 @@ try { if (Util.read(sessionStorage, Util.KEYS.ENTERED)) document.documentElement
   </div>
 </footer>
 
-<script src="js/site/surge.js?v=343"></script>
-<script src="js/bridge/lamp.js?v=343"></script>
-<script src="js/depths/depths.js?v=343"></script>
-<script src="js/depths/lore.js?v=343"></script>
-<script src="js/hud/instruments.js?v=343"></script>
-<script src="js/hud/hud-models.js?v=343"></script>
-<script src="js/hud/tiles-sys.js?v=343"></script>
-<script src="js/hud/hud-c25.js?v=343"></script>
-<script src="js/lib/paint.js?v=343"></script>
-<script src="js/world/art/rex-kit.js?v=343"></script>
-<script src="js/world/art/firstlight.js?v=343"></script>
-<script src="js/world/art/crimson.js?v=343"></script>
-<script src="js/world/art/bonespire.js?v=343"></script>
-<script src="js/world/art/titans.js?v=343"></script>
-<script src="js/world/art/valkhar.js?v=343"></script>
-<script src="js/world/art/law.js?v=343"></script>
-<script src="js/world/art/land-kit.js?v=343"></script>
-<script src="js/world/art/shattered.js?v=343"></script>
-<script src="js/world/art/libertech.js?v=343"></script>
-<script src="js/world/art/dawn.js?v=343"></script>
-<script src="js/world/art/accord.js?v=343"></script>
-<script src="js/world/art/gore.js?v=343"></script>
-<script src="js/world/world.js?v=343"></script>
-<script src="js/world/vortex.js?v=343"></script>
-<script src="js/world/void.js?v=343"></script>
-<script src="js/world/watcher.js?v=343"></script>
-<script src="js/world/serus.js?v=343"></script>
-<script src="js/world/nephilim.js?v=343"></script>
-<script src="js/world/admin-tear.js?v=343"></script>
-<script src="js/world/vikings.js?v=343"></script>
-<script src="js/world/rex.js?v=343"></script>
-<script src="js/world/city.js?v=343"></script>
-<script src="js/ship/voidship-art.js?v=343"></script>
-<script src="js/ship/voidship-prow.js?v=343"></script>
-<script src="js/ship/voidship.js?v=343"></script>
-<script src="js/lib/pacer.js?v=343"></script>
-<script src="js/bridge/marks.js?v=343"></script>
-<script src="js/bridge/bridge-sites.js?v=343"></script>
-<script src="js/bridge/bridge-log.js?v=343"></script>
-<script src="js/bridge/bridge-voice.js?v=343"></script>
-<script src="js/bridge/bridge.js?v=343"></script>
-<script src="js/bridge/bridge-notes.js?v=343"></script>
-<script src="js/bridge/bridge-input.js?v=343"></script>
-<script src="js/bridge/bridge-motifs.js?v=343"></script>
-<script src="js/bridge/bridge-marks.js?v=343"></script>
-<script src="js/bridge/bridge-poi.js?v=343"></script>
-<script src="js/bridge/bridge-panel.js?v=343"></script>
-<script src="js/bridge/bridge-depths.js?v=343"></script>
-<script src="js/bridge/bridge-env.js?v=343"></script>
-<script src="js/bridge/bridge-readout.js?v=343"></script>
-<script src="js/bridge/bridge-loop.js?v=343"></script>
-<script src="js/genesis/genesis-state.js?v=343"></script>
-<script src="js/genesis/genesis-paint.js?v=343"></script>
-<script src="js/genesis/genesis-eldpal.js?v=343"></script>
-<script src="js/genesis/genesis-tier3.js?v=343"></script>
-<script src="js/genesis/genesis-giants.js?v=343"></script>
-<script src="js/genesis/genesis-void.js?v=343"></script>
-<script src="js/genesis/genesis-flesh.js?v=343"></script>
-<script src="js/genesis/genesis-soup.js?v=343"></script>
-<script src="js/genesis/genesis-eye.js?v=343"></script>
-<script src="js/genesis/genesis-roles.js?v=343"></script>
-<script src="js/genesis/genesis-circle.js?v=343"></script>
-<script src="js/genesis/genesis-chains.js?v=343"></script>
-<script src="js/genesis/genesis-corrupt.js?v=343"></script>
-<script src="js/genesis/genesis-rexin.js?v=343"></script>
-<script src="js/genesis/genesis-dot.js?v=343"></script>
-<script src="js/genesis/genesis-clash.js?v=343"></script>
-<script src="js/genesis/genesis-death.js?v=343"></script>
-<script src="js/genesis/genesis-gods-beat.js?v=343"></script>
-<script src="js/genesis/genesis-elements.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds-plant.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds-metal.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds-cloud.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds-odd.js?v=343"></script>
-<script src="js/genesis/genesis-ceilclouds.js?v=343"></script>
-<script src="js/genesis/genesis-ceilshapes.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds2.js?v=343"></script>
-<script src="js/genesis/genesis-ceilkinds3.js?v=343"></script>
-<script src="js/genesis/genesis-ceilmembrane.js?v=343"></script>
-<script src="js/genesis/genesis-ceiling.js?v=343"></script>
-<script src="js/genesis/genesis-sky.js?v=343"></script>
-<script src="js/genesis/genesis-matter.js?v=343"></script>
-<script src="js/genesis/genesis-trade.js?v=343"></script>
-<script src="js/genesis/genesis-oldones.js?v=343"></script>
-<script src="js/genesis/genesis-oldkin.js?v=343"></script>
-<script src="js/genesis/genesis-rocktitans.js?v=343"></script>
-<script src="js/genesis/genesis-attire.js?v=343"></script>
-<script src="js/genesis/genesis-figures.js?v=343"></script>
-<script src="js/genesis/genesis-titans.js?v=343"></script>
-<script src="js/genesis/genesis-obrok.js?v=343"></script>
-<script src="js/genesis/genesis-gods.js?v=343"></script>
-<script src="js/genesis/genesis-hosts.js?v=343"></script>
-<script src="js/genesis/genesis-seraphin.js?v=343"></script>
-<script src="js/genesis/genesis-malgrur.js?v=343"></script>
-<script src="js/genesis/genesis-vorgath.js?v=343"></script>
-<script src="js/genesis/genesis-mainland.js?v=343"></script>
-<script src="js/genesis/genesis-armies.js?v=343"></script>
-<script src="js/genesis/genesis-orb.js?v=343"></script>
-<script src="js/genesis/genesis-rex.js?v=343"></script>
-<script src="js/genesis/genesis-depths.js?v=343"></script>
-<script src="js/genesis/genesis-saga-state.js?v=343"></script>
-<script src="js/genesis/genesis-ritual.js?v=343"></script>
-<script src="js/genesis/genesis-saga.js?v=343"></script>
-<script src="js/genesis/genesis.js?v=343"></script>
-<script src="js/site/lazy-video.js?v=343"></script>
-<script src="js/shared/heavylight-sprites.js?v=343"></script>
-<script src="js/site/stage.js?v=343"></script>
-<script src="js/site/creep.js?v=343"></script>
-<script src="js/site/work-preview.js?v=343"></script>
-<script src="js/site/xp-slides.js?v=343"></script>
-<script src="js/site/banner.js?v=343"></script>
-<script src="js/site/shapes.js?v=343"></script>
-<script src="js/site/barwear.js?v=343"></script>
-<script src="js/site/redlines.js?v=343"></script>
-<script src="js/site/intro.js?v=343"></script>
+<script src="js/site/surge.js?v=344"></script>
+<script src="js/bridge/lamp.js?v=344"></script>
+<script src="js/depths/depths.js?v=344"></script>
+<script src="js/depths/lore.js?v=344"></script>
+<script src="js/hud/instruments.js?v=344"></script>
+<script src="js/hud/hud-models.js?v=344"></script>
+<script src="js/hud/tiles-sys.js?v=344"></script>
+<script src="js/hud/hud-c25.js?v=344"></script>
+<script src="js/lib/paint.js?v=344"></script>
+<script src="js/world/art/rex-kit.js?v=344"></script>
+<script src="js/world/art/firstlight.js?v=344"></script>
+<script src="js/world/art/crimson.js?v=344"></script>
+<script src="js/world/art/bonespire.js?v=344"></script>
+<script src="js/world/art/titans.js?v=344"></script>
+<script src="js/world/art/valkhar.js?v=344"></script>
+<script src="js/world/art/law.js?v=344"></script>
+<script src="js/world/art/land-kit.js?v=344"></script>
+<script src="js/world/art/shattered.js?v=344"></script>
+<script src="js/world/art/libertech.js?v=344"></script>
+<script src="js/world/art/dawn.js?v=344"></script>
+<script src="js/world/art/accord.js?v=344"></script>
+<script src="js/world/art/gore.js?v=344"></script>
+<script src="js/world/world.js?v=344"></script>
+<script src="js/world/vortex.js?v=344"></script>
+<script src="js/world/void.js?v=344"></script>
+<script src="js/world/watcher.js?v=344"></script>
+<script src="js/world/serus.js?v=344"></script>
+<script src="js/world/nephilim.js?v=344"></script>
+<script src="js/world/admin-tear.js?v=344"></script>
+<script src="js/world/vikings.js?v=344"></script>
+<script src="js/world/rex.js?v=344"></script>
+<script src="js/world/city.js?v=344"></script>
+<script src="js/ship/voidship-art.js?v=344"></script>
+<script src="js/ship/voidship-prow.js?v=344"></script>
+<script src="js/ship/voidship.js?v=344"></script>
+<script src="js/lib/pacer.js?v=344"></script>
+<script src="js/bridge/marks.js?v=344"></script>
+<script src="js/bridge/bridge-sites.js?v=344"></script>
+<script src="js/bridge/bridge-log.js?v=344"></script>
+<script src="js/bridge/bridge-voice.js?v=344"></script>
+<script src="js/bridge/bridge.js?v=344"></script>
+<script src="js/bridge/bridge-notes.js?v=344"></script>
+<script src="js/bridge/bridge-input.js?v=344"></script>
+<script src="js/bridge/bridge-motifs.js?v=344"></script>
+<script src="js/bridge/bridge-marks.js?v=344"></script>
+<script src="js/bridge/bridge-poi.js?v=344"></script>
+<script src="js/bridge/bridge-panel.js?v=344"></script>
+<script src="js/bridge/bridge-depths.js?v=344"></script>
+<script src="js/bridge/bridge-env.js?v=344"></script>
+<script src="js/bridge/bridge-readout.js?v=344"></script>
+<script src="js/bridge/bridge-loop.js?v=344"></script>
+<script src="js/genesis/genesis-state.js?v=344"></script>
+<script src="js/genesis/genesis-paint.js?v=344"></script>
+<script src="js/genesis/genesis-eldpal.js?v=344"></script>
+<script src="js/genesis/genesis-tier3.js?v=344"></script>
+<script src="js/genesis/genesis-giants.js?v=344"></script>
+<script src="js/genesis/genesis-void.js?v=344"></script>
+<script src="js/genesis/genesis-flesh.js?v=344"></script>
+<script src="js/genesis/genesis-soup.js?v=344"></script>
+<script src="js/genesis/genesis-eye.js?v=344"></script>
+<script src="js/genesis/genesis-roles.js?v=344"></script>
+<script src="js/genesis/genesis-circle.js?v=344"></script>
+<script src="js/genesis/genesis-chains.js?v=344"></script>
+<script src="js/genesis/genesis-corrupt.js?v=344"></script>
+<script src="js/genesis/genesis-rexin.js?v=344"></script>
+<script src="js/genesis/genesis-dot.js?v=344"></script>
+<script src="js/genesis/genesis-clash.js?v=344"></script>
+<script src="js/genesis/genesis-death.js?v=344"></script>
+<script src="js/genesis/genesis-gods-beat.js?v=344"></script>
+<script src="js/genesis/genesis-elements.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds-plant.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds-metal.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds-cloud.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds-odd.js?v=344"></script>
+<script src="js/genesis/genesis-ceilclouds.js?v=344"></script>
+<script src="js/genesis/genesis-ceilshapes.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds2.js?v=344"></script>
+<script src="js/genesis/genesis-ceilkinds3.js?v=344"></script>
+<script src="js/genesis/genesis-ceilmembrane.js?v=344"></script>
+<script src="js/genesis/genesis-ceiling.js?v=344"></script>
+<script src="js/genesis/genesis-sky.js?v=344"></script>
+<script src="js/genesis/genesis-matter.js?v=344"></script>
+<script src="js/genesis/genesis-trade.js?v=344"></script>
+<script src="js/genesis/genesis-oldones.js?v=344"></script>
+<script src="js/genesis/genesis-oldkin.js?v=344"></script>
+<script src="js/genesis/genesis-rocktitans.js?v=344"></script>
+<script src="js/genesis/genesis-attire.js?v=344"></script>
+<script src="js/genesis/genesis-figures.js?v=344"></script>
+<script src="js/genesis/genesis-titans.js?v=344"></script>
+<script src="js/genesis/genesis-obrok.js?v=344"></script>
+<script src="js/genesis/genesis-gods.js?v=344"></script>
+<script src="js/genesis/genesis-hosts.js?v=344"></script>
+<script src="js/genesis/genesis-seraphin.js?v=344"></script>
+<script src="js/genesis/genesis-malgrur.js?v=344"></script>
+<script src="js/genesis/genesis-vorgath.js?v=344"></script>
+<script src="js/genesis/genesis-mainland.js?v=344"></script>
+<script src="js/genesis/genesis-armies.js?v=344"></script>
+<script src="js/genesis/genesis-orb.js?v=344"></script>
+<script src="js/genesis/genesis-rex.js?v=344"></script>
+<script src="js/genesis/genesis-depths.js?v=344"></script>
+<script src="js/genesis/genesis-saga-state.js?v=344"></script>
+<script src="js/genesis/genesis-ritual.js?v=344"></script>
+<script src="js/genesis/genesis-saga.js?v=344"></script>
+<script src="js/genesis/genesis.js?v=344"></script>
+<script src="js/site/lazy-video.js?v=344"></script>
+<script src="js/shared/heavylight-sprites.js?v=344"></script>
+<script src="js/site/stage.js?v=344"></script>
+<script src="js/site/creep.js?v=344"></script>
+<script src="js/site/work-preview.js?v=344"></script>
+<script src="js/site/banner.js?v=344"></script>
+<script src="js/site/shapes.js?v=344"></script>
+<script src="js/site/xp-games.js?v=344"></script>
+<script src="js/site/xp-pic.js?v=344"></script>
+<script src="js/site/barwear.js?v=344"></script>
+<script src="js/site/redlines.js?v=344"></script>
+<script src="js/site/intro.js?v=344"></script>
 </body>
 </html>

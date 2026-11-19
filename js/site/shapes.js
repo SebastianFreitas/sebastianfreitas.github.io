@@ -1776,7 +1776,7 @@
   function xpShape(el) {
     const red = redOf(el);
     const XW = 1660, XH = 908, XANG = -3 * Math.PI / 180;      /* desktop fallback: one fixed size and tilt, never rebuilt from the window */
-    let mode = null;
+    let mode = null, fontsHooked = false;
     /* desktop: the top edge is the last Work row's bottom edge moved down its normal by the row-to-row gap (perpendicular distance between two rows' parallel edges), same length;
        everything is in design px (rects divided by the stage zoom), so the result is the same at every window size. Returns {W, dy, left, top} (left/top: where the box sits, page design px) or null */
     function hang() {
@@ -1809,7 +1809,7 @@
         const d0 = hg ? hg.dy : Math.max(0, Math.tan(XANG) * -1) * (XW - 0.028 * XW), pt = d0 + 22 - 48 * (d0 / (0.972 * W)) + 62;
         el.style.setProperty("--xp-pt", pt.toFixed(1) + "px");
         H = XH + (pt - 182) + 33; el.style.height = H.toFixed(1) + "px";
-      } else { el.style.removeProperty("--xp-pt"); el.style.height = ""; }
+      } else { el.style.removeProperty("--xp-pt"); el.style.height = ""; el.querySelectorAll("li").forEach(function (li) { li.style.marginBottom = ""; }); }   /* clear the desktop row spread (colsFor) so a narrowed window gets the phone stack */
       if (!W || !H) return;
       mode = phone;
       let ang = XANG;
@@ -1821,6 +1821,15 @@
         el.style.marginLeft = (hg.left - er.left / k).toFixed(1) + "px";
         el.style.marginTop = (hg.top - er.top / k).toFixed(1) + "px";
       } else { el.style.removeProperty("--xp-W"); el.style.width = ""; el.style.left = ""; el.style.marginLeft = ""; el.style.marginTop = ""; }
+      if (document.fonts && !fontsHooked) { fontsHooked = true; document.fonts.ready.then(function () { draw(); }); }   /* the caption height depends on the web fonts: measure again once they swap in */
+      if (hg) {   /* the plate ends 64 px under the strip captions: the bottom edge there (left end of the strip, where it is highest) sits at 0.735 H + 0.265 H x / (0.297 W) */
+        const nm = el.querySelector(".xp-games .xg-name"), gm = el.querySelector(".xp-games");
+        if (nm && gm) {
+          const k = window.Stage ? window.Stage.s() : 1, er = el.getBoundingClientRect(), gr = gm.getBoundingClientRect(), need = (nm.getBoundingClientRect().bottom - er.top) / k + 64;
+          const fl = 0.735 + 0.265 * Math.min((gr.left - er.left) / k / (0.297 * W), 1), fr = 1 - Math.max((gr.right - er.left) / k - 0.297 * W, 0) / (0.703 * W);
+          H = need / Math.min(fl, fr); el.style.height = H.toFixed(1) + "px";
+        }
+      }
       const x0 = 0.028 * W;
       const dy = hg ? hg.dy : Math.max(0, -Math.tan(ang)) * (W - x0);       /* top-left drop so the top edge matches the row's tilt */
       const by = phone ? 0.95 * H : 0.735 * H;                 /* bottom-left corner */
@@ -1837,85 +1846,37 @@
       }
       wkEdgeLight(el, lit, "--xp-clip");
       el.style.setProperty("--xp-dy", dy.toFixed(1) + "px");
-      /* desktop: the cards' text sits on top (the date 28 px under the label row) and each card's pictures are a column of stacked tiles under it: one level top line shared by the columns (24 px under the lowest text line), running down past the plate's bottom where the plate's own outline cuts them; neighbouring columns touch, every edge is a plain cut leaning like the red-line edge (pts[0] to pts[3]); phone: the photo is a plain 16:9 box again */
+      /* desktop: the cards' text sits on top (the date 28 px under the label row) and DF Block's one photo is static (colsFor); phone: the photo is a plain 16:9 box again */
       stripsFor(el, pts, H, x0, dy, by, phone);
       footerFix(el, phone);
-      eduDraw(hg);
     }
-    function stripsFor(el, pts, H, x0, dy, by, phone) {   /* returns the lowest text line (plate px), 0 on phones */
-      const SL = ["--xs-l", "--xs-t", "--xs-w", "--xs-h", "--xs-clip"], lis = el.querySelectorAll(".xp li");
-      let low = 0;
-      if (phone) {
-        el.style.removeProperty("--xp-when-mt");
-        lis.forEach(function (li) { const p = li.querySelector(".xp-pic"); if (p) { SL.forEach(function (n) { p.style.removeProperty(n); }); const st = p.querySelector(".xp-strip"); if (st) st.remove(); } });
-      } else if (lis.length) {
-        const k = window.Stage ? window.Stage.s() : 1, er = el.getBoundingClientRect(), s = (0 - x0) / (by - dy), cards = [], whens = el.querySelectorAll(".xp-when");
-        let lab = 0;
-        el.querySelectorAll(".section-title").forEach(function (h) { lab = Math.max(lab, (h.getBoundingClientRect().bottom - er.top) / k); });
-        if (whens.length) el.style.setProperty("--xp-when-mt", ((parseFloat(getComputedStyle(whens[0]).marginTop) || 0) + lab + 28 - (whens[0].getBoundingClientRect().top - er.top) / k).toFixed(1) + "px");
-        lis.forEach(function (li) {
-          const lr = li.getBoundingClientRect();
-          cards.push({ li: li, x: (lr.left - er.left) / k, w: lr.width / k });
-          Array.prototype.forEach.call(li.children, function (c) { if (!c.classList.contains("xp-pic")) low = Math.max(low, (c.getBoundingClientRect().bottom - er.top) / k); });
-        });
-        const yLvl = low + 24, yTop = yLvl - 110, hh = Math.max(0, H - yTop), sd = s * hh;   /* the columns start 110 px above the old level line, behind the lower text, under the css fade (180 px: full 70 px under the old line) */
-        cards.forEach(function (c, i) {
-          const pic = c.li.querySelector(".xp-pic"); if (!pic) return;
-          const nx = cards[i + 1], half = nx ? (nx.x - c.x - c.w) / 2 : 20, pv = cards[i - 1], phalf = pv ? (c.x - pv.x - pv.w) / 2 : 20;
-          const ul = (pv ? pv.x + pv.w + phalf : pts[0][0] + s * (yLvl - pts[0][1])) + s * (yTop - yLvl), ur = (nx ? c.x + c.w + half + 0.6 : c.x + c.w + half - 7) + s * (yTop - yLvl);   /* the edges stay on their lines, taken at the old level and moved up to the new top; a column with a right neighbour runs 0.6 px under it (the neighbour paints on top, so no plate hairline shows) */
-          const l = Math.min(ul, ul + sd), cw = Math.max(ur, ur + sd) - l, w = ur - ul, th = w * 0.62, pad = Math.abs(s) * th + 2;
-          pic.style.setProperty("--xs-l", l.toFixed(1) + "px"); pic.style.setProperty("--xs-t", yTop.toFixed(1) + "px");
-          pic.style.setProperty("--xs-w", cw.toFixed(1) + "px"); pic.style.setProperty("--xs-h", hh.toFixed(1) + "px");
-          pic.style.setProperty("--xs-clip", "polygon(" + clipConvex([[ul, yTop], [ur, yTop], [ur + sd, yTop + hh], [ul + sd, yTop + hh]], pts).map(function (p) { return (p[0] - l).toFixed(1) + "px " + (p[1] - yTop).toFixed(1) + "px"; }).join(", ") + ")");   /* the column's parallelogram cut by the plate quad, in the pic's own px */
-          /* the strip: the card's pictures (its img, then data-slides) as tiles, column width by 0.62 of it, touching, repeated from the first until the column passes the plate's bottom; tiles below the first load lazily */
-          if (!pic._xpSrc) {
-            let list = []; try { list = JSON.parse(pic.getAttribute("data-slides") || "[]"); } catch (e) { list = []; }
-            const f = pic.querySelector(":scope > img");
-            pic._xpSrc = (f ? [{ s: f.getAttribute("src"), a: f.alt, t: f.title }] : []).concat(list.map(function (q) { return { s: q.s, a: q.a, t: q.t }; }));
-          }
-          const src = pic._xpSrc; if (!src.length || !(th > 0)) return;
-          let st = pic.querySelector(".xp-strip"); if (!st) { st = document.createElement("div"); st.className = "xp-strip"; pic.appendChild(st); }
-          const n = Math.ceil(hh / th) + 1;   /* one tile more than the column shows: the film strip (xp-slides.js) slides it in from below */
-          const same = st._xp && st._xp.th === th && st.children.length === n;   /* a redraw that changes neither the tile height nor the count leaves a running strip where it is */
-          st._xp = { th: th, ul: ul, s: s, pad: pad, l: l };
-          if (!same) { st._gen = (st._gen || 0) + 1; st._k = 0; st._sl = false; st.style.transition = "none"; st.style.transform = ""; }
-          while (st.children.length > n) st.lastChild.remove();
-          while (st.children.length < n) {
-            const j = st.children.length, q = src[j % src.length], im = new Image();
-            im.alt = q.a || ""; if (q.t) im.title = q.t; im.decoding = "async"; if (j) im.loading = "lazy"; im.src = q.s;
-            st.appendChild(im);
-          }
-          for (let j = 0; j < n; j++) { const jj = st._k + j, q = src[jj % src.length], t = st.children[j]; t.alt = q.a || ""; if (q.t) t.title = q.t; else t.removeAttribute("title"); if (t.getAttribute("src") !== q.s) t.src = q.s; st.children[j].style.cssText ="position:absolute;object-fit:cover;top:" + (jj * th).toFixed(1) + "px;left:" + (ul + s * (jj * th + th / 2) - pad - l).toFixed(1) + "px;width:" + (w + 2 * pad).toFixed(1) + "px;height:" + (th + 0.5).toFixed(1) + "px"; }
-        });
-      }
-      return low;
+    function stripsFor(el, pts, H, x0, dy, by, phone) {
+      const pic = el.querySelector(".xp li .xp-pic");
+      if (phone) { if (pic) { pic.style.cssText = ""; pic.querySelectorAll("img").forEach(function (im) { im.style.cssText = ""; }); } return; }
+      colsFor(el, pts, H, pic, dy);
     }
-    /* the University plate: under the Experience box, 0.4 of its width (the same top-edge slope, the same left lean); desktop height follows its text (the label row, date, name, BSc line) plus one picture; phone: the phone quad of the Experience box */
-    function eduDraw(hg) {
-      const ed = document.querySelector(".xp-edu-plate"); if (!ed) return;
-      const phone = !hg, k = window.Stage ? window.Stage.s() : 1;
-      let We = 0, He = 0;
-      if (phone) {
-        ["--eu-W", "--xp-pt"].forEach(function (n) { ed.style.removeProperty(n); }); ["width", "height", "left", "marginLeft"].forEach(function (n) { ed.style[n] = ""; });
-        We = ed.offsetWidth; He = ed.offsetHeight;
-      } else {
-        We = hg.W * 0.4;
-        ed.style.setProperty("--eu-W", We.toFixed(1) + "px");
-        ed.style.width = We.toFixed(1) + "px"; ed.style.left = "0px"; ed.style.marginLeft = document.querySelector(".xp-shape").style.marginLeft;
-        const d0 = hg.dy / (0.972 * hg.W) * 0.972 * We, pt = d0 + 22 - 48 * (d0 / (0.972 * We)) + 62;
-        ed.style.setProperty("--xp-pt", pt.toFixed(1) + "px");
-        const x0 = 0.028 * We, low0 = stripsFor(ed, [[x0, d0], [We, 0], [We, 600], [0, 480]], 600, x0, d0, 480, false);
-        He = low0 + 24 + 70 + 250; ed.style.height = He.toFixed(1) + "px";
-      }
-      if (!We || !He) return;
-      const x0 = 0.028 * We, d0 = phone ? Math.max(0, -Math.tan(-3 * Math.PI / 180)) * (We - x0) : hg.dy / (0.972 * hg.W) * (We - x0), by = phone ? 0.95 * He : 0.8 * He;
-      if (phone) { const rows = document.querySelectorAll(".work > a.obj[data-wornquad]"); if (rows.length) ed.style.setProperty("--xp-dy", (Math.max(0, Math.tan(WK_BOT[(rows.length - 1) % WK_BOT.length] * Math.PI / 180)) * (We - x0)).toFixed(1) + "px"); }
-      const dyE = phone ? parseFloat(ed.style.getPropertyValue("--xp-dy")) || d0 : d0, pts = phone ? [[x0, dyE], [We, 0], [We, He], [0, by]] : [[x0, dyE], [We, 0], [0.94 * We, He], [0, by]];
-      quad(ed, null, pts, "--xp-clip");
-      const xn = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]) || 1;
-      wearPlate(ed, "edu-wear", [[pts[0], pts[1]]], undefined, { c: 1, sd: [(pts[2][0] - pts[1][0]) / xn, (pts[2][1] - pts[1][1]) / xn] });
-      ed.style.setProperty("--xp-dy", dyE.toFixed(1) + "px");
-      stripsFor(ed, pts, He, x0, dyE, by, phone);
+    /* desktop Experience: two columns, G.ROUND left (its .xp-games box under the text) and DF Block right; DF Block's one static photo fills from just past its text to the diagonal, cut by the plate's worn outline (css fades its left and bottom) */
+    const PIC_AT = [0, [0.72, 0.4], [0.35, 0.45], [0.62, 0.45]];   /* DOM order of the DF photos: camera, then dfblock-1, 4, 5; each one's subject as source fractions */
+    function colsFor(el, pts, H, pic, dy) {
+      const lis = el.querySelectorAll(".xp > li"), k = window.Stage ? window.Stage.s() : 1, W = pts[1][0], er = el.getBoundingClientRect();
+      if (lis.length < 2 || !pic) return;
+      const cutAll = wkCutTop(pts, 1, el._wearHoles);
+      const imgs = pic.querySelectorAll("img"), m = imgs[0], Y0 = -40, Y1 = H + 20, ax = (lis[1].getBoundingClientRect().left - er.left) / k - 24;   /* the photo fills the DF side: from just left of its text to the diagonal */
+      pic.style.cssText = "left:0;top:0;width:" + W.toFixed(1) + "px;height:" + H.toFixed(1) + "px";
+      const pr = pic.getBoundingClientRect();   /* its containing block is the card, not the plate: shift it back onto the plate's corner */
+      pic.style.left = ((er.left - pr.left) / k).toFixed(1) + "px"; pic.style.top = ((er.top - pr.top) / k).toFixed(1) + "px";
+      const c = clipConvex(cutAll, [[ax, Y0], [W + 40, Y0], [W + 40, Y1], [ax, Y1]]); if (!m || c.length < 3) return;
+      /* the photo keeps its own size (1.8 x at 1660 wide) placed so the upper camera dome (source 380,40; lens bottom 85 of 720x405) sits in the open corner right of the text, clear of the diagonal;
+         the img is cut by the plate outline, the pic's mask (css, --xp-ax / --xp-aw) is the left fade */
+      /* fitted from the diagonal: the dome (source x 300..460, y 30..85) sits 14 px under the plate's top line and its lower right corner 40 px left of the diagonal (x = W - 0.703 W y / H) */
+      const sc = 1.55 * W / 1660, nw = 720 * sc, nh = 405 * sc, yt = dy * (W - 0.85 * W) / (W - 0.028 * W) + 14, yb = yt + 55 * sc;
+      const ox = W - 0.703 * W * yb / H - 40 - 0.12 * W - 460 * sc, oy = yt - 30 * sc;
+      pic.style.setProperty("--xp-ax", ax.toFixed(1) + "px"); pic.style.setProperty("--xp-aw", (W - ax).toFixed(1) + "px");
+      const place = function (im, x, y, w, h) { im.style.cssText = "left:" + x.toFixed(1) + "px;top:" + y.toFixed(1) + "px;width:" + w.toFixed(1) + "px;height:" + h.toFixed(1) + "px;clip-path:polygon(" + c.map(function (p) { return (p[0] - x).toFixed(1) + "px " + (p[1] - y).toFixed(1) + "px"; }).join(", ") + ")"; };
+      place(m, ox, oy, nw, nh);
+      /* the other three (xp-pic.js cross-fades them in): 1.45 W / 1660 scale, each with its subject (PIC_AT, source fractions) centred in the open corner right of the text, 0.2 W left of the diagonal */
+      const s2 = 1.45 * W / 1660, w2 = 720 * s2, h2 = 405 * s2, yc = yt + 0.09 * H, xc = W - 0.703 * W * yc / H - 0.2 * W;
+      for (let n = 1; n < imgs.length; n++) { const at = PIC_AT[n] || [0.5, 0.5]; place(imgs[n], Math.max(xc - at[0] * w2, W + 40 - w2), yc - at[1] * h2, w2, h2); }   /* never short of the diagonal: the img's right edge stays past the plate */
     }
     function footerFix(el, phone) {
       /* the contact strip under the plate lines up with the heading: plate left + its left padding, measured from the strip's own unshifted left */

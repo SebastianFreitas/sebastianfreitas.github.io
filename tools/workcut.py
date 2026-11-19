@@ -298,6 +298,8 @@ def main():
                 set_zoom(d, live)
                 time.sleep(1.5)
             time.sleep(1)
+            # the Experience photo cross-fade (xp-pic.js, every ~5 s) is not under test, and on a big window it starves the hover transitions so samples land mid-way: freeze it
+            d.execute_script("const s=document.createElement('style'); s.textContent='.xp-pic img{transition:none!important}'; document.head.appendChild(s)")
             # the zoom can slide a row under the headless pointer (is-peek); park the pointer off every row and tab first
             pt = d.execute_script(JS_PARK)
             if pt:

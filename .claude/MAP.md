@@ -114,11 +114,12 @@ shares `Gen`:
 | `creep.js` | Homepage page-darkness gradient from the bridge's bottom colour down to the boxes' black (never darker), still; `?bg=1` shows an owner tuning panel, localStorage `bgTune2` | `window.Creep {place}` |
 | `banner.js` | Seeded cream text banner: plate = main's `.xp-name` recipe, tab = nav tab; `apply` masks `[data-banner]` labels (bullet below) | `window.Banner {schema, params, ready, draw, dataURL, apply}` |
 | `barwear.js` | Top bar, 1200 px+ fine pointer: 3-4 small glass breaks cut into the plate's wave (CSS var `--bar-cut`) in the empty stretches beside the rank slot, plus a catch-light svg `.bar-lit`; redraws on resize | `window.BarWear {apply, info}` |
+| `xp-pic.js` | DF Block photos: cross-fades the four `.xp-pic` imgs (`.on`, css opacity 1.2 s) every 6 s, camera first; one setTimeout chain, paused off screen / tab hidden / reduced motion; loads only the next (`data-src`); phone keeps the camera | none |
+| `xp-games.js` | G.Round tile strip (28 tiles, newest first; 3 without a Steam page are plain name tiles `.xg-plain`, no link; any count works): prev/next buttons scroll the `.xp-games` snap row one tile, disable at the ends; no timers | `window.XpGames {sync}` |
 | `shapes.js` | Seeded raster wear masks (`--wear`) on `[data-wear]` boxes; clips the Work rows and Experience plate with glass-break edges | `window.Shapes {rng, apply, wear, edgeProfile, wearPresets, wearKinds}` |
 | `art/wear/` | The tab hover paper mask: `tab-tl.png` (184x140, top-left corner) and `tab-br.png` (160x140, bottom-right), used by `.topbar nav a::before` in `css/style.css` (18px / 16px corners, solid middle strip) | none |
 | `redlines.js` | Seeded red line pieces on plates (Work rows, cards, notes, 404, case bodies): one `svg.redlines` per `[data-redlines]` plate, edge read from its `::before` clip-path, lazy and size-debounced redraw | `RedLines.draw(el, opts)` |
 | `work-preview.js` | `window.WorkPreview`: hover or focus on a Work row marks it (`.is-peek`), plays its `video.obj-clip` only after a real pointer move (or focus), pauses out of view, hidden or after two loops with no move (`.obj-go` is always shown); see bullet below | none |
-| `xp-slides.js` | Experience `a.xp-pic` picture animation on row hover or focus (desktop) or while half on screen (phones); transform-only, timers, stops when hidden or reduced motion; detail in the bullet below | `window.XpSlides` |
 | `lazy-video.js` | Swaps in `media/**/sd/` encodes on slow connections | none |
 | `back.js` | Game pages only: "Back to Work" does `history.back()` when the referrer is the homepage (bfcache restore), else the href works | `BackLink.fromHome()` |
 - `banner.js` plate: tab PNGs as 37x28/32x28 end caps + `.xp-name` clip-path, no `Shapes.wear`
@@ -126,10 +127,11 @@ shares `Gen`:
 - `banner.js` titles: `TITLE_CLIP` per title (1-4 the Games titles, 5-7 the Experience titles on `.xp-t`), picked by `data-title="n"`, 1-based, wraps; new titles add `data-banner="tab" data-title`
 - `banner.js` apply: `Banner.apply(root)` paints `--banner: url(png)` (alpha mask, no text) on `[data-banner="plate|tab"]`, opt. `data-banner-on="before"` and `data-banner-seed`; ResizeObserver repaint; self-boots.
 - `shapes.js` row-glass: preset for the Work rows (desktop), glass breaks on their top edges (`LAYOUTS`) plus a catch-light (`wkEdgeLight`); `wearPlate`/`quad` clip the rows and the Experience plate.
-- `xp-slides.js`: at 1200 px and up the `.xp-strip` tiles slide up one tile per step and the top tile moves to the end (a stop or resize finishes on a whole tile); below 1200 px the sideways slideshow through `data-slides`.
-- `shapes.js` slices: text on top; at 1200 px and up `xpShape` sets each card's `--xs-*` (position, size, clip in plate px) and builds its `.xp-strip` film strip of tiles from `a.xp-pic._xpSrc` in a leaning column clip with straight cuts; below 1200 px the strip and `--xs-*` are removed.
-- `shapes.js` slice fit: `clipConvex()` intersects each strip clip with the plate quad so no picture shows outside the plate; `draw()` sets `--xp-W` (plate width), and the two columns (G.Round, DF Block), their gap and the left padding are fractions of it in `style.css`.
-- `shapes.js` University plate: `eduDraw()` sizes the University plate (`.xp-edu-plate`, a second `.xp-shape` under the box, 0.4 of its width, own `--eu-W`) with `quad`/`wearPlate`, and runs `stripsFor()` (the strip loop shared with the Experience box) on it.
+- `shapes.js` slices: text on top; at 1200 px and up `xpShape` sets the Experience box and `colsFor()` lays its two columns (G.ROUND left with the `.xp-games` tile-strip box, DF Block right)
+- `shapes.js` DF Block photo: `.xp-pic` holds four imgs (`dfblock-3` first), sized by `colsFor` to fill the DF side (DF text left edge to the diagonal, plate top to bottom), cut by the plate outline (`clipConvex`); css darkens and fades it; phone shows the camera only
+- `shapes.js` DF photo placement: `PIC_AT` in `colsFor` places each photo by its subject; `xp-pic.js` cross-fades them
+- `shapes.js` Experience plate height: content-based, strip captions bottom + 64 px (`draw`, redrawn after `document.fonts.ready`); `XH` and css `height` are only the first guess
+- `shapes.js` slice fit: `clipConvex()` intersects each row's picture clip with the plate quad so no picture shows outside the plate; `draw()` sets `--xp-W` (plate width); the Experience plate uses `colsFor` columns and its photo is clipped the same way.
 - `shapes.js`: kinds mode (opt-in `opts.kinds`) sets `el._wearSites` and `el._wearKinds`; no preset uses it yet.
 - `shapes.js`: nav links carry no `data-wear`; the tab hover paper is masked by the two old grainy PNG corners in `art/wear/` (css `.topbar nav a::before`).
 - `shapes.js` wear: `Shapes.wear(el, preset, seed)` paints a seeded PNG mask into `--wear` and sets `--shape: none`; 10 presets in `wearPresets` (depth as % of the short side, bites per edge, corner chips).
@@ -515,10 +517,10 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/play.css` | The case-page play layer: `.play` canvas (z -1, under the ladder), `.play-tiles` page-coordinate canvases (same z, above it), `.play-ui` panels (z 2) and `.play-hint`; all hidden under 900 px. Game pages only |
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `wash.webp`, `folder-glow.webp` (were in `css/art/`) | Archived outside the repo under `portfolio-archive/2026-11-18-review/`; no longer used |
-| `index.html` | Homepage; Experience plate (G.Round, DF Block) and a small University plate (`.xp-edu-plate`) under it; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
-| `media/experience/` | `ground-1..6`, `dfblock-1..6`, `uminho-1..3` `.webp` (16:9, 720 px): the Experience pictures; `-1` is the visible img, the rest load on first slide (`xp-slides.js`); `CREDITS.md` has the DF Block photo credits |
+| `index.html` | Homepage; Experience plate (G.Round, DF Block); footer has the education line; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
+| `media/experience/` | Experience pictures: `ground-1..26.webp` (G.Round `.xg-tile` strip), `dfblock-1,3,4,5.webp` (DF Block photos), `ground-brand.webp` (G.ROUND logo bg); `CREDITS.md` credits the photos and logo |
 | `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
-| `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it as before (css/style.css, comment in index.html). Plate height is `XH` 890 in js/site/shapes.js and `height: 890px` in css/style.css |
+| `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it (css/style.css, comment in index.html) |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
 | `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); three stages (`#vs-bench-stage`, `#vs-map-stage`, `#vs-range-stage`), bench and range started by `Play.stage(...)` in the page script, the map from its own JS |
@@ -550,6 +552,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/try_commit.py` | Shared (synced). The owner's Commit |
 | `tools/autoplan.py` | Shared (synced). Run a plan unattended |
 | `serve.py` / `serve.bat` | No-cache static server, port from `PORT` env or `sys.argv[1]`, default 8765; always serves its own folder (`os.path.dirname(__file__)`), not the caller's cwd, so it works run from a worktree (8000 avoided: stale SW) |
+- `media/experience/`: ground tiles are plain 460x215 Steam headers; dfblock photos 16:9, 720 px; ground-brand is the 600 px gameround.co logo, dimmed behind the G.ROUND side of the Experience box.
 - `tools/pagecheck.py`: `<page>` is `index.html`, `index.html#<row id>` or a game page such as `projects/sector-zero.html`
 - `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with the name, the line and one centred cream hairline bar (`css/gate.css`); no dirt, no redlines.
 - `css/game-pages.css`: ends with a "per page" part for rules only one page needs, keyed `main.case[data-redlines="case-<page>"]` (HeavyLight's opener); `.clip.gp-narrow` caps 4:3 or taller media at 50rem. Game pages carry no `<style>` block
