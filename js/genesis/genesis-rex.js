@@ -132,8 +132,18 @@ window.GenRex = (function () {
   })();
 
   function drawRexLand(ctx, rise, originX, originY, floorY) {
-    if (rise < 0.02) return;
+    const tL = since("land");
+    if (tL < 0.003) return;
     const cool = smooth(clamp((since("land") - 0.22) / 0.65, 0, 1));
+    /* it starts at the fallen body (originX, originY) and spreads left and right along the bottom
+       to a low top edge (~0.89 H, ~0.85 H under the womb), then goes on into the ridges below */
+    const spread = G.reduced ? 1 : smooth(clamp(tL / 0.3, 0, 1));
+    const grow = smooth(clamp((rise - 0.3) / 0.7, 0, 1));
+    const plat = (px, bi) => G.H * mix(0.89, 0.85, smooth(clamp((px / G.W - 0.55) / 0.15, 0, 1))) - (2 - bi) * 0.012 * G.H;
+    const early = (px, bi) => {
+      const g = smooth(clamp((spread * 1.4 - Math.abs(px - originX) / G.W) / 0.3, 0, 1));
+      return mix(G.H * 1.08, plat(px, bi), g);
+    };
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
     const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
     const yC = mix(originY, G.H * 1.16, rise);
@@ -151,7 +161,7 @@ window.GenRex = (function () {
       const right = Math.min(G.W + 80, sx(REX_EAST + 0.22 + widen * 0.15) + 10);
       for (const [px, wu] of gridXs(left, right, step)) {
         const h = rexLandHeight(wu, b);
-        pts.push([px, mix(yC, baseY - h * G.H, rise)]);
+        pts.push([px, mix(early(px, bi), mix(yC, baseY - h * G.H, rise), grow)]);
       }
       if (pts.length < 2) continue;
       const last = pts[pts.length - 1];
@@ -170,7 +180,7 @@ window.GenRex = (function () {
       }
       const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
       const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
-      ctx.globalAlpha = rise;
+      ctx.globalAlpha = Math.max(rise, clamp(tL / 0.02, 0, 1));
       fillRidge(ctx, pts, bottom, lit, shade);
       ctx.globalAlpha = 1;
     }
@@ -182,7 +192,7 @@ window.GenRex = (function () {
       ctx.lineJoin = "round";
       for (let k = 0; k < REX_CRACKS.length; k++) {
         const c = REX_CRACKS[k];
-        const cx = sx(c.u), cy = mix(yC, rexSurfY(c.u), rise) + 3;
+        const cx = sx(c.u), cy = mix(plat(cx, 1), mix(yC, rexSurfY(c.u), rise), grow) + 3;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         for (let i = 0; i < c.seg; i++) {

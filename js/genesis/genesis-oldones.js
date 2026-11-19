@@ -180,7 +180,8 @@ window.GenOld = (function () {
   function place(o, env) {
     const W = G.W, H = G.H, deckY = DECK * H;
     const idx = o.idx;
-    const { emerge, walk, cling, still, watch, flesh } = env;
+    const { emerge, walk, cling, watch, flesh } = env;
+    const still = 0;   // the kneel after the seal is no longer used: they stand and watch
 
     /* dressing: one east-goer at a time, held at the snap */
     const dt = dressT(o);
@@ -223,7 +224,7 @@ window.GenOld = (function () {
     }
     const sd = (o.idx || 0) + 1;
     const tl = (G.t || 0) + sd * 1.37;
-    const phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
+    let phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
     const isFlyer = o.move === "fly";
     if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * (held ? 0 : o.wake < 1 ? o.wake : 1);
     else y = deckY - 2 + STAND[o.kind].lane * 0.012 * H;
@@ -235,6 +236,7 @@ window.GenOld = (function () {
       x = part.x - (ax * Math.cos(part.tilt) - ay * Math.sin(part.tilt)); y = part.y - (ax * Math.sin(part.tilt) + ay * Math.cos(part.tilt));
     }
 
+    const yDeck = y;
     /* 4. cling to the body */
     if (o.side > 0 && flesh && cling > 0.05) {
       const ca = o.clingAng + G.t * o.spin * (1 - 0.85 * still);
@@ -254,7 +256,23 @@ window.GenOld = (function () {
       y = mix(y, ty, k);
     }
 
-    /* 5. kneel for the seal */
+    {
+      /* 4b. burst: let go of the womb, a short recoil away from the tear, then one smooth march back to the left to watch the fight */
+      const bs = G.secs("burst");
+      if (bs > 0 && o.side > 0) {
+        const u = G.reduced ? 1 : clamp(bs / 4.2, 0, 1);
+        const tx2 = W * (0.06 + 0.32 * hash1(idx * 5 + 9)), ty2 = yDeck;
+        const rc = G.reduced ? 0 : Math.sin(Math.PI * clamp(bs / 0.7, 0, 1)) * 0.03 * W;
+        const dx = x - 0.83 * W, dy = y - 0.47 * H, dl = Math.max(1, Math.hypot(dx, dy));
+        const m = smooth(u);
+        const x0 = x, y0 = y;
+        x = mix(x0, tx2, m) + rc * dx / dl * (1 - m);
+        y = mix(y0, ty2, m) + rc * dy / dl * (1 - m);
+        phase += Math.abs(x - x0) * 0.045 * o.gait;
+      }
+    }
+
+    /* 5. (no kneel: they stand and watch) */
     if (isFlyer) y = mix(y, deckY - 0.05 * H, still * 0.8);
 
     /* 6. alpha */
@@ -409,7 +427,7 @@ window.GenOld = (function () {
   // true once the `dress` beat has begun: before it every old one is bare;
   // each east-goer's own moment inside the beat is set below
   function dressNow() {
-    return G.BEATS.some((b) => b.id === "roles") && G.since("roles") > 0;
+    return false;   // the dress beat left the cutscene with the womb's inside: every old one stays bare
   }
 
   // one at a time: each east-goer gets its own moment inside the dress beat,
@@ -417,8 +435,7 @@ window.GenOld = (function () {
   var DRESS_T0 = 0.4, DRESS_T1 = 6.2, HOLD = 0.35, MAKE = 1.8;
   var _hasDressBeat = null;
   function hasDressBeat() {
-    if (_hasDressBeat === null) _hasDressBeat = G.BEATS.some((b) => b.id === "roles");
-    return _hasDressBeat;
+    return false;
   }
 
   // every old one but the three carers goes out, one by one left to right,
@@ -447,7 +464,7 @@ window.GenOld = (function () {
   }
   // seconds past this one's own snap (negative before, ~0 at the snap)
   function dressT(o) {
-    return hasDressBeat() ? G.secs("roles") - dressAt(o) : -Infinity;
+    return -Infinity;
   }
 
   // the headless, tailored gentleman: replaces the colossus. Bare (rough,
@@ -995,8 +1012,7 @@ window.GenOld = (function () {
   // weather: wind and frost, shared with GenAttire for the dressed old ones
   let _hasDress = null;
   function frostNow() {
-    if (_hasDress === null) _hasDress = G.BEATS.some(b => b.id === "roles");
-    return _hasDress ? G.since("roles") : 0;
+    return 0;
   }
   function windAt(t) {
     const WX = window.GenAttire && window.GenAttire.weather;
