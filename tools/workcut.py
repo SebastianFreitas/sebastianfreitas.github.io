@@ -135,6 +135,19 @@ const checkRow=(el,hover,fails)=>{
     else {
       if (!vis(go)) fails.push(tag+'tag is not visible');
       if (aop<0.95) fails.push(tag+'tag arrow is not shown on hover (opacity '+aop+')');
+      /* the banner is wiped, not faded: the computed transition (robust, a real-clock sample is not) is --wp over 240 ms and nothing else on both pseudo-elements */
+      const h3=el.querySelector(':scope > h3');
+      if (h3) for (const ps of ['::before','::after']) {
+        const pcs=getComputedStyle(h3,ps), props=pcs.transitionProperty.split(',').map(s=>s.trim()), durs=pcs.transitionDuration.split(',').map(s=>s.trim()), i=props.indexOf('--wp');
+        if (i<0 || parseFloat(durs[i%durs.length])!==0.24) fails.push(tag+'title banner '+ps+' hover transition is not --wp over 0.24s ('+pcs.transitionProperty+' / '+pcs.transitionDuration+')');
+        if (props.some(p=>p==='opacity'||p==='all'||p==='background-color'||p==='background')) fails.push(tag+'title banner '+ps+' fades (transition '+pcs.transitionProperty+'), it must be a wipe');
+        if (ps==='::before' && +pcs.opacity!==1) fails.push(tag+'title banner opacity is '+pcs.opacity+' on hover, expected 1');
+      }
+      if (h3 && matchMedia('(min-width: 1200px)').matches) {
+        const want=el.classList.contains('is-flip')?'to right':'to left', bg=getComputedStyle(h3,'::before').backgroundImage;
+        if (bg.indexOf(want)<0) fails.push(tag+'title banner wipes the wrong way: gradient is "'+bg.slice(0,40)+'", a '+(want==='to right'?'flip (left-aligned)':'non-flip (right-aligned)')+' row needs '+want);
+      }
+      if (ar) { const tm=new DOMMatrix(getComputedStyle(ar).transform); if (Math.abs(tm.e-4)>0.05) fails.push(tag+'settled tag arrow is at x '+tm.e.toFixed(2)+'px, expected 4'); }
       const b=go.getBoundingClientRect(), q=quadsOf(go,true)[0], flipRow=el.classList.contains('is-flip') && !matchMedia('(max-width: 1199px)').matches;   /* under 1200 px a flip row is drawn and laid out as a normal one */
       if (b.left < 0 || b.right > cw) fails.push(tag+'tag outside the window');
       for (const nm in grp) if (grp[nm].some(a=>hit(a,q))) fails.push(tag+'tag touches the '+nm);

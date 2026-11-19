@@ -569,6 +569,7 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   position: relative; isolation: isolate; width: fit-content; max-width: 100%;
   margin: 19px 0 0 0.25em; font-size: clamp(2.25rem, 3vw, 3rem); line-height: 0.95; color: #14110c; text-shadow: none;
 }
+@property --wp { syntax: "<number>"; inherits: false; initial-value: 0; }   /* the title banner's wipe, 0 to 1 (wide mouse hover rules) */
 .obj h3::before {
   content: ""; position: absolute; z-index: -1; pointer-events: none;
   top: -0.1em; bottom: -0.08em; left: -0.25em; right: -0.25em;
@@ -644,24 +645,38 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   /* the grid only holds the row's height; shapes.js (wkPlace) sets where each piece is drawn: --wk-h3, --wk-hk, --wk-fx, with --wk-ba the bottom edge's angle. One level layout, the same at rest and on hover: the title at the top-left corner, the hook under it (--wk-hw / --wk-hm: its width and the margin that keeps the grid's height), the facts at the bottom edge */
   .obj { --wk-tilt: 0deg; }
   /* rest: the title is plain cream text; hover or focus fades the torn banner in behind it and the letters turn dark; the tag fades in. Nothing moves */
-  .obj > h3 { color: var(--type-cream); transition: transform 0.3s ease, color 0.2s; }
-  .obj > h3::before { opacity: 0; transition: opacity 0.2s; }
-  .obj.is-peek > h3, .obj:focus-visible > h3, .obj:focus-within > h3 { color: #14110c; }
-  .obj.is-peek > h3::before, .obj:focus-visible > h3::before, .obj:focus-within > h3::before { opacity: 1; }
+  /* hover: the banner is a hard-edged wipe (--wp 0 to 1, 240 ms in, 160 ms out, from the title's aligned edge); a dark copy of the title (::after, text from data-t set by shapes.js) is clipped by the same edge, so letters turn dark exactly where the banner has covered them; the cream text under it turns dark when the wipe has ended. The tag's words and arrow follow 90 ms later */
+  .obj > h3 { color: var(--type-cream); transition: transform 0.3s ease, color 0s; }
+  .obj > h3::before { background: linear-gradient(to right, #f1ecd8 calc(var(--wp) * 100%), transparent 0); transition: --wp 0.16s cubic-bezier(.2, .7, .1, 1); }
+  .obj > h3::after {
+    content: attr(data-t) / ""; position: absolute; inset: 0; pointer-events: none; color: transparent;
+    background: linear-gradient(to right, #14110c calc(var(--wp) * (100% + 0.5em) - 0.25em), transparent 0);
+    -webkit-background-clip: text; background-clip: text; transition: --wp 0.16s cubic-bezier(.2, .7, .1, 1);
+  }
+  @media (min-width: 1200px) {   /* the right-aligned (non-flip) titles wipe from their right edge */
+    .obj:not(.is-flip) > h3::before { background: linear-gradient(to left, #f1ecd8 calc(var(--wp) * 100%), transparent 0); }
+    .obj:not(.is-flip) > h3::after { background-image: linear-gradient(to left, #14110c calc(var(--wp) * (100% + 0.5em) - 0.25em), transparent 0); }
+  }
+  .obj.is-peek > h3, .obj:focus-visible > h3, .obj:focus-within > h3 { color: #14110c; transition: transform 0.3s ease, color 0s 0.24s; }
+  .obj.is-peek > h3::before, .obj:focus-visible > h3::before, .obj:focus-within > h3::before,
+  .obj.is-peek > h3::after, .obj:focus-visible > h3::after, .obj:focus-within > h3::after { --wp: 1; transition-duration: 0.24s; }
   .obj > .obj-go { color: #8f8878; transition: color 0.2s; }
-  .obj > .obj-go > .go { opacity: 0; transition: transform 0.16s, opacity 0.2s; }
-  .obj.is-peek > .obj-go, .obj:focus-visible > .obj-go, .obj:focus-within > .obj-go { color: var(--type-cream); }
-  .obj.is-peek > .obj-go > .go, .obj:focus-visible > .obj-go > .go, .obj:focus-within > .obj-go > .go { opacity: 1; }
+  .obj > .obj-go > .go { opacity: 0; transform: translateX(-6px); transition: transform 0.16s, opacity 0.2s; }
+  .obj.is-peek > .obj-go, .obj:focus-visible > .obj-go, .obj:focus-within > .obj-go { color: var(--type-cream); transition-delay: 0.09s; }
+  .obj.is-peek > .obj-go > .go, .obj:focus-visible > .obj-go > .go, .obj:focus-within > .obj-go > .go { opacity: 1; transform: translateX(4px); transition-delay: 0.09s; }
   .obj > h3 { grid-column: 1; grid-row: 1 / span 4; align-self: start; margin: 0 0 0 0.25em; top: 0; transform-origin: 0 0; transform: var(--wk-h3, rotate(var(--wk-tilt))); }
   .obj > :is(.obj-hook, .obj-line, .props) { grid-column: 2; max-width: none; width: auto; transform-origin: 0 0; }
   .obj > .obj-hook { transform: var(--wk-hk, none); width: var(--wk-hw, auto); margin-bottom: var(--wk-hm, 0px); }   /* one layout, rest and hover: the same width and line breaks */
   .obj > .obj-line { transform: var(--wk-ln, none); width: var(--wk-lw, auto); margin-bottom: var(--wk-lm, 0px); }   /* under the hook, the hook's width, level; always shown, the same at rest and on hover */
-  .obj > .obj-det { transition: margin-left 0.2s; }   /* flipped rows: on hover the label's left margin gives back the square's growth (--wk-dm), so its right end stays and the text slides left */
-  .obj.is-peek > .obj-det, .obj:focus-visible > .obj-det, .obj:focus-within > .obj-det { margin-left: var(--wk-dm, 0px); }
-  .obj > .obj-det i { width: 0; margin-right: -12px; opacity: 0; transition: opacity 0.2s, width 0.2s, margin-right 0.2s; }   /* at rest the red square takes no space (width 0, its 12 px gap cancelled) so OBJ_000x starts at the title's edge; on hover it grows in and the label slides right by 9 + 12 px */
-  .obj.is-peek > .obj-det i, .obj:focus-visible > .obj-det i, .obj:focus-within > .obj-det i { width: 9px; margin-right: 0; opacity: 1; }
-  .obj.is-mirror > .obj-det i { order: 1; margin-right: 0; margin-left: -12px; transition: opacity 0.2s, width 0.2s, margin-left 0.2s; }   /* mirrored rows: the square is on the label's right (box-edge) side; on hover it grows in there and the label slides 21 px left, toward the centre */
-  .obj.is-mirror.is-peek > .obj-det i, .obj.is-mirror:focus-visible > .obj-det i, .obj.is-mirror:focus-within > .obj-det i { margin-left: 0; }
+  .obj > .obj-det { transition: margin-left 0.16s cubic-bezier(.2, .7, .1, 1); }   /* flipped rows: on hover the label's left margin gives back the square's growth (--wk-dm), so its right end stays and the text slides left */
+  .obj.is-peek > .obj-det, .obj:focus-visible > .obj-det, .obj:focus-within > .obj-det { margin-left: var(--wk-dm, 0px); transition-duration: 0.24s; }
+  .obj > .obj-det i { width: 0; margin-right: -12px; opacity: 0; transition: opacity 0.16s cubic-bezier(.2, .7, .1, 1), width 0.16s cubic-bezier(.2, .7, .1, 1), margin-right 0.16s cubic-bezier(.2, .7, .1, 1); }   /* at rest the red square takes no space (width 0, its 12 px gap cancelled) so OBJ_000x starts at the title's edge; on hover it grows in and the label slides right by 9 + 12 px */
+  .obj.is-peek > .obj-det i, .obj:focus-visible > .obj-det i, .obj:focus-within > .obj-det i { width: 9px; margin-right: 0; opacity: 1; transition-duration: 0.24s; }
+  .obj.is-mirror > .obj-det i { order: 1; margin-right: 0; margin-left: -12px; transition: opacity 0.16s cubic-bezier(.2, .7, .1, 1), width 0.16s cubic-bezier(.2, .7, .1, 1), margin-left 0.16s cubic-bezier(.2, .7, .1, 1); }   /* mirrored rows: the square is on the label's right (box-edge) side; on hover it grows in there and the label slides 21 px left, toward the centre */
+  .obj.is-mirror.is-peek > .obj-det i, .obj.is-mirror:focus-visible > .obj-det i, .obj.is-mirror:focus-within > .obj-det i { margin-left: 0; transition-duration: 0.24s; }
+  @media (prefers-reduced-motion: reduce) {
+    .obj > h3::before, .obj > h3::after, .obj > .obj-det, .obj > .obj-det i, .obj > .obj-go, .obj > .obj-go > .go { transition: none !important; }
+  }
   .obj > .props { transform: var(--wk-fx, none); }
   .obj.is-flip .props { justify-content: flex-end; }   /* the facts hug the bottom corner on the outer (right) side */
   /* the tag sits on the facts' baseline at the text column's inner end, with the facts' tilt (shapes.js: --wk-gt) */

@@ -1669,6 +1669,7 @@
         if (pass === 0) ghostFit(wide, wide && el.classList.contains("is-flip"));
         const W = el.offsetWidth, H = el.offsetHeight, flip = wide && el.classList.contains("is-flip");   /* flip: text right, picture left (css .is-flip) */
         el.classList.toggle("is-mirror", flip);   /* the hook the mirrored text css keys on (wkPlace lays the block out mirrored only then) */
+        const h3t = el.querySelector("h3"); if (h3t && !h3t.dataset.t) h3t.dataset.t = h3t.textContent;   /* the title's dark hover copy (css h3::after) */
         if (!W || !H) return;
         /* padding state: extras the text-inside check adds (top, bottom, left, right), reset when the width changes; cpl/cpr are the left/right extras now applied */
         if (!el._wk || el._wk.W !== W) ["pt", "pb", "pl", "pr"].forEach(function (v) { el.style.removeProperty("--wk-" + v); });
