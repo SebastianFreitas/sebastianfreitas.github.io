@@ -139,18 +139,23 @@
     g.fillRect(0.38 * L, -0.33 * L, 0.90 * L, 0.62 * L);
   }
 
-  function drawProw(g, ship, L, t) {
+  // the stone's rest ember; the hull sprite is built without it (noEmber) and the caller draws it live over the blit
+  function drawEmber(g, ship, L, t) {
+    const ember = emberOf(ship, t);
+    seg(g, REST_EMBER, L, rgba(C.RED, 0.2 * ember), Math.max(1.5, 0.016 * L));
+    seg(g, REST_EMBER, L, rgba(EMBER, 0.45 * ember), Math.max(1, 0.012 * L));
+  }
+
+  function drawProw(g, ship, L, t, noEmber) {
     const dir = (ship.face || 1) >= 0 ? 1 : -1;
     const px = Math.max(1, 0.012 * L);
-    const ember = emberOf(ship, t);
     // the far half of the ring, then the blade running back into the hull (facets and side blades) and the ember, then the ring's near half
     ring(g, L, 1, 0, () => {
       fillPoly(g, BODY, L, rgba(RUST_LIT, 1));
       FACETS.forEach(([pts, c]) => fillPoly(g, pts, L, rgba(c, 1)));
       SPURS.forEach(([pts, c]) => fillPoly(g, pts, L, rgba(c, 1)));
       GLINTS.forEach(([pts, c, a]) => seg(g, pts, L, rgba(c, a), px));
-      seg(g, REST_EMBER, L, rgba(C.RED, 0.2 * ember), Math.max(1.5, 0.016 * L));
-      seg(g, REST_EMBER, L, rgba(EMBER, 0.45 * ember), px);
+      if (!noEmber) drawEmber(g, ship, L, t);
       // the hull's plating overlaps the stone's root in three uneven steps (top longest, belly shortest); a dark seam where metal meets stone;
       // the gap between the middle and lower steps shows the stone running on underneath
       PLATES.forEach(([pts, c]) => fillPoly(g, pts, L, rgba(c, 1)));
@@ -173,14 +178,20 @@
   // screen x = u*c + r*cos(phi)*s, y = YM + r*sin(phi): yaw leaves y alone. Far half (cos phi > 0) paints, then the blade passes through, then the near half.
   const YM = -0.015;
   const RING_U = 0.43, RING_W = 0.06, RING_RO = 0.18, RING_RI = 0.17, RING_N = 32;
-  function ring(g, L, c, s, blade, hole) {
-    const px = Math.max(1, 0.012 * L), PI2 = Math.PI * 2, N = RING_N, cy = Math.sqrt(Math.max(0, 1 - s * s)), u0 = RING_U - RING_W * cy / 2, u1 = RING_U + RING_W * cy / 2, ro = RING_RO, ri = RING_RI;
+  // navy: the live ship's turn takes the dressed ring band's tones (voidship-hull dressRing: SHADE, FACE, LIT) in place of the grey
+  const NAVY = { SHADE: [47, 55, 82], MID: [61, 69, 101], LIT: [91, 100, 136], EDGE: [91, 100, 136] };
+  // the live turn's ring is the rest band turned: a navy collar as long as the band (hull anchors.ring, 0.088) with its radial thickness going inward over the blade's rim
+  // outer radius = the rest band's half height in the sprite (dressRing rows 198..446 on the big ship, L 590: 124 / 590)
+  const NAVY_W = 0.088, NAVY_RI = 0.10, NAVY_RO = 124 / 590;
+  function ring(g, L, c, s, blade, hole, navy) {
+    const C = navy ? Object.assign({}, A.COLORS, NAVY) : A.COLORS;
+    const px = Math.max(1, 0.012 * L), PI2 = Math.PI * 2, N = RING_N, cy = Math.sqrt(Math.max(0, 1 - s * s)), u0 = RING_U - (navy ? NAVY_W : RING_W) * cy / 2, u1 = RING_U + (navy ? NAVY_W : RING_W) * cy / 2, ro = navy ? NAVY_RO : RING_RO, ri = navy ? NAVY_RI : RING_RI;
     const P = (u, r, p) => [u * c + r * Math.cos(p) * s, YM + r * Math.sin(p)];
     const poly = (pts, col) => { g.beginPath(); pts.forEach((q, k) => k ? g.lineTo(q[0] * L, q[1] * L) : g.moveTo(q[0] * L, q[1] * L)); g.closePath(); g.fillStyle = rgba(col, 1); g.fill(); };
     const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
     const ramp = (l) => { const v = clamp((l + 0.8) / 1.6, 0, 1); return v < 0.5 ? mix(C.SHADE, C.MID, 2 * v) : mix(C.MID, C.LIT, 2 * v - 1); };
     const far = [], near = [];
-    for (let k = 0; k < N; k++) {
+    for (let k = 0; !navy && k < N; k++) {   // the navy turn draws its segments in plain loops below, no array per frame
       const pa = PI2 * k / N, pb = PI2 * (k + 1) / N, pm = (pa + pb) / 2, cs = Math.cos(pm), l = -Math.sin(pm) * 0.8 - cs * s * 0.5;
       const side = () => poly([P(u1, ri, pa), P(u1, ro, pa), P(u1, ro, pb), P(u1, ri, pb)], mix(ramp(0.1 - Math.sin(pm) * 0.7 * s * s), C.SHADE, 0.2));
       if (cs > 0) {
@@ -200,8 +211,29 @@
     const byDepth = (x, y) => y.d - x.d;
     far.sort(byDepth); near.sort(byDepth);
     if (hole > 0) { g.beginPath(); g.ellipse(RING_U * c * L, YM * L, ri * s * L, ri * L, 0, 0, PI2); g.fillStyle = rgba(C.SHADE, hole); g.fill(); }   // late in the turn the hole backs onto hull metal, never the sky
-    for (const it of far) it.fn();
-    if (blade) blade();
+    // navy: one segment's faces, drawn straight from its angle (what 0 = far inner wall, 1 = near outer wall, 2 = fore rim face)
+    // the collar is an eight-sided plate: facet k faces angle k*45 deg, corners at 22.5 deg plus multiples of 45 at radius r / cos(22.5 deg), so the flats sit at r
+    const OC = 1 / Math.cos(Math.PI / 8);
+    const navySeg = (k, what) => {
+      const pa = (k - 0.5) * Math.PI / 4, pb = (k + 0.5) * Math.PI / 4, pm = k * Math.PI / 4, l = -Math.sin(pm) * 0.8 - Math.cos(pm) * s * 0.5, ci = ri * OC, co = ro * OC;
+      if (what === 0) poly([P(u0, ci, pa), P(u1, ci, pa), P(u1, ci, pb), P(u0, ci, pb)], mix(ramp(-l), C.DEEP, 0.35));
+      else if (what === 1) poly([P(u0, co, pa), P(u1, co, pa), P(u1, co, pb), P(u0, co, pb)], ramp(l));
+      else poly([P(u1, ci, pa), P(u1, co, pa), P(u1, co, pb), P(u1, ci, pb)], mix(ramp(0.1), C.SHADE, 0.5));
+    };
+    // navy: a hollow eight-sided collar round the blade's root: far inner facets and the whole fore face before the blade, the near outer facets after it
+    if (navy) {
+      for (let j = -2; j <= 2; j++) navySeg((j + 8) % 8, 0);
+      for (let k = 0; k < 8; k++) navySeg(k, 2);
+    } else for (const it of far) it.fn();
+    if (navy && blade) {
+      // the blade's root never shows aft of the band's aft rim (it would sit over the hull as a muddy patch): clip out what lies left of the rim's near half
+      g.save(); g.beginPath(); g.rect(-10 * L, -10 * L, 20 * L, 20 * L);
+      for (let k = 0; k <= 4; k++) { const p = Math.PI / 2 + Math.PI * (k ? k - 0.5 : 0) / 4, r = k ? ro * OC : ro; (k ? g.lineTo : g.moveTo).call(g, (u0 * c + r * Math.cos(p) * s) * L, (YM + r * Math.sin(p)) * L); }
+      g.lineTo(u0 * c * L, (YM - ro) * L);
+      g.lineTo(-10 * L, (YM - ro) * L); g.lineTo(-10 * L, (YM + ro) * L); g.closePath(); g.clip('evenodd');
+      blade(); g.restore();
+    } else if (blade) blade();
+    if (navy) for (let k = 2; k <= 6; k++) navySeg(k, 1);
     for (const it of near) it.fn();
   }
 
@@ -265,8 +297,8 @@
     };
     // late in the turn the hull draws in from the blade's base: a solid seat of hull metal fills what would be a black slot, then narrows away with the hull
     { const wd = 0.055 * sm((yw - 1.32) / 0.1) * (1 - sm((yw - 1.44) / 0.08)); if (wd > 0.001) { g.fillStyle = rgba(C.SHADE, 1); g.fillRect((KX0 * c - wd) * L, KY0 * L, (wd + 0.02) * L, (KY1 - KY0) * L); } }
-    ring(g, L, c, s, stone, sm((yw - 1.38) / 0.08));
+    ring(g, L, c, s, stone, sm((yw - 1.38) / 0.08), true);
   }
 
-  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawProwTurn = drawProwTurn; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE };
+  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawEmber = drawEmber; A.drawProwTurn = drawProwTurn; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE };
 })();

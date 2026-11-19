@@ -13,6 +13,7 @@ sizes at read time).
 
 Owner's words → code names. Add a line when the owner uses a word the code does not.
 
+- the receptor mountain / the white part: the cream top of the hull sketch (tower, terraces and the instruments standing on them) in `js/ship/voidship-hull.js`; the tower's antenna = the three-mast bundle on the tower's crown
 - the ship's rolls/rotations: pitch = nose tilts in the screen plane (`ship.pitch`; capped +-90 deg so the belly never faces up; every press turns the ship to the aim first, the motors only engage once the nose is within ~10deg)
 - the ship's turn = yaw swing through head-on to face the other way (`yaw`/`yawTarget`, js/ship/voidship.js); barrel roll: dropped 2026-11-05
 - the lost city (in hell), Valkhar: Rex place `bnote-rex-valkhar` (world.js REX_PLACES, art js/world/art/valkhar.js, note in depths/lore.js)
@@ -223,14 +224,17 @@ does not — it is pure data, no dependency on `B`.
 | File | Purpose | Publishes |
 |---|---|---|
 | `voidship.js` | `BASE` tunables | `window.Voidship` |
-| `voidship-art.js` | Hull, wings, engine, fumes and wake painters | `window.VoidshipArt` |
+| `voidship-art.js` | Hull painter (blits the `VoidshipHull` sprite; mid-turn squashes it in x by the turn's cosine about the ring joint, blade by `drawProwTurn`), turn jets, fumes and wake painters | `window.VoidshipArt` |
 | `voidship-prow.js` | The shard | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwTurn, emberOf, PROW}` |
+| `voidship-hull.js` | The hull, side view at rest, wired in: `sprite(L, dpr)` bakes it once per size, `drawHull` blits it; `anchors` give the bell mouths and the ring | `window.VoidshipHull {drawRest, tintRing, dressRing, stats, sprite, anchors}` |
 
 - `voidship.js`: `create`, `setThrusting` (release rule), `step` (a held pointer sets `ship.demand` by its distance, d0..d1 → 0..100% of top speed, and `ship.engine`, the live output; wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw`
 - `voidship.js` publishes: `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, setAim, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}`
-- `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), geometry tables (`W_FAR ENGINE HULL BELLY OPANEL W_NEAR OWING POD BRIDGE T1 T2`, `FV_*` for the turn's cross-section ends),
-- `voidship-art.js`: `drawHull(g, ship, L, t, turn)` (side view at rest, built part by part in depth mid-turn), `drawTether(g, ship, env)` (the held-pointer thrust gauge: track d0..d1, fill = live speed, tick = demand), `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS`;
-- `voidship-art.js`: local frame +x nose, +y down, units of hull length L; the shard is delegated to `voidship-prow.js` (`drawProwBack` first, `drawProw` after the turrets at rest, `drawProwTurn` in its place mid-turn: the blade as one projected solid)
+- `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), bell seats `BELL_UP BELL_MAIN`,
+- `voidship-art.js`: `drawHull(g, ship, L, t, turn)` blits the `VoidshipHull` sprite; mid-turn the sprite is clipped aft of the ring's near rim and scaled in x by c about the ring joint, plus a darker fore end face (beam 0.7 of the hoop's height times sin, per sprite row), then `drawProwTurn`
+- `voidship-art.js`: `drawTether(g, ship, env)` (the held-pointer thrust gauge: track d0..d1, fill = live speed, tick = demand), `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS` (seated on the two bells; two trails)
+- `voidship-art.js`: local frame +x nose, +y down, units of hull length L; the shard is `voidship-prow.js`'s: at rest `drawProw` is baked into the hull sprite (no ember) and `drawEmber` draws the rest ember live over the blit, mid-turn `drawProwTurn` draws the blade as one projected solid
+- `voidship-hull.js`: script tag after `voidship-prow.js`; `tintRing` and `dressRing` are baked into the sprite (band tint; band structure and the purple clamp)
 - `voidship-prow.js`: a broken-off chunk of the giant energy-giving metal Libertech built the ship around, doubling as ram and power core.
 - `voidship-prow.js` rest shapes: `BODY FACETS SPURS RIDGE` (also `PROW`), two slabs `SLAB_T SLAB_S`, `STUMPS`, `GLINTS`, short ember `REST_EMBER` (alpha = `emberOf(ship, t)`: pulse + strain, fixed pulse under `Util.reduced()`)
 - `voidship-prow.js` turn tables: the same stone knife projected, a fat root filling the ring thinning to the flat tip: `PLATES SEAMS BRACES` at the root, `ring` at the hull joint (`RING_U RING_W RING_RO RING_RI`), depth `ZB`.
@@ -600,7 +604,7 @@ after `embed` and `shared/heavylight-sprites`, then `redlines`, then `intro.js`.
 Nothing uses `defer`/`async`. `intro.js` must stay last: it dispatches
 `site:preload` synchronously at top level. Order constraints inside a
 folder: core before parts (`world.js`, `depths.js`, `bridge.js`,
-`instruments.js`, kits before places, `voidship-art` before `voidship-prow` before `voidship`
+`instruments.js`, kits before places, `voidship-art` before `voidship-prow` before `voidship-hull` before `voidship`
 (the prow extends `VoidshipArt` at parse time)); `bridge-sites` before
 `bridge-voice`; `bridge-env` after `bridge-depths` and before
 `bridge-readout`; `genesis-flesh` before
@@ -641,7 +645,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | `litShade` | One copy, `js/lib/paint.js` |
 | Camera / pan / projection | `js/bridge/bridge.js` `B.camX`, `wx()`, `markScreen`; input in `js/bridge/bridge-input.js` |
 | Ship motion and feel | `js/ship/voidship.js` `BASE` + `step` + `setThrusting`; glue `bridge-input.js` `beginBurn`/`endBurn`/`retargetFromPointer`, `bridge-loop.js` `step`/`atRest` |
-| Ship art and fumes | `js/ship/voidship-art.js` (the dark wedge hull, wings, engine) and `js/ship/voidship-prow.js` (the red shard and the jaws that grip it); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
+| Ship art and fumes | `js/ship/voidship-art.js` (the hull painter) and `js/ship/voidship-prow.js` (the red shard and the jaws that grip it); particle schema where `voidship.js` spawns them (`fumeAcc +=`) |
 | Sector Zero storm (archived) | `archive/gamedev/js/gamedev/storm.js` |
 | VoidScape bench / console / floor plan | `js/forge/forge.js` (+ `forge-guns.js`, `forge-missions.js`); driven by `js/pages/voidscape-bench.js` |
 | Game-themed backdrops (archived) | `archive/gamedev/js/gamedev/zones.js`, `archive/gamedev/js/bridge/planet.js` |
