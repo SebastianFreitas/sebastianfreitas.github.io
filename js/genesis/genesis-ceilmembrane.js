@@ -6,10 +6,13 @@
 // draw(ctx, m, rimEnd) paints it, clipped to p. Near-black fill, cold navy rims and ocean-blue fold lines.
 (function () {
   const D0 = "#03050a", D1 = "#060a14", D2 = "#0a1222", D3 = "#0e1a33";
-  const NAVY = "#1d3f80", OCEAN = "#3f86b5", PALE = "#8cc4dc";
+  // every hue pulled 35% toward its own grey (same lightness): the ceiling's colour is an accent, not a field
+  const mute = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), L = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; return "#" + c.map((v) => ("0" + Math.round(L + (v - L) * 0.65).toString(16)).slice(-2)).join(""); };
+  const NAVY = mute("#1d3f80"), OCEAN = mute("#3f86b5"), PALE = mute("#8cc4dc");
   // murky hue families (source colours: the ceiling's wash leaves about a quarter): the four fill steps D0..D3, then a lighter rim step; plum, teal, mud, moss, slate
-  const FAMS = [["#332433", "#493349", "#664766", "#7a557a", "#996b99"], ["#1d3333", "#2a4949", "#3a6666", "#467a7a", "#579999"], ["#3c2c1c", "#58402a", "#7a5a3a", "#926c46", "#b48a5c"],
+  const FAMS_RAW = [["#332433", "#493349", "#664766", "#7a557a", "#996b99"], ["#1d3333", "#2a4949", "#3a6666", "#467a7a", "#579999"], ["#3c2c1c", "#58402a", "#7a5a3a", "#926c46", "#b48a5c"],
     ["#253322", "#364931", "#4b6644", "#5a7a52", "#719966"], ["#202a42", "#2e3b62", "#3e5088", "#4c62a0", "#6a85c4"]];
+  const FAMS = FAMS_RAW.map((f) => f.map(mute));
   const STEP = { "#03050a": 0, "#060a14": 1, "#0a1222": 2, "#0e1a33": 3 };
 
   function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }

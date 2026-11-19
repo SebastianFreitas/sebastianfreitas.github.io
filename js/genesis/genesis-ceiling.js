@@ -737,6 +737,7 @@
     if (rocks && !hp) RKN = 0;   // the rocks pass tells the air band where each rock stands this frame
     for (let i = 0; i < ITEMS.length; i++) {
       const it = ITEMS[i];
+      if (it.tiny) continue;   // the tiny spiral clouds are still placed (the seeded layout stays) but never drawn
       if (!hp && (!!it.metal !== !!rocks || (!rocks && (all ? !it.front : !!it.front !== front)))) continue;
       if (!hp && !rocks && !all && ((TNY === 1 && it.tiny) || (TNY === 2 && !it.tiny))) continue;
       const x = mod(it.x + mod(it.v * W * t - cam * W, SPAN), SPAN), y = it.y;
@@ -1000,7 +1001,7 @@
     TNY = 1; drawSprites(oc, W, H, t, kd, sc, pal, cam, false);   // the back row, in seed order
     drawSprites(oc, W, H, t, kd, sc, pal, cam, null);   // the front object clouds, higher ones on top
     paintGusts(oc, W, H, gu, true, yS);   // the strokes over the objects
-    TNY = 2; drawSprites(oc, W, H, t, kd, sc, pal, cam, false); TNY = 0;   // the tiny clouds last: no stroke ever touches a spiral
+    TNY = 0;
     oc.setTransform(1, 0, 0, 1, 0, 0);
     shadow(oc, ow, oh, lift, W, H);
     if (clipped) oc.restore();
