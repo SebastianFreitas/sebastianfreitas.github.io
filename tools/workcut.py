@@ -89,7 +89,7 @@ const checkRow=(el,hover,fails)=>{
     { const sq=det&&det.querySelector('i'); if (!sq) fails.push(tag+'no red square in the OBJ line'); else { const sc=getComputedStyle(sq), so=+sc.opacity;
       if (hover) { if (so<0.95) fails.push(tag+'red square is not shown on hover (opacity '+sc.opacity+')'); if (!sq.offsetWidth) fails.push(tag+'red square has no width on hover'); }
       else { if (so>0) fails.push(tag+'red square is visible at rest (opacity '+sc.opacity+')');
-        if (sq.offsetWidth || parseFloat(sc.marginRight)+parseFloat(getComputedStyle(det).columnGap)>0.01) fails.push(tag+'red square takes space at rest (width '+sq.offsetWidth+', margin '+sc.marginRight+')');
+        if (sq.offsetWidth || parseFloat(sc.marginLeft)+parseFloat(sc.marginRight)+parseFloat(getComputedStyle(det).columnGap)>0.01) fails.push(tag+'red square takes space at rest (width '+sq.offsetWidth+', margins '+sc.marginLeft+' '+sc.marginRight+')');
         { const ea=parseFloat(el.style.getPropertyValue('--wk-ea')), fl=el.style.getPropertyValue('--wk-do').startsWith('100%'), dq=quadsOf(det,true).flat();   /* OBJ label hugs the text-side edge and runs parallel to the top edge */
           const ang=Math.atan2(dq[1][1]-dq[0][1],dq[1][0]-dq[0][0])*180/Math.PI, edx=(x,y)=>{const xs=[];for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];if((yi>y)!==(yj>y))xs.push(xi+(xj-xi)*(y-yi)/(yj-yi));}return fl?Math.max(...xs)-x:x-Math.min(...xs);}, dxe=Math.min(...dq.map(p=>edx(p[0],p[1])));   /* horizontal gap from the label's nearest corner to the plate's text-side edge at that height */
           if (!isNaN(ea) && Math.abs(ang-ea)>0.5) fails.push(tag+'OBJ label angle '+ang.toFixed(2)+' is not parallel to the top edge '+ea);
@@ -174,17 +174,19 @@ const checkRow=(el,hover,fails)=>{
   }
   const bx=e=>{const q=e.getBoundingClientRect();return [(q.left-r.left)/k,(q.top-r.top)/k,q.width/k,q.height/k];};
   const lh=parseFloat(getComputedStyle(ln).lineHeight)||1;
-  const sqe=det.querySelector('i'), sqs=getComputedStyle(sqe), lab=[(det.querySelector('.obj-id').getBoundingClientRect().left-r.left)/k, sqe.offsetWidth+parseFloat(sqs.marginRight)+parseFloat(getComputedStyle(det).columnGap),
+  const sqe=det.querySelector('i'), sqs=getComputedStyle(sqe), lab=[(det.querySelector('.obj-id').getBoundingClientRect().left-r.left)/k, sqe.offsetWidth+parseFloat(sqs.marginLeft)+parseFloat(sqs.marginRight)+parseFloat(getComputedStyle(det).columnGap),
     el.style.getPropertyValue('--wk-do').startsWith('100%'), (()=>{const q=quadsOf(det,true).flat(),ea=parseFloat(el.style.getPropertyValue('--wk-ea'))*Math.PI/180;return Math.max(...q.map(p=>p[0]*Math.cos(ea)+p[1]*Math.sin(ea)))/k;})(), quadsOf(det,true).flat().every(([x,y])=>inside(P,x,y))];   /* label left edge, square width + gap, flipped row, the label's far end along its own axis (row px), whole label inside the plate */
   const hkr=document.createRange(); hkr.selectNodeContents(hk); const hki=hkr.getBoundingClientRect();   /* the tagline's own ink: left x and width (row px) */
-  return {lab, boxes:{title:bx(h3),hook:bx(hk),hookInk:[(hki.left-r.left)/k,hki.width/k],line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
+  const ed=e=>{const g=document.createRange();g.selectNodeContents(e);const q=[...g.getClientRects()].filter(c=>c.width>0.5);return [Math.min(...q.map(c=>(c.left-r.left)/k)),Math.max(...q.map(c=>(c.left-r.left)/k)),Math.min(...q.map(c=>(c.right-r.left)/k)),Math.max(...q.map(c=>(c.right-r.left)/k))];};   /* a block's text lines: [leftmost line start, rightmost line start, leftmost line end, rightmost line end] (row px) */
+  const dk=[...det.children].filter(c=>c!==sqe), sqx=[(sqe.getBoundingClientRect().left-r.left)/k, (sqe.getBoundingClientRect().right-r.left)/k, Math.max(...dk.map(c=>(c.getBoundingClientRect().right-r.left)/k)), Math.max(...[...det.children].map(c=>(c.getBoundingClientRect().right-r.left)/k))];   /* the square's left and right, the label text's right end, the whole line's right end (row px) */
+  return {lab, sq:sqx, boxes:{hookE:ed(hk),lineE:ed(ln),title:bx(h3),hook:bx(hk),hookInk:[(hki.left-r.left)/k,hki.width/k],line:[...bx(ln),Math.round(ln.clientHeight/lh)],facts:bx(pr),row:[0,0,el.offsetWidth,el.offsetHeight]}, info};
 };
 """
 
 JS = HELP + r"""
 if (de.scrollWidth > cw + 1) fails.push('page scrolls sideways: scrollWidth ' + de.scrollWidth + ' > ' + cw);
 if (!rows.length) fails.push('no Games rows');
-let worst=-1e9; const boxes=[], labs=[];
+let worst=-1e9; const boxes=[], labs=[], sqs=[];
 for (const el of rows) {
   const id=el.id||'row', r=el.getBoundingClientRect(), k=r.width/el.offsetWidth;
   const P=polyOf(el);
@@ -201,24 +203,24 @@ for (const el of rows) {
     if (q.left > pl + 1) fails.push(id+': '+nm+' clips at left '+Math.round(q.left)+', polygon starts '+Math.round(pl));
   }
   const rr=checkRow(el,false,fails);
-  boxes.push(rr?rr.boxes:null); labs.push(rr?rr.lab:null);
+  boxes.push(rr?rr.boxes:null); labs.push(rr?rr.lab:null); sqs.push(rr?rr.sq:null);
 }
-{ /* the block's edges: the tagline's left edge (hook box and description edge) is the same (1 px) in every normal row, the same on mirrored rows (left-aligned too); the title's middle is over the tagline's middle (1 px) on every wide row, or, when the tagline is narrower than the title, its left edge is on the tagline's left edge */
+{ /* the block's picture-side edge: on mirrored rows the block's left edge (hook box), on normal rows its right edge; on every wide row the title's edge, the tagline's lines and both description lines are on it (1 px), and on each side the edge is the same in every row of that side */
   const mir=el=>el.classList.contains('is-flip')&&!matchMedia('(max-width: 1199px)').matches, eg={false:[],true:[]};
-  rows.forEach((el,i)=>{ const b=boxes[i]; if (b) { eg[mir(el)].push([el.id, b.hook[0], b.hookInk[0]]);
-    if (!matchMedia('(max-width: 1199px)').matches) { const tc=b.title[0]+b.title[2]/2, hc=b.hookInk[0]+b.hookInk[1]/2;
-      if (b.hookInk[1]<b.title[2]-1) { if (Math.abs(b.title[0]-b.hookInk[0])>1) fails.push(el.id+': tagline is narrower than the title, but the title left '+b.title[0].toFixed(1)+' is not the tagline left '+b.hookInk[0].toFixed(1)+' (allow 1)'); }
-      else if (Math.abs(tc-hc)>1) fails.push(el.id+': title centre '+tc.toFixed(1)+' is not the tagline centre '+hc.toFixed(1)+' (allow 1)'); } } });
-  for (const fl of [false,true]) { const g=eg[fl]; if (g.length>1 && !matchMedia('(max-width: 1199px)').matches) {   /* under 1200 px the middle block is main's: centred per row, not one edge */ const xs=g.map(e=>e[1]); if (Math.max(...xs)-Math.min(...xs)>1) fails.push('block '+(fl?'mirrored':'normal')+' left edge differs between rows: '+g.map(e=>e[0]+' '+e[1].toFixed(1)).join(', ')); }
-    for (const e of g) if (Math.abs(e[2]-e[1])>1) fails.push(e[0]+': tagline ink left '+e[2].toFixed(1)+' is not the block\'s left edge '+e[1].toFixed(1)); } }
-return {cw, rows: rows.length, margin: Math.round(-worst), boxes, labs, fails, phone: window.__phoneChecks||0};
+  rows.forEach((el,i)=>{ const b=boxes[i]; if (b && !matchMedia('(max-width: 1199px)').matches) { const m=mir(el), E=m?b.hook[0]:b.hook[0]+b.hook[2], te=m?b.title[0]:b.title[0]+b.title[2], hs=m?[b.hookE[0],b.hookE[1]]:[b.hookE[2],b.hookE[3]], ls=m?[b.lineE[0],b.lineE[1]]:[b.lineE[2],b.lineE[3]], nm=m?'left':'right';
+    eg[m].push([el.id,E]);
+    if (Math.abs(te-E)>1) fails.push(el.id+': title '+nm+' edge '+te.toFixed(1)+' is not the block\'s '+nm+' edge '+E.toFixed(1)+' (allow 1)');
+    if (hs.some(v=>Math.abs(v-E)>1)) fails.push(el.id+': tagline '+nm+' edge '+hs.map(v=>v.toFixed(1)).join('/')+' is not the block\'s '+nm+' edge '+E.toFixed(1)+' (allow 1)');
+    if (ls.some(v=>Math.abs(v-E)>1)) fails.push(el.id+': description '+nm+' edge '+ls.map(v=>v.toFixed(1)).join('/')+' is not the block\'s '+nm+' edge '+E.toFixed(1)+' (allow 1)'); } });
+  for (const fl of [false,true]) { const g=eg[fl]; if (g.length>1) { const xs=g.map(e=>e[1]); if (Math.max(...xs)-Math.min(...xs)>1) fails.push('block '+(fl?'mirrored':'normal')+' picture-side edge differs between rows: '+g.map(e=>e[0]+' '+e[1].toFixed(1)).join(', ')); } } }
+return {cw, rows: rows.length, margin: Math.round(-worst), boxes, labs, sqs, fails, phone: window.__phoneChecks||0};
 """
 
 # one row in its hover state (.is-peek added by the caller): the same checks as at rest plus the tag
 # shown across the bottom edge; returns the boxes for the no-move comparison
 JS_HOVER = HELP + r"""
 const rr=checkRow(rows[arguments[0]],true,fails);
-return {fails, boxes: rr&&rr.boxes, lab: rr&&rr.lab, info: rr?rr.info:[]};
+return {fails, boxes: rr&&rr.boxes, lab: rr&&rr.lab, sq: rr&&rr.sq, info: rr?rr.info:[]};
 """
 
 # a viewport point that is on no Games row and no top bar tab (null if none found)
@@ -312,11 +314,16 @@ def main():
                         if max(abs(x - y) for x, y in zip(b0[nm], hr["boxes"][nm])) > 0.5:
                             hov.append("row %d: %s box moved or resized on hover: %s -> %s" % (i, nm, [round(x, 1) for x in b0[nm]], [round(x, 1) for x in hr["boxes"][nm]]))
                 l0 = res["labs"][i]
-                if l0 and hr["lab"] and l0[2]:  # mirrored row: the label's far end stays put (1 px along its axis) and the whole label stays inside the plate; it grows toward the centre
-                    mv = hr["lab"][3] - l0[3]
+                if l0 and hr["lab"] and l0[2]:  # mirrored row: the square is right of the label text, the label slides left by square + gap, the line's right end stays within 1 px of rest, the whole label stays inside the plate
+                    mv = hr["sq"][3] - res["sqs"][i][3]
+                    sh = hr["lab"][0] - l0[0]
                     if abs(mv) > 1 or not hr["lab"][4]:
-                        hov.append("row %d: mirrored OBJ label end moved %.1f px on hover (max 1) or the label left the plate (inside=%s)" % (i, mv, hr["lab"][4]))
-                    print("  row %d (mirrored) OBJ label end moves %.2f px" % (i, mv))
+                        hov.append("row %d: mirrored OBJ line right end moved %.1f px on hover (max 1) or the label left the plate (inside=%s)" % (i, mv, hr["lab"][4]))
+                    if hr["sq"][0] < hr["sq"][2] - 0.5:
+                        hov.append("row %d: mirrored red square (left %.1f) is not right of the label text (right end %.1f)" % (i, hr["sq"][0], hr["sq"][2]))
+                    if abs(sh + (hr["lab"][1] - l0[1])) > 1 or sh > -5:
+                        hov.append("row %d: mirrored OBJ label shifted %.1f px on hover, expected %.1f px leftwards (square + gap)" % (i, sh, hr["lab"][1] - l0[1]))
+                    print("  row %d (mirrored) OBJ label shift %.1f px, line right end moves %.2f px" % (i, sh, mv))
                 elif l0 and hr["lab"]:  # only the OBJ label moves: right by the square's width + gap
                     sh = hr["lab"][0] - l0[0]
                     if abs(sh - (hr["lab"][1] - l0[1])) > 1 or sh < 5:

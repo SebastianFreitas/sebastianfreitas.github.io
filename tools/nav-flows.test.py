@@ -1331,7 +1331,7 @@ def flow_work_hover(browser, base):
       xs = [[0, 0], [go.offsetWidth, 0], [0, go.offsetHeight], [go.offsetWidth, go.offsetHeight]].map(p => ox + p[0] * c - p[1] * s);
       return { inset: flip ? Math.min(...xs) : W - Math.max(...xs), ly: ly, tilt: Math.abs(a - ap), gap: flip ? shown[0].offsetLeft - (lx + go.offsetWidth) : lx - iw, flip: flip }; }""")
     check("work-hover: tag 24 px (+-2) from the plate's inner edge, on the facts' baseline and tilt, 16 px or more from the facts", abs(tg["inset"] - 24) <= 2 and abs(tg["ly"]) <= 2 and tg["tilt"] < 0.001 and tg["gap"] >= 15.5, tg)
-    check("work-hover: on hover the OBJ label slides right by the square's width + 12 px gap, the title does not move", r["sqW"] > 0 and abs((r["labelX"] - rest["labelX"]) - (r["sqW"] + 12) * r["k"]) <= 1 and abs(r["titleX"] - rest["titleX"]) <= 1, r)
+    check("work-hover: on hover the mirrored row's OBJ label slides left (toward the centre) by the square's width + 12 px gap, the title does not move", r["sqW"] > 0 and abs((rest["labelX"] - r["labelX"]) - (r["sqW"] + 12) * r["k"]) <= 1 and abs(r["titleX"] - rest["titleX"]) <= 1, r)
     page.evaluate("""() => document.querySelector("a.obj[href='projects/conclusus.html']").scrollIntoView({ block: 'center', behavior: 'instant' })""")
     page.wait_for_timeout(700)
     page.hover(sel("conclusus"))

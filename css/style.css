@@ -654,10 +654,12 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj > :is(.obj-hook, .obj-line, .props) { grid-column: 2; max-width: none; width: auto; transform-origin: 0 0; }
   .obj > .obj-hook { transform: var(--wk-hk, none); width: var(--wk-hw, auto); margin-bottom: var(--wk-hm, 0px); }   /* one layout, rest and hover: the same width and line breaks */
   .obj > .obj-line { transform: var(--wk-ln, none); width: var(--wk-lw, auto); margin-bottom: var(--wk-lm, 0px); }   /* under the hook, the hook's width, level; always shown, the same at rest and on hover */
-  .obj > .obj-det { transition: margin-left 0.2s; }   /* flipped rows: on hover the label's left margin gives back the square's growth (--wk-dm), so its right end stays */
+  .obj > .obj-det { transition: margin-left 0.2s; }   /* flipped rows: on hover the label's left margin gives back the square's growth (--wk-dm), so its right end stays and the text slides left */
   .obj.is-peek > .obj-det, .obj:focus-visible > .obj-det, .obj:focus-within > .obj-det { margin-left: var(--wk-dm, 0px); }
   .obj > .obj-det i { width: 0; margin-right: -12px; opacity: 0; transition: opacity 0.2s, width 0.2s, margin-right 0.2s; }   /* at rest the red square takes no space (width 0, its 12 px gap cancelled) so OBJ_000x starts at the title's edge; on hover it grows in and the label slides right by 9 + 12 px */
   .obj.is-peek > .obj-det i, .obj:focus-visible > .obj-det i, .obj:focus-within > .obj-det i { width: 9px; margin-right: 0; opacity: 1; }
+  .obj.is-mirror > .obj-det i { order: 1; margin-right: 0; margin-left: -12px; transition: opacity 0.2s, width 0.2s, margin-left 0.2s; }   /* mirrored rows: the square is on the label's right (box-edge) side; on hover it grows in there and the label slides 21 px left, toward the centre */
+  .obj.is-mirror.is-peek > .obj-det i, .obj.is-mirror:focus-visible > .obj-det i, .obj.is-mirror:focus-within > .obj-det i { margin-left: 0; }
   .obj > .props { transform: var(--wk-fx, none); }
   .obj.is-flip .props { justify-content: flex-end; }   /* the facts hug the bottom corner on the outer (right) side */
   /* the tag sits on the facts' baseline at the text column's inner end, with the facts' tilt (shapes.js: --wk-gt) */
@@ -667,6 +669,7 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj .obj-line { margin-top: 8px; -webkit-line-clamp: 3; transition: opacity 0.2s; }
   .obj .props { margin-top: 18px; }
 }
+@media (min-width: 1200px) and (hover: hover) { .work > .obj:not(.is-flip) > :is(.obj-hook, .obj-line) { text-align: right; } }   /* normal rows: tagline and description end on the block's right edge, as the title does (shapes.js wkPlace); mirrored rows stay left-aligned */
 @media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } .obj > .obj-det i { transition: none; } }
 
 /* ---------------- experience ---------------- */

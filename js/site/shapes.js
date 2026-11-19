@@ -1504,7 +1504,7 @@
      at rest and on hover: the title at the top-left corner of the text side, the hook under it in the same column (its width chosen once: inside the plate and SEAMGAP px clear of the
      picture), the facts as one line at the bottom edge (turned to it by --wk-ba), the last facts dropped from view when they do not fit on the line */
   function wkPlace(el, pts, end, bi, W, H, wide, flip) {   /* flip: the one the plate was drawn with (not the class: under 1200 px a flip row is drawn as a normal one) */
-    const M = 28, RG = 16, BWMAX = 720, TS = 1.15, TG = 6, LG = 10, SH = 0.045, DD = 24, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
+    const M = 28, RG = 16, BWMAX = 720, TS = 1, TG = 6, LG = 10, SH = 0.045, DD = 24, q = function (s) { return el.querySelector(":scope > " + s); }, h3 = q("h3"), hk = q(".obj-hook"), ln = q(".obj-line"), pr = q(".props");
     if (!h3 || !hk) return;
     ["--wk-hw", "--wk-hm", "--wk-ln", "--wk-lw", "--wk-lm"].forEach(function (v) { el.style.removeProperty(v); });   /* measured at the grid's own sizes */
     const f = function (v) { return v.toFixed(1); };
@@ -1529,7 +1529,7 @@
       el.style.setProperty("--wk-dm", flip ? "-21px" : "0px");   /* flipped: the label grows 21 px (square 9 + gap 12) on hover; its left margin gives that back so the right end stays put and the growth goes toward the row's centre */
       el.style.setProperty("--wk-dt", "translate(" + f(dx - ox) + "px, " + f(dy) + "px) rotate(" + (ea * 180 / Math.PI).toFixed(2) + "deg)");
     }
-    /* middle block: title, hook and detail line as one group, its centre at the centre of the text half (left half, right on flipped rows), left-aligned inside; the hook is cut back to fit that half */
+    /* middle block: title, hook and detail line as one group, its centre at the centre of the text half (left half, right on flipped rows), left-aligned inside (right-aligned on normal rows at 1200 px and up); the hook is cut back to fit that half */
     const hy = (topY(W / 2) + botY(W / 2)) / 2;
     let hh2 = hh, lh2 = lh, thh = th, tg1 = 0, lg = 0, ts = 1, L = 0, h3t = "", yt = 0, gh = 0, clamped = false;
     if (wide) {
@@ -1543,8 +1543,7 @@
       if (ln) { ln.style.width = BW + "px"; lh2 = ln.offsetHeight; ln.style.width = ""; el.style.setProperty("--wk-lw", BW + "px"); el.style.setProperty("--wk-lm", (lh - lh2) + "px"); }
       ts = Math.min(TS, BW / tw); thh = th * ts;   /* the title is scaled by a transform, so the grid (the row's height) does not change */
       gh = thh + tg1 + hh2 + (ln ? lg + lh2 : 0); const yc = hy - gh / 2; yt = Math.max(yc, dBottom + 12); clamped = yt > yc;
-      hk.style.width = BW + "px"; const ti = ink(hk); hk.style.width = "";   /* the tagline's own line: the title's middle sits over its middle (left-aligned on every row), but never left of the block's left edge */
-      const tl0 = Math.max(L, L + ti / 2 - tw * ts / 2);
+      const tl0 = flip ? L : L + BW - tw * ts;   /* the title's edge is the block's picture-side edge: its left edge on the block's left (mirrored rows), its right edge on the block's right (normal rows, right-aligned like the tagline and description, css) */
       const t0 = h3.style.transform, t1 = h3.style.transition; h3.style.transition = "none"; h3.style.transform = "none"; const hl = (h3.getBoundingClientRect().left - el.getBoundingClientRect().left) / k; h3.style.transform = t0; h3.getBoundingClientRect(); h3.style.transition = t1;   /* the title's real (fractional) left in the row: offsetLeft is rounded */
       h3t = "translate(" + f(tl0 - hl) + "px, " + f(yt - h3.offsetTop) + "px) scale(" + ts.toFixed(3) + ")";
     } else {   /* under 1200 px: the block as on main (centred on the text half, title at its own size, the hook cut back to fit) */
