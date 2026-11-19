@@ -648,8 +648,10 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj > h3::before { opacity: 0; transition: opacity 0.2s; }
   .obj.is-peek > h3, .obj:focus-visible > h3, .obj:focus-within > h3 { color: #14110c; }
   .obj.is-peek > h3::before, .obj:focus-visible > h3::before, .obj:focus-within > h3::before { opacity: 1; }
-  .obj > .obj-go { opacity: 0; transition: opacity 0.2s; }
-  .obj.is-peek > .obj-go, .obj:focus-visible > .obj-go, .obj:focus-within > .obj-go { opacity: 1; }
+  .obj > .obj-go { color: #8f8878; transition: color 0.2s; }
+  .obj > .obj-go > .go { opacity: 0; transition: transform 0.16s, opacity 0.2s; }
+  .obj.is-peek > .obj-go, .obj:focus-visible > .obj-go, .obj:focus-within > .obj-go { color: var(--type-cream); }
+  .obj.is-peek > .obj-go > .go, .obj:focus-visible > .obj-go > .go, .obj:focus-within > .obj-go > .go { opacity: 1; }
   .obj > h3 { grid-column: 1; grid-row: 1 / span 4; align-self: start; margin: 0 0 0 0.25em; top: 0; transform-origin: 0 0; transform: var(--wk-h3, rotate(var(--wk-tilt))); }
   .obj > :is(.obj-hook, .obj-line, .props) { grid-column: 2; max-width: none; width: auto; transform-origin: 0 0; }
   .obj > .obj-hook { transform: var(--wk-hk, none); width: var(--wk-hw, auto); margin-bottom: var(--wk-hm, 0px); }   /* one layout, rest and hover: the same width and line breaks */
@@ -670,7 +672,7 @@ a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) tra
   .obj .props { margin-top: 18px; }
 }
 @media (min-width: 1200px) and (hover: hover) { .work > .obj:not(.is-flip) > :is(.obj-hook, .obj-line) { text-align: right; } }   /* normal rows: tagline and description end on the block's right edge, as the title does (shapes.js wkPlace); mirrored rows stay left-aligned */
-@media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } .obj > .obj-det i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .obj-line, .props dt, .props dd, .obj-go { transition: none; } .obj :is(.obj-line, .props, .obj-go) { transition: none; } .obj > .obj-line { transition: none; } .obj > .obj-go, .obj > .obj-go > .go { transition: none; } .obj > :is(h3, .obj-hook, .obj-det) { transition: none; } .obj > .obj-det i { transition: none; } }
 
 /* ---------------- experience ---------------- */
 

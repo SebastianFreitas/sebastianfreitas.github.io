@@ -1300,7 +1300,7 @@ def flow_work_hover(browser, base):
     sel = lambda k: f"a.obj[href='projects/{k}.html']"
     read = lambda k: page.evaluate("""(k) => { const row = document.querySelector("a.obj[href='projects/" + k + ".html']"), v = row.querySelector('video'),
       shown = (e) => { const cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0; };
-      return { paused: v.paused, t: v.currentTime, goShown: shown(row.querySelector('.obj-go')),
+      return { paused: v.paused, t: v.currentTime, goShown: shown(row.querySelector('.obj-go')), goColor: getComputedStyle(row.querySelector('.obj-go')).color, arrowOp: +getComputedStyle(row.querySelector('.obj-go > .go')).opacity,
       detailsShown: shown(row.querySelector('.obj-line')), factsShown: shown(row.querySelector('.props')),
       lineBox: row.querySelector('.obj-line').offsetHeight > 0, squareOp: +getComputedStyle(row.querySelector('.obj-det i')).opacity,
       k: row.getBoundingClientRect().width / row.offsetWidth, sqW: row.querySelector('.obj-det i').offsetWidth, labelX: row.querySelector('.obj-det .obj-id').getBoundingClientRect().left,
@@ -1311,7 +1311,7 @@ def flow_work_hover(browser, base):
     page.mouse.move(2, 2)                   # the pointer parked on the top bar, off every row
     page.wait_for_timeout(700)
     r = read("voidscape")
-    check("work-hover: idle row: clip paused, tag and red square hidden, facts and details shown", r["paused"] and not r["goShown"] and r["factsShown"] and r["detailsShown"] and r["lineBox"] and r["squareOp"] == 0, r)
+    check("work-hover: idle row: clip paused, tag shown in grey with its arrow hidden, red square hidden, facts and details shown", r["paused"] and r["goShown"] and r["goColor"] == "rgb(143, 136, 120)" and r["arrowOp"] == 0 and r["factsShown"] and r["detailsShown"] and r["lineBox"] and r["squareOp"] == 0, r)
     rest = r
     check("work-hover: idle row: the red square has zero width and the OBJ label runs parallel to the box's top edge (own block, not at the title's left edge)", rest["sqW"] == 0 and abs(rest["detAng"] - rest["ea"]) <= 0.5 and abs(rest["labelX"] - rest["titleX"]) > 1, r)
     page.hover(sel("voidscape"))
@@ -1321,8 +1321,10 @@ def flow_work_hover(browser, base):
         r = read("voidscape")
         if not r["paused"] and r["t"] > 0:
             break
+    page.wait_for_timeout(400)              # the tag's .2 s colour and arrow fade
+    r = read("voidscape")
     check("work-hover: hover plays the clip within 2 s", not r["paused"] and r["t"] > 0, r)
-    check("work-hover: tag, red square, facts and details shown on hover", r["goShown"] and r["factsShown"] and r["detailsShown"] and r["squareOp"] > 0.95, r)
+    check("work-hover: tag, red square, facts and details shown on hover; the tag is cream with its arrow shown", r["goShown"] and r["goColor"] != rest["goColor"] and r["arrowOp"] == 1 and r["factsShown"] and r["detailsShown"] and r["squareOp"] > 0.95, r)
     tg = page.evaluate("""() => { const row = document.querySelector("a.obj[href='projects/voidscape.html']"), go = row.querySelector('.obj-go'), pr = row.querySelector('.props'),
       mg = new DOMMatrix(getComputedStyle(go).transform), mp = new DOMMatrix(getComputedStyle(pr).transform), flip = row.classList.contains('is-flip'), W = row.offsetWidth,
       a = Math.atan2(mg.b, mg.a), c = Math.cos(a), s = Math.sin(a), ap = Math.atan2(mp.b, mp.a), shown = [...pr.children].filter(d => d.offsetWidth), last = shown[shown.length - 1],

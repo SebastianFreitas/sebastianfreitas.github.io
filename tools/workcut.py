@@ -130,9 +130,11 @@ const checkRow=(el,hover,fails)=>{
     for (const d of shown) { const g=document.createRange(); g.selectNodeContents(d); for (const t of g.getClientRects()) if (t.width && (t.left<pb.left-0.5 || t.right>pb.right+0.5)) fails.push(tag+'facts text is clipped: '+d.textContent.trim()+' spans '+Math.round(t.left)+'..'+Math.round(t.right)+' in box '+Math.round(pb.left)+'..'+Math.round(pb.right)); }
     if (shown.length<kids.length) fails.push(tag+'dropped '+(kids.length-shown.length)+' fact(s): '+kids.filter(d=>!d.offsetWidth).map(d=>d.textContent.trim()).join(', ')); }
   if (go && getComputedStyle(go).position==='absolute') {
-    if (!hover) { if (vis(go)) fails.push(tag+'tag is visible at rest on a mouse'); }
+    const ar=go.querySelector('.go'), aop=ar?+getComputedStyle(ar).opacity:-1;
+    if (!hover) { if (!vis(go)) fails.push(tag+'tag is not visible at rest on a mouse'); if (aop!==0) fails.push(tag+'tag arrow is not hidden at rest (opacity '+aop+')'); }
     else {
       if (!vis(go)) fails.push(tag+'tag is not visible');
+      if (aop<0.95) fails.push(tag+'tag arrow is not shown on hover (opacity '+aop+')');
       const b=go.getBoundingClientRect(), q=quadsOf(go,true)[0], flipRow=el.classList.contains('is-flip') && !matchMedia('(max-width: 1199px)').matches;   /* under 1200 px a flip row is drawn and laid out as a normal one */
       if (b.left < 0 || b.right > cw) fails.push(tag+'tag outside the window');
       for (const nm in grp) if (grp[nm].some(a=>hit(a,q))) fails.push(tag+'tag touches the '+nm);
