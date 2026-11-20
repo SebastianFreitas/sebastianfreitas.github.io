@@ -11,6 +11,7 @@
   --measure: 36rem; --gp-pad: var(--gutter);
   padding-top: calc(clamp(2rem, 6vh, 4rem) + 1.2rem);
   counter-reset: gp;
+  margin-inline: auto;
 }
 @media (min-width: 1200px) {   /* the column pulls in to 2.5rem a side; --gp-pad follows so the opener still bleeds to the column edges */
   .page-game.page-case:not(.page-404) main.case { --gp-pad: var(--gp-4); padding-inline: var(--gp-pad); }
@@ -168,6 +169,10 @@
   --gp-dia-gap: 3.5rem; --gp-dia-port: 2.25rem; --gp-dia-rail: 2.75rem;
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0 var(--gp-dia-gap);
   background: var(--gp-plate); border: 1px solid var(--line); padding: var(--gp-4); counter-reset: gp-dia;
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-fly { margin-top: var(--gp-2); }   /* a second row of steps under the loop, in the same figure (Sector Zero's fly) */
+@media (min-width: 900px) {   /* Sector Zero's loop: each step's card is wider than the one before, the room opening up */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-widen { grid-template-columns: 1fr 1.3fr 1.7fr 2.2fr; }
 }
 .page-game.page-case:not(.page-404) main.case .gp-dia-flow { display: contents; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li {
