@@ -41,30 +41,6 @@ window.GenFig = window.GenFig || {};
     const glowA = 1 - cool;
     const side = px => (px < x ? lit : shade);
 
-    if (pose === "wrapped") {
-      /* dead: his body folds over whoever stands at (x, y) (same foot point and h), limbs and torso
-         laid across them in bands, the gaps between showing what is under; o.fold 0 (spread) to 1 (closed) */
-      const fold = o.fold ?? 1, c = { x, y: y - 0.42 * h };
-      const bands = [[-0.24, 0.12, 0.11], [-0.12, -0.10, 0.12], [0, 0.08, 0.15], [0.12, -0.12, 0.12], [0.24, 0.10, 0.11]];
-      bands.forEach((b, i) => {
-        const s = i % 2 ? 1 : -1, oy = b[0] * h, sk = b[1] * h;
-        const a0 = [c.x - 0.34 * h + sk * 0.3, c.y + oy - sk], a1 = [c.x + 0.34 * h - sk * 0.3, c.y + oy + sk];
-        const o0 = [c.x - 0.12 * h, c.y + oy * 1.6 - 0.1 * h], o1 = [c.x + s * 0.72 * h, c.y + oy * 2.2 + (i - 2) * 0.12 * h];
-        const A = [mix(o0[0], a0[0], fold), mix(o0[1], a0[1], fold)];
-        const B = [mix(o1[0], a1[0], fold), mix(o1[1], a1[1], fold)];
-        shadedPoly(ctx, quad(A[0], A[1], B[0], B[1], b[2] * h), x - 0.08 * h, lit, shade);
-      });
-      const hx = mix(x + 0.1 * h, x - 0.30 * h, fold), hy = mix(y - 0.9 * h, c.y - 0.30 * h, fold);
-      flatGlow(ctx, hx, hy, 0.35 * h, REX.glow, 0.6 * glowA);
-      litShade(ctx, () => { ctx.beginPath(); ctx.arc(hx, hy, 0.11 * h, 0, TAU); }, hx + 0.02 * h, core, mixHex(core, lit, 0.35));
-      for (let k = 0; k < 5; k++) {
-        const ang = -Math.PI * 0.9 + k * 0.45, cx = hx + Math.cos(ang) * 0.11 * h, cy = hy + Math.sin(ang) * 0.11 * h;
-        const px = -Math.sin(ang) * 0.025 * h, py = Math.cos(ang) * 0.025 * h;
-        fillPoly(ctx, [[cx - px, cy - py], [cx + px, cy + py], [cx + Math.cos(ang) * 0.12 * h, cy + Math.sin(ang) * 0.12 * h]], k % 2 ? core : lit);
-      }
-      return;
-    }
-
     const body = [
       [x - 0.28 * h, y], [x - 0.24 * h, y - 0.30 * h], [x - 0.26 * h, y - 0.62 * h],
       [x - 0.10 * h, y - 0.72 * h], [x + 0.10 * h, y - 0.72 * h], [x + 0.26 * h, y - 0.62 * h],
