@@ -582,7 +582,7 @@
     // the 2.5 s beat plays the old 8 s timeline (x3.2), so the mass is whole by its end; trade runs on at 1:1
     const ms = G.secs("matter");
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
-    if (s > 20.6) return;
+    if (s > 20.6 + G.TITAN_HOLD) return;
     // the four rocks are drawn by genesis.js, just under the bridge (drawRocks)
     if (s < 0) return;
 

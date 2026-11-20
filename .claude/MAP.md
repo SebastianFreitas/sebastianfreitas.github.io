@@ -373,6 +373,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
+| `genesis-titanbodies.js` | The four new rock-titan bodies (statue ported, hollow/slime/changer stubs); draws only, onto an empty layer | `window.GenTitanBodies {NAMES, PAL, BOX, draw}` |
 | `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, debrisSteps, drawDebris, partRest}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
 | `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
@@ -450,7 +451,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
 - `genesis-giants.js`: `loom(ctx,W,H,ts)` is the killer giant C, back at secs("break") 3.85 to 5.85 s; `drawD(ctx,x,footY,scale)` is the fourth giant D, the survivor titan's (rings) body, a cached sprite D_W x D_H = 900 x 1000 design units, called from GenRockTitans (leftover steps and `bigD`).
 - `genesis-rocktitans.js`: `bigD(ctx)` draws giant D's big steps and exit in the giants' layer; the file's own `SURVIVOR` (not exported) is the titan index that becomes D; the 0.4 scale leftover is drawn at the end of `drawDebris`, in front of the debris.
-- `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 10 in the blast rocks' slot (before `drawSpan`); pieces cached as cropped sprites; one per-titan cache per snap k, drawn under a rock-to-titan group transform.
+- `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 3.45 in the blast rocks' slot (before `drawSpan`); each titan paints its `GenTitanBodies` body every frame into its own BOX-sized layer (body clock from snaps 5, still in reduced motion).
+- `genesis-rocktitans.js`: the layers are blitted under the rock-to-titan group transform and the clash slide; the victim and the leftover use frozen once-built layers; the old pieces and rocks stay only as the debris source.
 - `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash (titans or `drawRocks`), titans in the fight, the depths, the saga, the now-fade),
 - `genesis.js`: the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input
 
@@ -636,6 +638,7 @@ withTilt` at parse time) and before `genesis-armies`/`genesis-ritual`;
 `genesis-trade` before `genesis-oldones` (SPOTS, read at call time);
 `genesis-gods` after `genesis-figures` (destructures `fillPoly shadedPoly
 quad withTilt` at parse time);
+`genesis-titanbodies` directly before `genesis-rocktitans` (no dependencies);
 `genesis-rocktitans` right after `genesis-oldkin` (needs `GenOld`, `GenMatter`);
 `genesis-oldkin` right after `genesis-oldones` (registers into
 `GenOld.PAINT` at parse time). Never bake `G.W`/`G.H` into data at load:

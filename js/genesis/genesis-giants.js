@@ -206,7 +206,7 @@ window.GenGiants = (function () {
      the right edge; its inner edge is rooted at sx(0) + KILLER_SIDE * 0.6 * H. Same body, value and layer as in the break. */
   const KILLER_SIDE = 1;
   function loom(ctx, W, H, ts) {
-    if (G.reduced || ts < 3.85 || ts >= 5.85) return;
+    if (G.reduced || ts < 3.85 + G.TITAN_HOLD || ts >= 5.85 + G.TITAN_HOLD) return;
     if (!SH) build();
     const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
     if (!pal) return;
@@ -214,7 +214,7 @@ window.GenGiants = (function () {
     let lo = Infinity, hi = -Infinity;
     for (const p of SH.hull.concat(SH.slab)) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); }
     const s2 = s * 1.3, bw = (hi - lo) / 4 * s2;   // drawn 1.3x the break size so it fills the top right; body width on screen
-    const out = (ts < 4.25 || ts >= 5.45) ?0.25 * bw : 0;   // the held partial step: pushed back out past the edge
+    const out = (ts < 4.25 + G.TITAN_HOLD || ts >= 5.45 + G.TITAN_HOLD) ? 0.25 * bw : 0;   // the held partial step: pushed back out past the edge
     const dx = G.sx(0) + KILLER_SIDE * (0.35 * H + out) - (1000 + (lo + 1100) / 4) * s2;
     const MC = p => [dx + s2 * (1000 + (p[0] + 1100) / 4), oy - 0.08 * H + s2 * (p[1] + 1100) / 4];
     drawC(ctx, MC, 1, pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop

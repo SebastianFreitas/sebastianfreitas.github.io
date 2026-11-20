@@ -2,7 +2,6 @@
    Old-one pieces around a rock mountain, colourless, held. LAYOUT is a literal copy of the approved sketch layout (ef65899). */
 window.GenRockTitans = (function () {
   const G = window.Gen, FOOT = 0.64, TH = 40, SURVIVOR = 1;
-  const TINT = [6, 14, 30, 0.2];
   const FILT = "grayscale(1) brightness(0.23)";
   const Q = Math.PI / 2;
   function pcs(list, snaps) { return list.map((q, i) => ({ kind: q[0], m: q[1], dx: q[2], dy: q[3], rot: q[4], z: q[5], snap: snaps[i], cut: q[6] })); }
@@ -32,11 +31,9 @@ window.GenRockTitans = (function () {
   const boxes = {};
   let scratch = null;
 
-  function mk() { const c = document.createElement("canvas"); c.width = G.W; c.height = G.H; return c; }
   function on(tb) { return tb >= 3.45; }
 
   const tx = (t) => G.sx(0) + t.root * G.H;
-  const order = (t) => t.pieces.map((p, i) => i).sort((a, b) => (t.pieces[a].z - t.pieces[b].z) || (a - b));
 
   // the piece's unrotated ink box as drawn alone, measured once per piece and size; only a window round the piece is painted and
   // scanned, grown until the ink stays well inside it (a window edge that is not the canvas edge), so the box equals the full scan's
@@ -79,41 +76,6 @@ window.GenRockTitans = (function () {
     g.restore();
   }
 
-  // a piece, rendered once into a canvas cropped to the piece's bounds, per titan, piece and size
-  const sprites = {};
-  function sprite(t, i, up) {
-    const W = G.W, H = G.H, key = t.family + "|" + i + "|" + W + "|" + H + (up ? "|u" : "");
-    if (sprites[key]) return sprites[key];
-    const full = mk(), fg = full.getContext("2d");
-    drawPiece(fg, t, t.pieces[i], up);
-    const d = fg.getImageData(0, 0, W, H).data; let x0 = W, x1 = -1, y0 = H, y1 = -1;
-    for (let k = 0; k < W * H; k++) if (d[k * 4 + 3] > 0) { const yy = (k / W) | 0, xx = k % W; if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
-    if (x1 < 0) { x0 = y0 = 0; x1 = y1 = 0; }
-    const w = x1 - x0 + 1, h = y1 - y0 + 1, pc = document.createElement("canvas");
-    pc.width = w; pc.height = h;
-    pc.getContext("2d").drawImage(full, -x0, -y0);
-    return (sprites[key] = { x: x0, y: y0, pc: pc });
-  }
-
-  function drawFiller(g, t, f) {
-    const H = G.H, pts = f.poly.map((q) => [tx(t) + q[0] * H, (FOOT + q[1]) * H]);
-    const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length;
-    Paint.litShade(g, () => { g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); }, cx, "#101010", "#0e0e0e");
-  }
-
-  // drawRockAt has no stretch: scale in the rock's turned frame here
-  function bodyRock(g, t, r) {
-    const H = G.H;
-    g.save(); g.translate(tx(t) + r.x * H, (FOOT + r.dy) * H); g.rotate(r.rot || 0); g.scale(r.sx || 1, r.sy || 1);
-    GenMatter.drawRockAt(g, GenMatter.ROCKS[r.rock], 0, 0, 0, r.size * H);
-    g.restore();
-  }
-  function drawBodyRocks(g, t, front) {
-    g.save(); g.filter = "brightness(0.30)";
-    t.body.rocks.forEach((r) => { if (!!r.front === front) bodyRock(g, t, r); });
-    g.restore();
-  }
-
   // tapered limb hanging from (x, dy), S bend by curl, one lit edge (left), flat shade right
   function drawTentacle(g, t, q) {
     const H = G.H, x0 = tx(t) + q.x * H, y0 = (FOOT + q.dy) * H, L = q.len * H, w = q.w * H, N = 14, lft = [], rgt = [];
@@ -127,49 +89,36 @@ window.GenRockTitans = (function () {
     g.restore();
   }
 
-  function drawTitan(g, t, k, rm) {
-    const H = G.H;
-    t.filler.forEach((f) => drawFiller(g, t, f));
-    if (t.body) {
-      drawBodyRocks(g, t, false);
-      if (t.body.mode === "floating") (t.body.tentacles || []).forEach((q) => drawTentacle(g, t, q));
-    } else {
-      g.save(); g.filter = "brightness(0.09)";
-      GenMatter.drawRockAt(g, GenMatter.ROCKS[t.rock], tx(t), (FOOT + t.core.dy) * H, t.core.rot, t.core.size * H);
-      g.restore();
-    }
-    order(t).forEach((i) => {
-      if (t.pieces[i].snap > k || rm.indexOf("|" + i + "|") >= 0) return;
-      const s = sprite(t, i);
-      g.drawImage(s.pc, s.x, s.y);
-    });
-    if (t.body) drawBodyRocks(g, t, true);
+  // each titan's moving body (GenTitanBodies, slot i = NAMES[i]) is painted every frame into its own layer sized from BOX, at 1x like the old cache, then blitted; no tint
+  const NAMES = GenTitanBodies.NAMES;
+  const layers = [];
+  function layerSize() { const B = GenTitanBodies.BOX; return [Math.ceil((B.r - B.l) * G.H), Math.ceil((B.top - B.bottom) * G.H)]; }
+  function paintBody(c, name, t) {
+    const B = GenTitanBodies.BOX, g = c.getContext("2d");
+    g.clearRect(0, 0, c.width, c.height);
+    GenTitanBodies.draw(name, g, { x: -B.l * G.H, footY: B.top * G.H, H: G.H, t: t });
   }
-
-  // each titan painted per snap k (1..5) with a faint cool tint (D49) on its own pixels only (source-atop); only the current k is kept per titan
-  const cache = {};
-  function titanCache(t, k, rm) {
-    const key = t.family + "|" + G.W + "|" + G.H + "|" + k + "|" + rm, cur = cache[t.family];
-    if (cur && cur.key === key) return cur.c;
-    const c = mk(), g = c.getContext("2d");
-    drawTitan(g, t, k, rm);
-    g.save(); g.globalCompositeOperation = "source-atop"; g.globalAlpha = TINT[3]; g.fillStyle = "rgb(" + TINT[0] + "," + TINT[1] + "," + TINT[2] + ")"; g.fillRect(0, 0, c.width, c.height); g.restore();
-    cache[t.family] = { key: key, c: c };
-    return c;
+  // the layer, redrawn only when the body clock moved (so reduced motion paints once)
+  function bodyLayer(i, t) {
+    const sz = layerSize(), key = sz[0] + "|" + sz[1];
+    let L = layers[i];
+    if (!L || L.key !== key) { const c = document.createElement("canvas"); c.width = sz[0]; c.height = sz[1]; L = layers[i] = { c: c, key: key, t: -1 }; }
+    if (L.t !== t) { paintBody(L.c, NAMES[i], t); L.t = t; }
+    return L.c;
   }
+  // where the layer's top left sits on the canvas for titan t at its root
+  function layerPos(t) { const B = GenTitanBodies.BOX; return [tx(t) + B.l * G.H, (FOOT - B.top) * G.H]; }
 
-  // the body rocks' bounding box (centre and height, px) as the cache paints them
+  // the body's box (centre and height of the part above the foot line, px) for the grow-in
   function bodyBox(t) {
-    const H = G.H; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-    t.body.rocks.forEach((r) => {
-      const cx = tx(t) + r.x * H, cy = (FOOT + r.dy) * H, ex = r.size * H * (r.sx || 1), ey = r.size * H * (r.sy || 1);
-      x0 = Math.min(x0, cx - ex); x1 = Math.max(x1, cx + ex); y0 = Math.min(y0, cy - ey); y1 = Math.max(y1, cy + ey);
-    });
-    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, h: y1 - y0 };
+    const B = GenTitanBodies.BOX, H = G.H;
+    return { x: tx(t) + (B.l + B.r) / 2 * H, y: (FOOT - B.top / 2) * H, h: B.top * H };
   }
 
   // held snap count of titan i at matter time tm (offsets by landing order: east stone, west stone, flesh, meld)
   const OFF = [0.15, 0.30, 0.45, 0];
+  // body clock: seconds since the titan became whole (snaps reached 5), 0 before and in reduced motion; it runs on through the clash
+  function bodyT(i, tm, k) { return G.reduced || k < 5 ? 0 : Math.max(0, tm - OFF[i] - 1.6); }
   function snaps(i, tm) {
     if (G.reduced) return 5;
     return tm < OFF[i] ? 0 : Math.min(5, Math.floor((tm - OFF[i]) / 0.4 + 1e-6) + 1);
@@ -385,64 +334,75 @@ window.GenRockTitans = (function () {
   function drawDebris(ctx, tt) {
     drawChips(ctx, tt, false);
     if (G.reduced || tt < 1.6 || tt >= 3.0) return;
-    // the leftover, in front of the debris: two fifths of the bare rock body, no old-one parts (they are born from the debris), still, at the clash point, in lighter fills
-    const t = LAYOUT.titans[SURVIVOR];
+    // the leftover, in front of the debris: two fifths of the Hollow as it was at the burst, still, at the clash point, in lighter fills
+    const t = LAYOUT.titans[SURVIVOR], lp = layerPos(t), key = SURVIVOR + "|" + G.W + "|" + G.H;
+    if (!leftBody || leftKey !== key) {
+      const c = document.createElement("canvas"), sz = layerSize();
+      c.width = sz[0]; c.height = sz[1];
+      paintBody(c, NAMES[SURVIVOR], Math.max(0, G.secs("break") - tt + 1.6 - 3.45 - OFF[SURVIVOR] - 1.6));
+      leftBody = c; leftKey = key; leftTint = null;
+    }
+    const body = leftBody;
     ctx.save();
     ctx.translate(G.sx(0), FOOT * G.H); ctx.scale(0.4, 0.4); ctx.translate(-tx(t), -FOOT * G.H);
-    const body = titanCache(t, 5, "|" + t.pieces.map((p, j) => j).join("||") + "|");
     const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
     if (pal) {
-      // the silhouette in giant D's body value (its lump step), built once; the rock body shows over it faintly
-      if (!leftTint || leftTint.src !== body) {
+      // the silhouette in giant D's body value (its lump step), built once; the body shows over it faintly
+      if (!leftTint) {
         const c = document.createElement("canvas");
         c.width = body.width; c.height = body.height;
         const g = c.getContext("2d");
         g.drawImage(body, 0, 0);
         g.globalCompositeOperation = "source-in"; g.fillStyle = pal.steps[3]; g.fillRect(0, 0, c.width, c.height);
-        leftTint = { src: body, c };
+        leftTint = c;
       }
-      ctx.drawImage(leftTint.c, 0, 0);
+      ctx.drawImage(leftTint, lp[0], lp[1]);
       ctx.globalAlpha = 0.35;
     }
-    ctx.drawImage(body, 0, 0);
+    ctx.drawImage(body, lp[0], lp[1]);
     ctx.restore();
   }
-  let leftTint = null;
+  let leftBody = null, leftKey = "", leftTint = null;
 
   // the titan rooted on the killer giant's side (root KILLER_SIDE * 0.6); it dies in break secs 4.65 to 5.85 and takes no part in the clash
   const victim = () => LAYOUT.titans.findIndex((t) => Math.abs(t.root - (window.GenGiants ? GenGiants.KILLER_SIDE : 1) * 0.6) < 1e-6);
   // the fire eats the titan from the top down in three held steps (4.55, 4.95, 5.35); each step the eaten third breaks into chunks of its own fills that fall in held steps to the rail
-  const FIRE_T = [4.55, 4.95, 5.35];
+  const FIRE_T = [4.55 + G.TITAN_HOLD, 4.95 + G.TITAN_HOLD, 5.35 + G.TITAN_HOLD];
   // chunks per step: [x across the titan's width (0..1), y fraction in the eaten band, half size], in H
   const CRUMB = [[0.1, 0.2, 0.02], [0.25, 0.7, 0.028], [0.4, 0.3, 0.018], [0.55, 0.8, 0.026], [0.78, 0.4, 0.022], [0.18, 0.9, 0.016], [0.62, 0.55, 0.03], [0.9, 0.85, 0.017]];
   const FALL = [0, 0.15, 0.4, 0.75, 1];   // held 0.1 s steps of the fall toward the rail; gone at 0.5 s
-  // the victim's ink bounds [x0, y0, x1, y1] in px, read once per size from the pixels its cache holds
-  let vb = null, vbKey = "";
-  function victimBounds(t, c) {
-    const key = t.family + "|" + G.W + "|" + G.H;
-    if (vb && vbKey === key) return vb;
+  // the victim frozen on the form it shows when the first fire step lands, painted once per size into its own layer, with its ink bounds [x0, y0, x1, y1] in layer px
+  let frozen = null, frozenKey = "";
+  function frozenVictim(i) {
+    const key = i + "|" + G.W + "|" + G.H;
+    if (frozen && frozenKey === key) return frozen;
+    const c = document.createElement("canvas"), sz = layerSize();
+    c.width = sz[0]; c.height = sz[1];
+    paintBody(c, NAMES[i], Math.max(0, FIRE_T[0] - 3.45 - OFF[i] - 1.6));
     const w = c.width, h = c.height, d = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
     let x0 = w, x1 = -1, y0 = h, y1 = -1;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    vb = x1 < 0 ? [0, 0, 1, 1] : [x0, y0, x1, y1]; vbKey = key;
-    return vb;
+    frozen = { c: c, b: x1 < 0 ? [0, 0, 1, 1] : [x0, y0, x1, y1] }; frozenKey = key;
+    return frozen;
   }
   const crumbPath = (ctx, ox, oy, r) => {
     ctx.beginPath();
     ctx.moveTo(ox - r, oy); ctx.lineTo(ox - r * 0.3, oy - r); ctx.lineTo(ox + r, oy - r * 0.4); ctx.lineTo(ox + r * 0.6, oy + r); ctx.lineTo(ox - r * 0.5, oy + r * 0.7); ctx.closePath();
   };
-  function drawVictim(ctx, t, ts) {
+  function drawVictim(ctx0, t, i, ts) {
     const H = G.H, pal = window.GenEldPal ? GenEldPal.TIER3 : null;
-    if (ts >= 5.85) return;
-    const c = titanCache(t, 5, ""), b = victimBounds(t, c), bw = b[2] - b[0], bh3 = (b[3] - b[1]) / 3;
+    if (ts >= 5.85 + G.TITAN_HOLD) return;
+    const fz = frozenVictim(i), c = fz.c, b = fz.b, bw = b[2] - b[0], bh3 = (b[3] - b[1]) / 3, lp = layerPos(t);
     const n = ts < FIRE_T[1] ? 1 : ts < FIRE_T[2] ? 2 : 3, yl = b[1] + bh3 * n;   // the fire's front; what is above it is eaten
-    if (n < 3) { ctx.save(); ctx.beginPath(); ctx.rect(0, yl, G.W, G.H - yl); ctx.clip(); ctx.drawImage(c, 0, 0); ctx.restore(); }
+    const ctx = ctx0;
+    ctx.save(); ctx.translate(lp[0], lp[1]);   // everything below is in the layer's px
+    if (n < 3) { ctx.save(); ctx.beginPath(); ctx.rect(-lp[0], yl, G.W, G.H - lp[1] - yl); ctx.clip(); ctx.drawImage(c, 0, 0); ctx.restore(); }
     if (pal) {
       ctx.save();
       ctx.fillStyle = pal.steps[1];   // the loom's own hull value, paler than the titan
       const x0 = b[0] - 0.03 * H, w = bw + 0.06 * H, tn = 6, dip = [0.045, 0.02, 0.055, 0.03, 0.05, 0.025];   // six tongues, each reaching a little over the titan's remaining top
       ctx.beginPath();
-      ctx.moveTo(x0, 0); ctx.lineTo(x0 + w, 0);
+      ctx.moveTo(x0, -lp[1]); ctx.lineTo(x0 + w, -lp[1]);
       for (let i = tn - 1; i >= 0; i--) {
         const xm = x0 + w * (i + 0.5) / tn, hw = w / tn * 0.5;
         ctx.lineTo(xm + hw, yl - 0.01 * H); ctx.lineTo(xm + hw * 0.2 * (i % 2 ? 1 : -1), yl + dip[i] * H); ctx.lineTo(xm - hw, yl - 0.01 * H);
@@ -467,6 +427,7 @@ window.GenRockTitans = (function () {
         ctx.restore();
       });
     }
+    ctx.restore();
   }
 
   /* the survivor's growth (trade secs tt): from the burst (1.6) a fifth-size leftover of the SURVIVOR titan holds at the clash point to 3.0; it snaps to giant D at
@@ -494,22 +455,21 @@ window.GenRockTitans = (function () {
 
     LAYOUT.titans.forEach((t, i) => {
       const k = snaps(i, tm), rp = GenMatter.rockPose(i);
-      if (i === victim() && !G.reduced) { const ts = G.secs("break"); if (ts >= FIRE_T[0]) { drawVictim(ctx, t, ts); return; } }
+      if (i === victim() && !G.reduced) { const ts = G.secs("break"); if (ts >= FIRE_T[0]) { drawVictim(ctx, t, i, ts); return; } }
       if (k === 0) { if (rp) GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], rp.x, rp.y, rp.rot, rp.size); return; }
-      const tt = G.secs("trade");
+      const tt = G.secs("trade"), c = bodyLayer(i, bodyT(i, tm, k)), lp = layerPos(t);
       if (k === 5 && tt >= 0) {
         // the clash: held 0.4 s steps from the roots to one point, no fight; gone at the burst (reduced motion: gone from trade 0)
-        if (tt < 1.6 && !G.reduced && i !== victim()) ctx.drawImage(titanCache(t, k, ""), (G.sx(0) - tx(t)) * Math.min(3, Math.floor(tt / 0.4)) / 3, 0);
+        if (tt < 1.6 && !G.reduced && i !== victim()) ctx.drawImage(c, lp[0] + (G.sx(0) - tx(t)) * Math.min(3, Math.floor(tt / 0.4)) / 3, lp[1]);
         if (i === SURVIVOR && !G.reduced && tt >= 3.0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
         return;
       }
-      const c = titanCache(t, k, "");
-      if (k === 5 || !rp) { ctx.drawImage(c, 0, 0); return; }
+      if (k === 5 || !rp) { ctx.drawImage(c, lp[0], lp[1]); return; }
       const bb = bodyBox(t), u = k / 5, s = mixv(Math.max(0.35, Math.min(1, 2 * rp.size / bb.h)), 1, u);
       const gx = mixv(rp.x, bb.x, u), gy = mixv(rp.y, bb.y, u), gr = mixv(rp.rot, 0, u);
       ctx.save();
       ctx.translate(gx, gy); ctx.rotate(gr); ctx.scale(s, s); ctx.translate(-bb.x, -bb.y);
-      ctx.drawImage(c, 0, 0);
+      ctx.drawImage(c, lp[0], lp[1]);
       ctx.restore();
       ctx.save();
       ctx.filter = "grayscale(" + u.toFixed(3) + ") brightness(" + mixv(1, 0.23, u).toFixed(3) + ")";

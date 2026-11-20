@@ -20,6 +20,7 @@ window.Gen = (function () {
     } catch (e) {}
   })(["genesis", "gbeat", "gseg", "gscene"]);
   G.reduced = Util.reduced();
+  G.TITAN_HOLD = 7;   // seconds the four rock titans stand whole in the matter beat before giant C burns the fourth and the rest clash
 
   // Archived (owner 2026-10-20): Rex coming into being. Restore between corrupt and dot:
   // { id: "rex", dur: 7.5, tag: "XVI · Rex Immotus",
@@ -33,7 +34,7 @@ window.Gen = (function () {
       line: "The point broke. What came out of it we cannot name. It had no colour of its own, and no shape that would hold." },
     { id: "elements", dur: 0, tag: "IV · What had no body",
       line: "First came what had no body: the dust, the air, the wind, the sound, the colour and the light. No law held for long, and every law changed its mind." },
-    { id: "matter", dur: 2.5, tag: "V · Matter",
+    { id: "matter", dur: 2.5 + G.TITAN_HOLD, tag: "V · Matter",
       line: "Then came matter: flesh, and stone, and things that were both. It floated, it fell, it broke. Small lives crawled out of it and died where they crawled." },
     { id: "trade", dur: 9.0, tag: "VI · The old ones",
       line: "The four stones would not stay stones. They rose taller than the span, met at one point and broke, and out of what they left every old one was born." },

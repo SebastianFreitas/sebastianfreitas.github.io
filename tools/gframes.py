@@ -4,8 +4,8 @@ usage: py -3 tools/gframes.py <run> [beat ...] [--every 1.5] [--max 12]
 Plays each genesis beat headless on a faked clock and tiles a frame every
 `every` seconds into snapshots/frames/<run>/<beat>.png; run it from any cwd.
 Reuses tools/snap.py.
-       py -3 tools/gframes.py --full 12,14.5,16 [<dir>]   (2000x1009 PNGs at those secs("break")
-           times, from gbeat=break, shake off, into snapshots/<dir|full>/; the matter beat is 10)
+       py -3 tools/gframes.py --full 5.5,9,12.4,13.4 [<dir>]   (2000x1009 PNGs at those secs("break")
+           times, from gbeat=break, shake off, into snapshots/<dir|full>/; matter is 3.45 to 12.95, the clash from 12.95)
        py -3 tools/gframes.py --compare <dirA> <dirB>     (changed pixel count per same-named PNG)
 """
 import sys, importlib.util
