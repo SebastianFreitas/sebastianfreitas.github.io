@@ -51,9 +51,9 @@ window.Genesis = (function () {
       const far = Math.hypot(Math.max(cx, G.W - cx), Math.max(cy, G.H - cy)) + 160;
       const core = Math.min(0.9, 0.25 * Math.hypot(G.W, G.H) / far);
       hitG = ctx.createRadialGradient(cx, cy, 0, cx, cy, far);
-      hitG.addColorStop(0, "rgba(30,30,30,1)");
-      hitG.addColorStop(core, "rgba(27,27,27,1)");
-      hitG.addColorStop(1, "rgba(18,18,18,1)");
+      hitG.addColorStop(0, "#16202a");   // the sea's cold navy strata, darkening to the page's #0d1114 at the corners
+      hitG.addColorStop(core, "#141d26");
+      hitG.addColorStop(1, "#0d1114");
     }
     return hitG;
   }
@@ -75,7 +75,6 @@ window.Genesis = (function () {
       && tagEl.textContent === b.tag && lineEl.textContent === b.line) return;   // same words: no swap
     const show = () => {
       copyEl.classList.remove("on", "out");
-      copyEl.style.alignSelf = b.id === "trade" ? "flex-start" : "";   // trade: off the gentleman, who climbs out right of centre
       if (tagEl) tagEl.textContent = b.tag;
       if (lineEl) lineEl.textContent = b.line;
       say(b.tag ? b.tag + ". " + b.line : b.line);
@@ -255,6 +254,10 @@ window.Genesis = (function () {
     lastEnvT = 0;
     G.cam = 0;
     G.camTarget = 0;
+    G.zoom = 1;
+    G.zoomTarget = 1;
+    G.zoomKick = 0;
+    if (G.sparks) G.sparks.length = 0;
     resetFX();
     veilCanvas();
     if (overlay) {
@@ -825,11 +828,13 @@ window.Genesis = (function () {
       GenVoid.drawSpan(ctx, uDrawn);
     }
     if (tb >= 0.5 && tb < 1.6) {
-      /* the bang: a dark grey full-frame wash at full strength for 0.1 s (the peak, tb 0.5), then held step-downs */
-      const fa = tb < 0.8 ? 1 : tb < 0.95 ? 0.7 : tb < 1.1 ? 0.34 : tb < 1.4 ? 0.18 : 0.08;
-      ctx.globalAlpha = fa;
-      ctx.fillStyle = hitGrad(ctx, sx(0), 0.46 * G.H);
-      ctx.fillRect(-160, -160, G.W + 320, G.H + 320);
+      /* the bang: a cold navy full-frame wash, full at onset (tb 0.5), one smooth fall to nothing by tb 1.1 */
+      const fu = Math.max(0, 1 - (tb - 0.5) / 0.6), fa = fu * fu;
+      if (fa > 0.005) {
+        ctx.globalAlpha = fa;
+        ctx.fillStyle = hitGrad(ctx, sx(0), 0.46 * G.H);
+        ctx.fillRect(-160, -160, G.W + 320, G.H + 320);
+      }
       const rx = sx(0), ry = 0.46 * G.H;
       const m = Math.min(G.W, G.H);
       /* the shock ring: a sharp flat stroke in three held sizes, past the corners by 1.7 s; over the wash, under the core */

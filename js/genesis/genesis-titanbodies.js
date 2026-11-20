@@ -186,7 +186,6 @@
     }
     const WEBS = [web(-72, 216, 186, 6), web(104, 92, 66, 5)];
     const DRIPS = [drip(-112, 58, 15), drip(-20, 85, 17), drip(72, 62, 16), drip(165, 34, 14)];
-    const DROP = [[-20, -92], [-14, -101], [-20, -110], [-26, -101]];
     // the sketch's pixel literals as fractions of its H (1009)
     const SKH = 1009, SAG = 14 / SKH, SPREAD = 10 / SKH, GRAV = 1500 / SKH, FALL_END = 216 / SKH;
 
@@ -259,7 +258,7 @@
 
       // inside the body (fill nonzero = union)
       ctx.fillStyle = pal.lit;
-      [HEAP_].concat(WEBS_, DRIPS_, [DROP], beads).forEach(function (b) { ctx.beginPath(); blob(b); ctx.fill(); });
+      [HEAP_].concat(WEBS_, DRIPS_, beads).forEach(function (b) { ctx.beginPath(); blob(b); ctx.fill(); });
 
       // shade: the part of the heap not covered by itself moved up-left (right and under side)
       ctx.save();

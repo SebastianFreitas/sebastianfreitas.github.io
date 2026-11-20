@@ -223,11 +223,12 @@ window.GenOld = (function () {
     }
     const sd = (o.idx || 0) + 1;
     const tl = (G.t || 0) + sd * 1.37;
-    const phase = Math.abs(x + G.cam * W - (splitU * W + W * 0.5)) * 0.045 * o.gait;   // world x, so the camera drift doesn't slide the feet
+    // up to walk: distance rolled from the standing spot (plus the standing spot's offset from splitU), so the gait never runs backwards; after: world x, so the camera drift doesn't slide the feet
+    const phase = (G.beat <= G.idxOf("walk") ? Math.abs(STAND[o.kind].u - splitU) * W + Math.abs(x - sx(STAND[o.kind].u)) : Math.abs(x + G.cam * W - (splitU * W + W * 0.5))) * 0.045 * o.gait;
     const isFlyer = o.move === "fly";
-    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * (held ? 0 : o.wake < 1 ? o.wake : 1);
+    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * smooth(clamp((emerge - 8.4) / 1.0, 0, 1));
     else y = deckY - 2 + STAND[o.kind].lane * 0.012 * H;
-    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.since("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * (held ? 0 : o.wake < 1 ? o.wake : 1);
+    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.secs("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * smooth(clamp((emerge - 8.4) / 1.0, 0, 1));
     if (part) {   // the cut's bottom-centre sits on the chip's pivot: the feet are offset from it by the lying rotation
       const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]), ib = part.ib;
       let ax = ib[0] + (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2 * ib[2], ay = ib[1] + Math.max.apply(null, vs) * ib[3];
@@ -294,7 +295,7 @@ window.GenOld = (function () {
       const Pt = 6 + 3 * hash1a(sd * 7.1);
       if (!dressHold && (tl % Pt) < 0.08 && p.e >= 0.85 && !held) {
         const tw = Math.sin(Math.PI * (tl % Pt) / 0.08);
-        const tk = G.beat === G.idxOf("walk") ? 1 - clamp(G.since("walk") / 0.8, 0, 1) : 1;   // off while walking, faded in from the beat change
+        const tk = G.beat === G.idxOf("walk") ? 1 - clamp(G.secs("walk") / 0.8, 0, 1) : 1;   // off while walking, faded in from the beat change
         p.x += 0.02 * H * tw * tw * tk * (hash1a(sd * 3.3) - 0.5 < 0 ? -1 : 1);
         p.rot += 0.04 * tw * tw * tk;
       }
