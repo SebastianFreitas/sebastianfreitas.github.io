@@ -563,6 +563,8 @@ window.Genesis = (function () {
     else if (G.beat > G.idxOf("enter") && G.beat <= G.idxOf("corrupt"))
       target = ROOT_U;
     else if (G.beat >= G.idxOf("burst") && G.beat <= G.idxOf("drop"))
+      target = ROOT_U - 0.50;   // root's frame: the womb on the right third, its west face and the open dark beside it
+    else if (G.beat === G.idxOf("land"))
       target = ROOT_U - 0.50;
     else if (uRoot > 0.02)
       /* root through rex the surface hold still with half the womb
@@ -590,6 +592,7 @@ window.Genesis = (function () {
       : G.beat >= iBr && G.beat < G.idxOf("trade") ? Math.max(1, oldZ)
       : G.beat === G.idxOf("trade") ? Math.max(1, oldZ, mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1))))
       : G.beat === G.idxOf("enter") ? ENTER_ZOOM[enterStep()]
+      : (G.beat >= G.idxOf("burst") && G.beat <= G.idxOf("drop")) && window.GenRexOut ? GenRexOut.cam().z  // the 1x frame (the whole womb), then in on the fist; drop pulls back from there
       : Math.max(1, mix(zk[0], zk[1], smooth(G.local / Math.max(0.001, cur ? cur.dur : 1))));   // never below 1: a pulled-back frame shows dark strips beside the sea and bridge
     return { target, rate: camRate, zoom };
   }
@@ -677,9 +680,14 @@ window.Genesis = (function () {
     ctx.translate(sxh, syh);
     const z = G.zoom || 1;
     if (z !== 1) {
-      ctx.translate(G.W * 0.5, G.H * 0.5);
+      let zx = G.W * 0.5, zy = G.H * 0.5;
+      if ((G.beat >= G.idxOf("burst") && G.beat <= G.idxOf("drop")) && window.GenRexOut) {   // zoom in about the fist as it comes
+        const c = GenRexOut.cam(), f = clamp((z - c.z0) / Math.max(0.001, c.z1 - c.z0), 0, 1);
+        zx = mix(zx, c.fx, f); zy = mix(zy, c.fy, f);
+      }
+      ctx.translate(zx, zy);
       ctx.scale(z, z);
-      ctx.translate(-G.W * 0.5, -G.H * 0.5);
+      ctx.translate(-zx, -zy);
     }
 
     const uDrawn = since("drawn");
@@ -751,11 +759,20 @@ window.Genesis = (function () {
       GenElem.draw(ctx);        // wave one: dust, air, wind, sound, colour, light (under the old ones, so the figures hide it)
       GenElem.drawAirDrift(ctx);   // the glass and the three stars: background, under every old one
       if (window.GenCeiling) GenCeiling.draw(ctx, G.W, G.H, GenElem.seaRise(G.W, G.H), G.reduced ? 0 : G.t);   // the ceiling mass, grown on the sea's clock
-      GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0);
+      /* the fight opens on a calm, plain womb: from burst through drop the shards, chips, travellers, inside layer, veins, cry and motes are off
+         (eased out over the last second of corrupt, back in over the first 1.5 s of land) */
+      const iBurst = idxOf("burst"), iDrop = idxOf("drop");
+      const plain = G.beat >= iBurst && G.beat <= iDrop ? 1
+        : G.beat === iBurst - 1 ? smooth(clamp(G.secs(G.BEATS[G.beat].id) - (G.BEATS[G.beat].dur - 1), 0, 1))
+        : G.beat === iDrop + 1 ? 1 - smooth(clamp(G.secs(G.BEATS[G.beat].id) / 1.5, 0, 1))
+        : 0;
+      G.plain = plain;
+      const gated = fn => { if (plain >= 0.99) return; ctx.save(); ctx.globalAlpha *= 1 - plain; fn(); ctx.restore(); };
+      gated(() => GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0));
       const tTrade = G.secs("trade");
       const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace
       // the old ones still climbing out of the mass sit behind its stones
-      GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" });
+      gated(() => GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" }));
       GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms; the stone gathers into the mass the old ones climb out of
 
       const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
@@ -763,13 +780,13 @@ window.Genesis = (function () {
       const fleshVis = approaching * (1 - uLand * 0.28);
       const geom = GenFlesh.fleshGeom(uWomb);
       const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("land") ? 1 : 0);
-      if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis);   // behind the body on purpose
+      if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis * (1 - plain));   // behind the body on purpose
       const calmOn = (G.beat > G.idxOf("calm") || (G.beat === G.idxOf("calm") && (G.local >= 0.5 || G.reduced))) ? 1 : 0;
-      const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn);
-      const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1) * (1 - calmOn);
+      const flesh = GenFlesh.drawFlesh(ctx, fleshVis, pain, uWomb, calmOn, G.beat >= G.idxOf("burst"), plain);   // no eyes or mouths from the Rex scene on
+      const cryAmt = fleshVis * clamp(0.5 * uRoot + 1.0 * uSwarm * (1 - uWomb) + 0.15 * uWomb, 0, 1) * (1 - calmOn) * (1 - plain);
       GenFlesh.drawCry(ctx, flesh, cryAmt);
-      GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis * (1 - calmOn), GenOld.ROSTER);
-      const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55);
+      GenFlesh.drawPatches(ctx, flesh, uSwarm * (1 - 0.85 * uWomb) * fleshVis * (1 - calmOn) * (1 - plain) * (G.beat >= idxOf("burst") && G.beat <= idxOf("land") ? 0 : G.beat === idxOf("land") + 1 ? smooth(clamp(G.secs(BEATS[G.beat].id) / 1.5, 0, 1)) : 1), GenOld.ROSTER);   // no coloured discs from burst on, through land
+      const soulAmt = clamp((uRoot - 0.2) / 0.5, 0, 1) * mix(0.45, 1, uWomb) * (1 - uBirth * 0.55) * (1 - plain);
       GenFlesh.drawSouls(ctx, flesh, soulAmt, uWomb);
 
       const cling = clamp(uRoot * 0.25 + uSwarm * 0.9, 0, 1);
@@ -777,8 +794,8 @@ window.Genesis = (function () {
       const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
       /* the old ones climb out of the mass one by one through the trade beat, and start
          down the span before it ends, so the procession never stops */
-      GenTrade.drawStream(ctx);   // everything that travels with them
-      GenRockTitans.drawDebris(ctx, tTrade);   // deck and float chips of the titans' burst, behind the front old ones
+      gated(() => GenTrade.drawStream(ctx));   // everything that travels with them
+      gated(() => GenRockTitans.drawDebris(ctx, tTrade));   // deck and float chips of the titans' burst, behind the front old ones
       if (G.beat < idxOf("burst")) GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
 
       if (window.GenRexOut) GenRexOut.draw(ctx);   // burst, duel and drop: Rex and Obrokxus out of the womb, in front of it

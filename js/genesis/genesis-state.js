@@ -56,9 +56,9 @@ window.Gen = (function () {
       line: "Each universe gave birth to the next, linked like rings of chain mail, until there were billions. The later ones carried magic." },
     { id: "corrupt", dur: 6.5, tag: "XV · Corruption",
       line: "Some rings turned red. The old ones cut them out and returned them to the soup. The red that would not come out was sent up, and it built." },
-    { id: "burst", dur: 5.0, tag: "XVII · Out",
+    { id: "burst", dur: 9.0, tag: "XVII · Out",
       line: "The womb tore. Two came out as one: Obrokxus, born of a corrupted universe, and Rex Immotus with his hands already on him." },
-    { id: "duel", dur: 7.0, tag: "XVIII · The fight",
+    { id: "duel", dur: 9.0, tag: "XVIII · The fight",
       line: "They fought in the open, body and soul against the chaos of the void." },
     { id: "drop", dur: 6.0, tag: "XIX · The fall",
       line: "Rex died with his body closed around Obrokxus, and fell holding him." },
@@ -144,6 +144,7 @@ window.Gen = (function () {
       if (i == null || i < sp.a || i > sp.b) G.JUMP = null;
     }
   })();
+  G.wombSink = 0;   // 0..1: the womb settles lower once the work inside is done (driven by the Rex painter; kept, not recomputed per beat)
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;
   G.BAY_U  = 0.125;

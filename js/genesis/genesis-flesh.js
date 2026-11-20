@@ -27,7 +27,11 @@ window.GenFlesh = (function () {
     const cx = sx(ROOT_U), cy = 0.5 * G.H;
     const rx = m * (0.36 + 0.22 * vis) * mix(1, 0.90, womb);
     const ry = m * (0.46 + 0.26 * vis) * mix(1, 0.95, womb);
-    return { cx, cy, rx, ry };
+    // sunk: the top drops 15% of the height, the base stays, and it spreads 10% wider (area 0.935)
+    const sink = clamp(G.wombSink || 0, 0, 1);
+    if (!sink) return { cx, cy, rx, ry };
+    const ry2 = ry * (1 - 0.15 * sink);
+    return { cx, cy: cy + (ry - ry2), rx: rx * (1 + 0.10 * sink), ry: ry2 };
   }
 
   // the body's wobbling outline: an 81-point ellipse with four ripple terms
@@ -52,7 +56,7 @@ window.GenFlesh = (function () {
   const EYES = [[200, 0.55], [160, 0.70], [235, 0.72], [120, 0.45], [260, 0.40], [185, 0.25]];
   const MOUTHS = [[215, 0.90], [145, 0.88], [180, 0.60]];
 
-  function drawFlesh(ctx, vis, pain, womb, calm) {
+  function drawFlesh(ctx, vis, pain, womb, calm, faceless, plain) {
     if (vis < 0.02) return null;
     pain = pain == null ? 0.4 : pain;
     womb = womb == null ? 0 : womb;
@@ -87,6 +91,8 @@ window.GenFlesh = (function () {
     ctx.strokeStyle = "rgba(38,6,10,0.9)";
     ctx.lineWidth = 0.022 * m;
     ctx.lineCap = "round";
+    if (!(plain >= 0.99)) {   // the fight's calm womb is plain: no vein bars
+    ctx.globalAlpha = vis * (1 - (plain || 0));
     ctx.beginPath();
     for (let k = 0; k < 6; k++) {
       const a0 = (k * 60 + 20) * DEG, a1 = a0 + 25 * DEG;
@@ -97,6 +103,8 @@ window.GenFlesh = (function () {
       ctx.quadraticCurveTo((x0 + x1) / 2 + sway, (y0 + y1) / 2, x1, y1);
     }
     ctx.stroke();
+    ctx.globalAlpha = vis;
+    }
 
     // ridges: lit folds beside each vein, and a darker rim just inside the edge
     if (arr > 0.01) {
@@ -120,7 +128,7 @@ window.GenFlesh = (function () {
     }
 
     // 4. eyes: mostly open, closing under pain or the womb, watching west
-    if (!calm) {
+    if (!calm && !faceless) {
       const look = sx(0);
       for (let k = 0; k < EYES.length; k++) {
         const ang = EYES[k][0] * DEG, rf = EYES[k][1];
@@ -150,7 +158,7 @@ window.GenFlesh = (function () {
     }
 
     // 5. mouths: dark holes with a lit upper lip, teeth when they gape wide
-    if (!calm) {
+    if (!calm && !faceless) {
       for (let k = 0; k < MOUTHS.length; k++) {
         const ang = MOUTHS[k][0] * DEG, rf = MOUTHS[k][1];
         const mx = cx + Math.cos(ang) * rx * rf, my = cy + Math.sin(ang) * ry * rf;
