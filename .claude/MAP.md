@@ -49,7 +49,6 @@ Owner's words → code names. Add a line when the owner uses a word the code doe
 - the old ones: js/genesis/genesis-oldones.js (24 beings), painters in genesis-oldkin.js
 - the east-goers (dressed old ones): js/genesis/genesis-oldkin.js (Bare/Dressed painters), clothes in genesis-attire.js
 - the carers: CARERS (eye, chime, mound) in js/genesis/genesis-oldones.js
-- the red dot (Obrokxus inside the womb): js/genesis/genesis-dot.js; his forms in genesis-obrok.js, genesis-titans.js
 - the Hound: drawHound in js/genesis/genesis-titans.js; its ritual in genesis-ritual.js
 - the war, angels and devils: js/genesis/genesis-armies.js (sim), genesis-hosts.js, genesis-seraphin.js (angels), genesis-malgrur.js (devils)
 - the sky shadows, tier 3: js/genesis/genesis-tier3.js, break giants genesis-giants.js; palette genesis-eldpal.js
@@ -344,7 +343,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `genesis-state.js` | `BEATS` (34 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex dot–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
+| `genesis-state.js` | `BEATS` (34 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex burst–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette: 21 named tokens as `{lit, mid, shade}`, tier-3 sky steps, `SEA` (five sea families, read by genesis-elements.js); `tone report contrast swatchSheet` | `window.GenEldPal` |
 | `genesis-ceilkinds.js` | registry of ceiling hanging objects; draws sprout, tuft, fin | `window.GenCeilKinds` (`add list pick deck palette hues`) |
@@ -365,11 +364,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-circle.js` | `circle` beat inside | `window.GenCircle` |
 | `genesis-chains.js` | `chains` beat inside: the P8 disc snaps to a ring, linked rings snap out along a chain with the rose thread, then 3 held zoom-outs to hex chain-mail fields (levels 2-3 stamped from offscreen tiles), magic rings carry a pale chip: `draw` | `window.GenChains` |
 | `genesis-corrupt.js` | `corrupt` beat inside: a level-1 ring field, 3 rings turn red in held arc steps, a dark blade cuts each loose, a dark crescent (mothers) folds it to grey dust, one red dot per ring rises in steps into a lumpy red layer at the roof: `draw` | `window.GenCorrupt` |
-| `genesis-rexin.js` | `rex` beat inside | `window.GenRexIn` |
-| `genesis-dot.js` | `dot` beat inside: over GenRexIn at t=99, a ring turns red, the red dot (Obrokxus) steps out towards the right wall while Rex's right arm reaches in held steps: `draw` | `window.GenDot` |
-| `genesis-clash.js` | `clash` beat inside: close view, Rex's fist drives the red dot into the womb wall in 4 blows (stepped octagon rings), the wall bulges and tears in held steps onto tier-1 strata: `draw` | `window.GenClash` (`draw(...,noActors)`, `geom`) |
-| `genesis-death.js` | `death` beat: clash backdrop without actors, Rex's fist steps into the tear and curls over the red dot, the arm steps to dead grey. `window.GenDeath` |
-| `genesis-gods-beat.js` | `gods` beat opening: the death frame cut by a stepped octagon onto the live land. `window.GenGodsBeat` |
+| `genesis-rexout.js` | beats `burst`, `duel` and `drop`: the tear on the womb's flank, Rex and Obrokxus tumbling out locked, the held-step fight, then Rex dead wrapped round Obrokxus falling to the ground (`draw(ctx)`) | `window.GenRexOut` |
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
@@ -408,8 +403,6 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-void.js` `drawSpan`: deck and hanging cities from `trade`, pier nests from `walk`, plan phase 19; clears, masks and blits only a device-pixel box around the span, plan phase 23
 - `genesis-circle.js`: roles end state as backdrop; a grey thread rises from the pile and draws the ring in 8 held arcs from the bottom (pile shrinks a row per arc via `GenEye.setPileCut`), the rose thread + power point from P,
 - `genesis-circle.js`: then a living universe (flat disc + band, turning 2-arm speck spiral, rose sparks, blue souls): `draw`, `drawUniverse(ctx,W,H,t,C?,R?)` (chains' opening disc)
-- `genesis-rexin.js`: Rex tears the level-1 ring into two arcs, grows over held zoom-outs (field shrinks, roof band thins) until only part of him fits, then the chains settle round him as braided dark-red rivers;
-- `genesis-rexin.js`: `draw(...,reach)` bends the right arm, `rexGeom(W,H,reach).hand`: `draw`, `rexGeom`
 - `genesis-elements.js`: dust, air, wind, sound, colour, light; 460 particles, rage events; `drawResidue` = the permanent void traces (dust, wind, colour stains, lights, sound rings) drawn every frame after the far realms; stains and rings are out from `walk` through `root`, back over `land`;
 - `genesis-elements.js`: late in `elements` each particle freezes and snaps in held steps to the sea, the rail top or the sky (`posAt`, `drawSplit`) (plan phase 21).
 - `genesis-elements.js`: `drawSea` draws the crooked waste at the frame bottom: debris falls and heaps, then forms (spires, ledges, loops, stairs, self-contradicting kinds) rise out of the heaps; colours are `GenEldPal.SEA` families keyed to world x.

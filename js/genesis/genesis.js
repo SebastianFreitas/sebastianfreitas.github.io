@@ -484,7 +484,8 @@ window.Genesis = (function () {
     point: [1.00, 1.08], drawn: [1.08, 1.00], break: [1.00, 1.05],
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.30], walk: [1.30, 1.02],
     root: [1.02, 1.06], enter: [1.06, 1.09],
-    soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09], rex: [1.09, 1.09], dot: [1.09, 1.09], clash: [1.09, 1.09], death: [1.09, 1.09],
+    soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09],
+    burst: [1.06, 1.06], duel: [1.06, 1.06], drop: [1.06, 1.06],
     land: [1.00, 1.05], gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
@@ -556,8 +557,10 @@ window.Genesis = (function () {
     else if (uWalk < 0.001) target = 0;
     else if (G.beat === G.idxOf("enter"))
       target = ROOT_U - 0.50 + 0.50 * (enterStep() / 3);
-    else if (G.beat > G.idxOf("enter") && G.beat <= G.idxOf("death"))
+    else if (G.beat > G.idxOf("enter") && G.beat <= G.idxOf("corrupt"))
       target = ROOT_U;
+    else if (G.beat >= G.idxOf("burst") && G.beat <= G.idxOf("drop"))
+      target = ROOT_U - 0.50;
     else if (uRoot > 0.02)
       /* root through rex the surface hold still with half the womb
          past the right edge; panning further east shows its ragged side.
@@ -681,7 +684,7 @@ window.Genesis = (function () {
     const uWalk  = since("walk");
     const uRoot  = since("root");
     const uSwarm = since("enter");
-    const uWomb  = since("soup");
+    const uWomb  = since("drop");
     const pastBirth = G.beat >= G.idxOf("land") ? 1 : 0;
     const uBirth = pastBirth;
     const uFight = pastBirth;
@@ -691,7 +694,7 @@ window.Genesis = (function () {
 
     /* from enter on the placeholder below paints opaque over the whole outside scene;
        skip it while the cover is full (the fade-in at the start of enter still paints it) */
-    const covered = G.beat > G.idxOf("enter") && G.beat <= G.idxOf("death")
+    const covered = G.beat > G.idxOf("enter") && G.beat <= G.idxOf("corrupt")
       || (G.beat === G.idxOf("enter") && linear("enter") >= 0.8);
     let L = null;
     if (!covered) {
@@ -773,9 +776,11 @@ window.Genesis = (function () {
          down the span before it ends, so the procession never stops */
       GenTrade.drawStream(ctx);   // everything that travels with them
       GenRockTitans.drawDebris(ctx, tTrade);   // deck and float chips of the titans' burst, behind the front old ones
-      GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
+      if (G.beat < idxOf("burst")) GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
 
-      L = lightsAt(uBirth, uFight, uLand, flesh);
+      if (window.GenRexOut) GenRexOut.draw(ctx);   // burst, duel and drop: Rex and Obrokxus out of the womb, in front of it
+
+      L =lightsAt(uBirth, uFight, uLand, flesh);
 
       if (uFight > 0.08 && uLand < 0.2) G.shake = Math.max(G.shake, 0.22 + uFight * 0.2);
       if (uFight > 0.82 && uLand < 0.2) G.shake = Math.max(G.shake, 0.55 + (1 - L.yAmt) * 0.45);
@@ -785,7 +790,7 @@ window.Genesis = (function () {
       /* inside Rex the depths paint opaque rock over everything below
          1.69 screen heights, so the land fill can stop just under that */
       const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
-      drawRexLand(ctx, landRise, L.originX, L.originY, depthsOn ? G.H * 1.72 : null);
+      drawRexLand(ctx, landRise, sx(G.ROOT_U - 0.42), G.H * 0.86, depthsOn ? G.H * 1.72 : null);
       GenElem.drawSea(ctx);   // the sea bed, over the matter, flesh and land, under the gods
       drawGodsBirth(ctx, flesh);
       if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);
@@ -793,7 +798,7 @@ window.Genesis = (function () {
       drawSaga(ctx);
       ctx.restore();
     }
-    if (uSwarm > 0.1 && uWomb < 0.2) G.shake = Math.max(G.shake, 0.18);
+    if (uSwarm > 0.1 && since("soup") < 0.2) G.shake = Math.max(G.shake, 0.18);
 
     drawInsidePlaceholder(ctx);
     if (G.beat === G.idxOf("soup") && window.GenSoup) GenSoup.draw(ctx, G.W, G.H, G.local, G.reduced);
@@ -802,10 +807,6 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("circle") && window.GenCircle) GenCircle.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("chains") && window.GenChains) GenChains.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("corrupt") && window.GenCorrupt) GenCorrupt.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("dot") && window.GenDot) GenDot.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("clash") && window.GenClash) GenClash.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("death") && window.GenDeath) GenDeath.draw(ctx, G.W, G.H, G.local, G.reduced);
-    if (G.beat === G.idxOf("land") && window.GenGodsBeat) GenGodsBeat.draw(ctx, G.W, G.H, G.local, G.reduced);
 
     if (L && L.die > 0.02 && L.die < 0.55) {
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
@@ -885,7 +886,7 @@ window.Genesis = (function () {
   }
 
   function drawInsidePlaceholder(ctx) {
-    const a = idxOf("enter"), b = idxOf("death");
+    const a = idxOf("enter"), b = idxOf("corrupt");
     if (!(a < BEATS.length && G.beat >= a && G.beat <= b)) return;
     const cover = G.beat === a ? (linear("enter") >= 0.8 ? 1 : 0) : 1;
     ctx.save();

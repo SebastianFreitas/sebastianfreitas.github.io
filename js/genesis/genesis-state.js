@@ -22,7 +22,7 @@ window.Gen = (function () {
   G.reduced = Util.reduced();
   G.TITAN_HOLD = 7;   // seconds the four rock titans stand whole in the matter beat before giant C burns the fourth and the rest clash
 
-  // Archived (owner 2026-10-20): Rex coming into being. Restore between corrupt and dot:
+  // Archived (owner 2026-10-20): Rex coming into being. Restore between corrupt and burst:
   // { id: "rex", dur: 7.5, tag: "XVI · Rex Immotus",
   //   line: "Rex Immotus came into being so vast that he tore his universe apart and kept growing past many more, until the chains settled round him like rivers." },
   G.BEATS = [
@@ -56,12 +56,12 @@ window.Gen = (function () {
       line: "Each universe gave birth to the next, linked like rings of chain mail, until there were billions. The later ones carried magic." },
     { id: "corrupt", dur: 6.5, tag: "XV · Corruption",
       line: "Some rings turned red. The old ones cut them out and returned them to the soup. The red that would not come out was sent up, and it built." },
-    { id: "dot", dur: 5.5, tag: "XVII · The red dot",
-      line: "A red dot slipped out of a corrupted universe: Obrokxus, in his first form. Rex moved to stop him." },
-    { id: "clash", dur: 6.5, tag: "XVIII · The walls",
-      line: "They met at the wall of the womb, body and soul against the chaos of the void." },
-    { id: "death", dur: 6.0, tag: "XIX · The fist",
-      line: "Rex died before he was fully out, his fist closed over Obrokxus against the void." },
+    { id: "burst", dur: 5.0, tag: "XVII · Out",
+      line: "The womb tore. Two came out as one: Obrokxus, born of a corrupted universe, and Rex Immotus with his hands already on him." },
+    { id: "duel", dur: 7.0, tag: "XVIII · The fight",
+      line: "They fought in the open, body and soul against the chaos of the void." },
+    { id: "drop", dur: 6.0, tag: "XIX · The fall",
+      line: "Rex died with his body closed around Obrokxus, and fell holding him." },
     { id: "land", dur: 7.0, tag: "XX · The land",
       line: "Rex had become the land and the bridge between the womb and the world." },
     { id: "gods", dur: 7.0, tag: "XXI · Through him",
@@ -113,7 +113,7 @@ window.Gen = (function () {
   G.SCENES = {
     birth:    { from: "point",     to: "walk" },
     root:     { from: "root",      to: "corrupt" },
-    rex:      { from: "dot",       to: "land" },
+    rex:      { from: "burst",      to: "land" },
     valkhar:  { from: "gods",      to: "stalemate" },
     mainland: { from: "firstlock", to: "now" },
   };
