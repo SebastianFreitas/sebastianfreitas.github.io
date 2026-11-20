@@ -517,7 +517,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `css/art/dirt-a.webp` | Static transparent dirt tile (1440x1280, repeat-y): dry-brush, scratches, big ink marks; tokens `--dirt-a`, `--dirt-size` in style.css `:root`; used by the wall only (veils), never a plate. Gate detail in the bullet below |
 | `wash.webp`, `folder-glow.webp` (were in `css/art/`) | Archived outside the repo under `portfolio-archive/2026-11-18-review/`; no longer used |
 | `index.html` | Homepage; Experience plate (G.Round, DF Block); footer has the education line; the four Work rows under the bridge (a red line closes the bridge box, css/bridge.css); see bullet below |
-| `media/experience/` | Experience pictures: `ground-1..26.webp` (G.Round `.xg-tile` strip), `dfblock-1,3,4,5.webp` (DF Block photos), `ground-brand.webp` (G.ROUND logo bg); `CREDITS.md` credits the photos and logo |
+| `media/experience/` | Experience pictures: `ground-1..26.webp` (G.Round `.xg-tile` strip), `dfblock-1,3,4,5.webp` (DF Block photos), `ground-brand.webp` (G.ROUND logo bg), `dfblock-brand.webp` (DF Block logo); `CREDITS.md` credits the photos and logo |
 | `ground-certificate.pdf` | G.Round certificate, beside `cv.pdf`; linked as `a.xp-cert` "Certificate (PDF)" in the G.Round Experience row |
 | `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it (css/style.css, comment in index.html) |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |

@@ -489,7 +489,7 @@ body.page-case { background: #0a0d10; }
   transition: transform 0.16s; }
 .go.go-here { background: var(--type-cream); }
 .go.go-back { margin-left: 0; margin-right: 10px; transform: scaleX(-1); }
-.xp-link > .go { margin-right: 23px; }   /* trailing room so the Experience title's box stays about as wide as with the old em-sized arrow (what sits and wraps beside it does not move) */
+.xp-link > .go { margin-left: 21px; margin-right: 12px; }   /* trailing room so the Experience title's box stays about as wide as with the old em-sized arrow (what sits and wraps beside it does not move) */
 a:hover > .go, a:focus-visible > .go { transform: translateX(4px); }
 a:hover > .go.go-back, a:focus-visible > .go.go-back { transform: scaleX(-1) translateX(4px); }
 @media (prefers-reduced-motion: reduce) { .go { transition: none; } }
@@ -1245,8 +1245,11 @@ footer.xp-foot .foot-text p.rights { padding-top: 1.6rem; border-top: 1px solid 
   .xp-shape .xp-pic img.on { opacity: 1; }   /* xp-pic.js moves .on from one photo to the next: a slow cross-fade, opacity only */
   @media (prefers-reduced-motion: reduce) { .xp-shape .xp-pic img { transition: none; } }
   /* G.ROUND's branding (its own logo, gameround.co) dimmed and desaturated in the open space right of its text, above the game strip; the mask fades every side so it ends before the text, the tiles, the red line and the diagonal */
-  .xp-shape .xp > li:nth-child(1)::after { content: ""; position: absolute; z-index: -1; pointer-events: none; left: calc(var(--xp-W, 1660px) * 0.16); top: calc(var(--xp-W, 1660px) * 0.077); width: calc(var(--xp-W, 1660px) * 0.24); aspect-ratio: 1; background: url("../media/experience/ground-brand.webp") center / cover; filter: saturate(0.4) brightness(0.55); opacity: 0.5;
+  .xp-shape .xp > li:nth-child(1)::after { content: ""; position: absolute; z-index: -1; pointer-events: none; left: calc(var(--xp-W, 1660px) * 0.2); top: calc(var(--xp-W, 1660px) * 0.077); width: calc(var(--xp-W, 1660px) * 0.22); aspect-ratio: 1; background: url("../media/experience/ground-brand.webp") center / cover; filter: saturate(0.4) brightness(0.55); opacity: 0.5;
     -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent); mask-image: radial-gradient(closest-side, #000 35%, transparent); }
+  /* DF Block's logo (dfblock.pt), the same dimmed, desaturated treatment, under its text; no mask, so every letter is whole */
+  .xp-shape .xp > li:nth-child(2)::after { content: ""; position: absolute; z-index: -1; pointer-events: none; left: calc(var(--xp-W, 1660px) * 0.4158); top: calc(var(--xp-W, 1660px) * 0.195); width: calc(var(--xp-W, 1660px) * 0.17); aspect-ratio: 640 / 187; background: url("../media/experience/dfblock-brand.webp") center / contain no-repeat; filter: grayscale(1) brightness(0.55); opacity: 0.5;
+    -webkit-mask-image: none; mask-image: none; }
   .xp-shape .xp li:nth-child(2) .xp-what, .xp-shape .xp li:nth-child(2) .xp-note { text-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.95), 0 0 1.2rem rgba(0, 0, 0, 0.8); }   /* DF text over the photo: a tight dark halo, not a darker photo */
   .xp-shape .xp li:is(:hover, :focus-within) .xp-what .xp-t { text-shadow: none; }
 }
