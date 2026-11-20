@@ -516,56 +516,60 @@ window.HudC25 = (function () {
   }
 
   /* ship side view + hull stress strip + p / rh (right wing, upper) */
+  let shipC = null;   // the blueprint and everything derived from it, keyed on dpr * s: rebuilt only when the size changes
   function paintShip() {
-    /* the outline is the hull's own silhouette (VoidshipHull's drawing tables, hull units): the aft part (u < JOINT_U) is squeezed to fit the old tile box, and v is scaled by KV so the masts stay inside the tile */
-    const L = 142, KV = 0.33, X = 1608 + 0.52 * L, Y = 874, mu = u => u >= 0.36 ? u : 0.36 + (u - 0.36) * 0.682, P = ([u, v]) => [X + mu(u) * L, Y + v * KV * L], S = pts => pts.map(P);
-    const ol = (pts, a, w, close, col) => glow(col || C_MID, () => poly(S(pts), col || C_MID, a, w, close));
+    /* the real ship's line drawing (VoidshipHull.blueprint), true proportions, centred in the old box's column 1608..1867 and fitted between the bus strip and the stress row */
+    const L = 105, YT = 804, fr = u => ((u >= 0.36 ? u : 0.36 + (u - 0.36) * 0.682) + 0.52) / 1.82;   // fr: the old marks' u (stern -0.52 .. nose 1.30) as a fraction of the ship's length
+    if (!shipC || shipC.k !== dpr * s) {
+      const bp = window.VoidshipHull.blueprint(L, dpr * s, { top: rgba(C_TOP, BRIGHT), hull: rgba(C_HULL, BRIGHT), mid: rgba(C_MID, BRIGHT), nose: rgba(C_NOSE, BRIGHT) }, HAIR);
+      const xs0 = 1608 + (259 - (bp.tip - bp.stern)) / 2, xs1 = xs0 + bp.tip - bp.stern, X = xs0 - bp.stern, Yo = YT - bp.top, cx = X - bp.ox, cy = Yo - bp.oy, yb = Yo + bp.bottom;
+      const edge = x => { const g = bp.canvas.getContext("2d"), px = Math.max(0, Math.min(bp.canvas.width - 1, Math.round((x - cx) * bp.canvas.width / bp.w))), d = g.getImageData(px, 0, 1, bp.canvas.height).data;
+        for (let r = bp.canvas.height - 1; r >= 0; r--) if (d[r * 4 + 3] > 40) return cy + r * bp.h / bp.canvas.height; return yb; };   // the lowest line of the drawing at column x
+      const lx = xs0 + 4;
+      shipC = { k: dpr * s, bp, xs0, xs1, X, Yo, cx, cy, yb, lx, ly: edge(lx),
+        ticks: [-0.64, -0.13, 0.43].map(u => { const x = Math.round(xs0 + fr(u) * (xs1 - xs0)) + 0.5; return [x, edge(x)]; }) };
+    }
+    const { bp, xs0, xs1, X, Yo, cx, cy, yb, lx, ly, ticks } = shipC;
+    const FIN = [1824, 814], PR = [1709, 813];   // the fin label and the p / rh row
+    const rg = (x, y) => [X + (x - 640) * L / 590, Yo + (y - 330) * L / 590];   // the collar ring's corners (big ship, L 590 at 640,330)
     stat_(() => {
       head("ship", 1546, 926); mic("hull", 1546, 939, { a: 0.8 });
-      poly([[1546 + W_("ship", 10) + 6, 922.5], [1592, 922.5], [1606, 905]], CREAM, 0.75, HAIR); dot(1606, 905, 1.8, CREAM, BRIGHT);
-      /* the one closed outline, stroked in stretches by the part it follows: aft engine (centre), top (receptors), nose, lower hull */
-      const OT = [[-0.91, -0.235], [-0.85, -0.27], [-0.82, -0.45], [-0.76, -0.38], [-0.70, -0.35], [-0.64, -0.57], [-0.60, -0.45], [-0.52, -0.345], [-0.43, -0.385], [-0.34, -0.29], [-0.25, -0.24], [-0.10, -0.215], [-0.04, -0.185], [0.08, -0.195], [0.14, -0.21], [0.32, -0.20], [0.38, -0.225], [0.50, -0.20], [0.53, -0.155], [0.58, -0.18], [0.59, -0.605], [0.65, -0.605], [0.68, -0.145], [0.80, -0.135], [0.93, -0.19], [0.96, -0.275], [1.0, -0.125], [1.10, -0.125], [1.30, -0.105]],
-        OB = [[1.30, -0.015], [1.19, 0.0], [1.07, 0.02], [0.95, 0.055], [0.80, 0.095], [0.68, 0.135], [0.56, 0.135], [0.50, 0.155], [0.41, 0.195], [0.32, 0.22], [0.26, 0.365], [0.20, 0.425], [0.17, 0.44], [0.02, 0.44], [-0.01, 0.16], [-0.04, 0.185], [-0.07, 0.235], [-0.10, 0.21], [-0.13, 0.155], [-0.19, 0.185], [-0.25, 0.29], [-0.31, 0.36], [-0.34, 0.20], [-0.43, 0.18], [-0.55, 0.155], [-0.67, 0.135], [-0.79, 0.09], [-0.91, 0.10]];
-      ol(OT.slice(0, 10), BRIGHT, HAIR, false, C_MID); ol(OT.slice(9, 26), BRIGHT, HAIR, false, C_TOP); ol(OT.slice(25).concat(OB.slice(0, 4)), BRIGHT, HAIR, false, C_NOSE);
-      ol(OB.slice(3, 23), BRIGHT, HAIR, false, C_HULL); ol(OB.slice(22).concat([OT[0]]), BRIGHT, HAIR, false, C_MID);
-      ol([[-0.80, -0.24], [-0.932, -0.24], [-0.932, -0.14], [-0.80, -0.14]], 0.75, HAIR, false); ol([[-0.78, -0.01], [-0.902, 0.0], [-0.902, 0.10], [-0.78, 0.11]], 0.75, HAIR, false);
-      poly(S([[-0.932, -0.215], [-0.932, -0.165]]), C_MID, 0.3); poly(S([[-0.902, 0.02], [-0.902, 0.08]]), C_MID, 0.3);
-      poly(S([[-0.34, 0.0], [0.30, 0.0]]), C_MID, QUIET);
-      { const rp = P([0.4305, -0.0136]); c.save(); c.translate(rp[0], rp[1]); c.scale(0.044 / (0.21 * KV), 1); arc(0, 0, 0.21 * KV * L, PI / 2 + 0.8, PI / 2 - 0.8 + 2 * PI, C_HULL, NORMAL, HAIR); c.restore(); }
-      mic("fin", 1619, 826, { a: 0.8 });
-      shape("ship", X - 0.52 * L, Y - 0.605 * KV * L, X + 1.30 * L, Y + 0.44 * KV * L);
+      poly([[1546 + W_("ship", 10) + 6, 922.5], [1592, 922.5], [lx - 2, ly - 1]], CREAM, 0.75, HAIR); dot(lx - 2, ly - 1, 1.8, CREAM, BRIGHT);
+      c.drawImage(bp.canvas, cx, cy, bp.w, bp.h);
+      mic("fin", FIN[0], FIN[1], { a: 0.8 });
+      shape("ship", xs0, YT, xs1, yb);
     });
     dyn(() => {
       text(String(RF.hullInt),1546 + W_("hull", LBL()) + 5, 939, { size: 10, col: CREAM, a: BRIGHT });
-      text(String(RF.fin),1619 + W_("fin", LBL()) + 4, 826, { size: 10, col: CREAM, a: BRIGHT });
+      text(String(RF.fin), FIN[0] + W_("fin", LBL()) + 4, FIN[1], { size: 10, col: CREAM, a: BRIGHT });
       /* p and rh */
-      const y = 836, gc = 832; let x = 1700;
+      const y = PR[1] + 4, gc = PR[1]; let x = PR[0];
       const R = 7, px = x + R, rp = Math.max(0.5, R + (+RF.p - 101.3) * 4); x += 2 * R + 4;
       arc(px, gc, R, 0, 2 * PI, C_HULL, 0.35, 1, [1, 2]); glow(C_HULL, () => arc(px, gc, rp, 0, 2 * PI, C_HULL, NORMAL, HAIR)); dot(px, gc, 1.2, C_HULL, 0.6);
-      mic("p", x, y); text(RF.p, x + W_("p", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT }); x += W_("p", LBL()) + 4 + W_(RF.p, 10) + 16;
-      const r = 5, dx = x + r, dy = 836, tip = 823, bot = dy + r;
+      mic("p", x, y); text(RF.p, x + W_("p", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT }); x = PR[0];
+      const r = 5, dy = PR[1] + 4 + 18, tip = PR[1] + 18 - 9, bot = dy + r, dx = x + r;
       poly([[dx - r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))], [dx, tip], [dx + r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))]], C_HULL, 0.6);
       arc(dx, dy, r, rad(-30), rad(210), C_HULL, 0.6);
       const lvl = bot - (bot - tip) * RF.rhv; for (let yy = bot - 2; yy > tip + 2; yy -= 2) { const h = yy > dy - r * 0.5 ? Math.sqrt(Math.max(0, r * r - (yy - dy) * (yy - dy))) - 1.5 : (yy - tip) * 0.55 - 1;
         if (h > 0.5) line(dx - h, yy + 0.5, dx + h, yy + 0.5, C_HULL, yy >= lvl ? 0.7 : 0.1); }
-      x += 2 * r + 5; mic("rh", x, y); text(RF.rh, x + W_("rh", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT });
+      x += 2 * r + 5; mic("rh", x, y + 18); text(RF.rh, x + W_("rh", LBL()) + 4, y + 18, { size: 10, col: C_HULL, a: BRIGHT });
     });
     /* hull stress along the length, same x as the ship: 0 at B0, the limit (1.0) at B1 */
-    const B0 = 963, B1 = 938, u0 = -0.52, u1 = 1.30, ys = v => B0 - (B0 - B1) * v;
+    const B0 = 963, B1 = 938, ys = v => B0 - (B0 - B1) * v;
     stat_(() => {
-      line(X + u0 * L, B0 + 0.5, X + u1 * L, B0 + 0.5, C_HULL, 0.25);
-      dash([3, 3], () => line(X + u0 * L, B1 + 0.5, X + u1 * L, B1 + 0.5, CREAM, 0.5));
-      line(X + u1 * L + 0.5, B1 - 3, X + u1 * L + 0.5, B1 + 4, CREAM, 0.5);   // end tick: the limit line's label hangs on it
-      mic("lim", X + u1 * L - 3, B1 - 5, { a: 0.75, align: "right" });
-      head("hull stress", X + u0 * L - 16, B0 - 4, { align: "right", a: 0.85 });
-      glow(CREAM, () => { poly(S([[0.30, -0.20], [0.36, -0.225], [0.44, -0.22]]), CREAM, BRIGHT, STRONG);
-        poly(S([[0.30, 0.22], [0.36, 0.21], [0.44, 0.19]]), CREAM, BRIGHT, STRONG); });
-      [[-0.64, 0.14], [-0.13, 0.155], [0.43, 0.19]].forEach(([u, v]) => { const x = Math.round(P([u, 0])[0]) + 0.5, yy = Y + v * KV * L; glow(CREAM, () => line(x - 0.5, yy - 3.5, x - 0.5, yy + 4.5, CREAM, BRIGHT, STRONG)); });
+      line(xs0, B0 + 0.5, xs1, B0 + 0.5, C_HULL, 0.25);
+      dash([3, 3], () => line(xs0, B1 + 0.5, xs1, B1 + 0.5, CREAM, 0.5));
+      line(xs1 + 0.5, B1 - 3, xs1 + 0.5, B1 + 4, CREAM, 0.5);   // end tick: the limit line's label hangs on it
+      mic("lim", xs1 - 3, B1 - 5, { a: 0.75, align: "right" });
+      head("hull stress", xs0 - 16, B0 - 4, { align: "right", a: 0.85 });
+      glow(CREAM, () => { poly([rg(868, 198), rg(920, 208)], CREAM, BRIGHT, STRONG);
+        poly([rg(868, 446), rg(920, 436)], CREAM, BRIGHT, STRONG); });
+      ticks.forEach(([x, yy]) => { glow(CREAM, () => line(x - 0.5, yy - 3.5, x - 0.5, yy + 4.5, CREAM, BRIGHT, STRONG)); });
     });
     dyn(() => {
-      const pts = RF.stress.map((v, i) => [X + (u0 + i * 0.01) * L, ys(v)]), pk = RF.stress.indexOf(Math.max.apply(null, RF.stress)), kx = pts[pk][0], ky = pts[pk][1];
+      const pts = RF.stress.map((v, i) => [xs0 + (xs1 - xs0) * i / (RF.stress.length - 1), ys(v)]), pk = RF.stress.indexOf(Math.max.apply(null, RF.stress)), kx = pts[pk][0], ky = pts[pk][1];
       glow(C_HULL, () => poly(pts, C_HULL, NORMAL, HAIR));
-      dash([1, 3], () => line(kx + 0.5, Y + 0.22 * KV * L + 3, kx + 0.5, ky - 4, CREAM, 0.55));
+      dash([1, 3], () => line(kx + 0.5, yb + 3, kx + 0.5, ky - 4, CREAM, 0.55));
       glow(CREAM, () => dot(kx, ky, 2, CREAM, 1)); num(Math.round(RF.stress[pk] * 100) + " %", kx + 6, B1 - 5, { size: 11, col: C_HULL }); });
   }
 

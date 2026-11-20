@@ -227,7 +227,7 @@ does not — it is pure data, no dependency on `B`.
 | `voidship.js` | `BASE` tunables | `window.Voidship` |
 | `voidship-art.js` | Hull painter (blits the `VoidshipHull` sprite; mid-turn squashes it in x by the turn's cosine about the ring joint, blade by `drawProwTurn`), turn jets, fumes and wake painters | `window.VoidshipArt` |
 | `voidship-prow.js` | The shard | extends `window.VoidshipArt {drawProwBack, drawProw, drawProwTurn, emberOf, PROW}` |
-| `voidship-hull.js` | The hull, side view at rest, wired in: `sprite(L, dpr)` bakes it once per size, `drawHull` blits it; `anchors` give the bell mouths and the ring | `window.VoidshipHull {drawRest, tintRing, dressRing, stats, sprite, anchors}` |
+| `voidship-hull.js` | The hull, side view at rest, wired in: `sprite(L, dpr)` bakes it once per size, `drawHull` blits it; `anchors` give the bell mouths and the ring | `window.VoidshipHull {drawRest, tintRing, dressRing, stats, sprite, anchors, blueprint}` |
 
 - `voidship.js`: `create`, `setThrusting` (release rule), `step` (a held pointer sets `ship.demand` by its distance, d0..d1 → 0..100% of top speed, and `ship.engine`, the live output; wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw`
 - `voidship.js` publishes: `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, setAim, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}`

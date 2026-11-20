@@ -65,7 +65,9 @@ window.VoidshipHull = (function () {
       [[P(1, 0), P(1, 1), P(1, 2), [x0 - len, ys[0][2] + 2.5], [x0 - len / 2, ys[0][1] + 2.5], [x0, yb + 2.5]], [0, 0, 0], 0.3]];
   };
   const OPS = [];
-  const add = (pts, c, a) => OPS.push([pts, rgba(c, a == null ? 1 : a)]);
+  // the part every following op belongs to ('top' | 'hull' | 'mid' | 'nose'), switched at section starts; blueprint() outlines each part
+  let PART = 'mid';
+  const add = (pts, c, a) => OPS.push([pts, rgba(c, a == null ? 1 : a), PART]);
   const rc = (x0, y0, x1, y1, c, a) => add([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], c, a);
   // a flat round stud, radius 0.006, eight sides
   const stud = (cx, cy, sc) => { const hx = 0.005 / PROP.sx, hy = 0.005 / 0.8 / PROP.sy; add([[cx - hx, cy - hy], [cx + hx, cy - hy], [cx + hx, cy + hy], [cx - hx, cy + hy]], sc || STUD); };
@@ -121,6 +123,7 @@ window.VoidshipHull = (function () {
   };
 
   // ---- 1. the canyon is a lens: the upper blade's underside RF bows up, the lower blade's top LF bows down; back wall, a far layer of darker towers ----
+  PART = 'mid';
   const RF = [[-0.42, -0.03], [-0.27, -0.065], [-0.10, -0.085], [0.08, -0.065], [0.28, -0.03], [0.34, -0.03]];
   const LF = [[-0.42, 0.04], [-0.27, 0.062], [-0.10, 0.075], [0.08, 0.062], [0.28, 0.04], [0.34, 0.04]];
   const at = (P, x) => {
@@ -152,6 +155,7 @@ window.VoidshipHull = (function () {
   };
 
   // ---- 2. the upper blade: two long ramps up aft, a raked aft face ending at x -0.42; lit above the chine, mid below, lightest strip on top ----
+  PART = 'top';
   const TOP = [[0.34, -0.19], [0.10, -0.20], [-0.08, -0.23], [-0.28, -0.24], [-0.38, -0.24]];
   // v42x: the blade's body ends at the citadel's fore face (x -0.211); the waist under the citadel is drawn after the housing
   const XB = -0.211;
@@ -199,6 +203,7 @@ window.VoidshipHull = (function () {
   add([[-0.38, -0.27], [-0.40, -0.15], [-0.385, -0.15], [-0.368, -0.27]], G_DARK);
 
   // ---- 3. the lower blade: longer, darker; mid above the chine, darkest below; a long tapering chin under the ring with one armour step, a raked aft end ----
+  PART = 'hull';
   zone('heavy');
   // v36: one straight underside line from the stern up to the ring, B(x)
   const CHIN = [[0.34, 0.18], [-0.33, 0.285], [-0.35, 0.16]];
@@ -355,6 +360,7 @@ window.VoidshipHull = (function () {
 
 
   // ---- 5. dorsal: shadows cast forward and down (light from aft-up) on the lit plane, a long trench, a stepped citadel with raked forward faces, two masts, two shallow terraces ahead, two raked fins, two window rows ----
+  PART = 'top';
   // cast shadows (one step darker than the plates): citadel, then the two fins
   add([[-0.15, -0.24], [-0.10, -0.222], [-0.10, -0.212], [-0.15, -0.226]], G_DARK);
   add([[-0.02, -0.229], [0.04, -0.21], [0.04, -0.196], [-0.02, -0.215]], G_DARK);
@@ -778,6 +784,7 @@ window.VoidshipHull = (function () {
   });
 
   // ---- 6. lower blade: one hangar slot with a dot row and craft, two pods on thick struts, one long window row ----
+  PART = 'hull';
   zone('heavy');
   // (v39a: the hangar slot and the dock on the slate are gone)
   add([[-0.33, 0.135], [-0.30, 0.135], [-0.308, 0.155], [-0.338, 0.155]], TRENCH); add([[-0.33, 0.135], [-0.30, 0.135], [-0.3016, 0.1385], [-0.3316, 0.1385]], BLACK);
@@ -788,9 +795,11 @@ window.VoidshipHull = (function () {
   zone('heavy');
 
   // ---- 7. stern: a dark gap behind the blades crossed by the canyon spine, three stacked nacelles with chamfered fronts, one bell each with a near-black mouth in a light rim ----
+  PART = 'mid';
   zone('engines');
 
   // ---- 7b. the canyon is covered: plated housing down to a stepped red slit, below it the machine built round the nose's root ----
+  PART = 'mid';
   {
     const XA = -0.42, XE = 0.24, MR = [128, 38, 36], DP = [70, 18, 18], BR = [164, 54, 48];
     // seam segments [x0, x1, y]: the neck, the raised step, then the long run
@@ -1449,6 +1458,7 @@ window.VoidshipHull = (function () {
   }
 
   // ---- 8. front: each blade ends at the ring in a stepped collar of two segments, the red stone filling the gap behind the ring ----
+  PART = 'nose';
   // the front rock and the dead-spot chunk: hand-built facets in the nose's reds
   zone('heavy');
   {
@@ -1516,7 +1526,7 @@ window.VoidshipHull = (function () {
     const SEAT_L = [156, 169, 180], SEAT_M = [133, 147, 160], SEAT_D = [92, 104, 114], SEAT_K = [54, 63, 71], RIVET = [180, 192, 200];
   }
   // cockpits: four on the top zone, three on the bottom, one module repeated
-  zone('top');
+  zone('top'); PART = 'top';
   [[0.20, -0.209, 0.040], [-0.07, -0.381 - 0.0192, 0.036]].forEach(([x, y, l]) => { cockpit(x, x === 0.20 ? y + dk(x + l) : y, l, false, x === 0.20 ? [[133, 147, 160], [156, 169, 180], [92, 104, 114]] : null); stats.towers++; });
   function drawRest(g, L) {
     // v36: the hull is squeezed to 0.80 of its height about the ring's centre axis; round things are built with their y radius divided by 0.80
@@ -1743,5 +1753,54 @@ window.VoidshipHull = (function () {
     }
     return (cache[key] = { canvas: cv, ox, oy, scale: dpr, rows });
   }
-  return { drawRest, tintRing, dressRing, stats, sprite, anchors };
+  // a line drawing of the hull at length L, baked once per argument set: each part (cols.top / hull / mid / nose) is the outer contour of the union of its polygons, nearer parts hide the lines behind them; the prow joins the nose, the collar ring is outlined in cols.hull
+  // { canvas (dpr pixels), w, h, ox, oy (css px; the hull origin in the canvas), stern, tip, top, bottom (css px from the origin), ring }
+  const bpCache = {};
+  function blueprint(L, dpr, cols, lw) {
+    lw = lw || 1;
+    const key = [L, dpr, lw, cols.top, cols.hull, cols.mid, cols.nose].join('|');
+    if (bpCache[key]) return bpCache[key];
+    const ship = { face: 1, thrustAmt: 0, flare: 0, strain: 0 };
+    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.scale(dpr, dpr); return [c, g]; };
+    // the prow alone, to find where the nose really ends
+    const pad = Math.ceil(2 * lw) + 2, wide = Math.ceil(2 * L), tall = Math.ceil(L);
+    const [pc, pg] = mk(wide * dpr, tall * dpr);
+    pg.translate(wide / 2, tall / 2); window.VoidshipArt.drawProw(pg, ship, L, 1, true); pg.setTransform(1, 0, 0, 1, 0, 0);
+    const pd = pg.getImageData(0, 0, pc.width, pc.height).data;
+    let tip = anchors.ring.fore * L, pt = anchors.top * L, pb = anchors.bottom * L;
+    for (let y = 0; y < pc.height; y++) for (let x = 0; x < pc.width; x++) if (pd[(y * pc.width + x) * 4 + 3] > 8) {
+      tip = Math.max(tip, (x + 1) / dpr - wide / 2); pt = Math.min(pt, y / dpr - tall / 2); pb = Math.max(pb, (y + 1) / dpr - tall / 2);
+    }
+    const ox = Math.ceil(-anchors.stern * L) + pad, oy = Math.ceil(-pt) + pad, w = ox + Math.ceil(tip) + pad, h = oy + Math.ceil(pb) + pad;
+    const [cv, g] = mk(w * dpr, h * dpr), [sc, sg] = mk(w * dpr, h * dpr);
+    // a polygon of the table as a closed path in canvas css px (drawRest's own transform, uniform scale)
+    const path = (c, pts) => { c.beginPath(); pts.forEach((p, i) => c[i ? 'lineTo' : 'moveTo'](ox + L * hx(p[0]), oy + L * hy(p[1]))); c.closePath(); };
+    const ext = (pts) => { let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity; for (const p of pts) { a = Math.min(a, L * hx(p[0])); b = Math.max(b, L * hx(p[0])); c = Math.min(c, L * hy(p[1])); d = Math.max(d, L * hy(p[1])); } return [b - a, d - c]; };
+    // too small to read at this size: lights, facets, thin strips
+    const keep = (pts) => { const [a, b] = ext(pts); return Math.max(a, b) >= 8 * lw && Math.min(a, b) >= 3 * lw; };
+    ['top', 'hull', 'mid', 'nose'].forEach((part) => {
+      const polys = OPS.filter((it) => it[2] === part && keep(it[0])).map((it) => it[0]);
+      sg.clearRect(0, 0, w, h);
+      sg.lineJoin = 'round'; sg.lineCap = 'round'; sg.lineWidth = 2 * lw; sg.strokeStyle = '#000'; sg.fillStyle = '#000';
+      for (const p of polys) { path(sg, p); sg.stroke(); }
+      if (part === 'nose') for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; sg.drawImage(pc, 0, 0, pc.width, pc.height, ox - wide / 2 + Math.cos(a) * lw, oy - tall / 2 + Math.sin(a) * lw, wide, tall); }
+      sg.globalCompositeOperation = 'destination-out';
+      for (const p of polys) { path(sg, p); sg.fill(); }
+      if (part === 'nose') sg.drawImage(pc, 0, 0, pc.width, pc.height, ox - wide / 2, oy - tall / 2, wide, tall);
+      // what is behind this part is hidden by it
+      g.globalCompositeOperation = 'destination-out';
+      for (const p of polys) { path(g, p); g.fill(); }
+      if (part === 'nose') g.drawImage(pc, 0, 0, pc.width, pc.height, ox - wide / 2, oy - tall / 2, wide, tall);
+      g.globalCompositeOperation = 'source-over';
+      sg.globalCompositeOperation = 'source-in'; sg.fillStyle = cols[part]; sg.fillRect(0, 0, w, h); sg.globalCompositeOperation = 'source-over';
+      g.drawImage(sc, 0, 0, sc.width, sc.height, 0, 0, w, h);
+    });
+    // the collar ring: the band's trapezoid on the big ship (L 590 at 640,330), cleared inside, then outlined
+    const rp = [[868, 198], [920, 208], [920, 436], [868, 446]].map(([x, y]) => [ox + (x - 640) * L / 590, oy + (y - 330) * L / 590]);
+    const ringPath = (c) => { c.beginPath(); rp.forEach((p, i) => c[i ? 'lineTo' : 'moveTo'](p[0], p[1])); c.closePath(); };
+    g.globalCompositeOperation = 'destination-out'; ringPath(g); g.fill(); g.globalCompositeOperation = 'source-over';
+    g.lineJoin = 'round'; g.lineWidth = lw; g.strokeStyle = cols.hull; ringPath(g); g.stroke();
+    return (bpCache[key] = { canvas: cv, w, h, ox, oy, stern: anchors.stern * L, tip, top: pt, bottom: pb, ring: anchors.ring });
+  }
+  return { drawRest, tintRing, dressRing, stats, sprite, anchors, blueprint };
 })();
