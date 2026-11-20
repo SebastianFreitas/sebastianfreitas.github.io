@@ -5,6 +5,7 @@
    Static linework (ph 's') is cached per resize; values (ph 'd') are painted every draw. */
 window.HudC25 = (function () {
   const GOLD = "245,208,107", CREAM = "228,221,198", GREY = "160,168,160", RED = "110,26,26", REDT = "196,74,68";
+  const C_TOP = "205,214,224", C_MID = GOLD, C_HULL = "92,132,192", C_NOSE = "158,52,48";   // HUD line colours that follow the hull's parts in js/ship/voidship-hull.js: cold white top (receptors), gold centre (engine), steel blue lower hull, oxblood nose
   const LABEL = 10, VALUE = 12, HERO = 24;   // the three text sizes (sketch px): label, value, hero
   const QUIET = 0.42, NORMAL = 0.75, BRIGHT = 0.95;   // the three alphas: quiet (structure), normal, bright (live values)
   const HAIR = 1, STRONG = 1.5;   // the two stroke widths
@@ -132,7 +133,7 @@ window.HudC25 = (function () {
   const lab = (str, x, y, o) => text(str, x, y, Object.assign({ size: LABEL, col: GREY, a: NORMAL }, o));
   const mic = (str, x, y, o) => text(str, x, y, Object.assign({ size: LBL(), col: GREY, a: 0.85 }, o));
   const head = (str, x, y, o) => lab(str, x, y, Object.assign({ col: CREAM, a: 0.7, size: LBL() }, o));
-  const num = (str, x, y, o) => glow(GOLD, () => text(str, x, y, Object.assign({ size: VALUE, col: GOLD, a: BRIGHT }, o)));
+  const num = (str, x, y, o) => glow((o && o.col) || GOLD, () => text(str, x, y, Object.assign({ size: VALUE, col: GOLD, a: BRIGHT }, o)));
   const big = (str, x, y) => glow(CREAM, () => text(str, x, y, { size: HERO, col: CREAM, a: 1 }));
   const rad = d => d * PI / 180;
   const pol = (cx, cy, r, d) => [cx + Math.cos(rad(d)) * r, cy + Math.sin(rad(d)) * r];
@@ -153,9 +154,9 @@ window.HudC25 = (function () {
     const T = len(P), q = at(P, T * (1 - u)), x = q[0], y = q[1], nx = side * -q[3], ny = side * q[2];
     line(x + nx, y + ny, x + nx * (L + 1), y + ny * (L + 1), col || GOLD, a == null ? 0.5 : a); return [x, y, nx, ny];
   }
-  function scaleLab(P, side, u, str, dy) {
+  function scaleLab(P, side, u, str, dy, col) {
     const T = len(P), q = at(P, T * (1 - u)), nx = side * -q[3], ny = side * q[2];
-    mic(str, q[0] + nx * 17, q[1] + ny * 17 + (dy == null ? 4 : dy), { align: side > 0 ? "right" : "left", col: GOLD, a: NORMAL });
+    mic(str, q[0] + nx * 17, q[1] + ny * 17 + (dy == null ? 4 : dy), { align: side > 0 ? "right" : "left", col: col || GOLD, a: NORMAL });
   }
 
   /* ---------- shared wing geometry ---------- */
@@ -166,14 +167,14 @@ window.HudC25 = (function () {
 
   /* a stepped rail segment: base (poly + ticks) static, lit window + marker dynamic. o.v / o.win / o.mark in 0..1 */
   function edge(x0, x1, yc, o) {
-    const off = o.off || 0, y = x => yc(x) + off, X = t => x0 + (x1 - x0) * t;
+    const off = o.off || 0, y = x => yc(x) + off, X = t => x0 + (x1 - x0) * t, ec = o.col || GOLD;
     if (ph === "s") {
-      poly([[x0, y(x0) + (o.join === "L" ? 0 : 7)], [x0, y(x0)], [x1, y(x1)], [x1, y(x1) + (o.join === "R" ? 0 : 7)]], GOLD, STRUCT + 0.08);
+      poly([[x0, y(x0) + (o.join === "L" ? 0 : 7)], [x0, y(x0)], [x1, y(x1)], [x1, y(x1) + (o.join === "R" ? 0 : 7)]], ec, STRUCT + 0.08);
       for (let i = 0; i <= o.n; i++) { const x = Math.round(X(i / o.n)) + 0.5, M = i % o.maj === 0, m2 = o.mid && i % o.mid === 0, yy = y(x);
-        line(x, yy + 1.5, x, yy + (M ? 6 : m2 ? 4 : 2.5) + 0.5, GOLD, M ? 0.45 : m2 ? 0.28 : 0.16); }
+        line(x, yy + 1.5, x, yy + (M ? 6 : m2 ? 4 : 2.5) + 0.5, ec, M ? 0.45 : m2 ? 0.28 : 0.16); }
     } else {
       const ab = o.win || [0, o.v];
-      glow(GOLD, () => line(X(ab[0]), y(X(ab[0])), X(ab[1]), y(X(ab[1])), GOLD, BRIGHT, STRONG));
+      glow(ec, () => line(X(ab[0]), y(X(ab[0])), X(ab[1]), y(X(ab[1])), ec, BRIGHT, STRONG));
       if (o.pip != null) { const xp = X(o.pip), yp = y(xp); line(xp, yp - 1, xp, yp - 5, GREY, 0.7, STRONG); }
       const xm = X(o.mark), ym = y(xm);
       glow(CREAM, () => poly([[xm - 4, ym - 6], [xm, ym - 1.5], [xm + 4, ym - 6]], CREAM, BRIGHT, STRONG));
@@ -187,14 +188,14 @@ window.HudC25 = (function () {
     parts.forEach((p, i) => { p[1] === "n" ? text(p[0], px, yb, { size: 10, col: CREAM, a: BRIGHT }) : mic(p[0], px, yb, { a: 0.8 }); px += ws[i] + 4; });
   }
   /* lamp: st 0 dark, 1 lit, 2 burst (ring + rays), 3 burst + red core */
-  function lamp(x, y, str, st, shape) {
+  function lamp(x, y, str, st, shape, lc) {
     const gx = x + 5, gy = y, r = shape === "d" ? 5.2 : 4.4, on = st > 0, red = st === 3, ty = gy + 3;
     const pth = () => { c.beginPath(); if (shape === "d") { c.moveTo(gx, gy - r); c.lineTo(gx + r, gy); c.lineTo(gx, gy + r); c.lineTo(gx - r, gy); c.closePath(); } else c.arc(gx, gy, r, 0, 2 * PI); };
     const g = (col, a, w) => { pth(); c.strokeStyle = rgba(col, a); c.lineWidth = w; c.lineJoin = "round"; c.stroke(); };
     const grown = ts > s + 1e-6;   // grown text: tag starts just past the glyph and drops the letter spacing so it clears the next lamp
     const tag = o => text(str, x + (grown ? 14 : 16), ty, Object.assign({ size: grown ? 8 : LABEL, col: GREY, a: 0.5 }, grown ? { ls: 0 } : {}, o));
-    if (!on) { g(GOLD, 0.34, 1); tag({ a: 0.55 }); return; }
-    const col = red ? RED : CREAM, hi = red ? REDT : CREAM;
+    if (!on) { g(lc === C_HULL ? "128,164,216" : lc || GOLD, 0.34, 1); tag({ a: 0.55 }); return; }
+    const col = red ? RED : lc || CREAM, hi = red ? REDT : lc || CREAM;
     c.save(); c.shadowColor = rgba(hi, 0.8); c.shadowBlur = 8 * s; g(hi, 1, STRONG); c.restore();
     c.save(); c.shadowColor = rgba(hi, 0.7); c.shadowBlur = 6 * s; pth(); c.fillStyle = rgba(col, red ? 1 : 0.55); c.fill(); c.restore();
     dot(gx, gy, red ? 1.6 : 1.8, hi, 1);
@@ -208,7 +209,7 @@ window.HudC25 = (function () {
   function arcScale(cx, cy, r, a0, a1, st, maj, o) {
     const n = Math.round((a1 - a0) / st);
     for (let k = 0; k <= n; k++) { const d = a0 + k * st, M = k % maj === 0, m2 = o.mid && k % o.mid === 0, L = M ? o.LM : m2 ? 4 : 2;
-      const p0 = pol(cx, cy, r, d), p1 = pol(cx, cy, r - L, d); line(p0[0], p0[1], p1[0], p1[1], GOLD, M ? o.aM : m2 ? 0.3 : 0.16); }
+      const p0 = pol(cx, cy, r, d), p1 = pol(cx, cy, r - L, d); line(p0[0], p0[1], p1[0], p1[1], o.col || GOLD, M ? o.aM : m2 ? 0.3 : 0.16); }
   }
 
   /* ======================= LEFT WING ======================= */
@@ -218,6 +219,7 @@ window.HudC25 = (function () {
   const brgOf = b => ((Math.atan2(b[1], b[0]) * 180 / PI + 90) % 360 + 360) % 360;
 
   function paintLeft() {
+    const GOLD = C_TOP;   // the left wing senses the outside: its line-work is cold white (the nose resonance below names C_NOSE)
     const FT = len(LS), uR = resF(LF.resNow), b0 = api._forceBrg != null ? api._forceBrg : LF.blips[0] ? brgOf(LF.blips[0]) : LF.brg, b1 = LF.blips[1] ? brgOf(LF.blips[1]) : null;
     stat_(() => {
       poly(half(LS.concat([[HB0, FL]])), GOLD, STRUCT);
@@ -227,8 +229,8 @@ window.HudC25 = (function () {
     /* the pointers run the full rail (95 = 95% along); the readings sit under the rail ends, clear of the pointer track */
     const strM = Math.max(0, Math.min(1, LF.str / 100)), strU = strM;
     const brgS = String(brgInt(b0)).padStart(3, "0"), brgM = b0 / 360;
-    edge(24, 204, ycL, { n: 20, maj: 5, v: strU, mark: strM });
-    edge(214, 486, ycL, { off: -6, n: 32, maj: 8, mid: 4, win: [Math.max(0, brgM - 0.04), Math.min(1, brgM + 0.04)], mark: brgM, pip: b1 == null ? null : b1 / 360 });
+    edge(24, 204, ycL, { col: GOLD, n: 20, maj: 5, v: strU, mark: strM });
+    edge(214, 486, ycL, { col: GOLD, off: -6, n: 32, maj: 8, mid: 4, win: [Math.max(0, brgM - 0.04), Math.min(1, brgM + 0.04)], mark: brgM, pip: b1 == null ? null : b1 / 360 });
     dyn(() => { ext.str = [24 + 180 * strM - 4, 24 + 180 * strM + 4, 24, 204]; ext.brg = [214 + 272 * brgM - 4, 214 + 272 * brgM + 4, 214, 486];
       const px = (x0, x1, m, off) => { const x = x0 + (x1 - x0) * m, y = ycL(x) + off; return { l: x - 4, r: x + 4, t: y - 6, b: y - 1.5 }; };
       if (blk === 1) { lbD.push(Object.assign({ s: "strptr" }, px(24, 204, strM, 0)), Object.assign({ s: "brgptr" }, px(214, 486, brgM, -6)));
@@ -241,14 +243,14 @@ window.HudC25 = (function () {
       rd([["brg", "m"], [brgS, "n"]], 214 + pad, ycL, 26, "left");
       if (blk === 1 && LF.rep) LF.rep.lab = { str: lbD.slice(n0, n1), brg: lbD.slice(n1) }; });
     /* nose resonance on the slope: log axis */
-    stat_(() => { [0.001, 0.01, 0.1, 1].forEach(d => { for (let m = 1; m <= (d === 1 ? 1 : 9); m++) tickAt(LS, 1, resF(d * m), m === 1 ? 7 : 3, GOLD, m === 1 ? 0.6 : 0.26); });
-      scaleLab(LS, 1, 1, "1", 18); scaleLab(LS, 1, resF(0.1), ".1", -8); scaleLab(LS, 1, resF(0.01), ".01"); scaleLab(LS, 1, 0, ".001", 0); });
+    stat_(() => { [0.001, 0.01, 0.1, 1].forEach(d => { for (let m = 1; m <= (d === 1 ? 1 : 9); m++) tickAt(LS, 1, resF(d * m), m === 1 ? 7 : 3, C_NOSE, m === 1 ? 0.6 : 0.26); });
+      scaleLab(LS, 1, 1, "1", 18, CREAM); scaleLab(LS, 1, resF(0.1), ".1", -8, CREAM); scaleLab(LS, 1, resF(0.01), ".01", null, CREAM); scaleLab(LS, 1, 0, ".001", 0, CREAM); });
     dyn(() => {
       const rn = String(LF.resNow.toFixed(2));
-      poly(sub(LS, FT * (1 - uR), FT).concat([[HB0, FL + 0.5]]), GOLD, BRIGHT, STRONG);
+      poly(sub(LS, FT * (1 - uR), FT).concat([[HB0, FL + 0.5]]), C_NOSE, BRIGHT, STRONG);
       const t = tickAt(LS, 1, uR, 9, CREAM, BRIGHT), x = t[0], y = t[1], nx = t[2], ny = t[3], px = x + nx * 13, py = y + ny * 13;
       poly([[px + nx * 6 - ny * 4, py + ny * 6 + nx * 4], [px, py], [px + nx * 6 + ny * 4, py + ny * 6 - nx * 4]], CREAM, BRIGHT, STRONG); dot(x, y, 2.5, CREAM, 1);
-      const q = at(LS, FT * (1 - resF(D.resNow))), lx = q[0] - q[3] * 21, ly = Math.round(q[1] + q[2] * 21) + 0.5; line(lx, ly, lx - 9, ly, CREAM, 0.9);   // label stays in the sketch slot, the marker rides the slope
+      const q = at(LS, FT * (1 - resF(D.resNow))), lx = q[0] - q[3] * 21, ly = Math.round(q[1] + q[2] * 21) + 0.5; line(lx, ly, lx - 9, ly, C_NOSE, 0.9);   // label stays in the sketch slot, the marker rides the slope
       const wv = W_(rn, 16); glow(CREAM, () => text(rn, lx - 17, ly + 6, { size: 16, col: CREAM, a: 1, align: "right" }));
       const dn = ts > s + 1e-6 ? 6 : 0; mic("nose", lx - 17 - wv - dn, ly + 21, { col: CREAM, a: 0.85 }); mic("resonance", lx - 17 - wv - dn, ly + 33, { col: CREAM, a: 0.85 });
     });
@@ -308,7 +310,7 @@ window.HudC25 = (function () {
     });
     /* lamp bank: two rows of 7 */
     const LX = [168, 218, 268, 322, 372, 422, 468];
-    dyn(() => LF.lampsL.forEach((l, i) => lamp(LX[i % 7], i < 7 ? 975 : 989, l[0], l[1], "d")));
+    dyn(() => LF.lampsL.forEach((l, i) => lamp(LX[i % 7], i < 7 ? 975 : 989, l[0], l[1], "d", GOLD)));
     /* motion band: speed gauge round the radar */
     const r0 = 74, r1 = 90, a0 = 135, a1 = 300;
     stat_(() => {
@@ -317,7 +319,7 @@ window.HudC25 = (function () {
       arc(RX, RY, r1 + 7, rad(150), rad(285), GOLD, 0.14, 1, [2, 4]);
       [150, 285].forEach(d => { const p0 = pol(RX, RY, r1 + 4, d), p1 = pol(RX, RY, r1 + 10, d); line(p0[0], p0[1], p1[0], p1[1], GOLD, 0.3); });
       [a0, a1].forEach(d => { const p0 = pol(RX, RY, r0 - 3, d), p1 = pol(RX, RY, r1 + 3, d); line(p0[0], p0[1], p1[0], p1[1], GOLD, 0.55); });
-      arcScale(RX, RY, r1, a0, a1, 2.5, 12, { mid: 3, LM: 7, aM: 0.55 });
+      arcScale(RX, RY, r1, a0, a1, 2.5, 12, { col: GOLD, mid: 3, LM: 7, aM: 0.55 });
     });
     dyn(() => {
       const d = a0 + (a1 - a0) * LF.speedAt, p = pol(RX, RY, r1 + 4, d), pi = pol(RX, RY, r1 + 9, d - 2), po = pol(RX, RY, r1 + 9, d + 2); poly([pi, p, po], GOLD, QUIET);
@@ -348,13 +350,14 @@ window.HudC25 = (function () {
       arc(RX, RY, rr2, ab - 0.32, ab + 0.32, CREAM, 0.45, 1, [2, 2]);
       poly([[bx + 6, by + 4], [bx + 30, by + 30], [404, by + 30]], CREAM, 0.4);
       for (let i = 0; i < 6; i++) dot(408 + i * 7, by + 30.5, 1.6, i < LF.contacts ? CREAM : GOLD, i < LF.contacts ? 1 : 0.2);
-      num(LF.near, 404, by + 50, { size: 11 }); mic("contact", 404, by + 63, { a: 0.8 });
+      num(LF.near, 404, by + 50, { size: 11, col: GOLD }); mic("contact", 404, by + 63, { a: 0.8 });
     });
     paintDrift();
     paintOutside();
   }
 
   function paintDrift() {
+    const GOLD = C_TOP;
     const cx = 120, cy = 962, r = 11, xg = pol(RX, RY, 93, 135)[0] - 3, yr = wbY(cx) + 2, M = 46;
     stat_(() => {
       arc(cx, cy, r, 0, 2 * PI, GOLD, QUIET); arc(cx, cy, r + 5, rad(200), rad(250), GOLD, 0.25);
@@ -398,6 +401,7 @@ window.HudC25 = (function () {
 
   /* outside row: rad, g, ext */
   function paintOutside() {
+    const GOLD = C_TOP;
     const yF = FL + 1, LY = 987, lv = (k, v, cx) => { mic(k, cx, LY, { align: "center" }); text(v, cx, LY + 13, { size: 10, col: CREAM, a: BRIGHT, align: "center" }); };
     stat_(() => lab("outside", 572 - (ts > s + 1e-6 ? 12 : 0), LY, { col: CREAM, a: 0.7, size: LBL() }));
     { const cx = 642, cy = 965.5, ri = 2, ro = 6;
@@ -435,7 +439,7 @@ window.HudC25 = (function () {
     edge(1514, 1594, ycR, { join: "L", n: 8, maj: 4, v: (RF.volt - 24) / 8, mark: (RF.volt - 24) / 8 });
     edge(1604, 1870, ycR, { off: -6, n: 24, maj: 4, mid: 2, v: Math.min(1, RF.bus / 6), mark: Math.min(1, RF.bus / 6) });
     const tc = v => (v - 10) / 20;
-    edge(1880, 1976, ycR, { n: 20, maj: 10, mid: 5, v: tc(RF.cabin), mark: tc(RF.cabin) });
+    edge(1880, 1976, ycR, { col: C_HULL, n: 20, maj: 10, mid: 5, v: tc(RF.cabin), mark: tc(RF.cabin) });
     stat_(() => { const xa = 1880 + 96 * tc(18), xb = 1880 + 96 * tc(24); dash([1, 2], () => line(xa, ycR(xa) + 9, xb, ycR(xb) + 9, CREAM, 0.6)); });
     dyn(() => {
       rd([[RF.volt.toFixed(1), "n"], ["V", "m"]], 1516, ycR, ts > s + 1e-6 ? -2 : 0, "left");
@@ -470,12 +474,12 @@ window.HudC25 = (function () {
         busEnd = { rail: RX0 + RW, row: RX0 + RW, txtR: xs + W_("spare", LBL()) + 4 + W_(sp, LBL()) }; }); }
     /* cabin trace */
     { const xa = 1882, xb = 1970, yT = 790, yB = 806, Y = v => yB - (v - 20) / 2 * (yB - yT);
-      stat_(() => { line(xa, yB + 0.5, xb, yB + 0.5, GOLD, 0.3);
-        for (let i = 0; i <= 6; i++) { const x = Math.round(xa + (xb - xa) * i / 6) + 0.5; line(x, yB + 1, x, yB + (i % 3 ? 2.5 : 4), GOLD, i % 3 ? 0.2 : 0.45); }
-        dash([1, 2], () => line(xa, Math.round(Y(21)) + 0.5, xb, Math.round(Y(21)) + 0.5, GOLD, 0.35));
+      stat_(() => { line(xa, yB + 0.5, xb, yB + 0.5, C_HULL, 0.3);
+        for (let i = 0; i <= 6; i++) { const x = Math.round(xa + (xb - xa) * i / 6) + 0.5; line(x, yB + 1, x, yB + (i % 3 ? 2.5 : 4), C_HULL, i % 3 ? 0.2 : 0.45); }
+        dash([1, 2], () => line(xa, Math.round(Y(21)) + 0.5, xb, Math.round(Y(21)) + 0.5, C_HULL, 0.35));
         line(xb + 1, Math.round(Y(21)) + 0.5, xb + 5, Math.round(Y(21)) + 0.5, CREAM, 0.9); mic("30m", xa - (ts > s + 1e-6 ? 6 : 0), yB + 13, { a: 0.7 }); });
       dyn(() => { const raw = RF.cabTrace, n = raw.length - 1, pts = raw.map((v, i) => { let a = 0, m = 0; for (let j = Math.max(0, i - 7); j <= Math.min(n, i + 7); j++) { a += raw[j]; m++; } return a / m; });   /* 15-sample mean: the 30 s samples read as a slow wave, not a zigzag */
-        glow(GOLD, () => poly(pts.map((v, i) => [xa + (xb - xa) * i / n, Y(v)]), GOLD, NORMAL, 1));
+        glow(C_HULL, () => poly(pts.map((v, i) => [xa + (xb - xa) * i / n, Y(v)]), C_HULL, NORMAL, 1));
         dot(xb, Y(pts[n]), 1.6, CREAM, 1); mic("set " + RF.cabSet.toFixed(1), xb + (ts > s + 1e-6 ? 6 : 0), yB + 13, { align: "right", a: 0.7 }); }); }
     /* fuel on the slope */
     dyn(() => {
@@ -508,23 +512,26 @@ window.HudC25 = (function () {
         else lab("thrust heat", x0 - 10 - W_(tv, 12) - 8, 984, { align: "right" }); }); }
     paintShip();
     paintLife();
-    dyn(() => RF.lampsR.forEach((l, i) => lamp(1440 + (i % 7) * 56, i < 7 ? 975 : 989, l[0], l[1], "o")));
+    dyn(() => RF.lampsR.forEach((l, i) => lamp(1440 + (i % 7) * 56, i < 7 ? 975 : 989, l[0], l[1], "o", /^(lsp|ring|seal|fin t|fin b|jnt)$/.test(l[0]) ? C_HULL : C_MID)));
   }
 
   /* ship side view + hull stress strip + p / rh (right wing, upper) */
   function paintShip() {
     /* the outline is the hull's own silhouette (VoidshipHull's drawing tables, hull units): the aft part (u < JOINT_U) is squeezed to fit the old tile box, and v is scaled by KV so the masts stay inside the tile */
     const L = 142, KV = 0.33, X = 1608 + 0.52 * L, Y = 874, mu = u => u >= 0.36 ? u : 0.36 + (u - 0.36) * 0.682, P = ([u, v]) => [X + mu(u) * L, Y + v * KV * L], S = pts => pts.map(P);
-    const ol = (pts, a, w, close) => glow(GOLD, () => poly(S(pts), GOLD, a, w, close));
+    const ol = (pts, a, w, close, col) => glow(col || C_MID, () => poly(S(pts), col || C_MID, a, w, close));
     stat_(() => {
       head("ship", 1546, 926); mic("hull", 1546, 939, { a: 0.8 });
       poly([[1546 + W_("ship", 10) + 6, 922.5], [1592, 922.5], [1606, 905]], CREAM, 0.75, HAIR); dot(1606, 905, 1.8, CREAM, BRIGHT);
-      ol([[-0.91, -0.235], [-0.85, -0.27], [-0.82, -0.45], [-0.76, -0.38], [-0.70, -0.35], [-0.64, -0.57], [-0.60, -0.45], [-0.52, -0.345], [-0.43, -0.385], [-0.34, -0.29], [-0.25, -0.24], [-0.10, -0.215], [-0.04, -0.185], [0.08, -0.195], [0.14, -0.21], [0.32, -0.20], [0.38, -0.225], [0.50, -0.20], [0.53, -0.155], [0.58, -0.18], [0.59, -0.605], [0.65, -0.605], [0.68, -0.145], [0.80, -0.135], [0.93, -0.19], [0.96, -0.275], [1.0, -0.125], [1.10, -0.125], [1.30, -0.105],
-        [1.30, -0.015], [1.19, 0.0], [1.07, 0.02], [0.95, 0.055], [0.80, 0.095], [0.68, 0.135], [0.56, 0.135], [0.50, 0.155], [0.41, 0.195], [0.32, 0.22], [0.26, 0.365], [0.20, 0.425], [0.17, 0.44], [0.02, 0.44], [-0.01, 0.16], [-0.04, 0.185], [-0.07, 0.235], [-0.10, 0.21], [-0.13, 0.155], [-0.19, 0.185], [-0.25, 0.29], [-0.31, 0.36], [-0.34, 0.20], [-0.43, 0.18], [-0.55, 0.155], [-0.67, 0.135], [-0.79, 0.09], [-0.91, 0.10]], BRIGHT, HAIR, true);
+      /* the one closed outline, stroked in stretches by the part it follows: aft engine (centre), top (receptors), nose, lower hull */
+      const OT = [[-0.91, -0.235], [-0.85, -0.27], [-0.82, -0.45], [-0.76, -0.38], [-0.70, -0.35], [-0.64, -0.57], [-0.60, -0.45], [-0.52, -0.345], [-0.43, -0.385], [-0.34, -0.29], [-0.25, -0.24], [-0.10, -0.215], [-0.04, -0.185], [0.08, -0.195], [0.14, -0.21], [0.32, -0.20], [0.38, -0.225], [0.50, -0.20], [0.53, -0.155], [0.58, -0.18], [0.59, -0.605], [0.65, -0.605], [0.68, -0.145], [0.80, -0.135], [0.93, -0.19], [0.96, -0.275], [1.0, -0.125], [1.10, -0.125], [1.30, -0.105]],
+        OB = [[1.30, -0.015], [1.19, 0.0], [1.07, 0.02], [0.95, 0.055], [0.80, 0.095], [0.68, 0.135], [0.56, 0.135], [0.50, 0.155], [0.41, 0.195], [0.32, 0.22], [0.26, 0.365], [0.20, 0.425], [0.17, 0.44], [0.02, 0.44], [-0.01, 0.16], [-0.04, 0.185], [-0.07, 0.235], [-0.10, 0.21], [-0.13, 0.155], [-0.19, 0.185], [-0.25, 0.29], [-0.31, 0.36], [-0.34, 0.20], [-0.43, 0.18], [-0.55, 0.155], [-0.67, 0.135], [-0.79, 0.09], [-0.91, 0.10]];
+      ol(OT.slice(0, 10), BRIGHT, HAIR, false, C_MID); ol(OT.slice(9, 26), BRIGHT, HAIR, false, C_TOP); ol(OT.slice(25).concat(OB.slice(0, 4)), BRIGHT, HAIR, false, C_NOSE);
+      ol(OB.slice(3, 23), BRIGHT, HAIR, false, C_HULL); ol(OB.slice(22).concat([OT[0]]), BRIGHT, HAIR, false, C_MID);
       ol([[-0.80, -0.24], [-0.932, -0.24], [-0.932, -0.14], [-0.80, -0.14]], 0.75, HAIR, false); ol([[-0.78, -0.01], [-0.902, 0.0], [-0.902, 0.10], [-0.78, 0.11]], 0.75, HAIR, false);
-      poly(S([[-0.932, -0.215], [-0.932, -0.165]]), GOLD, 0.3); poly(S([[-0.902, 0.02], [-0.902, 0.08]]), GOLD, 0.3);
-      poly(S([[-0.34, 0.0], [0.30, 0.0]]), GOLD, QUIET);
-      { const rp = P([0.4305, -0.0136]); c.save(); c.translate(rp[0], rp[1]); c.scale(0.044 / (0.21 * KV), 1); arc(0, 0, 0.21 * KV * L, PI / 2 + 0.8, PI / 2 - 0.8 + 2 * PI, GOLD, NORMAL, HAIR); c.restore(); }
+      poly(S([[-0.932, -0.215], [-0.932, -0.165]]), C_MID, 0.3); poly(S([[-0.902, 0.02], [-0.902, 0.08]]), C_MID, 0.3);
+      poly(S([[-0.34, 0.0], [0.30, 0.0]]), C_MID, QUIET);
+      { const rp = P([0.4305, -0.0136]); c.save(); c.translate(rp[0], rp[1]); c.scale(0.044 / (0.21 * KV), 1); arc(0, 0, 0.21 * KV * L, PI / 2 + 0.8, PI / 2 - 0.8 + 2 * PI, C_HULL, NORMAL, HAIR); c.restore(); }
       mic("fin", 1619, 826, { a: 0.8 });
       shape("ship", X - 0.52 * L, Y - 0.605 * KV * L, X + 1.30 * L, Y + 0.44 * KV * L);
     });
@@ -534,19 +541,19 @@ window.HudC25 = (function () {
       /* p and rh */
       const y = 836, gc = 832; let x = 1700;
       const R = 7, px = x + R, rp = Math.max(0.5, R + (+RF.p - 101.3) * 4); x += 2 * R + 4;
-      arc(px, gc, R, 0, 2 * PI, GOLD, 0.35, 1, [1, 2]); glow(GOLD, () => arc(px, gc, rp, 0, 2 * PI, GOLD, NORMAL, HAIR)); dot(px, gc, 1.2, GOLD, 0.6);
-      mic("p", x, y); text(RF.p, x + W_("p", LBL()) + 4, y, { size: 10, col: GOLD, a: BRIGHT }); x += W_("p", LBL()) + 4 + W_(RF.p, 10) + 16;
+      arc(px, gc, R, 0, 2 * PI, C_HULL, 0.35, 1, [1, 2]); glow(C_HULL, () => arc(px, gc, rp, 0, 2 * PI, C_HULL, NORMAL, HAIR)); dot(px, gc, 1.2, C_HULL, 0.6);
+      mic("p", x, y); text(RF.p, x + W_("p", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT }); x += W_("p", LBL()) + 4 + W_(RF.p, 10) + 16;
       const r = 5, dx = x + r, dy = 836, tip = 823, bot = dy + r;
-      poly([[dx - r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))], [dx, tip], [dx + r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))]], GOLD, 0.6);
-      arc(dx, dy, r, rad(-30), rad(210), GOLD, 0.6);
+      poly([[dx - r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))], [dx, tip], [dx + r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))]], C_HULL, 0.6);
+      arc(dx, dy, r, rad(-30), rad(210), C_HULL, 0.6);
       const lvl = bot - (bot - tip) * RF.rhv; for (let yy = bot - 2; yy > tip + 2; yy -= 2) { const h = yy > dy - r * 0.5 ? Math.sqrt(Math.max(0, r * r - (yy - dy) * (yy - dy))) - 1.5 : (yy - tip) * 0.55 - 1;
-        if (h > 0.5) line(dx - h, yy + 0.5, dx + h, yy + 0.5, GOLD, yy >= lvl ? 0.7 : 0.1); }
-      x += 2 * r + 5; mic("rh", x, y); text(RF.rh, x + W_("rh", LBL()) + 4, y, { size: 10, col: GOLD, a: BRIGHT });
+        if (h > 0.5) line(dx - h, yy + 0.5, dx + h, yy + 0.5, C_HULL, yy >= lvl ? 0.7 : 0.1); }
+      x += 2 * r + 5; mic("rh", x, y); text(RF.rh, x + W_("rh", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT });
     });
     /* hull stress along the length, same x as the ship: 0 at B0, the limit (1.0) at B1 */
     const B0 = 963, B1 = 938, u0 = -0.52, u1 = 1.30, ys = v => B0 - (B0 - B1) * v;
     stat_(() => {
-      line(X + u0 * L, B0 + 0.5, X + u1 * L, B0 + 0.5, GOLD, 0.25);
+      line(X + u0 * L, B0 + 0.5, X + u1 * L, B0 + 0.5, C_HULL, 0.25);
       dash([3, 3], () => line(X + u0 * L, B1 + 0.5, X + u1 * L, B1 + 0.5, CREAM, 0.5));
       line(X + u1 * L + 0.5, B1 - 3, X + u1 * L + 0.5, B1 + 4, CREAM, 0.5);   // end tick: the limit line's label hangs on it
       mic("lim", X + u1 * L - 3, B1 - 5, { a: 0.75, align: "right" });
@@ -557,27 +564,27 @@ window.HudC25 = (function () {
     });
     dyn(() => {
       const pts = RF.stress.map((v, i) => [X + (u0 + i * 0.01) * L, ys(v)]), pk = RF.stress.indexOf(Math.max.apply(null, RF.stress)), kx = pts[pk][0], ky = pts[pk][1];
-      glow(GOLD, () => poly(pts, GOLD, NORMAL, HAIR));
+      glow(C_HULL, () => poly(pts, C_HULL, NORMAL, HAIR));
       dash([1, 3], () => line(kx + 0.5, Y + 0.22 * KV * L + 3, kx + 0.5, ky - 4, CREAM, 0.55));
-      glow(CREAM, () => dot(kx, ky, 2, CREAM, 1)); num(Math.round(RF.stress[pk] * 100) + " %", kx + 6, B1 - 5, { size: 11 }); });
+      glow(CREAM, () => dot(kx, ky, 2, CREAM, 1)); num(Math.round(RF.stress[pk] * 100) + " %", kx + 6, B1 - 5, { size: 11, col: C_HULL }); });
   }
 
   /* life fan: o2 and co2 slit arcs */
   function paintLife() {
     const CX = 1976, CY = 956;   // 24 from the right edge, the margin the left wing keeps from the left
     stat_(() => {
-      [90, 62].forEach(r => { line(CX - r + 0.5, CY + 3, CX - r + 0.5, CY + 6, GOLD, QUIET); line(CX - r + 0.5, CY + 6, CX - r + 0.5, 980, GOLD, 0.35); });
-      arc(CX, CY, 97, rad(184), rad(266), GOLD, 0.12, 1, [1, 3]);
-      line(CX - 96, CY + 0.5, CX - 2, CY + 0.5, GOLD, 0.18);
+      [90, 62].forEach(r => { line(CX - r + 0.5, CY + 3, CX - r + 0.5, CY + 6, C_HULL, QUIET); line(CX - r + 0.5, CY + 6, CX - r + 0.5, 980, C_HULL, 0.35); });
+      arc(CX, CY, 97, rad(184), rad(266), C_HULL, 0.12, 1, [1, 3]);
+      line(CX - 96, CY + 0.5, CX - 2, CY + 0.5, C_HULL, 0.18);
       head("life", 1976, 858, { align: "right", a: 0.85 });
     });
     dyn(() => {
       [[RF.o2v, 90], [RF.co2v, 62]].forEach(([v, r]) => { const n = Math.max(6, Math.floor(r * PI / 2 / 4)), lit = Math.round(v * n);
         for (let j = 0; j < n; j++) { const d = 180 + (j + 0.5) / n * 90, on = j < lit, a = pol(CX, CY, r - 3, d), b = pol(CX, CY, r + 3, d);
-          line(a[0], a[1], b[0], b[1], GOLD, on ? (j === lit - 1 ? 0.9 : 0.6) : 0.12); }
+          line(a[0], a[1], b[0], b[1], C_HULL, on ? (j === lit - 1 ? 0.9 : 0.6) : 0.12); }
         const e = pol(CX, CY, r + 6, 180 + 90 * v), i = pol(CX, CY, r + 10, 180 + 90 * v); line(e[0], e[1], i[0], i[1], CREAM, BRIGHT); });
-      const w = W_((+RF.o2).toFixed(1), 11); mic("o2", 1886 - w - 4, 994, { align: "right", col: CREAM, a: 0.9 }); num((+RF.o2).toFixed(1), 1886, 994, { align: "right", size: 11 });
-      mic("co2", 1906, 994, { col: CREAM, a: 0.9 }); num(RF.co2, 1906 + W_("co2", LBL()) + 4, 994, { size: 11 });
+      const w = W_((+RF.o2).toFixed(1), 11); mic("o2", 1886 - w - 4, 994, { align: "right", col: CREAM, a: 0.9 }); num((+RF.o2).toFixed(1), 1886, 994, { align: "right", size: 11, col: C_HULL });
+      mic("co2", 1906, 994, { col: CREAM, a: 0.9 }); num(RF.co2, 1906 + W_("co2", LBL()) + 4, 994, { size: 11, col: C_HULL });
     });
   }
 

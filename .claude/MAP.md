@@ -161,6 +161,7 @@ shares `Gen`:
 - `instruments.js`: `draw` ticks `t` (`now`), the sys model and `tickAlarms` (env rules) → `arbitrate` (one warning at a time); `alert` crit sets `HudModels.critUntil`; `registerTiles` holds the sys model's factory
 - `hud-models.js` left: `dist, contacts, blipAngle, bearingOf, strength, signal, resF, RES_LO, ce, sc, driftOf, leftLamps, live, sys`.
 - `hud-models.js` right: `busLoads, cabTAt, cells, cabTrace, stress, rightLamps, JOINT_U, RING_U, critUntil` (crit burst set by `Instruments.alert`).
+- `hud-c25.js` colours by hull part: `C_TOP` cold white (left wing, sensed outside), `C_MID` gold (engine, fuel, power), `C_HULL` steel blue (hull, cabin, air), `C_NOSE` oxblood (nose resonance); right-wing readings use the last three.
 - `hud-c25.js`: span line (live: marks, `nearestUnread()`, you pin), left/right wings, log (`sampleData()` for now); static linework cached per resize; mounted by bridge-panel.js, painted from `drawInstruments`
   - wing size steps: one `SIZE - +` stepper (no % shown) above the left wing's top-left (screen px, `marks`/`paintMarks`/`markAt`) steps both wings (1, 1.25, 1.5, 1.75; `Util.KEYS.HUD_WING`), scaled from their corners; span line does not scale.
   - wing fit: `wingFit` draws the largest stored-or-lower step with `XL*q*v + 12 <= W/2` (1.25 at 2000x1009); above step 1 the log rises above the wings' floor line; `HudC25.wing()` feeds `B.fitHud`.
