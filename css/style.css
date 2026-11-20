@@ -1173,7 +1173,17 @@ footer.xp-foot { margin: 3rem var(--gutter) 0 calc(var(--gutter) + var(--xp-foot
   footer.xp-foot { zoom: var(--stage-s, 1); box-sizing: border-box; width: 1600px; margin: 3rem auto 0; padding: 0 calc(1.2rem + 5rem) calc(4rem + 4.5rem) var(--xp-foot-x, 92px); }
 }
 footer.xp-foot .rights { margin-bottom: 0; max-width: none; text-wrap: wrap; }
-footer.xp-foot .rights.edu { margin-bottom: 0.4rem; }
+/* sign-off in the top bar's language: Barlow caps name, mono email, paper-tab links split by dim rules, a red-square mono degree, one hairline above the credits */
+footer.xp-foot .foot-text p.foot-id { margin: 0 0 1.5rem; font-family: var(--type-mono); font-weight: 400; line-height: 1; letter-spacing: var(--ls-label); }
+footer.xp-foot .foot-text .nm { display: block; font-family: var(--type-head); font-weight: 600; font-size: clamp(1.5rem, 7vw, 3rem); letter-spacing: 0.1em; line-height: 1; text-transform: uppercase; color: var(--type-cream); }
+footer.xp-foot .foot-text a.mail { display: inline-block; margin: 0.8rem 0 0; padding: 0; font-family: var(--type-mono); font-weight: 400; font-size: 0.78rem; letter-spacing: var(--ls-label); text-transform: lowercase; color: var(--type-quiet); transition: color 0.15s; }
+footer.xp-foot .foot-text a.mail::before, footer.xp-foot .foot-text a.mail::after { content: none; }
+footer.xp-foot .foot-text a.mail:hover, footer.xp-foot .foot-text a.mail:focus-visible { color: var(--type-cream); transform: none; }
+footer.xp-foot .foot-text p.foot-links { display: flex; flex-flow: row wrap; align-items: center; gap: 0.6rem 1.6rem; margin: 0 0 1.5rem; font-family: var(--type-head); font-weight: 600; font-size: 1.15rem; letter-spacing: 0.1em; text-transform: uppercase; }
+footer.xp-foot .foot-text .sep { display: block; flex: none; width: 1px; height: 1.1rem; background: rgb(228 221 198 / 0.25); }
+footer.xp-foot .foot-text p.foot-edu { display: flex; align-items: center; gap: 0.7rem; margin: 0 0 2.2rem; font-family: var(--type-mono); font-weight: 400; font-size: var(--fs-label); letter-spacing: var(--ls-label); line-height: 1.4; text-transform: uppercase; color: var(--type-quiet); }
+footer.xp-foot .foot-text p.foot-edu::before { content: ""; flex: none; width: 6px; height: 6px; background: var(--type-red); }
+footer.xp-foot .foot-text p.rights { padding-top: 1.6rem; border-top: 1px solid rgb(228 221 198 / 0.25); }
 .xp-shape .xp-pic { position: relative; grid-column: 2; grid-row: 1 / span 5; display: block; aspect-ratio: 16 / 9; background: #0a0a0b; overflow: hidden; }
 .xp-shape .xp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* the photos rest muted and come to full colour on the entry's hover or focus (phone only; desktop darkens the img itself) */
