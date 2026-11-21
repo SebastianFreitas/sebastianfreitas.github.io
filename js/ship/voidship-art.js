@@ -19,7 +19,7 @@
    hull part by part at that yaw; at rest the turn is null (plain side view).
 
    The shard lives in voidship-prow.js and is painted from drawHull
-   via VoidshipArt.drawProwBack/drawProw/drawProwTurn.
+   via VoidshipArt.drawProwBack/drawProw.
 
    Published as window.VoidshipArt. */
 window.VoidshipArt = (function () {
@@ -177,32 +177,16 @@ window.VoidshipArt = (function () {
     if (!turn) {
       g.drawImage(sp.canvas, sx, sy, sw, sh);
       if (window.VoidshipArt.drawEmber) window.VoidshipArt.drawEmber(g, ship, L, t);   // the rest ember is live, not baked
-    } else {
+      // bake the turn frames a little at a time while at rest, so the first turn does not stall
+      if (window.VoidshipTurnFrames) window.VoidshipTurnFrames.prepare(L, Math.min(window.devicePixelRatio || 1, 2), 2);
+    } else if (window.VoidshipTurnFrames) {
       // mid-turn the drive sits behind the hull, so the hull covers it
       open(); drive(); close();
       if (flip) turnJets(true);   // the jet firing away from the viewer: the hull drawn next covers its root
-      // the hull is narrowed in x by the turn's cosine about the ring joint (anchors.ring.x), which rides the blade ring's centre (RING_U * c in voidship-prow.js), so it stays joined to the ring at every angle and comes out mirrored (the caller flips by the sign of face).
-      // Only the part aft of the ring's near rim is kept: the blade and the ring are drawProwTurn's
-      const rj = window.VoidshipHull.anchors.ring, RU = 0.43, RW = 0.03;
-      g.save();
-      g.translate(RU * turn.c * L, 0); g.scale(turn.c, 1); g.translate(-rj.x * L, 0);
-      g.beginPath(); g.rect(sx, sy, rj.fore * L - sx, sh);
-      g.clip();
-      g.drawImage(sp.canvas, sx, sy, sw, sh);
-      g.restore();
-      // the hull's beam: the nose swings toward the viewer, so the ship shows head-on as a face centred on the turn axis, a row at a time:
-      // the head-on profile times the beam times sin, two flanks split on the row's front edge (the joint for rows that reach the ring, aft of it times cos for the rest), the lighter one on the same screen side through the turn
-      if (turn.s > 0.02) {
-        const BEAM = 1.3 * 2 * 0.18 * L, ax0 = RU * turn.c * L, ps = 1 / sp.scale;
-        const sgn = ship.face !== 0 ? (ship.face > 0 ? 1 : -1) : ((ship.yaw || 0) <= Math.PI / 2 ? 1 : -1);   // the caller's mirror
-        for (let j = 0; j < sp.rows.length; j++) {
-          const r = sp.rows[j]; if (!r) continue;
-          const h = r.w * BEAM * turn.s / 2, ax = ax0 - r.d * L * turn.c, y = (j - sp.oy) * ps, hh = ps + 0.5 / sp.scale;
-          g.fillStyle = r.c1; g.fillRect(sgn > 0 ? ax - h : ax, y, h, hh);   // lighter flank on the screen's left
-          g.fillStyle = r.c2; g.fillRect(sgn > 0 ? ax : ax - h, y, h, hh);
-        }
-      }
-      if (window.VoidshipArt && window.VoidshipArt.drawProwTurn) window.VoidshipArt.drawProwTurn(g, ship, L, t, turn);
+      // the whole ship as baked frames, pivoting at the sprite origin; the caller's scale(sign, 1) already mirrors past 90 degrees
+      const TF = window.VoidshipTurnFrames, dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const set = TF.prepare(L, dpr, 0) || TF.bake(L, dpr);
+      g.drawImage(TF.frameAt(set, (ship.yaw || 0) * 180 / Math.PI).canvas, sx, sy, sw, sh);
     }
 
     // 10. drive glow, sustainers (mid-turn they were painted behind the hull, above)

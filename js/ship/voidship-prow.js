@@ -124,9 +124,6 @@
   // the lit catches only a broken, dim line on the spine and the ridge, a short glint on a facet edge each
   const GLINTS = [[M([[0.35, -0.107], [0.43, -0.107]]), RUST_MID, 0.5]];
   const REST_EMBER = [[0.97, -0.0549], [1.02, -0.0658]];   // a short ember inside the lit face
-  const KY0 = -0.12, KY1 = 0.085, KX0 = 0.30;   // the hull's seat at the blade's root, late in the turn
-
-  const ease = (v) => v * v * (3 - 2 * v);   // smoothstep: the rest-art detail and the tip change blend over several frames
 
   function emberOf(ship, t) {
     const pulse = window.Util.reduced() ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.7);
@@ -237,68 +234,5 @@
     for (const it of near) it.fn();
   }
 
-  // mid-turn: the knife as one solid. The rest art itself (body, facets, slabs, stubs) is projected with the turn, screen x = x*c + k*z*s,
-  // k = -1 the near face, +1 the far face; z is the half thickness across the ship at that point: a fat lump filling the ring, thinning to a narrow flat tip,
-  // and thin fins (about half their side-view width) for the slabs and stubs. Only x moves: every part keeps its rest rows.
-  const ZB = [[0.30, 0.15], [0.43, 0.17], [0.50, 0.13], [0.86, 0.07], [1.292, 0.025]];
-  const FINS = [[0.54, 0.72, 0.027], [0.755, 0.795, 0.005], [0.88, 1.02, 0.017], [1.16, 1.195, 0.004]];   // [x from, x to, half thickness]: tall slab, stub, small slab, stub
-  const zOf = (x, y) => {
-    const xc = clamp(x, 0.30, 1.292), dy = y - YM;
-    const zb = Math.min(lerpY(ZB, xc), Math.sqrt(Math.max(0, (RING_RI + 0.003) * (RING_RI + 0.003) - dy * dy)));   // never wider than the ring's hole, at any x
-    const f = FINS.find((q) => x >= q[0] && x <= q[1]);
-    return f ? f[2] + (zb - f[2]) * ease(clamp((y - (SYS(clamp(x, 0.30, 1.30)) - 0.004)) / 0.014, 0, 1)) : zb;
-  };
-  // edges cut into short steps so z can vary along them
-  const dense = (pts, open) => { const o = [], n = pts.length; for (let i = 0; i < (open ? n - 1 : n); i++) { const a = pts[i], b = pts[(i + 1) % n], m = Math.max(1, Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / 0.012)); for (let j = 0; j < m; j++) o.push([a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m]); } if (open) o.push(pts[pts.length - 1]); return o; };
-  const DB = dense(BODY), DF = FACETS.map(([p, col]) => [dense(p), col]), DT = SLAB_T.map(([p, col]) => [dense(p), col]), DS = SLAB_S.map(([p, col]) => [dense(p), col]);
-  const DPL = PLATES.map(([p, col]) => [dense(p), col]), DSE = SEAMS.map((p) => dense(p, true)), DGL = GLINTS.map(([p, col, a]) => [dense(p, true), col, a]), DEM = dense(REST_EMBER, true);
-
-  function drawProwTurn(g, ship, L, t, turn) {
-    const px = Math.max(1, 0.012 * L);
-    const ember = emberOf(ship, t);
-    const s = turn.s, c = turn.c, yw = Math.atan2(s, c);
-    const w = 1 - ease(clamp(s / 0.6, 0, 1));            // rest-art detail (plates, glints, ember) shrinks with the angle
-    const sm = (v) => ease(clamp(v, 0, 1));
-    const face = (pts, k) => pts.map((p) => [p[0] * c + k * zOf(p[0], p[1]) * s, p[1]]);
-    // the solid's side walls: every outline edge swept from the near face to the far face, as one path (no seams)
-    const solid = (outline, col) => {
-      const near = face(outline, -1), far = face(outline, 1);
-      fillPoly(g, far, L, rgba(col, 1));
-      g.beginPath();
-      for (let i = 0; i < outline.length; i++) {
-        const j = (i + 1) % outline.length, q = [near[i], near[j], far[j], far[i]];
-        let ar = 0; for (let k = 0; k < 4; k++) { const u = q[k], v = q[(k + 1) % 4]; ar += u[0] * v[1] - v[0] * u[1]; }
-        if (ar < 0) q.reverse();
-        q.forEach((p, k) => k ? g.lineTo(p[0] * L, p[1] * L) : g.moveTo(p[0] * L, p[1] * L));
-        g.closePath();
-      }
-      g.fillStyle = rgba(col, 1); g.fill();
-    };
-    const stone = () => {
-      // head-on the ring's hole is stone all round: the lump's own dark fills the round above and below the cut outline
-      const fa = sm((yw - 1.0) / 0.3);
-      if (fa > 0) { g.beginPath(); g.ellipse(RING_U * c * L, YM * L, RING_RI * s * L, RING_RI * L, 0, 0, Math.PI * 2); g.fillStyle = rgba(RUST_DARK, fa); g.fill(); }
-      solid(DB, RUST_SHADE);
-      fillPoly(g, face(DB, -1), L, rgba(RUST_LIT, 1));
-      DF.forEach(([p, col]) => fillPoly(g, face(p, -1), L, rgba(col, 1)));
-      // the flat tip: a narrow upright face that comes round to meet the eye
-      { const xt = 1.292, y0 = lerpY(TOP_EDGE, 1.30), y1 = -0.015, zt = zOf(xt, y0 + 0.01) * s;
-        if (zt * L > 0.5) fillPoly(g, [[xt * c - zt, y0], [xt * c + zt, y0], [xt * c + zt, y1], [xt * c - zt, y1]], L, rgba(RUST_EDGE, 1)); }
-      // the tall slab, then the small one in front of it
-      solid(DT[0][0], RUST_DARK); DT.forEach(([p, col]) => fillPoly(g, face(p, -1), L, rgba(col, 1)));
-      solid(DS[0][0], RUST_SHADE); DS.forEach(([p, col]) => fillPoly(g, face(p, -1), L, rgba(col, 1)));
-      if (w > 0.02) {
-        DGL.forEach(([p, col, a]) => seg(g, face(p, -1), L, rgba(col, a * w), px));
-        seg(g, face(DEM, -1), L, rgba(C.RED, 0.2 * ember * w), Math.max(1.5, 0.016 * L));
-        seg(g, face(DEM, -1), L, rgba(EMBER, 0.45 * ember * w), px);
-        DPL.forEach(([p, col]) => fillPoly(g, face(p, -1), L, rgba(col, w)));
-        DSE.forEach((p) => seg(g, face(p, -1), L, rgba(C.DEEP, w), Math.max(1.5, 0.013 * L)));
-      }
-    };
-    // late in the turn the hull draws in from the blade's base: a solid seat of hull metal fills what would be a black slot, then narrows away with the hull
-    { const wd = 0.055 * sm((yw - 1.32) / 0.1) * (1 - sm((yw - 1.44) / 0.08)); if (wd > 0.001) { g.fillStyle = rgba(C.SHADE, 1); g.fillRect((KX0 * c - wd) * L, KY0 * L, (wd + 0.02) * L, (KY1 - KY0) * L); } }
-    ring(g, L, c, s, stone, sm((yw - 1.38) / 0.08), true);
-  }
-
-  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawEmber = drawEmber; A.drawProwTurn = drawProwTurn; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE };
+  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawEmber = drawEmber; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE };
 })();

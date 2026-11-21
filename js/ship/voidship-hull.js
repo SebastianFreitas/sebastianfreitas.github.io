@@ -1711,45 +1711,21 @@ window.VoidshipHull = (function () {
     drawRest(g, s); window.VoidshipArt.drawProw(g, ship, s, 1, true);
     g.translate(-ox, -oy);
     tintRing(g, ox, oy, s); dressRing(g, ox, oy, s, true);
-    // per pixel row of the hull aft of the ring band (for the turn's head-on end face): { w, c1, c2 }, w the half-width as a fraction of the full beam
-    // from HEADON (a few straight edges), c1 / c2 the row's colour times 0.80 / 0.64 (solid); the colour is the row's dominant opaque colour over the body, joined into bands of at least 2 rows
-    const px = g.getImageData(0, 0, cv.width, cv.height).data, xe = Math.min(cv.width, Math.ceil(ox + anchors.ring.aft * s)), rows = [], dom = [];
+    // per pixel row of the hull aft of the ring band (for the baked turn's beam): { w }, the half-width as a fraction of the full beam from HEADON (a few straight edges); null for a row with no hull
+    const px = g.getImageData(0, 0, cv.width, cv.height).data, xe = Math.min(cv.width, Math.ceil(ox + anchors.ring.aft * s)), rows = [], has = [];
     for (let j = 0; j < cv.height; j++) {
-      const bins = {}; let fx = 0;
-      for (let i = 0; i < xe; i++) {
-        const k = (j * cv.width + i) * 4; if (px[k + 3] <= 127) continue;
-        fx = i;
-        const b = (px[k] >> 5) * 64 + (px[k + 1] >> 5) * 8 + (px[k + 2] >> 5), e = bins[b] || (bins[b] = [0, 0, 0, 0]);
-        e[0]++; e[1] += px[k]; e[2] += px[k + 1]; e[3] += px[k + 2];
-      }
-      let best = null, bk = -1;
-      for (const b in bins) if (!best || bins[b][0] > best[0]) { best = bins[b]; bk = +b; }
-      dom.push(best && { k: bk, c: [best[1] / best[0], best[2] / best[0], best[3] / best[0]], d: fx + 1 >= xe ? 0 : Math.max(0, anchors.ring.x - (fx + 1 - ox) / s) });
-    }
-    // a one-row colour run takes its neighbour's colour; then each run of one colour is flattened to its mean
-    for (let j = 0; j < dom.length; j++) {
-      const d = dom[j], p = dom[j - 1], n = dom[j + 1];
-      if (d && p && d.k !== p.k && (!n || n.k !== d.k)) { d.k = p.k; d.c = p.c; }
-    }
-    for (let j = 0; j < dom.length;) {
-      if (!dom[j]) { j++; continue; }
-      let e = j, sum = [0, 0, 0];
-      while (e < dom.length && dom[e] && dom[e].k === dom[j].k) { for (let q = 0; q < 3; q++) sum[q] += dom[e].c[q]; e++; }
-      const m = sum.map((v) => v / (e - j));
-      for (let q = j; q < e; q++) dom[q].c = m;
-      j = e;
+      let any = false;
+      for (let i = 0; i < xe; i++) if (px[(j * cv.width + i) * 4 + 3] > 127) { any = true; break; }
+      has.push(any);
     }
     let j0 = -1, j1 = -1;
-    for (let j = 0; j < dom.length; j++) if (dom[j]) { if (j0 < 0) j0 = j; j1 = j; }
-    const shade = (c, f) => 'rgb(' + Math.round(c[0] * f) + ',' + Math.round(c[1] * f) + ',' + Math.round(c[2] * f) + ')';
+    for (let j = 0; j < has.length; j++) if (has[j]) { if (j0 < 0) j0 = j; j1 = j; }
     for (let j = 0; j < cv.height; j++) {
-      if (!dom[j]) { rows.push(null); continue; }
+      if (!has[j]) { rows.push(null); continue; }
       const t = (j - j0) / Math.max(1, j1 - j0);
       let w = HEADON[HEADON.length - 1][1];
       for (let q = 1; q < HEADON.length; q++) if (t <= HEADON[q][0]) { const a = HEADON[q - 1], b = HEADON[q]; w = a[1] + (b[1] - a[1]) * (t - a[0]) / (b[0] - a[0]); break; }
-      let d = dom[j].d;   // the row's front edge, held to the fore-most within 3 rows
-      for (let q = j - 1; q <= j + 1; q += 2) if (dom[q] && dom[q].d < d) d = dom[q].d;
-      rows.push({ w, d, c1: shade(dom[j].c, 0.8), c2: shade(dom[j].c, 0.64) });
+      rows.push({ w });
     }
     return (cache[key] = { canvas: cv, ox, oy, scale: dpr, rows });
   }
