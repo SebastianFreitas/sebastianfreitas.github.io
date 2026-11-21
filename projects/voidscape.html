@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=369">
-<link rel="stylesheet" href="../css/beacon.css?v=369">
-<link rel="stylesheet" href="../css/play.css?v=369">
-<link rel="stylesheet" href="../css/game-pages.css?v=369">
+<link rel="stylesheet" href="../css/style.css?v=370">
+<link rel="stylesheet" href="../css/beacon.css?v=370">
+<link rel="stylesheet" href="../css/play.css?v=370">
+<link rel="stylesheet" href="../css/game-pages.css?v=370">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -43,7 +43,7 @@
     <div class="gp-det"><i></i><span>OBJ_0002</span><s></s><span>Playable, 2 bosses</span></div>
     <h1>VoidScape</h1>
     <p class="gp-lead">A first-person roguelike where the player writes their own difficulty and the game pays out in
-       proportion. <span class="key">Boons</span> die with the run. The guns you built and the <span class="key">skill tree</span>
+       proportion. <span class="key">Boons</span> are lost on death or a new mission. The guns you built and the <span class="key">skill tree</span>
        stay.</p>
     <dl class="gp-meta"><div><dt>Genre</dt><dd>First-person roguelike</dd></div><div><dt>Engine</dt><dd>Unity</dd></div><div><dt>Language</dt><dd>C#</dd></div><div><dt>Role</dt><dd>Solo, everything</dd></div></dl>
   </header>
@@ -59,19 +59,22 @@
     <h2>Two answers</h2>
     <p>The classic answer is to let the player pick a harder run, and <span class="key">VoidScape</span> has it: a board
        of rolled missions where every modifier raises the payout.</p>
-    <p>The new answer is the <span class="key">special run</span>. After a run you can take the optional path, which scales on
+    <p>The new answer is the <span class="key">special run</span>. From the hub you can take the optional path, which scales on
        execution instead of numbers. It is the only place skill points come from, and the hub, where the board, the bench and the skill tree live, is where you spend them.</p>
     <figure class="gp-dia">
       <div class="gp-dia-body">
-        <div class="gp-dia-rail gp-dia-red gp-dia-via gp-dia-from-3 gp-dia-to-1"><span>Die: boons gone</span></div>
-        <ol class="gp-dia-flow">
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path class="gp-dia-dim" d="M24 18V9M19 27l-10 8M29 27l10 8"/><rect x="19" y="4" width="10" height="6"/><rect x="4" y="34" width="10" height="8"/><rect x="34" y="34" width="10" height="8"/></svg><b>Hub</b><span>Board, bench and skill tree.</span></li>
+        <div class="gp-dia-rail gp-dia-tall gp-dia-from-3 gp-dia-to-1"><span>Earn skill points</span></div>
+        <div class="gp-dia-rail gp-dia-fwd"><span class="gp-dia-two"><b>Bring your boons</b><em>free after a boss kill</em></span></div>
+        <ol class="gp-dia-flow gp-dia-one">
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path class="gp-dia-dim" d="M24 18V9M19 27l-10 8M29 27l10 8"/><rect x="19" y="4" width="10" height="6"/><rect x="4" y="34" width="10" height="8"/><rect x="34" y="34" width="10" height="8"/></svg><b>Hub</b><span>Craft guns, spend skill points. A new mission clears your boons.</span></li>
           <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 42h10v-9h10v-9h10v-9h10"/><path class="gp-dia-dim" d="M8 22L22 8M13 8h9v9"/><rect class="gp-dia-solid" x="17" y="29" width="4" height="4"/></svg><b>Run</b><span>Rooms, boss last. Farm guns and parts.</span></li>
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 8l14 11L38 8"/><path d="M10 19l14 11 14-11"/><path class="gp-dia-dim" d="M4 40h13M31 40h13"/><rect class="gp-dia-solid" x="22" y="38" width="4" height="4"/></svg><b>Special run</b><span>Harder. Pays skill points for the tree.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 8l14 11L38 8"/><path d="M10 19l14 11 14-11"/><path class="gp-dia-dim" d="M4 40h13M31 40h13"/><rect class="gp-dia-solid" x="22" y="38" width="4" height="4"/></svg><b>Special run</b><span>An optional path that scales on execution, not numbers.</span></li>
         </ol>
-        <div class="gp-dia-rail gp-dia-under gp-dia-from-3 gp-dia-to-1"><span>Back to hub</span></div>
+        <div class="gp-dia-rail gp-dia-under gp-dia-tall gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Beat the final boss</b><em>keep your boons</em></span></div>
+        <div class="gp-dia-rail gp-dia-under gp-dia-mid gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Leave early</b><em>keep your boons</em></span></div>
+        <div class="gp-dia-rail gp-dia-under gp-dia-inner gp-dia-dash gp-dia-red gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Die</b><em>boons lost</em></span></div>
       </div>
-      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. Runs farm guns and parts, the special run pays skill points, the hub spends both. Boons end with the run, win or lose.</figcaption>
+      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. A run ends at the hub three ways: beat the final boss, leave early or die. Guns and parts always come home; boons are lost on death or a new mission. The special run is free after a boss kill, otherwise you pay.</figcaption>
     </figure>
 
     <h2>The board</h2>
@@ -93,7 +96,7 @@
        sit behind the part a lucky build cannot cheese.</p>
 
     <h2>Two progressions</h2>
-    <p><span class="key">Boons</span> last one run and are by far the strongest modifiers in the game. Guns and the skill
+    <p><span class="key">Boons</span> last until you die or take a new mission, and are by far the strongest modifiers in the game. Guns and the skill
        tree last forever. The two are designed to need each other.</p>
 
     <img class="clip" data-wear="image" src="../media/voidscape/skilltree.webp" alt="The skill tree: five rows of plus and minus buttons for max life, chance to locate paths, item drop level, boon drop chance and maximum path mods" width="1600" height="978" loading="lazy">
@@ -216,22 +219,22 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=369"></script>
-<script src="../js/site/xp.js?v=369"></script>
-<script src="../js/site/surge.js?v=369"></script>
-<script src="../js/lib/pacer.js?v=369"></script>
-<script src="../js/site/lazy-video.js?v=369"></script>
-<script src="../js/pages/play.js?v=369"></script>
-<script src="../js/forge/forge-guns.js?v=369"></script>
-<script src="../js/forge/forge-missions.js?v=369"></script>
-<script src="../js/forge/forge.js?v=369"></script>
-<script src="../js/pages/voidscape-bench.js?v=369"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=369"></script>
-<script src="../js/site/banner.js?v=369"></script>
-<script src="../js/site/shapes.js?v=369"></script>
-<script src="../js/site/barwear.js?v=369"></script>
-<script src="../js/site/redlines.js?v=369"></script>
-<script src="../js/site/back.js?v=369"></script>
+<script src="../js/lib/util.js?v=370"></script>
+<script src="../js/site/xp.js?v=370"></script>
+<script src="../js/site/surge.js?v=370"></script>
+<script src="../js/lib/pacer.js?v=370"></script>
+<script src="../js/site/lazy-video.js?v=370"></script>
+<script src="../js/pages/play.js?v=370"></script>
+<script src="../js/forge/forge-guns.js?v=370"></script>
+<script src="../js/forge/forge-missions.js?v=370"></script>
+<script src="../js/forge/forge.js?v=370"></script>
+<script src="../js/pages/voidscape-bench.js?v=370"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=370"></script>
+<script src="../js/site/banner.js?v=370"></script>
+<script src="../js/site/shapes.js?v=370"></script>
+<script src="../js/site/barwear.js?v=370"></script>
+<script src="../js/site/redlines.js?v=370"></script>
+<script src="../js/site/back.js?v=370"></script>
 <script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); }</script>
 </body>
 </html>

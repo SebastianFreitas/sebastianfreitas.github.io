@@ -170,9 +170,9 @@
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0 var(--gp-dia-gap);
   background: var(--gp-plate); border: 1px solid var(--line); padding: var(--gp-4); counter-reset: gp-dia;
 }
-.page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-fly { margin-top: var(--gp-2); }   /* a second row of steps under the loop, in the same figure (Sector Zero's fly) */
+.page-game.page-case:not(.page-404) main.case .gp-dia .gp-cap { font-size: 0.8125rem; color: var(--gp-body); }   /* diagram captions: brighter and a touch larger than the plain figure caption */
 @media (min-width: 900px) {   /* Sector Zero's loop: each step's card is wider than the one before, the room opening up */
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-widen { grid-template-columns: 1fr 1.3fr 1.7fr 2.2fr; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-widen { grid-template-columns: 1.1fr 1.4fr 1.5fr 1.9fr; }
 }
 .page-game.page-case:not(.page-404) main.case .gp-dia-flow { display: contents; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li {
@@ -200,7 +200,7 @@
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under { grid-row: 3; border: 1px solid var(--gp-hair); border-top: 0; align-items: flex-end; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span {
   display: flex; align-items: center; gap: 9px; padding: 0 var(--gp-2); background: var(--gp-plate); transform: translateY(-50%); white-space: nowrap;
-  font: 500 12px/1 var(--type-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gp-label);
+  font: 500 13px/1 var(--type-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gp-body);
 }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateY(50%); }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail::before, .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after {   /* points down the left leg; the shaft is centred on the hairline; tip on the earlier step. Built from a box (shaft) and a border triangle (head), not a rotated clip-path: those paint on whole pixels, so the head stays one flat colour at any fractional layout position (the rotated clip-path left the wings at 75% in Firefox and Chromium) */
@@ -212,6 +212,45 @@
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { top: 0; border-width: 0 6px 10px 7px; border-bottom-color: var(--gp-arrow, var(--type-cream)); border-top-color: transparent; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red { --gp-arrow: var(--type-red); }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
+/* two exits sharing one return (VoidScape: win and death, both Run to Hub): two under rails over the same steps, nested. gp-dia-tall is the outer one; gp-dia-inner is the shorter one inside it, pulled in
+   1.25rem each side so its arrow lands beside the outer arrow. gp-dia-dash draws the bracket dashed. A label of two lines is span.gp-dia-two > b (the trigger) + em (the outcome, dimmer). */
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall { height: 8.5rem; align-self: end; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-mid { height: 5.75rem; margin: 0 calc(var(--gp-dia-port) + 1.25rem); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-inner { height: 3rem; margin: 0 calc(var(--gp-dia-port) + 2.5rem); }
+/* three exits (VoidScape FIG. 01): outer, mid and inner nest 1.25rem apart so the three arrows land side by side. Above the row the same nest holds a back rail (gp-dia-tall, shorter) with a forward one inside it. */
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { height: 5.5rem; }
+/* a forward rail (gp-dia-fwd) runs from an earlier step to a later one: it spans the whole row and its arrow lands on the right leg (phones: the bottom arm), on the later step. Its steps are fixed, so it takes no from/to classes. */
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd { --a: 1; --b: 4; height: 2.75rem; align-self: end; margin: 0 calc(var(--gp-dia-port) + 1.25rem); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::before { left: auto; right: -3px; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::after { left: auto; right: -7px; }
+/* a flow whose last step is not reached by an arrow from the one before it (VoidScape: the special run is entered from the hub): only the first gap keeps its arrow */
+.page-game.page-case:not(.page-404) main.case .gp-dia-flow.gp-dia-one > li + li + li::after { display: none; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-dash { border-style: dashed; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two { display: block; text-align: center; line-height: 1; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > b { display: flex; justify-content: center; align-items: center; gap: 9px; font-weight: inherit; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span.gp-dia-two::before { display: none; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span.gp-dia-two > b::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > em { display: block; margin-top: 6px; font-style: normal; font-size: 11px; letter-spacing: 0.1em; color: var(--gp-label); }
+/* a step that branches out (Sector Zero: Edit): ul.gp-dia-stack after the ol, in the last column, a stack of small outcome cards (pictogram + a few words, optional em second line).
+   Its ::before is the shared arrow from the last step; ::after is the fan's vertical line, each card's ::before a stub into it. A back rail may start at the stack (gp-dia-from-4). */
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack { grid-row: 2; position: relative; display: flex; flex-direction: column; justify-content: center; gap: var(--gp-1); margin: 0; padding: 0; list-style: none; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack::before {
+  content: ""; position: absolute; width: 22px; height: 13px; background: var(--type-cream); transform-origin: 0 0;
+  clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%);
+  top: calc(50% - 6.5px); left: calc(-0.5 * var(--gp-dia-gap) - 12px);
+}
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack::after { content: ""; position: absolute; top: 1.5rem; bottom: 1.5rem; left: calc(-0.5 * var(--gp-dia-gap) + 12px); border-left: 1px solid var(--gp-hair); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack > li { position: relative; display: flex; align-items: center; gap: var(--gp-2); padding: var(--gp-1) var(--gp-2); border: 1px solid var(--gp-hair); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack > li::before { content: ""; position: absolute; top: 50%; right: 100%; width: calc(0.5 * var(--gp-dia-gap) - 12px); border-top: 1px solid var(--gp-hair); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack .gp-dia-ico { width: 2rem; height: 2rem; margin: 0; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack > li > span { font: 400 0.9375rem/1.3 var(--type-read); color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-stack > li > span > em { display: block; margin-top: 2px; font-style: normal; font-size: 0.8125rem; color: var(--gp-label); }
+@media (max-width: 899px) {   /* under the steps: the arrow points down, no fan */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-stack { grid-row: auto; grid-column: 2; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-stack::before { top: calc(-0.5 * var(--gp-dia-gap) - 12px); left: calc(50% - 6.5px); transform: translateX(13px) rotate(90deg); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-stack::after, .page-game.page-case:not(.page-404) main.case .gp-dia-stack > li::before { display: none; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-stack .gp-dia-ico { grid-column: auto; grid-row: auto; width: 2rem; height: 2rem; }
+}
 .page-game.page-case:not(.page-404) main.case .gp-dia-to-1 { --a: 1; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-to-2 { --a: 2; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-to-3 { --a: 3; }
@@ -255,11 +294,24 @@
     border: 1px solid var(--gp-hair); border-right: 0; align-items: center; justify-content: flex-start;
   }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under { grid-column: 3; border: 1px solid var(--gp-hair); border-left: 0; justify-content: flex-end; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) { grid-template-columns: 3.25rem minmax(0, 1fr) 6.5rem; }   /* room for three nested right brackets and two left */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall { margin-right: 0.9rem; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { margin-right: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-mid { justify-self: start; width: 3.6rem; margin: calc(var(--gp-dia-port) + 1rem) 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-inner { justify-self: start; width: 1.5rem; margin: calc(var(--gp-dia-port) + 2rem) 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd { justify-self: end; align-self: stretch; height: auto; width: 1.75rem; margin: calc(var(--gp-dia-port) + 1rem) 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall, .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { align-self: stretch; height: auto; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li { padding: var(--gp-1); column-gap: var(--gp-1); grid-template-columns: 2rem minmax(0, 1fr); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > b { font-size: 1.25rem; letter-spacing: 0.02em; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > .gp-dia-ico { width: 2rem; height: 2rem; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-dash { border-style: dashed; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > em { margin: 0 6px 0 0; font-size: 10px; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span { writing-mode: vertical-rl; padding: var(--gp-1) 0; font-size: 10px; letter-spacing: 0.12em; transform: translateX(-50%) rotate(180deg); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateX(50%); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail::before { display: none; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after { left: auto; right: 0; top: -7px; width: 22px; height: 13px; border: 0; background: var(--gp-arrow, var(--type-cream)); clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { right: auto; left: 0; top: -7px; border: 0; transform: translateX(22px) scaleX(-1); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::after { left: auto; right: 0; top: auto; bottom: -7px; }
   /* the drops become arms from the bracket's line into steps 2 and 3, 1.5rem above each step's bottom like the bracket's own bottom arm; 1 px off the vertical line.
      The label sits below the top arm with 1.5rem of bare line, on the stretch above the first arm. */
   .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before,
