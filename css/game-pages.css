@@ -301,3 +301,11 @@
 .page-game.page-case:not(.page-404) main.case .gp-nums { display: flex; flex-wrap: wrap; gap: var(--gp-4) var(--gp-5); margin: var(--gp-4) 0; }
 .page-game.page-case:not(.page-404) main.case .gp-nums > div b { display: block; font-family: var(--type-head); font-weight: 700; font-size: clamp(3rem, 5vw, 4.5rem); line-height: 0.9; color: var(--type-cream); }
 .page-game.page-case:not(.page-404) main.case .gp-nums > div span { display: block; font: 500 12px/1 var(--type-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gp-label); margin-top: var(--gp-1); }
+
+/* ---- footer: the homepage's sign-off (footer.xp-foot from style.css) on the game column, and the same fade to near-black ----
+   The flat #0a0d10 body ended at the footer's grey --ground band; the homepage's page darkens to rgb(4 4 5). The fade is anchored to the page bottom so it ends in that near-black. */
+body.page-game.page-case { background: linear-gradient(0deg, rgb(4 4 5) 0, rgb(4 4 5) 12rem, #0a0d10 44rem) bottom / 100% 44rem no-repeat, #0a0d10; }
+.page-game footer.xp-foot { zoom: 1; box-sizing: border-box; width: auto; max-width: 72rem; margin: 3rem auto 0; padding: 0 var(--gutter) calc(4rem + 4.5rem); }
+@media (min-width: 1200px) {   /* the same 2.5rem a side as the column, so the name sits on its left edge */
+  .page-game footer.xp-foot { padding-inline: 2.5rem; }
+}
