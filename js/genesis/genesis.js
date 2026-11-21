@@ -753,7 +753,7 @@ window.Genesis = (function () {
       }
       const tbs = G.secs("break");
       if (window.GenGiants && tbs >= 3.85 + G.TITAN_HOLD && tbs < 5.85 + G.TITAN_HOLD) { ctx.save(); unzoom(ctx, z); GenGiants.loom(ctx, G.W, G.H, tbs); ctx.restore(); }   // the killer giant looms back behind the standing titans (10.4 to 5.85 s)
-      if (tbs >= 8.95 + G.TITAN_HOLD && tbs < 12.15 + G.TITAN_HOLD) { ctx.save(); unzoom(ctx, z); GenRockTitans.bigD(ctx); ctx.restore(); }   // the survivor, grown past a titan into giant D (trade 3.8 to 6.2 s), behind the bridge
+      if (tbs >= 8.95 + G.TITAN_HOLD + GenTitanFight.ADD && tbs < 12.15 + G.TITAN_HOLD + GenTitanFight.ADD) { ctx.save(); unzoom(ctx, z); GenRockTitans.bigD(ctx); ctx.restore(); }   // the survivor, grown past a titan into giant D (trade 3.8 to 6.2 s), behind the bridge
       if (GenRockTitans.on(tbs)) GenRockTitans.draw(ctx, tbs);   // rest-pose rock titans take the rocks' slot
       else if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, tbs);   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
       GenVoid.drawSpan(ctx, uDrawn);
@@ -771,7 +771,7 @@ window.Genesis = (function () {
       const gated = fn => { if (plain >= 0.99) return; ctx.save(); ctx.globalAlpha *= 1 - plain; fn(); ctx.restore(); };
       gated(() => GenOld.drawShards(ctx, clamp((breakLin - 0.22) / 0.70, 0, 1), lurched ? 0.15 : 0));
       const tTrade = G.secs("trade");
-      const march = mix(0.05 * smooth(clamp((tTrade - 8.4) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace
+      const march = mix(0.05 * smooth(clamp((tTrade - 8.4 - GenTitanFight.ADD) / 1.6, 0, 1)), 1, G.linear("walk"));   // step off early, then a steady linear pace
       // the old ones still climbing out of the mass sit behind its stones
       gated(() => GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling: 0, still: 0, watch: 0, flesh: null, look: sx(0), layer: "inside" }));
       GenMatter.draw(ctx);      // wave two: flesh, stone, insects, storms; the stone gathers into the mass the old ones climb out of
@@ -890,6 +890,8 @@ window.Genesis = (function () {
     }
 
     ctx.restore();
+
+    if (G.beat === idxOf("trade") && !G.reduced && !warming) GenTitanFight.warp(ctx, G.secs("trade"), sx(0), (0.64 - 0.3) * G.H, G.W, G.H);   // the end of reality warps: the painted scene breaks up round the hit point, before the fades; the caption and controls are not on this canvas
 
     if (uNow > 0.001) {
       const fade = smooth(uNow);

@@ -92,22 +92,26 @@ window.GenRockTitans = (function () {
   // each titan's moving body (GenTitanBodies, slot i = NAMES[i]) is painted every frame into its own layer sized from BOX, at 1x like the old cache, then blitted; no tint
   const NAMES = GenTitanBodies.NAMES;
   const layers = [];
-  function layerSize() { const B = GenTitanBodies.BOX; return [Math.ceil((B.r - B.l) * G.H), Math.ceil((B.top - B.bottom) * G.H)]; }
-  function paintBody(c, name, t) {
+  // wide: the angry Slime's lean needs BOX.lw of room on the left; every other layer keeps BOX.l
+  function layerSize(wide) { const B = GenTitanBodies.BOX; return [Math.ceil((B.r - (wide ? B.lw : B.l)) * G.H), Math.ceil((B.top - B.bottom) * G.H)]; }
+  function paintBody(c, name, t, hurt, f, wide) {
     const B = GenTitanBodies.BOX, g = c.getContext("2d");
     g.clearRect(0, 0, c.width, c.height);
-    GenTitanBodies.draw(name, g, { x: -B.l * G.H, footY: B.top * G.H, H: G.H, t: t });
+    GenTitanBodies.draw(name, g, { x: -(wide ? B.lw : B.l) * G.H, footY: B.top * G.H, H: G.H, t: t, hurt: hurt, pain: f ? f.pain : 0, sad: f ? f.sad : 0, anger: f ? f.anger : 0 });
   }
-  // the layer, redrawn only when the body clock moved (so reduced motion paints once)
-  function bodyLayer(i, t) {
-    const sz = layerSize(), key = sz[0] + "|" + sz[1];
+  // the layer, redrawn only when the body clock or its hurt moved (so reduced motion paints once)
+  function bodyLayer(i, t, hurt, f) {
+    const wide = !!(f && (hurt || f.pain || f.sad || f.anger)), sz = layerSize(wide), key = sz[0] + "|" + sz[1];
     let L = layers[i];
-    if (!L || L.key !== key) { const c = document.createElement("canvas"); c.width = sz[0]; c.height = sz[1]; L = layers[i] = { c: c, key: key, t: -1 }; }
-    if (L.t !== t) { paintBody(L.c, NAMES[i], t); L.t = t; }
+    if (!L || L.key !== key) { const c = document.createElement("canvas"); c.width = sz[0]; c.height = sz[1]; L = layers[i] = { c: c, key: key, t: -1, h: 0, f: 0 }; }
+    hurt = hurt || 0;
+    const fk = f ? f.pain + f.sad * 3 + f.anger * 7 : 0;
+    if (L.t !== t || L.h !== hurt || L.f !== fk) { paintBody(L.c, NAMES[i], t, hurt, f, wide); L.t = t; L.h = hurt; L.f = fk; }
+    L.wide = wide;
     return L.c;
   }
   // where the layer's top left sits on the canvas for titan t at its root
-  function layerPos(t) { const B = GenTitanBodies.BOX; return [tx(t) + B.l * G.H, (FOOT - B.top) * G.H]; }
+  function layerPos(t, wide) { const B = GenTitanBodies.BOX; return [tx(t) + (wide ? B.lw : B.l) * G.H, (FOOT - B.top) * G.H]; }
 
   // the body's box (centre and height of the part above the foot line, px) for the grow-in
   function bodyBox(t) {
@@ -129,7 +133,8 @@ window.GenRockTitans = (function () {
   // plan titans-clash phase 2: the debris proper. 126 rock wedges, 8 tentacle ribbons, 24 parts (19 piece sprites + 5 crops); one cached sprite each, built once in matter
   const DEG = Math.PI / 180, FIVE = ["roller", "bloom", "mound", "veil", "slider"];
   let debris = null, debrisKey = "";
-  const burstStep = (tt) => tt < 1.6 ? 0 : Math.min(3, Math.floor((tt - 1.6) / 0.4 + 1e-6) + 1);
+  const BURST = GenTitanFight.BURST, ADD = GenTitanFight.ADD, D_T0 = 3.0 + ADD;   // trade secs: the burst, the shift of everything after the old 1.6, and the survivor's / births' start
+  const burstStep = (tt) => tt < BURST ? 0 : Math.min(3, Math.floor((tt - BURST) / 0.4 + 1e-6) + 1);
   function crop(src, x, y, w, h) {
     const c = document.createElement("canvas"); c.width = w; c.height = h;
     c.getContext("2d").drawImage(src, x, y, w, h, 0, 0, w, h);
@@ -321,25 +326,45 @@ window.GenRockTitans = (function () {
       debris.forEach((ch) => { if (ch.share !== "out" && !(ch.idx >= 0)) drawChip(ctx, ch, 3, 0); });
       return;
     }
-    if (!debris || tt < 1.6 || (out && tt >= 9)) return;
-    const step = out ? Math.min(5, Math.floor((tt - 1.6) / 0.2 + 1e-6)) : burstStep(tt);   // out chips: 0.2 s held steps from 1.6, past the edges from 2.6
+    if (!debris || tt < BURST || (out && tt >= 9 + ADD)) return;
+    const step = out ? Math.min(5, Math.floor((tt - BURST) / 0.2 + 1e-6)) : burstStep(tt);   // out chips: 0.2 s held steps from 1.6, past the edges from 2.6
     // from 2.4 the 11 non-part float chips drift 0.004 H a snap (15 snaps to 8.4); parts never move
-    const drift = tt < 2.4 ? 0 : Math.min(15, Math.floor((tt - 2.4) / 0.4 + 1e-6)) * 0.004 * G.H;
+    const drift = tt < 2.4 + ADD ? 0 : Math.min(15, Math.floor((tt - 2.4 - ADD) / 0.4 + 1e-6)) * 0.004 * G.H;
     debris.forEach((ch) => {
       if ((ch.share === "out") !== out) return;
       if (ch.idx >= 0 && !out && window.GenOld && GenOld.birthT && tt >= GenOld.birthT(ch.idx)) return;   // its old one is growing: hand over
       drawChip(ctx, ch, step, drift);
     });
   }
+  // the sturdy Statue: at the burst 36 more chips, the debris' own sprites, fly out of where it stood, fall and shrink to nothing in 1 s (a pure function of tt; the list of sprites is built once per debris)
+  const XTRA = 36, XLIFE = 1.0;
+  let xtra = null, xtraFor = null;
+  function drawStatueBurst(ctx, tt) {
+    if (G.reduced || !debris || tt < BURST || tt >= BURST + XLIFE) return;
+    if (xtraFor !== debris) { xtra = debris.filter((ch) => ch.share === "out"); xtraFor = debris; }
+    if (!xtra.length) return;
+    const a = tt - BURST, u = a / XLIFE, k = u < 0.4 ? 1 : (1 - u) / 0.6, H = G.H, x = G.sx(0) - SURVIVOR * 0.4 * H, rnd = GenTitanFight.rnd;
+    for (let j = 0; j < XTRA; j++) {
+      const ch = xtra[(j * 7) % xtra.length], id = 200 + j;
+      const x0 = x + (rnd(id, 1) - 0.5) * 0.2 * H, y0 = (FOOT - 0.05 - 0.45 * rnd(id, 2)) * H;
+      const ang = (-0.1 - 0.8 * rnd(id, 3)) * Math.PI, sp = (0.5 + 0.9 * rnd(id, 4)) * H, vx = Math.cos(ang) * sp * (rnd(id, 7) < 0.7 ? 1 : -1) * 0.8 - 0.3 * H;
+      const s = ch.sc * k * k * (0.7 + 0.5 * rnd(id, 5));
+      if (s <= 0.001) continue;
+      ctx.save();
+      ctx.translate(x0 + vx * a, y0 + Math.sin(ang) * sp * a + 0.5 * 1.8 * H * a * a); ctx.rotate(rnd(id, 6) * 6.283 + a * (rnd(id, 8) - 0.5) * 8);
+      ctx.scale(s, s); ctx.drawImage(ch.lift || ch.sp, -ch.ox, -ch.oy);
+      ctx.restore();
+    }
+  }
   function drawDebris(ctx, tt) {
     drawChips(ctx, tt, false);
-    if (G.reduced || tt < 1.6 || tt >= 3.0) return;
+    if (G.reduced || tt < BURST || tt >= D_T0) return;
     // the leftover, in front of the debris: two fifths of the Hollow as it was at the burst, still, at the clash point, in lighter fills
     const t = LAYOUT.titans[SURVIVOR], lp = layerPos(t), key = SURVIVOR + "|" + G.W + "|" + G.H;
     if (!leftBody || leftKey !== key) {
       const c = document.createElement("canvas"), sz = layerSize();
       c.width = sz[0]; c.height = sz[1];
-      paintBody(c, NAMES[SURVIVOR], Math.max(0, G.secs("break") - tt + 1.6 - 3.45 - OFF[SURVIVOR] - 1.6));
+      paintBody(c, NAMES[SURVIVOR], Math.max(0, G.secs("break") - tt + BURST - 3.45 - OFF[SURVIVOR] - 1.6));
       leftBody = c; leftKey = key; leftTint = null;
     }
     const body = leftBody;
@@ -434,12 +459,12 @@ window.GenRockTitans = (function () {
      3.0 / 3.4 / 3.8 / 4.2 (heights in H below), holds to 5.4, then slides out of frame in held steps (5.4, 5.8) and is gone at 6.2. Steps 0 and 1 are smaller than a
      titan and are drawn with the titans; steps 2 and 3 and the exit are drawn behind the bridge in the giants' layer (bigD). */
   const D_STEP = [0.25, 0.45, 0.9, 1.5], D_X = [0, 0, 0.25, 0.5];
-  const dStep = (tt) => (tt < 3.0 || tt >= 6.2) ? -1 : Math.min(3, Math.floor((tt - 3.0) / 0.4 + 1e-6));
+  const dStep = (tt) => (tt < D_T0 || tt >= 6.2 + ADD) ? -1 : Math.min(3, Math.floor((tt - D_T0) / 0.4 + 1e-6));
   function placeD(ctx, tt, st) {
     if (!window.GenGiants) return;
     const H = G.H, h = D_STEP[st] * H, w = h * GenGiants.D_W / GenGiants.D_H;
     let cx = G.sx(0) + D_X[st] * H;
-    if (tt >= 5.4) cx = G.W - (tt < 5.8 ? 0.7 : 0.3) * H + w / 2;
+    if (tt >= 5.4 + ADD) cx = G.W - (tt < 5.8 + ADD ? 0.7 : 0.3) * H + w / 2;
     GenGiants.drawD(ctx, cx, FOOT * H, h / GenGiants.D_H);
   }
   function bigD(ctx) {
@@ -449,19 +474,84 @@ window.GenRockTitans = (function () {
   }
 
   // grow in five held steps: snap 0 is the blast rock alone, then the body group (and the pieces whose snap has come) moves from the rock to its rest pose
+  // reused every frame: the survivor's late paint, the Slime's lash paint (on its own scratch layer: its bites cut holes), and their draw options
+  const LATE = { on: false, x: 0, t: 0, arms: 0, ff: null }, LASH = { on: false, x: 0, t: 0, ff: null };
+  const LATE_O = { x: 0, footY: 0, H: 0, t: 0, arms: 0, drop: 0 };
+  const LASH_O = { x: 0, footY: 0, H: 0, t: 0, hurt: 1, pain: 1, sad: 1, anger: 1, lash: 0, hx: 0 };
+  let lashC = null, slimeC = null, stoneC = null;
+  const STONE = { lit: "#33373b", shade: "#26292c", hi: "#33373b" };   // the Statue's own greys (PAL hi and lit), one step up from the goo's #26292c / #161a1d; no wet shine
+  const STONE_O = { x: 0, footY: 0, H: 0, t: 0, hurt: 1, pain: 1, sad: 1, anger: 1, lash: 1, hx: 0, pal: STONE, angular: true };
+  const EDGE = new Float64Array(13);   // the hardening front's ragged edge: fixed offsets (fractions of H) at 13 rows
+  for (let i = 0; i < 13; i++) EDGE[i] = (GenTitanFight.rnd(i, 21) - 0.5) * 0.05;
+  // From 11.6 s the goo layer g (already painted live) turns to stone: the front runs from the far arm tip to the Slime's foot; behind it the body is repainted
+  // with its clock stopped at 11.6 (no wobble, drips or lip motion), in stone greys, with a hard angular front and flat facets; the cracks come over it from 12.4.
+  function stoneOver(g, sl, hx, tt) {
+    const H = G.H, ff = sl.ff, st = ff.stone, ww = g.canvas.width, hh = g.canvas.height;
+    if (!stoneC) stoneC = document.createElement("canvas");
+    if (stoneC.width !== ww || stoneC.height !== hh) { stoneC.width = ww; stoneC.height = hh; }
+    const h = stoneC.getContext("2d");
+    h.setTransform(1, 0, 0, 1, 0, 0); h.clearRect(0, 0, ww, hh); h.setTransform(g.getTransform());
+    STONE_O.x = sl.x; STONE_O.footY = FOOT * H; STONE_O.H = H; STONE_O.hx = hx; STONE_O.hollowH = 0.4 * H;STONE_O.t = Math.max(0, sl.t - (tt - GenTitanFight.T.lash[0]));
+    GenTitanBodies.draw(NAMES[2], h, STONE_O);
+    h.save();
+    h.globalCompositeOperation = "source-atop";
+    // (the mound's own shade split, offset from its outline, already makes the right side dark: no rect over it)
+    for (let i = 0; i < 11; i++) {   // flat angular facets over the hood column, both arms and the base: left-facing planes lit, the rest shade
+      const a = GenTitanFight.rnd(i, 31), b = GenTitanFight.rnd(i, 33), r = GenTitanFight.rnd(i, 35), c = GenTitanFight.rnd(i, 37);
+      const x = i < 3 ? hx + (-0.04 + 0.08 * a) * H : hx + (-0.36 + 0.8 * a) * H, y = i < 3 ? (FOOT - 0.55 - 0.35 * i - 0.05 * b) * H : (FOOT - 0.08 - 0.6 * b) * H, w = (0.07 + 0.06 * r) * H, v = (0.05 + 0.06 * c) * H;
+      h.fillStyle = (r + c > 0.9 || x < hx - 0.12 * H) ? STONE.lit : STONE.shade;
+      h.beginPath(); h.moveTo(x, y); h.lineTo(x + w, y - 0.4 * v); h.lineTo(x + 0.8 * w, y + v); h.lineTo(x + 0.1 * w, y + 0.7 * v); h.closePath(); h.fill();
+    }
+    h.restore();
+    GenTitanFight.drawCracks(h, hx, (FOOT - 0.3) * H, H, ff.crack);
+    if (st >= 1 && tt >= BURST) { GenTitanFight.shards(g, stoneC, hx, (FOOT - 0.3) * H, H, tt - BURST); return; }
+    if (st >= 1) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, ww, hh); g.drawImage(stoneC, 0, 0); g.restore(); return; }
+    // the front rises from the base: a ragged horizontal edge sweeping up through the whole mound, so the stone covers its own outline and no vertical seam shows
+    const yf = (FOOT + 0.1) * H - 1.35 * H * st * st * (3 - 2 * st), x0 = hx - 0.8 * H, dx = 1.6 * H / 12;
+    g.save();
+    g.beginPath(); g.moveTo(x0 - 3 * H, yf + 2 * H); g.lineTo(x0 - 3 * H, yf + EDGE[0] * H); g.lineTo(x0, yf + EDGE[0] * H);
+    for (let i = 1; i < 13; i++) g.lineTo(x0 + i * dx, yf + EDGE[i] * H);
+    g.lineTo(x0 + 12 * dx + 3 * H, yf + EDGE[12] * H); g.lineTo(x0 + 12 * dx + 3 * H, yf + 2 * H); g.closePath();
+    g.globalCompositeOperation = "destination-out"; g.fill();   // the goo behind the front goes; the stone takes its place
+    g.globalCompositeOperation = "source-over"; g.clip();
+    g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(stoneC, 0, 0);
+    g.restore();
+    g.save();   // the front itself: a ragged hard band of the lit value, 3 to 5 px wide, on the stone side only
+    g.globalCompositeOperation = "source-atop"; g.fillStyle = STONE.lit;
+    const bw = (3 + 2 * st) / g.getTransform().a;
+    g.beginPath(); g.moveTo(x0 - 3 * H, yf + EDGE[0] * H); g.lineTo(x0, yf + EDGE[0] * H);
+    for (let i = 1; i < 13; i++) g.lineTo(x0 + i * dx, yf + EDGE[i] * H);
+    g.lineTo(x0 + 12 * dx + 3 * H, yf + EDGE[12] * H);
+    g.lineTo(x0 + 12 * dx + 3 * H, yf + EDGE[12] * H + bw);
+    for (let i = 12; i >= 0; i--) g.lineTo(x0 + i * dx, yf + EDGE[i] * H + bw * (0.7 + 0.6 * ((i * 5) % 3) / 2));
+    g.lineTo(x0 - 3 * H, yf + EDGE[0] * H + bw);
+    g.closePath(); g.fill();
+    g.restore();
+  }
   function draw(ctx, tb) {
     if (!on(tb)) return;
     const tm = tb - 3.45;
+    const late = LATE, slimeLash = LASH;
+    late.on = false; slimeLash.on = false;
 
     LAYOUT.titans.forEach((t, i) => {
       const k = snaps(i, tm), rp = GenMatter.rockPose(i);
       if (i === victim() && !G.reduced) { const ts = G.secs("break"); if (ts >= FIRE_T[0]) { drawVictim(ctx, t, i, ts); return; } }
       if (k === 0) { if (rp) GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], rp.x, rp.y, rp.rot, rp.size); return; }
-      const tt = G.secs("trade"), c = bodyLayer(i, bodyT(i, tm, k)), lp = layerPos(t);
+      const tt = G.secs("trade"), tc = Math.min(tt, BURST - 0.001), frozen = tt >= BURST && tt < BURST + (i === 2 ? GenTitanFight.SHARD_LIFE : GenTitanFight.HOLD) && !G.reduced;   // frozen: the warp tears the last pose apart (the Slime's stone breaks into pieces over SHARD_LIFE)
+      const hurtable = (i === 0 || i === 2) && k === 5 && tt >= 0 && (tt < BURST || frozen) && !G.reduced;
+      const c = bodyLayer(i, bodyT(i, tm, k), hurtable ? GenTitanFight.level(GenTitanFight.at(tc)) : 0, hurtable && i === 2 ? GenTitanFight.at(tc) : null), lp = layerPos(t, layers[i].wide);
       if (k === 5 && tt >= 0) {
-        // the clash: held 0.4 s steps from the roots to one point, no fight; gone at the burst (reduced motion: gone from trade 0)
-        if (tt < 1.6 && !G.reduced && i !== victim()) ctx.drawImage(c, lp[0] + (G.sx(0) - tx(t)) * Math.min(3, Math.floor(tt / 0.4)) / 3, lp[1]);
-        if (i === SURVIVOR && !G.reduced && tt >= 3.0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
+        // the close-in: one smooth move over the fight's close phase to the meet point (Hollow on it, Statue and Slime 0.4 H either side), then they stand until the burst (reduced motion: gone from trade 0)
+        if ((tt < BURST || frozen) && !G.reduced && i !== victim()) {
+          const ff = GenTitanFight.at(tc), f = ff.close, sm = f * f * (3 - 2 * f), dx = (G.sx(0) + (i - SURVIVOR) * 0.4 * G.H - tx(t)) * sm;
+          if (i === SURVIVOR && ff.raise > 0) { late.on = true; late.x = tx(t) + dx; late.t = bodyT(i, tm, k); late.arms = ff.raise; late.ff = ff; return; }   // painted after the loop: rays go behind it, in front of the others
+          if (i === 2 && ff.lash > 0) { slimeLash.on = true; slimeLash.x = tx(t) + dx; slimeLash.t = bodyT(i, tm, k); slimeLash.ff = ff; }   // painted after the loop, in front of the Hollow
+          else { if (frozen) { ctx.save(); GenTitanFight.thin(ctx, tt, G.H); } ctx.drawImage(c, lp[0] + dx, lp[1]); if (frozen) ctx.restore(); }
+          if (hurtable && !slimeLash.on && tt < BURST) GenTitanFight.drawChips(ctx, tt, NAMES[i], tx(t) + dx, FOOT * G.H, G.H, bodyT(i, tm, k), G.sx(0));
+        }
+        if (!G.reduced && tt >= BURST && tt < BURST + 0.8 && (i === 0 || i === 2)) GenTitanFight.drawChips(ctx, tt, NAMES[i], G.sx(0) + (i - SURVIVOR) * 0.4 * G.H, FOOT * G.H, G.H, bodyT(i, tm, k), G.sx(0));   // the fight's last chips finish their fall after the burst (bodies are gone)
+        if (i === SURVIVOR && !G.reduced && tt >= D_T0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
         return;
       }
       if (k === 5 || !rp) { ctx.drawImage(c, lp[0], lp[1]); return; }
@@ -476,8 +566,56 @@ window.GenRockTitans = (function () {
       GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], gx, gy, gr, rp.size);
       ctx.restore();
     });
+    const frz = G.secs("trade") >= BURST && G.secs("trade") < BURST + GenTitanFight.HOLD;
+    if (frz) { ctx.save(); GenTitanFight.thin(ctx, G.secs("trade"), G.H); }
+    let hollowInLash = false;
+    function drawHollow(c2, lt, ls) {
+      const kb = Math.max(0, Math.min(1, (ls - 0.52) / 0.1)), ke = kb * kb * (3 - 2 * kb);   // the crash's knock-back: one rigid tilt away from the Slime (it stands on his right) and a small sink, about his foot
+      c2.save();
+      if (ke > 0) { c2.translate(lt.x, FOOT * G.H + 0.012 * G.H * ke); c2.rotate(-0.14 * ke); c2.translate(-lt.x, -FOOT * G.H); }
+      GenTitanBodies.draw(NAMES[SURVIVOR], c2, LATE_O);
+      c2.restore();
+    }
+    if (late.on) {   // he keeps drawing under the Slime's mound until the stone phase (the rays end themselves at cover 1)
+      GenTitanFight.drawRays(ctx, late.x, (FOOT - 0.3) * G.H, 1.5 * G.H, late.ff);
+      LATE_O.x = late.x; LATE_O.footY = FOOT * G.H; LATE_O.H = G.H; LATE_O.t = late.t; LATE_O.arms = late.arms;
+      LATE_O.drop = Math.max(0, Math.min(1, (late.ff.lash - 0.48) / 0.12));   // the wave slams both arms down (rigid, eased inside the body draw)
+      // the swallow: he stands where he is until the wave hits (0.52 to 0.62 knock-back) and holds under the goo
+      const ls = late.ff.lash;
+      if (slimeLash.on) hollowInLash = true;   // drawn first on the lash layer below, so the Slime's passes (and its bites) go over him
+      else drawHollow(ctx, late, ls);
+    }
+    if (frz) ctx.restore();   // the stone pieces below are not thinned
+    if (slimeLash.on) {
+      const cv = ctx.canvas, tt = G.secs("trade");
+      if (!lashC) lashC = document.createElement("canvas");
+      if (lashC.width !== cv.width || lashC.height !== cv.height) { lashC.width = cv.width; lashC.height = cv.height; }
+      const g = lashC.getContext("2d");
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, lashC.width, lashC.height); g.setTransform(ctx.getTransform());
+      LASH_O.x = slimeLash.x; LASH_O.footY = FOOT * G.H; LASH_O.H = G.H; LASH_O.t = slimeLash.t - Math.max(0, tt - GenTitanFight.T.lash[0]); LASH_O.lash = slimeLash.ff.lash; LASH_O.hx = late.on ? late.x : G.sx(0); LASH_O.hollowH = 0.4 * G.H;
+      if (hollowInLash) {   // the Hollow first, then the Slime on its own layer (its bites and lid cut only its own paint), over him
+        drawHollow(g, late, late.ff.lash);
+        if (!slimeC) slimeC = document.createElement("canvas");
+        if (slimeC.width !== cv.width || slimeC.height !== cv.height) { slimeC.width = cv.width; slimeC.height = cv.height; }
+        const s2 = slimeC.getContext("2d");
+        s2.setTransform(1, 0, 0, 1, 0, 0); s2.clearRect(0, 0, slimeC.width, slimeC.height); s2.setTransform(ctx.getTransform());
+        GenTitanBodies.draw(NAMES[2], s2, LASH_O);
+        g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(slimeC, 0, 0); g.restore();
+      } else GenTitanBodies.draw(NAMES[2], g, LASH_O);
+      if (slimeLash.ff.stone > 0) stoneOver(g, slimeLash, LASH_O.hx, tt);
+      if (tt >= BURST && tt < BURST + GenTitanFight.HOLD) {   // inside the span's box (from 0.58 H) the mound keeps the frozen, thinned pose it had; the pieces above it are clipped away from the box
+        const yb = Math.floor(0.575 * G.H * cv.width / G.W);
+        ctx.save(); GenTitanFight.thin(ctx, tt, G.H); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.beginPath(); ctx.rect(0, yb, cv.width, cv.height - yb); ctx.clip();
+        ctx.drawImage(stoneC, 0, 0); ctx.restore();
+      }
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(lashC, 0, 0); ctx.restore();
+      if (frz) { ctx.save(); GenTitanFight.thin(ctx, tt, G.H); }
+      GenTitanFight.drawChips(ctx, G.secs("trade"), NAMES[2], slimeLash.x, FOOT * G.H, G.H, slimeLash.t, LASH_O.hx);
+      if (frz) ctx.restore();
+    }
     buildDebris();
-    if (!G.reduced) drawChips(ctx, G.secs("trade"), true);
+    if (!G.reduced) { drawChips(ctx, G.secs("trade"), true); drawStatueBurst(ctx, G.secs("trade")); }
   }
 
   return { on, draw, bigD, LAYOUT, buildDebris, debrisSteps,drawDebris, partRest };

@@ -86,7 +86,8 @@ window.GenTrade = (function () {
   function drawStream(ctx) {
     if (typeof G.secs !== "function") return;
     const base = G.secs("trade");
-    if (base < 7.2) return;
+    const T0 = 7.2 + (window.GenTitanFight ? GenTitanFight.ADD : 0);
+    if (base < T0) return;
     const swarmSince = G.since ? G.since("enter") : 0;
     if (swarmSince >= 1) return;
     const landSince = G.since ? G.since("land") : 0;
@@ -94,9 +95,9 @@ window.GenTrade = (function () {
     const W = G.W, H = G.H;
     if (W === 0) return;
     for (const tv of TRAV) {
-      const tsince = base - 7.2 - tv.delay;
+      const tsince = base - T0 - tv.delay;
       if (tsince < 0) continue;
-      const ft = Math.max(0, base - 7.2 - tv.delay);
+      const ft = Math.max(0, base - T0 - tv.delay);
       const u = tv.east
         ? G.cam - 0.75 + (((tv.u0 + 0.7 + ft * tv.rate) % 1.5 + 1.5) % 1.5)
         : G.cam + 0.75 - (((tv.u0 + 0.7 + ft * tv.rate * 1.4) % 1.5 + 1.5) % 1.5);

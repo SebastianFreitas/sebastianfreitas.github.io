@@ -374,7 +374,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
-| `genesis-titanbodies.js` | The four new rock-titan bodies (statue ported, hollow/slime/changer stubs); draws only, onto an empty layer | `window.GenTitanBodies {NAMES, PAL, BOX, draw}` |
+| `genesis-titanbodies.js` | The four new rock-titan bodies; draws only, onto an empty layer; the fight's T arms, damage and the Slime's pour live here | `window.GenTitanBodies {NAMES, PAL, BOX, draw, slimePoint, cover, STATUE_BITES, SLIME_BITES}` |
+| `genesis-titanfight.js` | Trade-beat titan fight: clock, rays, cracks, shards, end warp; loaded before genesis-state.js | `window.GenTitanFight {T, BURST, ADD, PULSES, HOLD, SHARD_LIFE, at, drawRays, level, rnd, drawChips, warp, thin, cover, stone, crack, drawCracks, shards}` |
 | `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, debrisSteps, drawDebris, partRest}` |
 | `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
 | `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
@@ -399,6 +400,9 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
 | `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw; `warm` pre-paints beat starts offscreen | `window.Genesis` |
 
+- `genesis-titanbodies.js`: statue ported, hollow/slime/changer stubs; the Slime is rigid (its outline never changes shape): it slides to the Hollow in three steps with a bob, and its top opens on a hinge as a lid (`part` "jaw"/"lid").
+- `genesis-rocktitans.js`: in the lash the Hollow's arms drop (`drop`) and he sinks into the jaw while the lid shuts (`cover`); draw order Hollow, jaw, lid, with the Slime on the reused `slimeC` buffer.
+- `genesis-titanfight.js`: the swallow (slide + lid) is lash 8.6 to 11.6, stone 11.6 to 12.4, cracks 12.4 to 13.2, burst 13.2; `ADD` moves everything after the old 1.6 s burst later.
 - `genesis-rexout.js`: Rex recoils, leaps, catches Obrokxus, crashes, drags back to the cut; the places (cut, neck, foot; land never fills the cut) are laid out on the womb sunk 15% (`placed`, `wombG` undeflated); `bigTear` paints the dark cut on the live deflating womb (`draw(ctx)`).
 - `G.wombDeflate` (0..1, `genesis-state.js`, set per frame in `genesis.js` from `G.secs("burst")`: 0 until Rex's barge at 3.4 s, 1 at the end of `land`): `fleshGeom` lowers the womb to 0.95 H about its base, draws the front in and slides it right behind the land. Replaces `wombSink`.
 - `genesis-duo.js`: `drawRex` poses incl. `dive`, `recoil`, `curl`, `crawl` (lying on the floor, far arm reaching, near fist under the chest), options `o.raise`, `o.melt`, `o.head`, `o.venom`, `o.venomA`.

@@ -28,7 +28,7 @@ if not args: print(__doc__); sys.exit(1)
 out = Path(args[0]); out.mkdir(parents=True, exist_ok=True)
 layout = Path(lay) if lay else ROOT / ".claude" / "plans" / "research" / "rock-titans-sketch" / "layout.js"
 tags = re.findall(r'<script src="(js/[^"?]+)', (ROOT / "index.html").read_text(encoding="utf-8"))
-FILES = ["js/lib/util.js", "js/lib/paint.js"] + tags[tags.index("js/genesis/genesis-state.js"):tags.index("js/genesis/genesis-oldkin.js") + 1]
+FILES = ["js/lib/util.js", "js/lib/paint.js", "js/genesis/genesis-titanfight.js"] + tags[tags.index("js/genesis/genesis-state.js"):tags.index("js/genesis/genesis-oldkin.js") + 1]
 
 JS = """
 () => {

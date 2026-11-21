@@ -19,7 +19,7 @@ fam = take("--family"); seed = int(take("--seed") or 1)
 if not args: print(__doc__); sys.exit(1)
 out = Path(args[0]); out.mkdir(parents=True, exist_ok=True)
 FAMS = [fam] if fam else ["plant", "metal", "cloud", "odd"]
-FILES = ["js/lib/util.js", "js/lib/paint.js", "js/genesis/genesis-state.js", "js/genesis/genesis-paint.js",
+FILES = ["js/lib/util.js", "js/lib/paint.js", "js/genesis/genesis-titanfight.js", "js/genesis/genesis-state.js", "js/genesis/genesis-paint.js",
          "js/genesis/genesis-eldpal.js", "js/genesis/genesis-ceilkinds.js"] + \
         [f"js/genesis/genesis-ceilkinds-{f}.js" for f in ["plant", "metal", "cloud", "odd"]] + \
         ["js/genesis/genesis-ceilclouds.js"]

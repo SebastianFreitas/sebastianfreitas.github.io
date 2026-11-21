@@ -122,8 +122,8 @@
         }
       }
       // the rocks wear away from the outside in, slower than the old ones climb out: they shrink in held steps, always opaque, then go
-      const keep = clamp((massScale(trs * 0.75) - k.mr * 0.6) / 0.2, 0, 1);
-      sk = trs >= 8.6 ? 0 : trs >= 8.2 ? 0.25 : keep > 0.75 ? 1 : keep > 0.5 ? 0.8 : keep > 0.25 ? 0.6 : 0.4;
+      const keep = clamp((massScale((trs - GenTitanFight.ADD) * 0.75) - k.mr * 0.6) / 0.2, 0, 1);
+      sk = trs >= 8.6 + GenTitanFight.ADD ? 0 : trs >= 8.2 + GenTitanFight.ADD ? 0.25 : keep > 0.75 ? 1 : keep > 0.5 ? 0.8 : keep > 0.25 ? 0.6 : 0.4;
     }
     if (sk === 0) return null;
     const size = k.R * H * sk * (0.9 + 0.1 * smooth(clamp(a / 0.2, 0, 1)));
@@ -582,7 +582,7 @@
     // the 2.5 s beat plays the old 8 s timeline (x3.2), so the mass is whole by its end; trade runs on at 1:1
     const ms = G.secs("matter");
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
-    if (s > 20.6 + G.TITAN_HOLD) return;
+    if (s > 20.6 + G.TITAN_HOLD + GenTitanFight.ADD) return;   // through the trade beat, which the fight makes ADD longer
     // the four rocks are drawn by genesis.js, just under the bridge (drawRocks)
     if (s < 0) return;
 

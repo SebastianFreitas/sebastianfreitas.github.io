@@ -36,7 +36,7 @@ window.Gen = (function () {
       line: "First came what had no body: the dust, the air, the wind, the sound, the colour and the light. No law held for long, and every law changed its mind." },
     { id: "matter", dur: 2.5 + G.TITAN_HOLD, tag: "V · Matter",
       line: "Then came matter: flesh, and stone, and things that were both. It floated, it fell, it broke. Small lives crawled out of it and died where they crawled." },
-    { id: "trade", dur: 9.0, tag: "VI · The old ones",
+    { id: "trade", dur: 9.0 + GenTitanFight.ADD, tag: "VI · The old ones",
       line: "The four stones would not stay stones. They rose taller than the span, met at one point and broke, and out of what they left every old one was born." },
     { id: "walk",  dur: 7.0, tag: "VII · One side",
       line: "Some took the span west, and of them nothing is written. This record follows those who went east." },

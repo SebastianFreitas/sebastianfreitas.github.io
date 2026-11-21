@@ -151,7 +151,7 @@ window.GenOld = (function () {
     return t0;
   })();
   function ventSteps(idx) { return idx === GENT_IDX ? 6 : 3 + Math.floor(hash1(idx * 29 + 5) * 3); }
-  const BIRTH_T0 = 3.0, BIRTH_RANK = 0.12, BIRTH_STEP = 0.4;
+  const BIRTH_T0 = 3.0 + GenTitanFight.ADD, BIRTH_RANK = 0.12, BIRTH_STEP = 0.4;
   // rank 0 = the gentleman, then the others by their VENT_T0
   function birthRank(idx) { if (idx === GENT_IDX) return 0; let r = 0; VENT_T0.forEach((t) => { if (t < VENT_T0[idx]) r++; }); return r; }
   function birthT(idx) { return BIRTH_T0 + birthRank(idx) * BIRTH_RANK; }
@@ -193,7 +193,7 @@ window.GenOld = (function () {
     const e = (emerge >= bt || rdTrade) ? 1 : 0;
     const part = (e > 0 && !rdTrade &&emerge < upT && window.GenRockTitans && GenRockTitans.partRest) ? GenRockTitans.partRest(idx) : null;
     const growStep = part ? Math.min(nst, Math.floor((emerge - bt) / BIRTH_STEP + 1e-6) + 1) : 0;
-    const held = emerge < 8.4;
+    const held = emerge < 8.4 + GenTitanFight.ADD;
     o.wake = (emerge >= upT || rdTrade) ? 1 : 0;
     // the walk is read at half the frame: they grow through it and settle back for the root
     const scale = 1 + 0.5 * smooth(G.since("walk")) * (1 - clamp(G.linear("root") / 0.1, 0, 1));   // back to 1x within ~0.6 s of root
@@ -226,9 +226,9 @@ window.GenOld = (function () {
     // up to walk: distance rolled from the standing spot (plus the standing spot's offset from splitU), so the gait never runs backwards; after: world x, so the camera drift doesn't slide the feet
     const phase = (G.beat <= G.idxOf("walk") ? Math.abs(STAND[o.kind].u - splitU) * W + Math.abs(x - sx(STAND[o.kind].u)) : Math.abs(x + G.cam * W - (splitU * W + W * 0.5))) * 0.045 * o.gait;
     const isFlyer = o.move === "fly";
-    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * smooth(clamp((emerge - 8.4) / 1.0, 0, 1));
+    if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * smooth(clamp((emerge - 8.4 - GenTitanFight.ADD) / 1.0, 0, 1));
     else y = deckY - 2 + STAND[o.kind].lane * 0.012 * H;
-    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.secs("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * smooth(clamp((emerge - 8.4) / 1.0, 0, 1));
+    if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.secs("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * smooth(clamp((emerge - 8.4 - GenTitanFight.ADD) / 1.0, 0, 1));
     if (part) {   // the cut's bottom-centre sits on the chip's pivot: the feet are offset from it by the lying rotation
       const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]), ib = part.ib;
       let ax = ib[0] + (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2 * ib[2], ay = ib[1] + Math.max.apply(null, vs) * ib[3];

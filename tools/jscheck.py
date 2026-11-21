@@ -16,7 +16,7 @@ def take(flag):
     if flag in args:
         i = args.index(flag); v = args[i + 1]; del args[i:i + 2]; return v
 ev = take("--eval"); shot = take("--shot")
-BASE = ["js/lib/util.js", "js/lib/paint.js", "js/genesis/genesis-state.js", "js/genesis/genesis-paint.js"]
+BASE = ["js/lib/util.js", "js/lib/paint.js", "js/genesis/genesis-titanfight.js", "js/genesis/genesis-state.js", "js/genesis/genesis-paint.js"]
 files = BASE + [a.replace("\\", "/") for a in args]
 errors = []
 httpd, base = nav.start_server()
