@@ -27,11 +27,11 @@ window.GenFlesh = (function () {
     const cx = sx(ROOT_U), cy = 0.5 * G.H;
     const rx = m * (0.36 + 0.22 * vis) * mix(1, 0.90, womb);
     const ry = m * (0.46 + 0.26 * vis) * mix(1, 0.95, womb);
-    // sunk: the top drops 15% of the height, the base stays, and it spreads 10% wider (area 0.935)
-    const sink = clamp(G.wombSink || 0, 0, 1);
-    if (!sink) return { cx, cy, rx, ry };
-    const ry2 = ry * (1 - 0.15 * sink);
-    return { cx, cy: cy + (ry - ry2), rx: rx * (1 + 0.10 * sink), ry: ry2 };
+    // deflated: the base stays, the top sinks to 0.95 H (under the land's top edge), the front draws in to 0.55 of its half-width and the centre slides right
+    const de = clamp(G.wombDeflate || 0, 0, 1);
+    if (!de) return { cx, cy, rx, ry };
+    const bot = cy + ry, f = clamp((bot - 0.95 * G.H) / (2 * ry), 0.02, 1), ry2 = ry * mix(1, f, de);
+    return { cx: cx + de * 0.1 * rx, cy: bot - ry2, rx: rx * (1 - 0.45 * de), ry: ry2 };
   }
 
   // the body's wobbling outline: an 81-point ellipse with four ripple terms

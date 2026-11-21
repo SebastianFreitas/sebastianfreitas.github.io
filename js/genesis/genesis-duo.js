@@ -66,7 +66,6 @@ window.GenDuo = (function () {
   lean("upF", [0.165, -0.88, 0.277, -0.973, 0.388, -1.066]);
   lean("foreF", [0.388, -1.066, 0.53, -1.183, 0.67, -1.3]);
   // dead pose: slack and sagging toward the wall on the far side (-x), shoulders dropped, the far arm hanging, the near fist against the chest
-  for (const n of ["legB", "legF", "footB", "footF", "waist"]) PARTS.find(p => p.n === n).low = true; // the parts o.melt dissolves
   const dead = (n, a) => { PARTS.find(p => p.n === n).ax[4] = a; };
   dead("legB", [-0.12, -0.53, -0.1, -0.3, -0.092, -0.05]);
   dead("legF", [-0.03, -0.53, 0.04, -0.3, 0.1, -0.05]);
@@ -87,6 +86,131 @@ window.GenDuo = (function () {
     [[-0.32, -0.52, 0.1], [0.67, -1.3, Math.atan2(-0.277, -0.234)]], // grip: the near fist along the arm, up and forward
     [[-0.33, -0.3, 0.1], [-0.06, -0.64, Math.PI - 0.25]] // dead: the far hand hanging, the near fist upright on the chest
   ];
+  // dive and curl (poses 5 and 6): here (x, y) is the body's CENTRE, not the foot line, because the callers fly it along a path.
+  // Every part keeps its stand size: the axes are the stand segment lengths re-aimed (angles in degrees, 0 = forward, y down).
+  const DEG = Math.PI / 180;
+  const stand = (n) => PARTS.find(p => p.n === n).ax[0];
+  const chain = (n, x, y, a1, a2) => {
+    const a = stand(n), r1 = a1 * DEG, r2 = a2 * DEG, l1 = Math.hypot(a[2] - a[0], a[3] - a[1]), l2 = Math.hypot(a[4] - a[2], a[5] - a[3]);
+    const x1 = x + l1 * Math.cos(r1), y1 = y + l1 * Math.sin(r1);
+    return [x, y, x1, y1, x1 + l2 * Math.cos(r2), y1 + l2 * Math.sin(r2)];
+  };
+  const turn = (a, ox, oy, deg, nx, ny) => { // the stand axis a turned by deg about (ox, oy), moved so that point lands on (nx, ny)
+    const c = Math.cos(deg * DEG), s = Math.sin(deg * DEG), r = [];
+    for (let k = 0; k < 6; k += 2) { const vx = a[k] - ox, vy = a[k + 1] - oy; r.push(nx + vx * c - vy * s, ny + vx * s + vy * c); }
+    return r;
+  };
+  const wristHF = (a, th) => [a[4], a[5], Math.atan2(-Math.cos(th * DEG), Math.sin(th * DEG))]; // hand pointing along th
+  // dive: a mid-leap, chest leading up and to the right (torso long axis 30 degrees above level, down-back is 150), the near arm reaching out and a little down,
+  // the far arm swept back along the torso, the far leg trailing, the near knee drawn up with the shin folded back under it
+  const DV = { x: -0.08, y: 0.206 }, DVH = [0, 0, 0];
+  {
+    const T = 150, c = Math.cos(T * DEG), s = Math.sin(T * DEG), set = (n, a) => { PARTS.find(p => p.n === n).ax[5] = a.map((v, i) => v - (i % 2 ? DV.y : DV.x)); };
+    const tp = (x, y) => [(0.905 + y) * c + x * s, (0.905 + y) * s - x * c]; // stand point onto the tilted torso (the front, +x, faces down-right)
+    for (const n of ["chest", "collar", "waist", "capB", "capF"]) {
+      const a = stand(n), r = [];
+      for (let k = 0; k < 6; k += 2) r.push(...tp(a[k], a[k + 1]));
+      set(n, r);
+    }
+    const legs = { B: [152, 162, 162], F: [40, 155, 155] };
+    for (const k of ["B", "F"]) {
+      const n = "leg" + k, a = stand(n), p = tp(a[0], a[1]), g = legs[k], ax = chain(n, p[0], p[1], g[0], g[1]); set(n, ax);
+      const f = "foot" + k;
+      set(f, chain(f, ax[4] - 0.02 * Math.cos(g[2] * DEG), ax[5] - 0.02 * Math.sin(g[2] * DEG), g[2], g[2]));
+    }
+    const hf = [], arms = { B: [150, 40], F: [40, 10] };
+    for (const k of ["B", "F"]) {
+      const a = stand("up" + k), p = tp(a[0], a[1]), g = arms[k], u = chain("up" + k, p[0], p[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
+      set("up" + k, u); set("fore" + k, f);
+      hf.push(wristHF(f, g[1])); hf[hf.length - 1][0] -= DV.x; hf[hf.length - 1][1] -= DV.y;
+    }
+    HF.push(hf);
+    const co = PARTS.find(p => p.n === "collar").ax[5];
+    DVH[0] = co[2] + 0.03; DVH[1] = co[3] - 0.017; DVH[2] = 60 * DEG;
+  }
+  // curl: a closed ball, back to the left, knees drawn up, both arms wrapped round the creature held in front of the chest
+  const CL = { x: -0.0415, y: 0.031 }, CLH = [0, 0, 0], CAGE = [0, 0];
+  {
+    const set = (n, a) => { PARTS.find(p => p.n === n).ax[6] = a.map((v, i) => v - (i % 2 ? CL.y : CL.x)); return a; };
+    // set from joint positions (h, x forward, y down, before the shift by CL): collar (0.106, -0.106), hip (-0.17, 0.17), knee (0.08, 0.15), shin end (-0.155, 0.235),
+    // elbow (0.155, 0.175), wrist (-0.175, 0.235); the torso leans 45 degrees forward as the back and top of the ball
+    const P0 = [0.106, -0.106], d1 = 135, ca = 0.025 * Math.SQRT1_2; // the collar's top; the torso runs down-back from it
+    set("collar", chain("collar", P0[0], P0[1], d1, d1));
+    const C0 = [P0[0] - ca, P0[1] + ca];
+    const ch = set("chest", chain("chest", C0[0], C0[1], d1, d1)), w = set("waist", chain("waist", ch[4], ch[5], d1, d1));
+    for (const n of ["capB", "capF"]) set(n, turn(stand(n), 0, -0.88, d1 - 90, C0[0], C0[1]));
+    const hf = [];
+    const legs = { B: [-4.6, 160.1, 10, 10], F: [-4.6, 160.1, 10, 10] }; // thigh forward and level, shin folded back under it, foot along the shin end
+    const fo = { B: [-0.03, 0], F: [0, 0] }; // the far leg and arm sit a little back so their edge shows
+    for (const k of ["B", "F"]) {
+      const g = legs[k], o = fo[k];
+      const lg = set("leg" + k, chain("leg" + k, w[4] + o[0], w[5] + o[1], g[0], g[1]));
+      set("foot" + k, chain("foot" + k, lg[4], lg[5], g[2], g[3]));
+    }
+    const arms = { B: [80, 169.7], F: [80, 169.7] }; // upper arm straight down in front of the knees, forearm back under the legs
+    for (const k of ["B", "F"]) {
+      const g = arms[k], o = fo[k];
+      const u = set("up" + k, chain("up" + k, P0[0] + o[0], P0[1] + o[1], g[0], g[0])), f = set("fore" + k, chain("fore" + k, u[4], u[5], g[1], g[1]));
+      hf.push(wristHF(f, g[1]));
+      hf[hf.length - 1][0] -= CL.x; hf[hf.length - 1][1] -= CL.y;
+    }
+    HF.push(hf);
+    const co = PARTS.find(p => p.n === "collar").ax[6];
+    CLH[0] = co[2]; CLH[1] = co[3]; CLH[2] = 60 * DEG;
+    CAGE[0] = 0.06 - CL.x; CAGE[1] = 0.05 - CL.y; // the pocket between chest and thighs
+  }
+  // recoil (pose 7): staggered by pain, weight thrown back (away from the facing side), torso leaning back 20 degrees about the hip, the near arm flung out
+  // forward and up with the hand open and the fingers fanned, the far arm thrown back, the back foot stepped out behind. Origin on the foot line like stand.
+  const RCH = [0, 0, 0];
+  {
+    const set = (n, a) => { PARTS.find(p => p.n === n).ax[7] = a; return a; };
+    const tr = (a) => turn(a, 0.006, -0.52, -20, -0.03, -0.5);
+    for (const n of ["chest", "collar", "waist", "capB", "capF"]) set(n, tr(stand(n)));
+    set("legB", [-0.04, -0.5, -0.155, -0.275, -0.27, -0.05]);
+    set("footB", [-0.303, -0.026, -0.248, -0.026, -0.198, -0.025]);
+    set("legF", [-0.01, -0.5, 0.07, -0.275, 0.15, -0.05]);
+    set("footF", [0.095, -0.026, 0.14, -0.026, 0.22, -0.025]);
+    const hf = [], arms = { B: [160, 190], F: [-50, -35] };
+    for (const k of ["B", "F"]) {
+      const a = stand("up" + k), p = tr([a[0], a[1], 0, 0, 0, 0]), g = arms[k], u = chain("up" + k, p[0], p[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
+      set("up" + k, u); set("fore" + k, f);
+      hf.push(wristHF(f, g[1]));
+    }
+    HF.push(hf);
+    const co = PARTS.find(p => p.n === "collar").ax[7];
+    RCH[0] = co[0] - 0.007; RCH[1] = co[1] - 0.019; RCH[2] = -0.35;
+    for (const P of PARTS) { // the fanned near hand: each finger leans out from its base, the thumb out to its side
+      if (P.n === "thumb1") P.fan = [-0.034, 0.012, -0.06, 0.03, -0.09, 0.05];
+      else if (/^fin1\d$/.test(P.n)) { const L = P.loc; P.fan = [L[0], L[1], L[0] * 2.2, L[3], L[0] * 3.4, L[5]]; }
+    }
+  }
+  // crawl (pose 8): lying face down, the torso near level (head end 12 degrees up) facing east, the far arm reaching ahead and pulling, the near fist closed under the chest
+  // on the creature, the legs trailing and dragging. (x, y) is the body's CENTRE like dive and curl; the stand lengths are kept.
+  const CW = { x: -0.43, y: 0.09 }, CWH = [0, 0, 0];
+  {
+    const T = 168, c = Math.cos(T * DEG), s = Math.sin(T * DEG), set = (n, a) => { PARTS.find(p => p.n === n).ax[8] = a.map((v, i) => v - (i % 2 ? CW.y : CW.x)); return a; };
+    const tp = (x, y) => [(0.905 + y) * c + x * s, (0.905 + y) * s - x * c];
+    for (const n of ["chest", "collar", "waist", "capB", "capF"]) {
+      const a = stand(n), r = [];
+      for (let k = 0; k < 6; k += 2) r.push(...tp(a[k], a[k + 1]));
+      set(n, r);
+    }
+    const legs = { B: [155, 166, 172], F: [178, 181, 177] };   // trailing flat on the floor behind him: the far knee bent down to it, the near leg straight along it
+    for (const k of ["B", "F"]) {
+      const n = "leg" + k, a = stand(n), p = tp(a[0], a[1]), g = legs[k], ax = chain(n, p[0], p[1], g[0], g[1]); set(n, ax);
+      const f = "foot" + k;
+      set(f, chain(f, ax[4] - 0.02 * Math.cos(g[1] * DEG), ax[5] - 0.02 * Math.sin(g[1] * DEG), g[2], g[2]));
+    }
+    const hf = [], arms = { B: [28, 14], F: [190, 5] };   // far arm reaching ahead with the hand on the floor; near arm folded back along the belly, the fist under the chest
+    for (const k of ["B", "F"]) {
+      const a = stand("up" + k), p = tp(a[0], a[1]), g = arms[k], u = chain("up" + k, p[0], p[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
+      set("up" + k, u); set("fore" + k, f);
+      hf.push(wristHF(f, g[1])); hf[hf.length - 1][0] -= CW.x; hf[hf.length - 1][1] -= CW.y;
+    }
+    HF.push(hf);
+    const co = PARTS.find(p => p.n === "collar").ax[8];
+    CWH[0] = co[2] + 0.05; CWH[1] = co[3] - 0.03; CWH[2] = 35 * DEG;
+  }
   for (const P of HF) for (const H of P) { const r = H[2]; H[2] = Math.cos(r); H[3] = Math.sin(r); }
   // grip with the arm down (o.raise 0): the near fist held out forward at shoulder to head height, the elbow bent; o.raise blends to the overhead reach
   const LOWAX = { upF: [0.165, -0.88, 0.1825, -0.74, 0.2, -0.6], foreF: [0.2, -0.6, 0.255, -0.63, 0.31, -0.64] };
@@ -117,6 +241,12 @@ window.GenDuo = (function () {
   ORD[3] = ["legB", "footB", "legF", "footF", "upB", "foreB", "palm0", "fin00", "fin01", "fin02", "fin03", "thumb0", "waist", "chest", "collar", "capB",
     "capF", "upF", "foreF", "thumb1", "palm1", "fin10", "fin11", "fin12", "fin13"];
   ORD[4] = ORD[3];
+  ORD[5] = ORD[3]; // dive: the far arm and legs first, then the body, then the near arm
+  // curl: the legs and body, then the far arm, then the near arm over it
+  ORD[6] = ["legB", "footB", "upB", "foreB", "palm0", "fin00", "fin01", "fin02", "fin03", "thumb0", "waist", "chest", "collar", "capB",
+    "legF", "footF", "capF", "upF", "foreF", "thumb1", "palm1", "fin10", "fin11", "fin12", "fin13"];
+  ORD[7] = ORD[3]; // recoil: as grip
+  ORD[8] = ORD[3]; // crawl: as grip (the far arm reaching first, then the body, then the near fist over it)
   // ---- courses and blocks, built once ------------------------------------------------------
   function rng(seed) { // mulberry32
     let a = seed >>> 0;
@@ -173,7 +303,16 @@ window.GenDuo = (function () {
   const Q = [[0, 0], [0, 0], [0, 0], [0, 0]];
   const AXW = new Float64Array(6), LL = new Float64Array(6);
   let cWarm = 0, cWX = 0, cWY = 0;
-  let cC = null, cX = 0, cY = 0, cH = 1, cF = 1, cPose = 0, cPal = null, cFist = 0, cMelt = 0, cCut = 0, cRaise = 1;
+  let cC = null, cX = 0, cY = 0, cH = 1, cF = 1, cPose = 0, cPal = null, cFist = 0, cMelt = 0, cCut = 0, cRaise = 1, cVen = 0, cVenA = 1, vV = null, vF = 0;
+  // venom path along the near arm: part -> [venom where the red enters it, where it has crossed it, 1 if it runs from the part's end (t = 1) back, 0 from its start]
+  const VEN = { palm1: [0.0625, 0.1875, 1], thumb1: [0, 0.125, 1], foreF: [0.1875, 0.5, 1], upF: [0.5, 0.75, 1], capF: [0.75, 0.875, 0], collar: [0.75, 0.875, 0], chest: [0.875, 1.2, 0] };
+  // the red is "232,84,78", Obrokxus's burn (OB.burn)
+  for (let j = 0; j < 4; j++) VEN["fin1" + j] = [0, 0.125, 1];
+  const redRow = (s, r) => { // the joints of this row run red
+    if (!vV || cVenA <= 0) return false;
+    const m = (s.rt0[r] + s.rt1[r]) / 2;
+    return vV[2] ? m >= 1 - vF : m <= vF;
+  };
   let T0X = 0, T0Y = 0, T1X = 0, T1Y = 0, W0 = 0, WM = 0, W1 = 0;
   const traceCur = () => {
     cC.beginPath(); cC.moveTo(Q[0][0], Q[0][1]);
@@ -188,10 +327,15 @@ window.GenDuo = (function () {
     x -= (seg ? T1Y : T0Y) * d; y += (seg ? T1X : T0X) * d;
     Q[i][0] = cX + cF * (x - LEAN * y) * cH; Q[i][1] = cY + y * cH;
   }
-  function drawPart(s) {
+  function axes(s) {
     if (s.hand >= 0) {
-      const H = hfOf(cPose, s.hand, cRaise);
+      const H = cMix > 0 ? BHF[s.hand] : hfOf(cPose, s.hand, cRaise);
       let L = s.loc;
+      if (cMix > 0) { // between two poses: the finger layout blends between the plain hand and the fanned one
+        const f1 = cPose === 7 && s.hand && s.fan ? s.fan : s.loc, f2 = cP2 === 7 && s.hand && s.fan ? s.fan : s.loc;
+        for (let k = 0; k < 6; k++) LB[k] = f1[k] + (f2[k] - f1[k]) * cMix;
+        L = LB;
+      } else if (cPose === 7 && s.hand && s.fan) L = s.fan;
       if (s.hand && cFist > 0 && s.fl) { // the near hand closing: axis points and widths blend toward the fist
         for (let k = 0; k < 6; k++) LL[k] = L[k] + (s.fl[k] - L[k]) * cFist;
         L = LL;
@@ -202,16 +346,22 @@ window.GenDuo = (function () {
         AXW[2 * k + 1] = H[1] + L[2 * k] * H[3] + L[2 * k + 1] * H[2];
       }
     } else {
-      const A = axOf(s, cPose, cRaise);
+      const A = cMix > 0 ? BAX[s.n] : axOf(s, cPose, cRaise);
       for (let k = 0; k < 6; k++) AXW[k] = A[k];
     }
     let dx = AXW[2] - AXW[0], dy = AXW[3] - AXW[1], l = Math.hypot(dx, dy) || 1; T0X = dx / l; T0Y = dy / l;
     dx = AXW[4] - AXW[2]; dy = AXW[5] - AXW[3]; l = Math.hypot(dx, dy) || 1; T1X = dx / l; T1Y = dy / l;
     if (!(s.hand && cFist > 0 && s.fl)) { W0 = s.w[0]; WM = s.w[1]; W1 = s.w[2]; }
+  }
+  function drawPart(s) {
+    axes(s);
     const brk = s.n === "chest"; // headless: the top two courses are broken (stones missing, tops uneven)
-    backPart(s, brk);
-    const j = Math.max(0.0016, 1.2 / cH), jt = j / s.len, ju = j / WM, nr = s.rt0.length;
-    const ml = cMelt > 0 && s.low;
+    vV = cVen > 0 ? VEN[s.n] || null : null; vF = 0;
+    if (vV) vF = Math.max(0, Math.min(1, (cVen - vV[0]) / (vV[1] - vV[0])));
+    const pal = vF > 0 ? palette(8) : cPal; // the stones the red has passed are cold
+    backPart(s, brk, pal);
+    const j = Math.max(0.0016, 1.2 / cH), nr = s.rt0.length;
+    const ml = cMelt > 0;
     for (let r = 0; r < nr; r++) {
       const t0 = s.rt0[r], t1 = s.rt1[r], g0 = t0 < 0.5 ? 0 : 1, g1 = t1 <= 0.5 ? 0 : 1;
       if (ml) {
@@ -219,6 +369,7 @@ window.GenDuo = (function () {
         if (yh > cCut) continue; // dissolved
         if (yh > cCut - MELT_BAND) { meltRow(s, r, yh, r === nr - 1 || rowYh(s, r + 1) > cCut); continue; }
       }
+      const jj = redRow(s, r) ? Math.max(j, 2.2 / cH) : j, jt = jj / s.len, ju = jj / WM; // the joints of a red row are wider
       const ta = r ? t0 + jt : t0;
       const tb = r < nr - 1 ? t1 - jt : t1;
       for (let b = s.rb0[r]; b < s.rb1[r]; b++) {
@@ -238,7 +389,7 @@ window.GenDuo = (function () {
           Q[c][0] += (mx - Q[c][0]) * k; Q[c][1] += (my - Q[c][1]) * k;
         }
         const lo = Math.min(Q[0][0], Q[1][0], Q[2][0], Q[3][0]), hi = Math.max(Q[0][0], Q[1][0], Q[2][0], Q[3][0]);
-        let cl = cPal.lit[gi], cs = cPal.shade[gi];
+        let cl = pal.lit[gi], cs = pal.shade[gi];
         if (cWarm > 0) { // the stones nearest him take a warm tint from his burning
           const wd = Math.hypot((Q[0][0] + Q[2][0]) / 2 - cWX, (Q[0][1] + Q[2][1]) / 2 - cWY) / (0.1 * cH);
           if (wd < 1) { const wk = cWarm * (1 - wd) * 0.45; cl = mixHex(cl, "#ff6a50", wk); cs = mixHex(cs, "#b0302c", wk); }
@@ -247,9 +398,9 @@ window.GenDuo = (function () {
       }
     }
   }
-  // o.melt: the lower body dissolves from the feet up. Rows below cCut (h units, y up is negative) are gone; the band above it
-  // is one flat run-together shape per row in the womb's red, wider the nearer the cut, with short drips hanging from the last one.
-  const WOMB = { lit: "#5c1114", shade: "#2e080c" }, MELT_BAND = 0.14;
+  // o.melt: the whole body dissolves from the lowest point up. Rows below cCut (h units, y up is negative) are gone; the band above it
+  // is one flat run-together shape per row in the land's first orange (drawRexLand), wider the nearer the cut, with short drips hanging from the last one.
+  const WOMB = { lit: "#c9581f", shade: "#8a3512" }, MELT_BAND = 0.14;
   function rowYh(s, r) {
     put(0, s.rt0[r], 0.5, s.rt0[r] < 0.5 ? 0 : 1); put(2, s.rt1[r], 0.5, s.rt1[r] <= 0.5 ? 0 : 1);
     return ((Q[0][1] + Q[2][1]) / 2 - cY) / cH;
@@ -267,15 +418,16 @@ window.GenDuo = (function () {
       const ax = x3 + (x2 - x3) * fa, ay = y3 + (y2 - y3) * fa, bx = x3 + (x2 - x3) * fb, by = y3 + (y2 - y3) * fb;
       const d = (bx - ax) * 0.25;
       Q[0][0] = ax; Q[0][1] = ay - 1; Q[1][0] = bx; Q[1][1] = by - 1;
-      Q[2][0] = bx - d; Q[2][1] = Math.min(by + L, cY); Q[3][0] = ax + d; Q[3][1] = Math.min(ay + L, cY);
+      Q[2][0] = bx - d; Q[2][1] = Math.min(by + L, cClip ? cFlo : cY); Q[3][0] = ax + d; Q[3][1] = Math.min(ay + L, cClip ? cFlo : cY);
       litShade(cC, traceCur, ax + 0.3 * (bx - ax), WOMB.lit, WOMB.shade);
     }
   }
   // dark backing under a part's courses, so joints and missing blocks read as dark, not as holes
-  function backPart(s, brk) {
-    cC.fillStyle = cPal.dark;
+  function backPart(s, brk, pal) {
+    const dark = pal.dark, red = vV && cVenA > 0 ? mixHex(dark, "#e8544e", cVenA) : dark;
     for (let r = brk && !cHead ? 1 : 0; r < s.rt0.length; r++) {
-      if (cMelt > 0 && s.low && rowYh(s, r) > cCut - MELT_BAND) continue;
+      if (cMelt > 0 && rowYh(s, r) > cCut - MELT_BAND) continue;
+      cC.fillStyle = redRow(s, r) ? red : dark;
       put(0, s.rt0[r], 0, s.rt0[r] < 0.5 ? 0 : 1); put(1, s.rt0[r], 1, s.rt0[r] < 0.5 ? 0 : 1);
       put(2, s.rt1[r], 1, s.rt1[r] <= 0.5 ? 0 : 1); put(3, s.rt1[r], 0, s.rt1[r] <= 0.5 ? 0 : 1);
       traceCur(); cC.fill();
@@ -304,17 +456,104 @@ window.GenDuo = (function () {
 
   ORD[2] = ORD[0];
   // head centre (h units) and spike-fan tip per pose
-  const HEADP = [[0, -0.925, 0], [-0.012, -0.92, -0.18], [0.012, -0.912, 0.3], [0.05, -0.915, 0.25], [-0.22, -0.88, -0.6]];
-  const poseOf = (o) => o.pose === "reach" ? 1 : o.pose === "slap" ? 2 : o.pose === "grip" ? 3 : o.pose === "dead" ? 4 : 0;
+  const HEADP = [[0, -0.925, 0], [-0.012, -0.92, -0.18], [0.012, -0.912, 0.3], [0.05, -0.915, 0.25], [-0.22, -0.88, -0.6], DVH, CLH, RCH, CWH];
+  const poseOf = (o) => o.pose === "reach" ? 1 : o.pose === "slap" ? 2 : o.pose === "grip" ? 3 : o.pose === "dead" ? 4 : o.pose === "dive" ? 5 : o.pose === "curl" ? 6 : o.pose === "recoil" ? 7 : o.pose === "crawl" ? 8 : 0;
+
+  // ---- between two poses: o.pose2 and o.mix (0..1) draw the body part of the way from o.pose to o.pose2 ----
+  // Each limb segment keeps its length (lengths and directions are blended, and the chain is rebuilt joint by joint from the parent's blended point),
+  // so the stones never stretch or part; hands and head follow their limb. The scratch below is filled by mixCompute and read by drawPart, drawRex and rexAnchors.
+  const BN = ["chest", "waist", "collar", "capB", "capF", "upB", "upF", "foreB", "foreF", "legB", "legF", "footB", "footF"];
+  const BPAR = { chest: null, waist: ["chest", 4], collar: ["chest", 0], capB: ["chest", 0], capF: ["chest", 0], upB: ["capB", 0], upF: ["capF", 0],
+    foreB: ["upB", 4], foreF: ["upF", 4], legB: ["waist", 4], legF: ["waist", 4], footB: ["legB", 4], footF: ["legF", 4] };
+  const BAX = {}, BA1 = {}, BA2 = {}, BAXI = {};
+  for (const n of BN) { BAX[n] = new Float64Array(6); BA1[n] = new Float64Array(6); BA2[n] = new Float64Array(6); }
+  const BHF = [new Float64Array(4), new Float64Array(4)], BH = new Float64Array(3), LB = new Float64Array(6);
+  let cMix = 0, cP2 = 0;
+  const angLerp = (a, b, m) => { let d = b - a; d -= TAU * Math.round(d / TAU); return a + d * m; };
+  function mixCompute(p1, p2, m, rz) {
+    const w = 1 - m;
+    for (const n of BN) {
+      const s = PARTS[IDX[n]], a1 = BA1[n], a2 = BA2[n];
+      let A = axOf(s, p1, rz); for (let k = 0; k < 6; k++) a1[k] = A[k];
+      A = axOf(s, p2, rz); for (let k = 0; k < 6; k++) a2[k] = A[k];
+    }
+    const raw = (n, k) => BA1[n][k] * w + BA2[n][k] * m;
+    for (const n of BN) {
+      const a1 = BA1[n], a2 = BA2[n], o = BAX[n], pr = BPAR[n];
+      if (pr) {
+        o[0] = BAX[pr[0]][pr[1]] + raw(n, 0) - raw(pr[0], pr[1]);
+        o[1] = BAX[pr[0]][pr[1] + 1] + raw(n, 1) - raw(pr[0], pr[1] + 1);
+      } else { o[0] = raw(n, 0); o[1] = raw(n, 1); }
+      for (let k = 0; k < 4; k += 2) {
+        const l1 = Math.hypot(a1[k + 2] - a1[k], a1[k + 3] - a1[k + 1]), l2 = Math.hypot(a2[k + 2] - a2[k], a2[k + 3] - a2[k + 1]);
+        const g = angLerp(Math.atan2(a1[k + 3] - a1[k + 1], a1[k + 2] - a1[k]), Math.atan2(a2[k + 3] - a2[k + 1], a2[k + 2] - a2[k]), m), l = l1 * w + l2 * m;
+        o[k + 2] = o[k] + l * Math.cos(g); o[k + 3] = o[k + 1] + l * Math.sin(g);
+      }
+    }
+    for (let a = 0; a < 2; a++) {
+      const fn = a ? "foreF" : "foreB", f = BAX[fn];
+      let H = hfOf(p1, a, rz);
+      const x1 = H[0], y1 = H[1], g1 = Math.atan2(H[3], H[2]);
+      H = hfOf(p2, a, rz);
+      const g = angLerp(g1, Math.atan2(H[3], H[2]), m), B = BHF[a];
+      B[0] = f[4] + x1 * w + H[0] * m - raw(fn, 4); B[1] = f[5] + y1 * w + H[1] * m - raw(fn, 5);
+      B[2] = Math.cos(g); B[3] = Math.sin(g);
+    }
+    const hq = HEADP[p1], hr = HEADP[p2], c = BAX.collar;
+    BH[0] = c[0] + hq[0] * w + hr[0] * m - raw("collar", 0); BH[1] = c[1] + hq[1] * w + hr[1] * m - raw("collar", 1);
+    BH[2] = hq[2] * w + hr[2] * m;
+  }
 
   function setup(ctx, x, y, h, o) {
     cC = ctx; cX = x; cY = y; cH = h; cF = o.face === -1 ? -1 : 1;
     cPose = poseOf(o);
+    cMix = 0;
+    if (o.pose2 !== undefined && o.mix > 0) {
+      cMix = Math.min(1, o.mix); cP2 = poseOf({ pose: o.pose2 });
+      mixCompute(cPose, cP2, cMix, o.raise === undefined ? 1 : Math.max(0, Math.min(1, o.raise)));
+    }
     cWarm = o.warm > 0 ? Math.min(1, o.warm) : 0; cWX = o.warmX || 0; cWY = o.warmY || 0;
-    cFist = o.fist === undefined ? (cPose >= 3 ? 1 : 0) : Math.max(0, Math.min(1, o.fist));
-    cMelt = Math.max(0, Math.min(1, o.melt || 0)); cCut = -cMelt * 0.56;
+    cFist = o.fist === undefined ? (cPose >= 3 && cPose !== 7 ? 1 : 0) : Math.max(0, Math.min(1, o.fist));
+    if (cMix > 0 && o.fist === undefined) cFist += ((cP2 >= 3 && cP2 !== 7 ? 1 : 0) - cFist) * cMix;
+    // o.venom 0..1 (held in eighths): Obrokxus's red creeps up the near arm in the joints between the stones; the stones it has passed go cold. o.venomA 0..1 (quarters): its brightness
+    cVen = Math.round(Math.max(0, Math.min(1, o.venom || 0)) * 8) / 8;
+    cVenA = o.venomA === undefined ? 1 : Math.round(Math.max(0, Math.min(1, o.venomA)) * 4) / 4;
     cHead = !!o.head; cRaise = o.raise === undefined ? 1 : Math.max(0, Math.min(1, o.raise));
     cPal = palette(Math.round(Math.max(0, Math.min(1, o.cool || 0)) * 8));
+    cMelt = Math.max(0, Math.min(1, o.melt || 0)); cClip = false;
+    if (cMelt > 0) { // the melt line rises from the posed body's lowest point to its highest; o.meltSink drops the body by the height melted so the line stays level
+      scanBody(false);
+      cCut = mLo - cMelt * (mLo - mHi);
+      if (o.meltSink) { cFlo = cY + mLo * cH; cY += cMelt * (mLo - mHi) * cH; cClip = true; }
+    }
+  }
+  // scratch for the melt: the posed body's lowest and highest y (h units), and the x of the row corners near the cut
+  let mLo = 0, mHi = 0, mXs = 0, mXn = 0, cClip = false, cFlo = 0;
+  function scanBody(line) {
+    mLo = -1e9; mHi = 1e9; mXs = 0; mXn = 0;
+    const ord = ORD[cMix >= 0.5 ? cP2 : cPose];
+    for (let i = 0; i < ord.length; i++) {
+      if (!cHead && ord[i] === "collar") continue;
+      const s = PARTS[IDX[ord[i]]], nr = s.rt0.length;
+      axes(s);
+      for (let r = 0; r < nr; r++) {
+        for (let k = 0; k < 2; k++) {
+          const t = k ? s.rt1[r] : s.rt0[r], g = (k ? t <= 0.5 : t < 0.5) ? 0 : 1;
+          put(0, t, 0, g); put(1, t, 1, g);
+          for (let c = 0; c < 2; c++) {
+            const yh = (Q[c][1] - cY) / cH;
+            if (line) { if (Math.abs(yh - cCut) < MELT_BAND) { mXs += Q[c][0]; mXn++; } }
+            else { if (yh > mLo) mLo = yh; if (yh < mHi) mHi = yh; }
+          }
+        }
+      }
+    }
+    if (cHead && !line) {
+      const hy = cMix > 0 ? BH[1] : HEADP[cPose][1];
+      if (hy + HEAD_R > mLo) mLo = hy + HEAD_R;
+      if (hy - HEAD_R < mHi) mHi = hy - HEAD_R;
+    }
+    if (line && !mXn) { mXs = cX; mXn = 1; }
   }
   // o.head true paints the head, spikes and glow (default: headless); o.face 1 or -1, o.cool 0..1, o.pose "stand" (default), "reach", "slap" (near hand flat on his chest, head tipped down)
   // or "grip" (near arm thrust up and forward, body leaning in); o.fist 0..1 closes the near hand (grip: 1). With a closed
@@ -322,15 +561,21 @@ window.GenDuo = (function () {
   function drawRex(ctx, x, y, h, o) {
     o = o || {};
     setup(ctx, x, y, h, o);
-    const ord = ORD[cPose];
+    const ord = ORD[cMix >= 0.5 ? cP2 : cPose];
+    if (cClip) meltClip();
     for (let i = 0; i < ord.length; i++) {
       if (!cHead && ord[i] === "collar") continue;
       if (cFist > 0 && ord[i].startsWith("fin1")) continue;
       drawPart(PARTS[IDX[ord[i]]]);
     }
-    if (!cHead) return;
-    const hp = HEADP[cPose], hxh = hp[0], hyh = hp[1];
+    const hp = cMix > 0 ? BH : HEADP[cPose], hxh = hp[0], hyh = hp[1];
+    if (!cHead || cMelt > 0 && hyh > cCut) { if (cClip) cC.restore(); return; } // the head sinks into the melt
     drawHead(ctx, cX + cF * (hxh - LEAN * hyh) * cH, cY + hyh * cH, cH, hp[2] * cF, cPal.glowA);
+    if (cClip) ctx.restore();
+  }
+  // meltSink: nothing is drawn below the level melt line
+  function meltClip() {
+    cC.save(); cC.beginPath(); cC.rect(cX - 3 * cH, cFlo - 6 * cH, 6 * cH, 6 * cH); cC.clip();
   }
 
   // the four near fingers of a closed fist, curled across the palm; same arguments as drawRex, called after what sits in the fist
@@ -338,7 +583,9 @@ window.GenDuo = (function () {
     o = o || {};
     setup(ctx, x, y, h, o);
     if (cFist <= 0) return;
+    if (cClip) meltClip();
     for (let j = 0; j < 4; j++) drawPart(PARTS[IDX["fin1" + j]]);
+    if (cClip) ctx.restore();
   }
 
   // canvas points on the painted body, same arguments as drawRex; out gets head, collar, chest, waist and per arm
@@ -347,13 +594,58 @@ window.GenDuo = (function () {
     const q = out[k] || (out[k] = { x: 0, y: 0 });
     q.x = x + f * (px - LEAN * py) * h; q.y = y + py * h;
   }
+  // the anchors of a blended pose: read off the blended body; where a pose has its own anchor (curl: the cage) its offset from the limb is blended too
+  function mixAnchors(x, y, h, f, p1, p2, m, rz, out) {
+    mixCompute(p1, p2, m, rz);
+    ap(out, "head", x, y, h, f, BH[0], BH[1]);
+    const w = 1 - m;
+    const ch6 = PARTS[IDX.chest].ax[6], k1 = p1 === 6 ? w : 0, k2 = p2 === 6 ? m : 0, kk = k1 + k2;
+    ap(out, "collar", x, y, h, f, BAX.collar[2], BAX.collar[3]);
+    ap(out, "waist", x, y, h, f, BAX.waist[2], BAX.waist[3]);
+    ap(out, "chest", x, y, h, f, BAX.chest[2] + (CAGE[0] - ch6[2]) * kk, BAX.chest[3] + (CAGE[1] - ch6[3]) * kk);
+    for (let a = 0; a < 2; a++) {
+      const nm = a ? "F" : "B", U = BAX[a ? "upF" : "upB"], E = BAX[a ? "foreF" : "foreB"], H = BHF[a];
+      ap(out, "shoulder" + nm, x, y, h, f, U[0], U[1]);
+      ap(out, "elbow" + nm, x, y, h, f, U[4], U[5]);
+      ap(out, "wrist" + nm, x, y, h, f, H[0], H[1]);
+      ap(out, "hand" + nm, x, y, h, f, H[0] - 0.0535 * H[3], H[1] + 0.0535 * H[2]);
+    }
+    const G = BHF[1];
+    let gx = -0.0525 * G[3], gy = 0.0525 * G[2];
+    if (p1 === 6 || p2 === 6) { // the two poses' own grip offsets from the wrist, blended
+      const o1 = p1 === 6 ? CAGE : null, o2 = p2 === 6 ? CAGE : null;
+      const H1 = HF[p1][1], H2 = HF[p2][1];
+      const ax = o1 ? o1[0] - H1[0] : -0.0525 * H1[3], ay = o1 ? o1[1] - H1[1] : 0.0525 * H1[2];
+      const bx = o2 ? o2[0] - H2[0] : -0.0525 * H2[3], by = o2 ? o2[1] - H2[1] : 0.0525 * H2[2];
+      gx = ax * w + bx * m; gy = ay * w + by * m;
+    }
+    ap(out, "grip", x, y, h, f, G[0] + gx, G[1] + gy);
+    return out;
+  }
+  // out.melt: the middle of the melt line on screen (the line is at the body's lowest point at melt 0), where the flow leaves him
+  function meltAnchor(x, y, h, o, out) {
+    setup(cC, x, y, h, o);
+    if (cMelt <= 0) { scanBody(false); cCut = mLo; }
+    scanBody(true);
+    const q = out.melt || (out.melt = { x: 0, y: 0 });
+    q.x = mXn > 0 ? mXs / mXn : cX; q.y = cY + cCut * cH;
+  }
   function rexAnchors(x, y, h, o, out) {
     o = o || {};
-    const f = o.face === -1 ? -1 : 1, p = poseOf(o), hp = HEADP[p], rz = o.raise === undefined ? 1 : Math.max(0, Math.min(1, o.raise));
+    meltAnchor(x, y, h, o, out);
+    const f =o.face === -1 ? -1 : 1, p = poseOf(o), hp = HEADP[p], rz = o.raise === undefined ? 1 : Math.max(0, Math.min(1, o.raise));
+    if (o.pose2 !== undefined && o.mix > 0) return mixAnchors(x, y, h, f, p, poseOf({ pose: o.pose2 }), Math.min(1, o.mix), rz, out);
     ap(out, "head", x, y, h, f, hp[0], hp[1]);
-    ap(out, "collar", x, y, h, f, 0.001, -0.89);
-    ap(out, "chest", x, y, h, f, 0.002, -0.77);
-    ap(out, "waist", x, y, h, f, 0.006, -0.59);
+    if (p >= 5) { // dive and curl: the middle of each torso part's own axis
+      const mid = (n) => PARTS[IDX[n]].ax[p];
+      ap(out, "collar", x, y, h, f, mid("collar")[2], mid("collar")[3]);
+      ap(out, "chest", x, y, h, f, p === 6 ? CAGE[0] : mid("chest")[2], p === 6 ? CAGE[1] : mid("chest")[3]);
+      ap(out, "waist", x, y, h, f, mid("waist")[2], mid("waist")[3]);
+    } else {
+      ap(out, "collar", x, y, h, f, 0.001, -0.89);
+      ap(out, "chest", x, y, h, f, 0.002, -0.77);
+      ap(out, "waist", x, y, h, f, 0.006, -0.59);
+    }
     for (let a = 0; a < 2; a++) {
       const nm = a ? "F" : "B", U = PARTS[IDX[a ? "upF" : "upB"]], A = axOf(U, p, rz), H = hfOf(p, a, rz);
       ap(out, "shoulder" + nm, x, y, h, f, A[0], A[1]);
@@ -362,7 +654,8 @@ window.GenDuo = (function () {
       ap(out, "hand" + nm, x, y, h, f, H[0] - 0.0535 * H[3], H[1] + 0.0535 * H[2]);
     }
     const G = hfOf(p, 1, rz);
-    ap(out, "grip", x, y, h, f, G[0] - 0.0525 * G[3], G[1] + 0.0525 * G[2]); // the middle of the closed near hand
+    if (p === 6) ap(out, "grip", x, y, h, f, CAGE[0], CAGE[1]); // curl: the cage between the fists, where the creature is held
+    else ap(out, "grip", x, y, h, f, G[0] - 0.0525 * G[3], G[1] + 0.0525 * G[2]); // the middle of the closed near hand
     return out;
   }
   // ---- Obrokxus form 1: the centipede creature ----
@@ -491,6 +784,7 @@ window.GenDuo = (function () {
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     // tip spikes and the leg on each side of every tail segment
     ctx.strokeStyle = OB.dim; ctx.lineWidth = lw;
+    const gc = o.gait === undefined ? undefined : Math.floor(o.gait * 12 + 1e-6) / 12; // o.gait the running clock in seconds, sampled in held 1/12 s steps
     ctx.beginPath();
     for (let i = 0; i < 3; i++) {
       const a = Math.atan2(-OTY[0], -OTX[0]) + (i - 1) * 0.42, L = (i === 1 ? 0.11 : 0.08) * s;
@@ -505,7 +799,10 @@ window.GenDuo = (function () {
         const L = w * (out ? 2.1 : 1.1), px = -ty * sg, py = tx * sg;
         const bx = mx + px * w, by = my + py * w;
         ctx.moveTo(bx, by);
-        ctx.quadraticCurveTo(bx + px * L, by + py * L, bx + px * L * 0.8 - tx * L * 0.9, by + py * L * 0.8 - ty * L * 0.9);
+        if (gc === undefined) { ctx.quadraticCurveTo(bx + px * L, by + py * L, bx + px * L * 0.8 - tx * L * 0.9, by + py * L * 0.8 - ty * L * 0.9); continue; }
+        const sa = Math.sin(gc * 6 * Math.PI + k * 2.4) * 0.436, cs = Math.cos(sa), sn = Math.sin(sa); // the leg swings about its root, both sides alike so they oppose fore and aft; 3 cycles/s, so the 1/12 s held clock shows 4 poses a cycle (6 cycles/s aliased to 2)
+        const cx = px * L, cy = py * L, ex = px * L * 0.8 - tx * L * 0.9, ey = py * L * 0.8 - ty * L * 0.9;
+        ctx.quadraticCurveTo(bx + cx * cs - cy * sn, by + cx * sn + cy * cs, bx + ex * cs - ey * sn, by + ex * sn + ey * cs);
       }
     }
     ctx.stroke();

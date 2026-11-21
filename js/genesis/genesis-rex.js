@@ -131,9 +131,28 @@ window.GenRex = (function () {
     return out;
   })();
 
-  function drawRexLand(ctx, rise, originX, originY, floorY) {
+  /* the neck: the land climbing the stream's line from its foot to the cut (cg: GenRexOut.cutGeom's object); the cut itself is not filled */
+  function drawLandNeck(ctx, rise, cg, cutPath, cool) {
+    const reach = smooth(clamp((rise - 0.15) / 0.45, 0, 1));
+    if (reach <= 0) return;
+    const H = G.H, fx = cg.footX, fy = cg.footY + 0.03 * H;
+    const px = mix(fx, cg.neckX, reach), py = mix(fy, cg.neckY, reach);
+    for (let bi = 0; bi < REX_BANDS.length; bi++) {
+      const b = REX_BANDS[bi];
+      const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
+      const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
+      const hf = H * (0.06 - bi * 0.012), ht = Math.max(H * 0.016, cg.w * 0.22) * (1 - bi * 0.2);
+      ctx.fillStyle = lit;
+      ctx.beginPath(); ctx.moveTo(fx - hf, fy); ctx.lineTo(px - ht, py); ctx.lineTo(px + ht, py); ctx.lineTo(fx + hf, fy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shade;
+      ctx.beginPath(); ctx.moveTo(fx + hf * 0.15, fy); ctx.lineTo(px + ht * 0.15, py); ctx.lineTo(px + ht, py); ctx.lineTo(fx + hf, fy); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function drawRexLand(ctx, rise, originX, originY, floorY, cg, cutPath) {
     const tL = since("land");
     if (tL < 0.003) return;
+    if (cg) { originX = cg.footX; originY = cg.footY; }
     const cool = smooth(clamp((since("land") - 0.22) / 0.65, 0, 1));
     /* it starts at the fallen body (originX, originY) and spreads left and right along the bottom
        to a low top edge (~0.89 H, ~0.85 H under the womb), then goes on into the ridges below */
@@ -153,6 +172,7 @@ window.GenRex = (function () {
     const bottom = floorY != null ? Math.min(G.H * 2.5, floorY) : G.H * 2.5;
     const baseY = G.H * 1.16;
     const step = 6;
+    if (cg) drawLandNeck(ctx, rise, cg, cutPath, cool);
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
       const widen = (2 - bi) * 0.05;

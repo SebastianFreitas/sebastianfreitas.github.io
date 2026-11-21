@@ -370,7 +370,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-circle.js` | `circle` beat inside | `window.GenCircle` |
 | `genesis-chains.js` | `chains` beat inside: the P8 disc snaps to a ring, linked rings snap out along a chain with the rose thread, then 3 held zoom-outs to hex chain-mail fields (levels 2-3 stamped from offscreen tiles), magic rings carry a pale chip: `draw` | `window.GenChains` |
 | `genesis-corrupt.js` | `corrupt` beat inside: a level-1 ring field, 3 rings turn red in held arc steps, a dark blade cuts each loose, a dark crescent (mothers) folds it to grey dust, one red dot per ring rises in steps into a lumpy red layer at the roof: `draw` | `window.GenCorrupt` |
-| `genesis-rexout.js` | beats `burst`, `duel`, `drop` and `land`: the tear on the womb's west face, Rex hauling out with Obrokxus in his fist, the held-step fight, Rex dead melting into the womb as it sinks (`G.wombSink`), the land covering him (`draw(ctx)`) | `window.GenRexOut` |
+| `genesis-rexout.js` | beats `burst`, `duel`, `drop` and `land`: Obrokxus peeks out, Rex barges out flying, is poisoned, curls round him and dies in the hole; the dead body stays in the womb as the gate | `window.GenRexOut` |
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
@@ -382,7 +382,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
 | `genesis-titans.js` | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"` = his first form, the blob: stand/lunge/climb/flee; `"centihorse"`/`"worm"` dispatch to genesis-obrok.js) and `drawHound` | extends `window.GenFig` |
-| `genesis-duo.js` | Rex Immotus (stone blocks) and Obrokxus form 1 (centipede), drawn by `genesis-rexout.js` | `GenDuo.drawRex` (`o.raise`, `o.melt`, `o.head`), `drawRexFingers`, `rexAnchors` (keys head, grip, hand/elbow F/B), `drawObrok1` (`o.glow`, poses `held`, `coil`) |
+| `genesis-duo.js` | Rex Immotus (stone blocks) and Obrokxus form 1 (centipede), drawn by `genesis-rexout.js` | `GenDuo.drawRex`, `drawRexFingers`, `rexAnchors`, `drawObrok1` |
 | `genesis-obrok.js` | Obrokxus's later forms | extends `window.GenFig` |
 | `genesis-gods.js` | the five gods, one painter each, registered in `GenFig.GOD_PAINT` and picked by `drawGod` on `o.kind` | extends `window.GenFig {GOD_PAINT, godHand, almurSweep}` |
 | `genesis-hosts.js` | the war's figures, flat and lit from the left | `window.GenHosts {ABOM, ABOM_PAL}` |
@@ -399,6 +399,10 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
 | `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw; `warm` pre-paints beat starts offscreen | `window.Genesis` |
 
+- `genesis-rexout.js`: Rex recoils, leaps, catches Obrokxus, crashes, drags back to the cut; the places (cut, neck, foot; land never fills the cut) are laid out on the womb sunk 15% (`placed`, `wombG` undeflated); `bigTear` paints the dark cut on the live deflating womb (`draw(ctx)`).
+- `G.wombDeflate` (0..1, `genesis-state.js`, set per frame in `genesis.js` from `G.secs("burst")`: 0 until Rex's barge at 3.4 s, 1 at the end of `land`): `fleshGeom` lowers the womb to 0.95 H about its base, draws the front in and slides it right behind the land. Replaces `wombSink`.
+- `genesis-duo.js`: `drawRex` poses incl. `dive`, `recoil`, `curl`, `crawl` (lying on the floor, far arm reaching, near fist under the chest), options `o.raise`, `o.melt`, `o.head`, `o.venom`, `o.venomA`.
+- `genesis-duo.js`: `rexAnchors` keys head, grip, hand/elbow F/B; `drawObrok1` options `o.glow`, `o.gait`, poses `held`, `coil`.
 - `genesis-state.js`: world constants, state (`cam`, `zoom`, `zoomKick`, trails, rings, `sparks`), O(1) `idxOf`, `since/linear/only/sx/beatDur`, `G.BEAT_START` + `G.secs(id)` (seconds since a beat began, negative before it), dev params `?genesis=1` / `?gbeat=<name>`;
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
 - `genesis-state.js`: `G.STRIKE_S0` (0.29) and `G.strikePulse(c)` are the gods' shared strike shape in deep and slip (act about 1.5 s of the 3.70 s cycle); `genesis-gods.js` `strikeOf` inverts `STRIKE_CA` from it

@@ -23,6 +23,7 @@ window.Genesis = (function () {
           only, sx } = G;
   const { fillBg, drawMotes, drawChaos, drawPoint, drawRip, lightsAt, pushTrail, drawTrail,
           drawOrb, drawRings, drawBeam, drawName } = GenVoid;
+  const LAND_CUT = { x: 0, top: 0, bot: 0, w: 0, tipX: 0, tipY: 0, footX: 0, footY: 0 };
   const { chaseAt, chaseCamLead, escapeCam, escapeCamLead, drawRexLand, drawRexHole,
           drawBuried, drawGodsBirth } = GenRex;
   const { drawSaga, drawLiveWorld } = GenSaga;
@@ -489,7 +490,7 @@ window.Genesis = (function () {
     root: [1.02, 1.06], enter: [1.06, 1.09],
     soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09],
     burst: [1.06, 1.06], duel: [1.06, 1.06], drop: [1.06, 1.06],
-    land: [1.00, 1.05], gods: [1.00, 1.05], calm: [1.05, 0.95], deep: [0.95, 1.00],
+    land: [1.00, 1.00], gods: [1.00, 1.00], calm: [1.00, 1.00], deep: [0.95, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
     four: [1.10, 1.02], fifth: [1.02, 1.10], fall: [1.10, 1.00],
@@ -778,6 +779,8 @@ window.Genesis = (function () {
       const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
       const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
       const fleshVis = approaching * (1 - uLand * 0.28);
+      const sB = G.secs("burst"), tD = clamp((sB - 3.4) / (G.BEAT_START[idxOf("land") + 1] - G.BEAT_START[idxOf("burst")] - 3.4), 0, 1);   // burst's barge to the end of land
+      G.wombDeflate = smooth(Math.pow(tD, 1.6));   // slow at first, most of the height goes in drop and land
       const geom = GenFlesh.fleshGeom(uWomb);
       const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("land") ? 1 : 0);
       if (fleshVis > 0.02) GenFlesh.drawSeal(ctx, geom, sealAmt * fleshVis * (1 - plain));   // behind the body on purpose
@@ -810,7 +813,9 @@ window.Genesis = (function () {
       /* inside Rex the depths paint opaque rock over everything below
          1.69 screen heights, so the land fill can stop just under that */
       const depthsOn = (G.beat === iDeep || G.beat === iSlip) && dive >= 0.001;
-      drawRexLand(ctx, landRise, sx(G.ROOT_U - 0.42), G.H * 0.86, depthsOn ? G.H * 1.72 : null);
+      const hasCut = window.GenRexOut && GenRexOut.cutGeom;
+      drawRexLand(ctx, landRise, sx(G.ROOT_U - 0.42), G.H * 0.86, depthsOn ? G.H * 1.72 : null,
+        hasCut ? GenRexOut.cutGeom(LAND_CUT) : null, hasCut ? GenRexOut.cutPath : null);
       GenElem.drawSea(ctx);   // the sea bed, over the matter, flesh and land, under the gods
       drawGodsBirth(ctx, flesh);
       if (window.GenDepths) GenDepths.drawDepths(ctx, dive, diveY);

@@ -57,11 +57,11 @@ window.Gen = (function () {
     { id: "corrupt", dur: 6.5, tag: "XV · Corruption",
       line: "Some rings turned red. The old ones cut them out and returned them to the soup. The red that would not come out was sent up, and it built." },
     { id: "burst", dur: 9.0, tag: "XVII · Out",
-      line: "The womb tore. Two came out as one: Obrokxus, born of a corrupted universe, and Rex Immotus with his hands already on him." },
+      line: "The womb tore. Obrokxus, born of a corrupted universe, came out first. Rex Immotus came out after him and caught him in the air." },
     { id: "duel", dur: 9.0, tag: "XVIII · The fight",
       line: "They fought in the open, body and soul against the chaos of the void." },
     { id: "drop", dur: 6.0, tag: "XIX · The fall",
-      line: "Rex died with his body closed around Obrokxus, and fell holding him." },
+      line: "Rex dragged himself back to the wound he had torn and died there, with Obrokxus crushed beneath him." },
     { id: "land", dur: 7.0, tag: "XX · The land",
       line: "Rex had become the land and the bridge between the womb and the world." },
     { id: "gods", dur: 7.0, tag: "XXI · Through him",
@@ -144,7 +144,7 @@ window.Gen = (function () {
       if (i == null || i < sp.a || i > sp.b) G.JUMP = null;
     }
   })();
-  G.wombSink = 0;   // 0..1: the womb settles lower once the work inside is done (driven by the Rex painter; kept, not recomputed per beat)
+  G.wombDeflate = 0;   // 0..1: the womb loses height and slides right behind Rex's land, from his burst to the end of the land (set per frame from the beat and time in genesis.js, never accumulated)
   G.ROOT_U = 4.0;
   G.DECK   = 0.64;
   G.BAY_U  = 0.125;
