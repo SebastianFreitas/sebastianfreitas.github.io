@@ -2,10 +2,10 @@
    reused object with each phase's 0..1 progress (0 before it, 1 after it). Draws nothing. Loaded before genesis-state.js. */
 window.GenTitanFight = (function () {
   const T = {
-    close: [0.0, 1.0], raise: [1.0, 2.2], rays: [2.2, 8.6], hurt: [2.4, 8.6], pain: [3.4, 5.4],
-    sad: [5.4, 7.0], anger: [7.0, 8.6], lash: [8.6, 11.6], stone: [11.6, 12.4], crack: [12.4, 13.2]
+    close: [0.0, 1.0], raise: [1.0, 2.2], rays: [2.2, 5.2], hurt: [2.4, 5.2], pain: [2.8, 3.7],
+    sad: [3.7, 4.45], anger: [4.45, 5.2], lash: [5.2, 8.2], stone: [8.2, 9.0], crack: [9.0, 9.8]
   };
-  const BURST = 13.2, ADD = BURST - 1.6;   // ADD: seconds everything that used to follow the old 1.6 s burst now starts later
+  const BURST = T.crack[1], ADD = BURST - 1.6;   // ADD: seconds everything that used to follow the old 1.6 s burst now starts later
   const PULSES = 7;   // damage steps, evenly from hurt[0] to the lash
   const SPIN = 25 * Math.PI / 180, RAMP = 0.25, DIE = 0.3;   // the fan's turn (rad/s), its rise and its death (s)
   const out = { pulse: -1, age: 0, burst: 0, ray: 0, spin: 0, cov: 0 };

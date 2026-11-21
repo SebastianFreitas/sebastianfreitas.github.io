@@ -130,6 +130,23 @@ window.GenRockTitans = (function () {
 
   const mixv = (a, b, t) => a + (b - a) * t;
 
+  // the standing sway: the east stone (blocks), the flesh (rings) and the meld (sheets) shift their weight in slow held steps while they stand; the tower (0) is a rock and stays still.
+  // one rigid rotation + shift of the whole body about a pivot, never a reshape; [period s, phase, lean rad, drift H, bob H, grounded]
+  const SWAY = [null, [4.4, 0.3, 0.05, 0.012, 0.014, false], [3.6, 1.7, 0.06, 0.01, 0, true], [5.0, 3.1, 0.05, 0.014, 0.016, false]];
+  const SWAY_END = 4.55 + G.TITAN_HOLD - 3.45;   // matter time at which the sway has eased out (the first fire step lands on the victim, which stands straight)
+  function swayApply(ctx, i, t, tm) {
+    const w = SWAY[i];
+    if (!w || G.reduced) return false;
+    const bt = Math.max(0, tm - OFF[i] - 1.6), env = Math.min(1, bt / 0.6) * Math.max(0, Math.min(1, (SWAY_END - tm) / 0.8));
+    const q = Math.floor(tm / 0.25) * 0.25, ph = (q / w[0] + w[1]) * 2 * Math.PI, s = Math.sin(ph) * env;
+    const bb = bodyBox(t), px = bb.x, py = w[5] ? FOOT * G.H : bb.y;
+    ctx.save();
+    ctx.translate(px + w[3] * G.H * s, py - w[4] * G.H * Math.cos(ph * 0.5) * env);
+    ctx.rotate(w[2] * s);
+    ctx.translate(-px, -py);
+    return true;
+  }
+
   // plan titans-clash phase 2: the debris proper. 126 rock wedges, 8 tentacle ribbons, 24 parts (19 piece sprites + 5 crops); one cached sprite each, built once in matter
   const DEG = Math.PI / 180, FIVE = ["roller", "bloom", "mound", "veil", "slider"];
   let debris = null, debrisKey = "";
@@ -246,8 +263,8 @@ window.GenRockTitans = (function () {
     // the painters move with G.t, so an ink box measured now differs from the one the titans measure later: keep none of the new ones
     const parts = [];
     let had = null;
-    LAYOUT.titans.forEach((t) => t.pieces.map((pc) => [t, pc]).forEach((q) => parts.push(q)));
-    FIVE.forEach((kind) => parts.push([LAYOUT.titans[0], { kind: kind, m: 1, dx: 0, dy: 0, rot: 0, cut: box(0, 0, 1, 0.35) }]));
+    LAYOUT.titans.forEach((t) => t.pieces.filter((pc) => !GenOld.CUT[pc.kind]).map((pc) => [t, pc]).forEach((q) => parts.push(q)));
+    FIVE.filter((kind) => !GenOld.CUT[kind]).forEach((kind) => parts.push([LAYOUT.titans[0], { kind: kind, m: 1, dx: 0, dy: 0, rot: 0, cut: box(0, 0, 1, 0.35) }]));
     let cur = null;   // the part's chip between its two halves
     const partA = (q) => {
       if (!had) had = Object.assign({}, boxes);
@@ -298,8 +315,8 @@ window.GenRockTitans = (function () {
   }
   // one function per small step, for the gate's bar; each does the next piece of the build (nothing once built)
   function debrisSteps() {
-    let rocks = 0, tents = 0, parts = FIVE.length;
-    LAYOUT.titans.forEach((x) => { rocks += x.body.rocks.length; tents += (x.body.tentacles || []).length; parts += x.pieces.length; });
+    let rocks = 0, tents = 0, parts = FIVE.filter((k) => !GenOld.CUT[k]).length;
+    LAYOUT.titans.forEach((x) => { rocks += x.body.rocks.length; tents += (x.body.tentacles || []).length; parts += x.pieces.filter((pc) => !GenOld.CUT[pc.kind]).length; });
     const cnt = Math.ceil(rocks / DEB_CHUNK.rock) + Math.ceil(tents / DEB_CHUNK.tent) + 1 + Math.ceil((rocks * 6 + tents) / DEB_CHUNK.add) + parts * 2;
     return Array.from({ length: cnt }, () => debrisNext);
   }
@@ -483,8 +500,8 @@ window.GenRockTitans = (function () {
   const STONE_O = { x: 0, footY: 0, H: 0, t: 0, hurt: 1, pain: 1, sad: 1, anger: 1, lash: 1, hx: 0, pal: STONE, angular: true };
   const EDGE = new Float64Array(13);   // the hardening front's ragged edge: fixed offsets (fractions of H) at 13 rows
   for (let i = 0; i < 13; i++) EDGE[i] = (GenTitanFight.rnd(i, 21) - 0.5) * 0.05;
-  // From 11.6 s the goo layer g (already painted live) turns to stone: the front runs from the far arm tip to the Slime's foot; behind it the body is repainted
-  // with its clock stopped at 11.6 (no wobble, drips or lip motion), in stone greys, with a hard angular front and flat facets; the cracks come over it from 12.4.
+  // From the lash end (8.2 s) the goo layer g (already painted live) turns to stone: the front runs from the far arm tip to the Slime's foot; behind it the body is repainted
+  // with its clock stopped at 8.2 (no wobble, drips or lip motion), in stone greys, with a hard angular front and flat facets; the cracks come over it from 9.0.
   function stoneOver(g, sl, hx, tt) {
     const H = G.H, ff = sl.ff, st = ff.stone, ww = g.canvas.width, hh = g.canvas.height;
     if (!stoneC) stoneC = document.createElement("canvas");
@@ -554,7 +571,7 @@ window.GenRockTitans = (function () {
         if (i === SURVIVOR && !G.reduced && tt >= D_T0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
         return;
       }
-      if (k === 5 || !rp) { ctx.drawImage(c, lp[0], lp[1]); return; }
+      if (k === 5 || !rp) { const sw = k === 5 && tt < 0 && swayApply(ctx, i, t, tm); ctx.drawImage(c, lp[0], lp[1]); if (sw) ctx.restore(); return; }
       const bb = bodyBox(t), u = k / 5, s = mixv(Math.max(0.35, Math.min(1, 2 * rp.size / bb.h)), 1, u);
       const gx = mixv(rp.x, bb.x, u), gy = mixv(rp.y, bb.y, u), gr = mixv(rp.rot, 0, u);
       ctx.save();

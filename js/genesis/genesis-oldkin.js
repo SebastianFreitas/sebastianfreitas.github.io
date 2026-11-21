@@ -62,7 +62,7 @@
     // its own eye: a flat vertical slit, not the shared eyeDot
     ctx.beginPath();
     ctx.ellipse((lx + rx) * 0.5, -0.8 * h, 0.008 * h, 0.03 * h, 0, 0, TAU);
-    ctx.fillStyle = "rgba(210,214,210,0.85)";
+    ctx.fillStyle = "rgba(212,212,212,0.85)";
     ctx.fill();
     ctx.restore();
   }
@@ -100,7 +100,7 @@
       midX - 0.2 * headW, o.lit, o.shade, headH);
     ctx.beginPath();
     ctx.ellipse(midX, headCy, 0.008 * h, 0.03 * h, 0, 0, TAU);
-    ctx.fillStyle = "rgba(210,214,210,0.85)";
+    ctx.fillStyle = "rgba(212,212,212,0.85)";
     ctx.fill();
 
     if (!o._att) {
@@ -164,7 +164,7 @@
     // its own eye: a pale ring, not the shared eyeDot
     ctx.beginPath();
     ctx.arc(eyeX, eyeY, 0.03 * h, 0, TAU);
-    ctx.strokeStyle = "rgba(210,214,210,0.85)";
+    ctx.strokeStyle = "rgba(212,212,212,0.85)";
     ctx.lineWidth = Math.max(1, 0.012 * h);
     ctx.stroke();
   }
@@ -204,7 +204,7 @@
     const eyeY = cy - 0.06 * h;
     ctx.beginPath();
     ctx.arc(cx, eyeY, 0.03 * h, 0, TAU);
-    ctx.strokeStyle = "rgba(210,214,210,0.85)";
+    ctx.strokeStyle = "rgba(212,212,212,0.85)";
     ctx.lineWidth = Math.max(1, 0.012 * h);
     ctx.stroke();
 
@@ -616,7 +616,7 @@
       headX - 0.2 * headR, o.lit, o.shade, headR * 2);
     ctx.beginPath();
     ctx.ellipse(headX, headY, 0.008 * h, 0.03 * h, 0, 0, TAU);
-    ctx.fillStyle = "rgba(210,214,210,0.85)";
+    ctx.fillStyle = "rgba(212,212,212,0.85)";
     ctx.fill();
 
     // six jointed legs, knee bent forward, walking with a travelling shift
@@ -835,7 +835,7 @@
     }
     ctx.beginPath();
     ctx.ellipse(x, cy, rx, ry, 0, 0, TAU);
-    ctx.fillStyle = "#6c2e35";   // #96404a x OLD_DIM (0.72), hue kept
+    ctx.fillStyle = "#4a4a4a";   // grey, was oxblood
     ctx.fill();
     const gap = 0.06;
     for (let k = 0; k < 4; k++) {
@@ -1037,13 +1037,13 @@
         ctx.save();
         Paint.poly(ctx, pts);
         ctx.clip();
-        ctx.fillStyle = `rgba(${o.hue},0.6)`;
+        ctx.fillStyle = `rgba(${o.hueG},0.6)`;
         ctx.fillRect(lo - 1, y - heights[k] - 1, xSplit - lo + 1, heights[k] + 2);
         ctx.restore();
       }
     }
     if (p.sy < 0.15) {
-      const hueFill = `rgb(${o.hue})`;
+      const hueFill = `rgb(${o.hueG})`;
       for (let d = 0; d < 3; d++) {
         const ang = d * 2.4 + o.ph;
         circle(ctx, x + Math.cos(ang) * 0.3 * h, y - 0.4 * h + Math.sin(ang) * 0.2 * h, 0.04 * h, hueFill);

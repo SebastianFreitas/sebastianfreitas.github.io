@@ -20,7 +20,7 @@ window.Gen = (function () {
     } catch (e) {}
   })(["genesis", "gbeat", "gseg", "gscene"]);
   G.reduced = Util.reduced();
-  G.TITAN_HOLD = 7;   // seconds the four rock titans stand whole in the matter beat before giant C burns the fourth and the rest clash
+  G.TITAN_HOLD = 5;   // seconds the four rock titans stand whole in the matter beat before giant C burns the fourth and the rest clash
 
   // Archived (owner 2026-10-20): Rex coming into being. Restore between corrupt and burst:
   // { id: "rex", dur: 7.5, tag: "XVI · Rex Immotus",

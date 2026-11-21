@@ -77,6 +77,12 @@ window.GenOld = (function () {
     return `${Math.round(f(0) * 255)},${Math.round(f(8) * 255)},${Math.round(f(4) * 255)}`;
   }
 
+  // "r,g,b" hue -> neutral grey of the same luma (old ones draw this, o.hue stays for the womb)
+  function greyStr(h) {
+    const [r, g, b] = h.split(",").map(Number), v = Math.round(0.3 * r + 0.59 * g + 0.11 * b);
+    return `${v},${v},${v}`;
+  }
+
   const OLD_DIM = 0.72;   // value drop on every roster grey (owner: a bit darker); eyes are not scaled
 
   const ROSTER = (function build() {
@@ -98,6 +104,7 @@ window.GenOld = (function () {
       const g = Math.max(Math.round(greys[i] * OLD_DIM), 90), sg = Math.round(g * 0.45);
       o.g = g; o.lit = `rgb(${g},${g},${g})`; o.shade = `rgb(${sg},${sg},${sg})`;
       o.hue = i < 6 ? HUES[i] : hslStr((i * 0.41) % 1, 0.65, 0.6);
+      o.hueG = greyStr(o.hue);
     });
     return list;
   })();
@@ -129,6 +136,8 @@ window.GenOld = (function () {
     winged: { u: -0.2788, z: 22 },
     needle: { u: 0.30, z: 23 },
   };
+  // owner's cut: never drawn, born or marched; their roster slots stay so every other idx-seeded value is unchanged
+  const CUT = { crawler: 1, slider: 1, floater: 1, winged: 1, pearl: 1 };
   const ORDER = ROSTER.map((o, i) => i).sort((a, b) => STAND[ROSTER[a].kind].z - STAND[ROSTER[b].kind].z);
 
   /* ---- birth: each grows out of its lying debris part and gets up, staggered by rank ---- */
@@ -163,6 +172,7 @@ window.GenOld = (function () {
     const spec = ROSTER_SPECS.find(s => s[0] === kind);
     const o = rollBeing(kind, 1, spec[2] * 0.8, spec[2] * 1.25, mulberry(seed));
     if (tint) { o.lit = tint.lit; o.shade = tint.shade; }
+    o.hueG = greyStr(o.hue);
     o.bro = true;
     return o;
   }
@@ -340,8 +350,8 @@ window.GenOld = (function () {
     if (p.make < 0) return;
     const GP = window.GenEldPal;
     const tw = GP ? GP.tone("tweed") : null;
-    const col = tw ? tw.lit : "#5a4a3c";
-    const edge = tw ? tw.shade : "#3a2f26";
+    const col = tw ? tw.lit : "#4b4b4b";
+    const edge = tw ? tw.shade : "#2e2e2e";
     const cx = p.x, cy = p.y - h * 1.05;
     const w = h * 0.5, hh = h * 0.07;
     ctx.save();
@@ -385,7 +395,7 @@ window.GenOld = (function () {
   // a small pale dot nudged toward `look`, the closest thing these have to a gaze
   function eyeDot(ctx, cx, cy, h, look, r) {
     const dir = look >= cx ? 1 : -1;
-    circle(ctx, cx + dir * 0.02 * h, cy, r, "rgba(210,214,210,0.85)");
+    circle(ctx, cx + dir * 0.02 * h, cy, r, "rgba(212,212,212,0.85)");
   }
   // the pass-6 proportions; Obrokxus's brothers (makeOne) keep the old ones
   function pu(o, old, now) { return o.bro ? old : now; }
@@ -629,7 +639,7 @@ window.GenOld = (function () {
       ctx.save();
       ctx.translate(cx + face * 0.10 * h + dir * 0.02 * h, cy);
       ctx.beginPath(); ctx.ellipse(0, 0, 0.03 * h, 0.009 * h, 0, 0, TAU);
-      ctx.fillStyle = "rgba(210,214,210,0.85)"; ctx.fill();
+      ctx.fillStyle = "rgba(212,212,212,0.85)"; ctx.fill();
       ctx.restore();
     }
   }
@@ -756,7 +766,7 @@ window.GenOld = (function () {
       [x, y], [x - pu(o, 0.12, 0.10) * h, y - pu(o, 0.25, 0.22) * h],
     ], o.lit, o.shade);
     if (p.sy < 0.15) {
-      ctx.fillStyle = "rgba(220,222,220,0.6)";
+      ctx.fillStyle = "rgba(221,221,221,0.6)";
       ctx.fillRect(x - 0.25 * h, y - 0.26 * h, 0.5 * h, 0.02 * h);
     }
   }
@@ -772,14 +782,14 @@ window.GenOld = (function () {
     ], o.lit, o.shade);
 
     // the pale blink bar, now up at 0.7h
-    ctx.fillStyle = "rgba(220,222,220,0.6)";
+    ctx.fillStyle = "rgba(221,221,221,0.6)";
     ctx.fillRect(x - 0.25 * h, y - 0.72 * h, 0.5 * h, 0.02 * h);
 
     // bowler: crown 2x the neck width, dome 0.5x the crown wide tall
     const neckW = 0.08 * h, crownW = 2 * neckW;
     const s = crownW / 0.94;
     const tall = 0.653; // solves the asset's dome to 0.5x crownW tall at this s
-    const tone = window.GenEldPal.tone("coal") || { lit: "#3c3d40", mid: "#333336", shade: "#28292b" };
+    const tone = window.GenEldPal.tone("coal") || { lit: "#3d3d3d", mid: "#333333", shade: "#292929" };
     if (!o._att) o._att = { kind: "bowler", fit: "found", seed: o.ph || 0 };
     // dropped to mid-body and a beat late: its bob lags the body's own phase
     const hatY = y - 0.5 * h + 0.05 * h * Math.sin(p.phase - 1.2);
@@ -872,7 +882,7 @@ window.GenOld = (function () {
     const pupilX = x + dir * 0.10 * h;
     circle(ctx, pupilX, y, 0.16 * h, o.shade);
     ctx.lineWidth = 0.02 * h;
-    ctx.strokeStyle = "rgba(200,204,200,0.7)";
+    ctx.strokeStyle = "rgba(202,202,202,0.7)";
     ctx.beginPath(); ctx.arc(pupilX, y, 0.17 * h, 0, TAU); ctx.stroke();
   }
 
@@ -913,7 +923,7 @@ window.GenOld = (function () {
     const pupilX = x + dir * 0.08 * h, pupilY = y + 0.03 * h;
     const pw = 0.035 * h, ph2 = 0.15 * h;
     Paint.poly(ctx, [[pupilX, pupilY - ph2], [pupilX + pw, pupilY], [pupilX, pupilY + ph2], [pupilX - pw, pupilY]]);
-    ctx.fillStyle = "rgba(13,17,20,0.9)"; ctx.fill();
+    ctx.fillStyle = "rgba(16,16,16,0.9)"; ctx.fill();
 
     // three stalk tendrils from the bottom tip
     const tipX = x, tipY = y + halfH;
@@ -986,7 +996,7 @@ window.GenOld = (function () {
     if (o.bro) for (let i = 0; i < 2; i++) {
       const ha = o.ph + i * 2.4 + G.t * 0.4;
       const hx = cx + Math.cos(ha) * 0.10 * h, hy = cy + Math.sin(ha) * 0.08 * h;
-      circle(ctx, hx, hy, 0.05 * h, "rgba(13,17,20,0.85)");
+      circle(ctx, hx, hy, 0.05 * h, "rgba(16,16,16,0.85)");
     }
   }
 
@@ -1043,8 +1053,8 @@ window.GenOld = (function () {
 
     // two dark hollows on the head — its new face
     const headCx = x, headCy = y - 1.0 * h + 0.04 * h;
-    circle(ctx, headCx - 0.07 * h + side * 0.02 * h, headCy, 0.035 * h, "rgba(13,17,20,0.85)");
-    circle(ctx, headCx + 0.07 * h + side * 0.02 * h, headCy, 0.035 * h, "rgba(13,17,20,0.85)");
+    circle(ctx, headCx - 0.07 * h + side * 0.02 * h, headCy, 0.035 * h, "rgba(16,16,16,0.85)");
+    circle(ctx, headCx + 0.07 * h + side * 0.02 * h, headCy, 0.035 * h, "rgba(16,16,16,0.85)");
 
     // muffler: one band round the neck
     const neckY = y - 0.70 * h;
@@ -1107,7 +1117,7 @@ window.GenOld = (function () {
     const d = 0.6 * H * clamp((u - 0.4) / 0.6, 0, 1);
     x += Math.cos(ang) * d; y += Math.sin(ang) * d;
     ctx.save();
-    ctx.fillStyle = `rgb(${o.hue})`;
+    ctx.fillStyle = `rgb(${o.hueG})`;
     ctx.globalAlpha = (1 - u) * 0.25;
     ctx.beginPath(); ctx.arc(x, y, Math.max(4, 0.011 * H), 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1 - u;
@@ -1150,6 +1160,7 @@ window.GenOld = (function () {
     ctx.save();
     for (const idx of ORDER) {
       const o = ROSTER[idx];
+      if (CUT[o.kind]) continue;
       const p = place(o, env);
       if (!inside && p.pinU >= 0) drawPin(ctx, o, p);
       if (inside ? !(p.e > 0 && p.e < 0.85) : p.e < 0.85) continue;
@@ -1268,9 +1279,19 @@ window.GenOld = (function () {
       lobes: [[150,30,16,18,0],[10,96,14,16,0],[120,118,20,12,0]],
       holes: [] }
   };
+  // any "#rgb"/"#rrggbb"/"rgb(r,g,b)" -> neutral grey of the same luma
+  function greyCss(c) {
+    let r, g, b;
+    if (c[0] === "#") {
+      const h = c.length === 4 ? c.slice(1).replace(/./g, "$&$&") : c.slice(1);
+      r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+    } else [r, g, b] = c.match(/[\d.]+/g).map(Number);
+    const v = Math.round(0.3 * r + 0.59 * g + 0.11 * b);
+    return `rgb(${v},${v},${v})`;
+  }
   function fleshTone(name, lit, shade) {
     const GP = window.GenEldPal, t = GP ? GP.tone(name) : null;
-    return t ? [t.lit, t.shade] : [lit, shade];
+    return [greyCss(t ? t.lit : lit), greyCss(t ? t.shade : shade)];
   }
   function paintFrag(c, kind, S) {
     const f = FRAGS[kind], k = S * 0.8 / Math.max(f.w, f.h);
@@ -1305,8 +1326,8 @@ window.GenOld = (function () {
     c.restore();
   }
   const FIG_AT = [[-0.30, 0.42], [0.36, 0.50], [0.02, 0.58]];   // x in widths, y in heights from the point's x
-  const RIM_FLAT = "rgb(78,86,92)";   // clearly above the body fill, on the lit side only
-  const RIM_TONE = ["rgb(30,36,40)", "rgb(20,25,29)"];
+  const RIM_FLAT = "rgb(84,84,84)";   // clearly above the body fill, on the lit side only
+  const RIM_TONE = ["rgb(36,36,36)", "rgb(24,24,24)"];
   const SHARD_TONES = [["rgb(92,92,92)", "rgb(48,48,48)"], ["rgb(80,80,80)", "rgb(42,42,42)"], ["rgb(104,104,104)", "rgb(56,56,56)"]];
 
   const SHARDS = (function build() {
@@ -1471,5 +1492,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { OLD_DIM, ROSTER, ORDER, PAINT, place, deckSpot, birthT,drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, dressNow, windAt, frostNow };
+  return { OLD_DIM, ROSTER, CUT, ORDER, PAINT, place, deckSpot, birthT,drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, dressNow, windAt, frostNow };
 })();
