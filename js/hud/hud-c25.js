@@ -31,9 +31,9 @@ window.HudC25 = (function () {
     const r = rng(7), spectrum = Array.from({ length: 32 }, (_, i) => 0.18 + 0.5 * r() * (0.6 + 0.4 * Math.sin(i * 0.7)));
     const r5 = rng(9), speed = Array.from({ length: 90 }, () => 0.03 + 0.02 * r5());
     const P = x => (x - 789) / 428;
-    /* hull stress sampled along the length, u from -0.52 to 1.30 in steps of 0.01 */
+    /* hull stress sampled along the length, u from -0.52 to 1.04 in steps of 0.01 */
     const g = (u, m, sg, a) => a * Math.exp(-((u - m) * (u - m)) / (2 * sg * sg));
-    const stress = Array.from({ length: 183 }, (_, i) => { const u = -0.52 + i * 0.01;
+    const stress = Array.from({ length: 157 }, (_, i) => { const u = -0.52 + i * 0.01;
       return Math.max(0.04, 0.22 + g(u, -0.32, 0.06, 0.28) + g(u, -0.08, 0.11, 0.45) + g(u, 0.36, 0.05, 0.62) + g(u, 0.43, 0.035, 0.30) - 0.2 * Math.max(0, u - 0.8) / 0.34); });
     const unread = [850, 854, 1019, 1075, 1118, 1161, 1177].map(P), you = P(1028.5);
     const next = unread.reduce((b, p, i) => Math.abs(p - you) < Math.abs(unread[b] - you) ? i : b, 0);
@@ -521,7 +521,7 @@ window.HudC25 = (function () {
   let shipC = null;   // the blueprint and everything derived from it, keyed on dpr * s: rebuilt only when the size changes
   function paintShip() {
     /* the real ship's line drawing (VoidshipHull.blueprint), true proportions, centred in the old box's column 1608..1867 and fitted between the bus strip and the stress row */
-    const L = 105, YT = 804, fr = u => ((u >= 0.36 ? u : 0.36 + (u - 0.36) * 0.682) + 0.52) / 1.82;   // fr: the old marks' u (stern -0.52 .. nose 1.30) as a fraction of the ship's length
+    const L = 105, YT = 804, fr = u => ((u >= 0.36 ? u : 0.36 + (u - 0.36) * 0.682) + 0.52) / 1.56;   // fr: the old marks' u (stern -0.52 .. nose tip 1.04) as a fraction of the ship's length
     if (!shipC || shipC.k !== dpr * s) {
       const bp = window.VoidshipHull.blueprint(L, dpr * s, { top: rgba(C_TOP, BRIGHT), hull: rgba(C_HULL, BRIGHT), mid: rgba(C_MID, BRIGHT), nose: rgba(C_NOSE, BRIGHT) }, HAIR);
       const xs0 = 1608 + (259 - (bp.tip - bp.stern)) / 2, xs1 = xs0 + bp.tip - bp.stern, X = xs0 - bp.stern, Yo = YT - bp.top, cx = X - bp.ox, cy = Yo - bp.oy, yb = Yo + bp.bottom;
@@ -824,7 +824,7 @@ window.HudC25 = (function () {
     o.o2v = Math.max(0, Math.min(1, (sys.o2 - 19) / 2.9)); o.co2v = Math.max(0, Math.min(1, sys.co2 / 1600));
     o.kpaN = sys.kpa; o.rhN = sys.rh; o.tL = sys.tL; o.kpaL = sys.kpaL; o.rhL = sys.rhL; o.h2so4 = sys.h2so4; o.co2L = sys.co2L; o.g = (e.g || 0).toFixed(2); o.o2n = sys.o2; o.co2n = sys.co2;
     const si = { thrust: th, wear: sys.wear || 0, impact: sys.lastImpact, now: now, sway: e.sway || 0, jitter: e.jitter || 0 };
-    o.stress = Array.from({ length: 183 }, (_, i) => HM.stress(-0.52 + i * 0.01, si));
+    o.stress = Array.from({ length: 157 }, (_, i) => HM.stress(-0.52 + i * 0.01, si));
     const ls = HM.rightLamps({ burning: st.burning, thrust: th, wear: sys.wear || 0, jet: st.jet, courseMark: st.courseMark, o2: sys.o2, co2: sys.co2, kpa: sys.kpa,
       busKW: bl.kW, thrustN: th, speedN: st.speedN || 0 }, now);
     const on = Math.floor(pnow * 1.1 * 2) % 2 === 0;

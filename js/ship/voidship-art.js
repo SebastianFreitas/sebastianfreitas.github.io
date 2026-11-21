@@ -306,7 +306,7 @@ window.VoidshipArt = (function () {
     if (d <= env.aimDead) return;
     const ux = dx / d, uy = dy / d;
     const p1 = env.holdD1 * ppu;
-    const s0 = 1.15 * ((window.Voidship && window.Voidship.BASE.size) || 96) + 30;   // 0% sits 30 px past the drawn blade tip (the blade tip is ~1.15 BASE.size out)
+    const s0 = ((window.VoidshipArt && window.VoidshipArt.TIP) || 1.04) * ((window.Voidship && window.Voidship.BASE.size) || 96) + 16;   // 0% sits 16 px past the flat nose end (TIP in voidship-prow.js)
     const fill = s0 + (p1 - s0) * clamp(ship.engine || 0, 0, 1);
     const CR = "228,221,198";
     const line = (x0, x1, w, a) => {

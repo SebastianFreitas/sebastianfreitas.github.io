@@ -178,7 +178,7 @@ window.HudModels = (function () {
   const RING_U = 0.43;            // hull position of the ring (paintShip's ellipse; the real ship's ring, voidship-prow.js)
   /* the ring moved 0.68 -> 0.43, next to the joint bump; the bump's share there stays what it was at 0.68 (0.0286 of 0.843), so the ring lamp (rs > 0.6) still lights only on impact or crit */
   const RING_SHARE = 0.034;
-  const U_LO = -0.52, U_HI = 1.30;
+  const U_LO = -0.52, U_HI = 1.04; /* the nose tip, voidship-prow.js TIP */
   const CELL_D = [0.02, 0.01, 0, 0.015, -0.01, 0.005, -0.03, 0.01];
   const CAB_SET = 21.0, CAB_N = 60, CAB_STEP = 30;
 

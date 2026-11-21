@@ -17,16 +17,18 @@
   // the profile below was drawn at the old size; M grows it about its centre line (1.5x deep, 1.19x long from the root at x 0.30) so the blade is the biggest mass
   const NX = (x) => 0.30 + (x - 0.30) * 1.19, NY = (y) => -0.0175 + (y + 0.0175) * 1.5, M = (pts) => pts.map((p) => [NX(p[0]), NY(p[1])]);
   const RIDGE = [[0.30, -0.0475], [0.60, -0.0475], [0.80, -0.06], [1.0, -0.075], [1.15, -0.088], [1.30, -0.105]];
+  const TIP = 1.04;   // where the nose ends: the flat cut end, right after the small slab (everything that ran to the old tip x 1.292 stops here)
   const lerpY = (pts, x) => { for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; if (x >= a[0] && x <= b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return pts[pts.length - 1][1]; };
   // an edge is a base line (x ascending) with chips bitten into it: [x, width, depth, where the deepest point sits across the width (0 hull side .. 1 tip side)]; dir -1 bites up, 1 bites down
   const knap = (base, chips, dir) => { const o = [base[0]]; base.slice(1, -1).forEach((p) => o.push(p)); chips.forEach(([x, w, d, k]) => o.push([x, lerpY(base, x)], [x + k * w, lerpY(base, x + k * w) + dir * d], [x + w, lerpY(base, x + w)])); o.push(base[base.length - 1]); return o.sort((a, b) => a[0] - b[0]); };
   // the spine falls steadily and a little unevenly from the ring (y -0.171) to the tip (y -0.105), with six chips bitten DOWN out of it (none under a slab's feet)
   const SP0 = NY(-0.12), SP1 = -0.105, SPINE = (x) => SP0 + (x - 0.30) * (SP1 - SP0) / (1.30 - 0.30);
   // (v18: runs of very different lengths on different slopes, one deep bite between the slabs, one barely there near the tip, one medium near the tip; level at both slabs' feet)
-  const SPB = [[0.30, SP0], [0.46, SPINE(0.46) - 0.010], [0.52, SPINE(0.52)], [0.62, SPINE(0.62)], [0.80, SPINE(0.80) + 0.006], [0.86, SPINE(0.86)], [1.03, SPINE(1.03)], [1.12, SPINE(1.12) - 0.008], [1.20, SPINE(1.20) + 0.004], [1.30, SP1]];
+  const cutAt = (pts) => pts.filter((p) => p[0] < TIP).concat([[TIP, lerpY(pts, TIP)]]);
+  const SPB = cutAt([[0.30, SP0], [0.46, SPINE(0.46) - 0.010], [0.52, SPINE(0.52)], [0.62, SPINE(0.62)], [0.80, SPINE(0.80) + 0.006], [0.86, SPINE(0.86)], [1.03, SPINE(1.03)], [1.12, SPINE(1.12) - 0.008], [1.20, SPINE(1.20) + 0.004], [1.30, SP1]]);
   // (v29: the top edge's breaks are baby slabs: four tiny flat-topped stubs (up) and square notches (down) with near-vertical sides, [x, width, height up (negative = notch)], all different)
   const SYS = (x) => lerpY(SPB, x);
-  const TOP_BITS = [[0.49, 0.028, -0.020], [0.765, 0.021, 0.040], [1.035, 0.042, -0.028], [1.17, 0.016, 0.024]];
+  const TOP_BITS = [[0.49, 0.028, -0.020], [0.765, 0.021, 0.040], [1.035, 0.042, -0.028], [1.17, 0.016, 0.024]].filter(([x, w]) => x + w <= TIP);
   const TOP_EDGE = SPB.concat(...TOP_BITS.map(([x, w, h]) => [[x, SYS(x)], [x + 0.001, SYS(x) - h], [x + w - 0.001, SYS(x + w) - h + 0.002], [x + w, SYS(x + w)]])).sort((a, b) => a[0] - b[0]);
   // the cutting edge is one long shallow curve from the hull to the tip: five straight knapped cuts of different lengths, each a little steeper than the last, with two small chips far apart
   // (v16: three long straight cuts, 21.8 / 10.8 / 2.7 degrees, meeting at two shallow corners; the longest runs from the tip back past the small slab; deepest at the hull;
@@ -37,7 +39,7 @@
   // 0.17 deep, a swell to 0.20 over the last 0.12 and a flat cut end a few degrees off vertical; the underside is a few straight cuts and one small chip)
   // (v28: mined mineral under a natural top: v26's lump, ledge and straight cuts below, v27's long faces in a band 0.09 deep under the top edge, ending in a flat cut face 0.09 tall;
   // the lump stops inside the ring's lower rim (0.165) and starts at the ring, not on the hull side; the cuts rise to the cut face's bottom corner)
-  const CUT_BASE = [[0.30, 0.06], [0.395, 0.07], [0.405, 0.145], [0.43, 0.157], [0.50, 0.160], [0.53, 0.138], [0.66, 0.150], [0.90, 0.075], [1.05, 0.030], [1.292, -0.015]];
+  const CUT_BASE = cutAt([[0.30, 0.06], [0.395, 0.07], [0.405, 0.145], [0.43, 0.157], [0.50, 0.160], [0.53, 0.138], [0.66, 0.150], [0.90, 0.075], [1.05, 0.030], [1.292, -0.015]]);
   const CUT_EDGE = knap(CUT_BASE, [[0.68, 0.15, 0.025, 0.12]], -1).reverse();
   // (v26: no single ridge runs from the ring to the tip: the crest is four short ridges meeting at angles, one dropping toward the ring's lower half, one from the tall slab's foot
   // dropping toward the tip, one rising under the small slab, one running out to the tip; big flake scars of different reds meet along and across it)
@@ -48,25 +50,24 @@
   const band = (up, lo, a, b) => run(up, a, b).concat(run(lo, a, b).reverse());
   // the natural top band: long faces at depths (below the spine) that wander a little; the last line BL is the band's floor, 0.09 deep, and the mined facets bite up through it at three places
   const LINE = (offs) => offs.map(([x, o]) => [x, SPINE(x) + o]);
-  const LA = LINE([[0.30, 0.030], [0.46, 0.036], [0.60, 0.028], [0.75, 0.034], [0.90, 0.026], [1.10, 0.032], [1.292, 0.030]]);
-  const LB = LINE([[0.30, 0.058], [0.46, 0.052], [0.62, 0.060], [0.80, 0.054], [1.02, 0.062], [1.15, 0.056], [1.292, 0.060]]);
-  const BL = LINE([[0.30, 0.090], [0.46, 0.086], [0.62, 0.092], [0.80, 0.088], [1.0, 0.093], [1.15, 0.087], [1.292, 0.090]]);
+  const LA = cutAt(LINE([[0.30, 0.030], [0.46, 0.036], [0.60, 0.028], [0.75, 0.034], [0.90, 0.026], [1.10, 0.032], [1.292, 0.030]]));
+  const LB = cutAt(LINE([[0.30, 0.058], [0.46, 0.052], [0.62, 0.060], [0.80, 0.054], [1.02, 0.062], [1.15, 0.056], [1.292, 0.060]]));
+  const BL = cutAt(LINE([[0.30, 0.090], [0.46, 0.086], [0.62, 0.092], [0.80, 0.088], [1.0, 0.093], [1.15, 0.087], [1.292, 0.090]]));
   const BITES = [[0.49, 0.515, 0.57, 0.050], [0.72, 0.80, 0.855, 0.056], [1.07, 1.095, 1.165, 0.060]];
   const MB = BL.filter((p) => !BITES.some((n) => p[0] > n[0] && p[0] < n[2])).concat(...BITES.map(([a, p, b, o]) => [[a, lerpY(BL, a)], [p, SPINE(p) + o], [b, lerpY(BL, b)]])).sort((a, b) => a[0] - b[0]);
   const mined = (a, b, c, d) => run(MB, a, b).concat(run(EDGE_ASC, c, d).reverse());
-  const TY =lerpY(TOP_EDGE, 1.30);
+  const TY = lerpY(TOP_EDGE, TIP), CY = lerpY(CUT_BASE, TIP);
   const FACETS = [
-    [band(TOP_EDGE, LA, 0.30, 1.292), RUST_LIT],
-    [band(LA, LB, 0.30, 1.292), RUST_HEAD],
-    [band(LB, BL, 0.30, 1.292), RUST_FRONT],
+    [band(TOP_EDGE, LA, 0.30, TIP), RUST_LIT],
+    [band(LA, LB, 0.30, TIP), RUST_HEAD],
+    [band(LB, BL, 0.30, TIP), RUST_FRONT],
     [mined(0.30, 0.38, 0.30, 0.34), RUST_DARK],
     [mined(0.38, 0.41, 0.34, 0.41), RUST_SHADE],
     [mined(0.41, 0.52, 0.41, 0.53), RUST_DEEP],
     [mined(0.52, 0.80, 0.53, 0.794), RUST_SHADE],
     [mined(0.80, 0.93, 0.794, 0.984), RUST_DEEP],
-    [mined(0.93, 1.05, 0.984, 1.124), RUST_SHADE],
-    [mined(1.05, 1.292, 1.124, 1.292), RUST_DARK],
-    [[[1.30, TY], [1.2965, -0.055], [1.292, -0.015], [1.280, -0.018], [1.2835, -0.058], [1.289, TY + 0.004]], RUST_EDGE],
+    [mined(0.93, TIP, 0.984, TIP), RUST_SHADE],
+    [[[TIP, TY], [TIP, CY], [TIP - 0.012, CY], [TIP - 0.012, TY + 0.004]], RUST_EDGE],
     [[[0.57, lerpY(TOP_EDGE, 0.57)], [0.68, lerpY(TOP_EDGE, 0.68)], [0.645, lerpY(TOP_EDGE, 0.645) + 0.075], [0.59, lerpY(TOP_EDGE, 0.59) + 0.05]], RUST_HEAD],
     [[[0.905, lerpY(TOP_EDGE, 0.905)], [0.975, lerpY(TOP_EDGE, 0.975)], [0.95, lerpY(TOP_EDGE, 0.95) + 0.06], [0.915, lerpY(TOP_EDGE, 0.915) + 0.045]], RUST_HEAD]
   ];
@@ -89,7 +90,7 @@
       [[[xa, ya], [xe, yt(xe)], [xe + slant, yb]].concat(low, [[xa, yb]]), cf],
       [strip(0.007), RUST_HEAD]];
   }
-  const STUMPS = [].concat(stump(0.794, 0.157, 0.040, 0.023, 0.008, RUST_SHADE, RUST_DEEP, [[0.05, 0.03, 0.005]]), stump(0.984, 0.086, 0.029, 0.018, -0.006, RUST_DEEP, RUST_SHADE, []), stump(1.124, 0.121, 0.035, 0.022, 0.006, RUST_SHADE, RUST_DARK, [[0.06, 0.026, 0.004]]));
+  const STUMPS = [].concat(stump(0.794, 0.157, 0.040, 0.023, 0.008, RUST_SHADE, RUST_DEEP, [[0.05, 0.03, 0.005]]), stump(0.984, TIP - 0.984, 0.029, 0.018, -0.006, RUST_DEEP, RUST_SHADE, []));
   // side blades: broad flat slabs of the same stone standing straight up from the sloping spine. Each long side is 5 straight segments of small angle changes plus one flake bite
   // (L, R: [height fraction, inset in widths]), so the slab tapers a little and its sides are neither parallel nor mirrored. Flat tip cut slanted (higher at the back), a slightly lighter bevel
   // on the cut, a small stepped shoulder at each foot (hull side larger), and three planes (lit, mid, shadow) with crooked boundaries (B: [foot fraction, [height fraction, width fraction]..., tip fraction])
@@ -133,7 +134,7 @@
   function drawProwBack(g, ship, L, t) {
     const ember = emberOf(ship, t);
     g.fillStyle = Paint.rad(g, 0.86 * L, -0.01 * L, 0, 0.30 * L, [[0, rgba(C.RED, 0.20 * ember)], [1, rgba(C.RED, 0)]]);
-    g.fillRect(0.38 * L, -0.33 * L, 0.90 * L, 0.62 * L);
+    g.fillRect(0.38 * L, -0.33 * L, (TIP - 0.38) * L, 0.62 * L);
   }
 
   // the stone's rest ember; the hull sprite is built without it (noEmber) and the caller draws it live over the blit
@@ -234,5 +235,5 @@
     for (const it of near) it.fn();
   }
 
-  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawEmber = drawEmber; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE };
+  A.drawProwBack = drawProwBack; A.drawProw = drawProw; A.drawEmber = drawEmber; A.emberOf = emberOf; A.PROW = { BODY, FACETS, SPURS, RIDGE }; A.TIP = TIP;
 })();

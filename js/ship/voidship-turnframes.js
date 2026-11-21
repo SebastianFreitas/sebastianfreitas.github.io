@@ -7,7 +7,7 @@
   const H = window.VoidshipHull; if (!H) return;
   // the tables of voidship-prow.js (private there, copied: keep in step with ZB, FINS, zOf, YM, RING_RI, NAVY_RO)
   const YM = -0.015, RING_RI = 0.17, NAVY_RO = 124 / 590;
-  const ZB = [[0.30, 0.15], [0.43, 0.17], [0.50, 0.13], [0.86, 0.07], [1.292, 0.025]];
+  const ZB = [[0.30, 0.15], [0.43, 0.17], [0.50, 0.13], [0.86, 0.07], [1.04, 0.0513]];   // ends at the nose tip, TIP in voidship-prow.js
   const FINS = [[0.54, 0.72, 0.027], [0.755, 0.795, 0.005], [0.88, 1.02, 0.017], [1.16, 1.195, 0.004]];
   // the blade's spine without its chips (zOf's SYS is private; the chips are under 0.012)
   const SP0 = -0.0175 + (-0.12 + 0.0175) * 1.5, SP1 = -0.105, SPINE = (x) => SP0 + (x - 0.30) * (SP1 - SP0) / 1.0;
@@ -16,9 +16,9 @@
   const ease = (v) => v * v * (3 - 2 * v);
   const lerpY = (pts, x) => { for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; if (x >= a[0] && x <= b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return pts[pts.length - 1][1]; };
   const noseHalf = (x, y) => {
-    const dy = y - YM, zb = Math.min(lerpY(ZB, clamp(x, 0.30, 1.292)), Math.sqrt(Math.max(0, (RING_RI + 0.003) * (RING_RI + 0.003) - dy * dy)));
+    const dy = y - YM, zb = Math.min(lerpY(ZB, clamp(x, 0.30, 1.04)), Math.sqrt(Math.max(0, (RING_RI + 0.003) * (RING_RI + 0.003) - dy * dy)));
     const f = FINS.find((q) => x >= q[0] && x <= q[1]);
-    return f ? f[2] + (zb - f[2]) * ease(clamp((y - (SPINE(clamp(x, 0.30, 1.30)) - 0.004)) / 0.014, 0, 1)) : zb;
+    return f ? f[2] + (zb - f[2]) * ease(clamp((y - (SPINE(clamp(x, 0.30, 1.04)) - 0.004)) / 0.014, 0, 1)) : zb;
   };
   const cache = {};
   const now = () => (window.performance || Date).now();
@@ -134,7 +134,18 @@
       const o = (j * w + i) * 4; if (!sa) continue;
       out[o] = sr / sa; out[o + 1] = sg / sa; out[o + 2] = sb / sa; out[o + 3] = sa / q;
     }
-    return out;
+    // every face is baked one sprite row at a time, so the rows of the nose and the lower hull differ in shade and in where they end: a 1-2-1 down each column on the baked frame
+    // (colour and alpha, colour weighted by alpha), as strong as sin(yaw) so the rest pose is untouched
+    const a1 = 0.25 * s, res = new Uint8ClampedArray(out);
+    for (let j = 1; j < h - 1; j++) for (let i = 0, y0 = (j & 15) || (yield); i < w; i++) {
+      const o = (j * w + i) * 4, u = o - w * 4, d = o + w * 4, au = out[u + 3], ac = out[o + 3], ad = out[d + 3];
+      if (!ac || !(au || ad)) continue;
+      const near = (q) => Math.abs(out[q] - out[o]) + Math.abs(out[q + 1] - out[o + 1]) + Math.abs(out[q + 2] - out[o + 2]) < 90;   // a neighbour of another colour is an edge, not a stripe: it stays out
+      const eu = au && near(u) ? a1 : 0, ed = ad && near(d) ? a1 : 0, wu = eu * au / 255, wd = ed * ad / 255, wc = (1 - eu - ed) * ac / 255, t = wu + wd + wc;
+      for (let m = 0; m < 3; m++) res[o + m] = (out[u + m] * wu + out[d + m] * wd + out[o + m] * wc) / t;
+      res[o + 3] = ac * (1 - eu - ed) + au * eu + ad * ed;
+    }
+    return res;
   }
   // half-thickness for the bake: capped by CAP times the shorter of the horizontal and vertical opaque runs it sits in (a mast or fin stays thin instead of taking the hull's width),
   // then averaged 1-2-1 down each column over the opaque pixels, so neighbouring rows are extruded alike and the turned edge does not comb

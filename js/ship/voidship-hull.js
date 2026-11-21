@@ -1705,7 +1705,7 @@ window.VoidshipHull = (function () {
     if (cache[key]) return cache[key];
     const s = L * dpr, ox = Math.ceil(-anchors.stern * s) + 3, oy = Math.ceil(-anchors.top * s) + 3;
     const cv = document.createElement('canvas');
-    cv.width = ox + Math.ceil(1.5 * s); cv.height = oy + Math.ceil(anchors.bottom * s) + 3;
+    cv.width = ox + Math.ceil((window.VoidshipArt.TIP + 0.208) * s); cv.height = oy + Math.ceil(anchors.bottom * s) + 3;
     const g = cv.getContext('2d'), ship = { face: 1, thrustAmt: 0, flare: 0, strain: 0 };
     g.translate(ox, oy);
     drawRest(g, s); window.VoidshipArt.drawProw(g, ship, s, 1, true);
