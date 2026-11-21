@@ -131,37 +131,23 @@ window.GenRex = (function () {
     return out;
   })();
 
-  /* the neck: the land climbing the stream's line from its foot to the cut (cg: GenRexOut.cutGeom's object); the cut itself is not filled */
-  function drawLandNeck(ctx, rise, cg, cutPath, cool) {
-    const reach = smooth(clamp((rise - 0.15) / 0.45, 0, 1));
-    if (reach <= 0) return;
-    const H = G.H, fx = cg.footX, fy = cg.footY + 0.03 * H;
-    const px = mix(fx, cg.neckX, reach), py = mix(fy, cg.neckY, reach);
-    for (let bi = 0; bi < REX_BANDS.length; bi++) {
-      const b = REX_BANDS[bi];
-      const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
-      const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
-      const hf = H * (0.06 - bi * 0.012), ht = Math.max(H * 0.016, cg.w * 0.22) * (1 - bi * 0.2);
-      ctx.fillStyle = lit;
-      ctx.beginPath(); ctx.moveTo(fx - hf, fy); ctx.lineTo(px - ht, py); ctx.lineTo(px + ht, py); ctx.lineTo(fx + hf, fy); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = shade;
-      ctx.beginPath(); ctx.moveTo(fx + hf * 0.15, fy); ctx.lineTo(px + ht * 0.15, py); ctx.lineTo(px + ht, py); ctx.lineTo(fx + hf, fy); ctx.closePath(); ctx.fill();
-    }
-  }
-
   function drawRexLand(ctx, rise, originX, originY, floorY, cg, cutPath) {
     const tL = since("land");
-    if (tL < 0.003) return;
+    if (G.linear("land") <= 0) return;
     if (cg) { originX = cg.footX; originY = cg.footY; }
     const cool = smooth(clamp((since("land") - 0.22) / 0.65, 0, 1));
     /* it starts at the fallen body (originX, originY) and spreads left and right along the bottom
        to a low top edge (~0.89 H, ~0.85 H under the womb), then goes on into the ridges below */
-    const spread = G.reduced ? 1 : smooth(clamp(tL / 0.3, 0, 1));
+    const lin = G.linear("land");   // the early spread runs on the beat's own clock, not eased: it starts moving at once
+    const spread = G.reduced ? 1 : smooth(clamp(lin / 0.3, 0, 1));
     const grow = smooth(clamp((rise - 0.3) / 0.7, 0, 1));
     const plat = (px, bi) => G.H * mix(0.89, 0.85, smooth(clamp((px / G.W - 0.55) / 0.15, 0, 1))) - (2 - bi) * 0.012 * G.H;
+    /* it opens as drop's last frame: the orange wedge on the floor (GenRexOut drop: 0.4 W wide, 0.065 H tall, east end at the womb's base) and grows out of it */
+    const fy0 = 0.87 * G.H, wxb = cg ? cg.wcx - cg.wrx / 0.94 : 0;
+    const wedge = px => cg && px >= wxb - 0.40 * G.W && px <= wxb + 0.05 * G.W ? fy0 - clamp((px - (wxb - 0.40 * G.W)) / (0.40 * G.W), 0, 1) * 0.065 * G.H : fy0;
     const early = (px, bi) => {
       const g = smooth(clamp((spread * 1.4 - Math.abs(px - originX) / G.W) / 0.3, 0, 1));
-      return mix(G.H * 1.08, plat(px, bi), g);
+      return mix(cg ? wedge(px) : G.H * 1.08, plat(px, bi), g);
     };
     const lock = smooth(clamp((rise - 0.18) / 0.5, 0, 1));
     const xC = mix(originX, sx(mix(REX_WEST, REX_EAST, 0.72)), lock);
@@ -172,7 +158,11 @@ window.GenRex = (function () {
     const bottom = floorY != null ? Math.min(G.H * 2.5, floorY) : G.H * 2.5;
     const baseY = G.H * 1.16;
     const step = 6;
-    if (cg) drawLandNeck(ctx, rise, cg, cutPath, cool);
+    const clipped = cg && !G.reduced && lin < 0.6;   // nothing shows below the floor line yet (let down over the first 0.35), nor west of the wedge's west end until the reveal (0.35-0.6) runs it out to the frame edge
+    if (clipped) {
+      const cx0 = mix(wxb - 0.40 * G.W, -80, smooth(clamp((lin - 0.35) / 0.25, 0, 1)));
+      ctx.save(); ctx.beginPath(); ctx.rect(cx0, -G.H, G.W + 80 - cx0, fy0 + G.H + (1.1 * G.H - fy0) * smooth(clamp(lin / 0.35, 0, 1))); ctx.clip();
+    }
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
       const b = REX_BANDS[bi];
       const widen = (2 - bi) * 0.05;
@@ -200,10 +190,11 @@ window.GenRex = (function () {
       }
       const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
       const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
-      ctx.globalAlpha = Math.max(rise, clamp(tL / 0.02, 0, 1));
+      ctx.globalAlpha = Math.max(rise, clamp(lin / 0.15, 0, 1));
       fillRidge(ctx, pts, bottom, lit, shade);
       ctx.globalAlpha = 1;
     }
+    if (clipped) ctx.restore();
     if (cool < 0.98 && rise > 0.3) {
       ctx.save();
       ctx.globalCompositeOperation = "source-over";

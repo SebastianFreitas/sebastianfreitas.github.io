@@ -61,6 +61,7 @@ The detail behind `workflow.md` "Run" steps 3 to 6.
   the go prompt names, so a run never moves to another checkout.
 - Verify: the reviewer may re-run the implementer's checks.
 - Verify: homepage or case-page paint is also shot with `py -3 tools/ffshot.py` (installed Firefox; `--games` for the rows).
+- Rex poses: `py -3 tools/rexsheet.py <run> [--mix a,b]` sheets every pose of Rex and prints limb length ratios (like `gframes.py`, for review without running the cutscene).
 - Review is not a judgement call: `.claude/hooks/review-guard.py` counts
   the real diff at `git commit` and at `try.py --commit` and refuses the
   command until a reviewer has run in this window; an earlier window's

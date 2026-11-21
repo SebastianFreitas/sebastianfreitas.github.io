@@ -32,13 +32,13 @@ window.GenDuo = (function () {
   part("capB", [0.085, 0.08, 0.07], [0.02, 0.03], [0.06, 0.1], 0.05, [[-0.125, -0.865, -0.13, -0.83, -0.135, -0.8]]);
   part("capF", [0.088, 0.082, 0.072], [0.02, 0.03], [0.06, 0.1], 0.05, [[0.125, -0.88, 0.13, -0.845, 0.135, -0.81]]);
   part("upB", [0.07, 0.069, 0.07], [0.022, 0.034], [0.045, 0.075], 0.05,
-    [[-0.135, -0.855, -0.15, -0.71, -0.15, -0.57], [-0.135, -0.86, -0.24, -0.77, -0.33, -0.68]]);
+    [[-0.135, -0.855, -0.15, -0.71, -0.15, -0.57]]);
   part("foreB", [0.075, 0.077, 0.074], [0.022, 0.034], [0.045, 0.075], 0.05,
-    [[-0.15, -0.57, -0.153, -0.4, -0.155, -0.235], [-0.33, -0.68, -0.215, -0.71, -0.1, -0.74]]);
+    [[-0.15, -0.57, -0.153, -0.4, -0.155, -0.235]]);
   part("upF", [0.07, 0.068, 0.072], [0.022, 0.034], [0.045, 0.075], 0.05,
-    [[0.135, -0.875, 0.15, -0.73, 0.16, -0.585], [0.135, -0.875, 0.155, -0.73, 0.17, -0.585], [0.135, -0.875, 0.178, -0.82, 0.19, -0.76]]);
+    [[0.135, -0.875, 0.15, -0.73, 0.16, -0.585]]);
   part("foreF", [0.074, 0.078, 0.076], [0.022, 0.034], [0.045, 0.075], 0.05,
-    [[0.16, -0.585, 0.165, -0.4, 0.17, -0.215], [0.17, -0.585, 0.025, -0.59, -0.12, -0.6], [0.19, -0.76, 0.133, -0.765, 0.075, -0.77]]);
+    [[0.16, -0.585, 0.165, -0.4, 0.17, -0.215]]);
   // hands: 0 = the arm on the far side (B), 1 = the near side (F); a palm block, four stacked-block fingers, a thumb
   const FL = [[0.05, 0.058, 0.055, 0.045], [0.048, 0.056, 0.058, 0.044]];
   for (let k = 0; k < 2; k++) {
@@ -54,37 +54,9 @@ window.GenDuo = (function () {
   const FIST = { palm1: [[0, 0, 0, 0.052, 0, 0.105], [0.088, 0.092, 0.088]], thumb1: [[-0.052, 0.03, -0.054, 0.06, -0.05, 0.09], [0.022, 0.02, 0.017]] };
   for (let j = 0; j < 4; j++) { const b = 0.014 + j * 0.026; FIST["fin1" + j] = [[-0.046, b, 0, b, 0.046, b], [0.0095, 0.0095, 0.0095]]; }
   for (const P of PARTS) if (FIST[P.n]) { P.fl = FIST[P.n][0]; P.fw = FIST[P.n][1]; }
-  // grip pose: the body leans into the punch (x of the axis points moved forward), the near arm at full stretch up and forward, the far arm back
-  const lean = (n, a) => { PARTS.find(p => p.n === n).ax[3] = a; };
-  lean("chest", [0.04, -0.88, 0.032, -0.77, 0.012, -0.66]);
-  lean("waist", [0.014, -0.66, 0.01, -0.59, 0.006, -0.52]);
-  lean("collar", [0.041, -0.905, 0.041, -0.89, 0.042, -0.875]);
-  lean("capB", [-0.09, -0.865, -0.095, -0.83, -0.1, -0.8]);
-  lean("capF", [0.165, -0.88, 0.17, -0.845, 0.175, -0.81]);
-  lean("upB", [-0.09, -0.86, -0.19, -0.8, -0.27, -0.72]);
-  lean("foreB", [-0.27, -0.72, -0.31, -0.62, -0.32, -0.52]);
-  lean("upF", [0.165, -0.88, 0.277, -0.973, 0.388, -1.066]);
-  lean("foreF", [0.388, -1.066, 0.53, -1.183, 0.67, -1.3]);
-  // dead pose: slack and sagging toward the wall on the far side (-x), shoulders dropped, the far arm hanging, the near fist against the chest
-  const dead = (n, a) => { PARTS.find(p => p.n === n).ax[4] = a; };
-  dead("legB", [-0.12, -0.53, -0.1, -0.3, -0.092, -0.05]);
-  dead("legF", [-0.03, -0.53, 0.04, -0.3, 0.1, -0.05]);
-  dead("waist", [-0.09, -0.64, -0.075, -0.58, -0.06, -0.52]);
-  dead("chest", [-0.2, -0.82, -0.15, -0.73, -0.115, -0.65]);
-  dead("collar", [-0.2, -0.845, -0.2, -0.83, -0.2, -0.815]);
-  dead("capB", [-0.3, -0.77, -0.31, -0.74, -0.32, -0.71]);
-  dead("capF", [-0.1, -0.8, -0.1, -0.77, -0.1, -0.74]);
-  dead("upB", [-0.3, -0.77, -0.33, -0.66, -0.34, -0.55]);
-  dead("foreB", [-0.34, -0.55, -0.34, -0.42, -0.33, -0.3]);
-  dead("upF", [-0.1, -0.8, -0.06, -0.68, -0.03, -0.56]);
-  dead("foreF", [-0.03, -0.56, -0.045, -0.6, -0.06, -0.64]);
-  // hand frames per pose: [wristX, wristY, rotation] (rotation 0 = hanging down)
+  // hand frames per pose: [wristX, wristY, rotation] (rotation 0 = hanging down); poses 1-4 are pushed below, once chain exists
   const HF = [
-    [[-0.155, -0.235, 0.03], [0.17, -0.215, -0.04]],
-    [[-0.1, -0.74, 0.12], [-0.12, -0.6, Math.atan2(0.29, -0.015)]],
-    [[-0.155, -0.235, 0.03], [0.075, -0.77, Math.PI / 2]], // slap: the near hand flat on the chest, fingers toward the middle
-    [[-0.32, -0.52, 0.1], [0.67, -1.3, Math.atan2(-0.277, -0.234)]], // grip: the near fist along the arm, up and forward
-    [[-0.33, -0.3, 0.1], [-0.06, -0.64, Math.PI - 0.25]] // dead: the far hand hanging, the near fist upright on the chest
+    [[-0.155, -0.235, 0.03], [0.17, -0.215, -0.04]]
   ];
   // dive and curl (poses 5 and 6): here (x, y) is the body's CENTRE, not the foot line, because the callers fly it along a path.
   // Every part keeps its stand size: the axes are the stand segment lengths re-aimed (angles in degrees, 0 = forward, y down).
@@ -101,24 +73,78 @@ window.GenDuo = (function () {
     return r;
   };
   const wristHF = (a, th) => [a[4], a[5], Math.atan2(-Math.cos(th * DEG), Math.sin(th * DEG))]; // hand pointing along th
-  // dive: a mid-leap, chest leading up and to the right (torso long axis 30 degrees above level, down-back is 150), the near arm reaching out and a little down,
-  // the far arm swept back along the torso, the far leg trailing, the near knee drawn up with the shin folded back under it
-  const DV = { x: -0.08, y: 0.206 }, DVH = [0, 0, 0];
+  // poses 1-4 (reach, slap, grip, dead) and 7 (recoil) are angles applied to the stand lengths: the torso parts turned about the hip (deg, landing the hip on (nx, ny)),
+  // every limb a straight bone from its carried start (each arm bone as [upper, fore] degrees, each leg as one angle; null keeps stand), the feet carried with the leg ends
+  const pp = (n) => PARTS.find(p => p.n === n);
+  function build(p, deg, nx, ny, lg, ar) {
+    const T = (x, y) => deg === null ? [x, y] : turn([x, y, 0, 0, 0, 0], 0.006, -0.52, deg, nx, ny);
+    if (deg !== null) for (const n of ["chest", "collar", "waist", "capB", "capF"]) pp(n).ax[p] = turn(stand(n), 0.006, -0.52, deg, nx, ny);
+    for (const k of ["B", "F"]) if (lg && lg[k] !== null) {
+      const n = "leg" + k, a = stand(n), f = stand("foot" + k), g = [].concat(lg[k]), ax = chain(n, a[0] + nx - 0.006, a[1] + ny + 0.52, g[0], g[g.length - 1]); // a leg is one angle, or [thigh, shin]
+      pp(n).ax[p] = ax;
+      pp("foot" + k).ax[p] = f.map((v, i) => v + (i % 2 ? ax[5] - a[5] : ax[4] - a[4]));
+    }
+    const hf = [];
+    for (const k of ["B", "F"]) {
+      const g = ar[k];
+      if (!g) { hf.push(HF[0][k === "B" ? 0 : 1].slice()); continue; }
+      const a = stand("up" + k), s = T(a[0], a[1]), u = chain("up" + k, s[0], s[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
+      pp("up" + k).ax[p] = u; pp("fore" + k).ax[p] = f;
+      hf.push(wristHF(f, g[1]));
+    }
+    HF.push(hf);
+    return T;
+  }
+  // lying and flying poses (dead, leap, prone, crawl phases): the torso lies at T degrees (180 = flat, head end +x, below 180 = head up), the collar top at col,
+  // then every limb a straight chain: legs [thigh, shin, foot], arms [upper, fore, hand] (hand defaults to the forearm's angle); returns the head [x, y, rot]
+  function lie(p, T, col, legs, arms, hd) {
+    const c = Math.cos(T * DEG), s = Math.sin(T * DEG), set = (n, a) => { pp(n).ax[p] = a; return a; };
+    if (col === "centre") col = [-0.71 * c, -0.71 * s]; // the middle of the torso on (0, 0)
+    const tp = (x, y) => [col[0] + (0.905 + y) * c + x * s, col[1] + (0.905 + y) * s - x * c];
+    for (const n of ["chest", "collar", "waist", "capB", "capF"]) { const a = stand(n), r = []; for (let k = 0; k < 6; k += 2) r.push(...tp(a[k], a[k + 1])); set(n, r); }
+    for (const k of ["B", "F"]) {
+      const n = "leg" + k, a = stand(n), q = tp(a[0], a[1]), g = legs[k], ax = set(n, chain(n, q[0], q[1], g[0], g[1])), f = "foot" + k;
+      set(f, chain(f, ax[4] - 0.02 * Math.cos(g[1] * DEG), ax[5] - 0.02 * Math.sin(g[1] * DEG), g[2], g[2]));
+    }
+    const hf = [];
+    for (const k of ["B", "F"]) {
+      const a = stand("up" + k), q = tp(a[0], a[1]), g = arms[k], u = chain("up" + k, q[0], q[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
+      set("up" + k, u); set("fore" + k, f);
+      hf.push(wristHF(f, g[2] === undefined ? g[1] : g[2]));
+    }
+    HF.push(hf);
+    return [col[0] + hd[0], col[1] + hd[1], hd[2] * DEG];
+  }
+  build(1, null, 0, 0, null, { B: [137, -15], F: [84, 183] });    // reach: the far arm swung back with the forearm forward, the near forearm across the body
+  build(2, null, 0, 0, null, { B: null, F: [64, 185] });            // slap: the near elbow out in front, the forearm back so the hand lies flat on the chest
+  // grip: standing, feet apart (the legs hold the feet on the floor line), the near arm bent once with the fist before the chest at shoulder height, the far arm relaxed at the side
+  const GRH = [0, 0, 0], PRH = [0, 0, 0], CRH = [0, 0, 0], CUH = [0, 0, 0];
   {
-    const T = 150, c = Math.cos(T * DEG), s = Math.sin(T * DEG), set = (n, a) => { PARTS.find(p => p.n === n).ax[5] = a.map((v, i) => v - (i % 2 ? DV.y : DV.x)); };
+    const T = build(3, 4, 0, -0.503, { B: 105, F: 75 }, { B: [92, 92], F: [80, -60] }), h = T(0, -0.925);
+    GRH[0] = h[0]; GRH[1] = h[1]; GRH[2] = 4 * 0.6 * DEG;
+  }
+  const DEH = [0, 0, -0.6];
+  { // dead: prone, chest on the ground, the far arm stretched ahead with the hand flat, the near arm slack along the side, the legs limp, the head down
+    const h = lie(4, 180, [0, -0.19], { B: [152, 158, 158], F: [172, 175, 162] }, { B: [34, 28, 0], F: [178, 178, 178] }, [0.03, -0.03, 75]);
+    DEH[0] = h[0]; DEH[1] = h[1]; DEH[2] = h[2];
+  }
+  // dive: body horizontal (torso long axis 180 = straight back), the near arm straight ahead along the body line, the far arm swept back along the side, the legs together trailing straight back
+  const DV = { x: -0.2, y: 0 }, DVH = [0, 0, 0];
+  {
+    const T = 180, c = Math.cos(T * DEG), s = Math.sin(T * DEG), set = (n, a) => { PARTS.find(p => p.n === n).ax[5] = a.map((v, i) => v - (i % 2 ? DV.y : DV.x)); };
     const tp = (x, y) => [(0.905 + y) * c + x * s, (0.905 + y) * s - x * c]; // stand point onto the tilted torso (the front, +x, faces down-right)
     for (const n of ["chest", "collar", "waist", "capB", "capF"]) {
       const a = stand(n), r = [];
       for (let k = 0; k < 6; k += 2) r.push(...tp(a[k], a[k + 1]));
       set(n, r);
     }
-    const legs = { B: [152, 162, 162], F: [40, 155, 155] };
+    const legs = { B: [180, 180, 180], F: [180, 180, 180] }; // together, trailing straight back
     for (const k of ["B", "F"]) {
       const n = "leg" + k, a = stand(n), p = tp(a[0], a[1]), g = legs[k], ax = chain(n, p[0], p[1], g[0], g[1]); set(n, ax);
       const f = "foot" + k;
       set(f, chain(f, ax[4] - 0.02 * Math.cos(g[2] * DEG), ax[5] - 0.02 * Math.sin(g[2] * DEG), g[2], g[2]));
     }
-    const hf = [], arms = { B: [150, 40], F: [40, 10] };
+    const hf = [], arms = { B: [180, 180], F: [0, 0] }; // the near arm straight ahead along the body line, the far arm swept back along the side
     for (const k of ["B", "F"]) {
       const a = stand("up" + k), p = tp(a[0], a[1]), g = arms[k], u = chain("up" + k, p[0], p[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
       set("up" + k, u); set("fore" + k, f);
@@ -126,7 +152,7 @@ window.GenDuo = (function () {
     }
     HF.push(hf);
     const co = PARTS.find(p => p.n === "collar").ax[5];
-    DVH[0] = co[2] + 0.03; DVH[1] = co[3] - 0.017; DVH[2] = 60 * DEG;
+    DVH[0] = co[2] + 0.0346 * -c; DVH[1] = co[3] + 0.0346 * -s; DVH[2] = (T - 90) * DEG;
   }
   // curl: a closed ball, back to the left, knees drawn up, both arms wrapped round the creature held in front of the chest
   const CL = { x: -0.0415, y: 0.031 }, CLH = [0, 0, 0], CAGE = [0, 0];
@@ -137,7 +163,7 @@ window.GenDuo = (function () {
     const P0 = [0.106, -0.106], d1 = 135, ca = 0.025 * Math.SQRT1_2; // the collar's top; the torso runs down-back from it
     set("collar", chain("collar", P0[0], P0[1], d1, d1));
     const C0 = [P0[0] - ca, P0[1] + ca];
-    const ch = set("chest", chain("chest", C0[0], C0[1], d1, d1)), w = set("waist", chain("waist", ch[4], ch[5], d1, d1));
+    const ch = set("chest", chain("chest", C0[0], C0[1], d1, d1)), w = set("waist", chain("waist", ch[4], ch[5], d1 + 20, d1 + 20)); // the back rounds: the waist turns on towards level
     for (const n of ["capB", "capF"]) set(n, turn(stand(n), 0, -0.88, d1 - 90, C0[0], C0[1]));
     const hf = [];
     const legs = { B: [-4.6, 160.1, 10, 10], F: [-4.6, 160.1, 10, 10] }; // thigh forward and level, shin folded back under it, foot along the shin end
@@ -163,20 +189,7 @@ window.GenDuo = (function () {
   // forward and up with the hand open and the fingers fanned, the far arm thrown back, the back foot stepped out behind. Origin on the foot line like stand.
   const RCH = [0, 0, 0];
   {
-    const set = (n, a) => { PARTS.find(p => p.n === n).ax[7] = a; return a; };
-    const tr = (a) => turn(a, 0.006, -0.52, -20, -0.03, -0.5);
-    for (const n of ["chest", "collar", "waist", "capB", "capF"]) set(n, tr(stand(n)));
-    set("legB", [-0.04, -0.5, -0.155, -0.275, -0.27, -0.05]);
-    set("footB", [-0.303, -0.026, -0.248, -0.026, -0.198, -0.025]);
-    set("legF", [-0.01, -0.5, 0.07, -0.275, 0.15, -0.05]);
-    set("footF", [0.095, -0.026, 0.14, -0.026, 0.22, -0.025]);
-    const hf = [], arms = { B: [160, 190], F: [-50, -35] };
-    for (const k of ["B", "F"]) {
-      const a = stand("up" + k), p = tr([a[0], a[1], 0, 0, 0, 0]), g = arms[k], u = chain("up" + k, p[0], p[1], g[0], g[0]), f = chain("fore" + k, u[4], u[5], g[1], g[1]);
-      set("up" + k, u); set("fore" + k, f);
-      hf.push(wristHF(f, g[1]));
-    }
-    HF.push(hf);
+    build(7, -22, -0.03, -0.5125, { B: 115, F: 80 }, { B: [160, 190], F: [-50, -35] }); // the near foot planted, the far foot stepped back on its toes
     const co = PARTS.find(p => p.n === "collar").ax[7];
     RCH[0] = co[0] - 0.007; RCH[1] = co[1] - 0.019; RCH[2] = -0.35;
     for (const P of PARTS) { // the fanned near hand: each finger leans out from its base, the thumb out to its side
@@ -211,24 +224,76 @@ window.GenDuo = (function () {
     const co = PARTS.find(p => p.n === "collar").ax[8];
     CWH[0] = co[2] + 0.05; CWH[1] = co[3] - 0.03; CWH[2] = 35 * DEG;
   }
+  { // crouch (pose 9): landing / wind-up, knees deep, the torso leaning 30 degrees forward, the far arm hanging ahead of the knee, the near arm held forward
+    const T = build(9, 22, -0.03, -0.40, { B: [62, 138], F: [48, 112] }, { B: [95, 65], F: [100, -5] }), h = T(0, -0.925);
+    CRH[0] = h[0]; CRH[1] = h[1]; CRH[2] = 22 * 0.6 * DEG;
+  }
+  { // pry (pose 10): grip with the far hand brought across to the held fist
+    const T = build(10, 4, 0, -0.503, { B: 105, F: 75 }, { B: [25, -10], F: [75, -40] }), h = T(0, -0.925);
+    PRH[0] = h[0]; PRH[1] = h[1]; PRH[2] = 4 * 0.6 * DEG;
+  }
+  { // clutch (pose 11): hunched 25 degrees, the near forearm held across the chest, the far hand gripping it, the knees slightly bent
+    const T = build(11, 25, 0, -0.488, { B: [65, 105], F: [65, 105] }, { B: [125, 27], F: [85, -125] }), h = T(0, -0.925);
+    CUH[0] = h[0]; CUH[1] = h[1]; CUH[2] = 25 * 0.6 * DEG;
+  }
+  // kneel (pose 12): the near foot planted, the far knee down with the shin back along the floor, the torso bowed 10 degrees, the near arm hanging straight and stiff, the far hand on the raised knee
+  const KNH = [0, 0, 0], LPH = [0, 0, 0], PRN = [0, 0, 0], CRR = [0, 0, 0], CRP = [0, 0, 0], CRL = [0, 0, 0], LCL = [0, 0, 0];
+  {
+    const T = build(12, 10, -0.02, -0.25, { B: [90, 178], F: [0, 90] }, { B: [102, 14], F: [138, 140] }), h = T(0, -0.925);
+    KNH[0] = h[0]; KNH[1] = h[1]; KNH[2] = 10 * 0.6 * DEG;
+  }
+  { // leap (pose 13): stretched near horizontal (8 degrees up), both arms reaching forward bent at the elbow (the hands low and ahead), the legs trailing back, the near one bent a little. Origin at the torso's middle
+    const h = lie(13, 172, "centre", { B: [174, 174, 174], F: [166, 178, 172] }, { B: [66, -50], F: [64, -52] }, [0.03, -0.01, 55]);
+    LPH[0] = h[0]; LPH[1] = h[1]; LPH[2] = h[2];
+  }
+  { // prone (pose 14): on the front, chest a little raised on the near arm folded under it, the far arm bent with the hand flat by the shoulder, the legs back and flat, a little apart, toes down
+    const h = lie(14, 174, [0, -0.19], { B: [152, 158, 160], F: [172, 175, 165] }, { B: [120, 3, 0], F: [180, 0, 20] }, [0.04, -0.04, 45]);
+    PRN[0] = h[0]; PRN[1] = h[1]; PRN[2] = h[2];
+  }
+  { // crawl phases (poses 15-17): the far arm reaches ahead with the hand lifted, the hand set flat at full reach, then the elbow bent deep with the shoulders drawn up to the planted hand; the legs trail limp, the knees change a little
+    const fa = [180, 0, 20]; // the near fist stays folded under the chest
+    let h = lie(15, 171, [0.07, -0.2], { B: [152, 158, 160], F: [175, 178, 165] }, { B: [26, 16, 0], F: fa }, [0.04, -0.05, 40]);
+    CRR[0] = h[0]; CRR[1] = h[1]; CRR[2] = h[2];
+    h = lie(16, 173, [0.07, -0.2], { B: [152, 158, 160], F: [172, 175, 165] }, { B: [35, 29, 0], F: fa }, [0.04, -0.04, 45]);
+    CRP[0] = h[0]; CRP[1] = h[1]; CRP[2] = h[2];
+    h = lie(17, 180, [0.05, -0.12], { B: [150, 158, 160], F: [175, 177, 165] }, { B: [-15, 76, 0], F: fa }, [0.03, -0.03, 55]);   // the elbow stays at the top of the back, the forearm slants to the planted hand
+    CRL[0] = h[0]; CRL[1] = h[1]; CRL[2] = h[2];
+  }
+  { // lowCurl (pose 18): the knees drawn under the hips with the shins flat on the floor, the chest down over them, the near (poisoned) arm curled at the chest, the far forearm flat on the floor, pushing
+    const h = lie(18, 171, [0, -0.2], { B: [166, 176, 176], F: [168, 177, 176] }, { B: [120, 3, 0], F: [178, 2, 20] }, [0.04, -0.04, 45]);
+    LCL[0] = h[0]; LCL[1] = h[1]; LCL[2] = h[2];
+  }
   for (const P of HF) for (const H of P) { const r = H[2]; H[2] = Math.cos(r); H[3] = Math.sin(r); }
   // grip with the arm down (o.raise 0): the near fist held out forward at shoulder to head height, the elbow bent; o.raise blends to the overhead reach
-  const LOWAX = { upF: [0.165, -0.88, 0.1825, -0.74, 0.2, -0.6], foreF: [0.2, -0.6, 0.255, -0.63, 0.31, -0.64] };
-  const LOWHF = [0.31, -0.64, Math.atan2(-0.11 / 0.117, -0.04 / 0.117)];
-  const HFT = [0, 0, 1, 0], AXT = new Float64Array(6);
+  const LOWA = [83 * DEG, -20 * DEG]; // the low arm's bone angles (upper, fore): the same stand lengths, the forearm out forward
+  const HOLDA = [75 * DEG, -40 * DEG]; // the grip pose's own low arm, the hold in the burst: the upper arm down and forward, the elbow bent about 90, the fist before the chest
+  const lowA = (p) => p === 3 ? HOLDA : LOWA, lowHF = (p) => Math.atan2(-Math.cos(lowA(p)[1]), Math.sin(lowA(p)[1]));
+  const HFT = [0, 0, 1, 0], AXT = new Float64Array(6), AXU = new Float64Array(6);
+  function lowArm(rz, p) { // the near arm between the low and the overhead grip: each bone turns the short way, the lengths stay
+    const U = PARTS[IDX.upF].ax[p], F = PARTS[IDX.foreF].ax[p];
+    const gu = angLerp(lowA(p)[0], Math.atan2(U[3] - U[1], U[2] - U[0]), rz), gf = angLerp(lowA(p)[1], Math.atan2(F[3] - F[1], F[2] - F[0]), rz);
+    AXU[0] = U[0]; AXU[1] = U[1];
+    for (let k = 0; k < 4; k += 2) {
+      AXU[k + 2] = AXU[k] + Math.hypot(U[k + 2] - U[k], U[k + 3] - U[k + 1]) * Math.cos(gu); AXU[k + 3] = AXU[k + 1] + Math.hypot(U[k + 2] - U[k], U[k + 3] - U[k + 1]) * Math.sin(gu);
+    }
+    AXT[0] = AXU[4]; AXT[1] = AXU[5];
+    for (let k = 0; k < 4; k += 2) {
+      AXT[k + 2] = AXT[k] + Math.hypot(F[k + 2] - F[k], F[k + 3] - F[k + 1]) * Math.cos(gf); AXT[k + 3] = AXT[k + 1] + Math.hypot(F[k + 2] - F[k], F[k + 3] - F[k + 1]) * Math.sin(gf);
+    }
+  }
   function hfOf(p, a, rz) {
     const H = HF[p][a];
-    if (p !== 3 || a !== 1 || rz >= 1) return H;
-    const hi = Math.atan2(H[3], H[2]), r = LOWHF[2] + (hi - LOWHF[2]) * rz;
-    HFT[0] = LOWHF[0] + (H[0] - LOWHF[0]) * rz; HFT[1] = LOWHF[1] + (H[1] - LOWHF[1]) * rz; HFT[2] = Math.cos(r); HFT[3] = Math.sin(r);
+    if ((p !== 3 && p !== 9) || a !== 1 || rz >= 1) return H;
+    lowArm(rz, p);
+    const r = angLerp(lowHF(p), Math.atan2(H[3], H[2]), rz);
+    HFT[0] = AXT[4]; HFT[1] = AXT[5]; HFT[2] = Math.cos(r); HFT[3] = Math.sin(r);
     return HFT;
   }
   function axOf(s, p, rz) {
     const A = s.ax[p] || s.ax[0];
-    if (p !== 3 || rz >= 1 || !LOWAX[s.n]) return A;
-    const L = LOWAX[s.n];
-    for (let k = 0; k < 6; k++) AXT[k] = L[k] + (A[k] - L[k]) * rz;
-    return AXT;
+    if ((p !== 3 && p !== 9) || rz >= 1 || (s.n !== "upF" && s.n !== "foreF")) return A;
+    lowArm(rz, p);
+    return s.n === "upF" ? AXU : AXT;
   }
   // draw order per pose (names); the head and collar are drawn with the torso
   const ORD = [
@@ -247,6 +312,9 @@ window.GenDuo = (function () {
     "legF", "footF", "capF", "upF", "foreF", "thumb1", "palm1", "fin10", "fin11", "fin12", "fin13"];
   ORD[7] = ORD[3]; // recoil: as grip
   ORD[8] = ORD[3]; // crawl: as grip (the far arm reaching first, then the body, then the near fist over it)
+  ORD[9] = ORD[3]; ORD[11] = ORD[3]; // crouch, clutch: as grip
+  ORD[10] = ORD[1]; // pry: the near fist, then the far hand across it
+  for (let i = 12; i <= 18; i++) ORD[i] = ORD[3]; // kneel, leap, prone, crawl phases, low curl: as grip
   // ---- courses and blocks, built once ------------------------------------------------------
   function rng(seed) { // mulberry32
     let a = seed >>> 0;
@@ -305,7 +373,7 @@ window.GenDuo = (function () {
   let cWarm = 0, cWX = 0, cWY = 0;
   let cC = null, cX = 0, cY = 0, cH = 1, cF = 1, cPose = 0, cPal = null, cFist = 0, cMelt = 0, cCut = 0, cRaise = 1, cVen = 0, cVenA = 1, vV = null, vF = 0;
   // venom path along the near arm: part -> [venom where the red enters it, where it has crossed it, 1 if it runs from the part's end (t = 1) back, 0 from its start]
-  const VEN = { palm1: [0.0625, 0.1875, 1], thumb1: [0, 0.125, 1], foreF: [0.1875, 0.5, 1], upF: [0.5, 0.75, 1], capF: [0.75, 0.875, 0], collar: [0.75, 0.875, 0], chest: [0.875, 1.2, 0] };
+  const VEN = { palm1: [0.0625, 0.1875, 1], thumb1: [0, 0.125, 1], foreF: [0.1875, 0.5, 1], upF: [0.5, 0.75, 1], capF: [0.75, 0.875, 0], collar: [0.75, 0.875, 0], chest: [0.875, 1, 0], waist: [0.9375, 1, 0] };
   // the red is "232,84,78", Obrokxus's burn (OB.burn)
   for (let j = 0; j < 4; j++) VEN["fin1" + j] = [0, 0.125, 1];
   const redRow = (s, r) => { // the joints of this row run red
@@ -353,6 +421,58 @@ window.GenDuo = (function () {
     dx = AXW[4] - AXW[2]; dy = AXW[5] - AXW[3]; l = Math.hypot(dx, dy) || 1; T1X = dx / l; T1Y = dy / l;
     if (!(s.hand && cFist > 0 && s.fl)) { W0 = s.w[0]; WM = s.w[1]; W1 = s.w[2]; }
   }
+  // the poison: Obrokxus's red lights only in the gaps between neighbouring stones, seam by seam (a fixed hash per block picks which), as one glowing path
+  const seamHash = (gi, k) => { let h = Math.imul(gi * 2 + k + 1, 0x9E3779B1); h ^= h >>> 15; h = Math.imul(h, 0x85EBCA6B); h ^= h >>> 13; return (h >>> 0) / 4294967296; };
+  function seamQuad(t0, t1, u0, u1) {
+    const g0 = t0 < 0.5 ? 0 : 1, g1 = t1 <= 0.5 ? 0 : 1;
+    put(0, t0, u0, g0); put(1, t0, u1, g0); put(2, t1, u1, g1); put(3, t1, u0, g1);
+    cC.moveTo(Q[0][0], Q[0][1]);
+    for (let i = 1; i < 4; i++) cC.lineTo(Q[i][0], Q[i][1]);
+    cC.closePath();
+  }
+  // the cracks: stair-step masonry cracks. One polyline per crack follows a joint through a course, steps along the gap to the nearest joint of the next course, and so on from the end the poison came from to the front; the last course fades
+  const VCORE = mixHex("#e8544e", "#12161c", 0.1), JU = new Float64Array(64);
+  const VWIDE = { capF: 1, collar: 1, chest: 1, waist: 1 };
+  const crackPt = (t, u, mv) => { put(0, t, u, t < 0.5 ? 0 : 1); if (mv) cC.moveTo(Q[0][0], Q[0][1]); else cC.lineTo(Q[0][0], Q[0][1]); };
+  function venomCrack(s, brk, nr, ml, k) {
+    const dir = vV[2] ? -1 : 1;
+    let u = -1, on = false;
+    for (let r = dir < 0 ? nr - 1 : 0; r >= 0 && r < nr; r += dir) {
+      if (brk && !cHead && r < 2) break;
+      if (!redRow(s, r)) break;
+      if (ml && rowYh(s, r) > cCut - MELT_BAND) break;
+      const t0 = s.rt0[r], t1 = s.rt1[r], m = (t0 + t1) / 2;
+      const a = Math.min(1, (vV[2] ? m - (1 - vF) : vF - m) / Math.max(1e-4, t1 - t0) + 0.5);
+      if (a <= 0) break;
+      let n = 0;
+      for (let b = s.rb0[r] + 1; b < s.rb1[r] && n < 64; b++) if (!s.bg[b] && !s.bg[b - 1]) JU[n++] = s.bu0[b];
+      if (!n) continue;
+      let idx = 0;
+      if (u < 0) {
+        idx = Math.floor(seamHash(s.base + s.rb0[r], k) * n) % n;
+        if (k) idx = (idx + 1 + Math.floor(seamHash(s.base + s.rb0[r], 5) * Math.max(1, n - 1))) % n;
+      } else for (let i = 1; i < n; i++) if (Math.abs(JU[i] - u) < Math.abs(JU[idx] - u)) idx = i;
+      const nu = JU[idx], ent = dir < 0 ? t1 : t0, ext = dir < 0 ? t0 : t1;
+      if (a < 0.999) { // the front: the crack's last block fades out
+        if (on) { crackPt(ent, nu, false); cC.globalAlpha = cVenA; cC.stroke(); }
+        cC.beginPath(); crackPt(ent, nu, true); crackPt(ext, nu, false);
+        cC.globalAlpha = a * cVenA; cC.stroke();
+        return;
+      }
+      if (!on) { cC.beginPath(); crackPt(ent, nu, true); on = true; } else crackPt(ent, nu, false);
+      crackPt(ext, nu, false);
+      u = nu;
+    }
+    if (on) { cC.globalAlpha = cVenA; cC.stroke(); }
+  }
+  function venomSeams(s, brk, j, nr, ml) {
+    cC.save();
+    cC.strokeStyle = VCORE; cC.lineWidth = 1.25; cC.lineJoin = "miter"; cC.lineCap = "butt";
+    cC.shadowColor = "rgba(232,84,78,0.95)"; cC.shadowBlur = 4;
+    venomCrack(s, brk, nr, ml, 0);
+    if (VWIDE[s.n]) venomCrack(s, brk, nr, ml, 1);
+    cC.restore();
+  }
   function drawPart(s) {
     axes(s);
     const brk = s.n === "chest"; // headless: the top two courses are broken (stones missing, tops uneven)
@@ -362,6 +482,7 @@ window.GenDuo = (function () {
     backPart(s, brk, pal);
     const j = Math.max(0.0016, 1.2 / cH), nr = s.rt0.length;
     const ml = cMelt > 0;
+    if (vV && cVenA > 0) venomSeams(s, brk, j, nr, ml);
     for (let r = 0; r < nr; r++) {
       const t0 = s.rt0[r], t1 = s.rt1[r], g0 = t0 < 0.5 ? 0 : 1, g1 = t1 <= 0.5 ? 0 : 1;
       if (ml) {
@@ -424,10 +545,10 @@ window.GenDuo = (function () {
   }
   // dark backing under a part's courses, so joints and missing blocks read as dark, not as holes
   function backPart(s, brk, pal) {
-    const dark = pal.dark, red = vV && cVenA > 0 ? mixHex(dark, "#e8544e", cVenA) : dark;
+    const dark = pal.dark;
     for (let r = brk && !cHead ? 1 : 0; r < s.rt0.length; r++) {
       if (cMelt > 0 && rowYh(s, r) > cCut - MELT_BAND) continue;
-      cC.fillStyle = redRow(s, r) ? red : dark;
+      cC.fillStyle = dark;
       put(0, s.rt0[r], 0, s.rt0[r] < 0.5 ? 0 : 1); put(1, s.rt0[r], 1, s.rt0[r] < 0.5 ? 0 : 1);
       put(2, s.rt1[r], 1, s.rt1[r] <= 0.5 ? 0 : 1); put(3, s.rt1[r], 0, s.rt1[r] <= 0.5 ? 0 : 1);
       traceCur(); cC.fill();
@@ -456,8 +577,8 @@ window.GenDuo = (function () {
 
   ORD[2] = ORD[0];
   // head centre (h units) and spike-fan tip per pose
-  const HEADP = [[0, -0.925, 0], [-0.012, -0.92, -0.18], [0.012, -0.912, 0.3], [0.05, -0.915, 0.25], [-0.22, -0.88, -0.6], DVH, CLH, RCH, CWH];
-  const poseOf = (o) => o.pose === "reach" ? 1 : o.pose === "slap" ? 2 : o.pose === "grip" ? 3 : o.pose === "dead" ? 4 : o.pose === "dive" ? 5 : o.pose === "curl" ? 6 : o.pose === "recoil" ? 7 : o.pose === "crawl" ? 8 : 0;
+  const HEADP = [[0, -0.925, 0], [-0.012, -0.92, -0.18], [0.012, -0.912, 0.3], GRH, DEH, DVH, CLH, RCH, CWH, CRH, PRH, CUH, KNH, LPH, PRN, CRR, CRP, CRL, LCL];
+  const poseOf = (o) => o.pose === "reach" ? 1 : o.pose === "slap" ? 2 : o.pose === "grip" ? 3 : o.pose === "dead" ? 4 : o.pose === "dive" ? 5 : o.pose === "curl" ? 6 : o.pose === "recoil" ? 7 : o.pose === "crawl" ? 8 : o.pose === "crouch" ? 9 : o.pose === "pry" ? 10 : o.pose === "clutch" ? 11 : o.pose === "kneel" ? 12 : o.pose === "leap" ? 13 : o.pose === "prone" ? 14 : o.pose === "crawlReach" ? 15 : o.pose === "crawlPlant" ? 16 : o.pose === "crawlPull" ? 17 : o.pose === "lowCurl" ? 18 : 0;
 
   // ---- between two poses: o.pose2 and o.mix (0..1) draw the body part of the way from o.pose to o.pose2 ----
   // Each limb segment keeps its length (lengths and directions are blended, and the chain is rebuilt joint by joint from the parent's blended point),
@@ -874,5 +995,14 @@ window.GenDuo = (function () {
     }
     ctx.restore();
   }
-  return { drawRex, drawRexFingers, rexAnchors, drawObrok1 };
+  // read-only: the limb axes [x0,y0, x1,y1, x2,y2] (h units, facing +x) of one pose, or blended o.pose to o.pose2 by o.mix as the drawing does; for tools/rexsheet.py
+  function rexJoints(o) {
+    const p = poseOf(o), out = {}, rz = o.raise === undefined ? 1 : Math.max(0, Math.min(1, o.raise));
+    if (o.pose2 !== undefined && o.mix > 0) { mixCompute(p, poseOf({ pose: o.pose2 }), Math.min(1, o.mix), rz); for (const n of BN) out[n] = Array.from(BAX[n]); }
+    else for (const n of BN) out[n] = Array.from(axOf(PARTS[IDX[n]], p, rz));
+    return out;
+  }
+  // where a hand sits from the pose's origin (a: 0 far hand, 1 near hand; units of h, face 1): the beat keeps the planted hand fixed in the world by placing the body at hand - handOff
+  function rexHandOff(pose, a) { const q = rexAnchors(0, 0, 1, { pose, face: 1 }, {})[a ? "handF" : "handB"]; return { x: q.x, y: q.y }; }
+  return { drawRex, drawRexFingers, rexAnchors, rexHandOff, drawObrok1, rexJoints };
 })();
