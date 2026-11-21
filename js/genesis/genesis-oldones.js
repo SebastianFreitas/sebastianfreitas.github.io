@@ -1176,7 +1176,7 @@ window.GenOld = (function () {
     if (nearest) {
       ctx.globalAlpha = nearest.p.a;
       riftBand(ctx, nearest.p.x, nearest.p.y - 0.5 * nearest.o.hf * H, nearest.o.hf * H,
-        (c) => paintOne(c, nearest.o, nearest.p));
+        (c) => paintOne(c, nearest.o, nearest.p), "#8c8c8c");
     }
     ctx.restore();
     const WX = window.GenAttire && window.GenAttire.weather;

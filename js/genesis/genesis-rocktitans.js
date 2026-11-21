@@ -337,6 +337,8 @@ window.GenRockTitans = (function () {
     ctx.scale(s, s); ctx.drawImage(ch.lift || ch.sp, -ch.ox, -ch.oy);
     ctx.restore();
   }
+  const CHIP_FADE = 3;   // s the leftover chips take to fade out
+  const chipFadeT0 = () => 9 + ADD + 4;   // trade secs: 4 s into the walk, long after the last birth
   function drawChips(ctx, tt, out) {
     if (G.reduced) {   // reduced motion: the non-part deck and float chips at their rest, from trade 0; no out or part chips
       if (!debris || out || tt < 0) return;
@@ -347,9 +349,15 @@ window.GenRockTitans = (function () {
     const step = out ? Math.min(5, Math.floor((tt - BURST) / 0.2 + 1e-6)) : burstStep(tt);   // out chips: 0.2 s held steps from 1.6, past the edges from 2.6
     // from 2.4 the 11 non-part float chips drift 0.004 H a snap (15 snaps to 8.4); parts never move
     const drift = tt < 2.4 + ADD ? 0 : Math.min(15, Math.floor((tt - 2.4 - ADD) / 0.4 + 1e-6)) * 0.004 * G.H;
+    const fa = out ? 1 : Math.max(0, 1 - (tt - chipFadeT0()) / CHIP_FADE);
     debris.forEach((ch) => {
       if ((ch.share === "out") !== out) return;
       if (ch.idx >= 0 && !out && window.GenOld && GenOld.birthT && tt >= GenOld.birthT(ch.idx)) return;   // its old one is growing: hand over
+      if (!(ch.idx >= 0) && !out) {   // the leftovers never become old ones: they fade out over CHIP_FADE s once the last old one is born
+        if (fa <= 0) return;
+        ctx.save(); ctx.globalAlpha *= fa; drawChip(ctx, ch, step, drift); ctx.restore();
+        return;
+      }
       drawChip(ctx, ch, step, drift);
     });
   }
