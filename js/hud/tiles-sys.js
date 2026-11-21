@@ -13,6 +13,7 @@
     let prevAng = 0;
     let sys = {
       o2: 20.95, co2: 420, kpa: 101.3, rh: 40,
+      tL: 462, kpaL: 9200, rhL: 0, h2so4: 3.2, co2L: 96,   // the lower deck: temperature (c), pressure (kPa), humidity (%), h2so4 and co2 (% of the air)
       dose: 0.013,
       hullT: -48, cabT: 21.2, hx: 0.12, hullInt: 1, wear: 0,
       omega: 0, lastImpact: null,
@@ -42,6 +43,17 @@
       sys.co2 = approach(sys.co2, co2T, 2.4, dt);
       sys.kpa = approach(sys.kpa, kpaT, 2.2, dt);
       sys.rh  = approach(sys.rh,  rhT,  2.6, dt);
+      /* the lower deck (a crew that breathes h2so4 in a co2 carrier), disturbed by the same terms */
+      const tLT   = 462 + Math.sin(now * 0.23) * 4 * fz + chaos * 38 + thrust * 14 + 120 * wp + 30 * (e.heat || 0) + 15 * jit * (e.n1 || 0);
+      const kpaLT = 9200 + Math.sin(now * 0.19) * 20 * fz - future * 300 - chaos * 60 - 400 * wp + 80 * jit * (e.n3 || 0);
+      const rhLT  = Math.max(0, chaos * 1.5 + 2 * wp);
+      const h2T   = 3.2 + Math.sin(now * 0.29) * 0.08 * fz - chaos * 0.6 - thrust * 0.1 - 1.9 * wp + 0.3 * jit * (e.n1 || 0);
+      const co2LT = 96 + Math.sin(now * 0.13) * 0.5 * fz + chaos * 2.2 + thrust * 0.6 + 3 * wp + 0.4 * jit * (e.n2 || 0);
+      sys.tL    = approach(sys.tL,    tLT,   3, dt);
+      sys.kpaL  = approach(sys.kpaL,  kpaLT, 2.2, dt);
+      sys.rhL   = approach(sys.rhL,   rhLT,  2.6, dt);
+      sys.h2so4 = approach(sys.h2so4, h2T,   3, dt);
+      sys.co2L  = approach(sys.co2L,  co2LT, 2.4, dt);
 
       /* a flare is a spike, not a season: a narrow peak, and only where the
          field is genuinely torn */

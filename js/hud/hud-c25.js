@@ -5,7 +5,9 @@
    Static linework (ph 's') is cached per resize; values (ph 'd') are painted every draw. */
 window.HudC25 = (function () {
   const GOLD = "245,208,107", CREAM = "228,221,198", GREY = "160,168,160", RED = "110,26,26", REDT = "196,74,68";
-  const C_TOP = "205,214,224", C_MID = GOLD, C_HULL = "92,132,192", C_NOSE = "158,52,48";   // HUD line colours that follow the hull's parts in js/ship/voidship-hull.js: cold white top (receptors), gold centre (engine), steel blue lower hull, oxblood nose
+  const C_HULL_BLUE = ["92,132,192", "128,164,216"], C_HULL_VIOLET = ["150,112,214", "186,160,236"];   // lower hull: a non-human crew. Pick one pair on the next line
+  const [C_HULL, C_HULL_GLOW] = ["108,116,188", "140,148,214"];   // muted blue-purple, between the two pairs above (owner, 2026-11-21: the violet was too bright)
+  const C_TOP = "205,214,224", C_MID = GOLD, C_NOSE = "158,52,48";   // HUD line colours that follow the hull's parts in js/ship/voidship-hull.js: cold white top (receptors), gold centre (engine), steel blue lower hull, oxblood nose
   const LABEL = 10, VALUE = 12, HERO = 24;   // the three text sizes (sketch px): label, value, hero
   const QUIET = 0.42, NORMAL = 0.75, BRIGHT = 0.95;   // the three alphas: quiet (structure), normal, bright (live values)
   const HAIR = 1, STRONG = 1.5;   // the two stroke widths
@@ -194,7 +196,7 @@ window.HudC25 = (function () {
     const g = (col, a, w) => { pth(); c.strokeStyle = rgba(col, a); c.lineWidth = w; c.lineJoin = "round"; c.stroke(); };
     const grown = ts > s + 1e-6;   // grown text: tag starts just past the glyph and drops the letter spacing so it clears the next lamp
     const tag = o => text(str, x + (grown ? 14 : 16), ty, Object.assign({ size: grown ? 8 : LABEL, col: GREY, a: 0.5 }, grown ? { ls: 0 } : {}, o));
-    if (!on) { g(lc === C_HULL ? "128,164,216" : lc || GOLD, 0.34, 1); tag({ a: 0.55 }); return; }
+    if (!on) { g(lc === C_HULL ? C_HULL_GLOW : lc || GOLD, 0.34, 1); tag({ a: 0.55 }); return; }
     const col = red ? RED : lc || CREAM, hi = red ? REDT : lc || CREAM;
     c.save(); c.shadowColor = rgba(hi, 0.8); c.shadowBlur = 8 * s; g(hi, 1, STRONG); c.restore();
     c.save(); c.shadowColor = rgba(hi, 0.7); c.shadowBlur = 6 * s; pth(); c.fillStyle = rgba(col, red ? 1 : 0.55); c.fill(); c.restore();
@@ -439,7 +441,7 @@ window.HudC25 = (function () {
     edge(1514, 1594, ycR, { join: "L", n: 8, maj: 4, v: (RF.volt - 24) / 8, mark: (RF.volt - 24) / 8 });
     edge(1604, 1870, ycR, { off: -6, n: 24, maj: 4, mid: 2, v: Math.min(1, RF.bus / 6), mark: Math.min(1, RF.bus / 6) });
     const tc = v => (v - 10) / 20;
-    edge(1880, 1976, ycR, { col: C_HULL, n: 20, maj: 10, mid: 5, v: tc(RF.cabin), mark: tc(RF.cabin) });
+    edge(1880, 1976, ycR, { col: C_TOP, n: 20, maj: 10, mid: 5, v: tc(RF.cabin), mark: tc(RF.cabin) });
     stat_(() => { const xa = 1880 + 96 * tc(18), xb = 1880 + 96 * tc(24); dash([1, 2], () => line(xa, ycR(xa) + 9, xb, ycR(xb) + 9, CREAM, 0.6)); });
     dyn(() => {
       rd([[RF.volt.toFixed(1), "n"], ["V", "m"]], 1516, ycR, ts > s + 1e-6 ? -2 : 0, "left");
@@ -474,12 +476,12 @@ window.HudC25 = (function () {
         busEnd = { rail: RX0 + RW, row: RX0 + RW, txtR: xs + W_("spare", LBL()) + 4 + W_(sp, LBL()) }; }); }
     /* cabin trace */
     { const xa = 1882, xb = 1970, yT = 790, yB = 806, Y = v => yB - (v - 20) / 2 * (yB - yT);
-      stat_(() => { line(xa, yB + 0.5, xb, yB + 0.5, C_HULL, 0.3);
-        for (let i = 0; i <= 6; i++) { const x = Math.round(xa + (xb - xa) * i / 6) + 0.5; line(x, yB + 1, x, yB + (i % 3 ? 2.5 : 4), C_HULL, i % 3 ? 0.2 : 0.45); }
-        dash([1, 2], () => line(xa, Math.round(Y(21)) + 0.5, xb, Math.round(Y(21)) + 0.5, C_HULL, 0.35));
+      stat_(() => { line(xa, yB + 0.5, xb, yB + 0.5, C_TOP, 0.3);
+        for (let i = 0; i <= 6; i++) { const x = Math.round(xa + (xb - xa) * i / 6) + 0.5; line(x, yB + 1, x, yB + (i % 3 ? 2.5 : 4), C_TOP, i % 3 ? 0.2 : 0.45); }
+        dash([1, 2], () => line(xa, Math.round(Y(21)) + 0.5, xb, Math.round(Y(21)) + 0.5, C_TOP, 0.35));
         line(xb + 1, Math.round(Y(21)) + 0.5, xb + 5, Math.round(Y(21)) + 0.5, CREAM, 0.9); mic("30m", xa - (ts > s + 1e-6 ? 6 : 0), yB + 13, { a: 0.7 }); });
       dyn(() => { const raw = RF.cabTrace, n = raw.length - 1, pts = raw.map((v, i) => { let a = 0, m = 0; for (let j = Math.max(0, i - 7); j <= Math.min(n, i + 7); j++) { a += raw[j]; m++; } return a / m; });   /* 15-sample mean: the 30 s samples read as a slow wave, not a zigzag */
-        glow(C_HULL, () => poly(pts.map((v, i) => [xa + (xb - xa) * i / n, Y(v)]), C_HULL, NORMAL, 1));
+        glow(C_TOP, () => poly(pts.map((v, i) => [xa + (xb - xa) * i / n, Y(v)]), C_TOP, NORMAL, 1));
         dot(xb, Y(pts[n]), 1.6, CREAM, 1); mic("set " + RF.cabSet.toFixed(1), xb + (ts > s + 1e-6 ? 6 : 0), yB + 13, { align: "right", a: 0.7 }); }); }
     /* fuel on the slope */
     dyn(() => {
@@ -512,10 +514,10 @@ window.HudC25 = (function () {
         else lab("thrust heat", x0 - 10 - W_(tv, 12) - 8, 984, { align: "right" }); }); }
     paintShip();
     paintLife();
-    dyn(() => RF.lampsR.forEach((l, i) => lamp(1440 + (i % 7) * 56, i < 7 ? 975 : 989, l[0], l[1], "o", /^(lsp|ring|seal|fin t|fin b|jnt)$/.test(l[0]) ? C_HULL : C_MID)));
+    dyn(() => RF.lampsR.forEach((l, i) => lamp(1440 + (i % 7) * 56, i < 7 ? 975 : 989, l[0], l[1], "o", l[0] === "lsp" ? C_TOP : /^(ring|seal|fin t|fin b|jnt)$/.test(l[0]) ? C_HULL : C_MID)));
   }
 
-  /* ship side view + hull stress strip + p / rh (right wing, upper) */
+  /* ship side view + hull stress strip (right wing, upper) */
   let shipC = null;   // the blueprint and everything derived from it, keyed on dpr * s: rebuilt only when the size changes
   function paintShip() {
     /* the real ship's line drawing (VoidshipHull.blueprint), true proportions, centred in the old box's column 1608..1867 and fitted between the bus strip and the stress row */
@@ -530,7 +532,7 @@ window.HudC25 = (function () {
         ticks: [-0.64, -0.13, 0.43].map(u => { const x = Math.round(xs0 + fr(u) * (xs1 - xs0)) + 0.5; return [x, edge(x)]; }) };
     }
     const { bp, xs0, xs1, X, Yo, cx, cy, yb, lx, ly, ticks } = shipC;
-    const FIN = [1824, 814], PR = [1709, 813];   // the fin label and the p / rh row
+    const FIN = [1824, 814];   // the fin label
     const rg = (x, y) => [X + (x - 640) * L / 590, Yo + (y - 330) * L / 590];   // the collar ring's corners (big ship, L 590 at 640,330)
     stat_(() => {
       head("ship", 1546, 926); mic("hull", 1546, 939, { a: 0.8 });
@@ -542,17 +544,6 @@ window.HudC25 = (function () {
     dyn(() => {
       text(String(RF.hullInt),1546 + W_("hull", LBL()) + 5, 939, { size: 10, col: CREAM, a: BRIGHT });
       text(String(RF.fin), FIN[0] + W_("fin", LBL()) + 4, FIN[1], { size: 10, col: CREAM, a: BRIGHT });
-      /* p and rh */
-      const y = PR[1] + 4, gc = PR[1]; let x = PR[0];
-      const R = 7, px = x + R, rp = Math.max(0.5, R + (+RF.p - 101.3) * 4); x += 2 * R + 4;
-      arc(px, gc, R, 0, 2 * PI, C_HULL, 0.35, 1, [1, 2]); glow(C_HULL, () => arc(px, gc, rp, 0, 2 * PI, C_HULL, NORMAL, HAIR)); dot(px, gc, 1.2, C_HULL, 0.6);
-      mic("p", x, y); text(RF.p, x + W_("p", LBL()) + 4, y, { size: 10, col: C_HULL, a: BRIGHT }); x = PR[0];
-      const r = 5, dy = PR[1] + 4 + 18, tip = PR[1] + 18 - 9, bot = dy + r, dx = x + r;
-      poly([[dx - r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))], [dx, tip], [dx + r * Math.cos(rad(30)), dy - r * Math.sin(rad(30))]], C_HULL, 0.6);
-      arc(dx, dy, r, rad(-30), rad(210), C_HULL, 0.6);
-      const lvl = bot - (bot - tip) * RF.rhv; for (let yy = bot - 2; yy > tip + 2; yy -= 2) { const h = yy > dy - r * 0.5 ? Math.sqrt(Math.max(0, r * r - (yy - dy) * (yy - dy))) - 1.5 : (yy - tip) * 0.55 - 1;
-        if (h > 0.5) line(dx - h, yy + 0.5, dx + h, yy + 0.5, C_HULL, yy >= lvl ? 0.7 : 0.1); }
-      x += 2 * r + 5; mic("rh", x, y + 18); text(RF.rh, x + W_("rh", LBL()) + 4, y + 18, { size: 10, col: C_HULL, a: BRIGHT });
     });
     /* hull stress along the length, same x as the ship: 0 at B0, the limit (1.0) at B1 */
     const B0 = 963, B1 = 938, ys = v => B0 - (B0 - B1) * v;
@@ -560,7 +551,7 @@ window.HudC25 = (function () {
       line(xs0, B0 + 0.5, xs1, B0 + 0.5, C_HULL, 0.25);
       dash([3, 3], () => line(xs0, B1 + 0.5, xs1, B1 + 0.5, CREAM, 0.5));
       line(xs1 + 0.5, B1 - 3, xs1 + 0.5, B1 + 4, CREAM, 0.5);   // end tick: the limit line's label hangs on it
-      mic("lim", xs1 - 3, B1 - 5, { a: 0.75, align: "right" });
+      mic("lim", xs0 + 3, B1 - 5, { a: 0.75 });
       head("hull stress", xs0 - 16, B0 - 4, { align: "right", a: 0.85 });
       glow(CREAM, () => { poly([rg(868, 198), rg(920, 208)], CREAM, BRIGHT, STRONG);
         poly([rg(868, 446), rg(920, 436)], CREAM, BRIGHT, STRONG); });
@@ -577,18 +568,42 @@ window.HudC25 = (function () {
   function paintLife() {
     const CX = 1976, CY = 956;   // 24 from the right edge, the margin the left wing keeps from the left
     stat_(() => {
-      [90, 62].forEach(r => { line(CX - r + 0.5, CY + 3, CX - r + 0.5, CY + 6, C_HULL, QUIET); line(CX - r + 0.5, CY + 6, CX - r + 0.5, 980, C_HULL, 0.35); });
-      arc(CX, CY, 97, rad(184), rad(266), C_HULL, 0.12, 1, [1, 3]);
-      line(CX - 96, CY + 0.5, CX - 2, CY + 0.5, C_HULL, 0.18);
+      [90, 62].forEach(r => { const c = r === 62 ? C_HULL : C_TOP; line(CX - r + 0.5, CY + 3, CX - r + 0.5, CY + 6, c, QUIET); line(CX - r + 0.5, CY + 6, CX - r + 0.5, 980, c, 0.35); });
+      arc(CX, CY, 97, rad(184), rad(266), C_TOP, 0.12, 1, [1, 3]);
+      line(CX - 96, CY + 0.5, CX - 2, CY + 0.5, C_TOP, 0.18);
       head("life", 1976, 858, { align: "right", a: 0.85 });
     });
+    /* the balance: on each arc the breathed gas fills from the 180 end, the other gas from the 270 end, and one notch marks where they meet in calm air */
+    const ARC = [{ r: 90, nt: 0.62, col: C_TOP }, { r: 62, nt: 0.45, col: C_HULL }];
+    ARC.forEach(A => { A.n = Math.max(6, Math.floor(A.r * PI / 2 / 4)); A.jn = Math.round(A.nt * A.n); });
+    stat_(() => ARC.forEach(A => { const d = 180 + (A.jn + 0.5) / A.n * 90, a = pol(CX, CY, A.r - 7, d), b = pol(CX, CY, A.r + 7, d); line(a[0], a[1], b[0], b[1], CREAM, 0.9); }));
+    /* paired scales: one tick per crew, the number beside it */
+    const SX0 = 1820, SX1 = 1868, SY = [893, 906, 919], SL = [["temp", 500], ["p", 10000], ["rh", 100]];
+    stat_(() => SL.forEach((l, i) => { mic(l[0], SX0 - 4, SY[i], { align: "right" }); line(SX0, SY[i] + 3.5, SX1, SY[i] + 3.5, CREAM, 0.3);
+      line(SX1 - 0.5, SY[i] + 2, SX1 - 0.5, SY[i] + 5, CREAM, 0.3); }));
+    const tick = (i, v, col, txt, right) => { const u = Math.max(0, Math.min(1, v / SL[i][1])), x = Math.round(SX0 + (SX1 - SX0 - 1) * u) + 0.5, y = SY[i];
+      glow(col, () => line(x, y + 2, x, y + 5, col, BRIGHT, STRONG));
+      text(txt, right ? SX1 : SX0, y, { size: 9, col, a: BRIGHT, align: right ? "right" : "left" }); };
+    const fill = (A, a, b, nm, na, nb) => { const n = A.n, cA = Math.round(Math.max(0, Math.min(1, a)) * n), cB = Math.round(Math.max(0, Math.min(1, b)) * n), r = A.r;
+      for (let j = 0; j < n; j++) { const d = 180 + (j + 0.5) / n * 90, onA = j < cA, onB = j >= n - cB, p0 = pol(CX, CY, r - 3, d), p1 = pol(CX, CY, r + 3, d);
+        line(p0[0], p0[1], p1[0], p1[1], A.col, onA ? (j === cA - 1 ? 0.9 : 0.6) : onB ? (j === n - cB ? 0.65 : 0.38) : 0.12); }
+      const e = pol(CX, CY, r + 6, 180 + 90 * cA / n), i = pol(CX, CY, r + 10, 180 + 90 * cA / n), e2 = pol(CX, CY, r + 6, 270 - 90 * cB / n), i2 = pol(CX, CY, r + 10, 270 - 90 * cB / n);
+      line(e[0], e[1], i[0], i[1], CREAM, BRIGHT); line(e2[0], e2[1], i2[0], i2[1], CREAM, 0.6); };
     dyn(() => {
-      [[RF.o2v, 90], [RF.co2v, 62]].forEach(([v, r]) => { const n = Math.max(6, Math.floor(r * PI / 2 / 4)), lit = Math.round(v * n);
-        for (let j = 0; j < n; j++) { const d = 180 + (j + 0.5) / n * 90, on = j < lit, a = pol(CX, CY, r - 3, d), b = pol(CX, CY, r + 3, d);
-          line(a[0], a[1], b[0], b[1], C_HULL, on ? (j === lit - 1 ? 0.9 : 0.6) : 0.12); }
-        const e = pol(CX, CY, r + 6, 180 + 90 * v), i = pol(CX, CY, r + 10, 180 + 90 * v); line(e[0], e[1], i[0], i[1], CREAM, BRIGHT); });
-      const w = W_((+RF.o2).toFixed(1), 11); mic("o2", 1886 - w - 4, 994, { align: "right", col: CREAM, a: 0.9 }); num((+RF.o2).toFixed(1), 1886, 994, { align: "right", size: 11, col: C_HULL });
-      mic("co2", 1906, 994, { col: CREAM, a: 0.9 }); num(RF.co2, 1906 + W_("co2", LBL()) + 4, 994, { size: 11, col: C_HULL });
+      const H = ARC[0], Lw = ARC[1];
+      /* the fills measure from each gas's calm value and ignore its calm swing, so they sit on their notches until a site disturbs the air */
+      const dz = (v, c, w) => { const d = v - c; return Math.abs(d) <= w ? 0 : d - Math.sign(d) * w; };
+      fill(H, H.jn / H.n + dz(RF.o2n, 20.95, 0.05) / 2.9, (H.n - H.jn - 1) / H.n + dz(RF.co2n, 412, 24) / 1600);
+      fill(Lw, Lw.jn / Lw.n + dz(RF.h2so4, 3.2, 0.08) / 3.8, (Lw.n - Lw.jn - 1) / Lw.n + dz(RF.co2L, 96, 0.5) / 6);
+      tick(0, RF.cabin, C_TOP, String(Math.round(RF.cabin))); tick(0, RF.tL, C_HULL, String(Math.round(RF.tL)), 1);
+      tick(1, RF.kpaN, C_TOP, String(Math.round(RF.kpaN))); tick(1, RF.kpaL, C_HULL, String(Math.round(RF.kpaL)), 1);
+      tick(2, RF.rhN, C_TOP, String(Math.round(RF.rhN))); tick(2, RF.rhL, C_HULL, String(Math.round(RF.rhL)), 1);
+      rv("g", RF.g, 1936, 858, "right");
+      /* the gases under the fan, one line per crew */
+      mic("crew", 1830, 992); mic("o2", 1868, 992, { col: CREAM, a: 0.9 }); num((+RF.o2n).toFixed(1), 1868 + W_("o2", LBL()) + 4, 992, { size: 11, col: C_TOP });
+      mic("co2", 1944, 992, { col: CREAM, a: 0.9 }); num(String(Math.round(RF.co2n)), 1944 + W_("co2", LBL()) + 4, 992, { size: 11, col: C_TOP });
+      mic("lower", 1830, 1004); mic("h2so4", 1868, 1004, { col: CREAM, a: 0.9 }); num(RF.h2so4.toFixed(1) + "%", 1868 + W_("h2so4", LBL()) + 4, 1004, { size: 11, col: C_HULL });
+      mic("co2", 1944, 1004, { col: CREAM, a: 0.9 }); num(Math.round(RF.co2L) + "%", 1944 + W_("co2", LBL()) + 4, 1004, { size: 11, col: C_HULL });
     });
   }
 
@@ -782,6 +797,7 @@ window.HudC25 = (function () {
     o.cabTrace = (() => { const a = []; for (let i = 0; i <= 30; i++) a.push(21 + 0.32 * Math.sin(i * 0.52 - 1.2));
       const fix = D.cabin - a[30]; return a.map((v, i) => v + fix * i / 30); })();
     o.rep = null;
+    o.kpaN = 101; o.rhN = 41; o.tL = 462; o.kpaL = 9200; o.rhL = 0; o.h2so4 = 3.2; o.co2L = 96; o.g = "0.00"; o.o2n = 20.88; o.co2n = 615;   // the life corner's raw numbers (the fallback)
     return o;
   }
   /* the right wing each frame, live from HudModels, the ship stats and tiles-sys */
@@ -806,6 +822,7 @@ window.HudC25 = (function () {
     o.p = sys.kpa.toFixed(1); o.rh = String(Math.round(sys.rh)); o.rhv = sys.rh / 100;
     o.o2 = sys.o2.toFixed(2); o.co2 = String(Math.round(sys.co2));
     o.o2v = Math.max(0, Math.min(1, (sys.o2 - 19) / 2.9)); o.co2v = Math.max(0, Math.min(1, sys.co2 / 1600));
+    o.kpaN = sys.kpa; o.rhN = sys.rh; o.tL = sys.tL; o.kpaL = sys.kpaL; o.rhL = sys.rhL; o.h2so4 = sys.h2so4; o.co2L = sys.co2L; o.g = (e.g || 0).toFixed(2); o.o2n = sys.o2; o.co2n = sys.co2;
     const si = { thrust: th, wear: sys.wear || 0, impact: sys.lastImpact, now: now, sway: e.sway || 0, jitter: e.jitter || 0 };
     o.stress = Array.from({ length: 183 }, (_, i) => HM.stress(-0.52 + i * 0.01, si));
     const ls = HM.rightLamps({ burning: st.burning, thrust: th, wear: sys.wear || 0, jet: st.jet, courseMark: st.courseMark, o2: sys.o2, co2: sys.co2, kpa: sys.kpa,
