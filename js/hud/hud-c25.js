@@ -564,46 +564,47 @@ window.HudC25 = (function () {
       glow(CREAM, () => dot(kx, ky, 2, CREAM, 1)); num(Math.round(RF.stress[pk] * 100) + " %", kx + 6, B1 - 5, { size: 11, col: C_HULL }); });
   }
 
-  /* life fan: o2 and co2 slit arcs */
+  /* life corner: one air-mix bar per crew (each = 100 % of that crew's air), then the paired temp / p / rh scales */
   function paintLife() {
-    const CX = 1976, CY = 956;   // 24 from the right edge, the margin the left wing keeps from the left
+    const BX0 = 1870, BX1 = 1976, BW = BX1 - BX0, BY = [880, 922], BH = 22, SX0 = 1858;   // 1976: 24 from the right edge, the margin the left wing keeps from the left
+    const SY = [956, 976, 996], SL = [["temp", 500], ["p", 10000], ["rh", 100]];
     stat_(() => {
-      [90, 62].forEach(r => { const c = r === 62 ? C_HULL : C_TOP; line(CX - r + 0.5, CY + 3, CX - r + 0.5, CY + 6, c, QUIET); line(CX - r + 0.5, CY + 6, CX - r + 0.5, 980, c, 0.35); });
-      arc(CX, CY, 97, rad(184), rad(266), C_TOP, 0.12, 1, [1, 3]);
-      line(CX - 96, CY + 0.5, CX - 2, CY + 0.5, C_TOP, 0.18);
-      head("life", 1976, 858, { align: "right", a: 0.85 });
+      head("life", SX0, 858, { a: 0.85 });
+      SL.forEach((l, i) => { mic(l[0], SX0 - 4, SY[i], { align: "right" }); line(SX0, SY[i] + 4.5, BX1, SY[i] + 4.5, CREAM, 0.3);
+        line(BX1 - 0.5, SY[i] + 2.5, BX1 - 0.5, SY[i] + 6.5, CREAM, 0.3); });
     });
-    /* the balance: on each arc the breathed gas fills from the 180 end, the other gas from the 270 end, and one notch marks where they meet in calm air */
-    const ARC = [{ r: 90, nt: 0.62, col: C_TOP }, { r: 62, nt: 0.45, col: C_HULL }];
-    ARC.forEach(A => { A.n = Math.max(6, Math.floor(A.r * PI / 2 / 4)); A.jn = Math.round(A.nt * A.n); });
-    stat_(() => ARC.forEach(A => { const d = 180 + (A.jn + 0.5) / A.n * 90, a = pol(CX, CY, A.r - 7, d), b = pol(CX, CY, A.r + 7, d); line(a[0], a[1], b[0], b[1], CREAM, 0.9); }));
-    /* paired scales: one tick per crew, the number beside it */
-    const SX0 = 1820, SX1 = 1868, SY = [893, 906, 919], SL = [["temp", 500], ["p", 10000], ["rh", 100]];
-    stat_(() => SL.forEach((l, i) => { mic(l[0], SX0 - 4, SY[i], { align: "right" }); line(SX0, SY[i] + 3.5, SX1, SY[i] + 3.5, CREAM, 0.3);
-      line(SX1 - 0.5, SY[i] + 2, SX1 - 0.5, SY[i] + 5, CREAM, 0.3); }));
-    const tick = (i, v, col, txt, right) => { const u = Math.max(0, Math.min(1, v / SL[i][1])), x = Math.round(SX0 + (SX1 - SX0 - 1) * u) + 0.5, y = SY[i];
-      glow(col, () => line(x, y + 2, x, y + 5, col, BRIGHT, STRONG));
-      text(txt, right ? SX1 : SX0, y, { size: 9, col, a: BRIGHT, align: right ? "right" : "left" }); };
-    const fill = (A, a, b, nm, na, nb) => { const n = A.n, cA = Math.round(Math.max(0, Math.min(1, a)) * n), cB = Math.round(Math.max(0, Math.min(1, b)) * n), r = A.r;
-      for (let j = 0; j < n; j++) { const d = 180 + (j + 0.5) / n * 90, onA = j < cA, onB = j >= n - cB, p0 = pol(CX, CY, r - 3, d), p1 = pol(CX, CY, r + 3, d);
-        line(p0[0], p0[1], p1[0], p1[1], A.col, onA ? (j === cA - 1 ? 0.9 : 0.6) : onB ? (j === n - cB ? 0.65 : 0.38) : 0.12); }
-      const e = pol(CX, CY, r + 6, 180 + 90 * cA / n), i = pol(CX, CY, r + 10, 180 + 90 * cA / n), e2 = pol(CX, CY, r + 6, 270 - 90 * cB / n), i2 = pol(CX, CY, r + 10, 270 - 90 * cB / n);
-      line(e[0], e[1], i[0], i[1], CREAM, BRIGHT); line(e2[0], e2[1], i2[0], i2[1], CREAM, 0.6); };
+    const tick = (i, v, col, txt, right) => { const u = Math.max(0, Math.min(1, v / SL[i][1])), x = Math.round(SX0 + (BX1 - SX0 - 1) * u) + 0.5, y = SY[i];
+      glow(col, () => line(x, y + 2.5, x, y + 6.5, col, BRIGHT, STRONG));
+      text(txt, right ? BX1 : SX0, y, { size: 11, col, a: BRIGHT, align: right ? "right" : "left" }); };
+    const box = (x, y, w, col, a) => { c.fillStyle = rgba(col, a); c.fillRect(x, y, w, BH); };
     dyn(() => {
-      const H = ARC[0], Lw = ARC[1];
-      /* the fills measure from each gas's calm value and ignore its calm swing, so they sit on their notches until a site disturbs the air */
-      const dz = (v, c, w) => { const d = v - c; return Math.abs(d) <= w ? 0 : d - Math.sign(d) * w; };
-      fill(H, H.jn / H.n + dz(RF.o2n, 20.95, 0.05) / 2.9, (H.n - H.jn - 1) / H.n + dz(RF.co2n, 412, 24) / 1600);
-      fill(Lw, Lw.jn / Lw.n + dz(RF.h2so4, 3.2, 0.08) / 3.8, (Lw.n - Lw.jn - 1) / Lw.n + dz(RF.co2L, 96, 0.5) / 6);
+      /* the edges measure from each gas's calm value and ignore its calm swing, so the bars sit still until a site disturbs the air */
+      const dz = (v, c0, w) => { const d = v - c0; return Math.abs(d) <= w ? 0 : d - Math.sign(d) * w; };
+      const pc = v => BW * Math.max(0, Math.min(100, v)) / 100, NS = ts > s + 1e-6 ? 8 : 9, NV = ts > s + 1e-6 ? 10 : 11;   // one step down where a small screen grows the text
+      /* human: n2 | o2 | trace */
+      const o2 = 20.95 + dz(RF.o2n, 20.95, 0.05), n2 = 78, xo = BX0 + pc(n2), xt = BX0 + pc(n2 + o2), y0 = BY[0];
+      box(BX0, y0, xo - BX0, C_TOP, 0.2); box(xo, y0, xt - xo, C_TOP, 0.55); box(xt, y0, BX1 - xt, C_TOP, 0.3);
+      [xo, xt].forEach(x => line(Math.round(x) + 0.5, y0, Math.round(x) + 0.5, y0 + BH, C_TOP, 0.9));
+      c.strokeStyle = rgba(C_TOP, 0.5); c.lineWidth = HAIR; c.strokeRect(BX0 + 0.5, y0 + 0.5, BW - 1, BH - 1);
+      text("human", BX0 + 4, y0 + 9, { size: NS, col: C_TOP, a: 0.85, ls: 0 });
+      text("n2 78", BX0 + 4, y0 + 19, { size: NV, col: C_TOP, a: BRIGHT, ls: 0 });
+      text("co2 " + (RF.co2n / 1e4).toFixed(2), BX1, y0 - 6, { size: NS, col: C_TOP, a: BRIGHT, align: "right", ls: 0 });
+      text("o2", (xo + xt) / 2, y0 + 9, { size: NS, col: CREAM, a: 1, align: "center", ls: 0 });
+      text(Math.round(RF.o2n) + "", (xo + xt) / 2, y0 + 19, { size: NV, col: CREAM, a: 1, align: "center", ls: 0 });
+      /* lower: co2 | h2so4 | trace */
+      const co = 96 + dz(RF.co2L, 96, 0.5), hs = 3.2 + dz(RF.h2so4, 3.2, 0.08), xh = BX0 + pc(co), xe = BX0 + pc(co + hs), y1 = BY[1];
+      box(BX0, y1, xh - BX0, C_HULL, 0.2); box(xh, y1, xe - xh, C_HULL, 0.8); box(xe, y1, BX1 - xe, C_HULL, 0.3);
+      [xh, xe].forEach(x => line(Math.round(x) + 0.5, y1, Math.round(x) + 0.5, y1 + BH, C_HULL, 0.9));
+      c.strokeStyle = rgba(C_HULL, 0.5); c.lineWidth = HAIR; c.strokeRect(BX0 + 0.5, y1 + 0.5, BW - 1, BH - 1);
+      text("lower", BX0 + 4, y1 + 8, { size: NS, col: C_HULL, a: 0.85, ls: 0 });
+      text("co2 " + Math.round(RF.co2L), BX0 + 4, y1 + 18, { size: NV, col: C_HULL, a: BRIGHT, ls: 0 });
+      text("h2so4 " + RF.h2so4.toFixed(1), BX1, y1 - 6, { size: NS, col: C_HULL, a: BRIGHT, align: "right", ls: 0 });
+      /* the safe band under the breathed segment: o2 19.5 to 23.5, h2so4 2.0 to 4.5 */
+      [[y0, xo, 19.5, 23.5], [y1, xh, 2.0, 4.5]].forEach(b => [b[2], b[3]].forEach(v => { const x = Math.round(Math.min(BX1 - 1, b[1] + pc(v))) + 0.5; line(x, b[0] + BH + 1, x, b[0] + BH + 4, CREAM, 0.8); }));
       tick(0, RF.cabin, C_TOP, String(Math.round(RF.cabin))); tick(0, RF.tL, C_HULL, String(Math.round(RF.tL)), 1);
       tick(1, RF.kpaN, C_TOP, String(Math.round(RF.kpaN))); tick(1, RF.kpaL, C_HULL, String(Math.round(RF.kpaL)), 1);
       tick(2, RF.rhN, C_TOP, String(Math.round(RF.rhN))); tick(2, RF.rhL, C_HULL, String(Math.round(RF.rhL)), 1);
-      rv("g", RF.g, 1936, 858, "right");
-      /* the gases under the fan, one line per crew */
-      mic("crew", 1830, 992); mic("o2", 1868, 992, { col: CREAM, a: 0.9 }); num((+RF.o2n).toFixed(1), 1868 + W_("o2", LBL()) + 4, 992, { size: 11, col: C_TOP });
-      mic("co2", 1944, 992, { col: CREAM, a: 0.9 }); num(String(Math.round(RF.co2n)), 1944 + W_("co2", LBL()) + 4, 992, { size: 11, col: C_TOP });
-      mic("lower", 1830, 1004); mic("h2so4", 1868, 1004, { col: CREAM, a: 0.9 }); num(RF.h2so4.toFixed(1) + "%", 1868 + W_("h2so4", LBL()) + 4, 1004, { size: 11, col: C_HULL });
-      mic("co2", 1944, 1004, { col: CREAM, a: 0.9 }); num(Math.round(RF.co2L) + "%", 1944 + W_("co2", LBL()) + 4, 1004, { size: 11, col: C_HULL });
+      rv("g", RF.g, BX1, 857, "right");
     });
   }
 
