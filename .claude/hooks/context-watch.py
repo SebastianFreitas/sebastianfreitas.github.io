@@ -6,19 +6,19 @@ and says to finish and hand off past it (rules in .claude/rules/
 workflow.md "Context budget"; handoff format in .claude/skills/handoff).
 The line depends on the window:
 - a headless plan session: AUTOPLAN_LINE from tools/autoplan.py;
-- a prepared run (a go prompt naming .claude/handoff.md while it starts
-  `Run: prepared`; a handoff that merely exists, e.g. in the prepare
-  window that just wrote it, does not count; remembered for the window,
-  so deleting the handoff at the commit does not move the line):
-  RUN_LIMIT;
+- the coordinator window (a prompt whose first line starts `coordinator:`,
+  or is just `coordinator`, at any point of the window; remembered until
+  /clear or a new chat; the warnings re-arm against the new line):
+  RUN_LIMIT, because it runs a worktree sub-chat per task and holds
+  their reports;
 - a plan run's supervisor (a prompt that is the go prompt `go: run plan`
   or `carry on running plan`, or a Bash/PowerShell call that launches
-  `py ... autoplan.py <name>`; remembered for the window the same way):
+  `py ... autoplan.py <name>`; remembered for the window):
   RUN_LIMIT, because it reports every phase of a plan in one window;
 - a raw-mode window (raw-mode.py): RUN_LIMIT, because it does all its own
   reading and writing;
-- any other app window (a prepare, a quick fix, a plan interview):
-  LIMIT, lower, because what grows there is the
+- any other app window (a prepare, a prepared run, a sub-chat, a quick
+  fix, a plan interview): LIMIT, lower, because what grows there is the
   model's own output (specs, thinking), and two prepare windows went
   from 42k to 140k with one Explore call each (review of 2026-10-01).
 
@@ -52,7 +52,6 @@ Never fails the hook: any error exits 0 (and allows the tool).
 import json
 import os
 import re
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -67,10 +66,14 @@ except ImportError as e:  # an older guard_config.py: run as if raw mode were of
     def first_prompt(transcript_path):
         return ""
 
-LIMIT = 120_000       # app windows that are not a prepared run
-RUN_LIMIT = 175_000   # a prepared run's window, or a plan run's supervisor
-# the go prompt that starts a prepared run (workflow.md "The go prompt")
-RUN_PROMPT = re.compile(r"\bgo:.*handoff\.md", re.I | re.S)
+LIMIT = 120_000       # every app window but the coordinator and a supervisor
+RUN_LIMIT = 175_000   # the coordinator window, or a plan run's supervisor
+# a prompt that starts `coordinator:` or is just `coordinator`: like RAW_ON
+# (guard_config.py) it skips leading reminder blocks, but not the
+# "Background (...):" paragraph or "Task:" label of a chat another session
+# opened, which is never the coordinator
+COORDINATOR_PROMPT = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>)*\s*coordinator[ \t]*(:|$)", re.I | re.S)
+NOTES = []            # lines main_line wants printed with this event's output
 SUPERVISOR_PROMPT = re.compile(r"go: run plan |carry on running plan ")
 # py / py.exe / python / python3 / python3.12 (bare, as a path, quoted or
 # not), an optional -3 / -3.12, then a path ending in autoplan.py (quoted
@@ -212,28 +215,9 @@ def tier_of(used, limit, soft):
     return 0
 
 
-def handoff_roots(d, text):
-    """Folders to look for .claude/handoff.md in: the path the go prompt
-    names after "Checkout", the git top level of cwd, then cwd."""
-    cwd = d.get("cwd") or os.getcwd()
-    roots = []
-    m = re.search(r"\bCheckout\s+(\S+?)[.,;]?(?:\s+on\s+branch\b|\s*$|\s)", text, re.I)
-    if m:
-        roots.append(m.group(1).strip("\"'"))
-    try:
-        top = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, timeout=5).stdout.strip()
-        if top:
-            roots.append(top)
-    except Exception:
-        pass
-    roots.append(cwd)
-    return roots
-
-
 def main_line(d, state):
-    """(limit, kind) for this app window; kind is "run", "supervisor", "raw"
-    or ""."""
+    """(limit, kind) for this app window; kind is "coordinator",
+    "supervisor", "raw" or ""."""
     env = os.environ.get("AUTOPLAN_LINE")
     if env:
         try:
@@ -247,47 +231,32 @@ def main_line(d, state):
         return RUN_LIMIT, "raw"
     kind = state["main"].get("run")
     if kind:
-        return RUN_LIMIT, ("supervisor" if kind == "supervisor" else "run")
+        return RUN_LIMIT, kind
     text = d.get("prompt") or ""
     if not text and d.get("tool_name") in ("Bash", "PowerShell"):
         text = (d.get("tool_input") or {}).get("command") or ""
     # the app queues a sub-chat's first message, so no UserPromptSubmit
-    # carries it: a tool call then reads it from the transcript
-    # the window's kind is decided from its first prompt once: "checked"
-    # stops later tool calls re-reading the transcript and the handoff
-    submit = d.get("hook_event_name") == "UserPromptSubmit"
-    if submit:
-        go_text = text
+    # carries it: a tool call then reads it from the transcript, once:
+    # "checked" stops later tool calls re-reading the transcript
+    if d.get("hook_event_name") == "UserPromptSubmit":
+        coord_text = text
         state["main"]["checked"] = True
     elif d.get("tool_name") and not state["main"].get("checked"):
-        go_text = first_prompt(d.get("transcript_path") or "")
+        coord_text = first_prompt(d.get("transcript_path") or "")
         state["main"]["checked"] = True
     else:
-        go_text = ""
-    if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
-        kind = "supervisor"
-    elif go_text and RUN_PROMPT.search(go_text):
-        # only the go prompt makes a run window: a handoff that merely
-        # exists (the prepare window that just wrote it, another
-        # session's checkout) does not
-        try:
-            for root in handoff_roots(d, go_text):
-                try:
-                    with open(os.path.join(root, ".claude", "handoff.md"),
-                              encoding="utf-8-sig", errors="ignore") as f:
-                        first = next((ln.strip() for ln in f if ln.strip()), "")
-                    if first == "Run: prepared":
-                        kind = "run"
-                        break
-                except OSError:
-                    continue
-        except Exception:
-            pass
-    if kind:
+        coord_text = ""
+    if COORDINATOR_PROMPT.match(coord_text):
         # the line moved: tiers crossed under the old line no longer hold
-        state["main"]["run"] = kind
+        state["main"]["run"] = "coordinator"
         state["main"]["tier"] = 0
-        return RUN_LIMIT, kind
+        NOTES.append("CONTEXT WATCH: coordinator window, line "
+                     f"{RUN_LIMIT // 1000}k until /clear.")
+        return RUN_LIMIT, "coordinator"
+    if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
+        state["main"]["run"] = "supervisor"
+        state["main"]["tier"] = 0
+        return RUN_LIMIT, "supervisor"
     return LIMIT, ""
 
 
@@ -311,7 +280,7 @@ def main_message(used, limit, tier, kind):
                     f"supervisor line of {limit:,}. Launch nothing new: "
                     "finish the phase report and end with the go prompt "
                     "('carry on running plan <name>'), as run.md says.")
-        if kind or os.environ.get("AUTOPLAN_LINE"):
+        if os.environ.get("AUTOPLAN_LINE"):
             return (f"CONTEXT WATCH: {used:,} tokens in context, past the "
                     f"handoff line of {limit:,}. Finish only the current "
                     "atomic step (an implementer already running may "
@@ -480,6 +449,7 @@ def on_main(d, ev, path):
                     parts.append(m)
             state["main"]["tier"] = max(tier, last)
             write_state(path, state)
+    parts = NOTES + parts
     try:
         parts += ledger_messages(path)
     except OSError:

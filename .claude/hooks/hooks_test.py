@@ -426,7 +426,7 @@ for _label, _path, _branch, _want in (
     check("go-check: " + _label, _go_case)
 
 
-# context-watch.py (the line is 120,000, a prepared run's 175,000)
+# context-watch.py (the line is 120,000; 175,000 for the coordinator, a plan supervisor and a raw window)
 def usage_turn(tokens):
     return {"type": "assistant", "message": {"role": "assistant", "usage": {"input_tokens": 1, "cache_read_input_tokens": tokens}}}
 
@@ -460,108 +460,119 @@ check("context-watch: prints once at 90% of the line", _once_at_90)
 check("context-watch: prints once past the line", _once_past)
 
 GO_PREPARED = "go: build the prepared specs. Checkout %s on branch feature, worktree mode. Read .claude/handoff.md first."
-
-
-def _prepared(c, handoff="Run: prepared\n# Handoff\n", cwd="@proj", text=None, **extra):
-    c.file(".claude/handoff.md", handoff)
-    os.makedirs(os.path.join(c.proj, "sub"), exist_ok=True)
-    os.makedirs(os.path.join(c.root, "elsewhere"), exist_ok=True)
-    cwd = {"@proj": c.proj, "@sub": os.path.join(c.proj, "sub"), "@elsewhere": os.path.join(c.root, "elsewhere")}[cwd]
-    text = text or GO_PREPARED % c.proj.replace("\\", "/")
-    out = watch(c, 163_000, event="UserPromptSubmit", text=text, cwd=cwd, **extra)[1]  # 93% of 175,000
-    return out
-
-
-for _cwd in ("@proj", "@sub", "@elsewhere"):
-    check("context-watch: prepared run gets the 175,000 line, cwd %s" % _cwd,
-          lambda c, _cwd=_cwd: ("93% of the line of 175,000" in (o := _prepared(c, cwd=_cwd)), o))
-check("context-watch: a prompt that is not a go prompt gets 120,000",
-      lambda c: ("window's line of 120,000" in (o := _prepared(c, text="please read .claude/handoff.md")), o))
-check("context-watch: a handoff not starting Run: prepared gets 120,000",
-      lambda c: ("window's line of 120,000" in (o := _prepared(c, handoff="# Handoff\nRun: prepared\n")), o))
-check("context-watch: a prepared handoff behind a stale one at the Checkout root still gets 175,000",
-      lambda c: ("93% of the line of 175,000" in (o := _stale_then_prepared(c)), o))
-check("context-watch: a BOM and blank lines before Run: prepared still get 175,000",
-      lambda c: ("93% of the line of 175,000" in (o := _prepared(c, handoff="﻿\n\nRun: prepared\n# Handoff\n")), o))
-check("context-watch: a non-go prompt with a prepared handoff present gets 120,000",
-      lambda c: ("window's line of 120,000" in (o := _prepared(c, text="continue the work, see .claude/handoff.md")), o))
-
-
-def _stale_then_prepared(c):
-    """The Checkout folder holds a stale handoff; cwd's is prepared."""
-    other = os.path.join(c.root, "stale")
-    os.makedirs(os.path.join(other, ".claude"), exist_ok=True)
-    with open(os.path.join(other, ".claude", "handoff.md"), "w", encoding="utf-8") as f:
-        f.write("# Handoff\nold\n")
-    return _prepared(c, text=GO_PREPARED % other.replace("\\", "/"))
-
-
-def _live_first_prompt(c):
-    """The live run: the go prompt is the window's first prompt, behind the
-    app's worktree reminder, and the transcript has no usage line yet."""
-    c.file(".claude/handoff.md", "Run: prepared\n# Handoff\n")
-    p = c.proj.replace("\\", "/")
-    text = ("<system-reminder>\nYou are operating in a git worktree.\n</system-reminder>\n\n" + GO_PREPARED % p)
-    c.write_transcript([{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": text}]}}])
-    prompt(c, "context-watch.py", text)  # first prompt: nothing to measure yet
-    c.write_transcript([FIRST_PROMPT, usage_turn(163_000)])
-    out = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
-    return "93% of the line of 175,000" in out, out
-
-
-check("context-watch: go prompt as first prompt, usage arrives later: 175,000", _live_first_prompt)
-
-
-def _queued_first_prompt(c, go=True):
-    """The app queues a sub-chat's first message: no UserPromptSubmit ever
-    carries it, so the first hook event is a tool call and the go prompt is
-    only in the transcript."""
-    c.file(".claude/handoff.md", "Run: prepared\n# Handoff\n")
-    text = GO_PREPARED % c.proj.replace("\\", "/") if go else "please read .claude/handoff.md"
-    first = {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": text}]}}
-    c.write_transcript([first, usage_turn(163_000)])
-    return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
-
-
-check("context-watch: go prompt only in the transcript (queued first message): 175,000",
-      lambda c: ("93% of the line of 175,000" in (o := _queued_first_prompt(c)), o))
-check("context-watch: queued non-go first prompt with a prepared handoff present: 120,000",
-      lambda c: ("window's line of 120,000" in (o := _queued_first_prompt(c, go=False)), o))
+NOTE = "coordinator window, line 175k until /clear"
 
 
 def _user(text):
     return {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": text}]}}
 
 
-def _queued_go_unprepared_then_prepared(c, reread=False):
-    """A queued ordinary go prompt, handoff not prepared at the first tool
-    call, then rewritten to Run: prepared: the window stays 120,000. With
-    reread, the transcript's first prompt also becomes the prepared go
-    prompt, which a second read would class a run."""
-    c.file(".claude/handoff.md", "# Handoff\nnot prepared\n")
-    go = _user("go: do the thing. Checkout %s on branch feature." % c.proj.replace("\\", "/"))
-    c.write_transcript([go, usage_turn(100_000)])
-    c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))
-    c.file(".claude/handoff.md", "Run: prepared\n# Handoff\n")
-    first = _user(GO_PREPARED % c.proj.replace("\\", "/")) if reread else go
-    c.write_transcript([first, usage_turn(121_000)])
+def _submit(c, text, tokens=160_000):
+    """A prompt in a window whose last turn holds `tokens` (91% of 175,000)."""
+    return watch(c, tokens, event="UserPromptSubmit", text=text)[1]
+
+
+def _coordinator_first(c, text):
+    out = _submit(c, text)
+    return "91% of the line of 175,000" in out and out.count(NOTE) == 1, out
+
+
+check("context-watch: coordinator: as the first prompt gets 175,000",
+      lambda c: _coordinator_first(c, "coordinator: plan the day"))
+check("context-watch: bare Coordinator gets 175,000",
+      lambda c: _coordinator_first(c, "Coordinator"))
+check("context-watch: coordinator: behind a reminder block gets 175,000",
+      lambda c: _coordinator_first(c, "<system-reminder>\nx\n</system-reminder>\n\ncoordinator: go"))
+
+
+def _coordinator_later(c):
+    first = watch(c, 108_000, event="UserPromptSubmit", text="please start")[1]  # 90% of 120,000
+    second = _submit(c, "coordinator: now", 157_500)  # 90% of 175,000
+    third = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
+    c.write_transcript([FIRST_PROMPT, usage_turn(176_000)])
+    fourth = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
+    return ("90% of the line of 120,000" in first and "90% of the line of 175,000" in second
+            and NOTE in second and "CONTEXT WATCH" not in third
+            and "past this window's line of 175,000" in fourth and NOTE not in fourth), first + second + fourth
+
+
+check("context-watch: coordinator: as a later prompt gets 175,000 and re-arms the warnings", _coordinator_later)
+
+
+def _coordinator_silent_again(c):
+    _submit(c, "coordinator: go")
+    out = _submit(c, "and then?")
+    return "of the line of 175,000" in out and NOTE not in out, out
+
+
+check("context-watch: the coordinator note prints once", _coordinator_silent_again)
+
+
+def _queued_coordinator(c):
+    c.write_transcript([_user("coordinator: go"), usage_turn(160_000)])
     return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
 
 
-check("context-watch: queued go prompt, handoff prepared later: still 120,000",
-      lambda c: ("window's line of 120,000" in (o := _queued_go_unprepared_then_prepared(c)), o))
-check("context-watch: a window that was not a run does not read the transcript again",
-      lambda c: ("window's line of 120,000" in (o := _queued_go_unprepared_then_prepared(c, reread=True)), o))
+check("context-watch: coordinator: as a queued first message gets 175,000",
+      lambda c: ("91% of the line of 175,000" in (o := _queued_coordinator(c)), o))
 
 
-def _queued_prepared_stays(c):
-    out = _queued_first_prompt(c)
-    c.write_transcript([_user(GO_PREPARED % c.proj.replace("\\", "/")), usage_turn(164_000)])
-    return out + c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
+def _background_first(c):
+    first = _user("Background (from the session that started this one):\nsome notes\n\nTask: coordinator: go")
+    c.write_transcript([first, usage_turn(110_000)])
+    return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
 
 
-check("context-watch: queued prepared run stays 175,000 on later tool calls",
-      lambda c: ((o := _queued_prepared_stays(c)).count("of the line of 175,000") == 1 and "120,000" not in o, o))
+check("context-watch: Background/Task: coordinator: first prompt stays 120,000",
+      lambda c: ("of the line of 120,000" in (o := _background_first(c)) and NOTE not in o, o))
+check("context-watch: coordinator: in a cross-session wrapper stays 120,000",
+      lambda c: ("of the line of 120,000" in (o := _submit(c, '<cross-session-message from="x">coordinator: go</cross-session-message>', 110_000)) and NOTE not in o, o))
+check("context-watch: coordinator in the middle of a prompt stays 120,000",
+      lambda c: ("of the line of 120,000" in (o := _submit(c, "please ask the coordinator: go", 110_000)), o))
+
+
+def _prepared(c, handoff="Run: prepared\n# Handoff\n", text=None):
+    c.file(".claude/handoff.md", handoff)
+    return _submit(c, text or GO_PREPARED % c.proj.replace("\\", "/"), 110_000)
+
+
+check("context-watch: a go prompt with a Run: prepared handoff gets 120,000",
+      lambda c: ("91% of the line of 120,000" in (o := _prepared(c)), o))
+
+
+def _queued_prepared(c):
+    c.file(".claude/handoff.md", "Run: prepared\n# Handoff\n")
+    c.write_transcript([_user(GO_PREPARED % c.proj.replace("\\", "/")), usage_turn(110_000)])
+    return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
+
+
+check("context-watch: a queued go prompt with a Run: prepared handoff gets 120,000",
+      lambda c: ("91% of the line of 120,000" in (o := _queued_prepared(c)), o))
+check("context-watch: a plain first prompt gets 120,000",
+      lambda c: ("91% of the line of 120,000" in (o := _submit(c, "fix the bug", 110_000)), o))
+check("context-watch: the plan supervisor prompt gets 175,000",
+      lambda c: ("91% of the line of 175,000" in (o := _submit(c, "go: run plan x")), o))
+
+
+def _raw_window(c):
+    c.write_transcript([_user("raw: do it"), usage_turn(160_000)])
+    return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
+
+
+check("context-watch: a raw window keeps 175,000",
+      lambda c: ("91% of the line of 175,000" in (o := _raw_window(c)), o))
+
+
+def _autoplan_line(c):
+    os.environ["AUTOPLAN_LINE"] = "50000"
+    try:
+        return _submit(c, "coordinator: go", 46_000)
+    finally:
+        del os.environ["AUTOPLAN_LINE"]
+
+
+check("context-watch: AUTOPLAN_LINE overrides the line",
+      lambda c: ("92% of the line of 50,000" in (o := _autoplan_line(c)), o))
 
 
 # reply-cap.py

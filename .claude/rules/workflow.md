@@ -62,6 +62,9 @@ ends, after the report, with the exact prompt in a plain fenced block
 - `<file>`: `.claude/handoff.md` for a run or a handoff,
   `.claude/plans/<name>.md` for an interview, the plan's state file for
   a run or its questions.
+- The coordinator window's own go prompt starts `coordinator:` instead
+  of `go:` so the fresh window is the coordinator again (Context
+  budget); raw mode's starts `raw:`. `go-check.py` checks both.
 
 **Receiving one** (bare `go` or not): `go-check.py` prints `GO CHECK:`
 ok, or MISMATCH with what to do (no line: run the two git commands and
@@ -92,7 +95,7 @@ that do the work. Sort each new prompt from its words and at most one
 - **Anything else:** **prepare** (steps 1 to 2), end the turn; the owner
   runs `/clear` and pastes the go prompt; the fresh window **runs**
   (steps 3 to 7). Unsure: prepare.
-- **Too big for one run** (over about 20 specs): a plan; suggest `/plan
+- **Too big for one run** (over about 15 specs): a plan; suggest `/plan
   new <name>: <prompt>`.
 
 A plan, a handoff or a plan's questions in this checkout follow their
@@ -129,7 +132,8 @@ specs and reading files themselves (2026-10-01).
 
 A go prompt whose printed handoff starts `Run: prepared`, checkout and
 branch checked first. This window only manages, never reads a spec or a
-diff (about 3k tokens per spec, so 20 fit under its 175k line). Step
+diff (about 3k tokens per spec; a fresh window starts near 50k, so
+about 15 fit under its 120k line with room for review and report). Step
 detail: playbook "Run".
 
 3. **Implement:** one `implementer` per spec, the prompt only
@@ -219,9 +223,13 @@ session never runs past its line; it stops and the owner clears or
 opens a new chat. Never compact or clear yourself. `context-watch.py`
 prints `CONTEXT WATCH` once when a window crosses 90% of its line, once
 when it passes it, and once per new prompt while it stays there. Lines:
-a prepared run's window, a plan run's supervisor and headless plan
-sessions 175k (the runner kills headless ones at 200k); every other app
-window 120k; Explore, Plan, general-purpose and claude-code-guide 100k,
+the coordinator window, a raw window, a plan run's supervisor and
+headless plan sessions 175k (the runner kills headless ones at 200k);
+every other app window 120k, sub-chats and prepared runs included.
+The coordinator is the one window the owner talks to while it runs a
+worktree sub-chat per task: a prompt the owner types that starts
+`coordinator:` (or is just `coordinator`) makes its window one until
+`/clear` or a new chat; a chat another session opened never is. Explore, Plan, general-purpose and claude-code-guide 100k,
 plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
 subagent at 1.25 times its line is denied further tools: the prompt was
 too wide; next time name file, function and range, or split. Every
