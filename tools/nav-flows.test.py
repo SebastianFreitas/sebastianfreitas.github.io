@@ -1516,75 +1516,76 @@ def vs_stage_view(page, stage_id):
     page.wait_for_timeout(700)
 
 
-def flow_vs_range(browser, base):
-    """VoidScape range stage: holding the pointer on it fires bullets; after release they run out and the stage goes quiet."""
-    ctx, page = new_page(browser, DESKTOP)
-    goto_vs(page, base)
-    vs_stage_view(page, "vs-range-stage")
-    r = page.evaluate("() => PlayRange.report()")
-    t = r["targets"]["field"]
-    page.mouse.move(t["x"], t["y"])
-    page.mouse.down()
-    peak = 0
-    for _ in range(10):
-        page.wait_for_timeout(100)
-        peak = max(peak, page.evaluate("() => PlayRange.report().bullets"))
-    held = page.evaluate("() => PlayRange.report().bullets")
-    check("vs-range: bullets > 0 while held (~1 s)", held > 0 and peak > 0, [held, peak])
-    page.mouse.up()
-    page.mouse.move(5, 5)
-    n = None
-    for _ in range(60):
-        page.wait_for_timeout(100)
-        n = page.evaluate("() => PlayRange.report().bullets")
-        if n == 0:
-            break
-    check("vs-range: bullets run out within 6 s of release", n == 0, n)
-    page.wait_for_timeout(1000)
-    n2 = page.evaluate("() => PlayRange.report().bullets")
-    check("vs-range: no new bullets over the next 1 s (the stage is quiet)", n2 == 0, n2)
-    ctx.close()
-
-
-def flow_vs_bench_arms_range(browser, base):
-    """VoidScape bench stage: a click on add arms the range with the bench's gun."""
-    ctx, page = new_page(browser, DESKTOP)
-    goto_vs(page, base)
-    vs_stage_view(page, "vs-bench-stage")
-    a0 = page.evaluate("() => PlayRange.report().armed")
-    t = page.evaluate("() => VoidBench.report().targets.add")
-    page.mouse.move(t["x"], t["y"])
-    page.wait_for_timeout(150)
-    page.mouse.click(t["x"], t["y"])
-    a1 = a0
-    for _ in range(20):
-        page.wait_for_timeout(100)
-        a1 = page.evaluate("() => PlayRange.report().armed")
-        if a1 > a0:
-            break
-    check("vs-bench-arms-range: armed grows after the add click", a1 > a0, [a0, a1])
-    same = page.evaluate("() => PlayRange.gun() === VoidBench.gun()")
-    check("vs-bench-arms-range: PlayRange.gun() === VoidBench.gun()", same is True, same)
-    ctx.close()
-
-
-def flow_vs_map_roll(browser, base):
-    """VoidScape map stage: a click rolls a new plan; every step climbs above the one before and the last is the boss."""
+def flow_vs_map_generate(browser, base):
+    """VoidScape map stage: the top-down plan follows the game's rules; a press generates a different level."""
     ctx, page = new_page(browser, DESKTOP)
     goto_vs(page, base)
     vs_stage_view(page, "vs-map-stage")
     r0 = page.evaluate("() => VoidMapgen.report()")
-    t = r0["targets"]["roll"]
+    t = r0["targets"]["generate"]
     page.mouse.move(t["x"], t["y"])
     page.wait_for_timeout(150)
     page.mouse.click(t["x"], t["y"])
-    page.wait_for_timeout(1500)
+    page.wait_for_timeout(2500)
     r1 = page.evaluate("() => VoidMapgen.report()")
-    check("vs-map-roll: rolls grows after the click", r1["rolls"] > r0["rolls"], [r0["rolls"], r1["rolls"]])
-    check("vs-map-roll: the plan differs", r1["plan"] != r0["plan"], [len(r0["plan"]), len(r1["plan"])])
-    ys = [s["y"] for s in r1["plan"]]
-    check("vs-map-roll: every step sits above the one before", len(ys) > 1 and all(b < a for a, b in zip(ys, ys[1:])), ys)
-    check("vs-map-roll: the last step is the boss", r1["plan"][-1]["kind"] == "boss", r1["plan"][-1])
+    check("vs-map-generate: builds grows after the press", r1["builds"] > r0["builds"], [r0["builds"], r1["builds"]])
+    key = lambda r: [(c["gx"], c["gy"], c["type"]) for c in r["cells"]]
+    check("vs-map-generate: the plan differs", key(r1) != key(r0), [len(r0["cells"]), len(r1["cells"])])
+    for r in (r0, r1):
+        main = [c for c in r["cells"] if c["main"]]
+        check("vs-map-generate: the boss is the last main-path cell", main[-1]["type"] == "boss" and sum(c["type"] == "boss" for c in r["cells"]) == 1, main[-1])
+        check("vs-map-generate: 10..19 rooms", 10 <= r["rooms"] <= 19, r["rooms"])
+        sq = [(c["gx"], c["gy"]) for c in r["cells"]]
+        check("vs-map-generate: no two cells overlap", len(sq) == len(set(sq)), len(sq) - len(set(sq)))
+    check("vs-map-generate: the second build finished", r1["done"])
+    reports = [r0, r1]
+    for _ in range(3):
+        page.mouse.click(t["x"], t["y"])
+        page.wait_for_timeout(2500)
+        reports.append(page.evaluate("() => VoidMapgen.report()"))
+    for r in reports:
+        mz = [c["z"] for c in r["cells"] if c["main"]]
+        boss = [c["z"] for c in r["cells"] if c["main"] and c["type"] == "boss"]
+        check("vs-map-generate: z never goes down along the main path, the boss is the highest",
+              all(a <= b for a, b in zip(mz, mz[1:])) and boss and boss[0] == max(mz), mz)
+        pn = r["panels"][1]
+        px = page.evaluate("""(p) => { const c = document.getElementById('vs-map-stage').querySelector('canvas'), k = c.width / c.getBoundingClientRect().width, b = c.getBoundingClientRect();
+            const x = (p.x - b.left + 3) * k, y = (p.y - b.top + 22) * k;   // inside the model area: past the hairline and the label band
+            const d = c.getContext('2d').getImageData(x, y, (p.w - 6) * k, (p.h - 22) * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60) n++; return n; }""", pn)
+        check("vs-map-generate: the tilted view is drawn, not blank", px > 500, px)
+        check("vs-map-generate: the tilted footprint spans at least 55% of the panel width", r["footW"] >= 0.55 * pn["w"], [r["footW"], pn["w"]])
+    ctx.close()
+
+
+def flow_vs_bench(browser, base):
+    """VoidScape bench: the base picker switches the gun type; parts never run out."""
+    ctx, page = new_page(browser, DESKTOP)
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    goto_vs(page, base)
+    vs_stage_view(page, "vs-bench-stage")
+    rep = "() => VoidBench.report()"
+
+    def click(name):
+        t = page.evaluate(rep)["targets"][name]
+        page.mouse.move(t["x"], t["y"])
+        page.wait_for_timeout(100)
+        page.mouse.click(t["x"], t["y"])
+        page.wait_for_timeout(150)
+
+    r0 = page.evaluate(rep)
+    check("vs-bench: starts on the basic gun with a marker", r0["gun"]["type"] == "basic" and r0["marker"], r0["gun"])
+    for name in ("shotgun", "sniper"):
+        click(name)
+        r = page.evaluate(rep)
+        check(f"vs-bench: picking {name} changes the gun type", r["gun"]["type"] == name and r["gun"]["level"] == r0["gun"]["level"], r["gun"])
+    check("vs-bench: the marker is gone after a pick", page.evaluate(rep)["marker"] is False)
+    for _ in range(20):
+        click("add")
+        click("remove")
+    r = page.evaluate(rep)
+    check("vs-bench: no parts limit after 40 add/remove presses", r["parts"] is None, r["parts"])
+    check("vs-bench: no console error", errors == [], errors)
     ctx.close()
 
 
@@ -1595,8 +1596,8 @@ def flow_vs_idle(browser, base):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
     goto_vs(page, base)
-    snap = "() => ['vs-bench-stage', 'vs-map-stage', 'vs-range-stage'].map(id => document.getElementById(id).querySelector('canvas').toDataURL())"
-    for sid in ("vs-bench-stage", "vs-map-stage", "vs-range-stage"):
+    snap = "() => ['vs-bench-stage', 'vs-map-stage'].map(id => document.getElementById(id).querySelector('canvas').toDataURL())"
+    for sid in ("vs-bench-stage", "vs-map-stage"):
         vs_stage_view(page, sid)
         page.mouse.move(5, 5)
         page.wait_for_timeout(1500)
@@ -1612,7 +1613,7 @@ def flow_vs_idle(browser, base):
     ctx, page = new_page(browser, PHONE)
     goto_vs(page, base)
     boxes = page.evaluate("() => [...document.querySelectorAll('figure.gp-stage')].map(f => { const r = f.getBoundingClientRect(); return [r.width, r.height]; })")
-    check("vs-idle: at 390 wide all three figure.gp-stage are hidden", len(boxes) == 3 and all(w == 0 or h == 0 for w, h in boxes), boxes)
+    check("vs-idle: at 390 wide both figure.gp-stage are hidden", len(boxes) == 2 and all(w == 0 or h == 0 for w, h in boxes), boxes)
     ctx.close()
 
 
@@ -1629,7 +1630,7 @@ FLOWS = {
     "cc-idle": flow_cc_idle,
     "work-hover": flow_work_hover, "game-page-loads": flow_game_page_loads, "game-page-roundtrip": flow_game_page_roundtrip,
     "loop-pause": flow_loop_pause,
-    "vs-range": flow_vs_range, "vs-bench-arms-range": flow_vs_bench_arms_range, "vs-map-roll": flow_vs_map_roll, "vs-idle": flow_vs_idle,
+    "vs-map-generate": flow_vs_map_generate, "vs-idle": flow_vs_idle, "vs-bench": flow_vs_bench,
 }
 
 

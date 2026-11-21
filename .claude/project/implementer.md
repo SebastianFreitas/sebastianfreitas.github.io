@@ -5,7 +5,7 @@
   flow is the syntax check. Never run `serve.py` (it blocks).
 - Landing step: `tools/bump.py`. Never run it (the caller or `try.py` does).
 - Largest files (500 to 850 lines, never read top to bottom):
-  `css/bridge.css`, `js/hud/instruments.js`, `js/pages/voidscape.js`,
+  `css/bridge.css`, `js/hud/instruments.js`,
   `js/gamedev/storm.js`, `js/ship/voidship.js`, `js/gamedev/forge.js`,
   `js/genesis/genesis.js`, `js/gamedev/zones.js`; `.claude/MAP.md`
   lists them all.

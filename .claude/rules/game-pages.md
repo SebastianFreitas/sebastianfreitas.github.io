@@ -149,7 +149,7 @@ In Git Bash prefix ffshot with `MSYS_NO_PATHCONV=1`.
 - A stage handler (`move`, `press`) that returns `false` changed nothing: `Play.stage` skips the wake and the paint, and any other return paints one frame. `conclusus.js` and `heavylight.js` return `false` on a no-change move.
 - Game-page toys and reading give no XP; `Play.award` stays a no-op. Owner, 2026-11-16, asked "Should game-page toys and reading give XP again?": "Bridge only". `cc-read-xp` passes while expecting no XP on game pages.
 - One stage per page at most; the page keeps no page-strip toy once it has a stage.
-- VoidScape has three stages (bench, map, range), the owner's call, which wins over that rule. Owner, 2026-11-15 (TRACK EVENT 26): "voidscape is suposed to have a weapon crafting thingy a map generator thingy and be able to shoot to feels the bullets and the mechanics".
+- VoidScape has two stages (bench, map), the owner's call, which wins over that rule. Owner, 2026-11-15 (TRACK EVENT 26): "voidscape is suposed to have a weapon crafting thingy a map generator thingy and be able to shoot to feels the bullets and the mechanics".
 
 ## Copy
 

@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=368">
-<link rel="stylesheet" href="../css/beacon.css?v=368">
-<link rel="stylesheet" href="../css/play.css?v=368">
-<link rel="stylesheet" href="../css/game-pages.css?v=368">
+<link rel="stylesheet" href="../css/style.css?v=369">
+<link rel="stylesheet" href="../css/beacon.css?v=369">
+<link rel="stylesheet" href="../css/play.css?v=369">
+<link rel="stylesheet" href="../css/game-pages.css?v=369">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -136,12 +136,11 @@
 
     <h2>The bench</h2>
     <p><span class="key">Gun parts</span> drop from enemies and pay for adding mods, removing them, or scrapping a gun. The
-       price climbs with every use, and scrapping pays parts back, so a near miss is still worth
-       something.</p>
+       price climbs with every use.</p>
     <figure class="gp-stage" id="vs-bench-stage">
-      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: craft a gun, then fire it below</span><span class="gp-stage-status" aria-live="polite"></span></div>
-      <div class="gp-stage-box"><canvas role="img" aria-label="A gun bench: craft a gun, then fire it at the range below."></canvas></div>
-      <p class="caption">The gun built here is the gun the range below fires.</p>
+      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: pick a base, then add mods</span><span class="gp-stage-status" aria-live="polite"></span></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A gun bench: pick one of four bases, then add, remove or scrap mods."></canvas></div>
+      <p class="caption">Pick one of four bases, add, remove or scrap mods, and watch the stats change.</p>
     </figure>
 
     <video class="clip" data-wear="image" aria-label="Adding, removing and scrapping mods at the bench" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
@@ -154,9 +153,9 @@
     <p>Every step of a run climbs: stairs, a corridor, a room, joined doorway to doorway. The last room
        is always the boss.</p>
     <figure class="gp-stage" id="vs-map-stage">
-      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click to roll a new map</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas role="img" aria-label="A generated map with stairs at the bottom and a boss room at the top; click to roll a new one."></canvas></div>
-      <p class="caption">Stairs at the bottom, a boss room at the top, and every step between climbs.</p>
+      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: click to generate a level</span><span class="gp-stage-status"></span></div>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A level plan from above beside the same level tilted: rooms, corridors and stairs joined doorway to doorway, climbing to the boss room; click to generate a new one."></canvas></div>
+      <p class="caption">The same rules the game uses at the start of every run: 10 to 19 rooms, each behind stairs and a corridor, the boss last. The tilted view shows it always climbing.</p>
     </figure>
     <p>Because the path only goes up, the space around a new room is almost always empty, so tiles
        never designed to sit together chain anyway.</p>
@@ -185,11 +184,6 @@
     <h2>Feel: shooting and the camera</h2>
     <p>Bullets are physics bodies that bounce: a sniper round ricochets ten times. Keeping that stable
        when stats go extreme took longer than any other system.</p>
-    <figure class="gp-stage" id="vs-range-stage">
-      <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: hold to fire, aim with the pointer</span><span class="gp-stage-status"></span></div>
-      <div class="gp-stage-box"><canvas role="img" aria-label="A shooting range: a sniper round ricochets off all four walls; hold to fire, aim with the pointer."></canvas></div>
-      <p class="caption">A sniper round ricochets off all four walls; fire bursts on every bounce, and a headshot crits.</p>
-    </figure>
 
     <h2>What it cost</h2>
     <p>Fifty interacting boons on rolled weapons and rolled missions cannot be tested by hand. Most of
@@ -222,24 +216,22 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=368"></script>
-<script src="../js/site/xp.js?v=368"></script>
-<script src="../js/site/surge.js?v=368"></script>
-<script src="../js/lib/pacer.js?v=368"></script>
-<script src="../js/site/lazy-video.js?v=368"></script>
-<script src="../js/pages/play.js?v=368"></script>
-<script src="../js/forge/forge-guns.js?v=368"></script>
-<script src="../js/forge/forge-missions.js?v=368"></script>
-<script src="../js/forge/forge.js?v=368"></script>
-<script src="../js/pages/voidscape-bench.js?v=368"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=368"></script>
-<script src="../js/pages/voidscape-boons.js?v=368"></script>
-<script src="../js/pages/voidscape.js?v=368"></script>
-<script src="../js/site/banner.js?v=368"></script>
-<script src="../js/site/shapes.js?v=368"></script>
-<script src="../js/site/barwear.js?v=368"></script>
-<script src="../js/site/redlines.js?v=368"></script>
-<script src="../js/site/back.js?v=368"></script>
-<script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); Play.stage(document.getElementById("vs-range-stage"), "range"); }</script>
+<script src="../js/lib/util.js?v=369"></script>
+<script src="../js/site/xp.js?v=369"></script>
+<script src="../js/site/surge.js?v=369"></script>
+<script src="../js/lib/pacer.js?v=369"></script>
+<script src="../js/site/lazy-video.js?v=369"></script>
+<script src="../js/pages/play.js?v=369"></script>
+<script src="../js/forge/forge-guns.js?v=369"></script>
+<script src="../js/forge/forge-missions.js?v=369"></script>
+<script src="../js/forge/forge.js?v=369"></script>
+<script src="../js/pages/voidscape-bench.js?v=369"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=369"></script>
+<script src="../js/site/banner.js?v=369"></script>
+<script src="../js/site/shapes.js?v=369"></script>
+<script src="../js/site/barwear.js?v=369"></script>
+<script src="../js/site/redlines.js?v=369"></script>
+<script src="../js/site/back.js?v=369"></script>
+<script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); }</script>
 </body>
 </html>

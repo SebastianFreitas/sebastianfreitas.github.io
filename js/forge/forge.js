@@ -89,6 +89,28 @@ window.Forge = (function () {
     benchOk("destroy");
   }
 
+  // the bench's base picker: four tiles under the modifier rows (bench-space), BASES in the same order
+  const BASES = ["basic", "shotgun", "machinegun", "sniper"];
+  const PICK = { x: 200, y: 196, w: 72, h: 24, step: 76 };
+  const baseOf = type => type.split("_")[0].replace(/(FD|CD|PD)$/, "");
+  function benchBase(name) {
+    if (gone > 0 || baseOf(gun.type) === name) return false;
+    const level = gun.level;
+    gun = makeGun(name, gun.mods.length, 10);
+    gun.level = level;
+    timesUsed++;
+    gunChanged();
+    return true;
+  }
+  function benchPick(x, y) {
+    if (y < PICK.y || y > PICK.y + PICK.h) return -1;
+    for (let i = 0; i < BASES.length; i++) {
+      const l = PICK.x + i * PICK.step;
+      if (x >= l && x <= l + PICK.w) return i;
+    }
+    return -1;
+  }
+
   function benchRows() {
     const rows = [null, null, null, null, null, null];
     const bands = { 0: [0, 1], 1: [2, 3], 2: [4, 5] };
@@ -146,6 +168,12 @@ window.Forge = (function () {
         tile(g, bx + 134, y, 56, 24, C.red, C.redInk, costText, "left");
       }
     }
+    g.font = FONT_S;
+    const cur = baseOf(gun.type);
+    for (let i = 0; i < BASES.length; i++) {
+      const on = gone <= 0 && BASES[i] === cur;
+      tile(g, bx + PICK.x + i * PICK.step, by + PICK.y, PICK.w, PICK.h, on ? "#f1ecd8" : C.green, C.greenInk, BASES[i], "center", on ? 1 : 0.9);
+    }
     const rows = benchRows();
     for (let i = 0; i < 6; i++) {
       const w = i < 2 ? 220 : i < 4 ? 260 : 300;
@@ -189,12 +217,14 @@ window.Forge = (function () {
     ctx.restore();
   }
   function benchHit(x, y) {
+    const p = benchPick(x, y);
+    if (p >= 0) return benchBase(BASES[p]);
     const k = benchButton(x, y);
     if (k < 0) return false;
     if (k === 0) benchAdd(); else if (k === 1) benchRemove(); else benchDestroy();
     return true;
   }
-  function benchOver(x, y) { return benchButton(x, y) >= 0; }
+  function benchOver(x, y) { return benchButton(x, y) >= 0 || benchPick(x, y) >= 0; }
   function benchLively() {
     if (armUntil > t || gone > 0) return true;
     for (const k of ["add", "remove", "destroy"]) if (flash[k] && flash[k].until > t) return true;
@@ -203,6 +233,6 @@ window.Forge = (function () {
 
   return {
     gun: () => gun,
-    bench: { W: PANEL_W, H: BENCH_H, step: benchStep, draw: benchDraw, hit: benchHit, over: benchOver, lively: benchLively, parts: n => { if (n !== undefined) benchParts = n; return benchParts; } },
+    bench: { bases: BASES, pick: PICK, baseOf, W: PANEL_W, H: BENCH_H, step: benchStep, draw: benchDraw, hit: benchHit, over: benchOver, lively: benchLively, parts: n => { if (n !== undefined) benchParts = n; return benchParts; } },
   };
 })();

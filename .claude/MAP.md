@@ -482,10 +482,8 @@ only ever read `V` from `Play` and never reach into the bridge.
 | `conclusus.js` | Conclusus toy on the inline stage (`Play.stage`): ledges over the whole plate; the man teleports into a green copy on the ledge nearest the pointer (the game's shadow) | `window.PlayConclusus {report}` (with `targets`; `move` returns `false` on no change) |
 | `sector-zero.js` | Viewport space; registers `zero` | `window.PlayZero {report, thunder}` |
 | `sector-zero-records.js` | The ten record files and mails (Brian, Amy, Laura, Jason, Obscura) | `window.ZeroRecords {RECORDS}` |
-| `voidscape-boons.js` | `build(gun)` → the effective build the range reads, from a `ForgeGuns` gun's base stats and its mods (the boon pool and picker are gone; the crafting bench replaced them) | `window.RangeBoons` |
-| `voidscape-mapgen.js` | The map stage toy `vs-map` (`#vs-map-stage`): a click rolls a new map | `window.VoidMapgen {report}` |
-| `voidscape-bench.js` | The crafting bench as the stage toy `vs-bench` (`#vs-bench-stage`): paints `Forge.bench` with a 30-part pool, arms the range on each change, fires `voidbench:gun` | `window.VoidBench {gun, report}` |
-| `voidscape.js` | The range on its own stage (`#vs-range-stage`, toy `range`), started from `projects/voidscape.html` | `window.PlayRange {report, arm, gun}` |
+| `voidscape-mapgen.js` | The map stage toy `vs-map` (`#vs-map-stage`): top-down level plan from `ForgeMissions.genPlan` (the game's room rules), a press generates a new level | `window.VoidMapgen {report}` |
+| `voidscape-bench.js` | The crafting bench as the stage toy `vs-bench` (`#vs-bench-stage`): paints `Forge.bench` with unlimited parts and a four-tile base picker, fires `voidbench:gun` | `window.VoidBench {gun, report}` |
 
 - `play.js`: `Play.start(spec)` mounts one fixed canvas behind the page (`.play`, z -1, pointer-events none; input is read on `window`, only presses on `body`/`html`/`main.case` count, panels are `.play-ui`),
 - `play.js`: builds the view `V` (`W H top sy t dt pointer rnd blocks vis band main gutter free blockAt cursor wake`;
@@ -507,12 +505,9 @@ only ever read `V` from `Play` and never reach into the bridge.
 - `conclusus.js`: `report()` = man, ghost, marker, teleports, bursts, draws, ledges, `targets {tl, tr, ledges}`, all viewport px; toyshot beats idle, hover, tp, after
 - `sector-zero.js`: the room's objects float in the strip right of the text (terminal, chair, bucket, screwdriver, lantern, four crates, light switch; flat lit/shade boxes, scale 1.3); click = the record types out in a `.play-ui.record` card at 0.03 s/char;
 - `sector-zero.js`: the thunder loop (lower of two d100, losers drift, one turns red and creeps to the pointer, spring home, 0.5 s blackout; stronger comes back sooner); lantern flicker layers, screwdriver charge/throw/return, chair spin, the switch dims the room
-- `voidscape.js`: a gun mount bottom-left of the stage aims at the pointer, hold on the stage to fire; the gun is the bench's (`arm(g)` takes it and starts a fresh run, a change lands on the next shot), else a `ForgeGuns.randomGun()`;
-- `voidscape.js`: the stage is the whole field, bullets ricochet off its four sides, fire explodes on every bounce, cold chills/freezes, poison and bleed tick, headshots crit, damage pops; skulls hop, cones hover and shoot back, triangles lunge and self-destruct;
-- `voidscape.js`: no build card, boon offer or `placeHint()` any more; 0 health = run lost, boons gone; the range goes quiet 40 s after the last shot
-- `voidscape.js`: `report()` gives gun, hp, kills, bullets, enemies, armed and viewport-px `targets {mount, field}`
-- `voidscape-bench.js`: calls `PlayRange.arm(Forge.gun())` on each change; `report()` gives gun, parts, marker and `targets {add, remove, scrap}`; the cream marker sits on ADD NEW MODIFIER until the gun first changes
-- `voidscape-mapgen.js`: the map comes from `ForgeMissions.genPlan` (main path only, laid out climbing, the boss in red on top); `report()` gives `plan` (steps with kind and viewport x, y), `rolls`, `marker`, `draws`, `targets {roll, steps}`; no `Play.award`
+- `voidscape-bench.js`: `report()` gives gun (with base), parts (null), marker and `targets {add, remove, scrap, basic, shotgun, machinegun, sniper}`; the cream marker sits on ADD NEW MODIFIER until the gun first changes
+- `voidscape-mapgen.js`: two panels, PLAN left (top-down `ForgeMissions.genPlan`, the RoomGenerator port) and VIEW right (the same plan leaning back, each piece lifted by its z, boss red on top); a press builds a new level, both views revealed together in at most 1.2 s; no `Play.award`
+- `voidscape-mapgen.js`: `report()` gives `cells` (type, main, gx, gy, z, client x, y), `side` (main cells' client x, y in the tilted view), `panels` (both rects), `rooms`, `builds`, `marker`, `draws`, `done`, `targets {generate}`
 
 ### js/shared
 
@@ -543,7 +538,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `section#experience[data-red-line]` | `off` hides the tall red line on the Experience plate (`.xp-shape > .xp-red`); `on` shows it (css/style.css, comment in index.html) |
 | `projects/conclusus.html` | Case page for Conclusus, a precision platformer on the HeavyLight base (thirty levels, a planted shadow you teleport back to, pins that launch you, safe/deadly silhouettes; Unity, WebGL); toy `js/pages/conclusus.js` |
 | `projects/sector-zero.html` | Case page for Sector Zero, a horror prototype where a text file is the physics engine (Unreal 5); toy `js/pages/sector-zero.js` |
-| `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); three stages (`#vs-bench-stage`, `#vs-map-stage`, `#vs-range-stage`), bench and range started by `Play.stage(...)` in the page script, the map from its own JS |
+| `projects/voidscape.html` | Case page for VoidScape, a first-person roguelike where the player rolls their own difficulty (Unity, C#); two stages (`#vs-bench-stage`, `#vs-map-stage`), the bench started by `Play.stage(...)` in the page script, the map from its own JS |
 | `projects/heavylight.html` | Case page for HeavyLight, a 2D puzzle platformer where light carries momentum (Unity, WebGL); toy `js/pages/heavylight.js` |
 | `404.html` | Not-found page (root-absolute `/css/…` and `/js/…` paths) |
 | `tools/nav-flows.test.py` | Playwright flows (Work-row hover, case-page click and beacon-nav flows: see `--list`; `work-hover` checks the hover preview); starts its own server on a free port; `ROOT` is the repo root |
@@ -590,7 +585,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 - `tools/snap.py`: `capture`, `compare`, `list`; `page-<name>-toy` scenes shoot each case-page toy canvas in the viewport at three scroll stops (`TOY_STOPS`; `toy_frame`, `toy_ink`, whose `TOY_INK` counts `canvas.play` plus every shown `.play-tiles canvas`);
 - `tools/snap.py`: imports `start_server` from nav-flows; reads scene ids from `js/bridge/marks.js` and `js/genesis/genesis-state.js`
 - `tools/nav-flows.test.py`: Conclusus flows `cc-read-xp`, `cc-scroll-pays-nothing`, `cc-teleport`, `cc-idle`; HeavyLight flows `hl-ride`, `hl-crate`, `hl-phone`; `cc-read-xp` expects no XP on game pages (owner: "Bridge only")
-- `tools/nav-flows.test.py`: VoidScape flows `vs-range` (hold-fire bullets), `vs-bench-arms-range`, `vs-map-roll` (a roll that climbs to the boss), `vs-idle` (idle paint, hidden at 390 wide); no flow expects XP
+- `tools/nav-flows.test.py`: VoidScape flows `vs-map-generate` (boss last, 10..19 rooms, no overlap, a press differs), `vs-bench` (base pick changes type, parts stay null), `vs-idle` (idle paint, hidden at 390 wide); no flow expects XP
 - `tools/toyshot.py`: `py -3 tools/toyshot.py <page> [--out PATH.png] [--t MS] [--y PX\|FRAC] [--beat idle|hover|tp|after]` writes a viewport shot (default `snapshots/toys/<page>-<y>.png`, or `<page>-beat-<kind>.png`), prints the inked px count;
 - `tools/toyshot.py`: conclusus beats `idle hover tp after` from `PlayConclusus.report().targets` (hover = mouse on tl, tp = click tr, shot mid-burst, after = 1500 ms later); a missing report or target exits 1; exits 1 on a blank/missing toy or a console error; imports `tools/snap.py`
 - `tools/toyshot.py`: heavylight with no `--y` and no beat is shot mid-ride (stage mid-viewport, lamp `left` clicked, about 1000 ms of frames, `snapshots/toys/heavylight-ride.png`); prints FAIL and exits 1 on no report or lamp, a blank canvas, a console error, or `man.moving` false
@@ -665,7 +660,7 @@ multiply at draw time. `Util.clamp` has no default bounds: always pass
 
 Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, site/lazy-video, pages/play`, the page's toy files, then `site/banner, site/shapes, site/barwear, site/redlines, site/back`; grep `<script` for exact order.
 
-- Game page toy files, voidscape: `forge/{forge-guns, forge-missions, forge}` then `pages/{voidscape-bench, voidscape-mapgen, voidscape-boons, voidscape}`. Sector-zero: `sector-zero-records` then `sector-zero`.
+- Game page toy files, voidscape: `forge/{forge-guns, forge-missions, forge}` then `pages/{voidscape-bench, voidscape-mapgen}`. Sector-zero: `sector-zero-records` then `sector-zero`.
 - Game page extras: Conclusus and HeavyLight add `site/embed`, then `bridge/lamp` (Conclusus) or `shared/heavylight-sprites` (HeavyLight) before their toy.
 
 ### Where things live
@@ -703,7 +698,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 | Reduced motion | `Util.reduced()`; read in `bridge.js` top, `genesis-state.js`, `intro.js`, `lazy-video.js`; global collapse in `css/style.css` |
 | Levels, ranks, rank card | `js/site/xp.js` `RANKS`/`rankOf`/`ceremony`/`onRankUp`; burst and card `js/site/surge.js`; styles `css/beacon.css`; freeze listener `bridge.js` (`xp:freeze`); future boons: Roadmap at the end of this file |
 | Dev URL params | `?reset=1` in `xp.js`; `?genesis=1`, `?gbeat=<name>` and `?gscene=<id>` in `genesis-state.js` |
-| Case-page toys (lamps, the stage toy, records, the range) | `js/pages/<page>.js` |
+| Case-page toys (lamps, the stage toy, records) | `js/pages/<page>.js` |
 
 - Environment model / place readings: one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate`; the four Game Dev sites' physics and their `lines()` live in `bridge-sites.js` `GD_SITES`
 - Cutscene: cast painters `genesis-figures.js` + `genesis-titans.js`, the five gods `genesis-gods.js`, Obrokxus's later forms `genesis-obrok.js`; the old ones `genesis-oldones.js`;
@@ -716,8 +711,8 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
 - `.claude/hooks/hooks_test.py`: `py -3 .claude/hooks/hooks_test.py [-k name]` runs the hook cases (blocking hooks, then prompt and session hooks)
-- Case-page toys (lamps, the stage toy, records, the range): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
-- Case-page toys (lamps, the stage toy, records, the range): give no XP (`Play.award` is a no-op). Conclusus: the stage's teleport toy, a green copy of the man on the nearest ledge, a click teleports him into it
+- Case-page toys (lamps, the stage toy, records): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);
+- Case-page toys (lamps, the stage toy, records): give no XP (`Play.award` is a no-op). Conclusus: the stage's teleport toy, a green copy of the man on the nearest ledge, a click teleports him into it
 - Conclusus toy: resize only rescales (the man's spot, facing, marker and teleport count survive); cached glow sprites in `play.js`
 
 ### Storage keys
