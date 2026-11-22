@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=372">
-<link rel="stylesheet" href="../css/beacon.css?v=372">
-<link rel="stylesheet" href="../css/play.css?v=372">
-<link rel="stylesheet" href="../css/game-pages.css?v=372">
+<link rel="stylesheet" href="../css/style.css?v=373">
+<link rel="stylesheet" href="../css/beacon.css?v=373">
+<link rel="stylesheet" href="../css/play.css?v=373">
+<link rel="stylesheet" href="../css/game-pages.css?v=373">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -48,9 +48,6 @@
     <dl class="gp-meta"><div><dt>Genre</dt><dd>First-person roguelike</dd></div><div><dt>Engine</dt><dd>Unity</dd></div><div><dt>Language</dt><dd>C#</dd></div><div><dt>Role</dt><dd>Solo, everything</dd></div></dl>
   </header>
 
-    <video class="clip" data-wear="image" aria-label="Choosing a run: every modifier raises the payout" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">Choosing a run: every modifier on a mission raises the payout.</p>
-
     <h2>The problem</h2>
     <p>Every roguelike I played broke the same way: the <span class="key">god run</span>. The drops line up, damage goes
        exponential, and the game stops asking anything of you just when it should ask the most.</p>
@@ -70,11 +67,11 @@
           <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 42h10v-9h10v-9h10v-9h10"/><path class="gp-dia-dim" d="M8 22L22 8M13 8h9v9"/><rect class="gp-dia-solid" x="17" y="29" width="4" height="4"/></svg><b>Run</b><span>Rooms, boss last. Farm guns and parts.</span></li>
           <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 8l14 11L38 8"/><path d="M10 19l14 11 14-11"/><path class="gp-dia-dim" d="M4 40h13M31 40h13"/><rect class="gp-dia-solid" x="22" y="38" width="4" height="4"/></svg><b>Special run</b><span>An optional path that scales on execution, not numbers.</span></li>
         </ol>
-        <div class="gp-dia-rail gp-dia-under gp-dia-tall gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Beat the final boss</b><em>keep your boons</em></span></div>
+        <div class="gp-dia-rail gp-dia-under gp-dia-tall gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Beat the boss</b><em>keep your boons</em></span></div>
         <div class="gp-dia-rail gp-dia-under gp-dia-mid gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Leave early</b><em>keep your boons</em></span></div>
-        <div class="gp-dia-rail gp-dia-under gp-dia-inner gp-dia-dash gp-dia-red gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Die</b><em>boons lost</em></span></div>
+        <div class="gp-dia-rail gp-dia-under gp-dia-inner gp-dia-dash gp-dia-red gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Die</b><em>boons and new guns lost</em></span></div>
       </div>
-      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. A run ends at the hub three ways: beat the final boss, leave early or die. Guns and parts always come home; boons are lost on death or a new mission. The special run is free after a boss kill, otherwise you pay.</figcaption>
+      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. Every run ends back at the hub, whether you beat the boss, leave early or die; dying or starting a new mission costs your boons.</figcaption>
     </figure>
 
     <h2>The board</h2>
@@ -84,9 +81,13 @@
        how much risk to buy. Four explain nothing: <span class="cmd">Danger</span>, <span class="cmd">ERROR</span>,
        <span class="cmd">UnknownX</span> and <span class="cmd">UnknownY</span>. You find out by taking one.</p>
 
+    <video class="clip" data-wear="image" aria-label="Choosing a run: every modifier raises the payout" src="../media/voidscape/missions.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <p class="caption">Choosing a run: every modifier on a mission raises the payout.</p>
+
     <h2>The special run</h2>
     <p>The <span class="key">special run</span> is a path of bridge pieces out in the void, each shifted and tilted at random,
-       some missing. Monsters turn elite as you near the end, and a boss group holds the last piece.</p>
+       some missing. Monsters turn elite as you near the end, and a boss group holds the last piece. You enter it from the hub: free after
+       a boss kill, otherwise it costs gun parts, 10 at first and climbing.</p>
 
     <video class="clip" data-wear="image" aria-label="Attempting the special run" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Attempting the special run, the only source of skill points.</p>
@@ -102,14 +103,11 @@
     <img class="clip" data-wear="image" src="../media/voidscape/skilltree.webp" alt="The skill tree: five rows of plus and minus buttons for max life, chance to locate paths, item drop level, boon drop chance and maximum path mods" width="1600" height="978" loading="lazy">
     <p class="caption">The skill tree: five upgrades, paid only with special runs.</p>
 
-    <p>Boons are flat numbers and guns are the multipliers, so a boon is only as good as the gun that scales it. Stack
-       them as wildly as you like and a run can break as hard as the best roguelikes. Item level is the brake: it
-       caps how high a gun's multipliers can roll, so the wildest builds need guns earned deep into progression.</p>
     <figure class="gp-dia">
       <div class="gp-dia-body">
         <ol class="gp-dia-flow">
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 8v32M8 24h32"/><path class="gp-dia-dim" d="M6 6h8M34 42h8"/><rect class="gp-dia-solid" x="22" y="22" width="4" height="4"/></svg><b>Boons</b><span>+ flat. Stack them as wild as you like.</span></li>
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M5 14h34v8H24l-2 5h-6l-2 11H6l3-16H5z"/><path class="gp-dia-dim" d="M37 30v10M32 35h10"/><rect class="gp-dia-solid" x="29" y="16" width="4" height="4"/></svg><b>Gun</b><span>x multiplies everything boons add.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 8v32M8 24h32"/><rect class="gp-dia-solid" x="22" y="22" width="4" height="4"/></svg><b>Boons</b><span>+ flat. Stack them as wild as you like.</span></li>
+          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M5 14h34v8H24l-2 5h-6l-2 11H6l3-16H5z"/><path class="gp-dia-dim" d="M33 31l8 8M41 31l-8 8"/><rect class="gp-dia-solid" x="29" y="16" width="4" height="4"/></svg><b>Gun</b><span>x multiplies everything boons add.</span></li>
           <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6v36M34 6v36"/><path class="gp-dia-dim" d="M14 14h8M14 22h8M14 30h8M14 38h8"/><rect class="gp-dia-solid" x="14" y="22" width="20" height="4"/></svg><b>Item level</b><span>Caps how high multipliers roll.</span></li>
         </ol>
       </div>
@@ -117,14 +115,15 @@
     </figure>
     <p>The long game is keeping a spread of guns, so whatever a run rolls, one of them can use it.</p>
 
-    <video class="clip" data-wear="image" aria-label="A boon offer: take it, refuse it, or reroll" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">A boon offer: take it, refuse it for 10 health, or pay gun parts to reroll.</p>
 
     <h2>Fifty-odd boons, and most of them cost something</h2>
     <p>The interesting half are trades: lose 20 max health for +10 fire damage, or halve your bullet
        speed for +50 physical. A boon you take or refuse leaves the pool, so no offer comes twice.</p>
+
+    <video class="clip" data-wear="image" aria-label="A boon offer: take it, refuse it, or reroll" src="../media/voidscape/boons.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <p class="caption">A boon offer: take it, refuse it for 10 health, or pay gun parts to reroll.</p>
     <p>Others change what the gun is. Ricochets home onto poisoned enemies. Enemies killed by cold
-       burst into eight more. One turns your own fire blast into a speed buff, so shooting the floor
+       shatter into eight of your bullets. One turns your own fire blast into a speed buff, so shooting the floor
        to travel is a legitimate build.</p>
 
     <h2>Weapons are generated, not designed</h2>
@@ -138,19 +137,19 @@
     <p class="caption">A rolled machinegun in the shop, one rolled mod per row.</p>
 
     <h2>The bench</h2>
-    <p><span class="key">Gun parts</span> drop from enemies and pay for adding mods, removing them, or scrapping a gun. The
-       price climbs with every use.</p>
+    <p><span class="key">Gun parts</span> drop from enemies and pay for adding mods, removing them, or destroying a gun. Adding and removing
+       cost parts and the price climbs with every use; destroying a gun pays parts back.</p>
     <figure class="gp-stage" id="vs-bench-stage">
       <div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: pick a base, then add mods</span><span class="gp-stage-status" aria-live="polite"></span></div>
-      <div class="gp-stage-box"><canvas role="img" aria-label="A gun bench: pick one of four bases, then add, remove or scrap mods."></canvas></div>
-      <p class="caption">Pick one of four bases, add, remove or scrap mods, and watch the stats change.</p>
+      <div class="gp-stage-box"><canvas role="img" aria-label="A gun bench: pick one of four bases, then add mods, remove mods or destroy the gun."></canvas></div>
+      <p class="caption">Pick one of four bases, add mods, remove mods or destroy the gun, and watch the stats change.</p>
     </figure>
 
-    <video class="clip" data-wear="image" aria-label="Adding, removing and scrapping mods at the bench" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
-    <p class="caption">Adding, removing and scrapping mods at the bench.</p>
+    <video class="clip" data-wear="image" aria-label="Adding and removing mods at the bench" src="../media/voidscape/crafting.mp4" muted loop playsinline preload="none" data-lazy></video>
+    <p class="caption">Adding and removing mods at the bench.</p>
 
     <p>Four weapon slots and eight saved layouts persist between runs, so building a gun is a decision
-       that outlasts the session.</p>
+       that carries over between runs.</p>
 
     <h2>The map only goes up</h2>
     <p>Every step of a run climbs: stairs, a corridor, a room, joined doorway to doorway. The last room
@@ -173,18 +172,16 @@
     <h2>Every room has versions</h2>
     <p>Every room carries optional pieces that each roll their own chance to exist, so the same room
        comes back different.</p>
-    <p>The trapped versions matter most: sweeping lasers, spikes, rising lava. Movement is the best
-       defence, so a trap makes you plan it instead of spending it: a harder fight without a single
-       stronger enemy.</p>
+    <p>Now and then a version adds a small trap: a sweeping laser, spikes or rising lava.</p>
 
-    <img class="clip" data-wear="image" src="../media/voidscape/enemy.webp" alt="Mid-fight in a generated corridor, a red enemy taking hits" width="1600" height="986" loading="lazy">
-    <p class="caption">Mid-fight in a generated corridor.</p>
+    <img class="clip" data-wear="image" src="../media/voidscape/fight.webp" alt="First-person view of a red enemy bursting after a 142 hit, yellow shots in the air" width="1280" height="720" loading="lazy">
+    <p class="caption">A 142 hit bursts an enemy.</p>
 
     <h2>Feel: movement</h2>
     <p>Movement is snappy and forgiving, and the work is in small things: coyote time, jump buffering,
        gravity that triples past the apex, an invulnerable side dash.</p>
 
-    <h2>Feel: shooting and the camera</h2>
+    <h2>Feel: shooting</h2>
     <p>Bullets are physics bodies that bounce: a sniper round ricochets ten times. Keeping that stable
        when stats go extreme took longer than any other system.</p>
 
@@ -219,22 +216,22 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=372"></script>
-<script src="../js/site/xp.js?v=372"></script>
-<script src="../js/site/surge.js?v=372"></script>
-<script src="../js/lib/pacer.js?v=372"></script>
-<script src="../js/site/lazy-video.js?v=372"></script>
-<script src="../js/pages/play.js?v=372"></script>
-<script src="../js/forge/forge-guns.js?v=372"></script>
-<script src="../js/forge/forge-missions.js?v=372"></script>
-<script src="../js/forge/forge.js?v=372"></script>
-<script src="../js/pages/voidscape-bench.js?v=372"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=372"></script>
-<script src="../js/site/banner.js?v=372"></script>
-<script src="../js/site/shapes.js?v=372"></script>
-<script src="../js/site/barwear.js?v=372"></script>
-<script src="../js/site/redlines.js?v=372"></script>
-<script src="../js/site/back.js?v=372"></script>
+<script src="../js/lib/util.js?v=373"></script>
+<script src="../js/site/xp.js?v=373"></script>
+<script src="../js/site/surge.js?v=373"></script>
+<script src="../js/lib/pacer.js?v=373"></script>
+<script src="../js/site/lazy-video.js?v=373"></script>
+<script src="../js/pages/play.js?v=373"></script>
+<script src="../js/forge/forge-guns.js?v=373"></script>
+<script src="../js/forge/forge-missions.js?v=373"></script>
+<script src="../js/forge/forge.js?v=373"></script>
+<script src="../js/pages/voidscape-bench.js?v=373"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=373"></script>
+<script src="../js/site/banner.js?v=373"></script>
+<script src="../js/site/shapes.js?v=373"></script>
+<script src="../js/site/barwear.js?v=373"></script>
+<script src="../js/site/redlines.js?v=373"></script>
+<script src="../js/site/back.js?v=373"></script>
 <script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); }</script>
 </body>
 </html>

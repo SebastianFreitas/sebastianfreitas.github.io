@@ -161,7 +161,7 @@
      </div>
      <figcaption class="gp-cap"><b>FIG. 01</b> One sentence.</figcaption>
    </figure>
-   Rails always run back, from a later step to an earlier one; the arrow (the site's .go arrow) lands on the earlier step. gp-dia-red (one rail per diagram at most) turns
+   Rails are back rails (from a later step to an earlier one) plus at most one forward rail (gp-dia-fwd); the arrow (the site's .go arrow) lands on the earlier step. gp-dia-red (one rail per diagram at most) turns
    that rail's arrow and label square --type-red: the only red. Under 900 px the steps stack, the arrows point down and the rails become side
    brackets (above -> left, under -> right) with the label turned along them, so a rail label stays under about 20 characters. */
 .page-game.page-case:not(.page-404) main.case .gp-dia { margin: var(--gp-4) 0 var(--gp-5); }
@@ -212,7 +212,7 @@
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { top: 0; border-width: 0 6px 10px 7px; border-bottom-color: var(--gp-arrow, var(--type-cream)); border-top-color: transparent; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red { --gp-arrow: var(--type-red); }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
-/* two exits sharing one return (VoidScape: win and death, both Run to Hub): two under rails over the same steps, nested. gp-dia-tall is the outer one; gp-dia-inner is the shorter one inside it, pulled in
+/* several exits sharing one return (three: see the three-exit block below): under rails over the same steps, nested. gp-dia-tall is the outer one; gp-dia-inner is the shorter one inside it, pulled in
    1.25rem each side so its arrow lands beside the outer arrow. gp-dia-dash draws the bracket dashed. A label of two lines is span.gp-dia-two > b (the trigger) + em (the outcome, dimmer). */
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall { height: 8.5rem; align-self: end; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-mid { height: 5.75rem; margin: 0 calc(var(--gp-dia-port) + 1.25rem); }
@@ -305,7 +305,7 @@
   .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > b { font-size: 1.25rem; letter-spacing: 0.02em; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > .gp-dia-ico { width: 2rem; height: 2rem; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-dash { border-style: dashed; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > em { margin: 0 6px 0 0; font-size: 10px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span.gp-dia-two > em { margin: 0 6px 0 0; font-size: 10px; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span { writing-mode: vertical-rl; padding: var(--gp-1) 0; font-size: 10px; letter-spacing: 0.12em; transform: translateX(-50%) rotate(180deg); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateX(50%); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail::before { display: none; }
@@ -323,6 +323,21 @@
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via { align-items: flex-start; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via > span { position: static; margin-top: var(--gp-dia-port); transform: translateX(-50%) rotate(180deg); }
   .page-game.page-case:not(.page-404) main.case .gp-stage { display: none; }   /* the play stage is desktop only */
+}
+@media (max-width: 599px) {   /* three exits (VoidScape FIG. 01): horizontal rows under the step stack; the rotated labels left are pairs, 10 px inside, 24 px between */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) { grid-template-columns: 4rem minmax(0, 1fr) 0.5rem; column-gap: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under {
+    grid-column: 1 / -1; grid-row: auto; justify-self: stretch; width: auto; height: auto; align-self: auto; margin: calc(0.75rem - var(--gp-dia-gap)) 0 0;
+    border: 1px solid var(--gp-hair); border-style: solid; justify-content: flex-start; align-items: center; padding: var(--gp-1) var(--gp-2);
+  }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under.gp-dia-dash { border-style: dashed; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-tall.gp-dia-under { margin-top: 0; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span { writing-mode: horizontal-tb; transform: none; padding: 0; font-size: 12px; letter-spacing: 0.1em; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span.gp-dia-two { display: flex; align-items: baseline; gap: 10px; text-align: left; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span.gp-dia-two > em { margin: 0; font-size: 11px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under::after { position: static; order: -1; flex: none; margin-right: 12px; transform: scaleX(-1); }   /* the arrow points left, back to the hub */
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span.gp-dia-two > em { margin: 0 10px 0 0; font-size: 11px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span { font-size: 12px; }
 }
 
 
