@@ -36,7 +36,7 @@ window.VoidMapgen = (function () {
 
   // geometry: two panels side by side (plan left, side view right) with the key strip under both; a label band tops each panel
   function sGeo(v) {
-    const p = sPlan, kh = 22, lh = 14, pw = v.W / 2;
+    const p = sPlan, kh = 22, lh = 14, pw = v.W * 0.4;
     const cols = p.maxX - p.minX + 1, rows = p.maxY - p.minY + 1;
     const s = Math.min((pw - 24) / cols, (v.H - kh - 16 - lh) / rows, 40);
     return {
@@ -47,74 +47,103 @@ window.VoidMapgen = (function () {
   }
 
   // the tilted view: the plan itself seen from its front edge (y squashed by SQ, x sheared by SH * y), each piece lifted by its z so the shape climbs to the boss
-  const SQ = 0.5, SH = 0.3, LIFT = 0.6;
-  // the pieces as the game builds them (a floor tile is 6 units, walls 5 tall and 1 thick), in cell units: ceilings left off, walls cut to half height, a low curb on the two sides facing the viewer
-  const FT = 0.06, WH = 1 / 4, WT = 1 / 8, CURB = WH / 4;   // floor plate thickness, wall height, wall thickness, curb height
-  const FW = { start: 0.6, room: 0.78, boss: 0.94, side: 0.6, corridor: 0.36, stairs: 0.5 };   // floor width per kind, as in the plan
+  const SQ = 0.5, SH = 0.3;
+  // the pieces as the game builds them (walk.html: a tile is 6 units, a cell 4 tiles, walls 5 tall and about 1 thick), in cell units: ceilings left off, a low curb on the sides facing the viewer
+  const FT = 0.06, WH = 5 / 24, WT = 1 / 24, CURB = 1 / 16;   // floor plate thickness, wall height, wall thickness, curb height
+  const DIRS = [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }];
+  const nearDir = d => d.y - SH * d.x > 0;   // an edge whose outer side points toward the viewer, read from the projection (screen depth grows with y - SH * x)
   function wallCol(c, p) {   // the cut top of the wall: the piece's floor lightened (its faces are painted a little darker than the floor)
     if (c.type === "boss") return "#a83a3a";
     const m = shade(c, p).match(/\d+/g);
     return `rgb(${Math.min(255, Math.round(m[0] * 1.15))},${Math.min(255, Math.round(m[1] * 1.15))},${Math.min(255, Math.round(m[2] * 1.15))})`;
   }
-  function sParts(c, p, k) {   // the pieces of one cell as boxes on the floor grid: rects in cell units, a top lift (z * k) and a thickness down from it; wall boxes are flagged
-    const out = [], l = c.z * k, cx = c.x + 0.5, cy = c.y + 0.5, col = shade(c, p), wc = wallCol(c, p), w = FW[c.type], h = w / 2;
+  function sParts(c, p, k, cm) {   // the pieces of one cell as boxes on the floor grid, laid out tile by tile as walk.html does: rects in cell units, a top lift (z * k) and a thickness down from it; wall boxes are flagged
+    const out = [], col = shade(c, p), wc = wallCol(c, p);
     const add = (x0, y0, x1, y1, lift, t, cl, wl) => { if (x1 - x0 > 0.004 && y1 - y0 > 0.004) out.push({ x0, y0, x1, y1, l: lift, th: t, col: cl, dS: 0, dE: 0, wall: wl }); };
-    const wall = (x0, y0, x1, y1, base, south, west) => { const t = south || west ? CURB : WH; add(x0, y0, x1, y1, base + t, t, wc, true); };
-    const joins = [];   // the sides this piece opens on, each as wide as the narrower of the two floors it joins
-    const join = (o, dx, dy) => joins.push({ x: dx, y: dy, gw: Math.min(w, FW[o.type]) });
-    const ns = [];
-    if (c.type === "side") join(p.cells.find(m => m.x === c.x - c.dir.x && m.y === c.y - c.dir.y) || c, -c.dir.x, -c.dir.y);
-    else {
-      for (const n of [p.cells.find(m => m.main && m.mi === c.mi - 1), p.cells.find(m => m.main && m.mi === c.mi + 1)]) if (n) { ns.push(n); join(n, Math.sign(n.x - c.x), Math.sign(n.y - c.y)); }
-      for (const m of p.cells) if (!m.main && m.x - m.dir.x === c.x && m.y - m.dir.y === c.y) join(m, m.dir.x, m.dir.y);
+    const doors = new Set();   // the sides this cell opens on: the main chain's neighbours, or the side room sharing its mi
+    DIRS.forEach((d, dk) => {
+      const n = cm.get((c.x + d.x) + "," + (c.y + d.y));
+      if (n && ((c.main && n.main && Math.abs(c.mi - n.mi) === 1) || (c.main !== n.main && c.mi === n.mi))) doors.add(dk);
+    });
+    const ad = c.dir, nxt = c.main ? p.cells.find(m => m.main && m.mi === c.mi + 1) : null;
+    const dzc = c.type === "room" && nxt ? nxt.z - c.z : 0;   // a room that sits 9 higher than the cell it is entered from
+    const tl = new Map();   // the tiles of this cell: { z: floor at the low end, rise: climb along the heading (0 = flat) }
+    for (let u = 0; u < 4; u++) for (let v = 0; v < 4; v++) {
+      const r = ad.x > 0 ? u : ad.x < 0 ? 3 - u : ad.y > 0 ? v : 3 - v, cross = ad.x ? v : u;   // row along the heading
+      let t = null;
+      if (c.type === "stairs") { if (cross === 1 || cross === 2) t = { z: c.z + 3 * r, rise: 3, r }; }
+      else if (c.type === "corridor") {
+        let open = (u === 1 || u === 2) && (v === 1 || v === 2);
+        for (const dk of doors) { const d = DIRS[dk]; if ((d.x > 0 && u === 3 || d.x < 0 && u === 0) && (v === 1 || v === 2) || (d.y > 0 && v === 3 || d.y < 0 && v === 0) && (u === 1 || u === 2)) open = true; }
+        if (open) t = { z: c.z, rise: 0, r };
+      } else t = dzc && r === 0 ? { z: c.z, rise: dzc, r } : { z: c.z + dzc, rise: 0, r };
+      if (t) tl.set(u + "," + v, t);
     }
-    const jn = (dx, dy) => joins.find(j => j.x === dx && j.y === dy);
-    const o = h + WT;
-    if (c.type === "stairs" && ns.length) {   // a ramp: four steps from the top of the piece it leaves up to the top of the piece it enters, a solid wedge so nothing floats, a low wall down each side
-      const d = joins[0], z1 = (ns.find(n => n.mi === c.mi + 1) || c).z, z0 = (ns.find(n => n.mi === c.mi - 1) || c).z;
-      for (let j = 0; j < 4; j++) {
-        const a = 0.5 - j / 4, b = 0.5 - (j + 1) / 4, xa = cx + d.x * a, xb = cx + d.x * b, ya = cy + d.y * a, yb = cy + d.y * b;
-        const xl = Math.min(xa, xb), xh = Math.max(xa, xb), yl = Math.min(ya, yb), yh = Math.max(ya, yb), top = (z0 + (z1 - z0) * (j + 1) / 4) * k;
-        add(xl - (d.x ? 0 : h), yl - (d.y ? 0 : h), xh + (d.x ? 0 : h), yh + (d.y ? 0 : h), top, FT + top - z0 * k, col, false);
-        if (d.x) { wall(xl, cy - o, xh, cy - h, top, false, false); wall(xl, cy + h, xh, cy + o, top, true, false); }
-        else { wall(cx - o, yl, cx - h, yh, top, false, true); wall(cx + h, yl, cx + o, yh, top, false, false); }
-      }
-      return out;
+    // floors: flat tiles merged into rects, step tiles as rows of three steps each, solid down to the low end
+    const done = new Set();
+    for (let v = 0; v < 4; v++) for (let u = 0; u < 4; u++) {
+      const t = tl.get(u + "," + v);
+      if (!t || t.rise || done.has(u + "," + v)) continue;
+      let u1 = u; while (u1 < 3 && !done.has((u1 + 1) + "," + v) && tl.get((u1 + 1) + "," + v) && !tl.get((u1 + 1) + "," + v).rise && tl.get((u1 + 1) + "," + v).z === t.z) u1++;
+      let v1 = v; const ok = y => { for (let i = u; i <= u1; i++) { const q = tl.get(i + "," + y); if (!q || q.rise || q.z !== t.z || done.has(i + "," + y)) return false; } return true; };
+      while (v1 < 3 && ok(v1 + 1)) v1++;
+      for (let j = v; j <= v1; j++) for (let i = u; i <= u1; i++) done.add(i + "," + j);
+      add(c.x + u / 4, c.y + v / 4, c.x + (u1 + 1) / 4, c.y + (v1 + 1) / 4, t.z * k, FT, col, false);
     }
-    if (c.type !== "corridor" && c.type !== "stairs") {   // a room-like piece: the floor, arms to the shared edges, walls on its own edges with a gap at each door
-      const X0 = cx - h, X1 = cx + h, Y0 = cy - h, Y1 = cy + h;
-      add(X0, Y0, X1, Y1, l, FT, col, false);
-      for (const j of joins) add(j.x < 0 ? cx - 0.5 : j.x > 0 ? X1 : cx - j.gw / 2, j.y < 0 ? cy - 0.5 : j.y > 0 ? Y1 : cy - j.gw / 2,
-        j.x < 0 ? X0 : j.x > 0 ? cx + 0.5 : cx + j.gw / 2, j.y < 0 ? Y0 : j.y > 0 ? cy + 0.5 : cy + j.gw / 2, l, FT, col, false);
-      const gap = (a0, a1, j, gc, put) => { if (!j) put(a0, a1); else { put(a0, Math.min(a1, gc - j.gw / 2)); put(Math.max(a0, gc + j.gw / 2), a1); } };
-      gap(X0, X1, jn(0, -1), cx, (a, b) => wall(a, Y0, b, Y0 + WT, l, false, false));
-      gap(X0, X1, jn(0, 1), cx, (a, b) => wall(a, Y1 - WT, b, Y1, l, true, false));
-      gap(Y0 + WT, Y1 - WT, jn(-1, 0), cy, (a, b) => wall(X0, a, X0 + WT, b, l, false, true));
-      gap(Y0 + WT, Y1 - WT, jn(1, 0), cy, (a, b) => wall(X1 - WT, a, X1, b, l, false, false));
-      return out;
-    }
-    add(cx - h, cy - h, cx + h, cy + h, l, FT, col, false);   // a corridor: the strip as narrow as in the plan, low walls just outside it on both long sides, open ends
-    for (const j of joins) {
-      if (j.x) {
-        const a = j.x < 0 ? cx - 0.5 : cx + h, b = j.x < 0 ? cx - h : cx + 0.5;
-        add(a, cy - h, b, cy + h, l, FT, col, false); wall(a, cy - o, b, cy - h, l, false, false); wall(a, cy + h, b, cy + o, l, true, false);
-      } else {
-        const a = j.y < 0 ? cy - 0.5 : cy + h, b = j.y < 0 ? cy - h : cy + 0.5;
-        add(cx - h, a, cx + h, b, l, FT, col, false); wall(cx - o, a, cx - h, b, l, false, true); wall(cx + h, a, cx + o, b, l, false, false);
+    for (let r = 0; r < 4; r++) {
+      const row = []; for (const [key, t] of tl) if (t.rise && t.r === r) { const [u, v] = key.split(",").map(Number); row.push(ad.x ? v : u); }
+      if (!row.length) continue;
+      const t0 = [...tl.values()].find(t => t.rise && t.r === r), cmin = Math.min(...row), cmax = Math.max(...row);
+      for (let i = 0; i < 3; i++) {
+        const s0 = (r + i / 3) / 4, s1 = (r + (i + 1) / 3) / 4, top = t0.z + t0.rise * (i + 1) / 3;
+        const a0 = ad.x > 0 ? c.x + s0 : ad.x < 0 ? c.x + 1 - s1 : c.x + cmin / 4, a1 = ad.x > 0 ? c.x + s1 : ad.x < 0 ? c.x + 1 - s0 : c.x + (cmax + 1) / 4;
+        const b0 = ad.y > 0 ? c.y + s0 : ad.y < 0 ? c.y + 1 - s1 : c.y + cmin / 4, b1 = ad.y > 0 ? c.y + s1 : ad.y < 0 ? c.y + 1 - s0 : c.y + (cmax + 1) / 4;
+        add(a0, b0, a1, b1, top * k, FT + (top - c.z) * k, col, false);
       }
     }
-    if (!jn(0, -1)) wall(cx - o, cy - o, cx + o, cy - h, l, false, false);
-    if (!jn(0, 1)) wall(cx - o, cy + h, cx + o, cy + o, l, true, false);
-    if (!jn(-1, 0)) wall(cx - o, cy - h, cx - h, cy + h, l, false, true);
-    if (!jn(1, 0)) wall(cx + h, cy - h, cx + o, cy + h, l, false, false);
+    // walls on every tile edge that is not inside the cell and not a doorway (the middle two tiles of a door side); a curb where the outer side faces the viewer
+    const wl = new Map();
+    const put = (x0, y0, x1, y1, z, d) => { const t = nearDir(d) ? CURB : WH; add(x0, y0, x1, y1, z * k + t, t, wc, true); };
+    for (const [key, t] of tl) {
+      const [u, v] = key.split(",").map(Number);
+      DIRS.forEach((d, dk) => {
+        const nu = u + d.x, nv = v + d.y, cr = d.x ? v : u;
+        if (nu >= 0 && nu < 4 && nv >= 0 && nv < 4 ? tl.has(nu + "," + nv) : doors.has(dk) && (cr === 1 || cr === 2)) return;
+        const along = d.x ? v : u, line = d.x ? u : v;
+        const ex = d.x > 0 ? c.x + (u + 1) / 4 - WT : d.x < 0 ? c.x + u / 4 : null, ey = d.y > 0 ? c.y + (v + 1) / 4 - WT : d.y < 0 ? c.y + v / 4 : null;
+        const ends = (d.x > 0 || d.y > 0) === (ad.x > 0 || ad.y > 0);   // this edge faces up the heading
+        const parallel = ad.x ? d.x : d.y;   // a step tile's end edge (d along the heading) is flat at one height; its side edges follow the steps
+        if (t.rise && !parallel) {
+          for (let i = 0; i < 3; i++) {
+            const s0 = (t.r + i / 3) / 4, s1 = (t.r + (i + 1) / 3) / 4, top = t.z + t.rise * (i + 1) / 3;
+            const a0 = ad.x > 0 ? c.x + s0 : ad.x < 0 ? c.x + 1 - s1 : 0, a1 = ad.x > 0 ? c.x + s1 : ad.x < 0 ? c.x + 1 - s0 : 0;
+            const b0 = ad.y > 0 ? c.y + s0 : ad.y < 0 ? c.y + 1 - s1 : 0, b1 = ad.y > 0 ? c.y + s1 : ad.y < 0 ? c.y + 1 - s0 : 0;
+            put(d.x ? ex : a0, d.y ? ey : b0, d.x ? ex + WT : a1, d.y ? ey + WT : b1, top, d);
+          }
+        } else {
+          const z = t.rise && ends ? t.z + t.rise : t.z, id = dk + "|" + line + "|" + z;
+          if (!wl.has(id)) wl.set(id, { d, ex, ey, line, z, al: [] });
+          wl.get(id).al.push(along);
+        }
+      });
+    }
+    for (const w of wl.values()) {   // runs of neighbouring tiles along one edge become one box
+      w.al.sort((a, b) => a - b);
+      for (let i = 0; i < w.al.length;) {
+        let j = i; while (j + 1 < w.al.length && w.al[j + 1] === w.al[j] + 1) j++;
+        const a0 = w.al[i] / 4, a1 = (w.al[j] + 1) / 4;
+        put(w.d.x ? w.ex : c.x + a0, w.d.y ? w.ey : c.y + a0, w.d.x ? w.ex + WT : c.x + a1, w.d.y ? w.ey + WT : c.y + a1, w.z, w.d);
+        i = j + 1;
+      }
+    }
     return out;
   }
   function sSide(v, geo) {
     const p = sPlan;
-    const zs = p.cells.map(c => c.z), zr = Math.max(...zs) - Math.min(...zs);
-    const k = zr > 0 ? (LIFT / (1 - LIFT)) * (p.maxY - p.minY + 1) * SQ / zr : 0;   // the whole climb takes about LIFT of the panel's height, the footprint the rest
+    const k = 1 / 24;   // the game's own slope: a cell is 24 game units, so a stairs cell (12 up) climbs half a cell
+    const cm = new Map(p.cells.map(c => [c.x + "," + c.y, c]));
     const groups = p.cells.map((c, i) => {   // back to front: the cells by depth, inside each one its floors first, then its walls
-      const qs = sParts(c, p, k), key = q => (q.y0 + q.y1) / 2 - SH * (q.x0 + q.x1) / 2 + SQ * q.l;
+      const qs = sParts(c, p, k, cm), key = q => (q.y0 + q.y1) / 2 - SH * (q.x0 + q.x1) / 2 + SQ * q.l;
       for (const q of qs) q.ci = i;
       qs.sort((m, n) => (m.wall - n.wall) || key(m) - key(n));
       return { key: c.y + 0.5 - SH * (c.x + 0.5) + SQ * c.z * k, qs };
@@ -127,10 +156,10 @@ window.VoidMapgen = (function () {
         [q.x0, q.y1, q.l - q.th - q.dS], [q.x1, q.y1, q.l - q.th - q.dE], [q.x0, q.y1, floor], [q.x1, q.y1, floor]]) {   // the top corners and the foot of the front sides
       x0 = Math.min(x0, x + SH * y); x1 = Math.max(x1, x + SH * y); y0 = Math.min(y0, y * SQ - l); y1 = Math.max(y1, y * SQ - l);
     }
-    const ax = geo.pw + 12, ay = geo.lh + 8, aw = geo.pw - 24, ah = v.H - geo.kh - 8 - ay;
+    const ax = geo.pw + 12, ay = geo.lh + 8, aw = v.W - geo.pw - 24, ah = v.H - geo.kh - 8 - ay;
     const f = Math.min(aw / (x1 - x0), ah / (y1 - y0), 60);
     const ox = ax + (aw - (x1 - x0) * f) / 2 - x0 * f, oy = ay + (ah - (y1 - y0) * f) / 2 - y0 * f;
-    return { parts, f, k, floor, w: (x1 - x0) * f, pt: (x, y, l) => [ox + (x + SH * y) * f, oy + (y * SQ - l) * f] };
+    return { parts, f, k, floor, w: (x1 - x0) * f, h: (y1 - y0) * f, pt: (x, y, l) => [ox + (x + SH * y) * f, oy + (y * SQ - l) * f] };
   }
   function sSidePart(g, q, sd) {
     const P = sd.pt, f = sd.f, a = P(q.x0, q.y0, q.l), b = P(q.x1, q.y0, q.l), c = P(q.x1, q.y1, q.l), d = P(q.x0, q.y1, q.l);
@@ -183,21 +212,21 @@ window.VoidMapgen = (function () {
   }
 
   function sKey(g, v, geo) {
-    const items = [["room", "#e4ddc6"], ["corridor", "#a3ab9f"], ["stairs", "#f1ecd8"], ["side room", "#8a9486"], ["boss", RED]];
+    const items = [["start", null], ["room","#e4ddc6"], ["corridor", "#a3ab9f"], ["stairs", "#f1ecd8"], ["side room", "#8a9486"], ["boss", RED]];
     g.font = "11px 'Space Mono', monospace"; g.textBaseline = "middle";
     let w = 0;
     for (const [t] of items) w += 14 + g.measureText(t).width + 14;
     let x = (v.W - w) / 2 + 7;
     const y = v.H - geo.kh / 2 - 2;
     for (const [t, col] of items) {
-      g.fillStyle = col; g.fillRect(x, y - 4, 8, 8);
+      if (col) { g.fillStyle = col; g.fillRect(x, y - 4, 8, 8); } else sBracket(g, x - 1, y - 5, x + 9, y + 5, 4);
       g.fillStyle = "#c9c3ae"; g.fillText(t, x + 14, y);
       x += 14 + g.measureText(t).width + 14;
     }
   }
 
-  function sBracket(g, l, t, r, bt) {
-    const L = 9, T = 2;
+  function sBracket(g, l, t, r, bt, L = 9) {
+    const T = 2;
     g.fillStyle = "#f1ecd8";
     for (const [x, y, dx, dy] of [[l, t, 1, 1], [r, t, -1, 1], [l, bt, 1, -1], [r, bt, -1, -1]]) {
       g.fillRect(dx > 0 ? x : x - L, dy > 0 ? y : y - T, L, T);
@@ -211,7 +240,7 @@ window.VoidMapgen = (function () {
     return VC;
   }
   function sViewPaint(g, sd, shown) {
-    g.fillStyle = "rgba(241,236,216,0.13)"; g.beginPath();   // the floor shadow: the footprint flat at the lowest z, one path so overlaps do not stack
+    g.fillStyle = "rgba(241,236,216,0.043)"; g.beginPath();   // the floor shadow: the footprint flat at the lowest z, one path so overlaps do not stack
     for (const q of sd.parts) if (q.ci < shown && !q.wall) {
       const a = sd.pt(q.x0, q.y0, sd.floor), b = sd.pt(q.x1, q.y0, sd.floor), c = sd.pt(q.x1, q.y1, sd.floor), d = sd.pt(q.x0, q.y1, sd.floor);
       g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath();
@@ -225,12 +254,6 @@ window.VoidMapgen = (function () {
     SV = v;
     const p = sPlan, geo = sGeo(v);
     const shown = v.reduced ? p.cells.length : Math.floor((v.t - sT0) / sPop) + 1;
-    for (const w of p.walls) {   // wall plugs: a short bar across the door
-      const cx = geo.ox + w.x * geo.s + geo.s / 2 + w.dir.x * geo.s * 0.5, cy = geo.oy + w.y * geo.s + geo.s / 2 + w.dir.y * geo.s * 0.5;
-      if (w.mi > shown) continue;
-      g.fillStyle = "#6f7a6f";
-      g.fillRect(cx - (w.dir.x ? 1.5 : geo.s * 0.15), cy - (w.dir.y ? 1.5 : geo.s * 0.15), w.dir.x ? 3 : geo.s * 0.3, w.dir.y ? 3 : geo.s * 0.3);
-    }
     for (let i = 0; i < p.cells.length && i < shown; i++) if (!p.cells[i].main) sStub(g, p.cells[i], geo);
     for (let i = 0; i < p.cells.length && i < shown; i++) sCell(g, p.cells[i], p, i, geo);
     const vc = sViewGet(v, geo), sd = vc.sd;
@@ -270,14 +293,9 @@ window.VoidMapgen = (function () {
       sClient(geo.ox + c.x * geo.s + geo.s / 2, geo.oy + c.y * geo.s + geo.s / 2)));
     const sd = sViewGet(SV, geo).sd, ph = SV.H - geo.kh;
     const side = sPlan.cells.filter(c => c.main).sort((a, b) => a.mi - b.mi).map(c => sClient(...sd.pt(c.x + 0.5, c.y + 0.5, c.z * sd.k)));   // each main cell's centre in the tilted view
-    const panels = [sClient(0, 0), sClient(geo.pw, 0)].map(o => ({ x: o.x, y: o.y, w: geo.pw, h: ph }));
-    const ramps = [];   // each stair ramp's gap in px: its last step's top to the top of the piece it enters, its first step's foot to the top of the piece it leaves (0 or less = joined)
-    for (const c of sPlan.cells) if (c.main && c.type === "stairs") {
-      const st = sd.parts.filter(q => q.ci === sPlan.cells.indexOf(c) && !q.wall).sort((m, n) => m.l - n.l), nx = sPlan.cells.find(m => m.main && m.mi === c.mi + 1), pv = sPlan.cells.find(m => m.main && m.mi === c.mi - 1);
-      if (st.length === 4 && nx && pv) ramps.push([Math.abs(st[3].l - nx.z * sd.k) * sd.f, (st[0].l - st[0].th - pv.z * sd.k) * sd.f]);
-    }
+    const panels = [sClient(0, 0), sClient(geo.pw, 0)].map((o, i) => ({ x: o.x, y: o.y, w: i ? SV.W - geo.pw : geo.pw, h: ph }));
     return {
-      side, panels, ramps, footW: sd.w, cells, rooms: cells.filter(c => c.type === "room").length, builds: sBuilds, marker: !sBuilds, draws: sDraws,
+      side, panels, footW: sd.w, footH: sd.h, f: sd.f, cells, rooms: cells.filter(c => c.type === "room").length, builds: sBuilds, marker: !sBuilds, draws: sDraws,
       done: sDone(SV), targets: { generate: sClient(SV.W / 2, SV.H / 2) },
     };
   }

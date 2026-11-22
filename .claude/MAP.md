@@ -506,8 +506,9 @@ only ever read `V` from `Play` and never reach into the bridge.
 - `sector-zero.js`: the room's objects float in the strip right of the text (terminal, chair, bucket, screwdriver, lantern, four crates, light switch; flat lit/shade boxes, scale 1.3); click = the record types out in a `.play-ui.record` card at 0.03 s/char;
 - `sector-zero.js`: the thunder loop (lower of two d100, losers drift, one turns red and creeps to the pointer, spring home, 0.5 s blackout; stronger comes back sooner); lantern flicker layers, screwdriver charge/throw/return, chair spin, the switch dims the room
 - `voidscape-bench.js`: `report()` gives gun (with base), parts (null), marker and `targets {add, remove, scrap, basic, shotgun, machinegun, sniper}`; the cream marker sits on ADD NEW MODIFIER until the gun first changes
-- `voidscape-mapgen.js`: two panels, PLAN left (top-down `ForgeMissions.genPlan`, the RoomGenerator port) and VIEW right (the same plan leaning back, each piece lifted by its z, boss red on top); a press builds a new level, both views revealed together in at most 1.2 s; no `Play.award`
-- `voidscape-mapgen.js`: `report()` gives `cells` (type, main, gx, gy, z, client x, y), `side` (main cells' client x, y in the tilted view), `panels` (both rects), `rooms`, `builds`, `marker`, `draws`, `done`, `targets {generate}`
+- `voidscape-mapgen.js`: two panels, PLAN left (top-down `ForgeMissions.genPlan`, the RoomGenerator port, no bars) and a wider VIEW right (the same plan leaning back, lifted by z, boss red on top); a press builds a new level, both views revealed together in at most 1.2 s; no `Play.award`
+- `voidscape-mapgen.js`: VIEW lays each cell out on the game's tiles at the game's scale (k = 1/24): open rooms, 2-wide corridors, 12-step stair flights, raised rooms with entry steps, real-height walls on closed edges, a faint floor shadow; the key starts with start
+- `voidscape-mapgen.js`: `report()` gives `cells` (type, main, gx, gy, z, client x, y), `side` (main cells' client x, y in the tilted view), `panels` (both rects), VIEW's drawing `footW`, `footH` and fit `f`, `rooms`, `builds`, `marker`, `draws`, `done`, `targets {generate}`
 
 ### js/shared
 

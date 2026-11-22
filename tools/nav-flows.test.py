@@ -1553,7 +1553,8 @@ def flow_vs_map_generate(browser, base):
             const x = (p.x - b.left + 3) * k, y = (p.y - b.top + 22) * k;   // inside the model area: past the hairline and the label band
             const d = c.getContext('2d').getImageData(x, y, (p.w - 6) * k, (p.h - 22) * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60) n++; return n; }""", pn)
         check("vs-map-generate: the tilted view is drawn, not blank", px > 500, px)
-        check("vs-map-generate: the tilted footprint spans at least 55% of the panel width", r["footW"] >= 0.55 * pn["w"], [r["footW"], pn["w"]])
+        check("vs-map-generate: the drawing fills at least 80% of VIEW's width or height",
+              r["footW"] >= 0.8 * pn["w"] or r["footH"] >= 0.8 * pn["h"], [r["footW"], pn["w"], r["footH"], pn["h"], r["f"]])
     ctx.close()
 
 
