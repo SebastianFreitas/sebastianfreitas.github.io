@@ -261,7 +261,10 @@ window.GenTitanFight = (function () {
     if (k > 0) {   // the lit value, in the shape of the mass shrunk toward the chest point: it shows only where the pieces have left
       const ox = sc * cx + e, oy = sc * cy + f;
       g.setTransform(k, 0, 0, k, ox * (1 - k), oy * (1 - k)); g.drawImage(src, 0, 0);
-      g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = "#b9bcc0"; g.fillRect(0, 0, w, h); g.globalCompositeOperation = "source-over";
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = "#6b6f73"; g.fillRect(0, 0, w, h);
+      const fade = Math.min(1, (SH_STEP * 3 - a) / 0.25);   // the light's last 0.25 s fade out instead of ending in one frame
+      if (fade < 1) { g.globalCompositeOperation = "destination-in"; g.fillStyle = "rgba(0,0,0," + Math.max(0, fade) + ")"; g.fillRect(0, 0, w, h); }
+      g.globalCompositeOperation = "source-over";
     }
     for (let p = 0; p < SHN; p++) {
       const d = SH_D[s] * SHSP[p] * H, dx = SHDX[p] * d, dy = SHDY[p] * d, r = SHROT[p] * s / 5, qx = cx + SHDX[p] * 0.45 * H, qy = cy + SHDY[p] * 0.45 * H, X = SHX[p], Y = SHY[p];

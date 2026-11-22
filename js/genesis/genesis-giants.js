@@ -217,7 +217,7 @@ window.GenGiants = (function () {
     const out = (ts < 4.25 + G.TITAN_HOLD || ts >= 5.45 + G.TITAN_HOLD) ? 0.25 * bw : 0;   // the held partial step: pushed back out past the edge
     const dx = G.sx(0) + KILLER_SIDE * (0.35 * H + out) - (1000 + (lo + 1100) / 4) * s2;
     const MC = p => [dx + s2 * (1000 + (p[0] + 1100) / 4), oy - 0.08 * H + s2 * (p[1] + 1100) / 4];
-    drawC(ctx, MC, 1, pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop
+    drawC(ctx, MC, Math.min(1, (5.85 + G.TITAN_HOLD - ts) / 0.4), pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop
   }
 
   /* giant D, the Ringed Drift: the survivor titan's (rings, GenRockTitans.SURVIVOR) giant. Three floating masses that

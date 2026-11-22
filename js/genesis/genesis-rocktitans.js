@@ -580,16 +580,22 @@ window.GenRockTitans = (function () {
         return;
       }
       if (k === 5 || !rp) { const sw = k === 5 && tt < 0 && swayApply(ctx, i, t, tm); ctx.drawImage(c, lp[0], lp[1]); if (sw) ctx.restore(); return; }
-      const bb = bodyBox(t), u = k / 5, s = mixv(Math.max(0.35, Math.min(1, 2 * rp.size / bb.h)), 1, u);
+      // one continuous handover: u runs 0 to 1 over 1.6 s (eased e); the body fades in over u 0 to 0.25, the rock melts out over u 0.05 to 0.25
+      const bb = bodyBox(t), uu = Math.max(0, Math.min(1, (tm - OFF[i]) / 1.6)), u = uu * uu * (3 - 2 * uu), s = mixv(Math.min(1, 2 * rp.size / bb.h), 1, u);
       const gx = mixv(rp.x, bb.x, u), gy = mixv(rp.y, bb.y, u), gr = mixv(rp.rot, 0, u);
       ctx.save();
+      ctx.globalAlpha = Math.min(1, uu / 0.25);
       ctx.translate(gx, gy); ctx.rotate(gr); ctx.scale(s, s); ctx.translate(-bb.x, -bb.y);
       ctx.drawImage(c, lp[0], lp[1]);
       ctx.restore();
-      ctx.save();
-      ctx.filter = "grayscale(" + u.toFixed(3) + ") brightness(" + mixv(1, 0.23, u).toFixed(3) + ")";
-      GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], gx, gy, gr, rp.size);
-      ctx.restore();
+      const ra = 1 - Math.max(0, Math.min(1, (uu - 0.05) / 0.2));
+      if (ra > 0) {
+        ctx.save();
+        ctx.globalAlpha = ra;
+        ctx.filter = "grayscale(" + u.toFixed(3) + ") brightness(" + mixv(1, 0.23, u).toFixed(3) + ")";
+        GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], gx, gy, gr, rp.size);
+        ctx.restore();
+      }
     });
     const frz = G.secs("trade") >= BURST && G.secs("trade") < BURST + GenTitanFight.HOLD;
     if (frz) { ctx.save(); GenTitanFight.thin(ctx, G.secs("trade"), G.H); }
