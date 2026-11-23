@@ -321,11 +321,13 @@ window.GenRockTitans = (function () {
     return Array.from({ length: cnt }, () => debrisNext);
   }
   // the lying pose of part idx at its rest (end of step 3): pivot x and y, tilt from upright (signed), mirrored, its cut, its sprite size
+  // the ground line under a part chip at rest (a float chip's is a little below its lowest reach)
+  const chipGround = (ch) => ch.share === "deck" ? ch.yb : ch.y1 + 0.5 * Math.max(ch.sp.width, ch.sp.height) * ch.sc;
   function partRest(idx) {
     buildDebris();
     const ch = debris.find((c) => c.idx === idx);
     if (!ch) return null;
-    return { x: ch.x1 !== undefined ? ch.x1 : 0, y: ch.share === "deck" ? ch.yb - ch.low * ch.s1 : ch.y1, tilt: ch.rot, mirror: ch.mirror, cut: ch.cut, ink: [ch.ib[2], ch.ib[3]], ib: ch.ib, fx: ch.fx, fy: ch.fy };
+    return { x: ch.x1 !== undefined ? ch.x1 : 0, y: ch.share === "deck" ? ch.yb - ch.low * ch.s1 : ch.y1, gr: chipGround(ch) };
   }
   // one chip at held step of its path (out: step 0..5 at u seeded 0.08-0.15, seeded 0.30-0.40, then 0.38, 0.7, 0.9 of the rest, 1 every 0.2 s from 1.6; others 1..3; deck: up its peak at step 1, halfway down at step 2, landed at 3); parts shrink from m to 1 over the steps
   function drawChip(ctx, ch, step, drift) {
@@ -352,7 +354,14 @@ window.GenRockTitans = (function () {
     const fa = out ? 1 : Math.max(0, 1 - (tt - chipFadeT0()) / CHIP_FADE);
     debris.forEach((ch) => {
       if ((ch.share === "out") !== out) return;
-      if (ch.idx >= 0 && !out && window.GenOld && GenOld.birthT && tt >= GenOld.birthT(ch.idx)) return;   // its old one is growing: hand over
+      if (ch.idx >= 0 && !out && window.GenOld && GenOld.birthK && tt >= GenOld.birthT(ch.idx)) {   // its old one rises out of it: the chip sinks under its ground line as the body comes up, then is gone
+        const bk = GenOld.birthK(ch.idx, tt);
+        if (bk >= 1) return;
+        ctx.save(); ctx.beginPath(); ctx.rect(-G.W, -G.H, 3 * G.W, chipGround(ch) + G.H); ctx.clip();
+        ctx.translate(0, bk * 2 * Math.max(ch.sp.width, ch.sp.height) * ch.sc); drawChip(ctx, ch, step, drift);
+        ctx.restore();
+        return;
+      }
       if (!(ch.idx >= 0) && !out) {   // the leftovers never become old ones: they fade out over CHIP_FADE s once the last old one is born
         if (fa <= 0) return;
         ctx.save(); ctx.globalAlpha *= fa; drawChip(ctx, ch, step, drift); ctx.restore();
@@ -383,36 +392,7 @@ window.GenRockTitans = (function () {
   }
   function drawDebris(ctx, tt) {
     drawChips(ctx, tt, false);
-    if (G.reduced || tt < BURST || tt >= D_T0) return;
-    // the leftover, in front of the debris: two fifths of the Hollow as it was at the burst, still, at the clash point, in lighter fills
-    const t = LAYOUT.titans[SURVIVOR], lp = layerPos(t), key = SURVIVOR + "|" + G.W + "|" + G.H;
-    if (!leftBody || leftKey !== key) {
-      const c = document.createElement("canvas"), sz = layerSize();
-      c.width = sz[0]; c.height = sz[1];
-      paintBody(c, NAMES[SURVIVOR], Math.max(0, G.secs("break") - tt + BURST - 3.45 - OFF[SURVIVOR] - 1.6));
-      leftBody = c; leftKey = key; leftTint = null;
-    }
-    const body = leftBody;
-    ctx.save();
-    ctx.translate(G.sx(0), FOOT * G.H); ctx.scale(0.4, 0.4); ctx.translate(-tx(t), -FOOT * G.H);
-    const pal = window.GenEldPal ? GenEldPal.TIER3 : null;
-    if (pal) {
-      // the silhouette in giant D's body value (its lump step), built once; the body shows over it faintly
-      if (!leftTint) {
-        const c = document.createElement("canvas");
-        c.width = body.width; c.height = body.height;
-        const g = c.getContext("2d");
-        g.drawImage(body, 0, 0);
-        g.globalCompositeOperation = "source-in"; g.fillStyle = pal.steps[3]; g.fillRect(0, 0, c.width, c.height);
-        leftTint = c;
-      }
-      ctx.drawImage(leftTint, lp[0], lp[1]);
-      ctx.globalAlpha = 0.35;
-    }
-    ctx.drawImage(body, lp[0], lp[1]);
-    ctx.restore();
   }
-  let leftBody = null, leftKey = "", leftTint = null;
 
   // the titan rooted on the killer giant's side (root KILLER_SIDE * 0.6); it dies in break secs 4.65 to 5.85 and takes no part in the clash
   const victim = () => LAYOUT.titans.findIndex((t) => Math.abs(t.root - (window.GenGiants ? GenGiants.KILLER_SIDE : 1) * 0.6) < 1e-6);
@@ -420,7 +400,7 @@ window.GenRockTitans = (function () {
   const FIRE_T = [4.55 + G.TITAN_HOLD, 4.95 + G.TITAN_HOLD, 5.35 + G.TITAN_HOLD];
   // chunks per step: [x across the titan's width (0..1), y fraction in the eaten band, half size], in H
   const CRUMB = [[0.1, 0.2, 0.02], [0.25, 0.7, 0.028], [0.4, 0.3, 0.018], [0.55, 0.8, 0.026], [0.78, 0.4, 0.022], [0.18, 0.9, 0.016], [0.62, 0.55, 0.03], [0.9, 0.85, 0.017]];
-  const FALL = [0, 0.15, 0.4, 0.75, 1];   // held 0.1 s steps of the fall toward the rail; gone at 0.5 s
+  const FALL_D = 0.5;   // each chunk falls toward the rail and shrinks to nothing over 0.5 s
   // the victim frozen on the form it shows when the first fire step lands, painted once per size into its own layer, with its ink bounds [x0, y0, x1, y1] in layer px
   let frozen = null, frozenKey = "";
   function frozenVictim(i) {
@@ -452,6 +432,8 @@ window.GenRockTitans = (function () {
       ctx.fillStyle = pal.steps[1];   // the loom's own hull value, paler than the titan
       const x0 = b[0] - 0.03 * H, w = bw + 0.06 * H, tn = 6, dip = [0.045, 0.02, 0.055, 0.03, 0.05, 0.025];   // six tongues, each reaching a little over the titan's remaining top
       ctx.beginPath();
+      const pu = 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, (ts - FIRE_T[2]) / 0.5)));   // with the loom, the column pulls up out of the top of the frame (ease-in-out)
+      ctx.translate(0, -pu * (yl + 0.07 * H + lp[1]));
       ctx.moveTo(x0, -lp[1]); ctx.lineTo(x0 + w, -lp[1]);
       for (let i = tn - 1; i >= 0; i--) {
         const xm = x0 + w * (i + 0.5) / tn, hw = w / tn * 0.5;
@@ -462,11 +444,11 @@ window.GenRockTitans = (function () {
       ctx.restore();
     }
     for (let k = 0; k < n; k++) {
-      const age = ts - FIRE_T[k], fs = Math.floor(age / 0.1 + 1e-6);
-      if (fs >= 5) continue;
+      const age = ts - FIRE_T[k], u = age / FALL_D;
+      if (u >= 1) continue;
       const y0 = b[1] + bh3 * k;
       CRUMB.forEach((q, i) => {
-        const r = q[2] * H, ox = b[0] + q[0] * bw, oy = y0 + q[1] * bh3, f = FALL[fs];
+        const r = q[2] * H * (1 - u), ox = b[0] + q[0] * bw, oy = y0 + q[1] * bh3, f = u * u;
         const dx = (i % 2 ? 1 : -1) * f * 0.03 * H, dy = f * Math.max(0, b[3] - oy);
         ctx.save();
         ctx.translate(dx, dy);
@@ -480,22 +462,18 @@ window.GenRockTitans = (function () {
     ctx.restore();
   }
 
-  /* the survivor's growth (trade secs tt): from the burst (1.6) a fifth-size leftover of the SURVIVOR titan holds at the clash point to 3.0; it snaps to giant D at
-     3.0 / 3.4 / 3.8 / 4.2 (heights in H below), holds to 5.4, then slides out of frame in held steps (5.4, 5.8) and is gone at 6.2. Steps 0 and 1 are smaller than a
-     titan and are drawn with the titans; steps 2 and 3 and the exit are drawn behind the bridge in the giants' layer (bigD). */
-  const D_STEP = [0.25, 0.45, 0.9, 1.5], D_X = [0, 0, 0.25, 0.5];
-  const dStep = (tt) => (tt < D_T0 || tt >= 6.2 + ADD) ? -1 : Math.min(3, Math.floor((tt - D_T0) / 0.4 + 1e-6));
-  function placeD(ctx, tt, st) {
-    if (!window.GenGiants) return;
-    const H = G.H, h = D_STEP[st] * H, w = h * GenGiants.D_W / GenGiants.D_H;
-    let cx = G.sx(0) + D_X[st] * H;
-    if (tt >= 5.4 + ADD) cx = G.W - (tt < 5.8 + ADD ? 0.7 : 0.3) * H + w / 2;
-    GenGiants.drawD(ctx, cx, FOOT * H, h / GenGiants.D_H);
-  }
+  /* giant D rises out of the Hollow (trade secs): from the burst (BURST) the Hollow breaks apart over HOLLOW_BREAK s while D, at its final size, rises from below the
+     bridge (eased) to its rest; it holds to D_T0 + 2.4 (no sway, no slide), then sinks back behind the bridge over 0.8 s (ease-in) and is gone at 6.2 + ADD. Drawn behind
+     the bridge in the giants' layer (bigD) the whole time. y values: D's foot in H (its top is 1.5 H above it; the screen's bottom edge is 1 H). */
+  const HOLLOW_RINGS = [FOOT - 0.48, FOOT], HOLLOW_BREAK = 1.2, D_REST = 1.9, D_HID = 2.6, D_SINK = D_T0 + 2.4;
   function bigD(ctx) {
-    if (G.reduced) return;
-    const tt = G.secs("trade"), st = dStep(tt);
-    if (st >= 2) placeD(ctx, tt, st);
+    if (G.reduced || !window.GenGiants) return;
+    const tt = G.secs("trade");
+    if (tt < BURST || tt >= 6.2 + ADD) return;
+    let y = D_REST;
+    if (tt < BURST + HOLLOW_BREAK) { const u = (tt - BURST) / HOLLOW_BREAK; y = mixv(D_HID, D_REST, u * u * (3 - 2 * u)); }
+    else if (tt >= D_SINK) { const u = Math.min(1, (tt - D_SINK) / 0.8); y = mixv(D_REST, D_HID, u * u); }
+    GenGiants.drawD(ctx, G.sx(0), y * G.H, 1.5 * G.H / GenGiants.D_H);
   }
 
   // grow in five held steps: snap 0 is the blast rock alone, then the body group (and the pieces whose snap has come) moves from the rock to its rest pose
@@ -563,7 +541,7 @@ window.GenRockTitans = (function () {
       const k = snaps(i, tm), rp = GenMatter.rockPose(i);
       if (i === victim() && !G.reduced) { const ts = G.secs("break"); if (ts >= FIRE_T[0]) { drawVictim(ctx, t, i, ts); return; } }
       if (k === 0) { if (rp) GenMatter.drawRockAt(ctx, GenMatter.ROCKS[t.rock], rp.x, rp.y, rp.rot, rp.size); return; }
-      const tt = G.secs("trade"), tc = Math.min(tt, BURST - 0.001), frozen = tt >= BURST && tt < BURST + (i === 2 ? GenTitanFight.SHARD_LIFE : GenTitanFight.HOLD) && !G.reduced;   // frozen: the warp tears the last pose apart (the Slime's stone breaks into pieces over SHARD_LIFE)
+      const tt = G.secs("trade"), tc = Math.min(tt, BURST - 0.001), frozen = tt >= BURST && tt < BURST + (i === 2 ? GenTitanFight.SHARD_LIFE : i === SURVIVOR ? HOLLOW_BREAK : GenTitanFight.HOLD) && !G.reduced;   // frozen: the warp tears the last pose apart (the Slime's stone breaks into pieces over SHARD_LIFE)
       const hurtable = (i === 0 || i === 2) && k === 5 && tt >= 0 && (tt < BURST || frozen) && !G.reduced;
       const c = bodyLayer(i, bodyT(i, tm, k), hurtable ? GenTitanFight.level(GenTitanFight.at(tc)) : 0, hurtable && i === 2 ? GenTitanFight.at(tc) : null), lp = layerPos(t, layers[i].wide);
       if (k === 5 && tt >= 0) {
@@ -572,11 +550,11 @@ window.GenRockTitans = (function () {
           const ff = GenTitanFight.at(tc), f = ff.close, sm = f * f * (3 - 2 * f), dx = (G.sx(0) + (i - SURVIVOR) * 0.4 * G.H - tx(t)) * sm;
           if (i === SURVIVOR && ff.raise > 0) { late.on = true; late.x = tx(t) + dx; late.t = bodyT(i, tm, k); late.arms = ff.raise; late.ff = ff; return; }   // painted after the loop: rays go behind it, in front of the others
           if (i === 2 && ff.lash > 0) { slimeLash.on = true; slimeLash.x = tx(t) + dx; slimeLash.t = bodyT(i, tm, k); slimeLash.ff = ff; }   // painted after the loop, in front of the Hollow
+          else if (frozen && i !== 2) GenTitanFight.breakAway(ctx, tt, BURST, GenTitanFight.HOLD, tx(t) + dx, G.H, () => ctx.drawImage(c, lp[0] + dx, lp[1]));
           else { if (frozen) { ctx.save(); GenTitanFight.thin(ctx, tt, G.H); } ctx.drawImage(c, lp[0] + dx, lp[1]); if (frozen) ctx.restore(); }
           if (hurtable && !slimeLash.on && tt < BURST) GenTitanFight.drawChips(ctx, tt, NAMES[i], tx(t) + dx, FOOT * G.H, G.H, bodyT(i, tm, k), G.sx(0));
         }
         if (!G.reduced && tt >= BURST && tt < BURST + 0.8 && (i === 0 || i === 2)) GenTitanFight.drawChips(ctx, tt, NAMES[i], G.sx(0) + (i - SURVIVOR) * 0.4 * G.H, FOOT * G.H, G.H, bodyT(i, tm, k), G.sx(0));   // the fight's last chips finish their fall after the burst (bodies are gone)
-        if (i === SURVIVOR && !G.reduced && tt >= D_T0 && dStep(tt) >= 0 && dStep(tt) < 2) placeD(ctx, tt, dStep(tt));
         return;
       }
       if (k === 5 || !rp) { const sw = k === 5 && tt < 0 && swayApply(ctx, i, t, tm); ctx.drawImage(c, lp[0], lp[1]); if (sw) ctx.restore(); return; }
@@ -598,7 +576,6 @@ window.GenRockTitans = (function () {
       }
     });
     const frz = G.secs("trade") >= BURST && G.secs("trade") < BURST + GenTitanFight.HOLD;
-    if (frz) { ctx.save(); GenTitanFight.thin(ctx, G.secs("trade"), G.H); }
     let hollowInLash = false;
     function drawHollow(c2, lt, ls) {
       const kb = Math.max(0, Math.min(1, (ls - 0.52) / 0.1)), ke = kb * kb * (3 - 2 * kb);   // the crash's knock-back: one rigid tilt away from the Slime (it stands on his right) and a small sink, about his foot
@@ -614,9 +591,9 @@ window.GenRockTitans = (function () {
       // the swallow: he stands where he is until the wave hits (0.52 to 0.62 knock-back) and holds under the goo
       const ls = late.ff.lash;
       if (slimeLash.on) hollowInLash = true;   // drawn first on the lash layer below, so the Slime's passes (and its bites) go over him
+      else if (G.secs("trade") >= BURST && G.secs("trade") < BURST + HOLLOW_BREAK && !G.reduced) GenTitanFight.breakAway(ctx, G.secs("trade"), BURST, HOLLOW_BREAK, late.x, G.H, () => drawHollow(ctx, late, ls), HOLLOW_RINGS);   // the same break as the Statue's
       else drawHollow(ctx, late, ls);
     }
-    if (frz) ctx.restore();   // the stone pieces below are not thinned
     if (slimeLash.on) {
       const cv = ctx.canvas, tt = G.secs("trade");
       if (!lashC) lashC = document.createElement("canvas");
@@ -625,7 +602,8 @@ window.GenRockTitans = (function () {
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, lashC.width, lashC.height); g.setTransform(ctx.getTransform());
       LASH_O.x = slimeLash.x; LASH_O.footY = FOOT * G.H; LASH_O.H = G.H; LASH_O.t = slimeLash.t - Math.max(0, tt - GenTitanFight.T.lash[0]); LASH_O.lash = slimeLash.ff.lash; LASH_O.hx = late.on ? late.x : G.sx(0); LASH_O.hollowH = 0.4 * G.H;
       if (hollowInLash) {   // the Hollow first, then the Slime on its own layer (its bites and lid cut only its own paint), over him
-        drawHollow(g, late, late.ff.lash);
+        if (G.reduced) drawHollow(g, late, late.ff.lash);
+        else GenTitanFight.breakAway(g, tt, BURST, HOLLOW_BREAK, late.x, G.H, () => drawHollow(g, late, late.ff.lash), HOLLOW_RINGS);   // the same break as outside the lash layer, so no frame swaps the whole body
         if (!slimeC) slimeC = document.createElement("canvas");
         if (slimeC.width !== cv.width || slimeC.height !== cv.height) { slimeC.width = cv.width; slimeC.height = cv.height; }
         const s2 = slimeC.getContext("2d");

@@ -143,19 +143,23 @@ window.GenTitanFight = (function () {
     wg.setTransform(1, 0, 0, 1, 0, 0); wg.clearRect(0, 0, cw, ch); wg.drawImage(cv, 0, 0);
     if (!built) build();
     const pinch = t < WARP[1], k = pinch ? (t - WARP[0]) / (WARP[1] - WARP[0]) : 0, r = t - BURST;
-    const s = pinch ? 0 : t < WARP[2] ? 1 : Math.floor((WARP[3] - t) / 0.4 * 4) / 4;
     const hxp = hx * pr, hyp = hy * pr, hp = H * pr, yb = Math.floor(0.575 * hp);   // yb: just above the span's box (it starts at 0.58 H): nothing is read from or drawn into it
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.beginPath(); ctx.rect(0, 0, cw, yb); ctx.clip();
     for (let i = 0; i < NP; i++) {
       const c = PC[i], n = jc[i], sk = Math.abs(c[4]) * hp;
-      let j = n - 1;
-      if (!pinch) { if (r < jt[i * JN] || r >= pe[i]) continue; while (jt[i * JN + j] > r) j--; }
+      let ox = 0, oy = 0;
+      if (!pinch) {   // one eased slide over the piece's life: home, through its own spots (each reached with the speed easing to nothing), home
+        if (r < jt[i * JN] || r >= pe[i]) continue;
+        const f = (r - jt[i * JN]) / (pe[i] - jt[i * JN]) * (n + 1), q = Math.min(n, Math.floor(f)), e = f - q, m = e * e * (3 - 2 * e);
+        const ax = q ? jx[i * JN + q - 1] : 0, ay = q ? jy[i * JN + q - 1] : 0, bx = q < n ? jx[i * JN + q] : 0, by = q < n ? jy[i * JN + q] : 0;
+        ox = ax + (bx - ax) * m; oy = ay + (by - ay) * m;
+      }
       const bw = Math.max(1, Math.round(c[2] * hp + 2 * sk)), bk = Math.max(1, Math.round(c[3] * hp));
       const px = hxp + c[0] * hp, py = hyp + c[1] * hp;
       const w = edge(Math.min(px - bw / 2, cw - px - bw / 2, py - bk / 2, ch - py - bk / 2), hp);
-      let dcx = pinch ? px - c[0] * hp * 0.06 * k * w : px + jx[i * JN + j] * hp * s * w;
-      let dcy = pinch ? py : py + jy[i * JN + j] * hp * s * w;
+      let dcx = pinch ? px - c[0] * hp * 0.06 * k * w : px + ox * hp * w;
+      let dcy = pinch ? py : py + oy * hp * w;
       const lim = 0.4 * hp;   // reach: no piece's edge goes further than 0.4 H from the hit point
       if (lim > bw / 2) dcx = Math.max(hxp - lim + bw / 2, Math.min(hxp + lim - bw / 2, dcx));
       if (lim > bk / 2) dcy = Math.max(hyp - lim + bk / 2, Math.min(hyp + lim - bk / 2, dcy));
@@ -179,6 +183,29 @@ window.GenTitanFight = (function () {
     ctx.beginPath();
     for (let b = 0; b < THIN; b++) if (rnd(st * 32 + b, 7) < p) ctx.rect(-5000, b * bh, 10000, bh + 1);
     ctx.clip();
+  }
+
+  /* a body breaks into its THIN horizontal bands, each a rigid piece (its shape kept, a small turn about its own middle) that flies out with the burst and falls out of the frame.
+     breakAway(ctx, t, t0, len, cx, H, draw): t, t0 and len in the same seconds (t0 the break's start, len its length, every band gone by t0 + len); cx the body's x and H its height in ctx units;
+     draw() paints the whole body once, at its rest place, and is called once per band (once, plain, before t0). The caller needs no save/restore. */
+  function breakAway(ctx, t, t0, len, cx, H, draw, first) {
+    const a = t - t0, bh = H / THIN;
+    if (a >= len) return;
+    if (a <= 0) { draw(); return; }
+    for (let b = 0; b < THIN; b++) {
+      // first (optional, [top, bottom] in H): the bands that touch it leave in the first half of the start window, the rest in the second
+      const early = first && (b + 1) * bh > first[0] * H && b * bh < first[1] * H;
+      const d = 0.25 * len * (first ? (early ? 0.5 * rnd(b, 71) : 0.5 + 0.5 * rnd(b, 71)) : rnd(b, 71)), u = (a - d) / (0.75 * len);
+      if (u >= 1) continue;
+      const k = Math.max(0, u), side = rnd(b, 72) < 0.5 ? -1 : 1, cy = (b + 0.5) * bh;
+      ctx.save();
+      ctx.translate(cx + side * (0.5 + 1.2 * rnd(b, 73)) * H * k, cy + H * (-0.2 * rnd(b, 74) * k + 2 * k * k));
+      ctx.rotate(side * (0.05 + 0.3 * rnd(b, 75)) * k);
+      ctx.translate(-cx, -cy);
+      ctx.beginPath(); ctx.rect(cx - 0.7 * H, b * bh, 1.4 * H, bh + 1); ctx.clip();
+      draw();
+      ctx.restore();
+    }
   }
 
   // how far the Hollow is inside the Slime at trade second s (the swallow): 0 before the maw closes in, 1 once it has closed on him
@@ -280,5 +307,5 @@ window.GenTitanFight = (function () {
     g.restore();
   }
 
-  return { T, BURST, ADD, PULSES, HOLD, SHARD_LIFE, at, drawRays, level, rnd, drawChips, warp, thin, cover, stone, crack, drawCracks, shards };
+  return { T, BURST, ADD, PULSES, HOLD, SHARD_LIFE, at, drawRays, level, rnd, drawChips, warp, thin, breakAway, cover, stone, crack, drawCracks, shards };
 })();

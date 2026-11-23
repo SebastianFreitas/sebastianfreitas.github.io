@@ -1790,7 +1790,7 @@
       const l = L[i], u = clamp((tb - CLOT_T0) / l.D, 0, 1), e = 1 - (1 - u) * (1 - u) * (1 - u);
       const m = e * (1 + 0.2 * Math.max(0, tb - CLOT_T0 - l.D)), x = hx + l.dx * m, y = hy + l.dy * m;   // they keep drifting outward after the throw
       // the hand-over: a clot ends only where the air (above the hole's level) or the sea (below it) has reached it; it shrinks in two held steps, then is theirs
-      let hit = tb >= 2.9;
+      let hit = tb >= 2.7;   // forced at 2.7 so the last ones are gone by 3.0, inside the gate
       if (l.te >= 0 && tb >= l.te) hit = true;   // once handed over it stays handed over
       if (!hit) {
         if (l.dy < 0) hit = (l.dx < 0 ? AIRP[1] : AIRP[2]) >= Math.abs(x - hx) + AIRP[3];

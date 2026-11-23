@@ -81,7 +81,8 @@ window.Genesis = (function () {
       say(b.tag ? b.tag + ". " + b.line : b.line);
       requestAnimationFrame(() => copyEl.classList.add("on"));
     };
-    if (immediate || !copyEl.classList.contains("on")) { show(); return; }
+    const fading = copyEl.classList.contains("out") && tagEl && tagEl.textContent;   // an old line is still fading out (the elements beat lasts no time): wait for it, no instant swap
+    if (immediate || !(copyEl.classList.contains("on") || fading)) { show(); return; }
     copyEl.classList.remove("on");
     copyEl.classList.add("out");
     copyTimer = setTimeout(show, 420);
@@ -753,7 +754,7 @@ window.Genesis = (function () {
       }
       const tbs = G.secs("break");
       if (window.GenGiants && tbs >= 3.85 + G.TITAN_HOLD && tbs < 5.85 + G.TITAN_HOLD) { ctx.save(); unzoom(ctx, z); GenGiants.loom(ctx, G.W, G.H, tbs); ctx.restore(); }   // the killer giant looms back behind the standing titans (10.4 to 5.85 s)
-      if (tbs >= 8.95 + G.TITAN_HOLD + GenTitanFight.ADD && tbs < 12.15 + G.TITAN_HOLD + GenTitanFight.ADD) { ctx.save(); unzoom(ctx, z); GenRockTitans.bigD(ctx); ctx.restore(); }   // the survivor, grown past a titan into giant D (trade 3.8 to 6.2 s), behind the bridge
+      if (tbs >= 6.0 + G.TITAN_HOLD + GenTitanFight.ADD && tbs < 12.15 + G.TITAN_HOLD + GenTitanFight.ADD) { ctx.save(); unzoom(ctx, z); GenRockTitans.bigD(ctx); ctx.restore(); }   // the survivor, grown past a titan into giant D (trade 3.8 to 6.2 s), behind the bridge
       if (GenRockTitans.on(tbs)) GenRockTitans.draw(ctx, tbs);   // rest-pose rock titans take the rocks' slot
       else if (!(tb >= 0.5 && tb < 3)) GenMatter.drawRocks(ctx, tbs);   // outside the burst the rocks sit under the bridge too (inside it they are drawn with the clots)
       GenVoid.drawSpan(ctx, uDrawn);
@@ -797,7 +798,6 @@ window.Genesis = (function () {
       const watch = clamp(uBirth * 0.4 + uFight, 0, 1);
       /* the old ones climb out of the mass one by one through the trade beat, and start
          down the span before it ends, so the procession never stops */
-      gated(() => GenTrade.drawStream(ctx));   // everything that travels with them
       gated(() => GenRockTitans.drawDebris(ctx, tTrade));   // deck and float chips of the titans' burst, behind the front old ones
       if (G.beat < idxOf("burst")) GenOld.drawOldOnes(ctx, { emerge: tTrade, walk: march, cling, still, watch, flesh, look: flesh ? flesh.cx - flesh.rx : sx(0) });
 
@@ -845,6 +845,7 @@ window.Genesis = (function () {
       ctx.fillRect(-20, -20, G.W + 40, G.H + 40);
     }
     if (tb >= 1.6 && tb < 3) {   // the clots outlast the wash: they hand over to the sea and the air
+      if (tb < 2.1 && window.GenGiants) { ctx.save(); unzoom(ctx, z); GenGiants.draw(ctx, G.W, G.H, tb); ctx.restore(); }   // the giants' exit (1.6 to 2.1 s), same layer as in the blast
       GenElem.drawClots(ctx, tb);
       GenMatter.drawRocks(ctx, tb);   // in front of the clots, under the bridge
       GenVoid.drawSpan(ctx, uDrawn);
@@ -875,7 +876,7 @@ window.Genesis = (function () {
       }
       /* the dark grey core disc at the point: two held sizes */
       if (tb < 0.9) {
-        const cr = m * (tb < 0.75 ? 0.13 : 0.09);
+        const cu = Math.min(1, Math.max(0, (tb - 0.5) / 0.4)), cr = m * 0.13 * (1 - cu * cu);   // one smooth shrink to nothing over 0.5 to 0.9, ease-in
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#262626";   // the dark grey disc: a hard edge, no halo
         ctx.beginPath();

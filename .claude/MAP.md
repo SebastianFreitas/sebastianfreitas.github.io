@@ -375,12 +375,13 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-rexout.js` | beats `burst`, `duel`, `drop` and `land`: Obrokxus peeks out, Rex barges out flying, is poisoned, curls round him and dies in the hole; the dead body stays in the womb as the gate | `window.GenRexOut` |
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
-| `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale, INSECT_BODY}` |
+| `genesis-insects.js` | wave two | `window.GenInsects {LIST, move, colors, drawBody, drawShards, rng}`: the 8 eldritch insect kinds, roster (190 objects), movements and tint drift, pure in t; drawn through `GenSwarm` |
+| `genesis-swarm.js` | wave two | `window.GenSwarm {draw(ctx, t, {spots, leaveAt})}`: the sketch's air/bridge/water places and paths on the cutscene frame; hatch from the rocks, live in place, leave by motion; called from `GenMatter.draw` |
+| `genesis-matter.js` | wave two | `window.GenMatter {draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale}` |
 | `genesis-titanbodies.js` | The four new rock-titan bodies; draws only, onto an empty layer; the fight's T arms, damage and the Slime's pour live here | `window.GenTitanBodies {NAMES, PAL, BOX, draw, slimePoint, cover, STATUE_BITES, SLIME_BITES}` |
-| `genesis-titanfight.js` | Trade-beat titan fight: clock, rays, cracks, shards, end warp; loaded before genesis-state.js | `window.GenTitanFight {T, BURST, ADD, PULSES, HOLD, SHARD_LIFE, at, drawRays, level, rnd, drawChips, warp, thin, cover, stone, crack, drawCracks, shards}` |
+| `genesis-titanfight.js` | Trade-beat titan fight: clock, rays, cracks, shards, end warp; loaded before genesis-state.js | `window.GenTitanFight {T, BURST, ADD, PULSES, HOLD, SHARD_LIFE, at, drawRays, level, rnd, drawChips, warp, thin, breakAway, cover, stone, crack, drawCracks, shards}` |
 | `genesis-rocktitans.js` | Four rock titans: grow in matter, meet in trade and burst into debris the old ones grow from; see bullets | `window.GenRockTitans {on, draw, bigD, LAYOUT, buildDebris, debrisSteps, drawDebris, partRest}` |
-| `genesis-trade.js` | only the travelling stream now: `drawStream` = 200 travellers flowing east/west around the camera from late trade through walk | `window.GenTrade {drawStream}` |
-| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT`) |
+| `genesis-oldones.js` | 24 old ones, no two alike | `window.GenOld` (also `PAINT deckSpot litSplit eyeDot figCover captionBand OLD_DIM birthT birthK`) |
 | `genesis-oldkin.js` | Painters for the fourteen new old ones | extends `window.GenOld` |
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
@@ -415,7 +416,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-state.js`: `G.GOD_H` (0.16) is the gods' height as a fraction of the screen; `G.SERUS_SCALE` (2.0) is Serus's size multiple in the birth walk
 - `genesis-state.js`: `G.STRIKE_S0` (0.29) and `G.strikePulse(c)` are the gods' shared strike shape in deep and slip (act about 1.5 s of the 3.70 s cycle); `genesis-gods.js` `strikeOf` inverts `STRIKE_CA` from it
 - `genesis-tier3.js`: the Brim, Comb, Lintel and Arc as flat near-background shapes cut by the top edge, screen-fixed (undoes zoom and shake), `POSE` per beat with held-step motion `mv` (drift, lurch, enter, fade, pass, level; plan phase 17), `offset(k)` gives a being's current offset,
-- `genesis-giants.js`: A topples in held steps, B and C stand still; the whole owner sketch sheet mapped to the screen, passing behind the bridge; screen-fixed (undoes zoom and shake); dark TIER3 tones; drawn only during the explosion (tb 0.5 to 1.6 s).
+- `genesis-giants.js`: A topples in held steps, B and C stand still; owner sketch sheet mapped to the screen, behind the bridge, screen-fixed; dark TIER3 tones; drawn in the explosion (they push in at tb 0.5 to 0.8 s and leave over 1.6 to 2.1 s).
+- `genesis-giants.js`: `loom` brings C back in the matter beat to kill a rock titan.
 - `genesis-tier3.js`: `tines(k)` the comb's tine screen xs while it acts (plan phase 18), caption-box t1 clip, haze bands; `pocket(x, y)` makes far lights and motes skip round them; drawn right after `fillBg`
 - `genesis-void.js`: `fillBg`, `drawMotes`, `drawChaos` (the far realms: parallax dark blobs + far lights), `drawPoint` (pressure rings, mind specks, cracks),
 - `genesis-void.js`: `paintSpan(ctx, {W,H,camX,deckY,ky,fogEnd})` (the same span body with explicit inputs and a settled beat; the homepage bridge) and `drawSpan` (the monumental bridge: slab, piers, arches, dark red rail)
@@ -426,12 +428,13 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-elements.js`: late in `elements` each particle freezes and snaps in held steps to the sea, the rail top or the sky (`posAt`, `drawSplit`) (plan phase 21).
 - `genesis-elements.js`: `drawSea` draws the crooked waste at the frame bottom: debris falls and heaps, then forms (spires, ledges, loops, stairs, self-contradicting kinds) rise out of the heaps; colours are `GenEldPal.SEA` families keyed to world x.
 - `genesis-matter.js`: 100 flesh/stone/meld chunks (float, fall, break, meld pairs) that fly briefly then gather into one mass (`MASS`, slot per chunk, `gatherK`) resting on the span;
-- `genesis-matter.js`: through trade its four rocks are skipped while `GenRockTitans.on` (the titans take the mass to the clash); 150 insects hatching (deformed, most die; storm deaths), 7 lawless storms (air, rain, fire, lightning)
+- `genesis-matter.js`: through trade its four rocks are skipped while `GenRockTitans.on` (the titans take the mass to the clash); the four hatch spots and timing handed to `GenSwarm.draw` (the old grey insects are gone), 7 lawless storms (air, rain, fire, lightning)
 - `genesis-oldones.js`: one each of the ten old kinds (slot 0 the headless gentleman, east, bare until a `dress` beat, then a GenAttire suit: `dressNow gentlemanBare gentlemanDressed`; eye, mass, blinker and roller switch the same way;
 - `genesis-oldones.js`: `windAt`/`frostNow` set `GenAttire.weather` per frame, each `<kind>Dressed` a new body per D28; `place()` acts for east-goers: stutter, mime gait, held-pose kneel and bow, twitch, `p.gest`;
 - `genesis-oldones.js`: in the `dress` beat each east-goer flips `o.dressed` at its own `dressAt` time after `drawMaking` cloth steps; in the `leave` beat every rim old one but the carers (`CARERS`: eye, chime, mound) and the brothers goes out left to right by x, half then gone,
 - `genesis-oldones.js`: leaving a `drawPin` of its `o.hue` that runs along the rim and out, `p.pinU`) plus fourteen painted in genesis-oldkin.js, six locomotions (walk, slide, fly, blink, roll); humanoid/animal-like kinds go west (side -1), the strange ones east;
-- `genesis-oldones.js`: grows from its debris part at `birthT(idx)` (trade 3.0 + rank x 0.12), posed by `GenRockTitans.partRest(idx)` (`p.rot`, `p.mirror`, `p.clipBox`); walk from 8.4; reduced motion: upright and awake at `deckSpot` from trade 0,
+- `genesis-oldones.js`: rises out of its debris chip from `birthT(idx)` (trade 3.0 + rank x 0.12) in one eased slide of 1.2-1.6 s (`birthK`), from the chip's ground line `GenRockTitans.partRest(idx).gr` (the chip sinks under it); walk from 8.4;
+- `genesis-oldones.js`: reduced motion: upright and awake at `deckSpot` from trade 0,
 - `genesis-oldones.js`: break confetti gates: `figCover(x,y)` and `captionBand()` gate the break confetti.
 - `genesis-oldones.js`: `drawOldOnes` takes `env.emerge` and `env.layer` ("inside" layer kept for the draw order, draws nothing since the births replaced the climb): `ROSTER_SPECS ROSTER ORDER place drawOldOnes drawShards drawKind makeOne`
 - `genesis-oldkin.js`: painters for the fourteen new old ones (tower pearl bundle needle slab bloom comb veil knot husk chime prism swarmling mound;
@@ -461,16 +464,16 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 - `genesis-ritual.js`: `drawOver` (teaching/pact/blessing/help beams, Velindra's blades, the four ritual beams, latched flashes)
 - `genesis-saga.js`: `drawSaga` (ground/city/nest via GenMain, armies via GenArmies, `GenRitual.drawUnder`/`drawOver`, the cast as figures, Obrokxus's two-form cross-fade clipped to the ground while `oHide`, beams from hands/gems, Mordrial's death, clashes), `drawLiveWorld`;
 - `genesis-saga.js`: `O_SCALE` sizes Obrokxus's forms 1 / ½ / ¼ (`hOf`), each drawn on the same body centre
-- `genesis-giants.js`: `loom(ctx,W,H,ts)` is the killer giant C, back at secs("break") 3.85 to 5.85 s; `drawD(ctx,x,footY,scale)` is the fourth giant D, the survivor titan's (rings) body, a cached sprite D_W x D_H = 900 x 1000 design units, called from GenRockTitans (leftover steps and `bigD`).
-- `genesis-rocktitans.js`: `bigD(ctx)` draws giant D's big steps and exit in the giants' layer; the file's own `SURVIVOR` (not exported) is the titan index that becomes D; the 0.4 scale leftover is drawn at the end of `drawDebris`, in front of the debris.
+- `genesis-giants.js`: `loom(ctx,W,H,ts)` is the killer giant C, back at secs("break") 3.85 to 5.85 s; `drawD(ctx,x,footY,scale)` is the fourth giant D, the survivor titan's (rings) body, a cached sprite D_W x D_H = 900 x 1000 design units, called from GenRockTitans (`bigD`).
+- `genesis-rocktitans.js`: `bigD(ctx)` draws giant D in the giants' layer; `SURVIVOR` (not exported) is the titan index that becomes D; D rises from behind the bridge as the Hollow breaks away (`HOLLOW_BREAK`, ring pieces first) and sinks back behind it; no small leftover copy.
 - `genesis-rocktitans.js`: drawn from `genesis.js` at `break` secs >= 3.45 in the blast rocks' slot (before `drawSpan`); each titan paints its `GenTitanBodies` body every frame into its own BOX-sized layer (body clock from snaps 5, still in reduced motion).
 - `genesis-duo.js`: `drawRex(ctx,x,y,h,o)` with `o.pose` (stand, reach, slap, grip, dead), `o.fist`, `o.raise` 0..1 (arm down to overhead), `o.head`, `o.melt` 0..1 (lower body dissolves into womb red)
 - `genesis-duo.js`: `drawRexFingers` same args, after what sits in the fist; `rexAnchors(x,y,h,o,out)` fills {x,y} for `head collar chest waist grip` and `shoulder/elbow/wrist/hand` + `B`/`F`;
 - `genesis-duo.js`: `drawObrok1(ctx,x,y,s,o)`: `s` spine length, `o.face`, `o.path`, `o.eye`, `o.glow` 0..1 his own body burning red (no halo shape), `o.pose` `coil` or `held` (middle in the fist, ends writhe on the clock `o.t`), `o.hang` 1 in `drop` (both ends hang and twitch)
 - `genesis-duo.js`: `drawRex`'s `o.warm`, `o.warmX`, `o.warmY` warm-tint the stones near the grip
-- `genesis-rocktitans.js`: the layers are blitted under the rock-to-titan group transform and the clash slide; the victim and the leftover use frozen once-built layers; the old pieces and rocks stay only as the debris source.
+- `genesis-rocktitans.js`: the layers are blitted under the rock-to-titan group transform and the clash slide; the victim uses a frozen once-built layer and the Hollow breaks away live (`breakAway`); the old pieces and rocks stay only as the debris source.
 - `genesis.js`: DOM/overlay, caption crossfade, transport `play/skip/seek/finish`, `camAim` (+ per-beat `ZOOM` push/pull), `step` (zoom, sparks), the `draw` conductor (Act 1 wiring, the break flash (titans or `drawRocks`), titans in the fight, the depths, the saga, the now-fade),
-- `genesis.js`: the two waves (`GenElem`/`GenMatter`) and the stream, the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input
+- `genesis.js`: the two waves (`GenElem`/`GenMatter`), the old ones' two layers (inside the mass before `GenMatter.draw`, the rest after) and `march` timing, input
 
 ### js/pages
 
@@ -652,7 +655,6 @@ withTilt` at parse time) and before `genesis-armies`/`genesis-ritual`;
 (it pushes onto `GenHosts.ABOM` at parse time);
 `genesis-mainland` and `genesis-armies` before `genesis-saga-state`/
 `genesis-saga`; `genesis-saga-state` before `genesis-saga`;
-`genesis-trade` before `genesis-oldones` (SPOTS, read at call time);
 `genesis-gods` after `genesis-figures` (destructures `fillPoly shadedPoly
 quad withTilt` at parse time);
 `genesis-titanbodies` directly before `genesis-rocktitans` (no dependencies);
@@ -708,7 +710,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 
 - Environment model / place readings: one entry per place in `js/bridge/bridge-sites.js` (`SITES`, `GD_SITES`, gated by the depth node in `gate`); alarms in `js/hud/instruments.js` `tickAlarms`/`arbitrate`; the four Game Dev sites' physics and their `lines()` live in `bridge-sites.js` `GD_SITES`
 - Cutscene: cast painters `genesis-figures.js` + `genesis-titans.js`, the five gods `genesis-gods.js`, Obrokxus's later forms `genesis-obrok.js`; the old ones `genesis-oldones.js`;
-- Cutscene: the birth waves `genesis-elements.js` (wave one + permanent residue), `genesis-matter.js` (matter, insects, storms), `genesis-trade.js` (the travelling stream); the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`;
+- Cutscene: the birth waves `genesis-elements.js` (wave one + permanent residue), `genesis-matter.js` (matter, swarm call, storms); the Primordisentia `genesis-flesh.js`; the mainland/spires/city `genesis-mainland.js`;
 - Cutscene: the war `genesis-armies.js`, the war's figures `genesis-hosts.js`; the warlock births and the Hound's ritual `genesis-ritual.js`; the depths `genesis-depths.js`; captions `genesis-state.js` `BEATS`;
 - Cutscene: zoom/captions `genesis.js` + `css/bridge.css` genesis block
 - Plan phase state (one phase per session): first line `Status: phase-done\|partial\|questions\|blocked\|plan-done` (read by `tools/autoplan.py` and `session-start.py`); `## Questions` holds deferred phase questions, answered with `go` in the app; format in `.claude/skills/plan/SKILL.md`;

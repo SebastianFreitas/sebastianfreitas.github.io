@@ -1,6 +1,6 @@
 /* genesis-matter.js — the second wave: flesh, stone and both at once,
-   floating, falling and breaking; insects hatch out of it and mostly die,
-   deformed or struck by weather that obeys nothing. Pure functions of time. */
+   floating, falling and breaking; the swarm (GenSwarm) hatches from its rocks,
+   under weather that obeys nothing. Pure functions of time. */
 (function () {
   const G = window.Gen;
   const { hash1, clamp, mix, smooth, mulberry, TAU } = Util;
@@ -11,7 +11,6 @@
   // the rocks are neutral dark greys (flesh too), painted straight on the scene, lighter than the shadowed air and sea
   const FLESH_LIT = "#484848", FLESH_SHADE = "#2e2e2e", FLESH_RAW = "#565656";
   const STONE_LIT = "#464646", STONE_SHADE = "#2c2c2c", STONE_DARK = "#202020";
-  const INSECT_BODY = "rgb(96,96,96)", INSECT_RIM = "rgb(132,132,132)", INSECT_WING = "rgba(207,214,211,0.5)", INSECT_DEFORM = "rgb(116,116,116)";
   const AIR_COLOR = "#e8eef0", RAIN_COLOR = "#8fb6d8";
   const FIRE_LIT = "#f08a2a", FIRE_CORE = "#ffd36a", FIRE_DARK = "#b8321e";
   const LIGHT_OUTER = "#9b7cff", LIGHT_CORE = "#f4f0ff";
@@ -84,7 +83,7 @@
     { mat: "meld", n: 9, lo: 0.6, st: [1.35, 0.7], R: 0.070, fx: 0.20, fy: -0.02, ang: 0.6, dl: 0.04, dur: 2.6, spin: 0.6, r0: -0.7, seed: 4441, cut: 2 },
     { mat: "stone", n: 6, lo: 0.7, st: [1, 1], R: 0.045, fx: 0.60, fy: -0.06, ang: -0.3, dl: 0.12, dur: 1.6, spin: -2.2, r0: 1.3, seed: 4447, cut: 3 },
   ];
-  const INSECT_FX = [-0.20, -0.04, 0.10, 0.27];   // where the insects hatch, frozen at the rocks' old resting spots
+  const HATCH_FX = [-0.20, -0.04, 0.10, 0.27];   // where the insects hatch, frozen at the rocks' old resting spots
   ROCKS.forEach(function (k) {
     // a rough outline, then every edge split twice and each new point pushed off the line, so no long straight edge is left
     const base = [];
@@ -174,30 +173,6 @@
     ctx.restore();
   }
 
-  /* ---- insects ---------------------------------------------------------
-     150 hatch out of chunks; most die almost at once, deformed or caught
-     by the storms. */
-  const DEFORMS = ["none", "noLegs", "twoHeads", "bentWing", "swollen", "extraLegs"];
-  const INSECTS = [];
-  (function seedInsects() {
-    const r = mulberry(9202);
-    for (let i = 0; i < 150; i++) {
-      const parent = Math.floor(r() * CHUNKS_N);
-      const hatch = CHUNKS[parent].birth + 0.8 + r() * 2.5;
-      const dieR = r();
-      INSECTS.push({
-        parent,
-        hatch,
-        die: dieR < 0.78 ? 0.3 + r() * 1.4 : 99,
-        ang: r() * TAU,
-        spd: 20 + r() * 70,
-        wob: r() * TAU,
-        deform: DEFORMS[Math.floor(r() * 6)],
-        size: 3.5 + r() * 4,
-      });
-    }
-  })();
-
   /* ---- storms ------------------------------------------------------- */
   const STORMS = [];
   (function seedStorms() {
@@ -269,13 +244,6 @@
     return smooth(clamp((s - st.t) / 0.15, 0, 1)) *
       (1 - smooth(clamp((s - st.t - st.dur + 0.4) / 0.4, 0, 1)));
   }
-  // is (x,y) inside storm st's disc at time s? (air/fire shudder + hit test)
-  function inStorm(st, x, y, s) {
-    if (stormEnv(st, s) <= 0.02) return false;
-    const cx = st.xf * G.W, cy = st.yf * G.H, R = st.Rf * G.W;
-    const dx = x - cx, dy = y - cy;
-    return dx * dx + dy * dy <= R * R;
-  }
 
   /* ---- chunk path / draw ------------------------------------------------
      traceChunk reads module-level scratch vars set by drawChunkAt, so
@@ -345,121 +313,6 @@
       }
     }
     ctx.globalAlpha = 1;
-  }
-
-  /* ---- insects ---------------------------------------------------------- */
-  function drawInsects(ctx, s) {
-    for (let i = 0; i < INSECTS.length; i++) {
-      const ins = INSECTS[i];
-      if (s < ins.hatch) continue;
-      const parentAge = ins.hatch - CHUNKS[ins.parent].birth;
-      const hatchPos = chunkAt(ins.parent, ins.hatch);
-      if (!hatchPos.alive) continue; // parent dead at hatch time: never drawn
-      // they hatch from the rocks now, on the rock's near edge (the chunks they were born of are no longer drawn)
-      const rk = ROCKS[ins.parent % ROCKS.length], rr = rk.R * G.H * 0.8;
-      const hx = G.sx(0) + INSECT_FX[ins.parent % ROCKS.length] * G.H + Math.cos(ins.ang) * rr, hy = MASS.yf * G.H + rk.fy * G.H + Math.sin(ins.ang) * rr * 0.7;
-
-      let b = s - ins.hatch;
-      // storm death: check position at each storm's start time
-      let deathT = ins.hatch + ins.die;
-      for (let k = 0; k < STORMS.length; k++) {
-        const st = STORMS[k];
-        if (st.type === "lightning" || st.t <= ins.hatch || st.t >= deathT) continue; // lightning storms are not drawn
-        const bt = st.t - ins.hatch;
-        const px = hx + Math.cos(ins.ang) * ins.spd * bt + Math.sin(bt * 9 + ins.wob) * 6;
-        const py = hy + Math.sin(ins.ang) * ins.spd * bt + Math.cos(bt * 7 + ins.wob) * 5;
-        if (inStorm(st, px, py, st.t)) { deathT = st.t; break; }
-      }
-      const dead = s >= deathT;
-      const bd = dead ? deathT - ins.hatch : b;
-      let x = hx + Math.cos(ins.ang) * ins.spd * bd + Math.sin(bd * 9 + ins.wob) * 6;
-      let y = hy + Math.sin(ins.ang) * ins.spd * bd + Math.cos(bd * 7 + ins.wob) * 5;
-      let alpha = 1, rot = 0;
-      if (dead) {
-        const fa = s - deathT;
-        if (fa > 1.2) continue;
-        y += 0.5 * 0.25 * G.H * fa * fa;
-        rot = Math.PI;
-        alpha = 1 - fa / 1.2;
-      }
-      if (x < -20 || x > G.W + 20 || y < -20 || y > G.H + 20) continue;
-      drawInsect(ctx, ins, x, y, rot, alpha, dead ? 0 : b);
-    }
-  }
-
-  // rot is 0 (alive) or PI (dead, flipped): apply by hand instead of
-  // ctx.save/translate/rotate/restore around every one of 150 insects
-  function drawInsect(ctx, ins, x, y, rot, alpha, b) {
-    if (alpha < 0.02) return;
-    ctx.globalAlpha = alpha;
-    const size = ins.size;
-    const cs = Math.cos(rot), sn = Math.sin(rot);
-    // wings
-    if (size >= 2.0) {
-      const flap = Math.abs(Math.sin(b * 40));
-      ctx.fillStyle = INSECT_WING;
-      for (let s2 = -1; s2 <= 1; s2 += 2) {
-        let wr = s2 * (0.3 + flap * 0.5);
-        if (ins.deform === "bentWing" && s2 === 1) wr += 1.3;
-        const ly = s2 * size * 0.2;
-        ctx.beginPath();
-        ctx.ellipse(x - ly * sn, y + ly * cs, size * 0.9, size * 0.32, wr + rot, 0, 6.283);
-        ctx.fill();
-      }
-    }
-    // legs
-    if (ins.deform !== "noLegs" && size >= 2.0) {
-      const nLegs = ins.deform === "extraLegs" ? 6 : 3;
-      ctx.strokeStyle = INSECT_BODY;
-      ctx.lineWidth = 0.8;
-      for (let s2 = -1; s2 <= 1; s2 += 2) {
-        for (let li = 0; li < nLegs; li++) {
-          const lx = -size * 0.3 + li * (size * 0.6 / Math.max(1, nLegs - 1));
-          const twitch = Math.sin(b * 30 + li) * size * 0.25;
-          const ly0 = s2 * size * 0.25, ly1 = s2 * (size * 0.25 + size * 0.5);
-          const lx1 = lx + twitch * 0.3;
-          ctx.beginPath();
-          ctx.moveTo(x + lx * cs - ly0 * sn, y + lx * sn + ly0 * cs);
-          ctx.lineTo(x + lx1 * cs - ly1 * sn, y + lx1 * sn + ly1 * cs);
-          ctx.stroke();
-        }
-      }
-    }
-    // body
-    ctx.beginPath();
-    ctx.ellipse(x, y, size, size * 0.6, rot, 0, 6.283);
-    ctx.fillStyle = INSECT_BODY;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(x + size * 0.2 * sn, y - size * 0.2 * cs, size * 0.55, size * 0.22, rot, 0, 6.283);
-    ctx.fillStyle = INSECT_RIM;
-    ctx.fill();
-    // head(s)
-    if (ins.deform === "twoHeads") {
-      for (let s2 = -1; s2 <= 1; s2 += 2) {
-        const lx = size * 0.45, ly = s2 * size * 0.4;
-        ctx.beginPath();
-        ctx.arc(x + lx * cs - ly * sn, y + lx * sn + ly * cs, size * 0.45, 0, 6.283);
-        ctx.fillStyle = INSECT_BODY;
-        ctx.fill();
-      }
-    } else {
-      const lx = size * 0.45;
-      ctx.beginPath();
-      ctx.arc(x + lx * cs, y + lx * sn, size * 0.45, 0, 6.283);
-      ctx.fillStyle = INSECT_BODY;
-      ctx.fill();
-    }
-    // swollen deformity
-    if (ins.deform === "swollen") {
-      const lx = -size * 0.15;
-      ctx.beginPath();
-      ctx.arc(x + lx * cs, y + lx * sn, size * 0.9, 0, 6.283);
-      ctx.fillStyle = INSECT_DEFORM;
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
   }
 
   /* ---- storms ------------------------------------------------------------ */
@@ -582,7 +435,11 @@
     // the 2.5 s beat plays the old 8 s timeline (x3.2), so the mass is whole by its end; trade runs on at 1:1
     const ms = G.secs("matter");
     const s = (ms < 2.5 ? ms * 3.2 : 8 + (ms - 2.5)) + 0.8;
-    if (s > 20.6 + G.TITAN_HOLD + GenTitanFight.ADD) return;   // through the trade beat, which the fight makes ADD longer
+    const sWalk = 8 + (G.BEAT_START[G.idxOf("walk")] - G.BEAT_START[G.idxOf("matter")] - 2.5) + 0.8;   // the walk beat's start on this clock
+    if (s > sWalk + 2.8) {   // the storms and the event end 2.8 s into the walk; the swarm runs on to the enter beat
+      if (G.beat < G.idxOf("enter")) drawSwarm(ctx, s);
+      return;
+    }
     // the four rocks are drawn by genesis.js, just under the bridge (drawRocks)
     if (s < 0) return;
 
@@ -595,9 +452,22 @@
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
     GenElem.layerEnd(outer, ctx, GenElem.dimK());
-    drawInsects(outer, s);   // after the shadow layer, which would turn them near-black
+    drawSwarm(outer, s);
     outer.globalAlpha = 1;
   }
 
-  window.GenMatter = { INSECT_BODY, draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale };
+  // the swarm lives through the whole walk beat (it never leaves) and stops when the enter beat starts
+  function drawSwarm(outer, s) {
+    if (!window.GenSwarm) return;   // after the shadow layer, which would turn them near-black
+    const real = (v) => (v < 8.8 ? (v - 0.8) / 3.2 : v - 6.3);   // this clock back to real seconds since the matter beat began
+    const spots = [];
+    for (let i = 0; i < ROCKS.length; i++) {
+      let b0 = Infinity;
+      for (let c = i; c < CHUNKS_N; c += ROCKS.length) b0 = Math.min(b0, CHUNKS[c].birth + 0.8);
+      spots.push({ x: G.sx(0) + HATCH_FX[i] * G.H, y: MASS.yf * G.H + ROCKS[i].fy * G.H, t0: real(b0) });
+    }
+    GenSwarm.draw(outer, real(s), { spots: spots, leaveAt: Infinity });
+  }
+
+  window.GenMatter = { draw, drawRocks, drawRockAt, rockPose, ROCKS, chunkAt, MASS, massScale };
 })();

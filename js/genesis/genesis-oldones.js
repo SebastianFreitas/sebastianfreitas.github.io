@@ -159,11 +159,14 @@ window.GenOld = (function () {
     });
     return t0;
   })();
-  function ventSteps(idx) { return idx === GENT_IDX ? 6 : 3 + Math.floor(hash1(idx * 29 + 5) * 3); }
-  const BIRTH_T0 = 3.0 + GenTitanFight.ADD, BIRTH_RANK = 0.12, BIRTH_STEP = 0.4;
+  // each birth is one eased rise of 1.2-1.6 s, its own length
+  function birthDur(idx) { return 1.2 + 0.4 * hash1(idx * 29 + 5); }
+  const BIRTH_T0 = 3.0 + GenTitanFight.ADD, BIRTH_RANK = 0.12;
   // rank 0 = the gentleman, then the others by their VENT_T0
   function birthRank(idx) { if (idx === GENT_IDX) return 0; let r = 0; VENT_T0.forEach((t) => { if (t < VENT_T0[idx]) r++; }); return r; }
   function birthT(idx) { return BIRTH_T0 + birthRank(idx) * BIRTH_RANK; }
+  // 0..1 along idx's rise at trade secs tt (eased)
+  function birthK(idx, tt) { return smooth(clamp((tt - birthT(idx)) / birthDur(idx), 0, 1)); }
 
   // a single fresh being of `kind`, for files that draw an old one outside the
   // roster (Obrokxus's brothers); side is always +1, tint optionally overrides
@@ -198,11 +201,10 @@ window.GenOld = (function () {
     const dressHold = (o.side > 0 && !o.bro) && Math.abs(dt) < HOLD;
 
     /* 1. on the deck from the second its titan piece landed, grey and still until it wakes */
-    const bt = birthT(idx), nst = ventSteps(idx), upT = bt + nst * BIRTH_STEP;
+    const bt = birthT(idx), upT = bt + birthDur(idx);
     const rdTrade = G.reduced && emerge >= 0;   // reduced motion: from trade 0 all stand upright and awake at their spots
     const e = (emerge >= bt || rdTrade) ? 1 : 0;
     const part = (e > 0 && !rdTrade &&emerge < upT && window.GenRockTitans && GenRockTitans.partRest) ? GenRockTitans.partRest(idx) : null;
-    const growStep = part ? Math.min(nst, Math.floor((emerge - bt) / BIRTH_STEP + 1e-6) + 1) : 0;
     const held = emerge < 8.4 + GenTitanFight.ADD;
     o.wake = (emerge >= upT || rdTrade) ? 1 : 0;
     // the walk is read at half the frame: they grow through it and settle back for the root
@@ -239,11 +241,10 @@ window.GenOld = (function () {
     if (isFlyer) y = deckY - o.airY * H + Math.sin(G.t * 1.1 + o.ph) * 0.03 * H * smooth(clamp((emerge - 8.4 - GenTitanFight.ADD) / 1.0, 0, 1));
     else y = deckY - 2 + STAND[o.kind].lane * 0.012 * H;
     if (isFlyer) x += (G.beat === G.idxOf("walk") ? mix(0.04, 0.012, clamp(G.secs("walk") / 0.8, 0, 1)) : 0.04) * W * Math.sin(G.t * 0.5 + o.ph) * smooth(clamp((emerge - 8.4 - GenTitanFight.ADD) / 1.0, 0, 1));
-    if (part) {   // the cut's bottom-centre sits on the chip's pivot: the feet are offset from it by the lying rotation
-      const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]), ib = part.ib;
-      let ax = ib[0] + (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2 * ib[2], ay = ib[1] + Math.max.apply(null, vs) * ib[3];
-      if (part.mirror) ax = -ax;
-      x = part.x - (ax * Math.cos(part.tilt) - ay * Math.sin(part.tilt)); y = part.y - (ax * Math.sin(part.tilt) + ay * Math.cos(part.tilt));
+    let rise = 0;
+    if (part) {   // the body slides up out of its chip: from below the chip's ground line to its spot, upright, hidden below the (moving) line
+      rise = smooth(clamp((emerge - bt) / birthDur(idx), 0, 1));
+      x = mix(part.x, x, rise); y = mix(part.gr + 1.3 * o.hf * H, y, rise);
     }
 
     /* 4. cling to the body */
@@ -282,16 +283,9 @@ window.GenOld = (function () {
     }
 
     const p = o.p;
-    p.x = x; p.y = y; p.a = a; p.rot = part ? part.tilt : rot; p.scale = scale;
-    p.mirror = part ? !!part.mirror : false;
-    p.clipY = (part && !isFlyer) ? deckY : null;
-    if (part) {   // the part's cut unioned with a rect growing from the cut's middle (step 1) to the whole ink box (last step), in ink-box units
-      const us = part.cut.map((q) => q[0]), vs = part.cut.map((q) => q[1]);
-      const k = nst > 1 ? (growStep - 1) / (nst - 1) : 1;
-      const cu = (Math.min.apply(null, us) + Math.max.apply(null, us)) / 2, cv = (Math.min.apply(null, vs) + Math.max.apply(null, vs)) / 2;   // step 1: the cut alone, a point inside it
-      const u0 = mix(cu, 0, k), u1 = mix(cu, 1, k), v0 = mix(cv, 0, k), v1 = mix(cv, 1, k);
-      p.clipBox = { ink: part.ink, ib: part.ib, cut: part.cut, rect: [u0, v0, u1, v1], fx: part.fx, fy: part.fy };
-    } else p.clipBox = null;
+    p.x = x; p.y = y; p.a = a; p.rot = rot; p.scale = scale;
+    p.mirror = false;
+    p.clipY = part ? mix(part.gr, deckY, rise) : null;
     p.phase = part ? 0 : phase; p.sy = sy; p.kneel = still;
     p.gest = 0;
     p.pinU = pinU;
@@ -1134,22 +1128,9 @@ window.GenOld = (function () {
       c.translate(p.x, p.y);
       c.rotate(p.rot);
       if (p.mirror) c.scale(-1, 1);
-      if (p.clipBox) {   // ink box from the feet (ib); the cut's polygon plus the growing rect, straight edges
-        const cb = p.clipBox, ib = cb.ib, X = (u) => ib[0] + u * ib[2], Y = (v) => ib[1] + v * ib[3];
-        let ar = 0; cb.cut.forEach((q, i) => { const n = cb.cut[(i + 1) % cb.cut.length]; ar += q[0] * n[1] - n[0] * q[1]; });
-        const r = cb.rect, rc = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]];
-        if (ar < 0) rc.reverse();
-        c.beginPath();
-        cb.cut.forEach((q, i) => { i ? c.lineTo(X(q[0]), Y(q[1])) : c.moveTo(X(q[0]), Y(q[1])); }); c.closePath();
-        rc.forEach((q, i) => { i ? c.lineTo(X(q[0]), Y(q[1])) : c.moveTo(X(q[0]), Y(q[1])); }); c.closePath();
-        c.clip();
-      }
       c.scale(p.scale, p.scale * p.sy);
-      // a growing part is painted where the chip's body was measured: gaits read the world x, so the drawing there is the chip's pose
-      const gx = p.clipBox ? p.clipBox.fx : p.x, gy = p.clipBox ? p.clipBox.fy : p.y;
-      c.translate(-gx, -gy);
-      PAINT[o.kind](c, o, gx, gy, o.hf * H, p);
-      c.translate(gx - p.x, gy - p.y);
+      c.translate(-p.x, -p.y);
+      PAINT[o.kind](c, o, p.x, p.y, o.hf * H, p);
       drawMaking(c, o, p, o.hf * H);
       c.restore();
     }
@@ -1492,5 +1473,5 @@ window.GenOld = (function () {
     ctx.restore();
   }
 
-  return { OLD_DIM, ROSTER, CUT, ORDER, PAINT, place, deckSpot, birthT,drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, dressNow, windAt, frostNow };
+  return { OLD_DIM, ROSTER, CUT, ORDER, PAINT, place, deckSpot, birthT, birthK,drawOldOnes, drawShards, figCover, captionBand, drawKind, makeOne, litSplit, eyeDot, dressNow, windAt, frostNow };
 })();

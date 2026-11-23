@@ -311,12 +311,14 @@
     Paint.litShade(g, trace, xk - wk * 0.4, LIMB_LIT, LIMB_SHADE);
 
     // nests: on the piers, tucked at the knee and under the eave
-    if (hh(b, 0, 20) < 0.7 && walk) {
+    if (hh(b, 0, 20) < 0.7 && walk > 0) {
       if (hh(b, 0, 22) < 0.75) {
         const ax = xk + wk * 0.3 + (hh(b, 0, 23) - 0.5) * wk;
         const ay = yk - wk * 0.9;
         const nw = (0.008 + 0.008 * hh(b, 0, 24)) * H;
         const nh = nw * 0.55;
+        g.save();
+        g.translate(ax, ay); g.scale(walk, walk); g.translate(-ax, -ay); // grows from its base
         const nestTrace = () => {
           g.beginPath();
           g.moveTo(ax - nw / 2, ay - nh);
@@ -347,6 +349,7 @@
           g.closePath();
           g.fill();
         }
+        g.restore();
       }
 
       const ne = 1 + (hh(b, 0, 30) < 0.4 ? 1 : 0);
@@ -356,6 +359,8 @@
         const ey = yt;
         const ew = (0.006 + 0.005 * hh(b, e, 32)) * H;
         const eh = ew * 1.3;
+        g.save();
+        g.translate(ex, ey); g.scale(walk, walk); g.translate(-ex, -ey); // grows down from the slab
         const eaveTrace = () => {
           g.beginPath();
           g.moveTo(ex - ew / 2, ey - 1);
@@ -372,6 +377,7 @@
         g.ellipse(ex + s * ew * 0.15, ey + eh * 0.55, ew * 0.2, ew * 0.16, 0, 0, Math.PI * 2);
         g.fill();
         g.globalCompositeOperation = "source-over";
+        g.restore();
       }
     }
   }
@@ -419,10 +425,16 @@
     const first = Math.floor((cam - 0.5) / SPAN_BAY_U) - 1;
     const last = Math.ceil((cam + 0.5) / SPAN_BAY_U) + 1;
     const arrived = (id, b, k) => v || G.secs(id) >= hh(b, 0, k) * G.beatDur(id) * 0.8;
+    // a pier's nests grow up out of the pier over 0.4 s (ease-out), in 48ths (fine for a 165 Hz display) so the offscreen redraws only while a nest is growing
+    const nestGrow = b => {
+      if (v) return 1;
+      const t = clamp((G.secs("walk") - hh(b, 0, 21) * G.beatDur("walk") * 0.8) / 0.4, 0, 1);
+      return Math.round((1 - (1 - t) * (1 - t)) * 48) / 48;
+    };
     // everything in the offscreen depends on these only: blit it when none changed
     let sig = 0;
     for (let b = first; b <= last; b++) {
-      sig = (sig * 31 + (arrived("trade", b, 2) ? 1 : 0) + (arrived("walk", b, 21) ? 2 : 0) + (arrived("trade", b, 41) ? 4 : 0)) | 0;
+      sig = (sig * 31 + (arrived("trade", b, 2) ? 1 : 0) + Math.round(nestGrow(b) * 48) * 2 + (arrived("trade", b, 41) ? 128 : 0)) | 0;
     }
     let gapSig = 0;
     for (let i = 0; i < RAIL_GAPS.length; i++) if (v || railOpen(i)) gapSig++; // gaps only ever open, so the count names the set
@@ -514,7 +526,7 @@
     for (let b = first; b <= last; b++) {
       const xb = sx(b * SPAN_BAY_U);
       if (xb < x0 - sh || xb > x1 + sh) continue;
-      paintLimb(g, H, deckY, b, xb, arrived("walk", b, 21), v && v.fogEnd ? v.fogEnd : H * 1.08);
+      paintLimb(g, H, deckY, b, xb, nestGrow(b), v && v.fogEnd ? v.fogEnd : H * 1.08);
     }
 
     // vertebra nubs, under the slab

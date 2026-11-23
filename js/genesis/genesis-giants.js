@@ -5,10 +5,10 @@
    tilt -30 deg, slid 420 px left, right supports dropped). */
 window.GenGiants = (function () {
   const G = window.Gen;
-  const TR_ON = 0.5, STEP_T0 = 0.5, STEP = 0.09, NSTEP = 12, ASTEP = 0.1;   // inside the blast (0.5 to 1.6 s): 12 tilt steps, the last at 1.49 s
-  const TR_ALPHA = [0.15, 0.35, 0.6, 0.8, 1];   // held fade-in steps, full from 0.9 s
-  const TR_GHOST = 0.2, GHOST_T = 0.5;
+  const TR_ON = 0.5, STEP_T0 = 0.5, STEP = 0.09, NSTEP = 12;   // 12 tilt steps from 0.5 s, the last at 1.49 s
+  const IN_D = 0.3, OUT_T = 1.6, OUT_D = 0.5;   // push in over 0.5 to 0.8 s; leave over 1.6 to 2.1 s
   const T0 = -30, T1 = -42;   // tilt in degrees: top swings down toward the bridge
+  const BREAK_STEPS = ["#212529", "#24282d", "#272b31", "#2a2e35"];   // GenEldPal TIER3 steps + 16 per channel, same relative steps
   const OX = -420, OY = -20, PV = [1000 + OX, 800 + OY];
   const A0 = T0 * Math.PI / 180;
 
@@ -124,17 +124,17 @@ window.GenGiants = (function () {
     path(ctx, polys, M);
     ctx.fill();
   }
-  function drawB(ctx, M, alpha, T) {
-    const dark = SH.bDark.map(i => SH.bStrips[i]);
+  function drawB(ctx, Mi, alpha, T) {   // Mi(i) = the map of strip i, so each strip (and the fold on it) can fall on its own
     ctx.save();
     ctx.globalAlpha = alpha;
-    fillAll(ctx, SH.bStrips, T[1], M);
-    fillAll(ctx, dark, T[0], M);
-    ctx.save();
-    path(ctx, dark, M);
-    ctx.clip();
-    fillAll(ctx, [SH.bFold], T[2], M);
-    ctx.restore();
+    SH.bStrips.forEach((p, i) => fillAll(ctx, [p], SH.bDark.indexOf(i) >= 0 ? T[0] : T[1], Mi(i)));
+    for (const i of SH.bDark) {
+      ctx.save();
+      path(ctx, [SH.bStrips[i]], Mi(i));
+      ctx.clip();
+      fillAll(ctx, [SH.bFold], T[2], Mi(i));
+      ctx.restore();
+    }
     ctx.restore();
   }
   function drawC(ctx, M, alpha, T) {
@@ -171,38 +171,59 @@ window.GenGiants = (function () {
     const s = Math.min(W / 2000, H / 1009), ox = (W - 2000 * s) / 2, oy = (H - 1009 * s) / 2;
     const MA = p => [ox + s * (p[0] + 1000) / 4, oy + s * (p[1] + 2900) / 4];
     const MC = p => [ox + s * (1000 + (p[0] + 1100) / 4), oy + s * (p[1] + 1100) / 4];
-    const k = red ? NSTEP : tb < STEP_T0 ? 0 : Math.min(NSTEP, Math.floor((tb - STEP_T0) / STEP) + 1);
+    const ku = red ? 1 : Math.min(1, Math.max(0, (tb - STEP_T0) / (NSTEP * STEP))), k = NSTEP * (0.5 - 0.5 * Math.cos(Math.PI * ku));   // continuous eased tilt, same start and end
     const a = (T0 + (T1 - T0) * k / NSTEP) * Math.PI / 180 - A0;
     const tr = ps => rot(ps, a, PV);
     const bodies = SH.bodies.map(tr), sup = SH.sup.map(tr);
     const folds = SH.folds.map(f => ({ p: tr(f.p), tone: f.tone }));
-    const T = GenEldPal.TIER3.steps;   // the dark tier-3 steps: shapes against the blast light
-    const n = tb < STEP_T0 ? 0 : Math.min(4, Math.floor((tb - STEP_T0) / ASTEP) + 1);
-    const pale = red ? 1 : TR_GHOST + (1 - TR_GHOST) * Math.min(1, Math.max(0, (tb - GHOST_T) / 1.0));
-    const alpha = TR_ALPHA[red ? 4 : n] * pale;
-    drawB(ctx, MA, alpha, T);
-    drawC(ctx, MC, alpha, T);
+    const T = BREAK_STEPS;   // the tier-3 steps lifted 16 so the silhouettes still read on the backdrop once the wash dims
+    if (red && tb >= 1.6) return;
+    /* each giant pushes in from its own frame edge (ease-out) and leaves the same way (ease-in), by an offset that
+       carries its whole box past that edge: A down and left, B up, C up and right */
+    const eIn = red ? 1 : 1 - Math.pow(1 - Math.min(1, (tb - TR_ON) / IN_D), 3), eOut = red ? 0 : Math.pow(Math.max(0, Math.min(1, (tb - OUT_T) / OUT_D)), 3);
+    const away = 1 - eIn + eOut;   // 1 = fully out at the edge, 0 = in place
+    const box = (polys, M) => {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of polys) for (const v of p) { const q = M(v); x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+      return { x0, x1, y0, y1 };
+    };
+    const shift = (M, dx, dy, aw) => p => { const q = M(p); return [q[0] + dx * aw, q[1] + dy * aw]; };
+    const bA = box(bodies.concat(sup), MA), bC = box([SH.hull, SH.slab], MC);
+    const dA = H - bA.y0 + 4, dC = -(bC.y1 + 4);
+    const MAo = shift(MA, -0.35 * dA, dA, away), MCo = shift(MC, -0.35 * dC, dC, eOut);
+    /* B and C are born from the blast: one uniform scale about its centre (0.04 to 1, cubic ease-out) carries each to its place;
+       then C slides off up and right, and B's strips drop one after another (stagger 0.04 s, 0.26 s each, ease-in) */
+    const bu = red ? 1 : Math.min(1, Math.max(0, (tb - TR_ON) / 0.6)), sc = 0.04 + 0.96 * (1 - Math.pow(1 - bu, 3)), bx = W / 2, by = 0.46 * H;
+    const born = M => p => { const q = M(p); return [bx + sc * (q[0] - bx), by + sc * (q[1] - by)]; };
+    const fall = SH.bStrips.map((p, i) => {
+      const e = Math.pow(Math.max(0, Math.min(1, (tb - OUT_T - 0.04 * i) / 0.26)), 3);
+      return e * (H - box([p], MA).y0 + 4);
+    });
+    const MBi = i => { const f = fall[i]; return born(p => { const q = MA(p); return [q[0], q[1] + f]; }); };
+    const alpha = 1;
+    drawB(ctx, MBi, alpha, T);
+    drawC(ctx, born(MCo), alpha, T);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = T[0];
-    path(ctx, bodies.concat(sup), MA);
+    path(ctx, bodies.concat(sup), MAo);
     ctx.fill();
     ctx.fillStyle = T[1];
-    path(ctx, [bodies[2]], MA);
+    path(ctx, [bodies[2]], MAo);
     ctx.fill();
     ctx.fillStyle = T[0];
-    path(ctx, [bodies[1]], MA);
+    path(ctx, [bodies[1]], MAo);
     ctx.fill();
     ctx.save();
-    path(ctx, bodies, MA);
+    path(ctx, bodies, MAo);
     ctx.clip();
-    for (const f of folds) { ctx.fillStyle = T[f.tone]; path(ctx, [f.p], MA); ctx.fill(); }
+    for (const f of folds) { ctx.fillStyle = T[f.tone]; path(ctx, [f.p], MAo); ctx.fill(); }
     ctx.restore();
     ctx.restore();
   }
 
   /* the killer's return: giant C (the hull that stands nearest the right frame edge) looms back behind the four rock
-     titans in the matter beat, in held steps, secs("break") 3.85 in / 4.25 full / 5.45 out / 5.85 gone. It rises from
+     titans in the matter beat, sliding in 3.85-4.25, held to 5.35, sliding out 5.35-5.85 (secs("break")). It rises from
      the right edge; its inner edge is rooted at sx(0) + KILLER_SIDE * 0.6 * H. Same body, value and layer as in the break. */
   const KILLER_SIDE = 1;
   function loom(ctx, W, H, ts) {
@@ -213,11 +234,12 @@ window.GenGiants = (function () {
     const s = Math.min(W / 2000, H / 1009), oy = (H - 1009 * s) / 2;
     let lo = Infinity, hi = -Infinity;
     for (const p of SH.hull.concat(SH.slab)) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); }
-    const s2 = s * 1.3, bw = (hi - lo) / 4 * s2;   // drawn 1.3x the break size so it fills the top right; body width on screen
-    const out = (ts < 4.25 + G.TITAN_HOLD || ts >= 5.45 + G.TITAN_HOLD) ? 0.25 * bw : 0;   // the held partial step: pushed back out past the edge
+    const s2 = s * 1.3;   // drawn 1.3x the break size so it fills the top right
+    const u = ts - G.TITAN_HOLD, eIn = 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, (u - 3.85) / 0.4))), eOut = 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, (u - 5.35) / 0.5)));
+    const out = (1 - eIn + eOut) * (G.W - G.sx(0) - 0.35 * H + 4);   // slides in from the right edge and back out through it, both ease-in-out (sine) so the edge creeps
     const dx = G.sx(0) + KILLER_SIDE * (0.35 * H + out) - (1000 + (lo + 1100) / 4) * s2;
     const MC = p => [dx + s2 * (1000 + (p[0] + 1100) / 4), oy - 0.08 * H + s2 * (p[1] + 1100) / 4];
-    drawC(ctx, MC, Math.min(1, (5.85 + G.TITAN_HOLD - ts) / 0.4), pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop
+    drawC(ctx, MC, 1, pal.steps.slice(1));   // one step lighter than the break's darkest, so it reads against the backdrop
   }
 
   /* giant D, the Ringed Drift: the survivor titan's (rings, GenRockTitans.SURVIVOR) giant. Three floating masses that
