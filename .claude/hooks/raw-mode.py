@@ -16,7 +16,7 @@ hook never sees it: hooks.py reads it on the first tool call instead
 (guard_config.lazy_raw) and sets the same flag.
 
 Every other hook, review-guard's reviewer included, works as usual.
-Rules: workflow.md "Raw mode". Never fails the hook: any error exits 0.
+Rules: workflow.md "Raw mode" (detail: playbook.md "Raw mode"). Never fails the hook: any error exits 0.
 """
 import json
 import os

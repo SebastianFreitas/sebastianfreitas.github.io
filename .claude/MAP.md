@@ -566,6 +566,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
 | `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, detail line hidden at rest/shown on hover, level, unmoved, no side scroll; exit 1 on a fail |
 | `tools/scrollperf.py` | Scroll-jank measure (finds the toy canvas `figure.gp-stage canvas` or `canvas.play`) |
+| `.claude/agents/researcher.md` | Shared (synced). Lean agent (Read, Grep, Glob, Bash, Write, WebSearch, WebFetch; no CLAUDE.md): research across files and the web, writes a report to a named file; replaces general-purpose in research and writing briefs |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
 | `tools/try_project.py` | Portfolio hooks for the shared `try.py`/`try_commit.py` |

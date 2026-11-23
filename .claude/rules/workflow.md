@@ -15,7 +15,7 @@ and makes at most two quick lookups (a grep, a short range) before
 delegating; more goes to `Explore`. Agent prompts name paths, never
 pasted content. Agents write the full report to a file and return at
 most about 150 words plus its path (`reply-cap.py` sends one over 250
-words back once); every `Explore` or `general-purpose` prompt ends with the
+words back once); every `Explore`, `researcher` or `general-purpose` prompt ends with the
 playbook's report line (playbook Delegation).
 
 ## Shared files
@@ -66,20 +66,11 @@ ends, after the report, with the exact prompt in a plain fenced block
   of `go:` so the fresh window is the coordinator again (Context
   budget); raw mode's starts `raw:`. `go-check.py` checks both.
 
-**Receiving one** (bare `go` or not): `go-check.py` prints `GO CHECK:`
-ok, or MISMATCH with what to do (no line: run the two git commands and
-compare yourself). On a mismatch stop and say where each is. Never
-switch checkout or branch to match, except as your mode file says
-(cloud "continue PR #<n>"; worktree: a new chat merges the named branch
-for a plain handoff); a prepared run never moves.
+**Receiving one:** read the `GO CHECK:` line the `go-check.py` hook prints (no line: run the two git commands and compare yourself); on MISMATCH stop and say where each is. Never switch checkout or branch to match, except as your mode file says (cloud "continue PR #<n>"; worktree: a new chat merges the named branch for a plain handoff); a prepared run never moves. Detail: playbook "Receiving a go prompt".
 
 ## Plans
 
-Big work is a plan (`/plan new <name>: <brief>`, `.claude/plans/`). The
-hook prints `PLAN: <name> · <stage>`; read only the stage file
-`.claude/skills/plan/SKILL.md` names (`AUTOPLAN=1`: `unattended.md`).
-One `/clear` after the ready gate, then one app window supervises every
-headless `autoplan.py` phase; nobody clears or says `go` between phases.
+Big work is a plan: `/plan new <name>: <brief>`; the hook prints `PLAN: <name> · <stage>`; read only the stage file `.claude/skills/plan/SKILL.md` names. Detail: playbook "Plans".
 
 ## One prompt: prepare, clear, run
 
@@ -95,7 +86,7 @@ that do the work. Sort each new prompt from its words and at most one
 - **Anything else:** **prepare** (steps 1 to 2), end the turn; the owner
   runs `/clear` and pastes the go prompt; the fresh window **runs**
   (steps 3 to 7). Unsure: prepare.
-- **Too big for one run** (over about 15 specs): a plan; suggest `/plan
+- **Too big for one run** (over about 35 specs): a plan; suggest `/plan
   new <name>: <prompt>`.
 
 A plan, a handoff or a plan's questions in this checkout follow their
@@ -111,50 +102,19 @@ early only when something went really wrong.
 
 ### Prepare
 
-This window's line is 120k; two prepare windows reached 140k writing
-specs and reading files themselves (2026-10-01).
+This window's line is 200k. Detail: playbook "Prepare".
 
-1. **Explore** through `Explore` (the files, functions, `file:line`
-   anchors and the rules files covering them), ask the obvious
-   questions, and keep working in the same turn once answered. **Read
-   nothing yourself:** a gap goes to a second, narrower Explore.
-2. **Spec** one per implementer call (playbook "Spec format"): intent,
-   under about 40 lines, at most about three deliverables (more: split).
-   **Write each spec once**, one Write, never read back; an afterthought
-   goes in the handoff's Next line for that spec. For a prepared run
-   save each as `.claude/specs/<k>.md` (gitignored) and write
-   `.claude/handoff.md` as the `handoff` skill's "Prepared run" says.
-   End the turn with what will be built in two or three plain lines,
-   then the go prompt (what: "build the prepared specs"; file:
-   `.claude/handoff.md`), nothing after it.
+1. **Explore** through `Explore` (files, `file:line` anchors, rules files), ask the obvious questions, read nothing yourself.
+2. **Spec** one per implementer call (playbook "Spec format"), each written once to `.claude/specs/<k>.md`, plus `.claude/handoff.md`; end the turn with the go prompt (what: "build the prepared specs").
 
 ### Run
 
-A go prompt whose printed handoff starts `Run: prepared`, checkout and
-branch checked first. This window only manages, never reads a spec or a
-diff (about 3k tokens per spec; a fresh window starts near 50k, so
-about 15 fit under its 120k line with room for review and report). Step
-detail: playbook "Run".
+A go prompt whose printed handoff starts `Run: prepared`, checkout and branch checked first. This window only manages, never reads a spec or a diff. Step detail: playbook "Run".
 
-3. **Implement:** one `implementer` per spec, the prompt only
-   "Your spec is `.claude/specs/<k>.md`: read it and implement it".
-   Parallel specs (where the handoff says so) are several calls in one
-   message. Blocked: one `Explore`, a narrower spec, a fresh
-   implementer; still blocked, stop and tell the owner.
-4. **Verify:** the implementer runs its checks and `CLAUDE.md` § Verify
-   for the areas touched and reports pass or fail with the key numbers.
-   This window runs one tailed command only when a report is ambiguous.
-5. **Review:** over about 150 lines or three files (`.claude/` and `.md`
-   not counted) the `reviewer` gets the spec and changed paths and
-   reports only gaps that break the spec or a flow; a gap is a new spec,
-   back to step 3. `review-guard.py` refuses `git commit` and `try.py
-   --commit` until a reviewer ran in this window.
-6. **Commit** by path as your mode says, the message describing the work
-   (a squash takes the branch tip's message). Landing on `main` waits
-   for the owner's OK (worktree: `try.py --commit`; shared: the commit
-   itself). Only the run's final commit deletes `.claude/specs/` (this
-   session's specs and reports, not another session's in shared mode)
-   and `.claude/handoff.md`; a context-full commit keeps them.
+3. **Implement:** one `implementer` per spec, prompt only "Your spec is `.claude/specs/<k>.md`: read it and implement it".
+4. **Verify:** the implementer runs its checks and reports pass or fail with key numbers.
+5. **Review:** over about 150 lines or three files the `reviewer` runs; `review-guard.py` refuses the commit without it.
+6. **Commit** by path as your mode says; landing on `main` waits for the owner's OK.
 7. **Report:** end the turn with exactly this:
    1. **Name:** the feature in plain words, then the branch (and PR in cloud).
    2. **How it looks:** one or two screenshots the implementer took
@@ -172,25 +132,7 @@ anything else prepared again) on the same branch, with the same report.
 
 ## Raw mode
 
-For hard problems: a prompt that starts `raw:` (or is just `raw`) puts
-this window in raw mode until `/clear` or a new chat (`raw-mode.py`;
-owner, 2026-11-02: *"our context has all steps done to solve the asked
-task"*). Every step of the task happens in this window's own context: it
-reads, thinks, edits source and runs verify itself, with no specs and no
-prepare-clear-run. "Coordinator" and "Main session role" do not apply,
-and `agent-guard.py` refuses `Explore`, `Plan`, `implementer` and every
-other helper that would do a step.
-
-Checks on finished work do not change. `reviewer` still runs where Run
-step 5 says and `review-guard.py` still refuses the commit without it:
-it reads a spec, so save the owner's words and what done means as
-`.claude/specs/raw.md`, name that and the changed paths, and fix a gap
-here. Looks follow Token rules: this window opens the pictures itself,
-and may call `look-judge` for a second opinion. All other hooks and
-rules hold.
-The window's line is 175k; past it, hand off with a go prompt that
-starts `raw:` instead of `go:`, so the next window stays raw. The report
-keeps its five parts.
+A prompt starting `raw:` (or just `raw`) puts this window in raw mode until `/clear` or a new chat (`raw-mode.py`): helpers refused (`agent-guard.py`), no specs, `reviewer` still required (`review-guard.py`), window line 250k, its go prompt starts `raw:`. On entering it, read playbook "Raw mode".
 
 ## Main session role
 
@@ -224,13 +166,13 @@ opens a new chat. Never compact or clear yourself. `context-watch.py`
 prints `CONTEXT WATCH` once when a window crosses 90% of its line, once
 when it passes it, and once per new prompt while it stays there. Lines:
 the coordinator window, a raw window, a plan run's supervisor and
-headless plan sessions 175k (the runner kills headless ones at 200k);
-every other app window 120k, sub-chats and prepared runs included.
+headless plan sessions 250k (the runner kills headless ones at 300k);
+every other app window 200k, sub-chats and prepared runs included.
 The coordinator is the one window the owner talks to while it runs a
 worktree sub-chat per task: a prompt the owner types that starts
 `coordinator:` (or is just `coordinator`) makes its window one until
 `/clear` or a new chat; a chat another session opened never is. Explore, Plan, general-purpose and claude-code-guide 100k,
-plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
+researcher 100k, plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
 subagent at 1.25 times its line is denied further tools: the prompt was
 too wide; next time name file, function and range, or split. Every
 subagent runs in the background; the main session waits for the

@@ -24,8 +24,12 @@ read its matching section too.
   unclear, by grep.
 - **Built-in agents** get the contract as the last line of the prompt.
   `Explore` cannot write files: "Answer in at most 150 words: one line
-  per finding with its `file:line`." `general-purpose`: "Write your
-  findings to `<path>`; reply with at most 150 words and the path."
+  per finding with its `file:line`." `researcher` (research and
+  report-writing helpers; Explore stays for read-only code lookups) and
+  `general-purpose` (only when a task needs a tool `researcher` lacks):
+  "Write your findings to `<path>`; reply with at most 150 words and the
+  path." Name a `<path>` under `.claude/specs/reports/`: a helper cut
+  off at 1.25 times its line can still write only there.
 - Parallel implementer calls only on completely separate files. Several
   tasks each adding one line to the same file (a `<script>` tag, a
   registry entry): each edits only its own line with one `Edit`,
@@ -53,22 +57,106 @@ read its matching section too.
   counted): the `reviewer` gets the spec paths and the changed paths
   before you commit (`review-guard.py` enforces it, workflow.md Run).
 
+## Prepare
+
+The detail behind `workflow.md` "Prepare".
+
+This window's line is 200k. Two prepare windows reached 140k writing
+specs and reading files themselves (2026-10-01, when the line was
+120k), which is why this window still reads nothing itself.
+
+1. **Explore** through `Explore` (the files, functions, `file:line`
+   anchors and the rules files covering them), ask the obvious
+   questions, and keep working in the same turn once answered. **Read
+   nothing yourself:** a gap goes to a second, narrower Explore.
+2. **Spec** one per implementer call (playbook "Spec format"): intent,
+   under about 40 lines, at most about three deliverables (more: split).
+   **Write each spec once**, one Write, never read back; an afterthought
+   goes in the handoff's Next line for that spec. For a prepared run
+   save each as `.claude/specs/<k>.md` (gitignored) and write
+   `.claude/handoff.md` as the `handoff` skill's "Prepared run" says.
+   End the turn with what will be built in two or three plain lines,
+   then the go prompt (what: "build the prepared specs"; file:
+   `.claude/handoff.md`), nothing after it.
+
+## Receiving a go prompt
+
+**Receiving one** (bare `go` or not): `go-check.py` prints `GO CHECK:`
+ok, or MISMATCH with what to do (no line: run the two git commands and
+compare yourself). On a mismatch stop and say where each is. Never
+switch checkout or branch to match, except as your mode file says
+(cloud "continue PR #<n>"; worktree: a new chat merges the named branch
+for a plain handoff); a prepared run never moves.
+
+## Plans
+
+Big work is a plan (`/plan new <name>: <brief>`, `.claude/plans/`). The
+hook prints `PLAN: <name> · <stage>`; read only the stage file
+`.claude/skills/plan/SKILL.md` names (`AUTOPLAN=1`: `unattended.md`).
+One `/clear` after the ready gate, then one app window supervises every
+headless `autoplan.py` phase; nobody clears or says `go` between phases.
+
+## Raw mode
+
+For hard problems: a prompt that starts `raw:` (or is just `raw`) puts
+this window in raw mode until `/clear` or a new chat (`raw-mode.py`;
+owner, 2026-11-02: *"our context has all steps done to solve the asked
+task"*). Every step of the task happens in this window's own context: it
+reads, thinks, edits source and runs verify itself, with no specs and no
+prepare-clear-run. "Coordinator" and "Main session role" do not apply,
+and `agent-guard.py` refuses `Explore`, `Plan`, `implementer` and every
+other helper that would do a step.
+
+Checks on finished work do not change. `reviewer` still runs where Run
+step 5 says and `review-guard.py` still refuses the commit without it:
+it reads a spec, so save the owner's words and what done means as
+`.claude/specs/raw.md`, name that and the changed paths, and fix a gap
+here. Looks follow Token rules: this window opens the pictures itself,
+and may call `look-judge` for a second opinion. All other hooks and
+rules hold.
+The window's line is 250k; past it, hand off with a go prompt that
+starts `raw:` instead of `go:`, so the next window stays raw. The report
+keeps its five parts.
+
 ## Run
 
-The detail behind `workflow.md` "Run" steps 3 to 6.
+The detail behind `workflow.md` "Run" steps 3 to 7.
+
+A go prompt whose printed handoff starts `Run: prepared`, checkout and
+branch checked first. This window only manages, never reads a spec or a
+diff (about 3k tokens per spec; a fresh window starts near 60k, so
+about 35 take it to 165k, under the 180k warning of its 200k line, with
+room for review and report).
 
 - A prepared run's specs are gitignored and exist only in the worktree
   the go prompt names, so a run never moves to another checkout.
 - Verify: the reviewer may re-run the implementer's checks.
 - Verify: homepage or case-page paint is also shot with `py -3 tools/ffshot.py` (installed Firefox; `--games` for the rows).
 - Rex poses: `py -3 tools/rexsheet.py <run> [--mix a,b]` sheets every pose of Rex and prints limb length ratios (like `gframes.py`, for review without running the cutscene).
-- Review is not a judgement call: `.claude/hooks/review-guard.py` counts
-  the real diff at `git commit` and at `try.py --commit` and refuses the
-  command until a reviewer has run in this window; an earlier window's
-  review does not count.
-- Commit: worktree mode commits on its branch only and `try.py
-  --commit` waits for the owner's OK (the mode file's Commit); shared
-  mode's commit onto `main` itself waits for the OK.
+
+3. **Implement:** one `implementer` per spec, the prompt only
+   "Your spec is `.claude/specs/<k>.md`: read it and implement it".
+   Parallel specs (where the handoff says so) are several calls in one
+   message. Blocked: one `Explore`, a narrower spec, a fresh
+   implementer; still blocked, stop and tell the owner.
+4. **Verify:** the implementer runs its checks and `CLAUDE.md` § Verify
+   for the areas touched and reports pass or fail with the key numbers.
+   This window runs one tailed command only when a report is ambiguous.
+5. **Review:** over about 150 lines or three files (`.claude/` and `.md`
+   not counted) the `reviewer` gets the spec and changed paths and
+   reports only gaps that break the spec or a flow; a gap is a new spec,
+   back to step 3. Review is not a judgement call:
+   `.claude/hooks/review-guard.py` counts the real diff at `git commit`
+   and at `try.py --commit` and refuses the command until a reviewer has
+   run in this window; an earlier window's review does not count.
+6. **Commit** by path as your mode says, the message describing the work
+   (a squash takes the branch tip's message). Landing on `main` waits
+   for the owner's OK (worktree: commit on the branch only, then `try.py
+   --commit`, the mode file's Commit; shared: the commit itself). Only the run's final commit deletes `.claude/specs/` (this
+   session's specs and reports, not another session's in shared mode)
+   and `.claude/handoff.md`; a context-full commit keeps them.
+7. **Report:** the five parts exactly as `workflow.md` "Run" step 7
+   lists them; that list is the only copy.
 
 ## Models
 
@@ -130,9 +218,12 @@ Write and never read back; longer means two specs. Every spec has:
   only on the owner's OK: the owner runs it, or replies "merge it" /
   "land it" and you run it (`git-guard.py` checks their latest message).
 - **Autoplan:** `py -3 tools/autoplan.py [<name>] [--dry-run]
-  [--max-sessions N] [--budget USD] [--effort medium] [--line 175000]
-  [--kill 200000] [--force]`. The window that launches it (or whose go
-  prompt runs a plan) is a plan run's supervisor, with a 175k line.
+  [--max-sessions N] [--budget USD] [--effort medium] [--line 250000]
+  [--kill 300000] [--force]`. The window that launches it (or whose go
+  prompt runs a plan) is a plan run's supervisor, with a 250k line.
+  The headless 250k/300k assume a 1M window, unproven on 2026-11-23 (no
+  Opus 5.5 or Fable 5.2 session had passed 190k): if a phase session
+  dies near 200k, pass `--line 175000 --kill 200000`.
   Started by the app session in the
   background (`run_in_background`) with `--max-sessions 1`, one phase
   per launch, and relaunched by it after each phase (plan skill

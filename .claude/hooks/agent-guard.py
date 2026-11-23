@@ -59,7 +59,7 @@ def main():
             "permissionDecisionReason": (
                 f"Agent guard: this window is in raw mode, no {who}. Do this "
                 "step yourself; only the reviewer and look-judge run, on "
-                "finished work (workflow.md \"Raw mode\").")}}))
+                "finished work (playbook.md \"Raw mode\").")}}))
         return
     pinned = [k for k in ("model", "effort") if ti.get(k)]
     if pinned:

@@ -30,7 +30,7 @@ def raw_flag(transcript_path: str) -> str:
 
 
 RAW_ON = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>)*\s*(?:Background \([^)\n]*\):(?:(?!\n[ \t]*\n).)*\n[ \t]*\n\s*)?(?:Task:[ \t]*)?raw[ \t]*(:|$)", re.I | re.S)  # skips the app's leading reminder blocks, the "Background (from the session ...): <text>" paragraph (up to its blank line) and the "Task:" label it puts before a sub-chat's brief; only the prompt's own first line may be raw
-RAW_TEXT = ("RAW MODE on for this window: read .claude/rules/workflow.md "
+RAW_TEXT = ("RAW MODE on for this window: read .claude/playbook.md "
             "'Raw mode' and do every step here; only the reviewer and "
             "look-judge run, on finished work.")
 _ECHOES = ("<command-name>", "<local-command-caveat>", "<local-command-stdout>")

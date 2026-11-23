@@ -34,7 +34,7 @@ stop and you start a new one to finish the job."*
   phases, apply, continue) and commits what it wrote. Its prompt names
   the plan path, the job, and "answers since your last job: D<a>-D<b>".
   It returns what it wrote and questions ready to paste.
-- **Cut off:** a writer past its line (120k) is refused tools, so it
+- **Cut off:** a writer at 1.25 times its 120k line (150k) is refused tools, so it
   reports `context line: continue from <where>`. The manager starts a
   fresh writer with job `continue`, never the same job from scratch.
 - **Which step is whose:** Part A 1-4 (or light path 1) = writer

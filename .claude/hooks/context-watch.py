@@ -18,11 +18,12 @@ The line depends on the window:
 - a raw-mode window (raw-mode.py): RUN_LIMIT, because it does all its own
   reading and writing;
 - any other app window (a prepare, a prepared run, a sub-chat, a quick
-  fix, a plan interview): LIMIT, lower, because what grows there is the
-  model's own output (specs, thinking), and two prepare windows went
-  from 42k to 140k with one Explore call each (review of 2026-10-01).
+  fix, a plan interview): LIMIT is lower because what grows there is the
+  model's own output (specs, thinking); two prepare windows went from
+  42k to 140k with one Explore call each (review of 2026-10-01, when
+  LIMIT was 120,000).
 
-Subagents (Explore, Plan, general-purpose, claude-code-guide, implementer,
+Subagents (Explore, Plan, general-purpose, researcher, claude-code-guide, implementer,
 implementer-wt, reviewer, plan-reviewer, look-judge, plan-writer):
 - PreToolUse: warns at SOFT x its line, says to stop reading past it.
   Advisory only; a model can ignore it.
@@ -66,8 +67,8 @@ except ImportError as e:  # an older guard_config.py: run as if raw mode were of
     def first_prompt(transcript_path):
         return ""
 
-LIMIT = 120_000       # every app window but the coordinator and a supervisor
-RUN_LIMIT = 175_000   # the coordinator window, or a plan run's supervisor
+LIMIT = 200_000       # every app window but the coordinator and a supervisor
+RUN_LIMIT = 250_000   # the coordinator window, or a plan run's supervisor
 # a prompt that starts `coordinator:` or is just `coordinator`: like RAW_ON
 # (guard_config.py) it skips leading reminder blocks, but not the
 # "Background (...):" paragraph or "Task:" label of a chat another session
@@ -93,7 +94,8 @@ HARD = 1.25           # subagents: deny all tools from this multiple of the line
 # higher. Types not listed are measured on SubagentStop, never warned or
 # denied.
 SUB_LIMITS = {"Explore": 100_000, "Plan": 100_000,
-              "general-purpose": 100_000, "claude-code-guide": 100_000,
+              "general-purpose": 100_000, "researcher": 100_000,
+              "claude-code-guide": 100_000,
               "implementer": 60_000, "implementer-wt": 60_000, "reviewer": 80_000,
               "plan-reviewer": 80_000, "look-judge": 80_000, "plan-writer": 120_000}
 

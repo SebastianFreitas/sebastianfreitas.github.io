@@ -25,7 +25,7 @@ names). These headings in this order:
   pending; screenshots already taken, with paths.
 - **Foreign edits:** uncommitted paths that were not yours (shared mode).
 
-**Prepared run** (`.claude/rules/workflow.md` "Prepare", step 2): the
+**Prepared run** (`.claude/rules/workflow.md` "Prepare" step 2, `.claude/playbook.md` "Prepare"): the
 first line is `Run: prepared`, and Next lists the spec files in
 `.claude/specs/` in order (which run in parallel), the Verify commands,
 a `Review:` line with the number of distinct target files across the
