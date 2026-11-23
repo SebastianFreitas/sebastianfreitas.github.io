@@ -3,7 +3,7 @@
    Loaded after play.css. Every rule starts with G = .page-game.page-case:not(.page-404) main.case, which is (0,4,1) like the style.css rules
    it replaces (.page-case:not(.page-404) .case p:not(.caption), .case > p:first-of-type, the Conclusus 18vh and h2 margins, the nth-of-type
    widths, the under-900 p margins), and wins them by coming later or by one more type selector. Sections stay flat children of main (toys read
-   main.children). Per-page art sits in the "per page" part; .gp-narrow caps 4:3 and taller media. Red only on .gp-det i, .embed-play::after, the existing .go arrows and one .gp-dia-red rail per diagram. Nothing animates at idle. */
+   main.children). Per-page art sits in the "per page" part; .gp-narrow caps 4:3 and taller media. Red only on .gp-det i, .embed-play::after, the existing .go arrows and the VoidScape hub figure's step numerals. Nothing animates at idle. */
 
 .page-game.page-case:not(.page-404) main.case {
   --gp-1: 0.5rem; --gp-2: 1rem; --gp-3: 1.5rem; --gp-4: 2.5rem; --gp-5: 4rem; --gp-6: 7rem;
@@ -153,16 +153,14 @@
    Text is HTML (real type sizes at every width, stacks on phones); only the step pictograms are inline SVG. Nothing animates.
    <figure class="gp-dia">
      <div class="gp-dia-body">
-       <div class="gp-dia-rail gp-dia-red gp-dia-from-2 gp-dia-to-1"><span>One hit: restart</span></div>     rail above the row, step 2 back to step 1
-       <ol class="gp-dia-flow">
+              <ol class="gp-dia-flow">
          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true">…</svg><b>Read</b><span>One short line.</span></li>     2 to 6 steps, numbered by the sheet
        </ol>
        <div class="gp-dia-rail gp-dia-under gp-dia-from-4 gp-dia-to-1"><span>Next level</span></div>          rail under the row
      </div>
      <figcaption class="gp-cap"><b>FIG. 01</b> One sentence.</figcaption>
    </figure>
-   Rails are back rails (from a later step to an earlier one) plus at most one forward rail (gp-dia-fwd); the arrow (the site's .go arrow) lands on the earlier step. gp-dia-red (one rail per diagram at most) turns
-   that rail's arrow and label square --type-red: the only red. Under 900 px the steps stack, the arrows point down and the rails become side
+   Rails are back rails (from a later step to an earlier one); the arrow (the site's .go arrow) lands on the earlier step. Under 900 px the steps stack, the arrows point down and the rails become side
    brackets (above -> left, under -> right) with the label turned along them, so a rail label stays under about 20 characters. */
 .page-game.page-case:not(.page-404) main.case .gp-dia { margin: var(--gp-4) 0 var(--gp-5); }
 .page-game.page-case:not(.page-404) main.case .gp-dia-body {
@@ -210,27 +208,6 @@
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after { top: calc(100% - 10px); border-width: 10px 6px 0 7px; border-top-color: var(--gp-arrow, var(--type-cream)); }
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::before { top: 10px; }   /* points up */
 .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { top: 0; border-width: 0 6px 10px 7px; border-bottom-color: var(--gp-arrow, var(--type-cream)); border-top-color: transparent; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red { --gp-arrow: var(--type-red); }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
-/* several exits sharing one return (three: see the three-exit block below): under rails over the same steps, nested. gp-dia-tall is the outer one; gp-dia-inner is the shorter one inside it, pulled in
-   1.25rem each side so its arrow lands beside the outer arrow. gp-dia-dash draws the bracket dashed. A label of two lines is span.gp-dia-two > b (the trigger) + em (the outcome, dimmer). */
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall { height: 8.5rem; align-self: end; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-mid { height: 5.75rem; margin: 0 calc(var(--gp-dia-port) + 1.25rem); }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-inner { height: 3rem; margin: 0 calc(var(--gp-dia-port) + 2.5rem); }
-/* three exits (VoidScape FIG. 01): outer, mid and inner nest 1.25rem apart so the three arrows land side by side. Above the row the same nest holds a back rail (gp-dia-tall, shorter) with a forward one inside it. */
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { height: 5.5rem; }
-/* a forward rail (gp-dia-fwd) runs from an earlier step to a later one: it spans the whole row and its arrow lands on the right leg (phones: the bottom arm), on the later step. Its steps are fixed, so it takes no from/to classes. */
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd { --a: 1; --b: 4; height: 2.75rem; align-self: end; margin: 0 calc(var(--gp-dia-port) + 1.25rem); }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::before { left: auto; right: -3px; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::after { left: auto; right: -7px; }
-/* a flow whose last step is not reached by an arrow from the one before it (VoidScape: the special run is entered from the hub): only the first gap keeps its arrow */
-.page-game.page-case:not(.page-404) main.case .gp-dia-flow.gp-dia-one > li + li + li::after { display: none; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-dash { border-style: dashed; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two { display: block; text-align: center; line-height: 1; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > b { display: flex; justify-content: center; align-items: center; gap: 9px; font-weight: inherit; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span.gp-dia-two::before { display: none; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-red > span.gp-dia-two > b::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--type-red); }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail > span.gp-dia-two > em { display: block; margin-top: 6px; font-style: normal; font-size: 11px; letter-spacing: 0.1em; color: var(--gp-label); }
 /* a step that branches out (Sector Zero: Edit): ul.gp-dia-stack after the ol, in the last column, a stack of small outcome cards (pictogram + a few words, optional em second line).
    Its ::before is the shared arrow from the last step; ::after is the fan's vertical line, each card's ::before a stub into it. A back rail may start at the stack (gp-dia-from-4). */
 .page-game.page-case:not(.page-404) main.case .gp-dia-stack { grid-row: 2; position: relative; display: flex; flex-direction: column; justify-content: center; gap: var(--gp-1); margin: 0; padding: 0; list-style: none; }
@@ -252,27 +229,7 @@
   .page-game.page-case:not(.page-404) main.case .gp-dia-stack .gp-dia-ico { grid-column: auto; grid-row: auto; width: 2rem; height: 2rem; }
 }
 .page-game.page-case:not(.page-404) main.case .gp-dia-to-1 { --a: 1; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-to-2 { --a: 2; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-to-3 { --a: 3; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-to-4 { --a: 4; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-to-5 { --a: 5; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-from-2 { --b: 3; }   /* --b is the grid line after the step */
-.page-game.page-case:not(.page-404) main.case .gp-dia-from-3 { --b: 4; }
 .page-game.page-case:not(.page-404) main.case .gp-dia-from-4 { --b: 5; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-from-5 { --b: 6; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-from-6 { --b: 7; }
-/* via rail: one red rail fed by the steps between "from" and "to". The body's unused ::before/::after become two 1 px drops into steps 2 and 3, placed like the rail's own right leg
-   (step right edge minus the port); the 1 px top margin keeps each off the hairline, so no pixel is painted twice. The label moves onto the stretch every death shares,
-   between the left leg and the first drop, centred there (25% of the rail minus half the drop's distance from the centre). */
-.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before,
-.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after {
-  content: ""; grid-row: 1; justify-self: end; width: 0; margin: 1px var(--gp-dia-port) 0 0; border-right: 1px solid var(--gp-hair);
-}
-.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before { grid-column: 2; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after { grid-column: 3; }
-.page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via > span {
-  position: absolute; top: 0; left: calc(25% - (var(--gp-dia-gap) / 2 + var(--gp-dia-port)) / 2); transform: translate(-50%, -50%);
-}
 @media (min-width: 900px) and (max-width: 1199px) {
   .page-game.page-case:not(.page-404) main.case .gp-dia-body { --gp-dia-gap: 2.5rem; --gp-dia-port: 1.5rem; padding: var(--gp-3); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-flow > li { padding: var(--gp-2); }
@@ -294,52 +251,60 @@
     border: 1px solid var(--gp-hair); border-right: 0; align-items: center; justify-content: flex-start;
   }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under { grid-column: 3; border: 1px solid var(--gp-hair); border-left: 0; justify-content: flex-end; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) { grid-template-columns: 3.25rem minmax(0, 1fr) 6.5rem; }   /* room for three nested right brackets and two left */
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall { margin-right: 0.9rem; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { margin-right: 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-mid { justify-self: start; width: 3.6rem; margin: calc(var(--gp-dia-port) + 1rem) 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-inner { justify-self: start; width: 1.5rem; margin: calc(var(--gp-dia-port) + 2rem) 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd { justify-self: end; align-self: stretch; height: auto; width: 1.75rem; margin: calc(var(--gp-dia-port) + 1rem) 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall, .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-tall:not(.gp-dia-under) { align-self: stretch; height: auto; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li { padding: var(--gp-1); column-gap: var(--gp-1); grid-template-columns: 2rem minmax(0, 1fr); }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > b { font-size: 1.25rem; letter-spacing: 0.02em; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-flow > li > .gp-dia-ico { width: 2rem; height: 2rem; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-dash { border-style: dashed; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span.gp-dia-two > em { margin: 0 6px 0 0; font-size: 10px; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail > span { writing-mode: vertical-rl; padding: var(--gp-1) 0; font-size: 10px; letter-spacing: 0.12em; transform: translateX(-50%) rotate(180deg); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under > span { transform: translateX(50%); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail::before { display: none; }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail::after { left: auto; right: 0; top: -7px; width: 22px; height: 13px; border: 0; background: var(--gp-arrow, var(--type-cream)); clip-path: polygon(0 35%, 56% 35%, 56% 0, 100% 50%, 56% 100%, 56% 65%, 0 65%); }
   .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-under::after { right: auto; left: 0; top: -7px; border: 0; transform: translateX(22px) scaleX(-1); }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-fwd::after { left: auto; right: 0; top: auto; bottom: -7px; }
-  /* the drops become arms from the bracket's line into steps 2 and 3, 1.5rem above each step's bottom like the bracket's own bottom arm; 1 px off the vertical line.
-     The label sits below the top arm with 1.5rem of bare line, on the stretch above the first arm. */
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before,
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after {
-    grid-column: 1; justify-self: stretch; align-self: end; width: auto; height: 0; margin: 0 0 var(--gp-dia-port) 1px; border-right: 0; border-bottom: 1px solid var(--gp-hair);
-  }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::before { grid-row: 2; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-via)::after { grid-row: 3; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via { align-items: flex-start; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-rail.gp-dia-via > span { position: static; margin-top: var(--gp-dia-port); transform: translateX(-50%) rotate(180deg); }
   .page-game.page-case:not(.page-404) main.case .gp-stage { display: none; }   /* the play stage is desktop only */
 }
-@media (max-width: 599px) {   /* three exits (VoidScape FIG. 01): horizontal rows under the step stack; the rotated labels left are pairs, 10 px inside, 24 px between */
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) { grid-template-columns: 4rem minmax(0, 1fr) 0.5rem; column-gap: 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under {
-    grid-column: 1 / -1; grid-row: auto; justify-self: stretch; width: auto; height: auto; align-self: auto; margin: calc(0.75rem - var(--gp-dia-gap)) 0 0;
-    border: 1px solid var(--gp-hair); border-style: solid; justify-content: flex-start; align-items: center; padding: var(--gp-1) var(--gp-2);
-  }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under.gp-dia-dash { border-style: dashed; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-tall.gp-dia-under { margin-top: 0; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span { writing-mode: horizontal-tb; transform: none; padding: 0; font-size: 12px; letter-spacing: 0.1em; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span.gp-dia-two { display: flex; align-items: baseline; gap: 10px; text-align: left; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under > span.gp-dia-two > em { margin: 0; font-size: 11px; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail.gp-dia-under::after { position: static; order: -1; flex: none; margin-right: 12px; transform: scaleX(-1); }   /* the arrow points left, back to the hub */
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span.gp-dia-two > em { margin: 0 10px 0 0; font-size: 11px; }
-  .page-game.page-case:not(.page-404) main.case .gp-dia-body:has(> .gp-dia-mid) .gp-dia-rail > span { font-size: 12px; }
-}
 
+/* hub and spokes (VoidScape FIG. 01): figure.gp-dia > div.gp-dia-body.gp-dia-hub > div.gp-dia-row (node, pair, node, pair, node).
+   A node is a box (pictogram, b, span); gp-dia-start (the Hub) has the full cream border. A pair (gp-dia-pair-l / -r) is two div.gp-dia-lane, each a connector: div.gp-dia-top (i.gp-dia-n step number in the left gutter, div.gp-dia-lbl label block: b + em, or b em b em as a two-column grid with gp-dia-grid) and i.gp-dia-ln, a 1px line the full width of the gap ending in an arrowhead on the destination box (gp-dia-lt head on the left, gp-dia-rt head on the right).
+   Phones: boxes stack; each lane is a vertical line (head up for lt, down for rt) between the number gutter and the label. */
+.page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-hub { display: block; padding: var(--gp-4) var(--gp-3) var(--gp-3); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-row { display: grid; grid-template-columns: minmax(0, 1fr) 14.5rem minmax(0, 1fr) 14.5rem minmax(0, 1fr); align-items: stretch; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node { position: relative; display: flex; flex-direction: column; align-items: flex-start; padding: var(--gp-3) var(--gp-2); border: 1px solid var(--gp-hair); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node.gp-dia-start { border-color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > b { font-family: var(--type-head); font-weight: 700; font-size: 1.5rem; line-height: 1; letter-spacing: 0.04em; text-transform: uppercase; color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > span { font: 400 0.9375rem/1.45 var(--type-read); color: var(--gp-body); margin-top: var(--gp-1); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-pair { display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lane { display: flex; flex-direction: column; gap: 12px; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-top { position: relative; margin-left: 36px; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl { display: block; text-align: left; white-space: nowrap; font: 500 13px/1 var(--type-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gp-body); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl > b { display: block; font-weight: inherit; color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl > em { display: block; margin-top: 6px; font-style: normal; font-size: 11px; letter-spacing: 0.1em; color: var(--gp-label); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl.gp-dia-grid { display: grid; grid-template-columns: auto auto; column-gap: 12px; row-gap: 8px; align-items: baseline; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl.gp-dia-grid > em { margin-top: 0; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-pair-r .gp-dia-lbl > b { letter-spacing: 0.06em; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-ln { position: relative; display: block; height: 1px; background: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-ln::after { content: ""; position: absolute; top: -5px; width: 0; height: 0; border: 0 solid transparent; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lt .gp-dia-ln::after { left: 0; border-width: 5px 10px 6px 0; border-right-color: var(--type-cream); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-rt .gp-dia-ln::after { right: 0; border-width: 5px 0 6px 10px; border-left-color: var(--type-cream); }
+/* step numbers 0-4: the site's one red, bold display face. 1-4 sit in the lane's left gutter, centred on the label block, 10px from the text; 0 is a tag notched into the Hub box's top border over the pictogram's left edge. */
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-n { position: absolute; box-sizing: border-box; font: 700 36px/1 var(--type-head); font-style: normal; letter-spacing: 0; color: var(--type-red); pointer-events: none; }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-top > .gp-dia-n { right: 100%; margin-right: 10px; width: 26px; text-align: right; top: 50%; transform: translateY(-50%); }
+.page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > .gp-dia-n { left: calc(var(--gp-2) - 4px); top: -0.5px; padding: 0 4px; background: var(--gp-plate); transform: translateY(-50%); }
+@media (max-width: 1199px) {
+  .page-game.page-case:not(.page-404) main.case .gp-dia-body.gp-dia-hub { padding: var(--gp-3); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-row { grid-template-columns: minmax(0, 1fr); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); column-gap: var(--gp-2); align-items: start; padding: var(--gp-2); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > .gp-dia-ico { grid-column: 1; grid-row: 1 / span 2; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > b, .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > span { grid-column: 2; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > b { margin-top: var(--gp-1); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-n { font-size: 28px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl > em { font-size: 12px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl.gp-dia-grid { grid-template-columns: max-content max-content; justify-content: start; column-gap: 16px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-node > .gp-dia-n { left: calc(var(--gp-2) + 2.5rem + var(--gp-2) - 4px); }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-pair { gap: 16px; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lane { display: grid; grid-template-columns: 26px 11px minmax(0, 1fr); column-gap: 10px; align-items: stretch; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-top { display: contents; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-top > .gp-dia-n { position: static; grid-column: 1; grid-row: 1; width: auto; margin: 0; align-self: center; transform: none; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lbl { grid-column: 3; grid-row: 1; align-self: center; padding: 20px 0; white-space: normal; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-ln { grid-column: 2; grid-row: 1; width: 11px; height: auto; background: linear-gradient(var(--type-cream), var(--type-cream)) 5px 0 / 1px 100% no-repeat; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-lt .gp-dia-ln::after { top: 0; left: 0; right: auto; border-width: 0 5px 10px 6px; border-bottom-color: var(--type-cream); border-right-color: transparent; }
+  .page-game.page-case:not(.page-404) main.case .gp-dia-hub .gp-dia-rt .gp-dia-ln::after { top: auto; bottom: 0; left: 0; right: auto; border-width: 10px 5px 0 6px; border-top-color: var(--type-cream); border-left-color: transparent; }
+}
 
 /* <figure class="gp-stage"><div class="gp-stage-head"><span class="gp-stage-label"><i></i>Play: …</span><span class="gp-stage-status"></span></div><div class="gp-stage-box"><canvas></canvas></div><p class="caption">…</p></figure> */
 .page-game.page-case:not(.page-404) main.case > figure.gp-stage { width: 100%; max-width: 72rem; margin: var(--gp-4) 0 0; padding: 0; }

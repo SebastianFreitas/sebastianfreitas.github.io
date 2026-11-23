@@ -578,10 +578,9 @@ Data read by both the bridge and a case page. No drawing, no state.
 - `css/art/dirt-a.webp`: the gate is a dim scrim over the bridge with the name, the line and one centred cream hairline bar (`css/gate.css`); no dirt, no redlines.
 - `css/game-pages.css`: ends with a "per page" part for rules only one page needs, keyed `main.case[data-redlines="case-<page>"]` (HeavyLight's opener); `.clip.gp-narrow` caps 4:3 or taller media at 50rem. Game pages carry no `<style>` block
 - `css/game-pages.css`: `gp-dia` = gameplay-loop diagram (figure.gp-dia > .gp-dia-body > .gp-dia-rail + ol.gp-dia-flow > li); steps numbered by counter `gp-dia`; rails placed by gp-dia-from-N / gp-dia-to-N; stacks under 900 px
-- `css/game-pages.css`: `gp-dia-tall` / `gp-dia-mid` / `gp-dia-inner` (nested rails, outer to inner), `gp-dia-fwd` (forward rail, arrow on the later step), `gp-dia-one` (ol: only the first gap arrow), `gp-dia-dash` (dashed bracket), `span.gp-dia-two > b + em` (two-line rail label).
+- `css/game-pages.css`: `gp-dia-hub` = VoidScape FIG. 01 hub figure (hub centre, a run each side, four hairline lanes; `gp-dia-pair`, `-lane`, `-node`, `-start`); stacks below 1200 px. The old nested-rail classes (tall, mid, inner, fwd, one, dash, two, via, red) are gone.
 - `css/game-pages.css`: gp-dia is on VoidScape and Sector Zero (FIG. 01 loop + FIG. 02 each); HeavyLight and Conclusus have none (cut 2026-11-21).
 - `css/game-pages.css`: `ul.gp-dia-stack > li` = outcome cards a step branches into (Sector Zero FIG. 01, Edit); ::before arrow, ::after fan line, li::before stubs
-- `css/game-pages.css`: `gp-dia-via` = a via rail (with `gp-dia-from-N` / `gp-dia-to-N`): the steps between from and to take 1 px drops (phones: arms); its label sits left of the first drop; uses `:has()` (Firefox 121+)
 - `css/game-pages.css`: `figure.gp-stage` = the inline toy stage `Play.stage` fills (label row with its `.gp-stage-status` slot, `.gp-stage-box` sizes the canvas, caption); hidden under 900 px. `projects/conclusus.html` uses it in "The shadow"
 - `projects/heavylight.html`: uses `media/heavylight/lamps.jpg`
 - `css/bridge.css`: the notes' reading-window override block (bezel, `.nhead`, HUD palette) sits under the `---- reading window` comment.

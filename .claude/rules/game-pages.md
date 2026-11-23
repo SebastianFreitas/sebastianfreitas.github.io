@@ -67,9 +67,11 @@ G padding-top = `calc(clamp(2rem,6vh,4rem) + 1.2rem)` at every width.
 
 ## Red
 
+Red in diagrams is only VoidScape FIG. 01's step numerals 0-4 (hub figure, `.gp-dia-hub`), `var(--type-red)` by the owner's choice (2026-11-23).
+
 Only `.gp-det i`, `.embed-play::after`, `.gp-stage-label i` (the stage's 9 px
 square, like `.embed-play::after`), the `.go` arrows (in the end nav and
-as every diagram arrow) and one `.gp-dia-red` rail per diagram, always
+as every diagram arrow), always
 `var(--type-red)`. Nowhere else. Inside a stage canvas, red appears only
 where the game's own sprites carry it.
 
@@ -129,17 +131,17 @@ In Git Bash prefix ffshot with `MSYS_NO_PATHCONV=1`.
 
 ## Diagrams (`gp-dia`)
 
-- Only where the game has a loop worth drawing (a meta loop, a growing reach); a page whose loop is just "play the level, die, retry" gets none (HeavyLight and Conclusus were cut, owner 2026-11-21). One loop diagram per page at most, as `figure.gp-dia`, a flat child of `main`, right after the section lead it explains; a second `gp-dia` without rails may show a ladder or system (FIG. 02 on VoidScape and Sector Zero). Copy the markup from `projects/voidscape.html` (FIG. 01). Several exits to one step: nested under rails (`gp-dia-tall` outer, `gp-dia-inner` shorter, `gp-dia-dash` for a dashed bracket) with two-line labels `<span class="gp-dia-two"><b>Trigger</b><em>outcome</em></span>` (VoidScape FIG. 01: beat the boss, leave early, die; `gp-dia-tall`, `gp-dia-mid`, `gp-dia-inner`, outer to inner).
+- VoidScape's FIG. 01 is a hub figure (`.gp-dia-hub`): the hub in the centre, a run each side, four lanes drawn as hairline connectors; it stacks below 1200 px. Its step numerals 0-4 are `var(--type-red)` (owner's choice, 2026-11-23), the only red in that figure.
+
+- Only where the game has a loop worth drawing (a meta loop, a growing reach); a page whose loop is just "play the level, die, retry" gets none (HeavyLight and Conclusus were cut, owner 2026-11-21). One loop diagram per page at most, as `figure.gp-dia`, a flat child of `main`, right after the section lead it explains; a second `gp-dia` without rails may show a ladder or system (FIG. 02 on VoidScape and Sector Zero). Copy the markup from `projects/voidscape.html` (FIG. 01).
 - A step may branch into a small outcome stack (owner's design, 2026-11-21; Sector Zero FIG. 01, Edit): `ul.gp-dia-stack` after the `ol`, in the last column, of 3 to 5 cards (small pictogram + 2 to 6 words, optional `<em>` second line). The back rail may start at the stack (`gp-dia-from-4`). Phones: the stack sits under the steps, arrow down, no fan.
 - 3 to 5 steps (6 at most). `<b>` is one or two words; `<span>` is short, about 8 words (12 when the owner's wording needs it, as Sector Zero's Register). The sheet numbers the steps, never type them.
-- Rails (`gp-dia-rail`, placed by `gp-dia-from-N` and `gp-dia-to-N`) run back, from a later step to an earlier one: at most one above and one under (`gp-dia-under`), or up to three nested under rails for several exits (bullet above). One forward rail (`gp-dia-fwd`, earlier to later step, arrow on the right leg; phones: bottom arm) may nest inside an above back rail (VoidScape: Hub to Special run). `gp-dia-one` on the `ol` keeps only the first gap arrow. A label is 2 to 4 plain words (a two-line label: trigger, then dimmer outcome); never cryptic fragments.
+- Rails (`gp-dia-rail`, placed by `gp-dia-from-N` and `gp-dia-to-N`) run back, from a later step to an earlier one: Sector Zero uses one under rail (`gp-dia-under`, `gp-dia-from-4`, `gp-dia-to-1`). A label is 2 to 4 plain words; never cryptic fragments.
 - Pictograms: inline SVG, 48 x 48 viewBox, line-work only, inherit the cream 1.5 stroke; `.gp-dia-dim` for secondary lines, `.gp-dia-solid` for one small filled mark; no red, no text. All other diagram text is HTML.
 - Caption: `figcaption.gp-cap`, starts `<b>FIG. 0N</b>`. No page CSS, no inline style.
 - Phones (under 900 px): the steps stack, pictogram left, arrows down; rails become left and right brackets with the label turned along them, the arrow lying along the bracket's top arm into the earlier step.
-- Arrows: every arrow in a diagram is the site's one arrow, `.go` (22x13, same clip-path), drawn by one shared rule in the sheet and turned only by transforms; cream like `.go-here`, red only on the `.gp-dia-red` rail. A rail's hairline meets the arrow's shaft centred, tip on the step. Never a new arrow shape, size or colour.
-- A via rail (`gp-dia-via`) takes the steps between from and to as 1 px drops (phones: arms); its label sits left of the first drop.
-- Red: one `.gp-dia-red` rail per diagram (the fail or the one rule of the game; its arrow and label square), nowhere else in it.
-- Rail arrows are built on whole pixels, never as a rotated clip-path (that painted soft, two-toned heads): a 5x12 box shaft plus a 13x10 border-triangle head, coloured through `--gp-arrow` (red: `--type-red`).
+- Arrows: every arrow in a diagram is the site's one arrow, `.go` (22x13, same clip-path), drawn by one shared rule in the sheet and turned only by transforms; cream like `.go-here`. A rail's hairline meets the arrow's shaft centred, tip on the step. Never a new arrow shape, size or colour.
+- Rail arrows are built on whole pixels, never as a rotated clip-path (that painted soft, two-toned heads): a 5x12 box shaft plus a 13x10 border-triangle head, coloured through `--gp-arrow`.
 
 ## Stage toys (`gp-stage`)
 

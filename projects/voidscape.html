@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Oranienbaum&family=Cormorant+SC:wght@500&family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Libre+Caslon+Condensed:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=377">
-<link rel="stylesheet" href="../css/beacon.css?v=377">
-<link rel="stylesheet" href="../css/play.css?v=377">
-<link rel="stylesheet" href="../css/game-pages.css?v=377">
+<link rel="stylesheet" href="../css/style.css?v=378">
+<link rel="stylesheet" href="../css/beacon.css?v=378">
+<link rel="stylesheet" href="../css/play.css?v=378">
+<link rel="stylesheet" href="../css/game-pages.css?v=378">
 </head>
 <body class="page-game page-case">
 <a class="skip" href="#main">Skip to content</a>
@@ -59,19 +59,17 @@
     <p>The new answer is the <span class="key">special run</span>. From the hub you can take the optional path, which scales on
        execution instead of numbers. It is the only place skill points come from, and the hub, where the board, the bench and the skill tree live, is where you spend them.</p>
     <figure class="gp-dia">
-      <div class="gp-dia-body">
-        <div class="gp-dia-rail gp-dia-tall gp-dia-from-3 gp-dia-to-1"><span>Earn skill points</span></div>
-        <div class="gp-dia-rail gp-dia-fwd"><span class="gp-dia-two"><b>Bring your boons</b><em>free after a boss kill</em></span></div>
-        <ol class="gp-dia-flow gp-dia-one">
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path class="gp-dia-dim" d="M24 18V9M19 27l-10 8M29 27l10 8"/><rect x="19" y="4" width="10" height="6"/><rect x="4" y="34" width="10" height="8"/><rect x="34" y="34" width="10" height="8"/></svg><b>Hub</b><span>Craft guns, spend skill points. A new mission clears your boons.</span></li>
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 42h10v-9h10v-9h10v-9h10"/><path class="gp-dia-dim" d="M8 22L22 8M13 8h9v9"/><rect class="gp-dia-solid" x="17" y="29" width="4" height="4"/></svg><b>Run</b><span>Rooms, boss last. Farm guns and parts.</span></li>
-          <li><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 8l14 11L38 8"/><path d="M10 19l14 11 14-11"/><path class="gp-dia-dim" d="M4 40h13M31 40h13"/><rect class="gp-dia-solid" x="22" y="38" width="4" height="4"/></svg><b>Special run</b><span>An optional path that scales on execution, not numbers.</span></li>
-        </ol>
-        <div class="gp-dia-rail gp-dia-under gp-dia-tall gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Beat the boss</b><em>keep your boons</em></span></div>
-        <div class="gp-dia-rail gp-dia-under gp-dia-mid gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Leave early</b><em>keep your boons</em></span></div>
-        <div class="gp-dia-rail gp-dia-under gp-dia-inner gp-dia-dash gp-dia-red gp-dia-from-2 gp-dia-to-1"><span class="gp-dia-two"><b>Die</b><em>boons and new guns lost</em></span></div>
+      <span class="sr-only">The loop: from the hub, start a mission; exit or die and you are back at the hub; then take the special run, and finishing it returns you to the hub with a skill point.</span>
+      <div class="gp-dia-body gp-dia-hub">
+        <div class="gp-dia-row">
+          <div class="gp-dia-node"><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 42h10v-9h10v-9h10v-9h10"/><path class="gp-dia-dim" d="M8 22L22 8M13 8h9v9"/><rect class="gp-dia-solid" x="17" y="29" width="4" height="4"/></svg><b>Run</b><span>Rooms, boss last. Farm guns, parts and boons.</span></div>
+          <div class="gp-dia-pair gp-dia-pair-l"><div class="gp-dia-lane gp-dia-lt"><div class="gp-dia-top"><i class="gp-dia-n" aria-hidden="true">1</i><div class="gp-dia-lbl"><b>Start a mission</b><em>clears your boons</em></div></div><i class="gp-dia-ln"></i></div><div class="gp-dia-lane gp-dia-rt"><div class="gp-dia-top"><i class="gp-dia-n" aria-hidden="true">2</i><div class="gp-dia-lbl gp-dia-grid"><b>Exit</b><em>keep everything</em><b>Die</b><em>lose your boons</em></div></div><i class="gp-dia-ln"></i></div></div>
+          <div class="gp-dia-node gp-dia-start"><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path class="gp-dia-dim" d="M24 18V9M19 27l-10 8M29 27l10 8"/><rect x="19" y="4" width="10" height="6"/><rect x="4" y="34" width="10" height="8"/><rect x="34" y="34" width="10" height="8"/></svg><b>Hub</b><i class="gp-dia-n" aria-hidden="true">0</i><span>Craft guns, spend skill points, pick a mission.</span></div>
+          <div class="gp-dia-pair gp-dia-pair-r"><div class="gp-dia-lane gp-dia-rt"><div class="gp-dia-top"><i class="gp-dia-n" aria-hidden="true">3</i><div class="gp-dia-lbl"><b>Free after any exit</b><em>or pay gun parts</em></div></div><i class="gp-dia-ln"></i></div><div class="gp-dia-lane gp-dia-lt"><div class="gp-dia-top"><i class="gp-dia-n" aria-hidden="true">4</i><div class="gp-dia-lbl"><b>Finish</b><em>+1 skill point</em></div></div><i class="gp-dia-ln"></i></div></div>
+          <div class="gp-dia-node"><svg class="gp-dia-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 30h40M8 30v12M40 30v12"/><path class="gp-dia-dim" d="M8 30Q24 8 40 30M16 30v-8M24 30v-13M32 30v-8"/><rect class="gp-dia-solid" x="22" y="28" width="4" height="4"/></svg><b>Special run</b><span>A long bridge. Scales on execution, not numbers.</span></div>
+        </div>
       </div>
-      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. Every run ends back at the hub, whether you beat the boss, leave early or die; dying or starting a new mission costs your boons.</figcaption>
+      <figcaption class="gp-cap"><b>FIG. 01</b> The core loop. Every run ends back at the hub.</figcaption>
     </figure>
 
     <h2>The board</h2>
@@ -87,7 +85,7 @@
     <h2>The special run</h2>
     <p>The <span class="key">special run</span> is a path of bridge pieces out in the void, each shifted and tilted at random,
        some missing. Monsters turn elite as you near the end, and a boss group holds the last piece. You enter it from the hub: free after
-       a boss kill, otherwise it costs gun parts, 10 at first and climbing.</p>
+       any exit (leaving early included), otherwise it costs gun parts, 10 at first and climbing.</p>
 
     <video class="clip" data-wear="image" aria-label="Attempting the special run" src="../media/voidscape/deeper.mp4" muted loop playsinline preload="none" data-lazy></video>
     <p class="caption">Attempting the special run, the only source of skill points.</p>
@@ -216,22 +214,22 @@
   </div>
 </footer>
 
-<script src="../js/lib/util.js?v=377"></script>
-<script src="../js/site/xp.js?v=377"></script>
-<script src="../js/site/surge.js?v=377"></script>
-<script src="../js/lib/pacer.js?v=377"></script>
-<script src="../js/site/lazy-video.js?v=377"></script>
-<script src="../js/pages/play.js?v=377"></script>
-<script src="../js/forge/forge-guns.js?v=377"></script>
-<script src="../js/forge/forge-missions.js?v=377"></script>
-<script src="../js/forge/forge.js?v=377"></script>
-<script src="../js/pages/voidscape-bench.js?v=377"></script>
-<script src="../js/pages/voidscape-mapgen.js?v=377"></script>
-<script src="../js/site/banner.js?v=377"></script>
-<script src="../js/site/shapes.js?v=377"></script>
-<script src="../js/site/barwear.js?v=377"></script>
-<script src="../js/site/redlines.js?v=377"></script>
-<script src="../js/site/back.js?v=377"></script>
+<script src="../js/lib/util.js?v=378"></script>
+<script src="../js/site/xp.js?v=378"></script>
+<script src="../js/site/surge.js?v=378"></script>
+<script src="../js/lib/pacer.js?v=378"></script>
+<script src="../js/site/lazy-video.js?v=378"></script>
+<script src="../js/pages/play.js?v=378"></script>
+<script src="../js/forge/forge-guns.js?v=378"></script>
+<script src="../js/forge/forge-missions.js?v=378"></script>
+<script src="../js/forge/forge.js?v=378"></script>
+<script src="../js/pages/voidscape-bench.js?v=378"></script>
+<script src="../js/pages/voidscape-mapgen.js?v=378"></script>
+<script src="../js/site/banner.js?v=378"></script>
+<script src="../js/site/shapes.js?v=378"></script>
+<script src="../js/site/barwear.js?v=378"></script>
+<script src="../js/site/redlines.js?v=378"></script>
+<script src="../js/site/back.js?v=378"></script>
 <script>if (window.Play) { Play.stage(document.getElementById("vs-bench-stage"), "vs-bench"); }</script>
 </body>
 </html>
