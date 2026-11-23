@@ -225,18 +225,20 @@ does not — it is pure data, no dependency on `B`.
 | File | Purpose | Publishes |
 |---|---|---|
 | `voidship.js` | `BASE` tunables | `window.Voidship` |
-| `voidship-art.js` | Hull painter (blits the `VoidshipHull` sprite; mid-turn draws the baked `VoidshipTurnFrames` frame), turn jets, fumes and wake painters | `window.VoidshipArt` |
+| `voidship-art.js` | Hull painter (blits the `VoidshipHull` sprite; mid-turn draws the baked `VoidshipTurnFrames` frame), RCS jet painter (`rcsPass`: one tapered plume per row, rooted on the blitted hull), fumes and wake painters | `window.VoidshipArt` |
 | `voidship-prow.js` | The shard | extends `window.VoidshipArt {drawProwBack, drawProw, drawEmber, emberOf, PROW}` |
 | `voidship-turnframes.js` | The ship as one solid, baked turned 0 to 90 degrees (mirrored above); loaded by index.html after `voidship-hull.js`; the game's U-turn draws its frames | `window.VoidshipTurnFrames {depth, bake, prepare, frameAt}` |
 | `voidship-hull.js` | The hull, side view at rest, wired in: `sprite(L, dpr)` bakes it once per size, `drawHull` blits it; `anchors` give the bell mouths and the ring | `window.VoidshipHull {drawRest, tintRing, dressRing, stats, sprite, anchors, blueprint}` |
 
 - `voidship.js`: `create`, `setThrusting` (release rule), `step` (a held pointer sets `ship.demand` by its distance, d0..d1 → 0..100% of top speed, and `ship.engine`, the live output; wanted velocities → yaw → `ease` → arrival → fuel → pitch → fumes), `settled`, `stats`, `draw`
+- `voidship.js`: `rcsStep` (end of `step`): `ship.rcs[]` per-jet envelope (0.04 s rise, 0.07 s fall); fires from the turning accelerations `aP aY aF` past dead bands, on the side that pushes that way; no gas; `settled()` needs `!ship.rcsAny`
 - `voidship.js` publishes: `window.Voidship {BASE, create, resize, setPower, setCourse, setThrusting, setAim, clearCourse, step, draw, screenPos, touching, touchingMark, stats, canBurn, addFuel, settled}`
-- `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE ORANGE ORANGE_D LAMP COLD RED WHITE DRIVE_*`), bell seats `BELL_UP BELL_MAIN`,
+- `voidship-art.js`: `block` + polygon helpers `tracePts fillPoly vol seg box`, palette (`LIT MID SHADE DEEP EDGE LAMP COLD RED WHITE DRIVE_*`), bell seats `BELL_UP BELL_MAIN`,
 - `voidship-art.js`: `drawHull(g, ship, L, t, turn)` blits the `VoidshipHull` sprite; mid-turn it draws `VoidshipTurnFrames.frameAt(set, yaw)` at the sprite origin, and at rest each draw calls `prepare(L, dpr, 2)` to bake the set a little at a time, `bake` finishing it if a turn starts early
-- `voidship-art.js`: `drawTether(g, ship, env)` (the held-pointer thrust gauge: track d0..d1, fill = live speed, tick = demand), `drawFumes`, `drawWake`, `EMIT SUST JETS TRAIL_SEATS` (seated on the two bells; two trails)
+- `voidship-art.js`: `drawTether(g, ship, env)` (the held-pointer thrust gauge: track d0..d1, fill = live speed, tick = demand), `drawFumes` (`drawFlame` + `flameA/flameP` at each bell, puffs fade while `turning`), `drawWake`, `EMIT SUST RCS jetLog TRAIL_SEATS` (seated on the two bells; two trails)
+- `voidship-art.js`: RCS jets: `RCS` rows `{id, bank, kind, x, y}` (one spot each, L units); `rcsPass(g, ship, L, far, img, set, fk, sp, dpr)` roots each plume on the blitted hull, far pass before it, near after; `jetLog {canvas, jets[{id, level, cx, cy, ux, uy}]}` feeds `tools/turnproof.py`
 - `voidship-art.js`: local frame +x nose, +y down, units of hull length L; the shard is `voidship-prow.js`'s: at rest `drawProw` is baked into the hull sprite (no ember) and `drawEmber` draws the rest ember live over the blit, mid-turn the baked turn frames draw it
-- `voidship-turnframes.js`: `depth(L, dpr)` gives the half-thickness of every pixel of the rest sprite; `bake(L, dpr)` renders it turned 0 to 90 degrees in 61 whole-ship frames (`{n, w, h, ax, ay, frames, ms, bytes}`, `ax`/`ay` = sprite origin, the turn axis).
+- `voidship-turnframes.js`: `depth(L, dpr)` gives the half-thickness of every pixel of the rest sprite; `bake(L, dpr)` renders it turned 0 to 90 degrees in 121 whole-ship frames (`{n, w, h, ax, ay, frames, ms, bytes}`, `ax`/`ay` = sprite origin, the turn axis).
 - `voidship-turnframes.js`: `frameAt(set, yawDeg)` picks one frame (`{canvas, mirror}`, mirrored above 90). Called by `drawHull` in `voidship-art.js` for the U-turn and by `tools/turnproof.py`.
 - `voidship-hull.js`: script tag after `voidship-prow.js`; `tintRing` and `dressRing` are baked into the sprite (band tint; band structure and the purple clamp)
 - `voidship-hull.js`: `sprite()` returns `{ canvas, ox, oy, scale, rows }` (`rows` = per pixel row `{ w }`, the head-on half-width the baked turn reads); no `band`
@@ -553,7 +555,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/rexsheet.py` | Rex pose sheet: `<run> [--mix a,b] [--venom N] [--cool N]` draws every pose of `genesis-duo.js` to `snapshots/rexsheet/<run>/poses.png` and prints limb bone-length ratios to `stand` plus `MAX LENGTH DEVIATION` |
 | `tools/banner-lab.html` | Banner lab page (`py -3 serve.py`, `/tools/banner-lab.html`): loads `js/site/shapes.js`, `js/site/banner.js` and `banner-lab.js`; dark tool page; `?sheet=N&seed=S[&set=k:v,..]` renders only the sheet onto `#cv` |
 | `tools/banner-lab.js` | `window.BannerLab`: a control and lock per `Banner.schema` key, seed, Plate/Tab presets, sheet of seeded variants, PNG export at 2x/4x, state in URL hash |
-| `tools/turnproof.py` | Bakes the turn frames on a blank page and records two webms and a pose sheet to `<temp>/turnproof` (`--out`, `--dpr`); prints the bake numbers. `--game` records the real bridge turn instead |
+| `tools/turnproof.py` | Bakes the turn frames on a blank page (two webms, pose sheet), or `--game` records the real bridge; `--move flip/pitch/hop/all` (held presses on the game clock, per-move true-size `-sheet.png` and `-x3.png`), `--slow K`; writes to `--out` (default `<temp>/turnproof`) |
 | `tools/jscheck.py` | Loads JS files into a headless page in order and reports syntax/runtime errors; `--eval` runs against a 1440×900 canvas; imports `start_server` from nav-flows |
 | `tools/toyshot.py` | One case-page toy in seconds (loads `/projects/<name>.html`); Conclusus beats, HeavyLight ride shot, FAIL on a console error |
 | `tools/bannersheet.py` | Headless banner-lab sheet PNG: `py -3 tools/bannersheet.py <out.png> [--n 24] [--seed 1] [--set key=val ...] [--preset plate\|tab] [--scale 2] [--compare ref.png]`; compare = ref left, generated right; exits 1 on a blank canvas or console error |

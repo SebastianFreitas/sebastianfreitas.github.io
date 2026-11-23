@@ -52,7 +52,7 @@
   // (ax, ay) by theta toward the camera and every surface is splatted into one depth buffer at SS times the sprite resolution (nearest wins), then box-averaged down.
   // Surfaces: the near and far face (a line per pixel, joined to its neighbours' heights) and the fore wall where the right neighbour is empty (the solid's end face).
   // Aft-facing surfaces never face the camera between 0 and 90 degrees, so they are not drawn. Walls take the pixel's colour in one flat step darker (the light is from the left).
-  const N = 61, SS = 2, WALL = 0.7, CAP = 0.75, IN = 0.125, bakes = {};   // IN: faces are splatted this far inside their pixel, so the rotation of a tiny angle does not push an edge sample into the next sub-pixel
+  const N = 121, SS = 2, WALL = 0.7, CAP = 0.75, IN = 0.125, bakes = {};   // IN: faces are splatted this far inside their pixel, so the rotation of a tiny angle does not push an edge sample into the next sub-pixel
   // render and smoothed are generators: they yield between row bands so prepare can check the clock; bake runs them to the end
   function* render(D, th) {
     const w = D.w, h = D.h, half = new Float32Array(D.half), ax = D.ax, sternX = D.ax + D.aft, foreX = D.fore, c = Math.cos(th), s = Math.sin(th), W = w * SS, Hh = h * SS;

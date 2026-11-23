@@ -31,8 +31,6 @@ window.VoidshipArt = (function () {
   const SHADE = [54, 63, 71];
   const DEEP = [30, 36, 42];
   const EDGE = [180, 192, 200];
-  const ORANGE = [184, 102, 42];
-  const ORANGE_D = [110, 58, 24];
   const LAMP = [245, 208, 107];
   const COLD = [143, 176, 184];
   const RED = [255, 84, 70];
@@ -72,8 +70,13 @@ window.VoidshipArt = (function () {
   const EMIT = [BELL_UP, BELL_MAIN];
   // sustainer nozzles: the same two bell mouths (phase 2 onward)
   const SUST = [BELL_MAIN, BELL_UP];
-  // RCS nozzles: the belly one fires down (climb) from under the main bell, the deck one fires up (descent) from over the upper bell
-  const JETS = { belly: [{ x: -0.85, y: 0.12 }], top: [{ x: -0.85, y: -0.26 }] };
+  // RCS jets: one spot per row on plain plating at a hull edge, hull-local in units of L (+x nose, +y down; the firing finds rows by id). top/belly: only x matters (the root is the hull's edge in that column); near/far: x, y on the face
+  const RCS = [
+    { id: 'bowTop', bank: 1, kind: 'top', x: 0.34, y: 0 }, { id: 'bowBelly', bank: 1, kind: 'belly', x: 0.30, y: 0 },
+    { id: 'bowNear', bank: 1, kind: 'near', x: 0.37, y: -0.08 }, { id: 'bowFar', bank: 1, kind: 'far', x: 0.37, y: -0.08 },
+    { id: 'sternTop', bank: -1, kind: 'top', x: -0.42, y: 0 }, { id: 'sternBelly', bank: -1, kind: 'belly', x: -0.50, y: 0 },
+    { id: 'sternNear', bank: -1, kind: 'near', x: -0.45, y: -0.12 }, { id: 'sternFar', bank: -1, kind: 'far', x: -0.45, y: -0.12 },
+  ];
   const TRAIL_SEATS = [BELL_UP, BELL_MAIN];   // two streamers, one off each bell
   const TRAIL_COL = [DRIVE_A, DRIVE_A];
 
@@ -117,90 +120,38 @@ window.VoidshipArt = (function () {
       }
     };
 
-    // the 3D turn fires the clock-spin jets, one steady push away from the turn the whole way through.
-    const ss = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
-    const flip = turn && ship.flip, fp = flip ? flip.p : 0;
-    const flipAmp = flip ? 0.8 * ss(0, 0.01, fp) * (1 - ss(0.99, 1, fp)) : 0;
-
-    // 12. RCS jets and turn flames: ragged fire tongues, orange out to a yellow-white core
-    const flame = (x, y, dy, k, seed, sharp) => {
-      const fl = 0.8 + 0.2 * Math.sin(t * 53 + seed) + 0.12 * Math.sin(t * 97 + seed * 3);
-      const len = (0.07 + 0.25 * k) * fl, hw = (0.022 + 0.028 * k) * (0.9 + 0.1 * Math.sin(t * 71 + seed * 2));
-      const tip = (j) => Math.sin(t * 61 + seed * 5 + j * 2.3) * hw * 0.5;
-      const tongue = (w, l, col, a) => {
-        Paint.poly(g, [[x - w, y], [x - w * 0.9, y + dy * l * 0.45], [x - w * 0.4 + tip(1), y + dy * l * 0.7], [x + tip(0) * 0.6, y + dy * l],
-          [x + w * 0.35 + tip(2), y + dy * l * 0.65], [x + w * 0.9, y + dy * l * 0.4], [x + w, y]].map(([px_, py_]) => [px_ * L, py_ * L]));
-        g.fillStyle = rgba(col, a); g.fill();
-      };
-      tongue(hw, len, ORANGE, 0.95 * k);
-      tongue(hw * 0.62, len * 0.72, [255, 190, 70], k);
-      tongue(hw * 0.3, len * 0.45, [255, 250, 215], k);
-    };
-    const turnJets = (far) => {   // far: only the jet firing away from the viewer (drawn before the hull), else only the rest
-      // ls foreshortens the flame along its own axis (1 = full length)
-      const aim = (x, y, dy, th, seed, kk, ls) => { g.save(); g.translate(x * L, y * L); g.rotate(th); if (ls != null) g.scale(1, ls); flame(0, 0, dy, kk, seed); g.restore(); };
-      if (!flip) { if (far) return;   // the clock spin: a steady up/down pair off the ring and the tail
-        const tf = ship.turnFire || 0, dn = tf > 0 ? -1 : 1, kk = 0.55 + 0.45 * Math.abs(tf);
-        if (Math.abs(tf) > 0.03) {
-          aim(0.43, -0.015 + dn * 0.17, dn, 0, 1.7, kk);
-          aim(-0.36, -dn * (dn < 0 ? 0.31 : 0.19), -dn, 0, 4.1, kk);
-        }
-        return;
-      }
-      if (flipAmp <= 0.03) return;
-      // the 3D turn is a yaw: ring and tail push sideways, so their flames point straight across the screen whatever the pitch,
-      // the ring's one way and the tail's the other, chosen by the turn's direction d alone (dx -1 swings the nose screen-left,
-      // so the ring flame points right). Side-on they point mostly at or away from the viewer: short, full length end-on.
-      const d = flip.dx, kk = 0.55 + 0.45 * flipAmp, c = turn.c, s = turn.s, pt = ship.pitch || 0;
-      const rx = 0.43 * c, ry = -0.015, ro = 0.18;   // the blade ring: centre and outer radius (voidship-prow.js)
-      const ls = 0.2 + 0.8 * s, endOn = 1 - ss(0.15, 0.4, c);
-      const side = (sr, y, nx, seed, rk = 1) => {   // rk: the root's reach toward the viewer, in part radii
-        const vx = dir * Math.cos(pt) * sr, vy = -Math.sin(pt) * sr, sg = dir * sr; if ((sg > 0) !== !!far) return;   // the near side lies toward local -x, so sg > 0 fires away from the viewer
-        // end-on the base sits just outside the ring on its own side (the hull is a sliver there)
-        const e = Math.max(sg * rx + ro * s, 0) + 0.01;
-        // side-on it sits on the nozzle itself: the part's wall on that side, which faces the viewer
-        const bx = mix(nx + sg * rk * ro * s, vx * e, endOn), by = mix(y, y + vy * e, endOn);
-        aim(bx, by, 1, Math.atan2(-vx, vy), seed, kk, ls);
-      };
-      const bell = d > 0 ? BELL_UP : BELL_MAIN, ty = bell.y;
-      // side-on each nozzle sits on its part (the ring's centre row, the bell's mouth), never on an outline in the air
-      side(-d, far ? ry : ry - Math.sign(ty) * 0.8 * ro * (1 - endOn), rx, 1.7, far ? 1 : 0.6);   // facing the viewer it fires from the ring's rim (a true point on the hoop: sin 0.8, cos -0.6), off the blade
-      side(d, ty, bell.x * c, 4.1);   // on the bell mouth, squashed with the hull, so end-on it stays clear of the ring flame
-    };
+    // the canvas this frame blits: the rest sprite, or the baked turn frame nearest the yaw
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), TF = window.VoidshipTurnFrames;
+    const sp = window.VoidshipHull.sprite(L, dpr);
+    let img = sp.canvas, set = null, fk = 0;
+    if (turn && TF) { set = TF.prepare(L, dpr, 0) || TF.bake(L, dpr); img = TF.frameAt(set, (ship.yaw || 0) * 180 / Math.PI).canvas; fk = set.frames.indexOf(img); }
+    // 12. RCS turn jets: the far pass (behind the hull) comes first, the near pass after the hull
+    rcsPass(g, ship, L, true, img, set, fk, sp, dpr);
     // 1. shard glow, behind everything
     open(0);
     if (window.VoidshipArt && window.VoidshipArt.drawProwBack) window.VoidshipArt.drawProwBack(g, ship, L, t);
     close();
     // the new hull is one baked sprite (built once per size); facing left it is the same sprite mirrored by the caller's scale(-1, 1)
-    const sp = window.VoidshipHull.sprite(L, Math.min(window.devicePixelRatio || 1, 2));
     const sx = -sp.ox / sp.scale, sy = -sp.oy / sp.scale, sw = sp.canvas.width / sp.scale, sh = sp.canvas.height / sp.scale;
     if (!turn) {
       g.drawImage(sp.canvas, sx, sy, sw, sh);
       if (window.VoidshipArt.drawEmber) window.VoidshipArt.drawEmber(g, ship, L, t);   // the rest ember is live, not baked
       // bake the turn frames a little at a time while at rest, so the first turn does not stall
-      if (window.VoidshipTurnFrames) window.VoidshipTurnFrames.prepare(L, Math.min(window.devicePixelRatio || 1, 2), 2);
+      if (TF) TF.prepare(L, dpr, 2);
     } else if (window.VoidshipTurnFrames) {
       // mid-turn the drive sits behind the hull, so the hull covers it
       open(); drive(); close();
-      if (flip) turnJets(true);   // the jet firing away from the viewer: the hull drawn next covers its root
       // the whole ship as baked frames, pivoting at the sprite origin; the caller's scale(sign, 1) already mirrors past 90 degrees
-      const TF = window.VoidshipTurnFrames, dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const set = TF.prepare(L, dpr, 0) || TF.bake(L, dpr);
-      g.drawImage(TF.frameAt(set, (ship.yaw || 0) * 180 / Math.PI).canvas, sx, sy, sw, sh);
+      g.drawImage(img, sx, sy, sw, sh);
     }
+
+    rcsPass(g, ship, L, false, img, set, fk, sp, dpr);
 
     // 10. drive glow, sustainers (mid-turn they were painted behind the hull, above)
     open(0);
     if (!turn) drive();
-
-    const jet = ship.jet || 0, ja = Math.abs(jet);
-    if (ja > 0.03 && !flip) {   // the 3D turn shows only its jet pair
-      const seats = jet < 0 ? JETS.belly : JETS.top, sgn = jet < 0 ? 1 : -1;
-      for (const s of seats) flame(s.x, s.y, sgn, ja * 0.7, s.x * 40);
-    }
-
-    if (!flip) turnJets();
     close();
+
     open(0);
 
     // 13. bow strain chevrons
@@ -214,7 +165,109 @@ window.VoidshipArt = (function () {
       g.beginPath(); g.moveTo(1.34 * L, -0.09 * L); g.lineTo(1.39 * L, -0.06 * L); g.lineTo(1.34 * L, -0.03 * L); g.stroke();
     }
     close();
-    if (flip) turnJets(false);   // the jet firing toward the viewer goes over the finished hull, un-squeezed by the turn, x already times c
+  }
+
+  // Turn jets: one plume per RCS row, rooted on the hull as it is drawn and painted in drawHull's own transform (far rows before the hull, near rows after).
+  // The root comes from the canvas being blitted (rest sprite or turn frame): top/belly the first opaque pixel down/up the spot's projected column, near/far the spot
+  // projected as the turn bake does it (column = X cos t - Z sin t, row unchanged, Z = +-half-thickness from VoidshipTurnFrames.depth). Cached per size and frame.
+  const JET_LEN = 0.12, JET_W = 0.065;
+  const JET_TONES = [rgba(COLD, 0.9), rgba(mixc(COLD, WHITE, 0.5), 0.92), rgba(WHITE, 1)], JET_STEP = [[1, 1], [0.72, 0.58], [0.5, 0.34]];   // [length, width] of each stepped tone
+  const jetLog = { canvas: null, jets: [] }, jetPool = [];   // jetLog: the canvas just blitted and each firing row's root and plume direction in its pixels (tools/turnproof.py reads it)
+  let jetKey = '', jetRoots = {};
+  // The root must sit on solid plate: at least 3 px of opaque hull along the jet axis, and (top/belly) a flat edge, not a spike. A spot that fails moves along the hull (columns or rows either side, nearest first; bow stays forward of centre, stern aft).
+  let jetImg = null, jetPix = null;
+  function jetData(img) {
+    if (jetImg !== img) { jetImg = img; jetPix = img.getContext('2d').getImageData(0, 0, img.width, img.height).data; }
+    return jetPix;
+  }
+  function jetRoot(row, img, th, sp, L, dpr) {
+    const s = L * dpr, c = Math.cos(th), sn = Math.sin(th), ox = sp.ox, oy = sp.oy, w = img.width, h = img.height, d = jetData(img), T = Math.ceil(3 * dpr), R = Math.ceil(0.06 * s);
+    const A = (x, y) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 127;
+    const run = (x, y, ux, uy) => { let n = 0; while (n < T && A(x - ux * n, y - uy * n)) n++; return n >= T; };
+    if (row.kind === 'top' || row.kind === 'belly') {
+      const top = row.kind === 'top', uy = top ? -1 : 1, c0 = Math.floor(ox + row.x * s * c), side = row.x > 0 ? 1 : -1;
+      const edge = col => { for (let k = 0; k < h; k++) { const y = top ? k : h - 1 - k; if (A(col, y)) return y; } return -1; };
+      for (let k = 0; k <= R; k++) for (let sg = 1; sg >= -1; sg -= 2) {
+        const col = c0 + k * sg;
+        if (k === 0 && sg < 0) continue;
+        if ((col - ox) * side <= 0) continue;
+        const y = edge(col);
+        if (y < 0 || !run(col, y, 0, uy)) continue;
+        const a = edge(col - 2), b = edge(col + 2);
+        if (a < 0 || b < 0 || Math.abs(a - y) > 2 || Math.abs(b - y) > 2) continue;
+        return { cx: col, cy: y, ux: 0, uy };
+      }
+      return null;
+    }
+    const near = row.kind === 'near', TF = window.VoidshipTurnFrames, D = TF && TF.depth(L, dpr);
+    if (!D) return null;
+    const ux = near ? -1 : 1, j0 = Math.floor(oy + row.y * s), half = D.half[j0 * D.w + Math.floor(ox + row.x * s)], cx0 = Math.floor(ox + row.x * s * c - (near ? half : -half) * sn);
+    for (let k = 0; k <= R; k++) for (let sg = 1; sg >= -1; sg -= 2) {
+      if (k === 0 && sg < 0) continue;
+      const j = j0 + k * sg;
+      let cx = cx0;
+      if (near) {   // the near nozzle sits on the hull's edge in its row: snap to the last opaque pixel along the jet
+        if (A(cx, j)) { for (let n = 0; n < R && A(cx + ux, j); n++) cx += ux; }
+        else { for (let n = 0; n < R && !A(cx, j); n++) cx -= ux; }
+      }
+      if (A(cx, j) && run(cx, j, ux, 0)) return { cx, cy: j, ux, uy: 0 };
+    }
+    return null;
+  }
+  // The lit flame, the lit port and the soft glow are built once per size and drawn with drawImage; the plume keeps its shape and fades by alpha.
+  let jetSpr = null, jetSprKey = '';
+  function jetSprites(L, dpr) {
+    const key = L + '|' + dpr;
+    if (jetSpr && jetSprKey === key) return jetSpr;
+    jetSprKey = key;
+    const len = Math.max(9, JET_LEN * L), w = Math.max(5.5, JET_W * L), pad = 2, mk = (cw, ch) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(cw * dpr); cv.height = Math.ceil(ch * dpr); const x = cv.getContext('2d'); x.scale(dpr, dpr); return [cv, x]; };
+    // flame: along +x from x = pad (the base, 1 px inside the hull edge), three stepped tones
+    const [pl, px] = mk(len + pad + 1, w + 2);
+    for (let i = 0; i < 3; i++) {
+      const l = len * JET_STEP[i][0], hw = w * JET_STEP[i][1] / 2;
+      const cy = (w + 2) / 2; px.beginPath(); px.moveTo(0, cy - hw); px.bezierCurveTo(pad + l * 0.3, cy - hw * 1.25, pad + l * 0.7, cy - hw * 0.45, pad + l, cy); px.bezierCurveTo(pad + l * 0.7, cy + hw * 0.45, pad + l * 0.3, cy + hw * 1.25, 0, cy + hw); px.closePath();
+      px.fillStyle = JET_TONES[i]; px.fill();
+    }
+    // port: a bright slot across the root, flush with the plating
+    const pw = w * 1.4, [po, qx] = mk(4, pw);
+    qx.fillStyle = JET_TONES[2]; qx.fillRect(1, 0, 2, pw);
+    // glow: the foreshortened jet, a short soft glow on the hull at its nozzle
+    const gr = Math.max(4, 0.05 * L), [gl, gx] = mk(gr * 2, gr * 2), gg = gx.createRadialGradient(gr, gr, 0, gr, gr, gr);
+    gg.addColorStop(0, rgba(WHITE, 0.9)); gg.addColorStop(0.4, rgba(mixc(COLD, WHITE, 0.5), 0.5)); gg.addColorStop(1, rgba(COLD, 0));
+    gx.fillStyle = gg; gx.fillRect(0, 0, gr * 2, gr * 2);
+    return (jetSpr = { pl, po, gl, pw, gr, pad, fw: len + pad + 1, fh: w + 2 });
+  }
+  function rcsPass(g, ship, L, far, img, set, fk, sp, dpr) {
+    const rows = ship.rcs;
+    if (far) {
+      jetLog.canvas = img; jetLog.jets.length = 0;
+      // the tool sets jetLog.rec = []: one row per drawn frame [t s, pitch, yaw, camX, y, vy, face, each jet's level]
+      if (jetLog.rec) jetLog.rec.push([performance.now() / 1000, ship.pitch, ship.yaw, ship.camX, ship.y, ship.vy, ship.face].concat(ship.rcs));
+    }
+    if (!rows || !ship.rcsAny) return;
+    const key = L + '|' + dpr;
+    if (key !== jetKey) { jetKey = key; jetRoots = {}; }
+    const th = set ? fk * Math.PI / 2 / (set.n - 1) : 0, sn = Math.abs(Math.sin(th)), fr = jetRoots[fk] || (jetRoots[fk] = []);
+    for (let r = 0; r < rows.length; r++) {
+      const row = RCS[r], lv = rows[r];
+      if (!row || !(lv > 0) || (row.kind === 'far') !== far) continue;
+      const q = fr[r] === undefined ? (fr[r] = jetRoot(row, img, th, sp, L, dpr)) : fr[r];
+      if (!q) continue;
+      const n = jetLog.jets.length, e = jetPool[n] || (jetPool[n] = {});
+      e.id = row.id; e.level = lv; e.cx = q.cx; e.cy = q.cy; e.ux = q.ux; e.uy = q.uy;
+      jetLog.jets.push(e);
+      // top/belly jets stay a flame; near/far crossfade from the flame (side-on) to a soft glow on the hull (foreshortened)
+      const side = row.kind === 'near' || far, k = side ? Math.min(1, Math.max(0, (sn - 0.15) / 0.45)) : 1, S = jetSprites(L, dpr);
+      const rx = (q.cx + 0.5 - sp.ox) / dpr, ry = (q.cy + 0.5 - sp.oy) / dpr, bx = rx - q.ux * 0.5 / dpr, by = ry - q.uy * 0.5 / dpr, a0 = g.globalAlpha;
+      if (k > 0) {
+        g.save(); g.translate(bx, by); g.rotate(Math.atan2(q.uy, q.ux));
+        g.globalAlpha = a0 * lv * k; g.drawImage(S.pl, 0, -S.fh / 2, S.fw, S.fh);
+        g.globalAlpha = a0 * lv; g.drawImage(S.po, -1, -S.pw / 2, 4, S.pw);
+        g.restore();
+      }
+      if (k < 1) { g.globalAlpha = a0 * lv * (1 - k); g.drawImage(S.gl, rx - S.gr, ry - S.gr, S.gr * 2, S.gr * 2); }
+      g.globalAlpha = a0;
+    }
   }
 
   function drawFumes(g, fumes, env) {
@@ -231,25 +284,31 @@ window.VoidshipArt = (function () {
         g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - p.bx / m * len, sy - p.by / m * len);
         g.lineWidth = 1.6; g.lineCap = 'round'; g.strokeStyle = rgba(col, 0.95 * (1 - f * 0.6)); g.stroke(); g.lineCap = 'butt';
       } else if (p.kind === 0) {
-        const col = f < 0.5 ? mixc(DRIVE_A, DRIVE_B, f * 2) : mixc(DRIVE_B, DRIVE_C, (f - 0.5) * 2);
-        const a = Math.pow(1 - f, 1.6) * 0.55;
-        Paint.circle(g, sx, sy, r, rgba(col, a * 0.45));
-        Paint.circle(g, sx, sy, r * 0.45, rgba(mixc(col, WHITE, 0.35), a * 0.9));
-      } else if (p.kind === 1) {
-        const col = mixc(DRIVE_A, DRIVE_B, f);
-        const a = Math.pow(1 - f, 1.2) * 0.7;
-        g.beginPath(); g.arc(sx, sy, r, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = rgba(col, a); g.stroke();
+        const col = mixc(WHITE, COLD, f);   // a small pale puff off the flame tip, the turn-jet tones
+        const a = (1 - f) * 0.7 * (1 - (p.fo || 0));
+        Paint.circle(g, sx, sy, r, rgba(col, a));
       } else if (p.kind === 3) {
         const col = mixc(DRIVE_B, DRIVE_A, f);
         const len = p.r0 * (0.6 + 0.8 * (1 - f)), s = p.vx < 0 ? 1 : -1;
         g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - s * len, sy);
         g.lineWidth = 1.2; g.strokeStyle = rgba(col, (1 - f) * 0.85); g.stroke();
-      } else {
-        const col = mixc(WHITE, DRIVE_A, f);
-        const a = (1 - f) * 0.8;
-        g.beginPath(); g.arc(sx, sy, r, 0, Math.PI * 2); g.lineWidth = 2.5; g.strokeStyle = rgba(col, a); g.stroke();
       }
     }
+  }
+
+  // The drive's flame: the turn-jet flame sprite, one per bell, base just inside the bell (the hull is drawn over it), pointing straight out behind.
+  // ship.flameP = [bell0 x, y, bell1 x, y, tail angle, length px, brightness]
+  function drawFlame(g, ship, env) {
+    const fp = ship.flameP, len = fp[5], L = env.L;
+    if (!(len > 0.5)) return;
+    const S = jetSprites(L, Math.min(window.devicePixelRatio || 1, 2)), a0 = g.globalAlpha, ins = 0.012 * L;
+    for (let i = 0; i < 2; i++) {
+      const fl = (len + ins) * (1 + 0.07 * Math.sin(env.t * 41 + i * 2.3) + 0.04 * Math.sin(env.t * 67 + i));
+      g.save(); g.translate(fp[i * 2], fp[i * 2 + 1]); g.rotate(fp[4]); g.translate(-ins, 0);
+      g.globalAlpha = a0 * fp[6]; g.drawImage(S.pl, 0, -S.fh * 0.9, fl, S.fh * 1.8);
+      g.restore();
+    }
+    g.globalAlpha = a0;
   }
 
   function drawWake(g, ship, env) {
@@ -290,7 +349,7 @@ window.VoidshipArt = (function () {
     }
   }
 
-  const COLORS = { LIT, MID, SHADE, DEEP, EDGE, ORANGE, ORANGE_D, LAMP, COLD, RED, WHITE, DRIVE_A, DRIVE_B, DRIVE_C };
+  const COLORS = { LIT, MID, SHADE, DEEP, EDGE, LAMP, COLD, RED, WHITE, DRIVE_A, DRIVE_B, DRIVE_C };
 
   /* Thrust gauge: a fixed track from d0 to d1 along the hull-to-pointer line (the pointer's
      distance sets the thrust); the fill is the live main-engine speed / top speed (0 while the
@@ -324,5 +383,5 @@ window.VoidshipArt = (function () {
     g.restore();
   }
 
-  return { EMIT, SUST, JETS, TRAIL_SEATS, drawHull, drawTether, drawFumes, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
+  return { EMIT, SUST, RCS, jetLog, TRAIL_SEATS, drawHull, drawTether, drawFumes, drawFlame, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
 })();

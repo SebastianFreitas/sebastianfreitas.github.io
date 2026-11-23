@@ -1,5 +1,7 @@
 """Proof video of the baked ship turn (js/ship/voidship-turnframes.js), ship only, at true size.
 usage: py -3 tools/turnproof.py [--out <dir>] [--dpr 1]
+       py -3 tools/turnproof.py --game [--move flip|pitch|hop|all] [--slow K]   (the real bridge; pitch, hop and all also write
+       <move>-sheet.png and <move>-x3.png per move and print per-50-ms numbers; --slow K runs the page clock K times slower)
 Writes turn-normal.webm (0.72 s U-turns, as in game), turn-quarter.webm (quarter speed) and turn-sheet.png
 to <dir> (default: <system temp>/turnproof), never inside the repo. Prints one line of numbers.
 Exit code 1 on any page or console error, or a missing/empty output file.
@@ -18,6 +20,8 @@ def take(flag, default):
     return default
 GAME = "--game" in args
 if GAME: args.remove("--game")
+MOVE = take("--move", "flip")   # --game only: flip (the original U-turn proof), pitch, hop, or all three in sequence
+SLOW = float(take("--slow", "1"))   # --game only: the page clock runs this many times slower
 out = Path(take("--out", str(Path(tempfile.gettempdir()) / "turnproof")))
 dpr = float(take("--dpr", "1"))
 if dpr > 1:
@@ -104,7 +108,7 @@ def game(browser, base):
     import time
     vd = out / "_vid_game"; shutil.rmtree(vd, ignore_errors=True)
     ctx = browser.new_context(viewport=nav.DESKTOP, device_scale_factor=1, record_video_dir=str(vd), record_video_size=nav.DESKTOP)
-    ctx.set_default_timeout(8000); ctx.add_init_script(nav.INIT)
+    ctx.set_default_timeout(8000 * max(1, SLOW)); ctx.add_init_script(nav.INIT)
     t0 = time.time(); page = ctx.new_page()
     page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
     page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
@@ -142,10 +146,198 @@ def game(browser, base):
     dst = out / "game-turn.webm"; shutil.copyfile(vpath, dst); shutil.rmtree(vd, ignore_errors=True)
     return dst, sheet_png, repeats, total, res, ups, downs, t_start, t_end
 
+# --game --move pitch|hop|all: the held-press moves that fire the turn jets, recorded from the real bridge. The page clock can run
+# K times slower (--slow); drivers poll game state and game time (performance.now in the page), never fixed real-time sleeps.
+SLOWJS = """
+(() => { const K = %s, r0 = performance.now(), d0 = Date.now(), pn = performance.now.bind(performance), dn = Date.now, raf = window.requestAnimationFrame.bind(window);
+  performance.now = () => r0 + (pn() - r0) / K;
+  Date.now = () => Math.round(d0 + (dn() - d0) / K);
+  window.requestAnimationFrame = (cb) => raf((ts) => cb(r0 + (ts - r0) / K));
+})();
+"""
+REC2 = r"""
+() => {
+  const cv = document.getElementById('bridge-canvas'), B = window.Bridge, CW = 320, CH = 200;
+  const R = window.__rec2 = { on: false, rows: [], crops: [], lastRow: -1, n: 0, tr: [], root: {}, ids: null };
+  const now = () => performance.now() / 1000;
+  (function tick() {
+    const s = B.ship;
+    if (s && R.on) {
+      const A = window.VoidshipArt, lv = s.rcs;
+      if (A && A.RCS && lv) {
+        if (!R.ids) R.ids = A.RCS.map(j => j.id);
+        const a = [now()]; for (let i = 0; i < R.ids.length; i++) a.push(lv[i] || 0);
+        R.tr.push(a);
+        const L = A.jetLog;
+        if (L && L.canvas && L.jets) { const g = L.canvas.getContext('2d');
+          for (let i = 0; i < L.jets.length; i++) { const j = L.jets[i]; if (!(j.level > 0.05)) continue;
+            const al = g.getImageData(Math.round(j.cx - 2 * j.ux), Math.round(j.cy - 2 * j.uy), 1, 1).data[3] / 255;
+            if (R.root[j.id] === undefined || al < R.root[j.id]) R.root[j.id] = al; } }
+      }
+    }
+    if (s && R.on && now() - R.lastRow >= 0.05) {
+      R.lastRow = now(); R.n++;
+      const row = { t: now(), pitch: s.pitch, elev: s.elev, yaw: s.yaw, y: s.y, rcs: s.rcs === undefined ? null : s.rcs };
+      R.rows.push(row);
+      if (R.n % 2 === 0) { const k = cv.width / B.W, c = document.createElement('canvas'); c.width = CW; c.height = CH;
+        const g = c.getContext('2d'); g.drawImage(cv, Math.round(B.W / 2 * k) - CW / 2, Math.round(s.y * k) - CH / 2, CW, CH, 0, 0, CW, CH);
+        R.crops.push({ t: row.t, c }); }
+    }
+    requestAnimationFrame(tick);
+  })();
+  R.begin = () => { R.rows = []; R.crops = []; R.tr = []; R.root = {}; R.n = 0; R.lastRow = -1; R.on = true; };
+  R.finish = (press, end) => {
+    R.on = false;
+    const lo = press - 0.2, hi = end + 3, cs = R.crops.filter(q => q.t >= lo && q.t <= hi + 0.05);
+    const pick = (t) => { let b = 0; cs.forEach((q, i) => { if (Math.abs(q.t - t) < Math.abs(cs[b].t - t)) b = i; }); return b; };
+    const N = Math.min(14, cs.length), idx = [];
+    for (let i = 0; i < N; i++) idx.push(Math.round(i * (cs.length - 1) / Math.max(1, N - 1)));
+    const sheet = (list, scale, cols) => { const lab = 16, cw = CW * scale, ch = CH * scale + lab, rows = Math.ceil(list.length / cols);
+      const c = document.createElement('canvas'); c.width = cols * cw; c.height = rows * ch; const g = c.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingEnabled = false; g.font = '12px sans-serif';
+      list.forEach((q, k) => { const x = (k % cols) * cw, y = Math.floor(k / cols) * ch;
+        g.drawImage(q.c, 0, 0, CW, CH, x, y, cw, CH * scale);
+        g.fillStyle = '#8a8f98'; g.fillText('t ' + (q.t - press >= 0 ? '+' : '') + (q.t - press).toFixed(2) + ' s  (game ' + q.t.toFixed(2) + ')', x + 4, y + CH * scale + 12); });
+      return c.toDataURL('image/png'); };
+    const four = [0, pick((press + end) / 2), pick(end), pick(end + 1.5)].map(i => cs[i]);
+    return { sheet: sheet(idx.map(i => cs[i]), 1, 4), x3: sheet(four, 3, 2), n: idx.length, rows: R.rows.filter(r => r.t >= press && r.t <= end + 0.001), ids: R.ids, tr: R.tr.filter(a => a[0] >= press), root: R.root, hasLog: !!(window.VoidshipArt && window.VoidshipArt.jetLog) };
+  };
+}
+"""
+
+jet_fail = []
+OVERLAPS = (("bowTop", "bowBelly"), ("sternTop", "sternBelly"), ("bowNear", "bowFar"), ("sternNear", "sternFar"))
+def jet_report(mv, tp, r):
+    # one line per jet that fired, then the max frame-to-frame jump; returns the flag names (game time throughout)
+    ids, tr, flags = r["ids"] or [], r["tr"], []
+    edge, fell = {}, {}
+    prev = None; jump = (0.0, "-", 0.0)
+    for k, i in enumerate(ids):
+        ups, burn, peak, last_fall, refire = [], 0.0, 0.0, None, False
+        for q, a in enumerate(tr):
+            v = a[k + 1]; peak = max(peak, v)
+            if q:
+                p = tr[q - 1][k + 1]
+                if p > 0.02: burn += a[0] - tr[q - 1][0]
+                if p <= 0.02 < v:
+                    ups.append(a[0])
+                    if last_fall is not None and a[0] - last_fall < 0.25: refire = True
+                if p > 0.02 >= v: last_fall = a[0]
+                if abs(v - p) > jump[0]: jump = (abs(v - p), i, a[0])
+        if peak <= 0.02 and not ups: continue
+        root = r["root"].get(i) if r["hasLog"] else None
+        rt = "root n/a" if not r["hasLog"] else ("root min " + (f"{root:.2f}" if root is not None else "n/a"))
+        print(f"  jet {i}: rises at {[round(t - tp, 2) for t in ups]} peak {peak:.2f} burn {burn:.2f} s {rt}")
+        if refire: flags.append("REFIRE")
+        if root is not None and root < 0.5: flags.append("ROOT-OFF")
+    if not ids or not tr: print("  no jet trace"); return flags
+    print(f"  max level jump {jump[0]:.2f} ({jump[1]}) at {jump[2] - tp:.2f} s")
+    ix = {i: k + 1 for k, i in enumerate(ids)}
+    for a, b in OVERLAPS:
+        if a in ix and b in ix and any(q[ix[a]] > 0.02 and q[ix[b]] > 0.02 for q in tr): flags.append("OVERLAP")
+    out_f = []
+    for f in flags:
+        if f not in out_f: out_f.append(f)
+    return out_f
+
+def game_moves(browser, base, moves, K):
+    import time, math
+    vd = out / "_vid_game"; shutil.rmtree(vd, ignore_errors=True)
+    ctx = browser.new_context(viewport=nav.DESKTOP, device_scale_factor=1, record_video_dir=str(vd), record_video_size=nav.DESKTOP)
+    ctx.set_default_timeout(8000 * max(1, K)); ctx.add_init_script(nav.INIT)
+    if K != 1: ctx.add_init_script(SLOWJS % K)
+    t0 = time.time(); page = ctx.new_page()
+    page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
+    page.goto(base + "/"); nav.pass_gate(page, 1500)
+    page.wait_for_function("window.Bridge && Bridge.ship")
+    page.evaluate(REC2)
+    W, H = nav.DESKTOP["width"], nav.DESKTOP["height"]
+    ST = "() => { const s = Bridge.ship; return { t: performance.now() / 1000, y: s.y, elev: s.elev, pw: s.pitchW, yaw: s.yaw, yt: s.yawTarget, vy: s.vy, vel: s.vel, thr: s.thrusting }; }"
+    st = lambda: page.evaluate(ST)
+    def wait_t(t):
+        while st()["t"] < t: page.wait_for_timeout(30)
+    def until(cond, place, limit, what):
+        # poll game state every ~30 real ms: re-place the held pointer, stop when cond holds or limit game seconds pass
+        t_end = st()["t"] + limit
+        while True:
+            s = st()
+            if cond(s): return s
+            if s["t"] > t_end: errors.append(f"timeout ({limit} game s) waiting for: {what}"); return s
+            if place: place(s)
+            page.wait_for_timeout(30)
+    def press(x, y):
+        page.wait_for_function("!Bridge.frozen")
+        page.mouse.move(x, y); page.mouse.down()
+    results = []
+    t_first = None
+    for mv in moves:
+        until(lambda s: abs(s["vel"]) < 5 and abs(s["vy"]) < 2 and not s["thr"], None, 10, "rest before " + mv)
+        page.evaluate("__rec2.begin()"); wait_t(st()["t"] + 0.3)
+        s0 = st(); y0 = s0["y"]; sgn = 1 if math.cos(s0["yaw"]) >= 0 else -1
+        if t_first is None: t_first = time.time() - t0 - 0.3 * K
+        if mv == "flip":
+            press(W * (0.5 + 0.38 * sgn), y0); tp = st()["t"]
+            page.mouse.move(W * (0.5 - 0.38 * sgn), y0, steps=4)
+            until(lambda s: s["yaw"] == s["yt"] and s["yaw"] != s0["yaw"], None, 8, "flip yaw arrives")
+            page.mouse.move(W * (0.5 + 0.38 * sgn), y0, steps=4)
+            s = until(lambda s: s["yaw"] == s0["yaw"] and s["yt"] == s0["yaw"], None, 8, "flip back")
+        elif mv == "pitch":
+            d = 160
+            place = lambda up: (lambda s: page.mouse.move(W * 0.5 + sgn * d, min(H - 2, max(2, s["y"] + (-d if up else d)))))
+            press(W * 0.5 + sgn * d, y0 - d); tp = st()["t"]
+            stopped = lambda e, ok: (lambda s: abs(s["elev"] - e) < 0.06 and abs(s["pw"]) < 0.02 and ok(s))   # ok: the climb or the dive has really happened
+            until(stopped(-math.pi / 4, lambda s: s["y"] < y0 - 200), place(True), 8, "nose up 45 stops")
+            until(stopped(math.pi / 4, lambda s: s["y"] > y0 + 200), place(False), 10, "nose down 45 stops")
+            s = st()
+        else:   # hop: a held press with the pointer 200 px above, then back level: ship.vy changes, the belly then deck jets fire
+            px = W * 0.5 + sgn * 100
+            press(px, y0 - 200); tp = st()["t"]
+            until(lambda s: s["y"] < y0 - 60 and abs(s["vy"]) < 1, None, 8, "hop up stops")
+            page.mouse.move(px, y0, steps=4)
+            s = until(lambda s: abs(s["y"] - y0) < 6 and abs(s["vy"]) < 1, None, 8, "hop back stops")
+        te = s["t"]
+        page.mouse.up()
+        wait_t(te + 3)
+        r = page.evaluate("([a, b]) => __rec2.finish(a, b)", [tp, te])
+        (out / f"{mv}-sheet.png").write_bytes(base64.b64decode(r["sheet"].split(",")[1]))
+        (out / f"{mv}-x3.png").write_bytes(base64.b64decode(r["x3"].split(",")[1]))
+        print(f"{mv}: press at game {tp:.2f} s, motion stopped at game {te:.2f} s ({te - tp:.2f} s), sheet crops {r['n']}")
+        for row in r["rows"]:
+            extra = f" rcs={row['rcs']}" if row["rcs"] is not None else ""
+            print(f"  t={row['t'] - tp:6.2f} pitch={row['pitch']:+.3f} yaw={row['yaw']:.3f} y={row['y']:.1f}{extra}")
+        flags = jet_report(mv, tp, r)
+        if flags: jet_fail.append(f"JETS FAIL {mv} {' '.join(flags)}"); print(jet_fail[-1])
+        else: print("JETS ok")
+        results.append((mv, tp, te, r["n"]))
+    t_end = time.time() - t0
+    vpath = page.video.path(); ctx.close()
+    dst = out / f"game-{MOVE}.webm"; shutil.copyfile(vpath, dst); shutil.rmtree(vd, ignore_errors=True)
+    return dst, results, t_first, t_end
+
 httpd, base = nav.start_server()
 try:
     with sync_playwright() as p:
         b = p.chromium.launch()
+        if GAME and MOVE != "flip":
+            if MOVE not in ("pitch", "hop", "all"): print("turnproof: --move must be flip, pitch, hop or all"); sys.exit(2)
+            gv, res, ts, te = game_moves(b, base, ["flip", "hop", "pitch"] if MOVE == "all" else [MOVE], SLOW)
+            b.close()
+            FF = shutil.which("ffmpeg")
+            if not FF: print("turnproof: ffmpeg not on PATH"); sys.exit(2)
+            tmp = gv.with_name("_trim_game.webm")
+            subprocess.run([FF, "-y", "-ss", f"{max(0, ts):.2f}", "-i", str(gv), "-to", f"{te - ts:.2f}", "-an", "-b:v", "0", "-crf", "8", str(tmp)], capture_output=True)
+            if tmp.exists() and tmp.stat().st_size: tmp.replace(gv)
+            hdr = subprocess.run([FF, "-i", str(gv)], capture_output=True, text=True).stderr
+            m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", hdr)
+            dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else -1
+            bad = list(errors) + jet_fail
+            for mv, _, _, _ in res:
+                for f in (f"{mv}-sheet.png", f"{mv}-x3.png"):
+                    if not (out / f).exists() or not (out / f).stat().st_size: bad.append("missing " + f)
+            print(f"out {out}\nvideo {gv} length {dur:.2f} s real (slow x{SLOW:g}, about {dur / SLOW:.2f} game s) console-errors={len(errors)}")
+            if bad: print("FAIL"); [print("  ", e) for e in bad]; sys.exit(1)
+            sys.exit(0)
         if GAME:
             gv, gpng, rep, tot, tr, ups, downs, ts, te = game(b, base)
             b.close()
