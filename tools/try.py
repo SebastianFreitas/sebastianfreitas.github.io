@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from try_commit import ROOT, TRY_DIR, ensure_tree, git, git_run, hook, land  # noqa: E402
+from try_commit import ROOT, TRY_DIR, ensure_tree, git, git_run, hook, land, land_dry_run  # noqa: E402
 
 
 def list_branches() -> None:
@@ -142,11 +142,17 @@ def main() -> int:
         "--commit", action="store_true",
         help="land the branch on main as one commit and push main",
     )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="with --commit: run the read-only landing checks, print READY or BLOCKED, change nothing",
+    )
     parser.add_argument("--no-open", action="store_true", help="do not open the url in a browser")
     add_arguments = hook("add_arguments")
     if add_arguments:
         add_arguments(parser)
     args = parser.parse_args()
+    if args.dry_run and not args.commit:
+        parser.error("--dry-run only works with --commit")
 
     if not args.branch:
         list_branches()
@@ -178,7 +184,7 @@ def main() -> int:
 
     branch, ref = resolve(args.branch)
     if args.commit:
-        return land(branch, ref, args)
+        return land_dry_run(branch, ref, args) if args.dry_run else land(branch, ref, args)
 
     sha = git("rev-parse", "--short", ref)
     subject = git("log", "-1", "--format=%s", ref)

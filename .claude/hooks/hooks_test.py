@@ -138,6 +138,42 @@ def _owner_says_merge(c):
 bash("git-guard", "py -3 tools/try.py feature --commit", "allow", name="landing on the owner's merge", setup=_owner_says_merge)
 
 
+def _owner_says(text, first="coordinator"):
+    def setup(c):
+        c.write_transcript([{"type": "user", "message": {"role": "user", "content": first}},
+                            {"type": "user", "message": {"role": "user", "content": text}}])
+    return setup
+
+
+LAND_CMD = "py -3 C:/x/tools/try.py claude/rex-void-forms-ab12 --commit"
+bash("git-guard", LAND_CMD, "allow", name="coordinator landing on 'land rex-void-forms'",
+     setup=_owner_says("land rex-void-forms"))
+bash("git-guard", LAND_CMD, "refuse", name="landing after 'don't land it yet'",
+     setup=_owner_says("don't land it yet"))
+bash("git-guard", LAND_CMD + " --dry-run", "allow", name="dry run needs no owner word")
+bash("git-guard", "py -3 C:/x/tools/try.py claude/b --commit --dry-run", "allow", name="plain dry run")
+for _c in ("py -3 C:/x/tools/try.py b --commit; py -3 C:/x/tools/try.py b --commit --dry-run",
+           "py -3 C:/x/tools/try.py b --commit # --dry-run",
+           "py -3 C:/x/tools/try.py b --commit --path \\ --dry-run",
+           'bash -c "py -3 C:/x/tools/try.py b --commit"'):
+    bash("git-guard", _c, "refuse", name="dry-run bypass: " + _c)
+_L = "py -3 C:/x/tools/try.py b --commit"
+for _sep in ("\n", "\x0b", "\r"):
+    bash("git-guard", _L + _sep + _L + " --dry-run", "refuse", name="dry-run bypass: %r separator" % _sep)
+bash("git-guard", 'bash -c "git add -A"', "refuse", name="blanket add inside bash -c is checked")
+for _c in ('bash -c "try.py b --commit" --dry-run', "py -3 C:/x/tools/try.py b --commit > --dry-run",
+           "bash <<EOF\npy -3 C:/x/tools/try.py b --commit\nEOF", "bash <<EOF\ngit reset --hard\nEOF"):
+    bash("git-guard", _c, "refuse", name="bypass: " + _c.replace("\n", " / "))
+
+
+@case("git-guard: landing refusal says what to do and echoes the command", "refuse")
+def _(c):
+    res = c.run("git-guard.py", c.payload("Bash", {"command": LAND_CMD}))
+    if 'land <name>' not in res[2] or LAND_CMD not in res[2]:
+        return (0, "", "")
+    return res
+
+
 @case("git-guard: add of a path that was dirty at session start", "refuse")
 def _(c):
     c.file("js/other.js", "x\n")
@@ -264,6 +300,11 @@ for cmd in ("sleep 10", "sleep 30; cat out", "until [ -s out ]; do sleep 1; done
 for cmd in ("sleep 2", "sleep 9.5", "Start-Sleep 3", "python -c 'import time; time.sleep(30)'",
             "for f in a b; do echo $f; done", "ls"):
     bash("poll-guard", cmd, "allow")
+for cmd in ('echo "sleep 30"', 'grep -n "until" x'):
+    bash("poll-guard", cmd, "allow", name="quoted text: " + cmd)
+for cmd in ('bash -c "while true; do sleep 1; done"', 'powershell -Command "Start-Sleep 30"',
+            "sh -c 'sleep 30'", 'eval "sleep 30"'):
+    bash("poll-guard", cmd, "refuse", name="code argument: " + cmd)
 
 
 # review-guard

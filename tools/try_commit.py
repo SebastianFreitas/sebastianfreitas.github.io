@@ -51,7 +51,9 @@ checkout except after_land (the owner's editor may be open there).
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import pathlib
 import subprocess
 import sys
@@ -235,10 +237,12 @@ def squash_tree(ref: str) -> tuple[str, list[str]]:
     return tree, let_through
 
 
-def dirty_overlap(tree: str) -> list[str]:
+def dirty_overlap(tree: str, stage: bool = True) -> list[str]:
     """Uncommitted or untracked paths in the main checkout that the squash would
     change: git would refuse the fast-forward over them after the whole
-    verification, so land() checks first."""
+    verification, so land() checks first. A LANDING_IRRELEVANT path whose
+    working file already equals the squash's blob is staged (only reported
+    when stage is False) and left out; a differing one stays, never touched."""
     changed = set(line for line in git("diff", "--name-only", "--no-renames", "main", tree).splitlines() if line)
 
     status = git_run("status", "--porcelain", "--untracked-files=all").stdout
@@ -253,7 +257,22 @@ def dirty_overlap(tree: str) -> list[str]:
         else:
             dirty.add(path.strip('"'))
 
-    return sorted(changed & dirty)
+    overlap = sorted(changed & dirty)
+    blocking = []
+    for path in overlap:
+        if path in project_const("LANDING_IRRELEVANT", (".claude/workflow.lock",)):
+            blob = subprocess.run(["git", "cat-file", "blob", f"{tree}:{path}"], cwd=ROOT, capture_output=True)
+            try:
+                same = blob.returncode == 0 and (ROOT / path).read_bytes() == blob.stdout
+            except OSError:
+                same = False
+            if same and git_run("diff", "--cached", "--quiet", "--", path).returncode == 0:
+                if stage:
+                    git("add", "--", path)
+                print(f"   {path} {'staged' if stage else 'would be staged'}: it already matched what this branch lands")
+                continue
+        blocking.append(path)
+    return blocking
 
 
 def squash_message(branch: str, base: str, ref: str) -> tuple[str, str]:
@@ -361,7 +380,24 @@ def push_main() -> None:
         )
 
 
+def land_dry_run(branch: str, ref: str, args) -> int:
+    """Read-only land(): one READY or BLOCKED line; exit 0 if ready, else 1."""
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out):
+            code = land(branch, ref, args)
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else 1
+    lines = [l.strip() for l in out.getvalue().splitlines() if l.strip()]
+    if code == 0 and lines and lines[-1] == f"READY {branch}":
+        print("\n".join(lines))
+        return 0
+    print(f"BLOCKED {branch}: " + " ".join(lines))
+    return 1
+
+
 def land(branch: str, ref: str, args) -> int:
+    dry = getattr(args, "dry_run", False)
     main_sha = preflight()
 
     base = git("merge-base", "main", ref)
@@ -374,13 +410,25 @@ def land(branch: str, ref: str, args) -> int:
         print(f"{branch} adds nothing that main lacks (its changes are already on main). Nothing to commit.")
         return 0
 
-    overlap = dirty_overlap(tree)
+    overlap = dirty_overlap(tree, stage=not dry)
     if overlap:
+        irrelevant = project_const("LANDING_IRRELEVANT", (".claude/workflow.lock",))
         print("You have uncommitted edits to files this branch changes, nothing changed:")
         for path in overlap:
             print("  " + path)
-        print("Commit or discard them in GitHub Desktop, then run this again.")
+        for path in overlap:
+            if path in irrelevant:
+                print(
+                    f"`{path}` in the main checkout is a leftover from a workflow sync, not "
+                    f"your work: discard it in GitHub Desktop (or `git -C {ROOT} checkout -- "
+                    f"{path}`), then run the same command again."
+                )
+        if any(path not in irrelevant for path in overlap):
+            print("Commit or discard the other files in GitHub Desktop, then run the same command again.")
         return 1
+    if dry:
+        print(f"READY {branch}")
+        return 0
 
     ref_sha = git("rev-parse", ref)
     subject, msg = squash_message(branch, base, ref)

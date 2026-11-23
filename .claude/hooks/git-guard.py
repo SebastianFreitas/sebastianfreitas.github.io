@@ -51,13 +51,21 @@ except ImportError as e:  # an older guard_config.py: this guard cannot run, the
     sys.exit(0)
 
 QUOTED = re.compile(r'"[^"]*"|\'[^\']*\'')
+# a quote that follows these is code for another shell, not text
+CODE_ARG = re.compile(
+    r"(?:\b(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c|\b(?:powershell|pwsh)(?:\.exe)?\s+(?:-\w+\s+)*-(?:command|c)"
+    r"|\bcmd(?:\.exe)?\s+/[ck]|\beval)\s*$", re.I)
 
 
 def mask_quotes(cmd: str) -> str:
     """The command with the inside of every quoted string replaced by x's of the
     same length, so rules never match message or search text and match
     positions still line up with the original command."""
-    return QUOTED.sub(lambda m: m.group(0)[0] + "x" * (len(m.group(0)) - 2) + m.group(0)[-1], cmd)
+    def mask(m):
+        if CODE_ARG.search(cmd[:m.start()]):
+            return m.group(0)  # code handed to another shell: check it as command text
+        return m.group(0)[0] + "x" * (len(m.group(0)) - 2) + m.group(0)[-1]
+    return QUOTED.sub(mask, cmd)
 
 
 BLOCK = [
@@ -104,6 +112,16 @@ def pushes_main(bare: str, m: re.Match) -> bool:
 
 
 LAND_RE = re.compile(r"\btry\.py\b[^|;&\n]*\s--commit\b")
+# read-only dry run: the RAW command must be nothing but python, try.py and plain tokens
+DRY_RE = re.compile(r"[ \t]*(py([ \t]+-3)?|python3?(\.exe)?)[ \t]+[\w./:\\-]*try\.py([ \t]+[\w./:@=-]+)*[ \t]*")
+PLAIN_RE = re.compile(r"[ -~\t]*")  # printable ASCII, space, tab: no newline, CR or VT
+
+
+def is_dry_run(cmd: str) -> bool:
+    return (bool(PLAIN_RE.fullmatch(cmd)) and bool(DRY_RE.fullmatch(cmd))
+            and {"--commit", "--dry-run"} <= set(re.split(r"[ \t]+", cmd)))
+
+
 LAND_OK_RE = re.compile(r"\b(merge|land)\b|--commit", re.I)
 LAND_NO_RE = re.compile(
     r"\b(don'?t|do not|not yet|never|no|wait|hold)\b[^.\n]{0,25}\b(merge|land)", re.I)
@@ -149,7 +167,7 @@ def last_owner_prompt(transcript_path: str) -> str:
     return ""
 
 
-def landing_refusal(d: dict) -> str:
+def landing_refusal(d: dict, cmd: str = "") -> str:
     """Why this session may not run try.py --commit now, or "" when the owner OK'd it."""
     if os.environ.get("AUTOPLAN") == "1":
         return ("an unattended plan run never lands; the owner lands the "
@@ -161,9 +179,11 @@ def landing_refusal(d: dict) -> str:
     if LAND_OK_RE.search(said) and not LAND_NO_RE.search(said):
         return ""
     return ("landing on main waits for the owner's OK: their latest message "
-            "must say merge or land. Commit on the branch, end with the "
-            "Commit command in the report, and let the owner run it or reply "
-            "\"merge it\"")
+            "in THIS window must say merge or land. In a coordinator window, "
+            "run the command yourself once the owner types \"land <name>\" "
+            "here; never relay \"land it\" to a sub-chat (its guard does not "
+            "see this window's messages). Otherwise give the owner this exact "
+            "command line to run: " + cmd.strip())
 
 
 def main_commit_refusal(d: dict) -> str:
@@ -295,8 +315,8 @@ def main():
     if "git" not in cmd and "gh" not in cmd and "try.py" not in cmd:
         return
     bare = mask_quotes(cmd)
-    if LAND_RE.search(bare):
-        why = landing_refusal(d)
+    if LAND_RE.search(bare) and not is_dry_run(cmd):
+        why = landing_refusal(d, cmd)
         if why:
             sys.stderr.write(f"Blocked by .claude/hooks/git-guard.py: {why}.\n")
             sys.exit(2)

@@ -240,7 +240,10 @@ harness's exit notice and never polls (playbook Delegation).
   by the owner, or by you when their latest message says merge or
   land), and it pushes `main` once landed: new worktrees are cut from
   `origin/main` (2026-10-01). Nothing else reaches origin except the
-  owner's GitHub Desktop.
+  owner's GitHub Desktop. A coordinator lands a sub-chat's branch
+  itself when the owner types "land <name>" in the coordinator window;
+  it never relays "land it" to the sub-chat, whose guard sees only that
+  chat's own messages (playbook "Landing from the coordinator").
 - `git-guard.py` blocks blanket git (`add -A`/`.`, `commit -a`,
   `stash`, `checkout --`, `restore`, `reset --hard`, `clean`, `rebase`,
   force push). Do not work around it; the owner runs those if wanted.

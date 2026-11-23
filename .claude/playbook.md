@@ -248,7 +248,11 @@ Write and never read back; longer means two specs. Every spec has:
 Every path in `.claude/workflow.lock` came from the master. Edit them in
 the project like any file when the owner asks for a workflow change,
 then, after the commit, send the change back so every project gets it:
-`py -3 <master>/sync.py pull <project root>`. At session start
+`py -3 <master>/sync.py pull <project root>`, where `<project root>` is
+this session's own checkout (`git rev-parse --show-toplevel`), never
+the main checkout from a worktree. `pull` rewrites
+`.claude/workflow.lock` last, so commit the lock by path right after it;
+an uncommitted lock left in the main checkout blocks landings. At session start
 `WORKFLOW SYNC:` names what differs: `project-changed`: pull (above);
 `master-changed` or `new`: `py -3 <master>/sync.py push <project root>`,
 then commit the updated files by path; `conflict`: merge by hand and
@@ -289,6 +293,22 @@ title, call `mark_completed` ("self"), and end the turn with one line:
 "Landed as <sha> on `main` and pushed; this worktree is finished
 (archive it, or reply here for a follow-up round)." When the owner runs
 the command themselves, the `LANDED:` line is their signal.
+
+## Landing from the coordinator
+
+git-guard checks only the owner's latest typed message in the window
+that runs the command, so the coordinator window can land any branch.
+Before asking the owner, check each finished branch with
+`py -3 <main checkout>/tools/try.py <branch> --commit --dry-run` (read
+only, no owner word needed) and tell him `READY` or what blocks it.
+When his latest message in the coordinator window says "land <name>"
+(or "land all"), run `try.py <branch> --commit` for each named branch,
+one at a time, and report each `LANDED:` sha; then tell that sub-chat
+in one SendMessage that its branch landed (it does playbook "Landed").
+Ask in plain text, never AskUserQuestion: a clicked answer is not a
+typed message and the guard ignores it. Never relay "land it" to a
+sub-chat. A conflict goes back to the sub-chat as "merge main into
+your branch and resolve" (not a landing, so relaying it is fine).
 
 ## Merging by hand
 

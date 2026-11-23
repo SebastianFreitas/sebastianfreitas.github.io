@@ -28,32 +28,53 @@ PS_MILLIS = re.compile(
 UNIT = {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}
 
 
+QUOTED = re.compile(r'"[^"]*"|\'[^\']*\'')
+# a quote that follows these is code for another shell, not text
+CODE_ARG = re.compile(
+    r"(?:\b(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c|\b(?:powershell|pwsh)(?:\.exe)?\s+(?:-\w+\s+)*-(?:command|c)"
+    r"|\bcmd(?:\.exe)?\s+/[ck]|\beval)\s*$", re.I)
+
+
+def mask_quotes(cmd):
+    """The command with quoted strings replaced by x's, so a sleep or loop
+    that is only mentioned in text never matches."""
+    def mask(m):
+        if CODE_ARG.search(cmd[:m.start()]):
+            return m.group(0)  # code handed to another shell: check it as command text
+        return m.group(0)[0] + re.sub(r"[^\n]", "x", m.group(0)[1:-1]) + m.group(0)[-1]
+    return QUOTED.sub(mask, cmd)
+
+
 def polls(cmd):
+    """What matched ("loop" or "sleep N"), or "" when the command is fine."""
+    cmd = mask_quotes(cmd)
     for m in LOOP.finditer(cmd):
         if ANY_SLEEP.search(m.group(0)):
-            return True
+            return "a shell loop that sleeps"
     for m in SLEEP.finditer(cmd):
         if float(m.group(1)) * UNIT[m.group(2)] >= 10:
-            return True
+            return "sleep " + m.group(1) + m.group(2)
     for m in PS_SECONDS.finditer(cmd):
         if float(m.group(1)) >= 10:
-            return True
+            return "Start-Sleep " + m.group(1)
     for m in PS_MILLIS.finditer(cmd):
         if int(m.group(1)) >= 10000:
-            return True
-    return False
+            return "Start-Sleep -Milliseconds " + m.group(1)
+    return ""
 
 
 def main():
     d = json.load(sys.stdin)
     cmd = (d.get("tool_input") or {}).get("command") or ""
-    if not polls(cmd):
+    hit = polls(cmd)
+    if not hit:
         return
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
         "permissionDecisionReason": (
-            "Poll guard: no sleeping or polling loops in Bash. Run a check "
+            "Poll guard: no sleeping or polling loops in Bash (matched: " +
+            hit + "). Run a check "
             "or tool in the foreground with the call's timeout (up to "
             "600000 ms) and read its output; a command launched with "
             "run_in_background is reported by the harness when it exits, so "
