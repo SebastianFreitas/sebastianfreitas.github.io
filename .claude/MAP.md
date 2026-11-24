@@ -163,6 +163,8 @@ shares `Gen`:
 - `hud-models.js` right: `busLoads, cabTAt, cells, cabTrace, stress, rightLamps, JOINT_U, RING_U, critUntil` (crit burst set by `Instruments.alert`).
 - `hud-c25.js` colours by hull part: `C_TOP` cold white (left wing, sensed outside), `C_MID` gold (engine, fuel, power), `C_HULL` muted blue-purple (lower hull, its non-human crew; human cabin and air are cold white), `C_NOSE` oxblood (nose resonance); right-wing readings use the last three.
 - `hud-c25.js`: span line (live: marks, `nearestUnread()`, you pin), left/right wings, log (`sampleData()` for now); static linework cached per resize; mounted by bridge-panel.js, painted from `drawInstruments`
+- `hud-c25.js` signature monitor: `paintSig` draws up to 3 `env.sig` rows (id, class, trace, `> inst`, strength) in C_HULL right of the resonance slope; fixed slots, fades.
+- `hud-c25.js` jitter: `leftNow` builds the drawn-only `dz` on the white instruments (drift, g, radar ghosts, str, rad); no per-frame allocation.
   - wing size steps: one `SIZE - +` stepper (no % shown) above the left wing's top-left (screen px, `marks`/`paintMarks`/`markAt`) steps both wings (1, 1.25, 1.5, 1.75; `Util.KEYS.HUD_WING`), scaled from their corners; span line does not scale.
   - wing fit: `wingFit` draws the largest stored-or-lower step with `XL*q*v + 12 <= W/2` (1.25 at 2000x1009); above step 1 the log rises above the wings' floor line; `HudC25.wing()` feeds `B.fitHud`.
 - `tiles-sys.js`: `tickSys` couples `o2`/`co2`/`kpa`/`dose`/`mag`/`hullT`/`hx` to `env` (`wear jitter rad sway heat frozen`), keeps `sys.hullInt`, `sys.wear`, `sys.omega` (turn rate) and `sys.lastImpact`, plus the lower deck `tL kpaL rhL h2so4 co2L`, which the C25 right wing reads
@@ -205,7 +207,8 @@ does not — it is pure data, no dependency on `B`.
 - `bridge-panel.js`: `B.log = BridgeLog.create(null)`, mounts `HudC25` and `B.fitHud` (no flag; phones get no HUD, D25)
 - `bridge-panel.js`: cutscene journal (Full intro + seen scenes, rebuilt on open and `site:genesis-done`): `applyPendingView`, `saveView`, journal/folder button, `site:genesis-start`/`-done`, `drawIris`
 - `bridge-panel.js` publishes: `B.applyPendingView saveView fitHud`
-- `bridge-env.js`: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t}`;
+- `bridge-env.js`: `B.env = {chaos, future, nomic, wear, jitter, sway, glare, rad, heat, contained, link, frozen, echo, g, rho, twin, gAnom, tag, site, siteName, w, n1, n2, n3, t, sig}`;
+- `bridge-env.js` `env.sig`: up to 3 fixed per-site signatures `{id "sg-nnnn", cls, s, pat [Hz, ratio, rough], inst}` (readings only; class from the site's strongest field);
 - `bridge-env.js`: `B.stepEnv(dt)` blends the world curves (`chaosAt`/`futureAt`) with every site whose gate node is revealed (`window.depthAlpha`) by distance weight, then eases;
 - `bridge-env.js`: a site's `osc` may be one object or an array, each `{field, period, lo, hi, shape: "sine" | "square" | "pulse", duty?, phase?}`; debug `window.envReport`
 - `bridge-readout.js`: hull `takeDamage`/`runRepair`, `idleLine`, `checkRegion`, census `reportFiled`, `updateHUD`, `drawInstruments` (calls `B.stepEnv(dt)`, passes `env` to `Instruments.draw`); `VOICE_OF` maps the marks to voices; in gamedev the dominant site's id is the voice
