@@ -72,9 +72,9 @@ window.VoidshipArt = (function () {
   const SUST = [BELL_MAIN, BELL_UP];
   // RCS jets: one spot per row on plain plating at a hull edge, hull-local in units of L (+x nose, +y down; the firing finds rows by id). top/belly: only x matters (the root is the hull's edge in that column); near/far: x, y on the face
   const RCS = [
-    { id: 'bowTop', bank: 1, kind: 'top', x: 0.34, y: 0 }, { id: 'bowBelly', bank: 1, kind: 'belly', x: 0.30, y: 0 },
+    { id: 'bowTop', bank: 1, kind: 'top', x: 0.28, y: 0 }, { id: 'bowBelly', bank: 1, kind: 'belly', x: 0.38, y: 0 },
     { id: 'bowNear', bank: 1, kind: 'near', x: 0.37, y: -0.08 }, { id: 'bowFar', bank: 1, kind: 'far', x: 0.37, y: -0.08 },
-    { id: 'sternTop', bank: -1, kind: 'top', x: -0.42, y: 0 }, { id: 'sternBelly', bank: -1, kind: 'belly', x: -0.50, y: 0 },
+    { id: 'sternTop', bank: -1, kind: 'top', x: -0.27, y: 0 }, { id: 'sternBelly', bank: -1, kind: 'belly', x: -0.50, y: 0 },
     { id: 'sternNear', bank: -1, kind: 'near', x: -0.45, y: -0.12 }, { id: 'sternFar', bank: -1, kind: 'far', x: -0.45, y: -0.12 },
   ];
   const TRAIL_SEATS = [BELL_UP, BELL_MAIN];   // two streamers, one off each bell
@@ -214,6 +214,13 @@ window.VoidshipArt = (function () {
     }
     return null;
   }
+  // The baked vertical ports (top/belly rows), in units of L: plate width w and depth d, the closed slot's share of both. VoidshipHull.sprite bakes them at ventRoots' points; rcsPass lights the same slot.
+  const VENT = { w: 8 / 96, d: 1 / 96, cap: 1 / 96 };
+  function ventRoots(img, sp, L, dpr) {
+    const out = RCS.filter(r => r.kind === 'top' || r.kind === 'belly').map(r => ({ kind: r.kind, q: jetRoot(r, img, 0, sp, L, dpr) }));
+    jetImg = null;
+    return out;
+  }
   // The lit flame, the lit port and the soft glow are built once per size and drawn with drawImage; the plume keeps its shape and fades by alpha.
   let jetSpr = null, jetSprKey = '';
   function jetSprites(L, dpr) {
@@ -257,15 +264,19 @@ window.VoidshipArt = (function () {
       e.id = row.id; e.level = lv; e.cx = q.cx; e.cy = q.cy; e.ux = q.ux; e.uy = q.uy;
       jetLog.jets.push(e);
       // top/belly jets stay a flame; near/far crossfade from the flame (side-on) to a soft glow on the hull (foreshortened)
-      const side = row.kind === 'near' || far, k = side ? Math.min(1, Math.max(0, (sn - 0.15) / 0.45)) : 1, S = jetSprites(L, dpr);
+      const vert = row.kind === 'top' || row.kind === 'belly', side = row.kind === 'near' || far, k = side ? Math.min(1, Math.max(0, (sn - 0.15) / 0.45)) : 1, S = jetSprites(L, dpr);
       const rx = (q.cx + 0.5 - sp.ox) / dpr, ry = (q.cy + 0.5 - sp.oy) / dpr, bx = rx - q.ux * 0.5 / dpr, by = ry - q.uy * 0.5 / dpr, a0 = g.globalAlpha;
       if (k > 0) {
         g.save(); g.translate(bx, by); g.rotate(Math.atan2(q.uy, q.ux));
         g.globalAlpha = a0 * lv * k; g.drawImage(S.pl, 0, -S.fh / 2, S.fw, S.fh);
-        g.globalAlpha = a0 * lv; g.drawImage(S.po, -1, -S.pw / 2, 4, S.pw);
+        if (!vert) { g.globalAlpha = a0 * lv; g.drawImage(S.po, -1, -S.pw / 2, 4, S.pw); }
         g.restore();
       }
-      if (k < 1) { g.globalAlpha = a0 * lv * (1 - k); g.drawImage(S.gl, rx - S.gr, ry - S.gr, S.gr * 2, S.gr * 2); }
+      if (vert) {   // the baked slot opens: its inside takes the jet's colour, with a small soft glow on the plate round it
+        const ey = (q.cy + (q.uy > 0 ? 1 : 0) - sp.oy) / dpr, hw = (VENT.w - 2 * VENT.cap) * L * Math.max(0.35, Math.cos(th)) / 2, sd = VENT.d * L, y1 = ey - q.uy * sd;
+        g.globalAlpha = a0 * lv * 0.8; g.drawImage(S.gl, rx - S.gr * 1.05, (ey + y1) / 2 - S.gr * 1.05, S.gr * 2.1, S.gr * 2.1);
+        g.globalAlpha = a0 * lv; g.fillStyle = JET_TONES[2]; g.beginPath(); g.moveTo(rx - hw, ey); g.lineTo(rx + hw, ey); g.lineTo(rx + hw, y1); g.lineTo(rx - hw, y1); g.closePath(); g.fill();
+      } else if (k < 1) { g.globalAlpha = a0 * lv * (1 - k); g.drawImage(S.gl, rx - S.gr, ry - S.gr, S.gr * 2, S.gr * 2); }
       g.globalAlpha = a0;
     }
   }
@@ -383,5 +394,5 @@ window.VoidshipArt = (function () {
     g.restore();
   }
 
-  return { EMIT, SUST, RCS, jetLog, TRAIL_SEATS, drawHull, drawTether, drawFumes, drawFlame, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
+  return { EMIT, SUST, RCS, VENT, ventRoots, jetLog, TRAIL_SEATS, drawHull, drawTether, drawFumes, drawFlame, drawWake, COLORS, block, tracePts, fillPoly, vol, seg, box, rgba };
 })();

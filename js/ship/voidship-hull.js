@@ -1711,6 +1711,20 @@ window.VoidshipHull = (function () {
     drawRest(g, s); window.VoidshipArt.drawProw(g, ship, s, 1, true);
     g.translate(-ox, -oy);
     tintRing(g, ox, oy, s); dressRing(g, ox, oy, s, true);
+    // the four vertical jet ports: a flat plate a shade off the hull under it and a dark closed slot on the edge, at the point the jet roots on (VoidshipArt.ventRoots), inside the outline
+    const V = window.VoidshipArt.VENT;
+    for (const v of window.VoidshipArt.ventRoots(cv, { ox, oy }, L, dpr)) {
+      if (!v.q) continue;
+      const q = v.q, ey = q.cy + (q.uy > 0 ? 1 : 0), dy = -q.uy, cx = q.cx + 0.5, hw = V.w * s / 2, pd = V.d * s, cap = V.cap * s;
+      const top = v.kind === 'top', lip = top ? [236, 242, 250] : [196, 212, 228], dk = (top ? ZONES.top.trench : tint(ZONES.heavy.trench));
+      const tr = dk.map((n) => Math.round(n * 0.25)), ec = dk.map((n) => Math.round(n * 0.1));
+      const col = (c) => `rgb(${c.join(',')})`;
+      const rect = (x0, x1, y0, y1, c) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y0); g.lineTo(x1, y1); g.lineTo(x0, y1); g.closePath(); g.fillStyle = col(c); g.fill(); };
+      rect(cx - hw, cx + hw, ey + dy * pd, ey + dy * pd * 2, lip);   // the bright lip, 1 px, on the trench's inner side
+      rect(cx - hw, cx + hw, ey, ey + dy * pd, tr);   // the nozzle trench along the hull edge, 1 px deep
+      rect(cx - hw, cx - hw + cap, ey, ey + dy * pd * 2, ec);   // the two darker end caps
+      rect(cx + hw - cap, cx + hw, ey, ey + dy * pd * 2, ec);
+    }
     // per pixel row of the hull aft of the ring band (for the baked turn's beam): { w }, the half-width as a fraction of the full beam from HEADON (a few straight edges); null for a row with no hull
     const px = g.getImageData(0, 0, cv.width, cv.height).data, xe = Math.min(cv.width, Math.ceil(ox + anchors.ring.aft * s)), rows = [], has = [];
     for (let j = 0; j < cv.height; j++) {
