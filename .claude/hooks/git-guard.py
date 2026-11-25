@@ -35,6 +35,7 @@ strings masked, so a commit message or search string never trips a rule.
 
 Never blocks on its own failure: any error exits 0.
 """
+import datetime
 import fnmatch
 import json
 import os
@@ -132,9 +133,14 @@ COMMIT_NO_RE = re.compile(
     r"\b(don'?t|do not|not yet|never|no|wait|hold)\b[^.\n]{0,25}\b(commit|merge|land)", re.I)
 
 
-def last_owner_prompt(transcript_path: str) -> str:
-    """Text of the newest human prompt in the transcript (not a tool result,
-    not an injected meta entry), or "" when none is found."""
+NOT_OWNER = ("<task-notification>", "[SYSTEM NOTIFICATION", "Another Claude session sent a message",
+             "<agent-message", "[Subagent hand-back]", "<side-sessions-event>", "<ci-monitor-event>")
+
+
+def owner_prompts(transcript_path: str):
+    """Yield (text, timestamp) of the human prompts in the transcript, newest
+    first (not tool results, not injected meta entries); timestamp is "" when
+    the entry has none."""
     try:
         with open(transcript_path, "rb") as f:
             f.seek(0, 2)
@@ -142,7 +148,7 @@ def last_owner_prompt(transcript_path: str) -> str:
             f.seek(max(0, size - 4_000_000))
             lines = f.read().decode("utf-8", "replace").splitlines()
     except OSError:
-        return ""
+        return
     for line in reversed(lines):
         try:
             e = json.loads(line)
@@ -160,11 +166,146 @@ def last_owner_prompt(transcript_path: str) -> str:
                             if isinstance(b, dict) and b.get("type") == "text")
         else:
             continue
-        # drop injected reminders so only the owner's own words count
-        text = re.sub(r"<system-reminder>.*?</system-reminder>", " ", text, flags=re.S)
+        # not the owner's: relayed sessions, notifications, hand-backs
+        if any(mk in text for mk in NOT_OWNER):
+            continue
+        origin = e.get("origin")
+        if isinstance(origin, dict) and origin.get("kind") != "human":
+            continue
+        # drop injected reminders and pastes so only the owner's own words count
+        text = re.sub(r"<system-reminder>.*?</system-reminder>|<pasted_content\b[^>]*>.*?</pasted_content>",
+                      " ", text, flags=re.S)
         if text.strip():
-            return text
-    return ""
+            yield text, str(e.get("timestamp") or "")
+
+
+def last_owner_prompt(transcript_path: str) -> str:
+    """Text of the newest human prompt in the transcript, or "" when none is found."""
+    return next((t for t, _ in owner_prompts(transcript_path)), "")
+
+
+NEG_RE = re.compile(r"\b(don'?t|do not|not|never|no|wait|hold|stop|cancel|abort|undo|revert|later)\b", re.I)
+LANDWORD_RE = re.compile(r"\b(land\w*|merge\w*)\b", re.I)
+TOKEN_RE = re.compile(r"[\w./-]+")
+FILLER = {"yet", "it", "this", "that", "now", "anything", "please", "the", "a", "just", "again"}
+ORDER_RE = re.compile(r"\bland\s+[\"'`]?([\w./-]+)", re.I)
+TRY_BRANCH_RE = re.compile(r"\btry\.py\s+(?:-\S+\s+)*([^\s-][^\s]*)")
+
+
+class OriginDown(Exception):
+    """origin could not be fetched in time."""
+
+
+def _origin_git(cwd, *args):
+    """Run git against origin: 8 s at most, no pipes, no prompt and the whole
+    process tree killed on a timeout (on Windows a plain kill leaves
+    git-remote-https and the credential helper running). Returns the exit
+    code; raises OriginDown on a timeout."""
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
+    p = subprocess.Popen(
+        ["git", "-c", "credential.interactive=never", "-c", "http.lowSpeedLimit=1000",
+         "-c", "http.lowSpeedTime=5", *args],
+        cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
+    try:
+        return p.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=5)
+        p.kill()
+        p.wait(timeout=5)
+        raise OriginDown()
+
+
+def fetch_origin(cwd, branch):
+    """One fetch of `branch` from origin. A failed fetch is fine when origin
+    answers that it has no such branch (a local-only branch, as try.py lands);
+    anything else raises OriginDown."""
+    if _origin_git(cwd, "fetch", "origin", branch) != 0:
+        if _origin_git(cwd, "ls-remote", "--exit-code", "origin", "refs/heads/" + branch) != 2:
+            raise OriginDown()
+
+
+def resolve_landing(name: str, cwd, fetch=False):
+    """(branch, ref) as tools/try.py resolve() picks them: ref is origin/<branch>
+    when only the remote has it or the remote is not behind the local branch,
+    else the local branch; ("", "") when neither exists. With `fetch`, the
+    chosen candidate is fetched once first (raises OriginDown on failure)."""
+    def ok(*a, t=10):
+        return subprocess.run(["git", *a], cwd=cwd, capture_output=True, timeout=t).returncode == 0
+    if name.startswith("origin/"):
+        name = name[len("origin/"):]
+    cands = [name] + (["claude/" + name, "worktree-" + name] if "/" not in name else [])
+    for c in cands:
+        local = ok("rev-parse", "--verify", "--quiet", "refs/heads/" + c)
+        remote = ok("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + c)
+        if not local and not remote:
+            continue
+        if fetch:
+            fetch_origin(cwd, c)
+            remote = ok("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + c)
+        if local and (not remote or ok("merge-base", "--is-ancestor", "origin/" + c, c)):
+            return c, c
+        return c, "origin/" + c
+    return "", ""
+
+
+def standing_order(d: dict, cmd: str) -> bool:
+    """True when an owner-typed message in this window (any age) says `land <name>`
+    with a name matching the branch this command lands (the branch, its short
+    name or its board row name), and the order is newer than the committer date
+    of `git merge-base main <branch>` (a landed branch spends its order).
+    Fails closed on anything unreadable."""
+    try:
+        m = TRY_BRANCH_RE.search(cmd)
+        if not m:
+            return False
+        branch = m.group(1).strip("\"'")
+        branch, ref = resolve_landing(branch, d.get("cwd") or None, fetch=True)
+        if not ref:
+            return False
+        names = {branch.lower(), re.sub(r"^claude/", "", branch).lower(), branch.rsplit("/", 1)[-1].lower()}
+        cwd = d.get("cwd") or None
+
+        def git(*a):
+            r = subprocess.run(["git", *a], cwd=cwd, capture_output=True, text=True, timeout=10)
+            return r.stdout.strip() if r.returncode == 0 else ""
+        common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+        bf = os.environ.get("BOARD_FILE") or (common and os.path.join(os.path.dirname(common), ".claude", "board.json"))
+        row_names = set()
+        if bf and os.path.exists(bf):
+            with open(bf, encoding="utf-8") as f:
+                for r in (json.load(f).get("rows") or {}).values():
+                    if r.get("name"):
+                        row_names.add(str(r["name"]).lower())
+                        if r.get("branch") == branch:
+                            names.add(str(r["name"]).lower())
+        base = git("merge-base", "main", ref)
+        spent = int(git("log", "-1", "--format=%ct", base)) if base else None
+        if spent is None:
+            return False
+        for text, ts in owner_prompts(d.get("transcript_path") or ""):
+            said = [n.rstrip(".,;:!?").lower() for n in ORDER_RE.findall(text)]
+            tokens = {t.rstrip(".,;:!?").lower() for t in TOKEN_RE.findall(text)}
+            negative = bool(NEG_RE.search(text))
+            if names & tokens:  # the newest message about this branch decides
+                if negative or not any(n in names for n in said):
+                    return False
+                when = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+                return when > spent
+            if LANDWORD_RE.search(text) and negative and not [
+                    n for n in said if n not in FILLER and n not in names
+                    and n not in ("main", "origin/main") and resolve_landing(n, cwd)[0] != "main"
+                    and (n in row_names or resolve_landing(n, cwd)[1])]:
+                return False  # a general "cancel the landing" is a no
+            # anything else (other branches, other topics): keep walking
+    except OriginDown:
+        raise
+    except Exception:
+        pass
+    return False
 
 
 def landing_refusal(d: dict, cmd: str = "") -> str:
@@ -178,8 +319,17 @@ def landing_refusal(d: dict, cmd: str = "") -> str:
     said = last_owner_prompt(tp)
     if LAND_OK_RE.search(said) and not LAND_NO_RE.search(said):
         return ""
+    try:
+        if standing_order(d, cmd):
+            return ""
+    except OriginDown:
+        return ("origin could not be reached (fetch failed or took over 8 s); "
+                "the landing needs origin to push main. Run the command "
+                "again when the network is back: " + cmd.strip())
     return ("landing on main waits for the owner's OK: their latest message "
-            "in THIS window must say merge or land. In a coordinator window, "
+            "in THIS window must say merge or land, or a message he typed "
+            "earlier in THIS window must say \"land <this branch's name>\" "
+            "(newer than the branch's last landing). In a coordinator window, "
             "run the command yourself once the owner types \"land <name>\" "
             "here; never relay \"land it\" to a sub-chat (its guard does not "
             "see this window's messages). Otherwise give the owner this exact "

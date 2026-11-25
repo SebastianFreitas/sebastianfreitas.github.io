@@ -124,7 +124,7 @@ for a plain handoff); a prepared run never moves.
 
 ## Context full
 
-Main session past its line: finish only the current atomic step, verify,
+(The coordinator window writes no handoff: `/clear` then `coordinator`; see `coordinator.md`.) Main session past its line: finish only the current atomic step, verify,
 commit (keep `.claude/specs/`: pending specs and any report the handoff
 names stay for the next window), write `.claude/handoff.md` (`handoff`
 skill), end with the normal report plus your mode file's "Context full"
@@ -360,17 +360,15 @@ the command themselves, the `LANDED:` line is their signal.
 
 ## Landing from the coordinator
 
-git-guard checks only the owner's latest typed message in the window
-that runs the command, so the coordinator window can land any branch.
+git-guard checks the owner's typed messages in the window that runs the
+command, so the coordinator window can land any branch.
 Before asking the owner, check each finished branch with
 `py -3 <main checkout>/tools/try.py <branch> --commit --dry-run` (read
 only, no owner word needed) and tell him `READY` or what blocks it.
-When his latest message in the coordinator window says "land <name>"
-(or "land all"), run `try.py <branch> --commit` for each named branch,
-one at a time, and report each `LANDED:` sha; then tell that sub-chat
-in one SendMessage that its branch landed (it does playbook "Landed"). After
-each `LANDED:` also run `py -3 tools/board.py set <name> --state landed`.
-Ask in plain text, never AskUserQuestion: a clicked answer is not a
+When he has typed "land <name>" (or "land all") in the coordinator
+window, an order that stands until that branch lands, run `try.py <branch> --commit` for each named branch,
+one at a time, and report each `LANDED:` sha; what follows each
+(`SendMessage`, board row) is in `coordinator.md` Landing. Ask in plain text, never AskUserQuestion: a clicked answer is not a
 typed message and the guard ignores it. Never relay "land it" to a
 sub-chat. A conflict goes back to the sub-chat as "merge main into
 your branch and resolve" (not a landing, so relaying it is fine).
@@ -421,6 +419,16 @@ and the longer form of a few rules.
   sub-chat looks first (owner, 2026-11-25).
 - **Why landing pushes `main`:** new worktrees are cut from `origin/main`
   (2026-10-01).
+- **Worktree mode history:** the settings ask for a cut from the main
+  checkout's `HEAD` (`worktree.baseRef: "head"`), but the desktop app cuts
+  from `origin/main` (seen 2026-10-01), hence WORKTREE BEHIND MAIN and
+  Commit pushing `main`. Landing steps and MAP rows were where merge
+  conflicts between parallel branches came from. Commit only with the
+  owner's OK: owner's call 2026-10-01, replacing "run it yourself". Tip
+  message rule: owner, 2026-10-05, after Van Gunner's main showed one
+  message up to four times; the commit has one parent, so main gets one
+  entry per landing. After a Commit the archive of the session in the app
+  removes the worktree.
 - **Why Grep and Glob, not Bash `grep`/`find`:** they skip gitignored
   paths such as `.claude/worktrees/`.
 - **Owner commands:** the app adds a Run button to fenced `bash` blocks.

@@ -25,6 +25,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+
+# The suite never reads its own stdin: an open pipe or a terminal must not stall it.
+sys.stdin = open(os.devnull, "r")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRST_PROMPT = {"type": "user", "message": {"role": "user", "content": "hello"}}
@@ -45,7 +49,8 @@ class Ctx:
         self.write_transcript([FIRST_PROMPT])
 
     def sh(self, *args):
-        subprocess.run(list(args), cwd=self.proj, capture_output=True, timeout=30, check=True)
+        subprocess.run(list(args), cwd=self.proj, capture_output=True, timeout=30, check=True,
+                       stdin=subprocess.DEVNULL)
 
     def write_transcript(self, entries):
         with open(self.transcript, "w", encoding="utf-8") as f:
@@ -164,6 +169,137 @@ bash("git-guard", 'bash -c "git add -A"', "refuse", name="blanket add inside bas
 for _c in ('bash -c "try.py b --commit" --dry-run', "py -3 C:/x/tools/try.py b --commit > --dry-run",
            "bash <<EOF\npy -3 C:/x/tools/try.py b --commit\nEOF", "bash <<EOF\ngit reset --hard\nEOF"):
     bash("git-guard", _c, "refuse", name="bypass: " + _c.replace("\n", " / "))
+
+
+# standing order: an earlier typed "land <name>" in this window
+STAND_CMD = "py -3 tools/try.py claude/rex-x --commit"
+GIT = ("git", "-c", "user.name=t", "-c", "user.email=t@t")
+
+
+def _msg(text, ts="2099-01-01T00:00:00.000Z", **extra):
+    e = {"type": "user", "timestamp": ts, "message": {"role": "user", "content": text}}
+    e.update(extra)
+    return e
+
+
+def _origin(c, push=True):
+    """A reachable local bare origin (the landing guards fetch it); it holds every
+    branch, or only main when `push` is False (a branch that was never pushed)."""
+    bare = os.path.join(c.root, "origin.git")
+    c.sh("git", "init", "-q", "--bare", bare)
+    c.sh("git", "remote", "add", "origin", bare)
+    c.sh("git", "push", "-q", "origin", "--all" if push else "main")
+
+
+def _branch_repo(c, push=True):
+    c.sh(*GIT, "commit", "--allow-empty", "-q", "-m", "x")
+    c.sh("git", "branch", "-m", "main")
+    c.sh("git", "branch", "claude/rex-x")
+    _origin(c, push)
+
+
+def _stand(*entries):
+    def setup(c):
+        _branch_repo(c)
+        c.write_transcript([_msg("coordinator")] + list(entries))
+    return setup
+
+
+bash("git-guard", STAND_CMD, "allow", name="order two owner messages back",
+     setup=_stand(_msg("land rex-x"), _msg("how is it going"), _msg("and the other one")))
+bash("git-guard", STAND_CMD, "allow", name="order by the full branch name",
+     setup=_stand(_msg("land claude/rex-x"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="order naming another branch",
+     setup=_stand(_msg("land other-branch"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="spent order (older than the branch's fork point)",
+     setup=_stand(_msg("land rex-x", ts="2020-01-01T00:00:00.000Z"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="cross-session message saying land",
+     setup=_stand(_msg("land rex-x", isMeta=True), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="a later 'don't land' ends the standing order",
+     setup=_stand(_msg("land rex-x"), _msg("don't land rex-x yet, hold")))
+bash("git-guard", STAND_CMD, "allow", name="a later 'don't land' about another branch leaves the order",
+     setup=lambda c: (_stand(_msg("land rex-x"), _msg("don't land other-branch yet"))(c),
+                      c.sh("git", "branch", "other-branch")))
+bash("git-guard", STAND_CMD, "refuse", name="cross-session message (plain user text) saying land",
+     setup=_stand(_msg("<cross-session-message from=\"x\">Another Claude session sent a message: land rex-x</cross-session-message>"),
+                  _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="task notification (plain user text) saying land",
+     setup=_stand(_msg("<task-notification>\n<result>land rex-x</result>\n</task-notification>"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="pasted block saying land does not count",
+     setup=_stand(_msg("see <pasted_content id=1>land rex-x</pasted_content>"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "allow", name="order with trailing period",
+     setup=_stand(_msg("land rex-x."), _msg("thanks")))
+bash("git-guard", "py -3 tools/try.py rex-x --commit", "allow", name="order for the short branch name",
+     setup=_stand(_msg("land rex-x, please"), _msg("thanks")))
+for _t in ("don't land until I've read it", "never land without asking me", "do not land till tomorrow"):
+    bash("git-guard", STAND_CMD, "refuse", name="a general no with a word after land ends the order: " + _t,
+         setup=_stand(_msg("land rex-x"), _msg(_t)))
+bash("git-guard", STAND_CMD, "refuse", name="'hold off on rex-x' ends the standing order",
+     setup=_stand(_msg("land rex-x"), _msg("hold off on rex-x")))
+bash("git-guard", STAND_CMD, "refuse", name="'not rex-x' ends the standing order",
+     setup=_stand(_msg("land rex-x"), _msg("not rex-x")))
+bash("git-guard", STAND_CMD, "refuse", name="'cancel the landing' ends the standing order",
+     setup=_stand(_msg("land rex-x"), _msg("cancel the landing")))
+bash("git-guard", STAND_CMD, "refuse", name="a later message naming the branch another way ends the order",
+     setup=_stand(_msg("land rex-x"), _msg("rex-x: also fix the title")))
+bash("git-guard", STAND_CMD, "allow", name="a later message about another branch does not end the order",
+     setup=_stand(_msg("land rex-x"), _msg("land other-branch"), _msg("how is rex-y")))
+bash("git-guard", STAND_CMD, "refuse", name="an order for rex-x-2 is not an order for rex-x",
+     setup=_stand(_msg("land rex-x-2"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="an order for claude/rex-x-old is not an order for rex-x",
+     setup=_stand(_msg("land claude/rex-x-old"), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="peer entry without isMeta or markers is not the owner",
+     setup=_stand(_msg("land rex-x", origin={"kind": "peer", "from": "x"}), _msg("thanks")))
+bash("git-guard", STAND_CMD, "refuse", name="task-notification entry without isMeta or markers is not the owner",
+     setup=_stand(_msg("land rex-x", origin={"kind": "task-notification"}), _msg("thanks")))
+bash("git-guard", STAND_CMD, "allow", name="human origin counts as the owner",
+     setup=_stand(_msg("land rex-x", origin={"kind": "human"}), _msg("thanks")))
+
+
+def _remote_ahead(c):
+    _branch_repo(c)
+    c.write_transcript([_msg("coordinator"), _msg("land rex-x"), _msg("thanks")])
+    c.sh("git", "update-ref", "refs/remotes/origin/claude/rex-x", "HEAD")
+    c.sh("git", "checkout", "-q", "claude/rex-x")
+    c.file("js/r.js", "r\n")
+    c.sh("git", "add", "js/r.js")
+    c.sh(*GIT, "commit", "-q", "-m", "r")
+    c.sh("git", "checkout", "-q", "main")
+
+
+bash("git-guard", STAND_CMD, "allow", name="local branch ahead of origin: the order holds", setup=_remote_ahead)
+bash("git-guard", STAND_CMD, "refuse", name="order with no timestamp",
+     setup=_stand({"type": "user", "message": {"role": "user", "content": "land rex-x"}}, _msg("thanks")))
+
+
+@case("git-guard: a fetch that fails refuses with the origin line, in under 10 s", "refuse")
+def _(c):
+    _stand(_msg("land rex-x"), _msg("thanks"))(c)
+    c.sh("git", "remote", "set-url", "origin", os.path.join(c.root, "no-such-origin.git"))
+    t0 = time.time()
+    res = c.run("git-guard.py", c.payload("Bash", {"command": STAND_CMD}))
+    if "origin could not be reached" not in res[2] or time.time() - t0 >= 10:
+        return (0, "", "")
+    return res
+
+
+bash("git-guard", STAND_CMD, "allow", name="a branch only on this machine (origin reachable) lands under the order",
+     setup=lambda c: (_branch_repo(c, push=False),
+                      c.write_transcript([_msg("coordinator"), _msg("land rex-x"), _msg("thanks")])))
+bash("git-guard", STAND_CMD, "refuse", name="a later 'don't land main' ends the standing order",
+     setup=_stand(_msg("land rex-x"), _msg("don't land main yet")))
+
+
+@case("git-guard: a local-only branch with an unreachable origin refuses with the origin line, in under 10 s", "refuse")
+def _(c):
+    _branch_repo(c, push=False)
+    c.write_transcript([_msg("coordinator"), _msg("land rex-x"), _msg("thanks")])
+    c.sh("git", "remote", "set-url", "origin", os.path.join(c.root, "no-such-origin.git"))
+    t0 = time.time()
+    res = c.run("git-guard.py", c.payload("Bash", {"command": STAND_CMD}))
+    if "origin could not be reached" not in res[2] or time.time() - t0 >= 10:
+        return (0, "", "")
+    return res
 
 
 @case("git-guard: landing refusal says what to do and echoes the command", "refuse")
@@ -408,6 +544,96 @@ def _(c):
     return c.run("review-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py feat --commit"}))
 
 
+# review-guard: a review recorded in another window
+RLAND = "py -3 tools/try.py claude/b --commit"
+
+
+def _big_branch(c, push=True):
+    c.sh(*GIT, "commit", "--allow-empty", "-q", "-m", "x")
+    c.sh("git", "branch", "-m", "main")
+    c.sh("git", "checkout", "-q", "-b", "claude/b")
+    c.file("js/big.js", "x\n" * 200)
+    c.sh("git", "add", "js/big.js")
+    c.sh(*GIT, "commit", "-q", "-m", "big")
+    _origin(c, push)
+
+
+def _mark_reviewed(c):
+    tip = subprocess.run(["git", "rev-parse", "HEAD"], cwd=c.proj, capture_output=True, text=True,
+                         stdin=subprocess.DEVNULL).stdout.strip()
+    c.file(".claude/reviewed.json", json.dumps({"claude/b": [tip]}))
+
+
+def _new_commit(c):
+    _mark_reviewed(c)
+    c.file("js/more.js", "y\n")
+    c.sh("git", "add", "js/more.js")
+    c.sh(*GIT, "commit", "-q", "-m", "more")
+
+
+def _merge_main(c):
+    _mark_reviewed(c)
+    c.sh("git", "checkout", "-q", "main")
+    c.file("js/m.js", "m\n")
+    c.sh("git", "add", "js/m.js")
+    c.sh(*GIT, "commit", "-q", "-m", "m")
+    c.sh("git", "checkout", "-q", "claude/b")
+    c.sh(*GIT, "merge", "-q", "--no-ff", "-m", "merge main", "main")
+
+
+def _landing(name, expect, setup, push=True):
+    def fn(c):
+        _big_branch(c, push)
+        if setup:
+            setup(c)
+        return c.run("review-guard.py", c.payload("Bash", {"command": RLAND}))
+    CASES.append(("review-guard: " + name, expect, fn, None))
+
+
+def _review_then_commit(extra, changed_during=False, overlap=False, stale=False):
+    """The real order: the reviewer starts and stops with uncommitted work, then it is committed."""
+    def setup(c):
+        c.file(".git/info/exclude", ".claude/reviewed.json\n")
+        c.file("js/new.js", "n\n" * 50)
+        d = c.payload(None, None, event="SubagentStop", agent_id="rv1", agent_type="reviewer",
+                      agent_transcript_path=c.transcript)
+        c.write_transcript([{"type": "user", "message": {"role": "user", "content": "x"}}])
+        if stale:  # a launch from three hours ago that never stopped
+            os.makedirs(c.session_dir(), exist_ok=True)
+            with open(os.path.join(c.session_dir(), "review-start.json"), "w", encoding="utf-8") as f:
+                json.dump([[time.time() - 10800, "0" * 40]], f)
+        c.run("context-watch.py", c.payload("Agent", {"subagent_type": "reviewer"}))
+        if overlap:  # a second reviewer starts after the files changed
+            c.file("js/between.js", "b\n")
+            c.run("context-watch.py", c.payload("Agent", {"subagent_type": "reviewer"}))
+        if changed_during:
+            c.file("js/during.js", "d\n")
+        c.run("context-watch.py", d)
+        try:  # test the tree rule alone: not the same-window rule
+            os.remove(os.path.join(c.session_dir(), "context-watch.jsonl"))
+        except OSError:
+            pass
+        c.sh("git", "add", "js/new.js")
+        if extra:
+            c.file("js/extra.js", "e\n")
+            c.sh("git", "add", "js/extra.js")
+        c.sh(*GIT, "commit", "-q", "-m", "new")
+    return setup
+
+
+_landing("review before the commit counts at landing (tree recorded)", "allow", _review_then_commit(False))
+_landing("a tip with content no reviewer saw is refused", "refuse", _review_then_commit(True))
+_landing("a file changed while the reviewer ran: no tree recorded", "refuse", _review_then_commit(False, True))
+_landing("two overlapping reviewers with a change between their starts: no tree recorded", "refuse",
+         _review_then_commit(False, overlap=True))
+_landing("a review start older than two hours is ignored", "allow", _review_then_commit(False, stale=True))
+_landing("branch reviewed in another window", "allow", _mark_reviewed)
+_landing("local-only branch (origin reachable) reviewed in another window", "allow", _mark_reviewed, push=False)
+_landing("branch never reviewed", "refuse", None)
+_landing("branch with new unreviewed commits", "refuse", _new_commit)
+_landing("reviewed tip plus a merge of main", "allow", _merge_main)
+
+
 review("200 lines, command is not a commit", "git status", "allow", 1, 200)
 
 
@@ -541,7 +767,7 @@ def _once_past(c):
     watch(c, 136_000)
     first = watch(c, 151_000)[1]
     second = watch(c, 152_000)[1]
-    return "past this window's line of 150,000" in first and "CONTEXT WATCH" not in second, first + second
+    return "100% of the line of 150,000" in first and "Start no new step" in first and "CONTEXT WATCH" not in second, first + second
 
 
 check("context-watch: quiet below 90% of the line", _quiet_below)
@@ -602,7 +828,7 @@ def _coordinator_later(c):
     fourth = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
     return ("90% of the line of 150,000" in first and "90% of the line of 120,000" in second
             and NOTE in second and "CONTEXT WATCH" not in third
-            and "past this window's line of 120,000" in fourth and NOTE not in fourth), first + second + fourth
+            and "Finish this round" in fourth and NOTE not in fourth), first + second + fourth
 
 
 check("context-watch: coordinator: as a later prompt gets 120,000 and re-arms the warnings", _coordinator_later)
@@ -634,6 +860,95 @@ def _background_first(c):
 
 check("context-watch: Background/Task: coordinator: first prompt stays 150,000",
       lambda c: ("of the line of 150,000" in (o := _background_first(c)) and NOTE not in o, o))
+def _pasted_later(c):
+    first = watch(c, 100_000, event="UserPromptSubmit", text="Not now")[1]
+    second = _submit(c, '<pasted_content id="1">\ncoordinator: go', 110_000)
+    return "CONTEXT WATCH" not in first and "91% of the line of 120,000" in second and NOTE in second, first + second
+
+
+check("context-watch: coordinator: after a pasted_content tag in a later prompt gets 120,000", _pasted_later)
+
+
+def _warning_texts(c):
+    coord = _submit(c, "coordinator: go", 110_000)
+    c2 = _submit(c, "next", 110_000)
+    return ("Finish this round, then end the turn telling the owner to type /clear and then coordinator. Write no handoff." in coord
+            and "handoff.md" not in coord and c2 == "", coord + c2)
+
+
+def _other_text(c):
+    out = _submit(c, "fix the bug", 137_000)
+    return ("Finish the current step, commit, write .claude/handoff.md (handoff skill) and end the turn with the go prompt. Start no new step." in out
+            and "Write no handoff" not in out), out
+
+
+check("context-watch: coordinator warning says /clear then coordinator, no handoff", _warning_texts)
+check("context-watch: other windows are told to write the handoff and end with the go prompt", _other_text)
+
+
+def _coordinator_repeats_past(c):
+    _submit(c, "coordinator: go", 110_000)
+    a = _submit(c, "more", 121_000)
+    b = _submit(c, "more", 122_000)
+    return a.count("Finish this round") == 1 and b.count("Finish this round") == 1, a + b
+
+
+check("context-watch: past the line the warning repeats on every owner prompt", _coordinator_repeats_past)
+
+
+def _stop_handoff(c, handoff, coordinator=False, warned=True, async_bg=False, run=None, extra_env=None, tail=b""):
+    """stop-guard (worktree-less cloud mode) with a context state file."""
+    c.file("js/dirty.js", "x\n")
+    now = time.time()
+    entries = [FIRST_PROMPT]
+    if async_bg:
+        entries += [{"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "id": "toolu_as1", "name": "Agent", "input": {"prompt": "p"}}]}},
+            {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "toolu_as1",
+             "content": [{"type": "text", "text": "Async agent launched successfully."}]}]}}]
+    c.write_transcript(entries)
+    if tail:
+        with open(c.transcript, "ab") as f:
+            f.write(tail)
+    state = {"main": {"warned": now - 100} if warned else {}, "agents": {}}
+    if coordinator:
+        state["main"]["run"] = "coordinator"
+    if run:
+        state["main"]["run"] = run
+    os.makedirs(c.session_dir(), exist_ok=True)
+    with open(os.path.join(c.session_dir(), "context-watch.state.json"), "w", encoding="utf-8") as f:
+        json.dump(state, f)
+    if handoff:
+        c.file(".claude/handoff.md", "# Handoff\n")
+        hp = os.path.join(c.proj, ".claude", "handoff.md")
+        os.utime(hp, (now + (10 if handoff == "new" else -1000),) * 2)
+    env = dict(os.environ, CLAUDE_CODE_REMOTE="true", CLAUDE_PROJECT_DIR=c.proj, **(extra_env or {}))
+    p = subprocess.run([sys.executable, os.path.join(c.hooks, "stop-guard.py")],
+                       input=json.dumps(c.payload(None, None, event="Stop")), capture_output=True,
+                       text=True, encoding="utf-8", cwd=c.proj, env=env, timeout=30)
+    return p.stdout
+
+
+check("stop-guard: warned window with no handoff is blocked, naming the handoff and go prompt",
+      lambda c: ("handoff.md" in (o := _stop_handoff(c, None)) and "go prompt" in o and '"block"' in o, o))
+check("stop-guard: warned window with an older handoff is blocked",
+      lambda c: ('"block"' in (o := _stop_handoff(c, "old")) and "handoff.md" in o, o))
+check("stop-guard: warned window with a newer handoff gets the usual dirty-tree check only",
+      lambda c: ("go prompt" not in (o := _stop_handoff(c, "new")), o))
+check("stop-guard: the coordinator is not asked for a handoff",
+      lambda c: ("go prompt" not in (o := _stop_handoff(c, None, coordinator=True)), o))
+check("stop-guard: a plan supervisor is not asked for a handoff",
+      lambda c: ("go prompt" not in (o := _stop_handoff(c, None, run="supervisor")), o))
+check("stop-guard: a headless plan session is not asked for a handoff",
+      lambda c: ("go prompt" not in (o := _stop_handoff(c, None, extra_env={"AUTOPLAN_LINE": "150000"})), o))
+check("stop-guard: a window never warned is not asked for a handoff",
+      lambda c: ("go prompt" not in (o := _stop_handoff(c, None, warned=False)), o))
+check("stop-guard: dirty tree passes while an async-launched agent has not reported",
+      lambda c: ((o := _stop_handoff(c, "new", warned=False, async_bg=True)) == "", o))
+check("stop-guard: a transcript still being written (broken last line) still counts the running agent",
+      lambda c: ((o := _stop_handoff(c, "new", warned=False, async_bg=True, tail=b'{"type": "user", "x": "\xc3')) == "", o))
+check("stop-guard: dirty tree is blocked with no async agent running",
+      lambda c: ('"block"' in (o := _stop_handoff(c, "new", warned=False)), o))
 check("context-watch: coordinator: in a cross-session wrapper stays 150,000",
       lambda c: ("of the line of 150,000" in (o := _submit(c, '<cross-session-message from="x">coordinator: go</cross-session-message>', 137_000)) and NOTE not in o, o))
 check("context-watch: coordinator in the middle of a prompt stays 150,000",
@@ -670,8 +985,8 @@ def _plain_quiet_prompts(c):
     past = prompt(c, "context-watch.py", "now")[1]
     c.write_transcript([FIRST_PROMPT, usage_turn(152_000)])
     after = prompt(c, "context-watch.py", "more")[1]
-    return ("CONTEXT WATCH" not in "".join(outs) and "past this window's line of 150,000" in past
-            and "CONTEXT WATCH" not in after), "".join(outs) + past + after
+    return ("CONTEXT WATCH" not in "".join(outs) and "Start no new step" in past
+            and "Start no new step" in after), "".join(outs) + past + after
 
 
 def _coordinator_160_162(c):
@@ -681,7 +996,7 @@ def _coordinator_160_162(c):
             and "90% of the line of 120,000" in warn), quiet + warn
 
 
-check("context-watch: prompts after the 90% warning print nothing; passing 150,000 prints once", _plain_quiet_prompts)
+check("context-watch: prompts after the 90% warning print nothing; past 150,000 every prompt repeats it", _plain_quiet_prompts)
 check("context-watch: a coordinator window is quiet at 160,000 and warns at 162,000", _coordinator_160_162)
 
 
@@ -733,6 +1048,28 @@ def _mode_cap(c):
 check("session-start: an oversized mode text is cut under the cap with a truncation line", _mode_cap)
 
 
+def _modes_fit(c):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("session_start", os.path.join(HERE, "session-start.py"))
+    ss = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ss)
+    base = os.path.join(HERE, "..")
+    over = []
+    for mode in ("shared", "worktree", "cloud"):
+        n = 0
+        for rel in ("modes", os.path.join("project", "modes")):
+            p = os.path.join(base, rel, mode + ".md")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8", errors="ignore") as f:
+                    n += len(f.read().strip().encode("utf-8")) + 2
+        if n - 2 > ss.MODE_CAP:
+            over.append("%s %d" % (mode, n - 2))
+    return not over, "over the cap: " + ", ".join(over)
+
+
+check("session-start: every mode file plus its project half fits under the cap", _modes_fit)
+
+
 def run_case(name, expect, fn, xfail):
     root = tempfile.mkdtemp(prefix="hooks-test-")
     try:
@@ -744,6 +1081,79 @@ def run_case(name, expect, fn, xfail):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return ok, res
+
+
+# context-watch.py: the coordinator and sub-chat procedures (.claude/project/)
+PROJECT_DIR = os.path.join(os.path.dirname(HERE), "project")
+
+
+def _procedures(c):
+    for n in ("coordinator.md", "sub-chat.md"):
+        with open(os.path.join(PROJECT_DIR, n), encoding="utf-8") as f:
+            c.file(".claude/project/" + n, f.read())
+
+
+def _board_row(c, **row):
+    common = os.path.join(c.proj, ".git")
+    r = {"branch": "feature", "name": "feature", "session": "", "task": "", "state": "working",
+         "line": "", "go": "", "at": time.time(), "seen": 0, "role": ""}
+    r.update(row)
+    c.file(".claude/board.json", json.dumps({"meta": {}, "rows": {"feature": r}}))
+    return common
+
+
+def _coordinator_proc(c):
+    _procedures(c)
+    first = _submit(c, "coordinator: go", 50_000)
+    second = _submit(c, "and then?", 50_000)
+    with open(os.path.join(PROJECT_DIR, "coordinator.md"), encoding="utf-8") as f:
+        body = f.read().strip()
+    return first.count(body) == 1 and "wins over workflow.md" in first and body not in second, first + second
+
+
+check("context-watch: a coordinator prompt prints coordinator.md once", _coordinator_proc)
+
+
+def _sub_chat_proc(c, **row):
+    _procedures(c)
+    _board_row(c, **row)
+    first = _submit(c, "go: the task", 50_000)
+    second = _submit(c, "next", 50_000)
+    return first, second
+
+
+def _added_row(c):
+    first, second = _sub_chat_proc(c, added=1)
+    with open(os.path.join(PROJECT_DIR, "sub-chat.md"), encoding="utf-8") as f:
+        body = f.read().strip()
+    return first.count(body) == 1 and "coordinator.md" not in first and body not in second, first + second
+
+
+def _hook_row(c):
+    first, second = _sub_chat_proc(c)
+    return first == "" and second == "", first + second
+
+
+def _ordinary(c):
+    _procedures(c)
+    return _submit(c, "fix the bug", 50_000) == "", ""
+
+
+def _missing(c):
+    _board_row(c, added=1)
+    return _submit(c, "go: the task", 50_000) == "" and _submit(c, "coordinator: go", 50_000) != "", ""
+
+
+def _small_enough(c):
+    n = max(os.path.getsize(os.path.join(PROJECT_DIR, f)) for f in ("coordinator.md", "sub-chat.md"))
+    return n + 300 < 9000, "largest file %d bytes" % n
+
+
+check("context-watch: a coordinator-added row's chat gets sub-chat.md once", _added_row)
+check("context-watch: a hook-made row's chat gets nothing", _hook_row)
+check("context-watch: an ordinary window gets no procedure", _ordinary)
+check("context-watch: a missing procedure file prints nothing, and the coordinator note still comes", _missing)
+check("context-watch: each procedure file stays under 9,000 characters with its header", _small_enough)
 
 
 def main():

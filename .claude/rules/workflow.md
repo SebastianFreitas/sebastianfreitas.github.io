@@ -70,17 +70,20 @@ Changes in the owner's reply are sorted the same way, on the same branch.
 
 ## Context budget
 
-Auto-compact is off; never compact or clear yourself. `context-watch.py`
+Auto-compact is off; no `/compact` and no `clear_session` on your own
+window (the coordinator clears the chats it started). `context-watch.py`
 prints `CONTEXT WATCH` at 90% of the line and past it. Lines:
 coordinator 120k; plan supervisor and headless plan sessions 250k
 (killed at 300k); other app windows 150k; Explore, Plan,
 claude-code-guide, researcher 100k; plan-writer 120k; implementer 60k;
 reviewer, reviewer-light, plan-reviewer, look-judge 80k. A subagent at
 1.25x its line is denied tools. Every subagent runs in the background.
-Past its line a main session finishes the step, commits, writes the
+On `CONTEXT WATCH` a main session finishes the step, commits, writes the
 handoff and ends with the report and go prompt (playbook "Context
-full"). A `coordinator:` prompt makes its window the coordinator
-(Sonnet medium, state on the board): `.claude/project/coordinator.md`.
+full"); the coordinator writes no handoff: `/clear` then `coordinator`.
+A `coordinator:` window follows `.claude/project/coordinator.md` (Sonnet
+medium, state on the board), a chat it started `sub-chat.md`; a hook
+prints each, and they win over this file where they differ.
 
 ## Token rules (this window; helpers get the Hard rules in their agent file)
 

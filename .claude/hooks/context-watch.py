@@ -6,8 +6,8 @@ and says to finish and hand off past it (rules in .claude/rules/
 workflow.md "Context budget"; handoff format in .claude/skills/handoff).
 The line depends on the window:
 - a headless plan session: AUTOPLAN_LINE from tools/autoplan.py;
-- the coordinator window (a prompt whose first line starts `coordinator:`,
-  or is just `coordinator`, at any point of the window; remembered until
+- the coordinator window (any owner prompt that starts `coordinator:`
+  or is just `coordinator`, also after a <pasted_content> tag; remembered until
   /clear or a new chat; the warnings re-arm against the new line):
   COORD_LIMIT (120,000), because it runs on Sonnet and keeps its state on
   the board, so it can be cleared freely; the kind is stored, so the line
@@ -38,7 +38,8 @@ line), not on every tool call: past the line every call used to repeat
 the warning (one session got it 25 times), each one costing tokens in
 the window it was protecting. The crossing state is
 `<session dir>/context-watch.state.json`; a new prompt (UserPromptSubmit)
-does not repeat it: the main session hears each crossing once. The
+does not repeat it, except past the line, where every owner prompt repeats
+it (state "warned" = first crossing time, read by stop-guard.py). The
 deny past HARD is not a warning and stays on every call.
 
 transcript_path is always the parent session's transcript; a subagent's
@@ -52,7 +53,10 @@ Never fails the hook: any error exits 0 (and allows the tool).
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
@@ -69,7 +73,7 @@ RUN_LIMIT = 250_000   # a plan run's supervisor
 # a prompt that starts `coordinator:` or is just `coordinator`: it skips leading reminder blocks, but not the
 # "Background (...):" paragraph or "Task:" label of a chat another session
 # opened, which is never the coordinator
-COORDINATOR_PROMPT = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>)*\s*coordinator[ \t]*(:|$)", re.I | re.S)
+COORDINATOR_PROMPT = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>|\s*<pasted_content\b[^>]*>)*\s*coordinator[ \t]*(:|$)", re.I | re.S)
 NOTES = []            # lines main_line wants printed with this event's output
 SUPERVISOR_PROMPT = re.compile(r"go: run plan |carry on running plan ")
 # py / py.exe / python / python3 / python3.12 (bare, as a path, quoted or
@@ -213,6 +217,38 @@ def tier_of(used, limit, soft):
     return 0
 
 
+def procedure(name, d):
+    """The text of .claude/project/<name> under one line saying it is this
+    window's procedure; "" when the file is missing. The test checks the size
+    (hook context cap 10,000 characters), not this."""
+    for base in (os.environ.get("CLAUDE_PROJECT_DIR"), d.get("cwd"),
+                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))):
+        try:
+            with open(os.path.join(base, ".claude", "project", name), encoding="utf-8") as f:
+                body = f.read().strip()
+            return (f"PROCEDURE: this is this window's procedure (.claude/project/{name}); "
+                    f"it wins over workflow.md.\n{body}")
+        except (OSError, TypeError):
+            continue
+    return ""
+
+
+def coordinator_added(d):
+    """True when the board row of this window's branch was made by
+    `board.py add` (the coordinator started this chat), not by the board hook."""
+    def git(*a):
+        r = subprocess.run(["git", *a], cwd=d.get("cwd"), capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    branch = git("symbolic-ref", "--short", "HEAD")
+    common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    bf = os.environ.get("BOARD_FILE") or (common and os.path.join(os.path.dirname(common), ".claude", "board.json"))
+    if not (branch and bf):
+        return False
+    with open(bf, encoding="utf-8") as f:
+        row = json.load(f).get("rows", {}).get(branch)
+    return bool(row and row.get("added"))
+
+
 def main_line(d, state):
     """(limit, kind) for this app window; kind is "coordinator",
     "supervisor" or ""."""
@@ -223,8 +259,10 @@ def main_line(d, state):
         except ValueError:
             pass
     kind = state["main"].get("run")
-    if kind:
-        return (COORD_LIMIT if kind == "coordinator" else RUN_LIMIT), kind
+    if kind == "coordinator":
+        return COORD_LIMIT, kind
+    if kind and d.get("hook_event_name") != "UserPromptSubmit":
+        return RUN_LIMIT, kind
     text = d.get("prompt") or ""
     if not text and d.get("tool_name") in ("Bash", "PowerShell"):
         text = (d.get("tool_input") or {}).get("command") or ""
@@ -243,9 +281,15 @@ def main_line(d, state):
         # the line moved: tiers crossed under the old line no longer hold
         state["main"]["run"] = "coordinator"
         state["main"]["tier"] = 0
+        state["main"].pop("warned", None)
         NOTES.append("CONTEXT WATCH: coordinator window, line "
                      f"{COORD_LIMIT // 1000}k until /clear.")
+        if state["main"].get("proc") != "coordinator":
+            state["main"]["proc"] = "coordinator"
+            NOTES.append(procedure("coordinator.md", d))
         return COORD_LIMIT, "coordinator"
+    if kind:
+        return RUN_LIMIT, kind
     if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
         state["main"]["run"] = "supervisor"
         state["main"]["tier"] = 0
@@ -267,17 +311,21 @@ def main_message(used, limit, tier, kind):
                     "atomic step (an implementer already running may "
                     "finish; start nothing new), verify, commit, then follow "
                     "your mode file's 'Context full' rule.")
-        return (f"CONTEXT WATCH: {used:,} tokens in context, past this "
-                f"window's line of {limit:,}. Finish only the spec or step "
-                "you are on, write .claude/handoff.md (handoff skill: Next "
-                "lists what is still to write or do, with the anchors you "
-                "already have), and end the turn as 'Context budget' says. "
-                "Read nothing more yourself.")
-    if tier == 1:
+    elif tier == 1 and (kind == "supervisor" or os.environ.get("AUTOPLAN_LINE")):
         return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of "
                 f"the line of {limit:,}). Prefer finishing over starting "
                 "new work; read nothing more yourself (Explore brings "
                 "anchors and excerpts).")
+    if tier >= 1:
+        if kind == "coordinator":
+            return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of "
+                    f"the line of {limit:,}). Finish this round, then end the "
+                    "turn telling the owner to type /clear and then "
+                    "coordinator. Write no handoff.")
+        return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of the "
+                f"line of {limit:,}). Finish the current step, commit, write "
+                ".claude/handoff.md (handoff skill) and end the turn with the "
+                "go prompt. Start no new step.")
     return None
 
 
@@ -302,6 +350,103 @@ def emit(event, msg):
         "hookEventName": event, "additionalContext": msg}}))
 
 
+def working_tree(cwd):
+    """Tree hash of the working tree, taken with a temporary index (the real
+    index and stash stay alone); "" when git fails."""
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            env = dict(os.environ, GIT_INDEX_FILE=os.path.join(tmp, "index"))
+            kw = dict(cwd=cwd, env=env, capture_output=True, text=True, timeout=30)
+            if subprocess.run(["git", "add", "-A"], **kw).returncode == 0:
+                r = subprocess.run(["git", "write-tree"], **kw)
+                return r.stdout.strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return ""
+
+
+def review_start_path(transcript_path):
+    return os.path.join(session_dir(transcript_path), "review-start.json")
+
+
+def note_review_start(d):
+    """PreToolUse on the Agent tool for reviewer / reviewer-light: remember the
+    working tree the reviewer starts on (oldest launch first)."""
+    if d.get("tool_name") not in ("Agent", "Task"):
+        return
+    if (d.get("tool_input") or {}).get("subagent_type") not in ("reviewer", "reviewer-light"):
+        return
+    path = d.get("transcript_path")
+    tree = working_tree(d.get("cwd"))
+    if not (path and tree):
+        return
+    sp = review_start_path(path)
+    try:
+        with open(sp, encoding="utf-8") as f:
+            starts = json.load(f)
+    except (OSError, ValueError):
+        starts = []
+    os.makedirs(os.path.dirname(sp), exist_ok=True)
+    with open(sp, "w", encoding="utf-8") as f:
+        json.dump(_fresh_starts(starts)[-9:] + [[time.time(), tree]], f)
+
+
+def _fresh_starts(starts):
+    """The [time, tree] start entries from the last two hours."""
+    now = time.time()
+    return [s for s in (starts if isinstance(starts, list) else [])
+            if isinstance(s, list) and len(s) == 2 and isinstance(s[0], (int, float))
+            and now - s[0] < 7200]
+
+
+def pop_review_start(transcript_path, tree):
+    """True when every start entry from the last two hours holds `tree` (and at
+    least one exists); one entry is removed, and older ones are dropped."""
+    if not transcript_path:
+        return False
+    sp = review_start_path(transcript_path)
+    try:
+        with open(sp, encoding="utf-8") as f:
+            starts = _fresh_starts(json.load(f))
+        same = bool(starts) and all(s[1] == tree for s in starts)
+        with open(sp, "w", encoding="utf-8") as f:
+            json.dump(starts[1:], f)
+        return same
+    except (OSError, ValueError):
+        return False
+
+
+def record_review(d):
+    """A reviewer run is recorded for the branch and tip it saw, in
+    <main checkout>/.claude/reviewed.json (next to board.json), so review-guard
+    in any worktree of the repo can read it."""
+    def git(*a):
+        r = subprocess.run(["git", *a], cwd=d.get("cwd"), capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    branch = git("symbolic-ref", "--short", "HEAD")
+    tip = git("rev-parse", "HEAD")
+    common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    if not (branch and tip and common):
+        return
+    path = os.path.join(os.path.dirname(common), ".claude", "reviewed.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        data = {}
+    data[branch] = (data.get(branch, []) + [tip])[-10:]
+    # the reviewer runs before the commit: also keep the tree of the working
+    # tree it saw, but only when it is the tree the reviewer started on (a
+    # review that ran while files changed saw no single tree)
+    tree = working_tree(d.get("cwd"))
+    same = pop_review_start(d.get("transcript_path"), tree)
+    if tree and same:
+        data[branch + "#trees"] = (data.get(branch + "#trees", []) + [tree])[-10:]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
 def on_subagent_stop(d):
     path = d.get("transcript_path")
     # Never measure a subagent from the parent's transcript (the compaction
@@ -320,6 +465,11 @@ def on_subagent_stop(d):
                                 "reported": False}) + "\n")
     except OSError:
         pass
+    if agent_type in ("reviewer", "reviewer-light"):
+        try:
+            record_review(d)
+        except Exception:
+            pass
     if limit is None:
         msg = f"SUBAGENT CONTEXT: {agent_type} {agent_id} peaked at {peak:,} tokens"
     else:
@@ -423,13 +573,25 @@ def on_main(d, ev, path):
             tier = tier_of(used, limit, MAIN_SOFT)
             last = int(state["main"].get("tier", 0))
             # speaks only when a threshold is crossed, on a prompt or a call
-            if tier > last:
+            # past the line it repeats on every owner prompt
+            if tier > last or (tier == 2 and ev == "UserPromptSubmit"):
                 m = main_message(used, limit, tier, kind)
                 if m:
                     parts.append(m)
+                if tier and not state["main"].get("warned"):
+                    state["main"]["warned"] = time.time()
             state["main"]["tier"] = max(tier, last)
             write_state(path, state)
-    parts = NOTES + parts
+    # a sub-chat the coordinator started: its procedure, once per window
+    if not state["main"].get("proc") and not state["main"].get("run"):
+        state["main"]["proc"] = "checked"
+        try:
+            if coordinator_added(d):
+                NOTES.append(procedure("sub-chat.md", d))
+        except Exception:
+            pass
+        write_state(path, state)
+    parts = [n for n in NOTES if n] + parts
     try:
         parts += ledger_messages(path)
     except OSError:
@@ -455,6 +617,11 @@ def main():
     if ev == "SubagentStop":
         on_subagent_stop(d)
         return
+    if ev == "PreToolUse" and not d.get("agent_id"):
+        try:
+            note_review_start(d)
+        except Exception:
+            pass
     if d.get("agent_id"):
         if ev in ("PreToolUse", "PostToolUse"):
             on_subagent_tool(d, ev)

@@ -6,8 +6,13 @@ may not end with work that the owner's Commit command would miss.
 - Cloud: commits not pushed to the branch's remote -> block once.
 
 A background helper this window launched that has not reported yet (an Agent
-tool_use with run_in_background and no task-notification naming its id)
-passes too: the dirty files are its unfinished edits.
+launch answered "Async agent launched", or with run_in_background, and no
+task-notification naming its id) passes too: the dirty files are its
+unfinished edits.
+
+Any window but the coordinator that has had its 90% context warning (state
+file of context-watch.py) is blocked once if .claude/handoff.md is missing
+or older than the warning (not while a background helper runs).
 
 Shared mode is never checked: foreign edits make "uncommitted" meaningless
 there. A second stop in a row (stop_hook_active) always passes, so the
@@ -46,15 +51,22 @@ def mode():
 
 def background_outstanding(transcript_path):
     """True when an Agent launched in the background has no task-notification
-    yet. Any read or parse problem gives False (the guard then runs)."""
+    yet. The transcript may still be written to: bytes that do not decode are
+    replaced and a last line that does not parse is skipped. A read problem
+    gives False (the guard then runs), except after a launch was seen: then an
+    agent counts as still running."""
+    launched, done = set(), set()
     try:
         if not transcript_path:
             return False
-        launched, done = set(), set()
-        with open(transcript_path, encoding="utf-8") as f:
+        with open(transcript_path, encoding="utf-8", errors="replace") as f:
             for line in f:
                 if "<task-notification>" in line:
                     done.update(re.findall(r"<tool-use-id>\s*([^<\s]+?)\s*<\\?/tool-use-id>", line))
+                if "Async agent launched" in line:
+                    # agents run in the background without the input flag:
+                    # the tool_result is what says so
+                    launched.update(re.findall(r'"tool_use_id":\s*"([^"]+)"', line))
                 if '"tool_use"' not in line or "run_in_background" not in line:
                     continue
                 try:
@@ -69,14 +81,45 @@ def background_outstanding(transcript_path):
                         launched.add(b.get("id"))
         return bool(launched - done)
     except Exception:
-        return False
+        return bool(launched)
+
+
+def handoff_missing(d):
+    """The go prompt reason when this window had its context warning, is not
+    the coordinator and has no .claude/handoff.md newer than that warning."""
+    try:
+        tp = d.get("transcript_path")
+        if not tp or d.get("agent_id"):
+            return ""
+        with open(os.path.join(os.path.splitext(os.path.normpath(tp))[0],
+                               "context-watch.state.json"), encoding="utf-8") as f:
+            main_state = json.load(f).get("main") or {}
+        warned = main_state.get("warned")
+        if not warned or main_state.get("run") in ("coordinator", "supervisor"):
+            return ""
+        if os.environ.get("AUTOPLAN_LINE") or os.environ.get("AUTOPLAN") == "1":
+            return ""  # a headless plan session has no go prompt
+        h = os.path.join(d.get("cwd") or os.getcwd(), ".claude", "handoff.md")
+        if os.path.exists(h) and os.path.getmtime(h) >= float(warned):
+            return ""
+        return ("Stop guard: this window passed its context warning and "
+                ".claude/handoff.md is missing or older than it. Write it "
+                "(handoff skill) and end the turn with the go prompt. If you "
+                "are stopping on purpose, say so in one line and stop again.")
+    except Exception:
+        return ""
 
 
 def main():
     d = json.load(sys.stdin)
     if d.get("stop_hook_active"):
         return
-    if background_outstanding(d.get("transcript_path")):
+    bg = background_outstanding(d.get("transcript_path"))
+    r = "" if bg else handoff_missing(d)
+    if r:
+        print(json.dumps({"decision": "block", "reason": r}))
+        return
+    if bg:
         return
     os.chdir(d.get("cwd") or os.getcwd())
     m = mode()

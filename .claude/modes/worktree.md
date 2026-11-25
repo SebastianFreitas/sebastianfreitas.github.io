@@ -1,83 +1,60 @@
 ## Worktree mode
 
 This session has its own checkout under `.claude/worktrees/<name>` on its
-own `claude/<name>` branch. The settings ask for it to be cut from the
-main checkout's `HEAD` (`worktree.baseRef: "head"`), but the desktop app
-cuts it from `origin/main` (seen 2026-10-01), which is why Commit pushes
-`main` and session start prints WORKTREE BEHIND MAIN when this branch
-lacks commits from local `main`. It shares only `.git` with the main checkout, so no
-other session touches these files and there are no foreign edits.
+own `claude/<name>` branch, sharing only `.git` with the main checkout: no
+foreign edits. The app may cut it from `origin/main`; session start prints
+WORKTREE BEHIND MAIN when this branch lacks commits from local `main`.
 
 - **Commit on this branch, by path. Never push, never open a PR, never
-  merge into `main`** (merging `main` INTO this branch is fine: at
-  session start when the hook prints WORKTREE BEHIND MAIN, or to resolve
-  a conflict the owner reports; never mid-run on your own). The branch stays local;
-  `try.py` reads it from here.
+  merge into `main`.** Merging `main` INTO this branch is fine when the
+  hook prints WORKTREE BEHIND MAIN or to resolve a conflict the owner
+  reports, never mid-run on your own.
 - **Landing steps are not yours.** Never run a step the project's notes
-  below reserve for landing (a cache-bust, a version bump) and never
-  rewrite an existing `.claude/MAP.md` row beyond what your change needs.
-  Add rows for new files and update descriptions only. Those two are where merge
-  conflicts between parallel branches came from; `--commit` runs the
-  landing steps once on merge.
-- Commit everything before the report: `--commit` merges commits only,
-  and the Stop hook refuses to end a turn with uncommitted files.
-- Baselines (the project's snapshots, fingerprints, dumps): re-record
-  one only when the change is meant to alter it, and say so in the
-  report. Two branches that both re-record conflict at Commit; then
-  `git merge main` here, re-run the tool and re-record again.
-- Anything gitignored (snapshots, build output) is not shared with the
-  main checkout: produce your own "before" here before any code changes.
-- Commands use `py -3`, exactly as in `CLAUDE.md`.
+  below reserve for landing (a cache-bust, a version bump); never rewrite an existing `.claude/MAP.md` row beyond what your change needs;
+  add rows for new files and update descriptions only. `--commit` runs the landing steps once.
+- Commit everything before the report: `--commit` merges commits only;
+  the Stop hook refuses a turn end with uncommitted files.
+- Baselines (snapshots, fingerprints, dumps): re-record one only when the
+  change is meant to alter it, and say so. Two branches that both
+  re-record conflict at Commit: `git merge main`, re-run, re-record.
+- Gitignored output is not shared with the main checkout: make your own
+  "before" here before changing code. Commands use `py -3`.
 
 ### Report commands
 
-Replace `<branch>` with `git branch --show-current` and `<main
-checkout>` with the path in the `MODE:` line.
+`<branch>`: `git branch --show-current`; `<main checkout>`: the `MODE:`
+line's path.
 
 - **Try:** `py -3 <main checkout>/tools/try.py <branch>` plus the
-  project's Try flags (its notes below) checks the branch out into a
-  sibling `-try` worktree and launches it; typing `commit` at its prompt
-  does the Commit step.
+  project's Try flags (notes below) opens the branch in a sibling `-try`
+  worktree; `commit` at its prompt does Commit.
 - **Commit:** `py -3 <main checkout>/tools/try.py <branch> --commit`
-  builds one squash commit on top of local `main` without touching the
-  main checkout's files, runs the project's landing steps and checks on
-  the combined tree in the `-try` checkout, then fast-forwards `main`,
-  moves this branch onto `main` and pushes `main` (only `main`,
-  only after it landed). The commit has one parent, so main's history
-  gets one entry per landing, never the branch's own commits. On a conflict, a failed
-  check, or the owner's uncommitted edits in a file the branch changes,
-  it lands nothing and says why; then run `git merge main` here,
-  resolve, verify, commit, and run it again.
-  **Only with the owner's OK** (owner's call, 2026-10-01, replacing
-  "run it yourself"): work stays on this branch until the owner says
-  so. The report hands over the command; the owner runs it, or replies
-  "merge it" / "land it", and only then do you run it.
-  `git-guard.py` refuses it unless the owner's latest message says
-  merge or land. The squash takes the branch tip's message as its own
-  (plus a deduped list of the round's commit titles), so the tip's
-  message describes everything this landing adds over `main`: the
-  feature on a first landing, only the follow-up on a later one
-  ("Perf overlay: ...", never the first landing's text again; owner,
-  2026-10-05, after Van Gunner's main showed one message up to four
-  times). Other commits in a round say what they changed in a few
-  words; never repeat a message already on the branch or on `main`.
+  builds one squash commit on local `main`, runs the landing steps and
+  checks on the combined tree in the `-try` checkout, then fast-forwards `main`, moves this branch
+  onto it and pushes `main` (only `main`, only after it landed). On a
+  conflict, failed check, or the owner's uncommitted edits in a file the
+  branch changes it lands nothing: `git merge main` here, resolve, verify,
+  commit, run it again.
+  **Only with the owner's OK:** the report hands over the command; the
+  owner runs it, or replies "merge it" / "land it", and only then do you
+  (`git-guard.py` refuses it otherwise). The squash takes the
+  tip's message, so the tip describes everything this landing adds over
+  `main`: the feature on a first landing, only the follow-up on a later
+  one. Other commits: a few words on what changed, never a message already on
+  the branch or `main`.
 
-**Done state.** When you ran the Commit on the owner's OK and it
-printed `LANDED:`, do playbook "Landed" (mark this session done).
+**Done state.** After Commit (run on the owner's OK) prints `LANDED:`, do
+playbook "Landed" (mark this session done).
 
-After a Commit, the command already moved this branch onto `main`, so
-a follow-up round just commits on the same branch and ends with the same
-report. If Commit said it could not move the branch, start the next
-round with `git merge main` here. Archiving the session in the app
-removes the worktree.
+After a Commit the branch is on `main`: a follow-up round commits on it
+and ends with the same report. If Commit could not move the branch, start
+the next round with `git merge main`.
 
 ### Context full
 
-The rule is `workflow.md`'s "Context budget" (stop, handoff, owner
-clears). Commit on the branch first; `.claude/handoff.md` stays in this
-worktree (gitignored). After `/clear` it is the same worktree and branch:
-never open a new one for the same work; the go prompt names both and the
-fresh window checks them (`workflow.md` "The go prompt"). If the owner
-opens a new chat instead, that gets a fresh worktree from `main` with no
-handoff: it runs `git merge <branch named in the go prompt>` first, so
-put the Next list in the report's "Look at" too.
+Rule: `workflow.md` "Context budget". Commit first; `.claude/handoff.md`
+stays in this worktree (gitignored). After `/clear` it is the same
+worktree and branch: never open a new one for the same work; the go prompt
+names both (`workflow.md` "The go prompt"). A new chat gets a fresh
+worktree from `main` with no handoff: it runs `git merge <branch named in
+the go prompt>` first, so put the Next list in the report's "Look at" too.

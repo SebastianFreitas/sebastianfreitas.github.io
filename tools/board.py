@@ -175,6 +175,7 @@ def record(event):
         ev = event.get("hook_event_name")
         if ev == "UserPromptSubmit":
             p = strip_reminders(event.get("prompt") or "").strip().lower()
+            p = re.sub(r"^(<pasted_content\b[^>]*>\s*)+", "", p)
             coord = p == "coordinator" or p.startswith("coordinator:")
             upd = {"state": "working"}
             if coord:
@@ -269,6 +270,7 @@ def add(name, branch=None, session=None, task=None, state=None):
         key = branch or k or "queued:" + name
         r = rows.pop(k) if k else new_row(branch or "", name)
         r["name"] = name
+        r["added"] = 1  # made by the coordinator, not by the board hook
         if branch:
             r["branch"] = branch
         if session:
@@ -434,6 +436,11 @@ def selftest():
         check("coordinator role", rows()["claude/y"]["role"] == "coordinator" and rows()["claude/y"]["state"] == "working")
         stop("y", "DONE: y")
         check("coordinator hidden", "\ny | " not in "\n" + "\n".join(show(peek=True)) and rows()["claude/y"]["role"] == "coordinator")
+        wts["w"] = os.path.join(repo, ".claude", "worktrees", "w")
+        subprocess.run(["git", "-C", repo, "worktree", "add", "-q", wts["w"], "-b", "claude/w"], check=True)
+        record({"hook_event_name": "UserPromptSubmit", "cwd": wts["w"], "prompt": "Not now"})
+        record({"hook_event_name": "UserPromptSubmit", "cwd": wts["w"], "prompt": '<pasted_content id="1">\ncoordinator: go'})
+        check("coordinator after pasted tag, later prompt", rows()["claude/w"]["role"] == "coordinator")
         add("x", session="local_1")
         stop("x", "DONE: claude/x")
         check("ACT shown", len(acts()) == 1 and not acts())
@@ -453,6 +460,7 @@ def selftest():
         add("x", branch="claude/x", task="t2")
         r = rows()["claude/x"]
         check("add merges hook row", r["state"] == "question" and r["line"] == "QUESTION: keep me" and r["task"] == "t2")
+        check("add marks the row, the hook does not", r.get("added") == 1 and not rows()["claude/w"].get("added"))
         lp = os.environ["BOARD_FILE"] + ".lock"
         with open(lp, "w") as f:
             f.write("")

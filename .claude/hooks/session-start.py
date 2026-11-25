@@ -115,16 +115,19 @@ def mode_rules(root, mode):
         text = (f"(.claude/modes/{mode}.md not found: follow CLAUDE.md and say "
                 "in the report that the mode file is missing.)")
     p = os.path.join(root, ".claude", "project", "modes", mode + ".md")
+    extra = ""
     if os.path.exists(p):
         with open(p, encoding="utf-8", errors="ignore") as f:
             extra = f.read().strip()
-        if extra:
-            text = text + "\n\n" + extra
-    if len(text.encode("utf-8")) > MODE_CAP:
-        cut = text.encode("utf-8")[:MODE_CAP].decode("utf-8", "ignore")
+    # The project notes print whole; the shared text is what gets cut.
+    room = MODE_CAP - len(extra.encode("utf-8")) - 2
+    if len(text.encode("utf-8")) > room:
+        cut = text.encode("utf-8")[:max(room, 0)].decode("utf-8", "ignore")
         cut = cut.rsplit("\n", 1)[0] if "\n" in cut else cut
-        text = (cut.rstrip() + f"\n(truncated: read .claude/modes/{mode}.md and "
-                f".claude/project/modes/{mode}.md for the rest)")
+        text = (cut.rstrip() + f"\n(truncated: read .claude/modes/{mode}.md for "
+                "the rest)")
+    if extra:
+        text = text + "\n\n" + extra
     return text
 
 

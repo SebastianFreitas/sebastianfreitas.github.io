@@ -9,4 +9,5 @@ snapshots/
 .claude/plans/HERE
 .claude/autoplan/
 .claude/board.json
+.claude/reviewed.json
 .claude/board.md

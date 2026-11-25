@@ -16,9 +16,10 @@ project's `generated` globs (.claude/project/file-guard.json: written by a
 tool, not by hand) do not count. Over LINES changed lines or FILES files, the command is refused
 unless this session has already run the `reviewer` subagent: the
 context-watch ledger (`<session dir>/context-watch.jsonl`, written on
-SubagentStop) has an entry whose agent_type is `reviewer`. A review in
-an earlier window does not count: a fresh reviewer run is cheap (medium effort,
-fresh context) and a stale one is worthless.
+SubagentStop) has an entry whose agent_type is `reviewer`. For a commit
+a review in an earlier window does not count: a fresh reviewer run is
+cheap (medium effort, fresh context) and a stale one is worthless. A
+landing also passes on a tip recorded in `.claude/reviewed.json`.
 
 Map check, before the size check, on `git commit` only (a landing's
 commits were checked when they were made): a source file the commit adds
@@ -234,6 +235,98 @@ def reviewed(transcript_path):
     return False
 
 
+TRY_BRANCH_RE = re.compile(r"\btry\.py\s+(?:-\S+\s+)*([^\s-][^\s]*)")
+
+
+class OriginDown(Exception):
+    """origin could not be fetched in time."""
+
+
+def _origin_git(*args):
+    """Run git against origin: 8 s at most, no pipes, no prompt, the whole process
+    tree killed on a timeout (on Windows a plain kill leaves the helpers
+    running). Returns the exit code; raises OriginDown on a timeout."""
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
+    p = subprocess.Popen(
+        ["git", "-c", "credential.interactive=never", "-c", "http.lowSpeedLimit=1000",
+         "-c", "http.lowSpeedTime=5", *args],
+        env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
+    try:
+        return p.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=5)
+        p.kill()
+        p.wait(timeout=5)
+        raise OriginDown()
+
+
+def fetch_origin(branch):
+    """One fetch of `branch`. A failed fetch is fine when origin answers that it
+    has no such branch (a local-only branch, as try.py lands); anything else
+    raises OriginDown."""
+    if _origin_git("fetch", "origin", branch) != 0:
+        if _origin_git("ls-remote", "--exit-code", "origin", "refs/heads/" + branch) != 2:
+            raise OriginDown()
+
+
+def reviewed_elsewhere(cmd):
+    """True when the branch this landing names was reviewed at its current tip
+    (or at a tip it differs from only by merges of main) by a reviewer run in
+    any window of this repo (<main checkout>/.claude/reviewed.json)."""
+    try:
+        m = TRY_BRANCH_RE.search(cmd)
+        if not m:
+            return False
+        branch = m.group(1).strip("\"'")
+        common = git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+        tip = ""
+        # as tools/try.py resolve() does: the local branch, or origin/<branch> when
+        # only the remote has it or the remote is ahead; that ref is what lands
+        if branch.startswith("origin/"):
+            branch = branch[len("origin/"):]
+        cands = [branch] + (["claude/" + branch, "worktree-" + branch] if "/" not in branch else [])
+        for cand in cands:
+            local = git("rev-parse", "--verify", "--quiet", "refs/heads/" + cand).strip()
+            remote = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + cand).strip()
+            if not local and not remote:
+                continue
+            fetch_origin(cand)
+            remote = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + cand).strip()
+            branch = cand
+            behind = local and remote and subprocess.run(
+                ["git", "merge-base", "--is-ancestor", remote, local],
+                capture_output=True, timeout=15).returncode != 0
+            tip = remote if (remote and (not local or behind)) else local
+            break
+        if not (common and tip):
+            return False
+        with open(os.path.join(os.path.dirname(common), ".claude", "reviewed.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        seen = data.get(branch) or []
+        trees = set(data.get(branch + "#trees") or [])
+        if trees:
+            # a review before the commit: some commit holds the tree it saw
+            for line in git("log", "--format=%H %T", "main.." + tip).splitlines():
+                c, _, t = line.partition(" ")
+                if t in trees and not git("rev-list", "--no-merges", c + ".." + tip, "^main").strip():
+                    return True
+        for r in seen:
+            if r == tip:
+                return True
+            ok = subprocess.run(["git", "merge-base", "--is-ancestor", r, tip], capture_output=True, timeout=15)
+            if ok.returncode == 0 and not git("rev-list", "--no-merges", r + ".." + tip, "^main").strip():
+                return True
+    except OriginDown:
+        raise
+    except Exception:
+        pass
+    return False
+
+
 def past_line(transcript_path):
     try:
         sp = os.path.join(session_dir(transcript_path), "context-watch.state.json")
@@ -273,6 +366,15 @@ def main():
         return
     if tp and reviewed(tp):
         return
+    try:
+        if LAND_RE.search(cmd) and reviewed_elsewhere(cmd):
+            return
+    except OriginDown:
+        sys.stderr.write(
+            "Blocked by .claude/hooks/review-guard.py: origin could not be "
+            "reached (fetch failed or took over 8 s); the landing needs origin "
+            "to push main. Run the command again when the network is back.\n")
+        sys.exit(2)
     if is_sketch(cmd):
         return
     if tp and past_line(tp):
@@ -284,14 +386,26 @@ def main():
                 "window is past its context line. Put 'review due' first in "
                 "the handoff's Next.")}}))
         return
+    if LAND_RE.search(cmd):
+        sys.stderr.write(
+            f"Blocked by .claude/hooks/review-guard.py: {len(files)} files and "
+            f"{lines} changed lines in {what} and no reviewer is recorded for "
+            "this branch's current tip. A coordinator does not run a reviewer: "
+            "the chat that built the branch runs it. Send that chat a message "
+            "asking for the review, and land after it has run.\n")
+        sys.exit(2)
     sys.stderr.write(
         f"Blocked by .claude/hooks/review-guard.py: {len(files)} files and "
         f"{lines} changed lines in {what} (the rule: over {LINES} lines or "
         f"{FILES} files gets a review) and no reviewer has run in this "
-        "window. Call the reviewer subagent (foreground) with the spec "
+        "window, and none is recorded for this branch's current tip (a landing "
+        "also passes when a reviewer in any window saw this tip, or a tip "
+        "it differs from only by merges of main). Call the reviewer "
+        "subagent (foreground) with the spec "
         "paths and the changed paths; a gap becomes a new spec for an "
-        "implementer; then run this command again. A review from an "
-        "earlier window does not count: run it again, it is cheap.\n")
+        "implementer; then run this command again. For a commit, a "
+        "review from an earlier window does not count: run it again, "
+        "it is cheap.\n")
     sys.exit(2)
 
 

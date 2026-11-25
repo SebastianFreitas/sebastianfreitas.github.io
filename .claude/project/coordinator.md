@@ -1,5 +1,7 @@
 # Coordinator window procedure
 
+This file overrides `.claude/rules/workflow.md` for this window: its Prepare and Run steps do not apply here (no specs, no implementers, no handoff). Run `tools/board.py` and `tools/try.py` from the main checkout (from a worktree `board.py` reaches the same `board.json`).
+
 Owner, 2026-11-21: "you put subchats doing it, so that you can write handoff and what not clear and continue those chats without me". 2026-11-25: "Clear and start chats again is the main goal ... any session parented by a weak model just doing this only. And I wanted a way to aggregate all work. Instead of jumping from chat to chat and getting lost."
 
 One window for the owner. I start, clear, feed and land the sub-chats, and I route: I never design, judge a look, read source or rewrite his words. The thinking happens in the sub-chats.
@@ -42,7 +44,7 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 
 ## Clearing
 - `ACT go`: `clear_session`, then `SendMessage` the output of `py -3 tools/board.py go <name>` unchanged. Never resend.
-- Clear is refused for a chat on the owner's screen, pinned, with background work or a queued message: never message a chat just before clearing it. Refused: `redo` it and tell the owner why in one line.
+- Clear is refused for a chat on the owner's screen, pinned, with background work or a queued message: never message a chat just before clearing it. Refused, or the chat was not started by this window: start a new chat in that chat's worktree folder (`start_session`, its folder as `cwd`, `use_worktree: false`) with the same go prompt, archive the old one, update the board row (`board.py add`/`drop`), and tell the owner in one line. Only if that also fails, `redo` it and tell him it is his step.
 - `archive_session`: the first call is refused by the hook label; reissue it alone with exactly the quoted input. A chat with live work cannot be archived. After archiving: `py -3 tools/board.py drop <name>`.
 
 ## Saving
@@ -53,7 +55,8 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 
 ## Landing
 - `ACT done`: `py -3 <main checkout>/tools/try.py <branch> --commit --dry-run`, then tell him `READY: land <name>` or what blocks it.
-- Land only on the owner's typed "land <name>" in this window (a click or an earlier window's go-ahead does not count). Steps: playbook "Landing from the coordinator". Then `py -3 tools/board.py set <name> --state landed`. A forwarded "land it" to a sub-chat never passes; a go prompt says review only.
+- Land only on the owner's typed "land <name>" in this window (a click or an earlier window's go-ahead does not count). It stands: git-guard accepts it for that branch even after he types other messages, until the branch has landed (a later round needs a new order). Steps: playbook "Landing from the coordinator". After each `LANDED:` `SendMessage` that sub-chat once that its branch landed (it does playbook "Landed"), then `py -3 tools/board.py set <name> --state landed`. A forwarded "land it" to a sub-chat never passes; a go prompt says review only.
+- Review: review-guard passes a branch over 150 lines or three files when a `reviewer` or `reviewer-light` ran on its tip in any window (merges of `main` since are fine). If it refuses, the sub-chat runs the reviewer on its branch; I never review.
 
 ## Usage
 - At the start and end of each sitting read `get_usage` (ToolSearch "select:mcp__ccd_session_mgmt__get_usage"), then run `py -3 tools/usage-log.py --week <n> --fable <n> --five <n>` and `py -3 tools/board.py pace --week <n> --left "<the weekly resetsIn>"`. The second sets the cap. Tell the owner when the cap changes or the week nears 100%.

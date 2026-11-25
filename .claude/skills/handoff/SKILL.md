@@ -51,5 +51,6 @@ prompt": what to do, checkout, branch, file), never "say `go`". The
 owner runs `/clear` (or opens a new chat) and pastes it; the
 SessionStart hook points the fresh context at the handoff. It is the
 same folder, branch and PR, so never open a new worktree, branch or PR
-for the same work. Never compact and never call
-`mcp__ccd_session_mgmt__clear_session` on yourself.
+for the same work. Never `/compact` and never call
+`mcp__ccd_session_mgmt__clear_session` on your own window. The
+coordinator window writes no handoff (`coordinator.md` "This window").
