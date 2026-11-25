@@ -266,10 +266,22 @@ def _origin_git(*args):
 
 def fetch_origin(branch):
     """One fetch of `branch`. A failed fetch is fine when origin answers that it
-    has no such branch (a local-only branch, as try.py lands); anything else
-    raises OriginDown."""
+    has no such branch (a local-only branch, as try.py lands); then a stale
+    refs/remotes/origin/<branch> is deleted, as try.py does, so both read one
+    ref store. Anything else, or a stale ref that stays, raises OriginDown."""
     if _origin_git("fetch", "origin", branch) != 0:
         if _origin_git("ls-remote", "--exit-code", "origin", "refs/heads/" + branch) != 2:
+            raise OriginDown()
+        ref = "refs/remotes/origin/" + branch
+        try:
+            def has():
+                return subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref],
+                                      capture_output=True, timeout=5).returncode == 0
+            if has():
+                subprocess.run(["git", "update-ref", "-d", ref], capture_output=True, timeout=5)
+                if has():
+                    raise OriginDown()
+        except subprocess.TimeoutExpired:
             raise OriginDown()
 
 
@@ -285,17 +297,17 @@ def reviewed_elsewhere(cmd):
         common = git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()
         tip = ""
         # as tools/try.py resolve() does: the local branch, or origin/<branch> when
-        # only the remote has it or the remote is ahead; that ref is what lands
+        # only the remote has it or the remote is ahead; that ref is what lands.
+        # Every candidate is fetched first; a stale remote ref is deleted (fetch_origin)
         if branch.startswith("origin/"):
             branch = branch[len("origin/"):]
         cands = [branch] + (["claude/" + branch, "worktree-" + branch] if "/" not in branch else [])
         for cand in cands:
             local = git("rev-parse", "--verify", "--quiet", "refs/heads/" + cand).strip()
+            fetch_origin(cand)
             remote = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + cand).strip()
             if not local and not remote:
                 continue
-            fetch_origin(cand)
-            remote = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + cand).strip()
             branch = cand
             behind = local and remote and subprocess.run(
                 ["git", "merge-base", "--is-ancestor", remote, local],

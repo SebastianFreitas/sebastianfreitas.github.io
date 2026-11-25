@@ -302,8 +302,174 @@ def _(c):
     return res
 
 
+@case("git-guard: an unknown branch with no origin configured refuses with the origin line", "refuse")
+def _(c):
+    res = c.run("git-guard.py", c.payload("Bash", {"command": LAND_CMD}))
+    if "origin could not be reached" not in res[2]:
+        return (0, "", "")
+    return res
+
+
+# a branch deleted on origin leaves refs/remotes/origin/<c> in the clone: the guards and
+# the real tools/try.py must pick the same commit, whichever of them deletes the stale ref
+TOOLS = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools")
+
+
+def _rev(c, ref, cwd=None):
+    r = subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref], cwd=cwd or c.proj,
+                       capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    return r.stdout.strip()
+
+
+def _stale_origin(c, b):
+    """Delete branch `b` on the bare origin only (a `git push --delete` would drop the
+    clone's ref too); returns the sha the clone's refs/remotes/origin/<b> still holds."""
+    bare = os.path.join(c.root, "origin.git")
+    c.sh("git", "--git-dir=" + bare, "update-ref", "-d", "refs/heads/" + b)
+    if subprocess.run(["git", "--git-dir=" + bare, "rev-parse", "--verify", "--quiet", "refs/heads/" + b],
+                      capture_output=True, stdin=subprocess.DEVNULL).returncode == 0:
+        raise AssertionError("origin still has " + b)
+    old = _rev(c, "refs/remotes/origin/" + b)
+    if not old:
+        raise AssertionError("no stale refs/remotes/origin/%s to start from" % b)
+    return old
+
+
+def _copy(c, tag, tools=False):
+    """A copy of the repo as it is now, so the real guard's delete cannot hide the stale ref
+    from the resolver being compared; with `tools` it holds the real tools/try.py."""
+    dst = "%s-%s" % (c.proj, tag)
+    shutil.copytree(c.proj, dst)
+    if tools:
+        os.makedirs(os.path.join(dst, "tools"))
+        for n in ("try.py", "try_commit.py"):
+            shutil.copy(os.path.join(TOOLS, n), os.path.join(dst, "tools", n))
+    return dst
+
+
+def _pick(argv, cwd, code):
+    p = subprocess.run([sys.executable, "-c", code, *argv], cwd=cwd, capture_output=True, text=True,
+                       encoding="utf-8", stdin=subprocess.DEVNULL, timeout=60)
+    out = [ln for ln in p.stdout.splitlines() if ln.startswith("R ")]
+    return p.returncode, (tuple(json.loads(out[-1][2:])) if out else None)
+
+
+def _try_pick(c, name):
+    """(exit code, (branch, ref)) from the real tools/try.py resolve(), on its own copy."""
+    return _pick([name], _copy(c, "try", tools=True),
+                 "import sys,json,importlib;sys.path.insert(0,'tools');"
+                 "print('R '+json.dumps(importlib.import_module('try').resolve(sys.argv[1])))")
+
+
+def _guard_pick(c, name):
+    """(exit code, (branch, ref)) from git-guard's resolve_landing(fetch=True), on its own copy."""
+    dst = _copy(c, "guard")
+    return _pick([os.path.join(c.hooks, "git-guard.py"), name, dst], dst,
+                 "import sys,json,importlib.util as u;s=u.spec_from_file_location('gg',sys.argv[1]);"
+                 "m=u.module_from_spec(s);s.loader.exec_module(m);"
+                 "print('R '+json.dumps(m.resolve_landing(sys.argv[2],sys.argv[3],fetch=True)))")
+
+
+def _same_pick(c, name, want):
+    """Fails unless git-guard and the real try.py both name `want` for `name`."""
+    g, t = _guard_pick(c, name), _try_pick(c, name)
+    if g != (0, want) or t != (0, want):
+        raise AssertionError("guard %r, try.py %r, wanted %r" % (g, t, want))
+
+
+def _order(c, name):
+    c.write_transcript([_msg("coordinator"), _msg("land " + name), _msg("thanks")])
+
+
+def _diverged_stale(c, b="claude/rex-x"):
+    """origin's `b` was at Y and is gone; the clone keeps origin/<b> = Y; local `b` is at X, and
+    Y is not an ancestor of X. Returns (X, Y)."""
+    _branch_repo(c)
+    c.sh("git", "checkout", "-q", b)
+    c.file("js/y.js", "y\n")
+    c.sh("git", "add", "js/y.js")
+    c.sh(*GIT, "commit", "-q", "-m", "y")
+    c.sh("git", "push", "-q", "origin", b)
+    y = _rev(c, "HEAD")
+    c.sh("git", "reset", "-q", "--hard", "main")
+    c.file("js/x.js", "x\n")
+    c.sh("git", "add", "js/x.js")
+    c.sh(*GIT, "commit", "-q", "-m", "x")
+    x = _rev(c, "HEAD")
+    c.sh("git", "checkout", "-q", "main")
+    if _stale_origin(c, b) != y:
+        raise AssertionError("stale ref is not Y")
+    return x, y
+
+
+@case("git-guard: a branch deleted on origin, local diverged from the stale ref: allowed, guard and try.py resolve the local branch", "allow")
+def _(c):
+    _diverged_stale(c)
+    _order(c, "rex-x")
+    _same_pick(c, "claude/rex-x", ("claude/rex-x", "claude/rex-x"))
+    return c.run("git-guard.py", c.payload("Bash", {"command": STAND_CMD}))
+
+
+@case("git-guard: rex-x deleted on origin, only claude/rex-x local: guard and try.py resolve claude/rex-x, never origin/rex-x", "allow")
+def _(c):
+    _branch_repo(c)
+    c.sh("git", "checkout", "-q", "-b", "rex-x")
+    c.file("js/z.js", "z\n")
+    c.sh("git", "add", "js/z.js")
+    c.sh(*GIT, "commit", "-q", "-m", "z")
+    c.sh("git", "push", "-q", "origin", "rex-x")
+    c.sh("git", "checkout", "-q", "main")
+    c.sh("git", "branch", "-D", "rex-x")
+    _stale_origin(c, "rex-x")
+    _order(c, "rex-x")
+    _same_pick(c, "rex-x", ("claude/rex-x", "claude/rex-x"))
+    return c.run("git-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py rex-x --commit"}))
+
+
+@case("git-guard: a stale origin ref and no local branch or other candidate: refused, and try.py exits 1", "refuse")
+def _(c):
+    _branch_repo(c)
+    c.sh("git", "branch", "ghost")
+    c.sh("git", "push", "-q", "origin", "ghost")
+    c.sh("git", "branch", "-D", "ghost")
+    _stale_origin(c, "ghost")
+    _order(c, "ghost")
+    g, t = _guard_pick(c, "ghost"), _try_pick(c, "ghost")
+    if g != (0, ("", "")) or t[0] != 1:
+        raise AssertionError("guard %r, try.py %r" % (g, t))
+    res = c.run("git-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py ghost --commit"}))
+    if "origin could not be reached" in res[2]:
+        raise AssertionError("refused for the wrong reason: " + res[2])
+    return res
+
+
+@case("git-guard: a stale origin ref with origin unreachable refuses with the origin line, in under 10 s, ref kept", "refuse")
+def _(c):
+    _, y = _diverged_stale(c)
+    _order(c, "rex-x")
+    c.sh("git", "remote", "set-url", "origin", os.path.join(c.root, "no-such-origin.git"))
+    t0 = time.time()
+    res = c.run("git-guard.py", c.payload("Bash", {"command": STAND_CMD}))
+    if ("origin could not be reached" not in res[2] or time.time() - t0 >= 10
+            or _rev(c, "refs/remotes/origin/claude/rex-x") != y):
+        return (0, "", "")
+    return res
+
+
+@case("git-guard: a branch only origin has under the bare name (never fetched) and a local claude/<name>: guard and try.py agree", "allow")
+def _(c):
+    _branch_repo(c)
+    c.sh("git", "branch", "claude/foo")
+    c.sh("git", "push", "-q", "origin", "main:refs/heads/foo")
+    c.sh("git", "update-ref", "-d", "refs/remotes/origin/foo")
+    _order(c, "foo")
+    _same_pick(c, "foo", ("foo", "origin/foo"))
+    return c.run("git-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py foo --commit"}))
+
+
 @case("git-guard: landing refusal says what to do and echoes the command", "refuse")
 def _(c):
+    _branch_repo(c)
     res = c.run("git-guard.py", c.payload("Bash", {"command": LAND_CMD}))
     if 'land <name>' not in res[2] or LAND_CMD not in res[2]:
         return (0, "", "")
@@ -632,6 +798,70 @@ _landing("local-only branch (origin reachable) reviewed in another window", "all
 _landing("branch never reviewed", "refuse", None)
 _landing("branch with new unreviewed commits", "refuse", _new_commit)
 _landing("reviewed tip plus a merge of main", "allow", _merge_main)
+
+
+def _diverged_big(c):
+    """claude/b was pushed at Y and deleted on origin (the clone keeps origin/claude/b = Y); local
+    claude/b is reset to a different big commit X. Returns (X, Y)."""
+    _big_branch(c)
+    y = _rev(c, "HEAD")
+    c.sh("git", "reset", "-q", "--hard", "main")
+    c.file("js/big2.js", "z\n" * 200)
+    c.sh("git", "add", "js/big2.js")
+    c.sh(*GIT, "commit", "-q", "-m", "big2")
+    if _stale_origin(c, "claude/b") != y:
+        raise AssertionError("stale ref is not Y")
+    return _rev(c, "HEAD"), y
+
+
+def _reviewed(c, sha):
+    c.file(".claude/reviewed.json", json.dumps({"claude/b": [sha]}))
+
+
+@case("review-guard: a branch deleted on origin, local diverged, local tip reviewed: allowed, try.py resolves the local tip", "allow")
+def _(c):
+    x, _ = _diverged_big(c)
+    _reviewed(c, x)
+    code, (branch, ref) = _try_pick(c, "claude/b")
+    if code != 0 or (branch, ref) != ("claude/b", "claude/b") or _rev(c, ref, c.proj + "-try") != x:
+        raise AssertionError("try.py picked %r" % ((code, branch, ref),))
+    return c.run("review-guard.py", c.payload("Bash", {"command": RLAND}))
+
+
+@case("review-guard: a branch deleted on origin, local diverged, only the stale tip reviewed: refused", "refuse")
+def _(c):
+    _, y = _diverged_big(c)
+    _reviewed(c, y)
+    code, (branch, ref) = _try_pick(c, "claude/b")
+    if code != 0 or (branch, ref) != ("claude/b", "claude/b"):
+        raise AssertionError("try.py picked %r" % ((code, branch, ref),))
+    return c.run("review-guard.py", c.payload("Bash", {"command": RLAND}))
+
+
+@case("review-guard: b deleted on origin, only claude/b local and reviewed: allowed, try.py resolves claude/b", "allow")
+def _(c):
+    _big_branch(c)
+    c.sh("git", "branch", "b")
+    c.sh("git", "push", "-q", "origin", "b")
+    c.sh("git", "branch", "-D", "b")
+    _stale_origin(c, "b")
+    _mark_reviewed(c)
+    if _try_pick(c, "b") != (0, ("claude/b", "claude/b")):
+        raise AssertionError("try.py did not pick claude/b")
+    return c.run("review-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py b --commit"}))
+
+
+@case("review-guard: a stale origin ref with origin unreachable refuses with the origin line, in under 10 s, ref kept", "refuse")
+def _(c):
+    _, y = _diverged_big(c)
+    _reviewed(c, y)
+    c.sh("git", "remote", "set-url", "origin", os.path.join(c.root, "no-such-origin.git"))
+    t0 = time.time()
+    res = c.run("review-guard.py", c.payload("Bash", {"command": RLAND}))
+    if ("origin could not be reached" not in res[2] or time.time() - t0 >= 10
+            or _rev(c, "refs/remotes/origin/claude/b") != y):
+        return (0, "", "")
+    return res
 
 
 review("200 lines, command is not a commit", "git status", "allow", 1, 200)

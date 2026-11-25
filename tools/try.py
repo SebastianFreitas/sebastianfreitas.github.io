@@ -49,7 +49,8 @@ def list_branches() -> None:
 
 def resolve(name: str) -> tuple[str, str]:
     """Returns (branch, ref): ref is 'origin/<branch>' when the remote copy is
-    the newest, else the local branch name. Exits with a listing if neither exists."""
+    the newest, else the local branch name. A remote ref that origin says it no
+    longer has (fetch failed, ls-remote exit 2) is deleted first. Exits with a listing if neither exists."""
     if name.startswith("origin/"):
         name = name[len("origin/"):]
 
@@ -60,7 +61,16 @@ def resolve(name: str) -> tuple[str, str]:
 
     for c in candidates:
         local = git("rev-parse", "--verify", "--quiet", f"refs/heads/{c}", check=False) != ""
-        git_run("fetch", "origin", c)
+        if git_run("fetch", "origin", c).returncode != 0:
+            # origin answered "no such branch" (ls-remote exit 2): a remote ref still
+            # here is stale, so it goes, and the guards (which do the same) agree
+            ref = f"refs/remotes/origin/{c}"
+            old = git("rev-parse", "--verify", "--quiet", ref, check=False)
+            if old and git_run("ls-remote", "--exit-code", "origin", f"refs/heads/{c}").returncode == 2:
+                if git_run("update-ref", "-d", ref).returncode != 0:
+                    print(f"Could not delete the stale ref {ref} ({old}); not landing.")
+                    sys.exit(1)
+                print(f"Deleted stale ref {ref} (was {old}): origin no longer has {c}.")
         remote = git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{c}", check=False) != ""
 
         if not local and not remote:

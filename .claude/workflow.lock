@@ -1,6 +1,6 @@
 {
   "master": "C:/Users/Traff/Desktop/sebas/claude-workflow",
-  "commit": "4a5e597c71c25796d1bd0176c7ad9c12e6423d80",
+  "commit": "341611a4ecc8b60faa626cc5bad17c0456904238",
   "files": {
     ".claude/agents/implementer-wt.md": "3a6430100a06a06ee6303d24380c71f668c6db77244fb3e4fc4e8a34808f2223",
     ".claude/agents/implementer.md": "02b3a96b00aa520575d990b3370443145de300b7c3f7732f6deff3e654b852ec",
@@ -13,14 +13,14 @@
     ".claude/hooks/agent-guard.py": "43a286b38082e54efc173badc331cf6b84d5c19b6b060dd82fdefc7f117bd5a0",
     ".claude/hooks/context-watch.py": "8355da8aba4c943bda8ae1770f134b5d1a6654091d29a3a5383b4e0a0ec0d746",
     ".claude/hooks/file-guard.py": "92a5b0507a3781e960d64d43d06411e4222eaaf011da844c1a2d183ed91e05b7",
-    ".claude/hooks/git-guard.py": "79dcd5a27cb9fbf4f8e21c115b717a98b366f4fcf7c7ea8e8474a52418efbbbb",
+    ".claude/hooks/git-guard.py": "741b76a88e2496778f259d8bf58fc3032115e652b1a1c358bbd8913e4179b7ca",
     ".claude/hooks/go-check.py": "2e08b7852e695b755e6239ea8ace2c4f3e05a55e0a68b183a204862fab48a444",
     ".claude/hooks/guard_config.py": "33f8a206f92a22dd17c0d96fde05d016a060c684280dbe14a82cc66dced60b65",
     ".claude/hooks/hooks.py": "4d20bc859ac4c1064d4dbb8dfd420e873152321b5e2e35bc7b80cc32567e4b41",
-    ".claude/hooks/hooks_test.py": "18194be4eebf6866c34b9bec4a897ecc2414649224772ed285b02dd55d895c43",
+    ".claude/hooks/hooks_test.py": "05b351961b4bfaa9e178d3ab33189707c6a9259f167dccf8e5b4130d31f054d7",
     ".claude/hooks/poll-guard.py": "e26cebd9afddd8e179fc6bedf49795061dc62caf590c1a598a45bc1b2fd5709e",
     ".claude/hooks/reply-cap.py": "7434c6ba93bbf24ddc874f2abaa2cdbbd21155d11e3e0eb1eded2f3e3397bfe9",
-    ".claude/hooks/review-guard.py": "7b17ce9778b02e992c5054dddbacdc253551ca99e2d5a1e037b6e852cafd808a",
+    ".claude/hooks/review-guard.py": "99876eda4b50d28aa6277ad0e56be3ba3829b9677b3c27bcc2ff3577333237e3",
     ".claude/hooks/run.sh": "c24f9c69af6cb369f81153d75aeb942fbb45a1ee8b0c066e74179ac17a594adf",
     ".claude/hooks/session-start.py": "40343f594cc19336a3573aa84de0699cdd22ef675bb5bb38a8400b0d301c8009",
     ".claude/hooks/stop-guard.py": "b49da0103fdb4f0cbcafbfa42c134f4974b98f08dbdcb92e8e701a8fb0801e0a",
@@ -38,7 +38,7 @@
     ".claude/skills/plan/unattended.md": "da6e3d193796e5b5826e9d57099e607b3dbf7ab42adbf77e33d6aaa8b98a5b68",
     "tools/autoplan.py": "aa7b5a1113f07d8ffea3fdb2fc2db4f15f0a4650f7c6cbcdd45a5d2761618ca9",
     "tools/cleanup.py": "f7de423a730b045d9f0eb4f8251797f2953ba140d8341af6d583b7dc1de32396",
-    "tools/try.py": "6b6a10ba7d11c086aadfb640b21b6f81b7733665a5062c956307e4bf16c42714",
+    "tools/try.py": "17a48022536be3fbbeefb204d55e3264efb42cb0bd35f024510ba825d693c764",
     "tools/try_commit.py": "9a6b970a912e76566de71f06fb23ac43ee46a809510446efaa9ed80fa5e75bac"
   }
 }

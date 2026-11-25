@@ -222,17 +222,31 @@ def _origin_git(cwd, *args):
 def fetch_origin(cwd, branch):
     """One fetch of `branch` from origin. A failed fetch is fine when origin
     answers that it has no such branch (a local-only branch, as try.py lands);
-    anything else raises OriginDown."""
+    then a stale refs/remotes/origin/<branch> is deleted, as try.py does, so
+    both read one ref store. Anything else, or a stale ref that stays,
+    raises OriginDown."""
     if _origin_git(cwd, "fetch", "origin", branch) != 0:
         if _origin_git(cwd, "ls-remote", "--exit-code", "origin", "refs/heads/" + branch) != 2:
+            raise OriginDown()
+        ref = "refs/remotes/origin/" + branch
+        try:
+            def has():
+                return subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref], cwd=cwd,
+                                      capture_output=True, timeout=5).returncode == 0
+            if has():
+                subprocess.run(["git", "update-ref", "-d", ref], cwd=cwd, capture_output=True, timeout=5)
+                if has():
+                    raise OriginDown()
+        except subprocess.TimeoutExpired:
             raise OriginDown()
 
 
 def resolve_landing(name: str, cwd, fetch=False):
     """(branch, ref) as tools/try.py resolve() picks them: ref is origin/<branch>
     when only the remote has it or the remote is not behind the local branch,
-    else the local branch; ("", "") when neither exists. With `fetch`, the
-    chosen candidate is fetched once first (raises OriginDown on failure)."""
+    else the local branch; ("", "") when neither exists. With `fetch`, every
+    candidate is fetched first, and a stale remote ref origin no longer has is
+    deleted (raises OriginDown on failure); without it this only reads."""
     def ok(*a, t=10):
         return subprocess.run(["git", *a], cwd=cwd, capture_output=True, timeout=t).returncode == 0
     if name.startswith("origin/"):
@@ -240,12 +254,11 @@ def resolve_landing(name: str, cwd, fetch=False):
     cands = [name] + (["claude/" + name, "worktree-" + name] if "/" not in name else [])
     for c in cands:
         local = ok("rev-parse", "--verify", "--quiet", "refs/heads/" + c)
+        if fetch:
+            fetch_origin(cwd, c)
         remote = ok("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + c)
         if not local and not remote:
             continue
-        if fetch:
-            fetch_origin(cwd, c)
-            remote = ok("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + c)
         if local and (not remote or ok("merge-base", "--is-ancestor", "origin/" + c, c)):
             return c, c
         return c, "origin/" + c
