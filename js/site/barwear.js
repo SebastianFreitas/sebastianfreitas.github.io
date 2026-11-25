@@ -51,7 +51,7 @@
     if (!wm || !slot || !nav) { clear(bar); return; }
     const br = bar.getBoundingClientRect(), W = bar.offsetWidth, H = bar.offsetHeight;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const tickW = parseFloat(getComputedStyle(wm, "::after").width) || 6;
+    const tickW = parseFloat(getComputedStyle(wm.querySelector(".wm-full") || wm, "::after").width) || 6;
     const wr = wm.getBoundingClientRect(), sr = slot.getBoundingClientRect(), nr = nav.getBoundingClientRect();
     const tickR = wr.right - br.left + 0.9 * rem + tickW, mid = sr.left - br.left + sr.width / 2;
     /* the rank box: a stable floor of RANK_HALF each side of the slot's centre, widened to the measured chip edges
@@ -118,5 +118,46 @@
   /* a rank text change re-places the breaks only if the chip now needs more than the floor (draw is otherwise idempotent) */
   const sl = document.querySelector("header.topbar .xp-slot");
   if (sl && window.MutationObserver) new MutationObserver(schedule).observe(sl, { childList: true, characterData: true, subtree: true });
+  /* touch: the first tap on the wordmark only grows SF into the name (.wm-open), the second does what the link does (the homepage's
+     capture-phase scroll handler in intro.js never sees the first); a tap anywhere else folds it back. Mouse and keyboard use :hover / :focus-visible in CSS. */
+  const mark = document.querySelector("header.topbar .wordmark");
+  if (mark) {
+    let touch = false;
+    /* the hidden letters' widths go to --wm-w, the width the CSS grows them to */
+    const measure = function () {
+      let grow = 0;
+      mark.querySelectorAll(".wm-x").forEach(function (x) {
+        const w = x.firstElementChild.getBoundingClientRect().width;
+        x.style.setProperty("--wm-w", w + "px");
+        grow += w;
+      });
+      /* the expanded right edge (link left + collapsed width + hidden letters + bar gap + bar), computed, never by expanding; .wm-fits when it ends 24px+ left of the centre title */
+      const full = mark.querySelector(".wm-full"), bar = getComputedStyle(full || mark, "::after");
+      const gap = 0.9 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+      const r = mark.getBoundingClientRect();
+      const end = r.left + r.width + grow + gap + (parseFloat(bar.width) || 6);
+      const sl2 = document.querySelector("header.topbar .xp-slot");
+      const fits = !!sl2 && end <= sl2.getBoundingClientRect().left - 24;
+      mark.classList.toggle("wm-fits", fits);
+      if (!fits) mark.classList.remove("wm-open");
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("load", measure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    const sl2 = document.querySelector("header.topbar .xp-slot");
+    if (sl2 && window.ResizeObserver) new ResizeObserver(measure).observe(sl2);
+    document.addEventListener("pointerdown", function (e) {
+      touch = e.pointerType === "touch";
+      if (!mark.contains(e.target)) mark.classList.remove("wm-open");
+    }, true);
+    document.addEventListener("click", function (e) {
+      if (!touch || !mark.contains(e.target)) return;
+      touch = false;
+      if (mark.classList.contains("wm-open") || !mark.classList.contains("wm-fits") || !window.matchMedia("(min-width: 641px) and (min-height: 521px)").matches) return;
+      e.preventDefault(); e.stopPropagation();
+      mark.classList.add("wm-open");
+    }, true);
+  }
   window.BarWear = { apply: schedule, info: function () { return info; } };
 })();

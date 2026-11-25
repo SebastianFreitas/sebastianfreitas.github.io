@@ -26,7 +26,7 @@
      from wherever it is, planned from the expected step costs and re-planned as steps end, and a last ease to full.
      All of it runs on the compositor; JS only starts an animation at a step's end (one style read, no per-frame writes). */
   const EXPECT = [550, 10, 70, 50, 35];   // ms per gate step, in chain order: fonts, load, images, css-images, paint (review-part2, measured 2026-11-16)
-  const HOLD_MS = 250, LIVE_WAIT_MS = 300, MIN_MS = 1200, EASE_MS = 300, GLIDE_AT = 0.88, GLIDE_TOP = 0.985, TAIL_MS = 12000;
+  const HOLD_MS = 250, LIVE_WAIT_MS = 300, MIN_MS = 800, EASE_MS = 300, GLIDE_AT = 0.88, GLIDE_TOP = 0.985, TAIL_MS = 12000;
   /* the minimum counts from the page's real first paint: first-paint, else first-contentful-paint (Firefox), else the gate's own
      first painted frame (null until it happens; never 0) */
   const paintEntry = performance.getEntriesByName("first-paint")[0] || performance.getEntriesByName("first-contentful-paint")[0];
@@ -212,7 +212,7 @@
   function release() { gateHeld = false; schedule(); }
 
   /* the gate and its fade clone are gone: "gate:gone" fires once on document (window.gateGone says so to a late listener) */
-  const FADE_MS = 500;
+  const FADE_MS = 300;
   function gone() {
     window.gateGone = true;
     document.dispatchEvent(new CustomEvent("gate:gone"));
@@ -228,7 +228,7 @@
       document.addEventListener("gate:gone", release, { once: true });
     }
     document.body.classList.remove("site-frozen");
-    /* the gate itself goes at once; a copy of its text, bar, tick and scrim fades over 0.5 s on the compositor
+    /* the gate itself goes at once; a copy of its text, bar, tick and scrim fades over 0.3 s on the compositor
        (none for reduced motion or a gate already passed; before the still frame the copy is opaque, as the gate was) */
     let fade = null;
     if (!reduced && !document.documentElement.classList.contains("gate-skip")) {

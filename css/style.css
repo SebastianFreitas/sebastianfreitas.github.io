@@ -280,14 +280,27 @@ a:hover { color: var(--type-red-text); text-decoration-thickness: 2px; }
   }
 }
 /* one small vertical red line right of the mark, on top of everything in the bar */
-.wordmark::after {
+/* the name lives in .wm-full, taken out of flow so the link keeps the width of "SF" (.wm-pad, hidden, sizes it); .wm-full is the link's
+   height and carries the bar, so the bar rides the end of the name as it grows. SEBASTIÃO FREITAS grows out of S and F (hover, focus, tap) */
+.wordmark .wm-full { position: absolute; left: 0; top: 0; bottom: 0; display: flex; align-items: center; white-space: nowrap; }
+.wordmark .wm-pad { visibility: hidden; }
+.wordmark .wm-x { display: block; flex: none; width: 0; overflow: hidden; white-space: pre; padding: 0.3em 0; margin: -0.3em 0; transition: width 350ms ease-out; }   /* --wm-w: the letters' width, measured by js/site/barwear.js; the padding is room for the tilde */
+/* only where the whole name and its bar end 24px+ left of the centre title: js/site/barwear.js measures that per page and sets .wm-fits; never on the phone bar */
+@media (min-width: 641px) and (min-height: 521px) {
+  .wordmark.wm-fits:focus-visible .wm-x, .wordmark.wm-fits.wm-open .wm-x { width: var(--wm-w, 0px); }
+}
+@media (min-width: 641px) and (min-height: 521px) and (hover: hover) {
+  .wordmark.wm-fits:hover .wm-x { width: var(--wm-w, 0px); }
+}
+@media (prefers-reduced-motion: reduce) { .wordmark .wm-x { transition: none; } }
+.wordmark .wm-full::after {
   content: ""; position: absolute; z-index: 5; pointer-events: none;
   left: calc(100% + 0.9rem); top: calc(-1 * var(--bar-pt)); bottom: calc(-1 * var(--bar-pb)); width: var(--red-line);
   background: var(--type-red);
 }
 /* phones: the mark is only the first of two rows, so the line runs down to the bar's bottom edge (the two-row bar is 4rem below the mark) */
 @media (max-width: 640px), (max-height: 520px) {
-  .wordmark::after { bottom: -4rem; }
+  .wordmark .wm-full::after { bottom: -4rem; }
 }
 
 .topbar nav { display: flex; gap: 4px; flex-wrap: nowrap; justify-self: end; align-items: flex-start; }
@@ -895,7 +908,7 @@ footer a:hover, footer a:focus-visible { color: var(--type-cream); text-decorati
   .topbar .xp-chip { font-size: 0.72rem; }
   .topbar .xp-chip .xp-ref { display: none; }
   .wordmark { font-size: 1.35rem; }
-  .wordmark::after { bottom: -0.11rem; }
+  .wordmark .wm-full::after { bottom: -0.11rem; }
   .topbar nav { gap: 0.25rem; flex-wrap: nowrap; }
   .topbar nav a { padding: 4px 8px; font-size: 0.84rem; letter-spacing: 0.04em; white-space: nowrap; }
   /* serif capitals run wide: tighter tracking and sizes so nothing overflows at 390px, never under 1.05rem */

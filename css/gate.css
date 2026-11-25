@@ -52,7 +52,7 @@ html.gate-skip .site-gate { display: none; }
 .gate-fade {
   position: fixed; inset: 0; z-index: 100; pointer-events: none;
   background: linear-gradient(to top right, rgb(4 4 5 / 0.5), transparent 55%), rgb(4 4 5 / 0.75);
-  opacity: 1; transition: opacity 0.5s cubic-bezier(0, 0, 0.2, 1);   /* ease-out; text, bar, tick and scrim fade as one */
+  opacity: 1; transition: opacity 0.3s cubic-bezier(0, 0, 0.2, 1);   /* ease-out; text, bar, tick and scrim fade as one */
 }
 .gate-fade.pre { background: rgb(4 4 5); }   /* an exit before the still frame: opaque, as the gate was */
 .gate-fade .gate-bar i { animation: none; }
@@ -89,18 +89,22 @@ html.gate-skip .site-gate { display: none; }
 }
 
 .gate-eyebrow {
-  font-family: var(--type-mono); font-weight: 500; font-size: 11px; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgb(228 221 198 / 0.9); margin: 0 0 6px;
+  font-family: var(--type-mono); font-weight: 500; font-size: clamp(20px, 0.75vw + 13.7px, 33px); line-height: 1.2; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--type-cream); margin: 0 0 10px;
+}
+.gate-role {
+  font-family: var(--type-mono); font-weight: 500; font-size: clamp(12px, 0.335vw + 9.4px, 18px); line-height: 1.4; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgb(200 194 172); margin: 0 0 8px;
 }
 .gate-title {
-  font-family: var(--type-mono); font-weight: 500; font-size: 10px; line-height: 1.5; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgb(160 168 160); margin: 0; text-wrap: balance;
+  font-family: var(--type-mono); font-weight: 500; font-size: clamp(11px, 0.25vw + 8.6px, 15px); line-height: 1.5; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgb(184 190 182); margin: 0; text-wrap: balance;
 }
-/* the name and line wait for the Plex Mono faces (inline head script in index.html), then fade in once */
-.gate-eyebrow, .gate-title { transition: opacity 0.3s ease; }
-html.gate-wait .gate-eyebrow, html.gate-wait .gate-title { opacity: 0; }
+/* the name, role and line wait for the Plex Mono faces (inline head script in index.html), then fade in once */
+.gate-eyebrow, .gate-role, .gate-title { transition: opacity 0.3s ease; }
+html.gate-wait .gate-eyebrow, html.gate-wait .gate-role, html.gate-wait .gate-title { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .site-gate, .gate-bar i, .gate-eyebrow, .gate-title { transition: none; }
+  .site-gate, .gate-bar i, .gate-eyebrow, .gate-role, .gate-title { transition: none; }
   .gate-bar i { animation: none; }
   body.site-frozen > .topbar { animation: none; }
   .site-gate::before { transition: none; }
