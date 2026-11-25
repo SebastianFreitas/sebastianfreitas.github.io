@@ -405,15 +405,27 @@ def main():
 
     if source == "startup" and main_root:
         script = os.path.join(main_root, "tools", "cleanup.py")
+        out_file = os.path.join(tempfile.gettempdir(), "session-start-cleanup-" +
+                                re.sub(r"[^A-Za-z0-9]+", "-", main_root)[-60:] + ".txt")
+        try:  # print the last background run's result (free), then clear it
+            if os.path.exists(out_file):
+                with open(out_file, encoding="utf-8", errors="ignore") as f:
+                    res = [x.strip() for x in f if x.strip()][:6]
+                os.remove(out_file)
+                if res:
+                    lines.append("Cleanup (background run at an earlier start): "
+                                 + "; ".join(res))
+        except Exception:
+            pass
         if os.path.exists(script) and due_today("cleanup-" + main_root):
-            try:  # detached: it took 19 s, and its output was only a courtesy
-                subprocess.Popen([sys.executable, script, "--quiet",
-                                  "--keep", branch], cwd=main_root,
-                                 stdin=subprocess.DEVNULL,
-                                 stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL, close_fds=True,
-                                 creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
-                                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            try:  # detached: it took 19 s; its output is shown at the next start
+                with open(out_file, "w", encoding="utf-8") as fo:
+                    subprocess.Popen([sys.executable, script, "--keep", branch],
+                                     cwd=main_root, stdin=subprocess.DEVNULL,
+                                     stdout=fo, stderr=subprocess.STDOUT,
+                                     close_fds=True,
+                                     creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
+                                     | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
             except Exception:
                 pass
 

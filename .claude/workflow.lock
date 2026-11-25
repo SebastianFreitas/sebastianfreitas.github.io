@@ -1,6 +1,6 @@
 {
   "master": "C:/Users/Traff/Desktop/sebas/claude-workflow",
-  "commit": "ab5c56c1e7e69060281d036f1414f24bb9ab248c",
+  "commit": "20577ab84a613320d93099b429b77b64c1b4072f",
   "files": {
     ".claude/agents/implementer-wt.md": "3a6430100a06a06ee6303d24380c71f668c6db77244fb3e4fc4e8a34808f2223",
     ".claude/agents/implementer.md": "02b3a96b00aa520575d990b3370443145de300b7c3f7732f6deff3e654b852ec",
@@ -22,7 +22,7 @@
     ".claude/hooks/reply-cap.py": "7434c6ba93bbf24ddc874f2abaa2cdbbd21155d11e3e0eb1eded2f3e3397bfe9",
     ".claude/hooks/review-guard.py": "e7b156307bfb198ee8d5ea99f34a3f9e9bafb770f27bc6a1415a91dc85ae967c",
     ".claude/hooks/run.sh": "c24f9c69af6cb369f81153d75aeb942fbb45a1ee8b0c066e74179ac17a594adf",
-    ".claude/hooks/session-start.py": "0518af8192166a7ac59c76e2bfefd95f4be73d648cc2bb61ca72e2b73cb1972b",
+    ".claude/hooks/session-start.py": "1627cbc03ff6f1cba3cdb74b2ef03bc5941bf798588a90fffddc8d4f5d4af416",
     ".claude/hooks/stop-guard.py": "8351f0b607fe577cf6d8d5ce92d453b1e06c75fa4f505c70f7ec569076109f06",
     ".claude/modes/cloud.md": "e82acee40bfa9603a90bc46724eb54578ffa5c67f2f338b87a32f3fe4365c783",
     ".claude/modes/shared.md": "3fa2a876cf9e6bcb8653a4912c65abb97e7062ac50abfa50eb4bf5a809e85943",
