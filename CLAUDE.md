@@ -35,14 +35,23 @@ in those areas. Game pages (`projects/*.html`, `css/game-pages.css`):
 
 ## Verify
 
+- A sketch round (a picture or clip for the owner's verdict, not a
+  landing) shoots only the thing drawn: one `snap.py capture <run> --only
+  <scene>`, `toyshot.py`, `jscheck.py --shot` or `gframes.py`. No full
+  capture, no flows, no reviewer. Commit it as `Sketch: <what>`. The round
+  he approves for landing runs the rest of this section once, with the
+  reviewer on the whole branch (`git diff main...HEAD`), and commits with a
+  normal message describing the feature, never `Sketch:`.
 - Test only the flows you touched: `py -3 tools/nav-flows.test.py <flow>`
   (`--list` names them). Run the full suite only before a commit that
   touches navigation, the gate or storage.
-- Anything that paints or styles: `py -3 tools/snap.py capture <name>`
-  before and after (about 3.5 min, 50 scenes), then
+- Landing round, anything that paints or styles: `py -3 tools/snap.py
+  capture <name>` once before, once after (3.5 min, 50 scenes), then
   `py -3 tools/snap.py compare <before> <after>`: `same` on every scene
-  you did not mean to change. Runs live in `snapshots/` (gitignored), so
-  a fresh worktree captures its own "before". A `page-*` scene fails on
+  you did not mean to change. Merge `main` into the branch, then capture
+  "before" from the main checkout: `py -3 tools/snap.py capture before
+  --root C:/Users/Traff/Desktop/sebas/Portfolio`. Runs live in `snapshots/`
+  (gitignored). A `page-*` scene fails on
   any console error, which is the case-page toys' error check.
 - A change that only paints a toy canvas: `snap.py` does not paint it.
   Use `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]` (seconds; exits

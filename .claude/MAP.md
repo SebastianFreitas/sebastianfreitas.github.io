@@ -573,6 +573,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/ceilsheet.py` | `py -3 tools/ceilsheet.py <out_dir> [--family f] [--seed n]`: labelled sheet of every GenCeilKinds kind fully grown on the ceiling wash, one PNG per family plus all-silhouettes.png; exit 1 on console error or blank cell |
 | `tools/ffshot.py` | Shots in the installed Firefox (Selenium, headless): `--path`, `--size WxH`, `--scroll SEL`, `--hover SEL`, `--wait ms`, `--out png`; `--games` shoots each Work row at rest and hovered, plus 390x844; exit 1 on errors |
 | `tools/workcut.py` | Games rows cut check in the installed Firefox: every Work row's slab inside its clipping box and the window, text inside the slab, detail line hidden at rest/shown on hover, level, unmoved, no side scroll; exit 1 on a fail |
+| `tools/usage-log.py` | Usage meter: `--week N --fable N` appends one line to `~/.claude/usage-readings.tsv` (spend, calls, over-150k spend since the last line); `--show [n]` prints recent lines with points per $100 |
 | `tools/scrollperf.py` | Scroll-jank measure (finds the toy canvas `figure.gp-stage canvas` or `canvas.play`) |
 | `.claude/agents/researcher.md` | Shared (synced). Lean agent (Read, Grep, Glob, Bash, Write, WebSearch, WebFetch; no CLAUDE.md): research across files and the web, writes a report to a named file; replaces general-purpose in research and writing briefs |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
@@ -722,6 +723,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Plan phase state (one phase per session): headless sessions follow `.claude/skills/plan/unattended.md`
 - Shared workflow (synced with the owner's other projects): synced paths and hashes in `.claude/workflow.lock`; the shared rules are `.claude/rules/workflow.md`; `session-start.py` `workflow_sync_lines` prints `WORKFLOW SYNC:` on drift;
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
+  `coordinator.md` (the coordinator window's procedure), `sub-chat.md` (rules for a chat the coordinator started),
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
 - `.claude/hooks/hooks_test.py`: `py -3 .claude/hooks/hooks_test.py [-k name]` runs the hook cases (blocking hooks, then prompt and session hooks)
 - Case-page toys (lamps, the stage toy, records): shared layer `js/pages/play.js`, styles `css/play.css`; desktop only (≥ 900 px);

@@ -341,6 +341,25 @@ review("20 staged lines in 1 file", "git commit -m x", "allow", 1, 20)
 review("200 lines with a reviewer in the ledger", "git commit -m x", "allow", 1, 200, setup=_reviewer_ran)
 review("200 lines in a window past its context line", "git commit -m x", "allow", 1, 200, setup=_past_line)
 review("200 lines committed by a subagent", "git commit -m x", "allow", 1, 200, agent_id="a1")
+review("sketch commit, 400 lines, no reviewer", 'git commit -m "Sketch: hull v3"', "allow", 1, 400)
+review("same diff, plain message", 'git commit -m "Hull v3"', "refuse", 1, 400)
+review("lowercase sketch message", 'git commit -m "sketch: x"', "refuse", 1, 400)
+review("sketch message in a heredoc", "git commit -m \"$(cat <<'EOF'\nSketch: hull v3\n\nbody\nEOF\n)\"", "allow", 1, 400)
+review("sketch message with -F", "git commit -F msg.txt -m 'Sketch: x'", "refuse", 1, 400)
+
+
+@case("review-guard: a landing is never a sketch", "refuse")
+def _(c):
+    c.file("a.txt", "x\n")
+    c.sh("git", "add", "-A")
+    c.sh("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "Sketch: base")
+    c.sh("git", "branch", "-m", "main")
+    c.sh("git", "checkout", "-qb", "feat")
+    _stage(c, 1, 400)
+    c.sh("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "Sketch: big")
+    return c.run("review-guard.py", c.payload("Bash", {"command": "py -3 tools/try.py feat --commit"}))
+
+
 review("200 lines, command is not a commit", "git status", "allow", 1, 200)
 
 
@@ -467,7 +486,7 @@ for _label, _path, _branch, _want in (
     check("go-check: " + _label, _go_case)
 
 
-# context-watch.py (the line is 200,000; 250,000 for the coordinator, a plan supervisor and a raw window)
+# context-watch.py (the line is 150,000; 180,000 for the coordinator, 250,000 for a plan supervisor and a raw window)
 def usage_turn(tokens):
     return {"type": "assistant", "message": {"role": "assistant", "usage": {"input_tokens": 1, "cache_read_input_tokens": tokens}}}
 
@@ -480,20 +499,20 @@ def watch(c, tokens, event="PreToolUse", text=None, **extra):
 
 
 def _quiet_below(c):
-    return "CONTEXT WATCH" not in watch(c, 150_000)[1], ""
+    return "CONTEXT WATCH" not in watch(c, 130_000)[1], ""
 
 
 def _once_at_90(c):
-    first = watch(c, 180_000)[1]  # 90% of 200,000
-    second = watch(c, 181_000)[1]
-    return "90% of the line of 200,000" in first and "CONTEXT WATCH" not in second, first + second
+    first = watch(c, 136_000)[1]  # 90% of 150,000
+    second = watch(c, 137_000)[1]
+    return "90% of the line of 150,000" in first and "CONTEXT WATCH" not in second, first + second
 
 
 def _once_past(c):
-    watch(c, 180_000)
-    first = watch(c, 201_000)[1]
-    second = watch(c, 202_000)[1]
-    return "past this window's line of 200,000" in first and "CONTEXT WATCH" not in second, first + second
+    watch(c, 136_000)
+    first = watch(c, 151_000)[1]
+    second = watch(c, 152_000)[1]
+    return "past this window's line of 150,000" in first and "CONTEXT WATCH" not in second, first + second
 
 
 check("context-watch: quiet below 90% of the line", _quiet_below)
@@ -521,7 +540,7 @@ def _researcher_lines(c):
 check("context-watch: a researcher subagent is warned at 80% and refused past 125,000", _researcher_lines)
 
 GO_PREPARED = "go: build the prepared specs. Checkout %s on branch feature, worktree mode. Read .claude/handoff.md first."
-NOTE = "coordinator window, line 250k until /clear"
+NOTE = "coordinator window, line 180k until /clear"
 
 
 def _user(text):
@@ -529,88 +548,88 @@ def _user(text):
 
 
 def _submit(c, text, tokens=228_000):
-    """A prompt in a window whose last turn holds `tokens` (91% of 250,000)."""
+    """A prompt in a window whose last turn holds `tokens` (91% of 250,000; pass 165_000 for 91% of 180,000)."""
     return watch(c, tokens, event="UserPromptSubmit", text=text)[1]
 
 
 def _coordinator_first(c, text):
-    out = _submit(c, text)
-    return "91% of the line of 250,000" in out and out.count(NOTE) == 1, out
+    out = _submit(c, text, 165_000)
+    return "91% of the line of 180,000" in out and out.count(NOTE) == 1, out
 
 
-check("context-watch: coordinator: as the first prompt gets 250,000",
+check("context-watch: coordinator: as the first prompt gets 180,000",
       lambda c: _coordinator_first(c, "coordinator: plan the day"))
-check("context-watch: bare Coordinator gets 250,000",
+check("context-watch: bare Coordinator gets 180,000",
       lambda c: _coordinator_first(c, "Coordinator"))
-check("context-watch: coordinator: behind a reminder block gets 250,000",
+check("context-watch: coordinator: behind a reminder block gets 180,000",
       lambda c: _coordinator_first(c, "<system-reminder>\nx\n</system-reminder>\n\ncoordinator: go"))
 
 
 def _coordinator_later(c):
-    first = watch(c, 180_000, event="UserPromptSubmit", text="please start")[1]  # 90% of 200,000
-    second = _submit(c, "coordinator: now", 225_000)  # 90% of 250,000
+    first = watch(c, 136_000, event="UserPromptSubmit", text="please start")[1]  # 90% of 150,000
+    second = _submit(c, "coordinator: now", 162_000)  # 90% of 180,000
     third = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
-    c.write_transcript([FIRST_PROMPT, usage_turn(251_000)])
+    c.write_transcript([FIRST_PROMPT, usage_turn(181_000)])
     fourth = c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
-    return ("90% of the line of 200,000" in first and "90% of the line of 250,000" in second
+    return ("90% of the line of 150,000" in first and "90% of the line of 180,000" in second
             and NOTE in second and "CONTEXT WATCH" not in third
-            and "past this window's line of 250,000" in fourth and NOTE not in fourth), first + second + fourth
+            and "past this window's line of 180,000" in fourth and NOTE not in fourth), first + second + fourth
 
 
-check("context-watch: coordinator: as a later prompt gets 250,000 and re-arms the warnings", _coordinator_later)
+check("context-watch: coordinator: as a later prompt gets 180,000 and re-arms the warnings", _coordinator_later)
 
 
 def _coordinator_silent_again(c):
-    _submit(c, "coordinator: go")
-    out = _submit(c, "and then?")
-    return "of the line of 250,000" in out and NOTE not in out, out
+    _submit(c, "coordinator: go", 165_000)
+    out = _submit(c, "and then?", 165_000)
+    return "CONTEXT WATCH" not in out, out
 
 
 check("context-watch: the coordinator note prints once", _coordinator_silent_again)
 
 
 def _queued_coordinator(c):
-    c.write_transcript([_user("coordinator: go"), usage_turn(228_000)])
+    c.write_transcript([_user("coordinator: go"), usage_turn(165_000)])
     return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
 
 
-check("context-watch: coordinator: as a queued first message gets 250,000",
-      lambda c: ("91% of the line of 250,000" in (o := _queued_coordinator(c)), o))
+check("context-watch: coordinator: as a queued first message gets 180,000",
+      lambda c: ("91% of the line of 180,000" in (o := _queued_coordinator(c)), o))
 
 
 def _background_first(c):
     first = _user("Background (from the session that started this one):\nsome notes\n\nTask: coordinator: go")
-    c.write_transcript([first, usage_turn(182_000)])
+    c.write_transcript([first, usage_turn(137_000)])
     return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
 
 
-check("context-watch: Background/Task: coordinator: first prompt stays 200,000",
-      lambda c: ("of the line of 200,000" in (o := _background_first(c)) and NOTE not in o, o))
-check("context-watch: coordinator: in a cross-session wrapper stays 200,000",
-      lambda c: ("of the line of 200,000" in (o := _submit(c, '<cross-session-message from="x">coordinator: go</cross-session-message>', 182_000)) and NOTE not in o, o))
-check("context-watch: coordinator in the middle of a prompt stays 200,000",
-      lambda c: ("of the line of 200,000" in (o := _submit(c, "please ask the coordinator: go", 182_000)), o))
+check("context-watch: Background/Task: coordinator: first prompt stays 150,000",
+      lambda c: ("of the line of 150,000" in (o := _background_first(c)) and NOTE not in o, o))
+check("context-watch: coordinator: in a cross-session wrapper stays 150,000",
+      lambda c: ("of the line of 150,000" in (o := _submit(c, '<cross-session-message from="x">coordinator: go</cross-session-message>', 137_000)) and NOTE not in o, o))
+check("context-watch: coordinator in the middle of a prompt stays 150,000",
+      lambda c: ("of the line of 150,000" in (o := _submit(c, "please ask the coordinator: go", 137_000)), o))
 
 
 def _prepared(c, handoff="Run: prepared\n# Handoff\n", text=None):
     c.file(".claude/handoff.md", handoff)
-    return _submit(c, text or GO_PREPARED % c.proj.replace("\\", "/"), 182_000)
+    return _submit(c, text or GO_PREPARED % c.proj.replace("\\", "/"), 137_000)
 
 
-check("context-watch: a go prompt with a Run: prepared handoff gets 200,000",
-      lambda c: ("91% of the line of 200,000" in (o := _prepared(c)), o))
+check("context-watch: a go prompt with a Run: prepared handoff gets 150,000",
+      lambda c: ("91% of the line of 150,000" in (o := _prepared(c)), o))
 
 
 def _queued_prepared(c):
     c.file(".claude/handoff.md", "Run: prepared\n# Handoff\n")
-    c.write_transcript([_user(GO_PREPARED % c.proj.replace("\\", "/")), usage_turn(182_000)])
+    c.write_transcript([_user(GO_PREPARED % c.proj.replace("\\", "/")), usage_turn(137_000)])
     return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
 
 
-check("context-watch: a queued go prompt with a Run: prepared handoff gets 200,000",
-      lambda c: ("91% of the line of 200,000" in (o := _queued_prepared(c)), o))
-check("context-watch: a plain first prompt gets 200,000",
-      lambda c: ("91% of the line of 200,000" in (o := _submit(c, "fix the bug", 182_000)), o))
+check("context-watch: a queued go prompt with a Run: prepared handoff gets 150,000",
+      lambda c: ("91% of the line of 150,000" in (o := _queued_prepared(c)), o))
+check("context-watch: a plain first prompt gets 150,000",
+      lambda c: ("91% of the line of 150,000" in (o := _submit(c, "fix the bug", 137_000)), o))
 check("context-watch: the plan supervisor prompt gets 250,000",
       lambda c: ("91% of the line of 250,000" in (o := _submit(c, "go: run plan x")), o))
 
@@ -622,6 +641,28 @@ def _raw_window(c):
 
 check("context-watch: a raw window keeps 250,000",
       lambda c: ("91% of the line of 250,000" in (o := _raw_window(c)), o))
+
+
+def _plain_quiet_prompts(c):
+    watch(c, 136_000)
+    outs = [prompt(c, "context-watch.py", t)[1] for t in ("again", "and again")]
+    c.write_transcript([FIRST_PROMPT, usage_turn(151_000)])
+    past = prompt(c, "context-watch.py", "now")[1]
+    c.write_transcript([FIRST_PROMPT, usage_turn(152_000)])
+    after = prompt(c, "context-watch.py", "more")[1]
+    return ("CONTEXT WATCH" not in "".join(outs) and "past this window's line of 150,000" in past
+            and "CONTEXT WATCH" not in after), "".join(outs) + past + after
+
+
+def _coordinator_160_162(c):
+    quiet = _submit(c, "coordinator: go", 160_000)
+    warn = _submit(c, "next", 162_000)
+    return ("CONTEXT WATCH: coordinator window" in quiet and "% of the line" not in quiet
+            and "90% of the line of 180,000" in warn), quiet + warn
+
+
+check("context-watch: prompts after the 90% warning print nothing; passing 150,000 prints once", _plain_quiet_prompts)
+check("context-watch: a coordinator window is quiet at 160,000 and warns at 162,000", _coordinator_160_162)
 
 
 def _autoplan_line(c):

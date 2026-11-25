@@ -9,16 +9,16 @@ The line depends on the window:
 - the coordinator window (a prompt whose first line starts `coordinator:`,
   or is just `coordinator`, at any point of the window; remembered until
   /clear or a new chat; the warnings re-arm against the new line):
-  RUN_LIMIT, because it runs a worktree sub-chat per task and holds
-  their reports;
+  COORD_LIMIT (180,000), because it runs a worktree sub-chat per task
+  and holds their reports; the kind is stored, so the line follows it;
 - a plan run's supervisor (a prompt that is the go prompt `go: run plan`
   or `carry on running plan`, or a Bash/PowerShell call that launches
   `py ... autoplan.py <name>`; remembered for the window):
-  RUN_LIMIT, because it reports every phase of a plan in one window;
-- a raw-mode window (raw-mode.py): RUN_LIMIT, because it does all its own
+  RUN_LIMIT (250,000), because it reports every phase of a plan in one window;
+- a raw-mode window (raw-mode.py): RUN_LIMIT (250,000), because it does all its own
   reading and writing;
 - any other app window (a prepare, a prepared run, a sub-chat, a quick
-  fix, a plan interview): LIMIT is lower because what grows there is the
+  fix, a plan interview): LIMIT (150,000) is lower because what grows there is the
   model's own output (specs, thinking); two prepare windows went from
   42k to 140k with one Explore call each (review of 2026-10-01, when
   LIMIT was 120,000).
@@ -39,7 +39,7 @@ line), not on every tool call: past the line every call used to repeat
 the warning (one session got it 25 times), each one costing tokens in
 the window it was protecting. The crossing state is
 `<session dir>/context-watch.state.json`; a new prompt (UserPromptSubmit)
-repeats the current state once, so a fresh turn starts informed. The
+does not repeat it: the main session hears each crossing once. The
 deny past HARD is not a warning and stays on every call.
 
 transcript_path is always the parent session's transcript; a subagent's
@@ -67,8 +67,9 @@ except ImportError as e:  # an older guard_config.py: run as if raw mode were of
     def first_prompt(transcript_path):
         return ""
 
-LIMIT = 200_000       # every app window but the coordinator and a supervisor
-RUN_LIMIT = 250_000   # the coordinator window, or a plan run's supervisor
+LIMIT = 150_000       # every app window but the coordinator, a supervisor and raw
+COORD_LIMIT = 180_000  # the coordinator window
+RUN_LIMIT = 250_000   # a plan run's supervisor, or a raw window
 # a prompt that starts `coordinator:` or is just `coordinator`: like RAW_ON
 # (guard_config.py) it skips leading reminder blocks, but not the
 # "Background (...):" paragraph or "Task:" label of a chat another session
@@ -233,7 +234,7 @@ def main_line(d, state):
         return RUN_LIMIT, "raw"
     kind = state["main"].get("run")
     if kind:
-        return RUN_LIMIT, kind
+        return (COORD_LIMIT if kind == "coordinator" else RUN_LIMIT), kind
     text = d.get("prompt") or ""
     if not text and d.get("tool_name") in ("Bash", "PowerShell"):
         text = (d.get("tool_input") or {}).get("command") or ""
@@ -253,8 +254,8 @@ def main_line(d, state):
         state["main"]["run"] = "coordinator"
         state["main"]["tier"] = 0
         NOTES.append("CONTEXT WATCH: coordinator window, line "
-                     f"{RUN_LIMIT // 1000}k until /clear.")
-        return RUN_LIMIT, "coordinator"
+                     f"{COORD_LIMIT // 1000}k until /clear.")
+        return COORD_LIMIT, "coordinator"
     if SUPERVISOR_PROMPT.search(text) or SUPERVISOR_CMD.search(text):
         state["main"]["run"] = "supervisor"
         state["main"]["tier"] = 0
@@ -443,9 +444,8 @@ def on_main(d, ev, path):
             limit, kind = main_line(d, state)
             tier = tier_of(used, limit, MAIN_SOFT)
             last = int(state["main"].get("tier", 0))
-            # a new prompt repeats the current state once; a tool call
-            # speaks only when a threshold is crossed
-            if tier > last or (ev == "UserPromptSubmit" and tier > 0):
+            # speaks only when a threshold is crossed, on a prompt or a call
+            if tier > last:
                 m = main_message(used, limit, tier, kind)
                 if m:
                     parts.append(m)

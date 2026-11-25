@@ -55,13 +55,13 @@ read its matching section too.
   skill).
 - Over about 150 lines or three files (`.claude/` and `.md` files not
   counted): the `reviewer` gets the spec paths and the changed paths
-  before you commit (`review-guard.py` enforces it, workflow.md Run).
+  before you commit (`review-guard.py` enforces it, workflow.md Run); a sketch round has none (Run step 5).
 
 ## Prepare
 
 The detail behind `workflow.md` "Prepare".
 
-This window's line is 200k. Two prepare windows reached 140k writing
+This window's line is 150k. Two prepare windows reached 140k writing
 specs and reading files themselves (2026-10-01, when the line was
 120k), which is why this window still reads nothing itself.
 
@@ -125,7 +125,7 @@ The detail behind `workflow.md` "Run" steps 3 to 7.
 A go prompt whose printed handoff starts `Run: prepared`, checkout and
 branch checked first. This window only manages, never reads a spec or a
 diff (about 3k tokens per spec; a fresh window starts near 60k, so
-about 35 take it to 165k, under the 180k warning of its 200k line, with
+about 22 take it to 126k, under the 135k warning of its 150k line, with
 room for review and report).
 
 - A prepared run's specs are gitignored and exist only in the worktree
@@ -149,6 +149,12 @@ room for review and report).
    `.claude/hooks/review-guard.py` counts the real diff at `git commit`
    and at `try.py --commit` and refuses the command until a reviewer has
    run in this window; an earlier window's review does not count.
+   A sketch round (a picture or clip for the owner's verdict, not a
+   landing) runs no reviewer and commits as `Sketch: <what>`, which
+   `review-guard.py` lets through; the reviewer runs once on the whole
+   branch (`git diff main...HEAD`) in the round the owner approves for
+   landing, whose commit has a normal message. Its verify is whatever the
+   project's `CLAUDE.md` says for a sketch round (owner, 2026-11-25).
 6. **Commit** by path as your mode says, the message describing the work
    (a squash takes the branch tip's message). Landing on `main` waits
    for the owner's OK (worktree: commit on the branch only, then `try.py
@@ -170,6 +176,12 @@ and the agents that inherit its model (`plan-writer`, Plan,
 general-purpose, a built-in Explore) become Fable; the agent files that
 name `opus` or `sonnet` keep that model. Fable manages, writes specs and
 delegates every code change exactly as Opus does (owner, 2026-10-02).
+Fable runs only in a window the owner's own message names for a plan or
+research. Build and look chats (a coordinator's sub-chats, prepared
+runs, raw windows) run on Opus medium unless his message names Fable
+for that chat; a coordinator never starts or keeps a build chat on
+Fable on its own (owner, 2026-11-25, after Fable build chats took about
+a sixth of a week's spend).
 Plan runs use Opus: `autoplan.py` defaults to `claude-opus-5-5` at
 medium whatever the app shows, and a run never passes `--model` (owner,
 2026-10-12: plan on Fable, clear, run on Opus medium). No Haiku: a
@@ -195,7 +207,9 @@ Intent, not a line-level design: the implementer reads the code and the
 rules files the spec names, and settles the how. The spec fixes what the
 owner or other code would notice (names others call, numbers, text,
 look) and leaves the rest. Under about 40 lines, written once with one
-Write and never read back; longer means two specs. Every spec has:
+Write and never read back; longer means two specs, except a sketch round's spec: one spec, several
+files when they are one drawing (owner, 2026-11-25); the 40-line and
+three-deliverable limits hold for everything else. Every spec has:
 
 1. **Goal:** what changes and why, in plain words.
 2. **Where:** the files to create, edit or delete, and the functions or

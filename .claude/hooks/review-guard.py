@@ -31,6 +31,10 @@ judges a row unneeded is never trapped. The map is .claude/MAP.md unless
 file-guard.json's `map` says otherwise; `generated: true` skips the check
 (the generator writes the rows).
 
+A `git commit` whose first -m message starts with `Sketch:` (case-sensitive,
+also the heredoc form) skips the reviewer demand only: never for a landing,
+never with -F, and the map check still applies.
+
 Exceptions: subagents (agent_id set: implementer-wt commits on its own
 branch); a window past its context line (context-watch's state file says
 so), which commits what it has and hands off, with the review listed
@@ -59,6 +63,9 @@ MAP_WIDTH = 300
 LAND_RE = re.compile(r"\btry\.py\b[^|;&\n]*\s--commit\b")
 COMMIT_RE = re.compile(r"\bgit\b[^|;&\n]*\scommit\b")
 ADD_RE = re.compile(r"\bgit\s+add\b")
+# first -m value: optional quote, optional `$(cat <<'EOF'` line, then "Sketch:"
+MSG_RE = re.compile(r"""(?:^|\s)(?:-m|--message)(?:\s+|=)["']?(?:\$\(cat\s+<<-?\s*['"]?\w+['"]?[ \t]*\r?\n)?\s*(Sketch:)?""")
+FILE_RE = re.compile(r"(?:^|\s)(?:-F|--file)\b")
 
 
 def git(*args, cwd=None):
@@ -130,6 +137,15 @@ def change_size(cmd):
         files, lines = numstat(skip, "--cached")
         return files, lines, "the staged diff"
     return None
+
+
+def is_sketch(cmd):
+    """True for a `git commit` whose first -m message starts with "Sketch:"
+    (never for a landing, never with -F or a message that is not read)."""
+    if LAND_RE.search(cmd) or not COMMIT_RE.search(cmd) or FILE_RE.search(cmd):
+        return False
+    m = MSG_RE.search(cmd)
+    return bool(m and m.group(1))
 
 
 def added_paths(cmd):
@@ -256,6 +272,8 @@ def main():
     if lines <= LINES and len(files) <= FILES:
         return
     if tp and reviewed(tp):
+        return
+    if is_sketch(cmd):
         return
     if tp and past_line(tp):
         print(json.dumps({"hookSpecificOutput": {

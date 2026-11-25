@@ -1,8 +1,9 @@
 ### Portfolio notes (worktree)
 
 - Landing step: `tools/bump.py` (rewrites every `?v=`); never run it here.
-- `snapshots/` is gitignored, so capture the `snap.py` "before" run here
-  before any code changes.
+- `snapshots/` is gitignored. Sketch rounds take no full capture; the
+  landing round captures "before" from the main checkout with `snap.py
+  capture before --root C:/Users/Traff/Desktop/sebas/Portfolio`.
 - **Try:** `--path` is the URL path where the change is seen
   (`/projects/voidscape.html`, `/?genesis=1&gbeat=<beat>`, `/` for the
   bridge); try.py serves the branch with `serve.py` on its own port and

@@ -86,7 +86,7 @@ that do the work. Sort each new prompt from its words and at most one
 - **Anything else:** **prepare** (steps 1 to 2), end the turn; the owner
   runs `/clear` and pastes the go prompt; the fresh window **runs**
   (steps 3 to 7). Unsure: prepare.
-- **Too big for one run** (over about 35 specs): a plan; suggest `/plan
+- **Too big for one run** (over about 22 specs): a plan; suggest `/plan
   new <name>: <prompt>`.
 
 A plan, a handoff or a plan's questions in this checkout follow their
@@ -102,7 +102,7 @@ early only when something went really wrong.
 
 ### Prepare
 
-This window's line is 200k. Detail: playbook "Prepare".
+This window's line is 150k. Detail: playbook "Prepare".
 
 1. **Explore** through `Explore` (files, `file:line` anchors, rules files), ask the obvious questions, read nothing yourself.
 2. **Spec** one per implementer call (playbook "Spec format"), each written once to `.claude/specs/<k>.md`, plus `.claude/handoff.md`; end the turn with the go prompt (what: "build the prepared specs").
@@ -113,7 +113,7 @@ A go prompt whose printed handoff starts `Run: prepared`, checkout and branch ch
 
 3. **Implement:** one `implementer` per spec, prompt only "Your spec is `.claude/specs/<k>.md`: read it and implement it".
 4. **Verify:** the implementer runs its checks and reports pass or fail with key numbers.
-5. **Review:** over about 150 lines or three files the `reviewer` runs; `review-guard.py` refuses the commit without it.
+5. **Review:** over about 150 lines or three files the `reviewer` runs; `review-guard.py` refuses the commit without it. A sketch round (a picture or clip for the owner's verdict, not a landing) has no reviewer and commits as `Sketch: <what>`; the reviewer runs once on `git diff main...HEAD` at landing (owner, 2026-11-25).
 6. **Commit** by path as your mode says; landing on `main` waits for the owner's OK.
 7. **Report:** end the turn with exactly this:
    1. **Name:** the feature in plain words, then the branch (and PR in cloud).
@@ -137,12 +137,13 @@ A prompt starting `raw:` (or just `raw`) puts this window in raw mode until `/cl
 ## Main session role
 
 - Do not edit source files yourself (Write, Edit, or Bash that writes),
-  except a single-line change where a spec would take longer than the
-  edit. Cost and convenience are not exceptions. Docs, `.claude/MAP.md`
+  except an edit of up to about ten lines where a spec would take longer
+  than the edit (owner, 2026-11-25). Cost and convenience are not exceptions. Docs, `.claude/MAP.md`
   rows, `.claude/handoff.md` and the markdown in `.claude/` are not
   source: edit those directly.
 - Every code change goes to `implementer`, one spec per call, one file
-  per call unless the change genuinely spans files; it sees the spec and
+  per call unless the change genuinely spans files (a sketch round: one spec,
+  several files); it sees the spec and
   what it names, never these rules.
 - Explore and Plan never load this file or `CLAUDE.md`: name the file,
   function or concept, tell them to grep `.claude/MAP.md` first, and ask
@@ -152,8 +153,8 @@ A prompt starting `raw:` (or just `raw`) puts this window in raw mode until `/cl
   implementer reads them.
 - A plan, state file or handoff: grep the heading, never re-read the
   whole file.
-- Models and effort (Opus judges, Sonnet does, a Fable session makes
-  only the main session and inheriting agents Fable, plan runs on Opus
+- Models and effort (Opus judges, Sonnet does, Fable only where the
+  owner names it, for plans and research, plan runs on Opus
   medium, no Haiku; medium is the base and only the owner picks higher,
   which reaches the main session and plan-writer; never pass `model` or
   `effort` on an Agent call): playbook "Models".
@@ -164,14 +165,14 @@ Auto-compact is off (`DISABLE_AUTO_COMPACT`, owner's rule 2026-09-29): a
 session never runs past its line; it stops and the owner clears or
 opens a new chat. Never compact or clear yourself. `context-watch.py`
 prints `CONTEXT WATCH` once when a window crosses 90% of its line, once
-when it passes it, and once per new prompt while it stays there. Lines:
-the coordinator window, a raw window, a plan run's supervisor and
-headless plan sessions 250k (the runner kills headless ones at 300k);
-every other app window 200k, sub-chats and prepared runs included.
+when it passes it. Lines: the coordinator window 180k; a raw window, a
+plan run's supervisor and headless plan sessions 250k (the runner kills
+headless ones at 300k); every other app window 150k, sub-chats and
+prepared runs included.
 The coordinator is the one window the owner talks to while it runs a
 worktree sub-chat per task: a prompt the owner types that starts
 `coordinator:` (or is just `coordinator`) makes its window one until
-`/clear` or a new chat; a chat another session opened never is. Explore, Plan, general-purpose and claude-code-guide 100k,
+`/clear` or a new chat; a chat another session opened never is. Its procedure: `.claude/project/coordinator.md`; a chat it starts follows `.claude/project/sub-chat.md`, if present. Explore, Plan, general-purpose and claude-code-guide 100k,
 researcher 100k, plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
 subagent at 1.25 times its line is denied further tools: the prompt was
 too wide; next time name file, function and range, or split. Every
@@ -211,7 +212,7 @@ harness's exit notice and never polls (playbook Delegation).
   change, when the owner asks how something looks, before the report)
   and says what it sees. It never says how a result looks from an
   implementer's description or a guess. Each picture once, and only
-  the ones the question needs.
+  the ones the question needs. The coordinator window relays a sub-chat's pictures and clips unopened with its one line, opening one only if the owner asks what it thinks; the sub-chat looks first (owner, 2026-11-25).
 - **A fresh `look-judge`** (Opus medium, its agent file) is the second
   opinion: optional in an app window (use it when you directed the fix
   and want eyes that owe it nothing), required at a plan's look phases,
