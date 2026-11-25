@@ -386,3 +386,73 @@ merge run the landing steps once and the project's full check (`CLAUDE.md`
 § Verify), commit, and end with the report (the owner pushes). Never
 delete branches by hand; `tools/cleanup.py` removes merged ones once
 idle 24 h.
+
+## Workflow detail
+
+What `.claude/rules/workflow.md` keeps short: the owner's words, dates
+and the longer form of a few rules.
+
+- **One prompt** (owner, 2026-10-01): *"i send prompt -> it prepares
+  whatever it needs -> i clear and tell it to run that prompt ... and it
+  starts managing instances, with the goal of never reaching its own limit
+  on the context window set by me"*.
+- **The go prompt:** a bare `go` in a fresh window guessed its worktree
+  and branch wrong (owner, 2026-10-01).
+- **Sketch rounds** and the main window's 40-line edit exception: owner,
+  2026-11-25. Cost and convenience are not exceptions to the edit rule.
+- **Models and effort:** Opus judges, Sonnet does, no Haiku; only the
+  owner picks effort higher (detail: "Models").
+- **Context budget:** auto-compact is off (`DISABLE_AUTO_COMPACT`, owner's
+  rule 2026-09-29). A prompt the owner types that starts `coordinator:`
+  (or is just `coordinator`) makes its window the coordinator until
+  `/clear` or a new chat. It runs on Sonnet medium and keeps its state on
+  the board (`tools/board.py`), so the owner can `/clear` it at any time
+  and restart it with `coordinator`.
+- **Looks are judged by someone who knows what was asked** (owner,
+  2026-11-10: the judges *"dont understand whats being asked about the
+  picutre htye have no context"*, so the owner kept resending pictures in
+  chat). An app window's main session may Read a picture itself: it knows
+  what the owner asked and what was wrong before, so it opens the shots
+  that answer a look question (after a visual change, when the owner asks
+  how something looks, before the report) and says what it sees, never
+  from an implementer's description or a guess. Each picture once. The
+  coordinator window relays a sub-chat's pictures and clips unopened with
+  its one line, opening one only if the owner asks what it thinks; the
+  sub-chat looks first (owner, 2026-11-25).
+- **Why landing pushes `main`:** new worktrees are cut from `origin/main`
+  (2026-10-01).
+- **Why Grep and Glob, not Bash `grep`/`find`:** they skip gitignored
+  paths such as `.claude/worktrees/`.
+- **Owner commands:** the app adds a Run button to fenced `bash` blocks.
+- **Coordinator cost:** every token in the main session is paid again
+  each turn. `Explore` and `researcher` prompts end with the report line
+  (Delegation).
+- **Mode:** `worktree` is the default.
+- **Quick fix** runs in the same window, with no clear.
+- **Main session edits:** "yourself" includes Bash that writes. Code
+  changes go one file per implementer call unless the change spans files
+  (`implementer-wt`: its agent file); the implementer sees the spec and
+  what it names, never these rules. `.claude/rules/` files load only for
+  a session that reads a matching file: the coordinator never reads them;
+  the window that designs a spec reads those `CLAUDE.md` maps to the area
+  and lists what binds under the spec's Read first. Explore and Plan never
+  load `workflow.md` or `CLAUDE.md`: name the file or concept, tell them
+  to grep `.claude/MAP.md` first, ask for `file:line` anchors, not code
+  bodies.
+- **Context lines:** a session past its line stops; the owner clears or
+  opens a new chat. A subagent denied tools at 1.25x: name file, function
+  and range, or split. Sub-chats of the coordinator:
+  `.claude/project/sub-chat.md`.
+- **Token rules:** `file-guard.py` refuses a whole read over 300 lines.
+  A view a tool measures is judged by its number; a subagent reads a
+  picture only for a look no tool measures, once, with one line on what
+  it shows. `look-judge` (`.claude/agents/look-judge.md`) is an optional
+  second opinion on a look (its prompt: Delegation). Add a line to the
+  map's "Owner's words" section when the owner uses a word the code does
+  not.
+- **Git:** `tools/cleanup.py` deletes branches. `git-guard.py` blocks
+  `add -A`/`.`, `commit -a`, `stash`, `checkout --`, `restore`,
+  `reset --hard`, `clean`, `rebase` and force push; the owner runs those
+  if wanted. Never poll: a check runs in the foreground with the call's
+  timeout; a background command's exit is reported by the harness.
+  Scratch logs, notes and screenshots go in the session's scratchpad.
