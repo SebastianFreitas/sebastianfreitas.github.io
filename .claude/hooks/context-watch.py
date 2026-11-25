@@ -15,8 +15,6 @@ The line depends on the window:
   or `carry on running plan`, or a Bash/PowerShell call that launches
   `py ... autoplan.py <name>`; remembered for the window):
   RUN_LIMIT (250,000), because it reports every phase of a plan in one window;
-- a raw-mode window (raw-mode.py): RUN_LIMIT (250,000), because it does all its own
-  reading and writing;
 - any other app window (a prepare, a prepared run, a sub-chat, a quick
   fix, a plan interview): LIMIT (150,000) is lower because what grows there is the
   model's own output (specs, thinking); two prepare windows went from
@@ -24,7 +22,7 @@ The line depends on the window:
   LIMIT was 120,000).
 
 Subagents (Explore, Plan, general-purpose, researcher, claude-code-guide, implementer,
-implementer-wt, reviewer, plan-reviewer, look-judge, plan-writer):
+implementer-wt, reviewer, reviewer-light, plan-reviewer, look-judge, plan-writer):
 - PreToolUse: warns at SOFT x its line, says to stop reading past it.
   Advisory only; a model can ignore it.
 - PreToolUse: past HARD x its line, every further tool call is DENIED with
@@ -57,21 +55,17 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from guard_config import raw_mode, first_prompt  # noqa: E402
-except ImportError as e:  # an older guard_config.py: run as if raw mode were off
-    sys.stderr.write("context-watch.py: guard_config.py is older than this file (%s): raw-mode check off\n" % e)
-
-    def raw_mode(transcript_path):
-        return False
+    from guard_config import first_prompt  # noqa: E402
+except ImportError as e:  # an older guard_config.py: no first-prompt check
+    sys.stderr.write("context-watch.py: guard_config.py is older than this file (%s): first-prompt check off\n" % e)
 
     def first_prompt(transcript_path):
         return ""
 
-LIMIT = 150_000       # every app window but the coordinator, a supervisor and raw
+LIMIT = 150_000       # every app window but the coordinator and a supervisor
 COORD_LIMIT = 180_000  # the coordinator window
-RUN_LIMIT = 250_000   # a plan run's supervisor, or a raw window
-# a prompt that starts `coordinator:` or is just `coordinator`: like RAW_ON
-# (guard_config.py) it skips leading reminder blocks, but not the
+RUN_LIMIT = 250_000   # a plan run's supervisor
+# a prompt that starts `coordinator:` or is just `coordinator`: it skips leading reminder blocks, but not the
 # "Background (...):" paragraph or "Task:" label of a chat another session
 # opened, which is never the coordinator
 COORDINATOR_PROMPT = re.compile(r"(?:\s*<system-reminder>(?:(?!</system-reminder>).)*</system-reminder>)*\s*coordinator[ \t]*(:|$)", re.I | re.S)
@@ -98,7 +92,7 @@ SUB_LIMITS = {"Explore": 100_000, "Plan": 100_000,
               "general-purpose": 100_000, "researcher": 100_000,
               "claude-code-guide": 100_000,
               "implementer": 60_000, "implementer-wt": 60_000, "reviewer": 80_000,
-              "plan-reviewer": 80_000, "look-judge": 80_000, "plan-writer": 120_000}
+              "reviewer-light": 80_000, "plan-reviewer": 80_000, "look-judge": 80_000, "plan-writer": 120_000}
 
 
 def usage_total(u):
@@ -220,18 +214,13 @@ def tier_of(used, limit, soft):
 
 def main_line(d, state):
     """(limit, kind) for this app window; kind is "coordinator",
-    "supervisor", "raw" or ""."""
+    "supervisor" or ""."""
     env = os.environ.get("AUTOPLAN_LINE")
     if env:
         try:
             return int(env), ""
         except ValueError:
             pass
-    if raw_mode(d.get("transcript_path")):
-        if state["main"].get("run") != "raw":
-            state["main"]["run"] = "raw"
-            state["main"]["tier"] = 0
-        return RUN_LIMIT, "raw"
     kind = state["main"].get("run")
     if kind:
         return (COORD_LIMIT if kind == "coordinator" else RUN_LIMIT), kind
@@ -265,18 +254,6 @@ def main_line(d, state):
 
 def main_message(used, limit, tier, kind):
     pct = used * 100 // limit
-    if kind == "raw":
-        if tier == 2:
-            return (f"CONTEXT WATCH: {used:,} tokens in context, past this "
-                    f"raw window's line of {limit:,}. Finish only the current "
-                    "step, verify, commit, write .claude/handoff.md (handoff "
-                    "skill) and end with a go prompt that starts `raw:` "
-                    "instead of `go:`, so the next window stays raw.")
-        if tier == 1:
-            return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of "
-                    f"the line of {limit:,}). Prefer finishing over starting "
-                    "new work; grep and read small ranges only.")
-        return None
     if tier == 2:
         if kind == "supervisor":
             return (f"CONTEXT WATCH: {used:,} tokens in context, past the "

@@ -82,3 +82,8 @@ fits in about 150 words:
    gaps (interview.md "Ask only about gaps"). `none` when there are
    none.
 3. **Stopped:** `finished`, or `context line: continue from <where>`.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

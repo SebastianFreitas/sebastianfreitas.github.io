@@ -17,10 +17,10 @@ repo is allowed.
   reads it. The project lists them in its config (`generated`).
 - In the main session (no agent_id), source files are the implementer
   subagent's job, built from a spec (workflow.md Main session role); the main
-  session itself may still make a single-line Edit.
-- A Write or Edit of .claude/handoff.md whose resulting file is over 80
-  lines or 6 KB: the handoff is a pointer for the next window (handoff
-  skill, "at most 80 lines"), and nothing enforced it (one ran to 28 KB and
+  session itself may still make one Edit of up to about 40 lines.
+- A Write or Edit of .claude/handoff.md whose resulting file is over 120
+  lines or 10 KB: the handoff is a pointer for the next window (handoff
+  skill, "at most 120 lines"), and nothing enforced it (one ran to 28 KB and
   every fresh window paid for it). Detail goes in the plan or state file,
   a spec or a report file the handoff names. Main session and subagents.
 - A Write or Edit from a reviewer, plan-reviewer or look-judge subagent
@@ -39,8 +39,6 @@ repo is allowed.
   regex, not a shell parser; subagents may write source. Heredoc bodies are
   not scanned (python open() targets are); a target with an unresolved $,
   only digits or /dev/null is skipped.
-- A raw-mode window (raw-mode.py) has no implementer, so its main session
-  may write source. Everything else here holds.
 
 The project tunes this through an optional .claude/project/file-guard.json
 (read once per call; missing or bad JSON means no config):
@@ -66,7 +64,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from guard_config import load_config, matches_any, raw_mode, source_rule  # noqa: E402
+    from guard_config import load_config, matches_any, source_rule  # noqa: E402
 except ImportError as e:  # an older guard_config.py: this guard cannot run, the others still do
     sys.stderr.write("file-guard.py: guard_config.py is older than this file (%s): guard off\n" % e)
     sys.exit(0)
@@ -86,9 +84,9 @@ DEFAULT_WHY = "generated or tool-owned (see .claude/project/file-guard.json)"
 MAX_LINES = 300
 MAX_READ_BYTES = 50 * 1024 * 1024
 HANDOFF_REL = ".claude/handoff.md"
-HANDOFF_MAX_LINES = 80
-HANDOFF_MAX_BYTES = 6 * 1024
-REPORT_ONLY_AGENTS = {"reviewer", "plan-reviewer", "look-judge"}
+HANDOFF_MAX_LINES = 120
+HANDOFF_MAX_BYTES = 10 * 1024
+REPORT_ONLY_AGENTS = {"reviewer", "reviewer-light", "plan-reviewer", "look-judge"}
 # Agents whose job is reading pictures: images are allowed to them anywhere,
 # .godot/ shots included (phase 11 of van-interior-salvage copied shots to
 # %TEMP% only to get past the binary rule, 2026-10-07).
@@ -201,20 +199,27 @@ def handoff_violation(path: str, tool_name: str, tool_input: dict) -> str | None
             "keep the handoff a pointer to them (handoff skill).")
 
 
+MAIN_EDIT_LINES = 40
+
+
+def too_long(text: str) -> bool:
+    return len(text.strip("\n").split("\n")) > MAIN_EDIT_LINES
+
+
 def main_session_violation(tool_name: str, tool_input: dict) -> bool:
     if tool_name == "Write":
         return True
     if tool_name == "Edit":
         old = tool_input.get("old_string", "")
         new = tool_input.get("new_string", "")
-        return bool("\n" in old.strip("\n") or "\n" in new.strip("\n")
-                     or tool_input.get("replace_all"))
+        return bool(too_long(old) or too_long(new)
+                    or tool_input.get("replace_all"))
     if tool_name == "MultiEdit":
         edits = tool_input.get("edits") or []
         if len(edits) > 1:
             return True
-        return any("\n" in e.get("old_string", "").strip("\n")
-                   or "\n" in e.get("new_string", "").strip("\n") for e in edits)
+        return any(too_long(e.get("old_string", "")) or too_long(e.get("new_string", ""))
+                   for e in edits)
     if tool_name == "NotebookEdit":
         return True
     return False
@@ -340,8 +345,6 @@ def bash_violation(d: dict, tool_input: dict) -> None:
         if why is not None:
             deny(f"{rel} is {why}.")
             return
-        if raw_mode(d.get("transcript_path")):
-            continue
         suffixes, source_files = source_rule(cfg)
         if ext(path) in suffixes or rel in source_files:
             deny(f"Main session: {rel} is a source file; a shell write (sed -i, "
@@ -456,7 +459,7 @@ def main() -> None:
             deny(reason)
         return
 
-    if d.get("agent_id") or raw_mode(d.get("transcript_path")):
+    if d.get("agent_id"):
         return
     suffixes, source_files = source_rule(cfg)
     if ext(path) not in suffixes and rel not in source_files:
@@ -466,7 +469,8 @@ def main() -> None:
     listed = " ".join(sorted(suffixes) + source_files)
     deny(f"Main session: source files ({listed}) are changed by the "
          "implementer subagent from a spec (.claude/rules/workflow.md Main "
-         "session role). The only exception is a single-line Edit.")
+         "session role). The only exception is one Edit of up to about "
+         f"{MAIN_EDIT_LINES} lines.")
 
 
 try:

@@ -19,3 +19,8 @@ You search and summarize the portfolio, a GitHub Pages site in plain HTML, CSS a
 - Never open `media/`, `snapshots/`, `*.pdf`, images or `__pycache__/`.
 - If something you were asked about doesn't exist, say so. Don't guess.
 - Context: about 100k tokens of room; past 125k every tool call is refused. If a hook prints CONTEXT WATCH, stop searching and answer from what you have.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

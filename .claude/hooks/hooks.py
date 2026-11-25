@@ -35,21 +35,12 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-try:
-    from guard_config import RAW_TEXT, lazy_raw  # noqa: E402
-except ImportError as e:  # a mixed-version set must not switch every guard off
-    sys.stderr.write("hooks.py: guard_config.py is older than this file (%s): raw-mode check off\n" % e)
-    RAW_TEXT = ""
-
-    def lazy_raw(transcript_path):
-        return False
 
 # event -> [(tool matcher or None, script)]; guards before context-watch,
 # so a refused call is never measured as if it ran.
 TABLE = {
     "SessionStart": [(None, "session-start.py")],
-    "UserPromptSubmit": [(None, "go-check.py"), (None, "raw-mode.py"),
-                         (None, "context-watch.py")],
+    "UserPromptSubmit": [(None, "go-check.py"), (None, "context-watch.py")],
     "PreToolUse": [
         ("Bash|PowerShell", "git-guard.py"),
         ("Bash|PowerShell", "review-guard.py"),
@@ -123,8 +114,8 @@ def passthrough(code, out, err):
     sys.exit(code)
 
 
-def dispatch_tool(ev, d, scripts, note=""):
-    contexts, system = [note] if note else [], []
+def dispatch_tool(ev, d, scripts):
+    contexts, system = [], []
     for script in scripts:
         code, out, err = run_script(script, d)
         if code == 2:
@@ -138,8 +129,6 @@ def dispatch_tool(ev, d, scripts, note=""):
             continue
         hso = j.get("hookSpecificOutput") or {}
         if hso.get("permissionDecision") in ("deny", "ask") or j.get("decision") == "block":
-            if note:
-                j.setdefault("hookSpecificOutput", {})["additionalContext"] = note
             passthrough(0, json.dumps(j), "")
         if hso.get("additionalContext"):
             contexts.append(str(hso["additionalContext"]))
@@ -220,11 +209,7 @@ def main():
     if not scripts:
         return
     if ev in ("PreToolUse", "PostToolUse"):
-        # a sub-chat's first message comes through the app's queue, so
-        # raw-mode.py never saw it: the first tool call reads it (once) and
-        # this reply tells the model it is raw
-        note = RAW_TEXT if lazy_raw(d.get("transcript_path")) else ""
-        dispatch_tool(ev, d, scripts, note)
+        dispatch_tool(ev, d, scripts)
     elif ev in ("Stop", "SubagentStop"):
         dispatch_stop(ev, d, scripts)
     else:

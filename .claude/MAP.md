@@ -576,6 +576,7 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/usage-log.py` | Usage meter: `--week N --fable N` appends one line to `~/.claude/usage-readings.tsv` (spend, calls, over-150k spend since the last line); `--show [n]` prints recent lines with points per $100 |
 | `tools/scrollperf.py` | Scroll-jank measure (finds the toy canvas `figure.gp-stage canvas` or `canvas.play`) |
 | `.claude/agents/researcher.md` | Shared (synced). Lean agent (Read, Grep, Glob, Bash, Write, WebSearch, WebFetch; no CLAUDE.md): research across files and the web, writes a report to a named file; replaces general-purpose in research and writing briefs |
+| `.claude/agents/reviewer-light.md` | Shared (synced). Sonnet copy of reviewer for diffs under 150 lines |
 | `tools/cleanup.py` | Shared (synced). Deletes landed session branches and their worktrees |
 | `tools/try.py` | Shared (synced). Try or land a session branch |
 | `tools/try_project.py` | Portfolio hooks for the shared `try.py`/`try_commit.py` |
@@ -723,6 +724,7 @@ Game pages (`projects/*.html`) load: `lib/util, site/xp, site/surge, lib/pacer, 
 - Plan phase state (one phase per session): headless sessions follow `.claude/skills/plan/unattended.md`
 - Shared workflow (synced with the owner's other projects): synced paths and hashes in `.claude/workflow.lock`; the shared rules are `.claude/rules/workflow.md`; `session-start.py` `workflow_sync_lines` prints `WORKFLOW SYNC:` on drift;
 - Shared workflow (synced with the owner's other projects): the project's half (never synced) is `.claude/project/`: `modes/<mode>.md` (printed after the shared mode file), `playbook.md`, `implementer.md`, `reviewer.md`,
+- `.claude/project/verify.md`: the portfolio's Verify steps (sketch round, flows, snap.py landing capture, toyshot, workcut, ffshot); project-only, never in workflow.lock. `CLAUDE.md` Verify points to it.
   `coordinator.md` (the coordinator window's procedure), `sub-chat.md` (rules for a chat the coordinator started),
 - Shared workflow (synced with the owner's other projects): optional `settings.json` (merged into `.claude/settings.json` by `sync.py push`) and `file-guard.json`, plus `tools/try_project.py`; hooks: `git-guard.py`, `file-guard.py`, `context-watch.py`, `stop-guard.py`, `session-start.py`
 - `.claude/hooks/hooks_test.py`: `py -3 .claude/hooks/hooks_test.py [-k name]` runs the hook cases (blocking hooks, then prompt and session hooks)

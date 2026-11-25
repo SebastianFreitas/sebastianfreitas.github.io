@@ -1,6 +1,6 @@
 """Tests for the blocking workflow hooks: git-guard, file-guard, agent-guard,
 poll-guard, review-guard and the dispatcher hooks.py, then the prompt and
-session hooks: raw-mode, go-check, context-watch, reply-cap, session-start.
+session hooks: go-check, context-watch, reply-cap, session-start.
 
     py -3 .claude/hooks/hooks_test.py            run every case
     py -3 .claude/hooks/hooks_test.py -k poll    only cases whose name contains "poll"
@@ -216,10 +216,22 @@ def _(c):
     return c.run("file-guard.py", c.payload("Write", {"file_path": os.path.join(c.proj, "js/a.js"), "content": "x\n"}))
 
 
-@case("file-guard: multi-line Edit of a source file by the main session", "refuse")
+@case("file-guard: 2-line Edit of a source file by the main session", "allow")
 def _(c):
     p = c.file("js/a.js", "a\nb\n")
     return c.run("file-guard.py", c.payload("Edit", {"file_path": p, "old_string": "a\nb", "new_string": "c\nd"}))
+
+
+@case("file-guard: 41-line Edit of a source file by the main session", "refuse")
+def _(c):
+    p = c.file("js/a.js", "a\n")
+    return c.run("file-guard.py", c.payload("Edit", {"file_path": p, "old_string": "a", "new_string": "c\n" * 40 + "d"}))
+
+
+@case("file-guard: 40-line Edit of a source file by the main session", "allow")
+def _(c):
+    p = c.file("js/a.js", "a\n")
+    return c.run("file-guard.py", c.payload("Edit", {"file_path": p, "old_string": "a", "new_string": "c\n" * 39 + "d"}))
 
 
 @case("file-guard: Write of a source file by a subagent", "allow")
@@ -234,10 +246,10 @@ def _(c):
     return c.run("file-guard.py", c.payload("Edit", {"file_path": p, "old_string": "a", "new_string": "c"}))
 
 
-@case("file-guard: handoff Write over 80 lines", "refuse")
+@case("file-guard: handoff Write over 120 lines", "refuse")
 def _(c):
     return c.run("file-guard.py", c.payload("Write", {"file_path": os.path.join(c.proj, ".claude/handoff.md"),
-                                                      "content": "x\n" * 81}))
+                                                      "content": "x\n" * 121}))
 
 
 @case("file-guard: handoff Write of 10 lines", "allow")
@@ -255,6 +267,39 @@ def _(c):
 @case("file-guard: reviewer Write of its report", "allow")
 def _(c):
     return c.run("file-guard.py", c.payload("Write", {"file_path": os.path.join(c.proj, ".claude/specs/reports/r.md"),
+                                                      "content": "x\n"}, agent_id="a1", agent_type="reviewer"))
+
+
+def stop_run(c, notified):
+    """stop-guard in cloud mode with a dirty file and one background Agent."""
+    c.file("js/dirty.js", "x\n")
+    entries = [FIRST_PROMPT, {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "toolu_bg1", "name": "Agent",
+         "input": {"run_in_background": True, "prompt": "p"}}]}}]
+    if notified:
+        entries.append({"type": "user", "message": {"content":
+            "<task-notification><tool-use-id>toolu_bg1</tool-use-id></task-notification>"}})
+    c.write_transcript(entries)
+    env = dict(os.environ, CLAUDE_CODE_REMOTE="true", CLAUDE_PROJECT_DIR=c.proj)
+    p = subprocess.run([sys.executable, os.path.join(c.hooks, "stop-guard.py")],
+                       input=json.dumps(c.payload(None, None, event="Stop")), capture_output=True,
+                       text=True, encoding="utf-8", cwd=c.proj, env=env, timeout=30)
+    return (2 if '"decision": "block"' in p.stdout else p.returncode), p.stdout, p.stderr
+
+
+@case("stop-guard: dirty tree while a background agent has not reported", "allow")
+def _(c):
+    return stop_run(c, False)
+
+
+@case("stop-guard: dirty tree after the background agent reported", "refuse")
+def _(c):
+    return stop_run(c, True)
+
+
+@case("file-guard: reviewer Write of a report under the temp folder", "allow")
+def _(c):
+    return c.run("file-guard.py", c.payload("Write", {"file_path": os.path.join(tempfile.gettempdir(), "w2-report.md"),
                                                       "content": "x\n"}, agent_id="a1", agent_type="reviewer"))
 
 
@@ -282,16 +327,10 @@ agent("effort set", {"subagent_type": "implementer", "prompt": "x", "effort": "h
 agent("run_in_background true", {"subagent_type": "implementer", "prompt": "x", "run_in_background": True}, "refuse")
 agent("foreground, no model", {"subagent_type": "implementer", "prompt": "x", "run_in_background": False}, "allow")
 agent("no run_in_background key", {"subagent_type": "implementer", "prompt": "x"}, "allow")
+agent("general-purpose from a main window", {"subagent_type": "general-purpose", "prompt": "x"}, "refuse")
+agent("claude from a main window", {"subagent_type": "claude", "prompt": "x"}, "refuse")
+agent("general-purpose called by a subagent", {"subagent_type": "general-purpose", "prompt": "x"}, "allow", agent_id="a1")
 
-
-def _raw(c):
-    c.write_transcript([{"type": "user", "message": {"role": "user", "content": "raw: do it"}}])
-
-
-agent("implementer in a raw window", {"subagent_type": "implementer", "prompt": "x"}, "refuse", setup=_raw)
-agent("reviewer in a raw window", {"subagent_type": "reviewer", "prompt": "x"}, "allow", setup=_raw)
-agent("implementer in a raw window, called by a subagent", {"subagent_type": "implementer", "prompt": "x"}, "allow",
-      setup=_raw, agent_id="a1")
 
 # poll-guard
 for cmd in ("sleep 10", "sleep 30; cat out", "until [ -s out ]; do sleep 1; done",
@@ -327,6 +366,15 @@ def _reviewer_ran(c):
     os.makedirs(c.session_dir())
     with open(os.path.join(c.session_dir(), "context-watch.jsonl"), "w", encoding="utf-8") as f:
         f.write(json.dumps({"agent_type": "reviewer"}) + "\n")
+
+
+def _light_ran(c):
+    os.makedirs(c.session_dir())
+    with open(os.path.join(c.session_dir(), "context-watch.jsonl"), "w", encoding="utf-8") as f:
+        f.write(json.dumps({"agent_type": "reviewer-light"}) + "\n")
+
+
+review("200 lines with a reviewer-light in the ledger", "git commit -m x", "allow", 1, 200, setup=_light_ran)
 
 
 def _past_line(c):
@@ -428,8 +476,7 @@ hooks("older guard_config.py: agent-guard still refuses", "Agent",
       {"subagent_type": "implementer", "prompt": "x", "model": "opus"}, "refuse", setup=_old_config)
 hooks("older guard_config.py: a harmless call is allowed", "Bash", {"command": "ls"}, "allow", setup=_old_config)
 hooks("syntax-broken guard_config.py: poll-guard still refuses", "Bash", {"command": "sleep 30"}, "refuse",
-      setup=_broken_config,
-      xfail="hooks.py catches only ImportError around its guard_config import, so a SyntaxError exits 1 and every guard goes off")
+      setup=_broken_config)
 
 
 @case("hooks.py: empty stdin exits 0 and stays silent", "allow")
@@ -456,24 +503,6 @@ def prompt(c, script, text, **extra):
     return c.run(script, c.payload(None, None, event="UserPromptSubmit", prompt=text, **extra))
 
 
-def raw_flag_set(c):
-    return os.path.exists(os.path.join(c.session_dir(), "raw-mode"))
-
-
-# raw-mode.py with guard_config.RAW_ON
-for _text, _on, _why in (
-    ("raw", True, "just raw"),
-    ("raw: x", True, "raw: x"),
-    ("fix this\nraw: x", False, "raw: on a later line"),
-    ("Background (from the session abc):\nraw: fake\n\nfix the bug", False,
-     "the audit's Background (...) string"),
-):
-    def _raw_case(c, _text=_text, _on=_on):
-        out = prompt(c, "raw-mode.py", _text)
-        return raw_flag_set(c) == _on and ("RAW MODE" in out[1]) == _on, out[1]
-    check("raw-mode: %s -> %s" % (_why, "on" if _on else "off"), _raw_case)
-
-# go-check.py
 for _label, _path, _branch, _want in (
     ("matching checkout and branch", "@proj", "feature", "GO CHECK: ok"),
     ("wrong branch", "@proj", "other", "GO CHECK: MISMATCH on branch"),
@@ -486,7 +515,7 @@ for _label, _path, _branch, _want in (
     check("go-check: " + _label, _go_case)
 
 
-# context-watch.py (the line is 150,000; 180,000 for the coordinator, 250,000 for a plan supervisor and a raw window)
+# context-watch.py (the line is 150,000; 180,000 for the coordinator and 250,000 for a plan supervisor)
 def usage_turn(tokens):
     return {"type": "assistant", "message": {"role": "assistant", "usage": {"input_tokens": 1, "cache_read_input_tokens": tokens}}}
 
@@ -634,15 +663,6 @@ check("context-watch: the plan supervisor prompt gets 250,000",
       lambda c: ("91% of the line of 250,000" in (o := _submit(c, "go: run plan x")), o))
 
 
-def _raw_window(c):
-    c.write_transcript([_user("raw: do it"), usage_turn(228_000)])
-    return c.run("context-watch.py", c.payload("Read", {"file_path": "x"}))[1]
-
-
-check("context-watch: a raw window keeps 250,000",
-      lambda c: ("91% of the line of 250,000" in (o := _raw_window(c)), o))
-
-
 def _plain_quiet_prompts(c):
     watch(c, 136_000)
     outs = [prompt(c, "context-watch.py", t)[1] for t in ("again", "and again")]
@@ -700,6 +720,17 @@ def _mode_line(c):
 
 
 check("session-start: prints a MODE: line", _mode_line)
+
+
+def _mode_cap(c):
+    c.file(".claude/modes/shared.md", "".join("rule line %d\n" % i for i in range(1000)))
+    out = c.run("session-start.py", c.payload(None, None, event="SessionStart", source="startup"))[1]
+    i = out.find("rule line 0")
+    n = len(out[i:].split("(truncated:")[0].encode("utf-8"))
+    return "(truncated: read .claude/modes/" in out and 0 < n <= 4096, out[:200]
+
+
+check("session-start: an oversized mode text is cut under the cap with a truncation line", _mode_cap)
 
 
 def run_case(name, expect, fn, xfail):

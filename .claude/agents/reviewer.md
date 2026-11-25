@@ -68,3 +68,8 @@ Then reply with only this, at most about 150 words:
 2. **Must fix:** one line each, most severe first, at most five
    (`file:line`: what breaks).
 3. **Report:** its path.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

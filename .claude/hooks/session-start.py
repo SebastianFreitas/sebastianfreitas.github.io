@@ -39,6 +39,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -52,6 +54,7 @@ LIMIT = 9500          # hook output over 10,000 chars becomes a 2,000-char previ
 HANDOFF_HEAD_LINES = 4   # non-blank lines of the handoff printed
 HANDOFF_HEAD_CHARS = 600
 DIRTY_MAX = 40
+MODE_CAP = 4096          # bytes of mode file plus project notes printed
 
 
 def git(*args):
@@ -61,6 +64,21 @@ def git(*args):
         return out.stdout.rstrip()  # a leading space is part of `git status --short`
     except Exception:
         return ""
+
+
+def due_today(key):
+    """True at most once a day per key: a stamp file in the temp folder (not
+    the repo). SessionStart took 19 s, nearly all in cleanup.py."""
+    try:
+        stamp = os.path.join(tempfile.gettempdir(), "session-start-" +
+                             re.sub(r"[^A-Za-z0-9]+", "-", key)[-80:] + ".stamp")
+        if os.path.exists(stamp) and time.time() - os.path.getmtime(stamp) < 86400:
+            return False
+        with open(stamp, "w", encoding="utf-8"):
+            pass
+        return True
+    except Exception:
+        return False
 
 
 def same(a, b):
@@ -102,6 +120,11 @@ def mode_rules(root, mode):
             extra = f.read().strip()
         if extra:
             text = text + "\n\n" + extra
+    if len(text.encode("utf-8")) > MODE_CAP:
+        cut = text.encode("utf-8")[:MODE_CAP].decode("utf-8", "ignore")
+        cut = cut.rsplit("\n", 1)[0] if "\n" in cut else cut
+        text = (cut.rstrip() + f"\n(truncated: read .claude/modes/{mode}.md and "
+                f".claude/project/modes/{mode}.md for the rest)")
     return text
 
 
@@ -252,9 +275,12 @@ def workflow_sync_lines(root):
             master = json.load(f).get("master")
         if not master or not os.path.exists(os.path.join(master, "sync.py")):
             return []
+        if not due_today("sync-" + root):
+            return []
         r = subprocess.run([sys.executable, os.path.join(master, "sync.py"),
                             "status", root, "--brief"],
-                           capture_output=True, text=True, timeout=20)
+                           capture_output=True, text=True, timeout=3,
+                           stdin=subprocess.DEVNULL)
         return [l.strip() for l in r.stdout.splitlines() if l.strip()]
     except Exception:
         return []
@@ -379,12 +405,15 @@ def main():
 
     if source == "startup" and main_root:
         script = os.path.join(main_root, "tools", "cleanup.py")
-        if os.path.exists(script):
-            try:
-                r = subprocess.run([sys.executable, script, "--quiet",
-                                    "--keep", branch], cwd=main_root,
-                                   capture_output=True, text=True, timeout=30)
-                lines.extend(l for l in r.stdout.splitlines() if l.strip())
+        if os.path.exists(script) and due_today("cleanup-" + main_root):
+            try:  # detached: it took 19 s, and its output was only a courtesy
+                subprocess.Popen([sys.executable, script, "--quiet",
+                                  "--keep", branch], cwd=main_root,
+                                 stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, close_fds=True,
+                                 creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
+                                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
             except Exception:
                 pass
 
@@ -415,6 +444,18 @@ def main():
                              "from 'Next', never redo 'Done', and delete the "
                              "file once absorbed. It starts:")
             lines.append(top)
+
+    model = str(d.get("model") or "")
+    if "fable" in model.lower() and source in ("startup", "clear"):
+        hand = os.path.join(root, ".claude", "handoff.md")
+        try:
+            with open(hand, encoding="utf-8", errors="ignore") as f:
+                first = f.read(400).lower()
+        except OSError:
+            first = ""
+        if "plan" not in first and "research" not in first:
+            lines.append("MODEL: Fable is for plans and research; everyday "
+                         "windows run on Opus medium")
 
     out = "\n".join(lines)
     if len(out) > LIMIT:

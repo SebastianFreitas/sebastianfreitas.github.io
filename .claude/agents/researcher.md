@@ -19,3 +19,8 @@ You research and write reports for this project. The prompt names your input fil
 - Reply in at most about 150 words plus the output path: what the file holds and anything not done. Do not paste the report into the reply.
 - If something you were asked about doesn't exist, say so. Don't guess.
 - Context: about 100k tokens of room; past 125k every tool call is refused except a Write under `.claude/specs/reports/`. If a hook prints CONTEXT WATCH, stop reading, write what you have and say what is missing. Cut off with an output path somewhere else: write the report under `.claude/specs/reports/` and name that path in the reply.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

@@ -26,40 +26,26 @@ such field, and the headless CLI's has none either (street-setbacks phase
 1, 2026-10-05). The harness reports a subagent's exit; the main session
 waits for that notice and never polls.
 
-A raw-mode window (raw-mode.py) does every step of the work in its own
-context, so only the checkers that judge finished work may run.
-
 Never fails the hook: any error allows the call (exit 0).
 """
 import json
-import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-try:
-    from guard_config import raw_mode  # noqa: E402
-except ImportError as e:  # an older guard_config.py: run as if raw mode were off
-    sys.stderr.write("agent-guard.py: guard_config.py is older than this file (%s): raw-mode check off\n" % e)
-
-    def raw_mode(transcript_path):
-        return False
-
-RAW_ALLOWED = {"reviewer", "look-judge"}
+WINDOW_REFUSED = {"general-purpose", "claude"}
 
 
 def main():
     d = json.load(sys.stdin)
     ti = d.get("tool_input") or {}
     who = ti.get("subagent_type") or "subagent"
-    if (who.split(":")[-1] not in RAW_ALLOWED and not d.get("agent_id")
-            and raw_mode(d.get("transcript_path"))):
+    if who.split(":")[-1] in WINDOW_REFUSED and not d.get("agent_id"):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": (
-                f"Agent guard: this window is in raw mode, no {who}. Do this "
-                "step yourself; only the reviewer and look-judge run, on "
-                "finished work (playbook.md \"Raw mode\").")}}))
+                f"Agent guard: no {who} from a main window: run the "
+                "command yourself, or use implementer / researcher / "
+                "Explore (playbook \"Delegation\").")}}))
         return
     pinned = [k for k in ("model", "effort") if ti.get(k)]
     if pinned:

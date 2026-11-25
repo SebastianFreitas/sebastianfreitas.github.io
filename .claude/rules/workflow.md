@@ -1,76 +1,49 @@
 # Workflow: rules for every session
 
 Shared by the owner's projects, synced from the `claude-workflow`
-master. The project's `CLAUDE.md` holds what is specific to it and wins
-where they disagree. Detail only some windows need is in
-`.claude/playbook.md`, the mode files and the skills: read the named
-section when you need it.
+master. The project's `CLAUDE.md` wins where they disagree. Detail only
+some windows need is in `.claude/playbook.md`, the mode files and the
+skills: read the named section when you need it.
 
 ## Coordinator
 
 The main session plans, delegates, decides and talks to the owner; every
 token in it is paid again each turn. It never reads source, rules files
-or logs (pictures it may: Token rules), runs verify only as a one-line spot check (Run step 4),
-and makes at most two quick lookups (a grep, a short range) before
-delegating; more goes to `Explore`. Agent prompts name paths, never
-pasted content. Agents write the full report to a file and return at
-most about 150 words plus its path (`reply-cap.py` sends one over 250
-words back once); every `Explore`, `researcher` or `general-purpose` prompt ends with the
-playbook's report line (playbook Delegation).
+or logs, may run one shot or verify command itself (the sketch tools in
+`CLAUDE.md` Verify), never a full capture or the flow suite, and makes
+at most two quick lookups before delegating; more goes to `Explore`.
+Agent prompts name paths, never pasted content. Agents write the full
+report to a file and return about 150 words plus its path (`reply-cap.py`
+sends one over 250 words back once); `Explore` and `researcher` prompts
+end with the playbook's report line (playbook Delegation).
 
 ## Shared files
 
 The paths in `.claude/workflow.lock` come from the master. For a
-workflow change or a `WORKFLOW SYNC:` line read playbook "Shared files"
-(edit here, commit, then `sync.py pull`). A rule
-that only fits this project goes in `CLAUDE.md`, never here.
+workflow change or a `WORKFLOW SYNC:` line read playbook "Shared files".
+A rule that only fits this project goes in `CLAUDE.md`, never here.
 
 ## Session mode
 
 The SessionStart hook prints `MODE: <mode>` and that mode's rules
-(`.claude/modes/<mode>.md` plus the project's notes), which override
-this file on branches, pushing, shipping and the report's commands. `worktree` (default): `.claude/worktrees/<name>`, own branch,
-never pushed (landing it pushes `main`). `cloud`: a fresh clone on a
-pushed `claude/<name>` branch with a PR. `shared`: the main checkout,
-other sessions editing too; quick fixes.
-
-No `MODE:` line: the hook did not run (playbook "No MODE line"). After
-`EnterWorktree`, read `.claude/modes/worktree.md` before the next edit.
+(`.claude/modes/<mode>.md` plus the project's notes), which override this
+file on branches, pushing, shipping and the report's commands:
+`worktree` (default), `shared`, `cloud` (its file). No `MODE:` line:
+playbook "No MODE line". After `EnterWorktree`, read
+`.claude/modes/worktree.md` before the next edit.
 
 ## The go prompt
 
 A turn that hands its work to a fresh window (a prepared run, a
-context-full handoff, a plan's ready gate, a paused interview, a plan
-waiting for answers) never ends with "say `go`": a bare `go` in a fresh
-window guessed its worktree and branch wrong (owner, 2026-10-01). It
-ends, after the report, with the exact prompt in a plain fenced block
-(not `bash`: no Run button) as the last thing in the turn:
-
-    Ready. Please run `/clear`, then paste this:
-
-    ```
-    go: <what to do>. Checkout <path> on branch <branch>, <mode> mode. Read <file> first.
-    ```
-
-- `<what to do>`: one plain clause ("build the prepared specs",
-  "continue the handoff", "run plan <name> one phase at a time",
-  "answer plan <name>'s questions"). A stage file may give another first clause
-  without `go:`; the rest of the line stays.
-- `<path>`, `<branch>`: from `git rev-parse --show-toplevel` and `git
-  branch --show-current` run now, forward slashes, never from memory
-  (cloud: add `PR #<n>`).
-- `<file>`: `.claude/handoff.md` for a run or a handoff,
-  `.claude/plans/<name>.md` for an interview, the plan's state file for
-  a run or its questions.
-- The coordinator window's own go prompt starts `coordinator:` instead
-  of `go:` so the fresh window is the coordinator again (Context
-  budget); raw mode's starts `raw:`. `go-check.py` checks both.
-
-**Receiving one:** read the `GO CHECK:` line the `go-check.py` hook prints (no line: run the two git commands and compare yourself); on MISMATCH stop and say where each is. Never switch checkout or branch to match, except as your mode file says (cloud "continue PR #<n>"; worktree: a new chat merges the named branch for a plain handoff); a prepared run never moves. Detail: playbook "Receiving a go prompt".
+context-full handoff, a plan's ready gate or questions) never ends with
+"say `go`": a bare `go` in a fresh window guessed its worktree and
+branch wrong (owner, 2026-10-01). It ends with the exact prompt in a
+plain fenced block as the last thing in the turn (playbook "The go
+prompt"; the coordinator's starts `coordinator:`).
 
 ## Plans
 
-Big work is a plan: `/plan new <name>: <brief>`; the hook prints `PLAN: <name> · <stage>`; read only the stage file `.claude/skills/plan/SKILL.md` names. Detail: playbook "Plans".
+Big work is a plan: `/plan new <name>: <brief>`; the hook prints `PLAN: <name> · <stage>`; read only the stage file `.claude/skills/plan/SKILL.md` names (playbook "Plans"; helpers `plan-writer`, `plan-reviewer`: their agent files).
 
 ## One prompt: prepare, clear, run
 
@@ -86,150 +59,99 @@ that do the work. Sort each new prompt from its words and at most one
 - **Anything else:** **prepare** (steps 1 to 2), end the turn; the owner
   runs `/clear` and pastes the go prompt; the fresh window **runs**
   (steps 3 to 7). Unsure: prepare.
-- **Too big for one run** (over about 22 specs): a plan; suggest `/plan
-  new <name>: <prompt>`.
+- **Too big for one run** (over about 22 specs): a plan.
 
-A plan, a handoff or a plan's questions in this checkout follow their
-own files, not this sort.
-
-**Obvious questions come first.** Anything two reasonable builders would
-do differently that the prompt, code, rules and memories do not settle
-(the look, where it goes, what happens on failure, what stays as it is)
-is asked in one `AskUserQuestion` round in step 1, never in plain text.
-A choice with one sensible answer is taken and named under Look at. A
-run never stops to ask what could have been asked here; a turn ends
-early only when something went really wrong.
+Obvious questions go in one `AskUserQuestion` round in step 1, never
+plain text (playbook "Obvious questions").
 
 ### Prepare
 
-This window's line is 150k. Detail: playbook "Prepare".
-
-1. **Explore** through `Explore` (files, `file:line` anchors, rules files), ask the obvious questions, read nothing yourself.
-2. **Spec** one per implementer call (playbook "Spec format"), each written once to `.claude/specs/<k>.md`, plus `.claude/handoff.md`; end the turn with the go prompt (what: "build the prepared specs").
+1. **Explore** through `Explore`, ask the obvious questions, read nothing yourself.
+2. **Spec** one per implementer call (playbook "Spec format"), each written once to `.claude/specs/<k>.md`, plus `.claude/handoff.md`; end with the go prompt (what: "build the prepared specs"). Detail: playbook "Prepare".
 
 ### Run
 
-A go prompt whose printed handoff starts `Run: prepared`, checkout and branch checked first. This window only manages, never reads a spec or a diff. Step detail: playbook "Run".
+A go prompt whose handoff starts `Run: prepared`, checkout and branch checked first. This window only manages, never reads a spec or a diff. Detail: playbook "Run".
 
 3. **Implement:** one `implementer` per spec, prompt only "Your spec is `.claude/specs/<k>.md`: read it and implement it".
 4. **Verify:** the implementer runs its checks and reports pass or fail with key numbers.
-5. **Review:** over about 150 lines or three files the `reviewer` runs; `review-guard.py` refuses the commit without it. A sketch round (a picture or clip for the owner's verdict, not a landing) has no reviewer and commits as `Sketch: <what>`; the reviewer runs once on `git diff main...HEAD` at landing (owner, 2026-11-25).
+5. **Review:** over about 150 lines or three files the reviewer runs (under 150: `reviewer-light`, Sonnet; else `reviewer`, Opus); `review-guard.py` refuses the commit without it. A sketch round (a picture or clip for the owner's verdict, not a landing) has no reviewer and commits as `Sketch: <what>`; the reviewer runs once on `git diff main...HEAD` at landing (owner, 2026-11-25).
 6. **Commit** by path as your mode says; landing on `main` waits for the owner's OK.
-7. **Report:** end the turn with exactly this:
-   1. **Name:** the feature in plain words, then the branch (and PR in cloud).
-   2. **How it looks:** one or two screenshots the implementer took
-      (tools named in `CLAUDE.md`) outside the repo, sent with
-      SendUserFile (else their paths), with one line on what this
-      window saw in them (Token rules).
-   3. **Try:** one `bash` block, one command from your mode file, and
-      one line on where to look and what to do.
-   4. **Commit:** one `bash` block from your mode file, or which commit
-      already landed on local `main`.
-   5. **Look at:** at most three bullets, plus anything left open.
+7. **Report:** five parts: Name, How it looks, Try, Commit, Look at (playbook "Run").
 
-Changes in the owner's reply are sorted the same way (quick fix here,
-anything else prepared again) on the same branch, with the same report.
-
-## Raw mode
-
-A prompt starting `raw:` (or just `raw`) puts this window in raw mode until `/clear` or a new chat (`raw-mode.py`): helpers refused (`agent-guard.py`), no specs, `reviewer` still required (`review-guard.py`), window line 250k, its go prompt starts `raw:`. On entering it, read playbook "Raw mode".
+Changes in the owner's reply are sorted the same way, on the same branch.
 
 ## Main session role
 
 - Do not edit source files yourself (Write, Edit, or Bash that writes),
-  except an edit of up to about ten lines where a spec would take longer
-  than the edit (owner, 2026-11-25). Cost and convenience are not exceptions. Docs, `.claude/MAP.md`
+  except an edit of up to about 40 lines in one file (a sketch round
+  included) where a spec would take longer than the edit (owner,
+  2026-11-25). Cost and convenience are not exceptions. Docs, `.claude/MAP.md`
   rows, `.claude/handoff.md` and the markdown in `.claude/` are not
   source: edit those directly.
-- Every code change goes to `implementer`, one spec per call, one file
-  per call unless the change genuinely spans files (a sketch round: one spec,
-  several files); it sees the spec and
-  what it names, never these rules.
-- Explore and Plan never load this file or `CLAUDE.md`: name the file,
-  function or concept, tell them to grep `.claude/MAP.md` first, and ask
-  for `file:line` anchors, not code bodies.
+- Every other code change goes to `implementer` (`implementer-wt`: its
+  agent file), one spec per call, one file per call unless the change
+  spans files; it sees the spec and what it names, never these rules.
 - `.claude/rules/` files load only for a session that reads a matching
-  file: the spec names those `CLAUDE.md` maps to the area, the
-  implementer reads them.
-- A plan, state file or handoff: grep the heading, never re-read the
-  whole file.
-- Models and effort (Opus judges, Sonnet does, Fable only where the
-  owner names it, for plans and research, plan runs on Opus
-  medium, no Haiku; medium is the base and only the owner picks higher,
-  which reaches the main session and plan-writer; never pass `model` or
-  `effort` on an Agent call): playbook "Models".
+  file. The coordinator never reads them; the window that designs a spec
+  reads those `CLAUDE.md` maps to the area and puts what binds under the
+  spec's Read first; the implementer reads what the spec names.
+- Explore and Plan never load this file or `CLAUDE.md`: name the file or
+  concept, tell them to grep `.claude/MAP.md` first, ask for `file:line`
+  anchors, not code bodies.
+- A plan, state file or handoff: grep the heading, never re-read it whole.
+- Models and effort (Opus judges, Sonnet does, no Haiku; only the owner
+  picks effort higher; never pass `model` or `effort` on an Agent call;
+  no `general-purpose` helper): playbook "Models".
 
 ## Context budget
 
 Auto-compact is off (`DISABLE_AUTO_COMPACT`, owner's rule 2026-09-29): a
 session never runs past its line; it stops and the owner clears or
 opens a new chat. Never compact or clear yourself. `context-watch.py`
-prints `CONTEXT WATCH` once when a window crosses 90% of its line, once
-when it passes it. Lines: the coordinator window 180k; a raw window, a
-plan run's supervisor and headless plan sessions 250k (the runner kills
-headless ones at 300k); every other app window 150k, sub-chats and
-prepared runs included.
-The coordinator is the one window the owner talks to while it runs a
-worktree sub-chat per task: a prompt the owner types that starts
-`coordinator:` (or is just `coordinator`) makes its window one until
-`/clear` or a new chat; a chat another session opened never is. Its procedure: `.claude/project/coordinator.md`; a chat it starts follows `.claude/project/sub-chat.md`, if present. Explore, Plan, general-purpose and claude-code-guide 100k,
-researcher 100k, plan-writer 120k, implementer 60k, reviewer, plan-reviewer and look-judge 80k. A
-subagent at 1.25 times its line is denied further tools: the prompt was
-too wide; next time name file, function and range, or split. Every
-subagent runs in the background; the main session waits for the
-harness's exit notice and never polls (playbook Delegation).
+prints `CONTEXT WATCH` at 90% of the line and again past it. Lines: the
+coordinator 180k; a plan run's supervisor and headless plan sessions
+250k (killed at 300k); every other app window 150k; Explore, Plan,
+claude-code-guide and researcher 100k; plan-writer 120k; implementer
+60k; reviewer, reviewer-light, plan-reviewer and look-judge 80k. A
+subagent at 1.25 times its line is denied further tools: name file,
+function and range, or split. Every subagent runs in the background.
 
-- Main session past its line: finish only the current atomic step,
-  verify, commit (keep `.claude/specs/`: pending specs and any report
-  the handoff names stay for the next window), write
-  `.claude/handoff.md` (`handoff` skill), end with
-  the normal report plus your mode file's "Context full" extras, then
-  the go prompt (what: "continue the handoff"; a run's: `handoff`
-  skill). Plans stop their own way.
-- A handoff at session start: restate the plan in two lines, continue
-  from Next, never redo Done, delete the file once absorbed; a `Run:
-  prepared` one stays until the run's commit.
+A prompt the owner types that starts `coordinator:` (or is just
+`coordinator`) makes its window the coordinator until `/clear` or a new
+chat (`.claude/project/coordinator.md`; its sub-chats:
+`.claude/project/sub-chat.md`). Past its line a main session finishes
+the current step, commits, writes `.claude/handoff.md` and ends with the
+report and the go prompt (playbook "Context full").
 
-## Token rules (every agent)
+## Token rules (this window; helpers get the Hard rules in their agent file)
 
 - Never read a whole file over 300 lines (file-guard refuses it): grep
-  the name, then read around the hit. Names do not drift; line numbers do.
+  the name, then read around the hit.
 - Search with the Grep and Glob tools, not `grep`/`find` in Bash: they
   skip gitignored paths such as `.claude/worktrees/`.
 - Never open `__pycache__/` or the binary and media paths `CLAUDE.md`
-  lists (names only).
-- Keep command output short: `tail -n 30` or grep for errors.
-- Numbers before pictures: a view a tool measures (pixel count, compare
-  against a baseline) is judged by its number. A subagent reads a
-  picture only for a look no tool measures, once, with one line on what
-  it shows, never one already described.
+  lists (names only). Keep command output short: `tail -n 30`.
+- Numbers before pictures: a view a tool measures is judged by its
+  number. A subagent reads a picture only for a look no tool measures,
+  once, with one line on what it shows.
 - **Looks are judged by someone who knows what was asked** (owner,
   2026-11-10: the judges *"dont understand whats being asked about the
   picutre htye have no context"*, so the owner kept resending pictures
   in chat). An app window's main session may Read a picture itself: it
-  knows what the owner asked, what changed and what was wrong before,
-  so it opens the shots that answer a look question (after a visual
-  change, when the owner asks how something looks, before the report)
-  and says what it sees. It never says how a result looks from an
-  implementer's description or a guess. Each picture once, and only
-  the ones the question needs. The coordinator window relays a sub-chat's pictures and clips unopened with its one line, opening one only if the owner asks what it thinks; the sub-chat looks first (owner, 2026-11-25).
-- **A fresh `look-judge`** (Opus medium, its agent file) is the second
-  opinion: optional in an app window (use it when you directed the fix
-  and want eyes that owe it nothing), required at a plan's look phases,
-  where nobody watches and a headless phase session cannot Read
-  pictures. Its prompt always carries the context, never just paths
-  and a sentence: what the thing is and what each shot shows, the
-  owner's words on the look verbatim (earlier complaints too), what
-  changed this round, and the before or reference shot when one
-  exists. The shots go to the owner by SendUserFile either way.
+  knows what the owner asked and what was wrong before, so it opens the
+  shots that answer a look question (after a visual change, when the
+  owner asks how something looks, before the report) and says what it
+  sees, never from an implementer's description or a guess. Each picture
+  once. The coordinator window relays a sub-chat's pictures and clips
+  unopened with its one line, opening one only if the owner asks what it
+  thinks; the sub-chat looks first (owner, 2026-11-25).
+- `look-judge` (`.claude/agents/look-judge.md`) is an optional second
+  opinion on a look (its prompt: playbook Delegation).
 - A new file, moved function or new export gets its MAP.md row fixed in
-  the same commit (branches: see your mode file). Rows hold purpose and
-  exports, no line counts, no line over 300 characters (Grep prints
-  "[Omitted long matching line]" instead); detail goes on bullets under
-  the table, each starting with the file name. `review-guard.py`
-  refuses a commit once when either slips.
-- The map's "Owner's words" section maps the owner's nicknames to code
-  names; when the owner uses a word the code does not, add a line.
+  the same commit (playbook "MAP rows"). The map's "Owner's words"
+  section maps the owner's nicknames to code names; add a line when the
+  owner uses a word the code does not.
 
 ## Git and the owner's commands
 
@@ -241,16 +163,14 @@ harness's exit notice and never polls (playbook Delegation).
   by the owner, or by you when their latest message says merge or
   land), and it pushes `main` once landed: new worktrees are cut from
   `origin/main` (2026-10-01). Nothing else reaches origin except the
-  owner's GitHub Desktop. A coordinator lands a sub-chat's branch
-  itself when the owner types "land <name>" in the coordinator window;
-  it never relays "land it" to the sub-chat, whose guard sees only that
-  chat's own messages (playbook "Landing from the coordinator").
+  owner's GitHub Desktop. A coordinator lands a sub-chat's branch itself
+  on "land <name>" (playbook "Landing from the coordinator").
 - `git-guard.py` blocks blanket git (`add -A`/`.`, `commit -a`,
   `stash`, `checkout --`, `restore`, `reset --hard`, `clean`, `rebase`,
   force push). Do not work around it; the owner runs those if wanted.
-- `poll-guard.py` refuses a `sleep` of 10 s or more and any shell loop
-  that sleeps: a check runs in the foreground with the call's timeout,
-  and a background command's exit is reported by the harness.
+- Never poll: `poll-guard.py` refuses a `sleep` of 10 s or more and any
+  shell loop that sleeps. A check runs in the foreground with the call's
+  timeout; a background command's exit is reported by the harness.
 - Commands shown to the owner go in fenced `bash` blocks (the app adds a
   Run button), one command per block, and must also work pasted into
   Windows PowerShell 5.1: forward-slash paths, no `&&`, `||`, `$(...)`

@@ -6,7 +6,7 @@ description: Write .claude/handoff.md so a fresh context can continue this task.
 # Handoff
 
 Write `.claude/handoff.md` (gitignored). In cloud mode it also goes in the
-PR body under `## Handoff`. At most 80 lines and 6 KB, no code
+PR body under `## Handoff`. At most 120 lines and 10 KB, no code
 (`file-guard.py` refuses a bigger write: the handoff is a pointer, so
 detail goes in the plan or state file, a spec or a report file it
 names). These headings in this order:

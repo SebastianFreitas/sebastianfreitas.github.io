@@ -9,7 +9,7 @@ read its matching section too.
 - Subagents run in the background (the desktop app's Agent tool has no
   other mode; `.claude/hooks/agent-guard.py` refuses only an explicit
   `run_in_background` other than false): the harness reports each
-  exit, the main session waits for that notice and never polls.
+  exit, the main session waits for that notice (never poll: workflow "Git").
   Parallel calls are several Agent calls in one message: they run
   together and return together.
 - **Reports:** every agent writes its full report to a file and returns
@@ -25,8 +25,10 @@ read its matching section too.
 - **Built-in agents** get the contract as the last line of the prompt.
   `Explore` cannot write files: "Answer in at most 150 words: one line
   per finding with its `file:line`." `researcher` (research and
-  report-writing helpers; Explore stays for read-only code lookups) and
-  `general-purpose` (only when a task needs a tool `researcher` lacks):
+  report-writing helpers; Explore stays for read-only code lookups; a
+  main window never calls `general-purpose` or `claude`, `agent-guard.py`
+  refuses them: run the command yourself, or use implementer / researcher /
+  Explore):
   "Write your findings to `<path>`; reply with at most 150 words and the
   path." Name a `<path>` under `.claude/specs/reports/`: a helper cut
   off at 1.25 times its line can still write only there.
@@ -48,6 +50,13 @@ read its matching section too.
   context. A reviewer gap or a blocked report is a narrower spec for a
   fresh call: the reviewer's `file:line` and smallest fix become its
   Where and Goal.
+- **`look-judge` prompts** carry the context, never just paths and a
+  sentence: what the thing is and what each shot shows, the owner's
+  words on the look verbatim (earlier complaints too), what changed this
+  round, and the before or reference shot when one exists. Optional in an
+  app window (use it when you directed the fix and want eyes that owe it
+  nothing), required at a plan's look phases, where nobody watches and a
+  headless phase session cannot Read pictures.
 - A prepared run saves each spec as `.claude/specs/<k>.md` and the run
   window sends only its path (`.claude/rules/workflow.md` "One prompt").
 - A plan phase that stops after designing saves each finished spec as
@@ -55,7 +64,7 @@ read its matching section too.
   skill).
 - Over about 150 lines or three files (`.claude/` and `.md` files not
   counted): the `reviewer` gets the spec paths and the changed paths
-  before you commit (`review-guard.py` enforces it, workflow.md Run); a sketch round has none (Run step 5).
+  before you commit (`review-guard.py` enforces it, workflow.md Run); a sketch round has none (workflow.md Run step 5).
 
 ## Prepare
 
@@ -79,7 +88,32 @@ specs and reading files themselves (2026-10-01, when the line was
    then the go prompt (what: "build the prepared specs"; file:
    `.claude/handoff.md`), nothing after it.
 
-## Receiving a go prompt
+## The go prompt
+
+Format (owner, 2026-10-01: a bare `go` guessed its worktree and branch
+wrong). A turn that hands its work to a fresh window (a prepared run, a
+context-full handoff, a plan's ready gate, a paused interview, a plan
+waiting for answers) ends, after the report, with the prompt in a plain
+fenced block (not `bash`: no Run button) as the last thing in the turn:
+
+    Ready. Please run `/clear`, then paste this:
+
+    ```
+    go: <what to do>. Checkout <path> on branch <branch>, <mode> mode. Read <file> first.
+    ```
+
+- `<what to do>`: one plain clause ("build the prepared specs",
+  "continue the handoff", "run plan <name> one phase at a time",
+  "answer plan <name>'s questions"). A stage file may give another first clause
+  without `go:`; the rest of the line stays.
+- `<path>`, `<branch>`: from `git rev-parse --show-toplevel` and `git
+  branch --show-current` run now, forward slashes, never from memory
+  (cloud: add `PR #<n>`).
+- `<file>`: `.claude/handoff.md` for a run or a handoff,
+  `.claude/plans/<name>.md` for an interview, the plan's state file for
+  a run or its questions.
+- The coordinator window's own prompt starts `coordinator:` instead of
+  `go:`; `go-check.py` checks both.
 
 **Receiving one** (bare `go` or not): `go-check.py` prints `GO CHECK:`
 ok, or MISMATCH with what to do (no line: run the two git commands and
@@ -88,6 +122,34 @@ switch checkout or branch to match, except as your mode file says
 (cloud "continue PR #<n>"; worktree: a new chat merges the named branch
 for a plain handoff); a prepared run never moves.
 
+## Context full
+
+Main session past its line: finish only the current atomic step, verify,
+commit (keep `.claude/specs/`: pending specs and any report the handoff
+names stay for the next window), write `.claude/handoff.md` (`handoff`
+skill), end with the normal report plus your mode file's "Context full"
+extras, then the go prompt (what: "continue the handoff"; a run's:
+`handoff` skill). Plans stop their own way. A handoff at session start:
+restate the plan in two lines, continue from Next, never redo Done,
+delete the file once absorbed; a `Run: prepared` one stays until the
+run's commit.
+
+## MAP rows
+
+A new file, moved function or new export gets its MAP.md row fixed in the
+same commit (branches: see your mode file). Rows hold purpose and
+exports, no line counts, no line over 300 characters (Grep prints
+"[Omitted long matching line]" instead); detail goes on bullets under the
+table, each starting with the file name. `review-guard.py` refuses a
+commit once when either slips.
+
+## Obvious questions
+
+Anything two reasonable builders would do differently (the look, where it
+goes, what happens on failure, what stays as it is) is asked in step 1. A
+choice with one sensible answer is taken and named under Look at; a turn
+ends early only when something went really wrong.
+
 ## Plans
 
 Big work is a plan (`/plan new <name>: <brief>`, `.claude/plans/`). The
@@ -95,28 +157,6 @@ hook prints `PLAN: <name> · <stage>`; read only the stage file
 `.claude/skills/plan/SKILL.md` names (`AUTOPLAN=1`: `unattended.md`).
 One `/clear` after the ready gate, then one app window supervises every
 headless `autoplan.py` phase; nobody clears or says `go` between phases.
-
-## Raw mode
-
-For hard problems: a prompt that starts `raw:` (or is just `raw`) puts
-this window in raw mode until `/clear` or a new chat (`raw-mode.py`;
-owner, 2026-11-02: *"our context has all steps done to solve the asked
-task"*). Every step of the task happens in this window's own context: it
-reads, thinks, edits source and runs verify itself, with no specs and no
-prepare-clear-run. "Coordinator" and "Main session role" do not apply,
-and `agent-guard.py` refuses `Explore`, `Plan`, `implementer` and every
-other helper that would do a step.
-
-Checks on finished work do not change. `reviewer` still runs where Run
-step 5 says and `review-guard.py` still refuses the commit without it:
-it reads a spec, so save the owner's words and what done means as
-`.claude/specs/raw.md`, name that and the changed paths, and fix a gap
-here. Looks follow Token rules: this window opens the pictures itself,
-and may call `look-judge` for a second opinion. All other hooks and
-rules hold.
-The window's line is 250k; past it, hand off with a go prompt that
-starts `raw:` instead of `go:`, so the next window stays raw. The report
-keeps its five parts.
 
 ## Run
 
@@ -139,7 +179,7 @@ room for review and report).
    Parallel specs (where the handoff says so) are several calls in one
    message. Blocked: one `Explore`, a narrower spec, a fresh
    implementer; still blocked, stop and tell the owner.
-4. **Verify:** the implementer runs its checks and `CLAUDE.md` § Verify
+4. **Verify:** the implementer runs its checks and `CLAUDE.md` Verify
    for the areas touched and reports pass or fail with the key numbers.
    This window runs one tailed command only when a report is ambiguous.
 5. **Review:** over about 150 lines or three files (`.claude/` and `.md`
@@ -149,25 +189,33 @@ room for review and report).
    `.claude/hooks/review-guard.py` counts the real diff at `git commit`
    and at `try.py --commit` and refuses the command until a reviewer has
    run in this window; an earlier window's review does not count.
-   A sketch round (a picture or clip for the owner's verdict, not a
-   landing) runs no reviewer and commits as `Sketch: <what>`, which
-   `review-guard.py` lets through; the reviewer runs once on the whole
-   branch (`git diff main...HEAD`) in the round the owner approves for
-   landing, whose commit has a normal message. Its verify is whatever the
-   project's `CLAUDE.md` says for a sketch round (owner, 2026-11-25).
+   Sketch rounds: the rule is in workflow.md Run step 5 (one statement).
 6. **Commit** by path as your mode says, the message describing the work
    (a squash takes the branch tip's message). Landing on `main` waits
    for the owner's OK (worktree: commit on the branch only, then `try.py
    --commit`, the mode file's Commit; shared: the commit itself). Only the run's final commit deletes `.claude/specs/` (this
    session's specs and reports, not another session's in shared mode)
    and `.claude/handoff.md`; a context-full commit keeps them.
-7. **Report:** the five parts exactly as `workflow.md` "Run" step 7
-   lists them; that list is the only copy.
+7. **Report:** end the turn with exactly this:
+   1. **Name:** the feature in plain words, then the branch (and PR in cloud).
+   2. **How it looks:** one or two screenshots the implementer took
+      (tools in `CLAUDE.md` Verify) outside the repo, sent with
+      SendUserFile (else their paths), with one line on what this
+      window saw in them (workflow Token rules).
+   3. **Try:** one `bash` block, one command from your mode file, and
+      one line on where to look and what to do.
+   4. **Commit:** one `bash` block from your mode file, or which commit
+      already landed on local `main`.
+   5. **Look at:** at most three bullets, plus anything left open.
 
 ## Models
 
 Opus thinks and judges (main, plan runs, `plan-writer`, Plan,
 `reviewer`, `plan-reviewer`, `look-judge`), Sonnet does (`Explore`, `implementer`).
+A landing diff under 150 lines is reviewed by `reviewer-light` (Sonnet, a copy
+of `reviewer`), 150 lines or more by `reviewer` (Opus) (owner, 2026-11-25).
+Everyday windows run on Opus medium; Fable is for plans and research
+(`session-start.py` prints a MODEL line when a Fable window starts on anything else).
 The reviewers moved to Opus because Sonnet 5.5 misses more on hard
 reviews and more of its comments are noise; it matches Opus on
 spec-driven code at half the cost (owner, 2026-10-05). When the owner
@@ -178,7 +226,7 @@ name `opus` or `sonnet` keep that model. Fable manages, writes specs and
 delegates every code change exactly as Opus does (owner, 2026-10-02).
 Fable runs only in a window the owner's own message names for a plan or
 research. Build and look chats (a coordinator's sub-chats, prepared
-runs, raw windows) run on Opus medium unless his message names Fable
+runs, headless) run on Opus medium unless his message names Fable
 for that chat; a coordinator never starts or keeps a build chat on
 Fable on its own (owner, 2026-11-25, after Fable build chats took about
 a sixth of a week's spend).

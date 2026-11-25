@@ -83,3 +83,8 @@ options, the one you would pick first). The caller hands that file to a
 2. **Findings:** one line each, most severe first, at most five (phase:
    what goes wrong).
 3. **Report:** its path.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

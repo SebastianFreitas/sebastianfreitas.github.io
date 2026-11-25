@@ -78,3 +78,8 @@ at most about 150 words:
 2. **Statements:** one line each, how many views said yes.
 3. **Why** (FAIL only): the top three reasons, one line each.
 4. **Report:** its path.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

@@ -67,3 +67,8 @@ never commit it. Then reply with only this, at most about 150 words:
 2. **Files:** the paths changed.
 3. **Blockers:** one line each, at most five, or "None".
 4. **Report:** its absolute path.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.

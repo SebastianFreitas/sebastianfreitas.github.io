@@ -5,6 +5,10 @@ may not end with work that the owner's Commit command would miss.
   once, asking to commit them by path, or to say why they stay.
 - Cloud: commits not pushed to the branch's remote -> block once.
 
+A background helper this window launched that has not reported yet (an Agent
+tool_use with run_in_background and no task-notification naming its id)
+passes too: the dirty files are its unfinished edits.
+
 Shared mode is never checked: foreign edits make "uncommitted" meaningless
 there. A second stop in a row (stop_hook_active) always passes, so the
 session can end a turn deliberately (a question for the owner, a blocker).
@@ -12,6 +16,7 @@ Never fails the hook: any error exits 0.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -39,9 +44,39 @@ def mode():
     return "shared"
 
 
+def background_outstanding(transcript_path):
+    """True when an Agent launched in the background has no task-notification
+    yet. Any read or parse problem gives False (the guard then runs)."""
+    try:
+        if not transcript_path:
+            return False
+        launched, done = set(), set()
+        with open(transcript_path, encoding="utf-8") as f:
+            for line in f:
+                if "<task-notification>" in line:
+                    done.update(re.findall(r"<tool-use-id>\s*([^<\s]+?)\s*<\\?/tool-use-id>", line))
+                if '"tool_use"' not in line or "run_in_background" not in line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                c = (e.get("message") or {}).get("content") if isinstance(e, dict) else None
+                for b in c if isinstance(c, list) else []:
+                    if (isinstance(b, dict) and b.get("type") == "tool_use"
+                            and b.get("name") in ("Agent", "Task")
+                            and (b.get("input") or {}).get("run_in_background")):
+                        launched.add(b.get("id"))
+        return bool(launched - done)
+    except Exception:
+        return False
+
+
 def main():
     d = json.load(sys.stdin)
     if d.get("stop_hook_active"):
+        return
+    if background_outstanding(d.get("transcript_path")):
         return
     os.chdir(d.get("cwd") or os.getcwd())
     m = mode()

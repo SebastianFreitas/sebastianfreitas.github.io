@@ -4,9 +4,8 @@ Owner, 2026-11-21: "you put subchats doing it, so that you can write handoff and
 
 ## Start
 - One sub-chat per task: `start_session` user_asked, fresh, `use_worktree: true`. Only a read-only check shares my checkout. Same-file tasks run one at a time.
-- Model: every build and look chat runs on Opus medium (`effort: "medium"`; later `set_session_model` / `set_session_effort`, reissued with the hook's `session` label). Fable only in a window the owner's own message names for a plan or research; never start or keep a build chat on Fable otherwise.
+- Model: every build and look chat runs on Opus medium (`effort: "medium"`; pass model and effort in the `start_session` call itself, or leave the default; never set them with a later call). Fable only in a window the owner's own message names for a plan or research; never start or keep a build chat on Fable otherwise.
 - Until 2026-11-30 08:00: one build chat at a time.
-- Never start a chat in raw mode; `raw:` sent by SendMessage does not turn raw on.
 - Check `get_session` branch, not the folder name (the app reuses archived folders).
 - Workflow changes go to the owner first.
 

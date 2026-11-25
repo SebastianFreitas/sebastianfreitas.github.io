@@ -222,10 +222,10 @@ def reviewed(transcript_path):
         lp = os.path.join(session_dir(transcript_path), "context-watch.jsonl")
         with open(lp, encoding="utf-8") as f:
             for line in f:
-                if '"reviewer"' not in line:
+                if '"reviewer' not in line:
                     continue
                 try:
-                    if json.loads(line).get("agent_type") == "reviewer":
+                    if json.loads(line).get("agent_type") in ("reviewer", "reviewer-light"):
                         return True
                 except ValueError:
                     pass

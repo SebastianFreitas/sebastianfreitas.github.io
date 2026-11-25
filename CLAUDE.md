@@ -29,41 +29,15 @@ cutscene (commands in `.claude/playbook.md`).
 Drawing anything (Rex kingdoms, Mainland factions, any new place):
 `.claude/rules/art-style.md`. Instruments, sites, readings, HUD tiles:
 `.claude/rules/instruments.md`. They load only when a matching file is
-read, and you delegate reading, so read them yourself before designing
-in those areas. Game pages (`projects/*.html`, `css/game-pages.css`):
+read: the window that designs a spec reads them and names what binds
+under Read first; the implementer reads what the spec names; the
+coordinator never does. Game pages (`projects/*.html`, `css/game-pages.css`):
 `.claude/rules/game-pages.md`.
 
 ## Verify
 
-- A sketch round (a picture or clip for the owner's verdict, not a
-  landing) shoots only the thing drawn: one `snap.py capture <run> --only
-  <scene>`, `toyshot.py`, `jscheck.py --shot` or `gframes.py`. No full
-  capture, no flows, no reviewer. Commit it as `Sketch: <what>`. The round
-  he approves for landing runs the rest of this section once, with the
-  reviewer on the whole branch (`git diff main...HEAD`), and commits with a
-  normal message describing the feature, never `Sketch:`.
-- Test only the flows you touched: `py -3 tools/nav-flows.test.py <flow>`
-  (`--list` names them). Run the full suite only before a commit that
-  touches navigation, the gate or storage.
-- Landing round, anything that paints or styles: `py -3 tools/snap.py
-  capture <name>` once before, once after (3.5 min, 50 scenes), then
-  `py -3 tools/snap.py compare <before> <after>`: `same` on every scene
-  you did not mean to change. Merge `main` into the branch, then capture
-  "before" from the main checkout: `py -3 tools/snap.py capture before
-  --root C:/Users/Traff/Desktop/sebas/Portfolio`. Runs live in `snapshots/`
-  (gitignored). A `page-*` scene fails on
-  any console error, which is the case-page toys' error check.
-- A change that only paints a toy canvas: `snap.py` does not paint it.
-  Use `py -3 tools/toyshot.py <page> [--y 0.4] [--t ms]` (seconds; exits
-  1 on a blank toy or a console error; read the PNG it names), `py -3
-  tools/jscheck.py <files> --shot out.png`, or `snap.py
-  capture <run> --only <page>-toy` for its three scroll stops, plus the
-  flows. The full `snap.py` only when page DOM or CSS changes.
-- Games/Work rows, the stage or `js/site/shapes.js` rows: `py -3 tools/workcut.py`
-  must pass (installed Firefox, wide windows and page zoom).
-- Anything that paints the homepage or case pages: also shoot it with
-  `py -3 tools/ffshot.py` (the owner's installed Firefox); Playwright
-  Firefox has missed bugs twice.
+Detail in `.claude/project/verify.md`: read it before verifying. A sketch round
+shoots only the thing drawn (workflow.md Run step 5 is the one rule).
 
 ## Paths never to open
 

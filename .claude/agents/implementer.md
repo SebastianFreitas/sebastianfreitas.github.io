@@ -44,6 +44,8 @@ open. Where it and this file disagree, it wins.
   or any other long-running process (a dev server, an editor window).
 - The same command failing the same way three times: stop and report it
   with the last failure output. Do not keep trying variations.
+- If you changed `.claude/MAP.md`, check before finishing that every row is under
+  300 characters (detail as bullets below the row), as review-guard does.
 - Write files with the Write and Edit tools, never with Bash heredocs or
   `echo` (on Windows they write CRLF and mangle backslash escapes).
 
@@ -96,3 +98,8 @@ Then reply with only this, at most about 150 words:
 2. **Files:** the paths changed.
 3. **Blockers:** one line each, at most five, or "None".
 4. **Report:** its path; screenshot paths the owner should see.
+
+**Hard rules:**
+- No sleep or poll loops (poll-guard refuses them); no whole-drive or home-wide searches.
+- Never Read binaries or media (only the PNGs you were told to review).
+- Told to write a report file: write it; if a hook refuses the write, return the text instead.
