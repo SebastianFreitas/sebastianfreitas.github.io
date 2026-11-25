@@ -8,3 +8,5 @@ snapshots/
 .claude/worktrees/
 .claude/plans/HERE
 .claude/autoplan/
+.claude/board.json
+.claude/board.md

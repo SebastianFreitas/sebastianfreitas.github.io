@@ -110,7 +110,7 @@ Auto-compact is off (`DISABLE_AUTO_COMPACT`, owner's rule 2026-09-29): a
 session never runs past its line; it stops and the owner clears or
 opens a new chat. Never compact or clear yourself. `context-watch.py`
 prints `CONTEXT WATCH` at 90% of the line and again past it. Lines: the
-coordinator 180k; a plan run's supervisor and headless plan sessions
+coordinator 120k; a plan run's supervisor and headless plan sessions
 250k (killed at 300k); every other app window 150k; Explore, Plan,
 claude-code-guide and researcher 100k; plan-writer 120k; implementer
 60k; reviewer, reviewer-light, plan-reviewer and look-judge 80k. A
@@ -120,7 +120,9 @@ function and range, or split. Every subagent runs in the background.
 A prompt the owner types that starts `coordinator:` (or is just
 `coordinator`) makes its window the coordinator until `/clear` or a new
 chat (`.claude/project/coordinator.md`; its sub-chats:
-`.claude/project/sub-chat.md`). Past its line a main session finishes
+`.claude/project/sub-chat.md`). It runs on Sonnet medium and keeps its
+state on the board (`tools/board.py`), so the owner can `/clear` it at
+any time and restart it with `coordinator`. Past its line a main session finishes
 the current step, commits, writes `.claude/handoff.md` and ends with the
 report and the go prompt (playbook "Context full").
 

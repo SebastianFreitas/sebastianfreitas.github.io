@@ -9,8 +9,9 @@ The line depends on the window:
 - the coordinator window (a prompt whose first line starts `coordinator:`,
   or is just `coordinator`, at any point of the window; remembered until
   /clear or a new chat; the warnings re-arm against the new line):
-  COORD_LIMIT (180,000), because it runs a worktree sub-chat per task
-  and holds their reports; the kind is stored, so the line follows it;
+  COORD_LIMIT (120,000), because it runs on Sonnet and keeps its state on
+  the board, so it can be cleared freely; the kind is stored, so the line
+  follows it;
 - a plan run's supervisor (a prompt that is the go prompt `go: run plan`
   or `carry on running plan`, or a Bash/PowerShell call that launches
   `py ... autoplan.py <name>`; remembered for the window):
@@ -63,7 +64,7 @@ except ImportError as e:  # an older guard_config.py: no first-prompt check
         return ""
 
 LIMIT = 150_000       # every app window but the coordinator and a supervisor
-COORD_LIMIT = 180_000  # the coordinator window
+COORD_LIMIT = 120_000  # the coordinator window
 RUN_LIMIT = 250_000   # a plan run's supervisor
 # a prompt that starts `coordinator:` or is just `coordinator`: it skips leading reminder blocks, but not the
 # "Background (...):" paragraph or "Task:" label of a chat another session

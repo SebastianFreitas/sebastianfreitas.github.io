@@ -214,7 +214,9 @@ Opus thinks and judges (main, plan runs, `plan-writer`, Plan,
 `reviewer`, `plan-reviewer`, `look-judge`), Sonnet does (`Explore`, `implementer`).
 A landing diff under 150 lines is reviewed by `reviewer-light` (Sonnet, a copy
 of `reviewer`), 150 lines or more by `reviewer` (Opus) (owner, 2026-11-25).
-Everyday windows run on Opus medium; Fable is for plans and research
+Everyday windows run on Opus medium. The coordinator window runs on Sonnet
+medium because it only routes (owner, 2026-11-25: "any session parented by a
+weak model just doing this only"); its sub-chats stay on Opus medium. Fable is for plans and research
 (`session-start.py` prints a MODEL line when a Fable window starts on anything else).
 The reviewers moved to Opus because Sonnet 5.5 misses more on hard
 reviews and more of its comments are noise; it matches Opus on
@@ -366,7 +368,8 @@ only, no owner word needed) and tell him `READY` or what blocks it.
 When his latest message in the coordinator window says "land <name>"
 (or "land all"), run `try.py <branch> --commit` for each named branch,
 one at a time, and report each `LANDED:` sha; then tell that sub-chat
-in one SendMessage that its branch landed (it does playbook "Landed").
+in one SendMessage that its branch landed (it does playbook "Landed"). After
+each `LANDED:` also run `py -3 tools/board.py set <name> --state landed`.
 Ask in plain text, never AskUserQuestion: a clicked answer is not a
 typed message and the guard ignores it. Never relay "land it" to a
 sub-chat. A conflict goes back to the sub-chat as "merge main into

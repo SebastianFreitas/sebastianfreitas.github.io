@@ -87,6 +87,14 @@
             "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" hooks.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" board-hook.py"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -115,6 +123,14 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" hooks.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/run.sh\" board-hook.py"
           }
         ]
       }
