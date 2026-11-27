@@ -18,7 +18,7 @@ window.HudC25 = (function () {
   const WSTEPS = [1, 1.25, 1.5, 1.75];
   let wsv = WSTEPS.indexOf(+Util.read(localStorage, Util.KEYS.HUD_WING)) >= 0 ? +Util.read(localStorage, Util.KEYS.HUD_WING) : 1, wk = wsv, hov = -1;   // wing scale: the stored step, and the drawn one (the largest step <= it that fits this screen)
   let cv = null, c = null, W = 0, H = 0, dpr = 1, s = 1, sB = 1, ts = 1, barB = BAR_B;
-  let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null, beadSig = "";
+  let stat = null, ph = "d", D = null, LF = null, RF = null, dirty = false, lastSpan = null, lastLog = null, beadSig = "", lay = "s", cvF = null, cF = null, lastSlow = -1e9, fN = null, fE = {};
   let painted = false;   // true once a frame has painted since mount
   let probe = false;   // true only while report() repaints the live layer to record text boxes
   let txS = [], txD = [], shS = [], shD = [], spanLine = null;   // every drawn text with its screen box (static kept, live per frame), and the span line's screen extent, for report().textMin / textHits / paint
@@ -144,7 +144,8 @@ window.HudC25 = (function () {
   const rv = (nm, v, x, y, al) => { const wn = W_(nm, LBL()), wv = W_(v, 10), x0 = al === "right" ? x - wn - 4 - wv : x;
     mic(nm, x0, y, { a: 0.8 }); text(v, x0 + wn + 4, y, { size: 10, col: CREAM, a: BRIGHT }); };
   const stat_ = f => { if (ph === "s") f(); };   // static linework only
-  const dyn = f => { if (ph === "d") f(); };     // values, every frame
+  const dyn = f => { if (ph === "d" && lay === "s") f(); };     // values and lamps, the slow canvas (~20 Hz)
+  const dynF = f => { if (ph === "d" && lay === "f") f(); };    // moving parts (sweep, traces, red edge), the fast canvas every frame
   const resF = v => Math.max(0, Math.min(1, (Math.log10(Math.max(v, 0.001)) + 3) / 3));
 
   /* polyline helpers */
@@ -177,10 +178,11 @@ window.HudC25 = (function () {
       poly([[x0, y(x0) + (o.join === "L" || o.noEnd ? 0 : o.cap ? 12 : 7)], [x0, y(x0)], [x1, y(x1)], [x1, y(x1) + (o.join === "R" || o.noEnd ? 0 : o.cap ? 12 : 7)]], ec, STRUCT + 0.08);   // SKETCH v7: o.cap = the end ticks drop 12 px
       for (let i = 0; i <= o.n; i++) { const x = Math.round(X(i / o.n)) + 0.5, M = i % o.maj === 0, m2 = o.mid && i % o.mid === 0, yy = y(x);
         line(x, yy + 1.5, x, yy + (M ? 6 : m2 ? 4 : 2.5) + 0.5, o.tick || ec, M ? 0.45 : m2 ? 0.28 : 0.16); }
-    } else {
+    } else if (lay === "f") {
       if (o.loc) {   // SKETCH v19c: the locator tape: ± bracket round the nearest beacon, filled diamond on it, hollow diamond on the second
-        const dm = (xc, fill) => { const yc2 = y(xc) - 5.5; c.beginPath(); c.moveTo(xc, yc2 - 3.5); c.lineTo(xc + 3.5, yc2); c.lineTo(xc, yc2 + 3.5); c.lineTo(xc - 3.5, yc2); c.closePath();
-          if (fill) { c.fillStyle = rgba(o.loc[1], BRIGHT); c.fill(); } c.strokeStyle = rgba(o.loc[1], BRIGHT); c.lineWidth = HAIR; c.stroke(); };
+        const dm = (xc, fill) => { const yc2 = y(xc) - 5.0; c.beginPath(); c.moveTo(xc, yc2 - 3.0); c.lineTo(xc + 3.0, yc2); c.lineTo(xc, yc2 + 3.0); c.lineTo(xc - 3.0, yc2); c.closePath();   // SKETCH v69e: half-size 3.0, centre 0.5 px lower   SKETCH v69f: closePath restored
+          if (fill) { c.fillStyle = rgba(CREAM, BRIGHT); c.fill(); }   // SKETCH v73a: the locked contact is CREAM
+           c.strokeStyle = rgba(o.loc[1], BRIGHT); c.lineWidth = HAIR; c.stroke(); };
         const xa = X(o.win[0]), xb = X(o.win[1]); 
         glow(o.loc[0], () => line(xa, y(xa), xb, y(xb), o.loc[0], BRIGHT, STRONG));
         dm(X(o.mark), true); if (o.pip != null) dm(X(o.pip), false); return y; }
@@ -193,13 +195,13 @@ window.HudC25 = (function () {
     return y;
   }
   /* a reading riding on a segment: parts [text, "m"|"n"], baseline 9 px above the edge */
-  function rd(parts, x, yc, off, align) {
+  function rd(parts, x, yc, off, align, vc) {
     const ws = parts.map(p => W_(p[0], LBL())), tw = ws.reduce((a, b) => a + b, 0) + 4 * (parts.length - 1);
     let px = align === "right" ? x - tw : x; const yb = Math.round(yc(x) + off - 9);
-    parts.forEach((p, i) => { p[1] === "n" ? text(p[0], px, yb, { size: 10, col: CREAM, a: BRIGHT }) : mic(p[0], px, yb, { a: 0.8 }); px += ws[i] + 4; });
+    parts.forEach((p, i) => { p[1] === "n" ? text(p[0], px, yb, { size: 10, col: vc || CREAM, a: BRIGHT }) : mic(p[0], px, yb, { a: 0.8 }); px += ws[i] + 4; });
   }
   /* lamp: st 0 dark, 1 lit, 2 burst (ring + rays), 3 burst + red core */
-  function lamp(x, y, str, st, shape, lc) {
+  function lamp(x, y, str, st, shape, lc, tc) {
     const gx = x + 5, gy = y, r = shape === "d" ? 5.2 : 4.4, on = st > 0, red = st === 3, ty = gy + 3;
     const pth = () => { c.beginPath(); if (shape === "d") { c.moveTo(gx, gy - r); c.lineTo(gx + r, gy); c.lineTo(gx, gy + r); c.lineTo(gx - r, gy); c.closePath(); } else c.arc(gx, gy, r, 0, 2 * PI); };
     const g = (col, a, w) => { pth(); c.strokeStyle = rgba(col, a); c.lineWidth = w; c.lineJoin = "round"; c.stroke(); };
@@ -215,7 +217,7 @@ window.HudC25 = (function () {
       arc(gx, gy, R1, 0, 2 * PI, hi, 1, STRONG);
       [45, 135, 225, 315].forEach(d => { const t = rad(d); line(gx + Math.cos(t) * (R1 + 1), gy + Math.sin(t) * (R1 + 1), gx + Math.cos(t) * (R1 + 3.5), gy + Math.sin(t) * (R1 + 3.5), hi, 1, STRONG); });
       c.restore(); }
-    tag({ col: CREAM, a: st >= 2 || shape === "d" ? 1 : BRIGHT });
+    tag({ col: tc || CREAM, a: st >= 2 || shape === "d" ? 1 : BRIGHT });
   }
   function arcScale(cx, cy, r, a0, a1, st, maj, o) {
     const n = Math.round((a1 - a0) / st);
@@ -226,7 +228,8 @@ window.HudC25 = (function () {
   /* ======================= LEFT WING ======================= */
   let nearTop = 500, nearDm = 0;   // SKETCH v22b: the fan's outer range and the nearest distance, for the near bar
   const TXR = 352, RX = 320, RY = 946, SR = 81, FA0 = -140, FA1 = -40, DF = SR / 62, WB = [[128, 870], [255, 821]];   // the dial group sits down-left at 0.6 scale (dialF)
-  const SH = 34, CX = 312 + SH, CY = 950, HR = 76, BX = 20 + SH;   // SKETCH v29: the whole sonar column moved right by SH
+  const SH = 34, CX = 262.5, CY = 930, HR = 120, BX = 20 + SH, LRX = 128, LRY = 112;   // SKETCH v68a: height 104 -> 112 (outline y 818-930)   // SKETCH v67b: the locator's half-width and height
+  const shp = f => { const o = []; for (let k = 0; k <= 10; k++) { const a = (-180 + 18 * k) * PI / 180; o.push([CX + Math.cos(a) * LRX * f, CY + Math.sin(a) * LRY * f]); } return o; };   // SKETCH v67b: the 10-sided half shape (half of a 20-gon, flat base on the foot line) at fraction f of the outline   // SKETCH v29: the whole sonar column moved right by SH
   ;   // SKETCH v28: column B moved right (rows +20, half-disc centre +23, R stays 76: R 80 touched the near row);   // SKETCH v24a: the sound half-disc: centre = the ship on the foot line, radius HR
   const dialF = f => { c.save(); c.translate(RX, RY); c.scale(DF, DF); c.translate(-RX, -RY); f(); c.restore(); };
   const wbY = x => WB[0][1] + (x - WB[0][0]) * (WB[1][1] - WB[0][1]) / (WB[1][0] - WB[0][0]);
@@ -251,14 +254,15 @@ window.HudC25 = (function () {
       for (let i = 1; i <= 8; i++) { const t = tEnd * i / 8, u = 1 - t; r.push([u * u * A[0] + 2 * u * t * k[0] + t * t * B[0], u * u * A[1] + 2 * u * t * k[1] + t * t * B[1]]); } return r; };   // SKETCH v8: the last vertex becomes a quadratic curve with 10 px legs, drawn to tEnd
     const FT = len(LS), uR = resN(LF.resNow), b0 = api._forceBrg != null ? api._forceBrg : LF.blips[0] ? brgOf(LF.blips[0]) : LF.brg, b1 = LF.blips[1] ? brgOf(LF.blips[1]) : null;
     let redEnd = null;
-    dyn(() => {   // SKETCH v32: the slope edge is the resonance meter: white all the way, red over it from the top for res x its length
+    dynF(() => {   // SKETCH v32: the slope edge is the resonance meter: white all the way, red over it from the top for res x its length
       const E = footR(half(LS.concat([[HB0, FL]])), 1); poly(E, "240,236,222", 0.6, STRONG);
       let rem = Math.min(1, Math.max(0, LF.resNow)) * len(E); const Er = E.slice().reverse(), R = [Er[0]];   // SKETCH v33: red rises from the foot
       const sT0 = at(LS, len(LS) * (1 - uR))[1] + 4, nR0 = Math.max(0, Math.floor((FL - sT0) / 15.5 + 1e-6)), PE0 = nR0 ? (FL - sT0) / nR0 : 13;   // SKETCH v48: one plate's height computed here (paintSig runs after this dyn, so LF.minPlate was unset)
       const yMin = LF.resNow > 0 ? FL - PE0 : 1e9;   // SKETCH v47: with a source the red is at least one plate tall (up to the lowest plate's top)
       for (let i = 1; i < Er.length && (rem > 0 || Er[i - 1][1] > yMin); i++) { const d = Math.hypot(Er[i][0] - Er[i - 1][0], Er[i][1] - Er[i - 1][1]), y0 = Er[i - 1][1], y1 = Er[i][1], uY = y0 <= yMin ? 0 : y1 <= yMin ? (y0 - yMin) / (y0 - y1) : 1, u = Math.min(1, Math.max(rem / d, uY)); R.push([Er[i - 1][0] + (Er[i][0] - Er[i - 1][0]) * u, Er[i - 1][1] + (Er[i][1] - Er[i - 1][1]) * u]); rem -= d; }
       if (R.length > 1) {   // SKETCH v40: the red reads at a glance: a soft glow, a 2.5 px brighter oxblood line, a white tick at the level
-        poly(R, "200,48,47", 0.16, 6.5); poly(R, "200,48,47", 1, 2.5);
+        poly(R, "200,48,47", 0.16, 6.5); poly(R, "200,48,47", 1, 2.5); LF.redPoly = R;   // SKETCH v63: kept so paintSig can redraw the line over the plate ends
+
         const q = R[R.length - 1], o = R[R.length - 2], dl = Math.hypot(q[0] - o[0], q[1] - o[1]) || 1;
         redEnd = [q[0], q[1], (q[1] - o[1]) / dl, -(q[0] - o[0]) / dl]; } else redEnd = null;   // SKETCH r53: the one measurement: the nose marker sits where the red ends (x, y, normal toward the text side)
     });
@@ -266,49 +270,80 @@ window.HudC25 = (function () {
       line(HB0 + 10, FL + 0.5, XL, FL + 0.5, GOLD, STRUCT); line(XL + 0.5, FL, XL + 0.5, FL + 9, GOLD, STRUCT);
     });
     /* SKETCH v19: no mirror of the right wing: the rise, rail, scale, marker and speed trace are gone; the speed reading is a compact gold movement block (rows 788 / 800 / 812, under cap A; drift and lat rows in paintDrift) */
-    dyn(() => {
-      { const sp = Math.max(0, Math.min(1, LF.speedAt)), xs = 24 + (178 + SH) * sp, sT = Math.round(LF.speedAt * 100) + " %", nw = W_(sT, 14), nx = Math.max(26 + W_("speed", 9) + 4, Math.min(236 - nw, xs - nw / 2)), yy = ycL(xs) + 15;   // SKETCH v35: the speed number rides under the ruler's lit end
-        lab("speed", nx - W_("speed", 9) - 4, yy, { size: 9, col: C_MID, a: 0.6 }); num(sT, nx, yy, { size: 14, col: C_MID }); }
-    });
+    dyn(() => { const sT = Math.round(LF.speedAt * 100) + " %";   // SKETCH v70a: the speed reading sits above its rail like "cabin 21.4°" on the right (baseline 763 at x 24)   // SKETCH v54: the speed reading sits on its own piece clear of the size control, like "bus 3.6 kW" on the right
+      rd([["speed", "m"], [sT, "n"]], 24, ycL, 0, "left", C_MID);
+      /* SKETCH v70a: the speed history as a quiet cabin-style trace, 30-118 x 790-806: a 15-sample running mean on the history's own range, 2.0 dot at the newest point, base line 806.5, 7 ticks, hangers at 819 */
+      const sh = LF.speed || [], sn = sh.length, T0 = 790, T1 = 806; line(30, 806.5, 118, 806.5, C_MID, 0.3, 1); for (let i = 0; i < 7; i++) line(30 + i * 88 / 6, 807, 30 + i * 88 / 6, 806 + (i % 3 ? 2.5 : 4), C_MID, i % 3 ? 0.2 : 0.45, 1);   /* SKETCH v72b: the cabin trace's ticks: major 4 / minor 2.5, alpha 0.45 / 0.2 */
+      if (sn > 1) { const sm = sh.map((v, i) => { let a = 0, k = 0; for (let j = Math.max(0, i - 14); j <= i; j++) { a += sh[j]; k++; } return a / k; }), mn = Math.min(...sm), mx = Math.max(...sm), mean = sm.reduce((a, b) => a + b, 0) / sm.length, flat = mx - mn < 0.02, lo = flat ? mean - 0.01 : mn, hi = flat ? mean + 0.01 : Math.max(mx, lo + 0.02); c.strokeStyle = rgba(C_MID, 0.8); c.lineWidth = 1; c.beginPath();
+        let ex = 0, ey = 0, yl = 1e9, yh = -1e9; sm.forEach((v, i) => { const x = 30 + i * 88 / (sn - 1), y = T1 - (v - lo) / (hi - lo) * (T1 - T0); i ? c.lineTo(x, y) : c.moveTo(x, y); ex = x; ey = y; yl = Math.min(yl, y); yh = Math.max(yh, y); }); c.stroke(); dot(ex, ey, 2.0, CREAM, 0.9); }
+      text("9 s", 30, 820, { size: LBL(), col: GREY, a: 0.8, align: "left" }); text("top 100", 118, 820, { size: LBL(), col: GREY, a: 0.8, align: "right" }); });
     stat_(() => poly([[376 + SH, yT(376 + SH)], [480, yT(480)], [486, yT(480) + 6], [486, RAIL]], "240,236,222", 0.6, STRONG));   // SKETCH v34: white like the slope edge, only the slope carries red   // SKETCH v9: red, same as the slope   // SKETCH v8: no left tick, a 6 px chamfer, the drop runs on into the slope   // SKETCH v7: cap C, the nose piece over the bar ids, ends in the v6 corner
     /* signal strength rail, bearing tape */
     /* the pointers run the full rail (95 = 95% along); the readings sit under the rail ends, clear of the pointer track */
     const dz = LF.dz, strD = dz ? dz.str * 8 : 0, strM = Math.max(0, Math.min(1, LF.str / 100)), strU = Math.max(0, Math.min(1, (LF.str + strD) / 100)), spM = Math.max(0, Math.min(1, LF.speedAt));   // the fill flickers, the pointer stays true
-    const PURL = "108,116,188", PURV = "150,158,224";   // SKETCH v19c: the locator is blue-purple, the force bars' family (dim labels, bright values)
     const brgS = String(brgInt(b0)).padStart(3, "0"), brgM = b0 / 360, WD = parseFloat(String(LF.width).replace(/[^0-9.]/g, "")) || 0;
-    edge(24, 202 + SH, ycL, { col: C_MID, off: -6, cap: 1, n: 20, maj: 5, v: spM, mark: spM });   // SKETCH v24c: cap A's ruler is the speed scale (lit to the speed, marker on it); the str tick is drawn below
-    edge(214 + SH, 364 + SH, ycL, { noEnd: 1, col: GOLD, tick: PURL, loc: [PURL, PURV], off: -6, cap: 1, n: 24, maj: 6, mid: 3, win: [Math.max(0, brgM - WD / 360), Math.min(1, brgM + WD / 360)], mark: brgM, pip: b1 == null ? null : b1 / 360 });
-    dyn(() => { { const xs = 24 + (178 + SH) * strM, ys = ycL(xs) - 6; line(xs, ys - 1, xs, ys - 5, CREAM, BRIGHT, STRONG); }
-      ext.str = [24 + (178 + SH) * spM - 4, 24 + (178 + SH) * spM + 4, 24, 202 + SH]; ext.brg = [214 + SH + 150 * brgM - 4, 214 + SH + 150 * brgM + 4, 214 + SH, 364 + SH];
-      const px = (x0, x1, m, off) => { const x = x0 + (x1 - x0) * m, y = ycL(x) + off; return { l: x - 4, r: x + 4, t: y - 6, b: y - 1.5 }; };
-      if (blk === 1) { lbD.push(Object.assign({ s: "strptr" }, px(24, 202 + SH, spM, -6)), Object.assign({ s: "brgptr" }, px(214 + SH, 364 + SH, brgM, -6)));
+    /* SKETCH v66a: speed piece 24-120, own end feet */ const CL = 130, CR = 396, CW = CR - CL; edge(24, 120, ycL, { col: C_MID, off: 0, n: 20, maj: 5, v: spM, mark: spM });   // SKETCH v24c: cap A's ruler is the speed scale (lit to the speed, marker on it); the str tick is drawn below
+    /* SKETCH v66a: compass piece 130-396, own end feet */ edge(CL, CR, ycL, { col: C_HULL, tick: C_HULL, loc: [C_HULL_GLOW, C_HULL_GLOW], off: -6, n: 24, maj: 6, mid: 3, win: [Math.max(0, brgM - WD / 360), Math.min(1, brgM + WD / 360)], mark: brgM, pip: b1 == null ? null : b1 / 360 });
+    stat_(() => { const yR = x => ycL(x) - 13, yC = x => ycL(x) - 6;   // SKETCH v66a: the v65 join is gone, three separate pieces; was: one stepped top outline: the speed rail (high level) ends at 206, a 45 degree riser steps down to the compass level at 214, the compass line runs on through the tape to the nose cap at 410, no gaps
+      });
+    dyn(() => { { const xs = 24 + 96 * strM, ys = ycL(xs) - 0; /* SKETCH v66a: rail 24-120 */ line(xs, ys + 1, xs, ys + 5, CREAM, BRIGHT, STRONG); /* SKETCH v67a: the pointer hangs under the line (above it was out of the box) */ }
+      ext.str = [24 + 96 * spM - 4, 24 + 96 * spM + 4, 24, 120]; ext.brg = [CL + CW * brgM - 4, CL + CW * brgM + 4, CL, CR];
+      const px = (x0, x1, m, off, dn) => { const x = x0 + (x1 - x0) * m, y = ycL(x) + off; return dn ? { l: x - 4, r: x + 4, t: y + 1.5, b: y + 6 } : { l: x - 4, r: x + 4, t: y - 6, b: y - 1.5 }; };   // SKETCH v67a: dn = the pointer hangs under its line
+      if (blk === 1) { lbD.push(Object.assign({ s: "strptr" }, px(24, 120, spM, 0, true)), Object.assign({ s: "brgptr" }, px(CL, CR, brgM, -6)));
         if (LF.rep) LF.rep.strFrac = strM; } });
-    stat_(() => ["n", "e", "s", "w", "n"].forEach((str, i) => { const x = 214 + SH + 150 * i / 4; mic(str, x + (i === 4 ? -3 : 3), ycL(x) - 6 + 12, { align: i === 4 ? "right" : "left", a: 0.6, col: PURL }); }));
+    stat_(() => ["n", "e", "s", "w", "n"].forEach((str, i) => { const x = CL + CW * i / 4; mic(str, x + (i === 4 ? -3 : 3), ycL(x) - 6 + 12, { align: i === 4 ? "right" : "left", a: 0.6 }); }));
+    /* SKETCH v57: labelled boxes under the compass, in the right bus rail's box style: the contacts sorted by bearing, each run of one kind (id prefix ns / orr / vael / kth) is one box;
+       widths follow the bearing span, a box under its label is pinned to the label (water-filling as the bus rail does) so the widths sum to the tape */
+    dyn(() => { const T0 = CL, TW = CW, yb = x => ycL(x) - 6 + 17, Hh = 10, ids = ((LF.bid || []).length ? LF.bid : (LF.sig || []).filter(r => r.slot >= 0).sort((p, q) => q.s - p.s).map(r => r.id)).concat((LF.more || []).map(m => m.id));   // the nearest two blips carry the bid ids (a fixture without them: the strongest sig rows, same order)
+      const cs = LF.blips.concat((LF.more || []).map(m => m.b)).map((b, i) => ({ k: String(ids[i] || "").replace(/-.*/, ""), a: brgOf(b) })).filter(o => o.k).sort((p, q) => p.a - q.a);
+      const runs = []; cs.forEach(o => { const r = runs[runs.length - 1]; if (r && r.k === o.k) r.hi = o.a; else runs.push({ k: o.k, lo: o.a, hi: o.a }); });
+      if (!runs.length) return;
+      const mw = runs.map(r => W_(r.k, LBL()) + 5), sp = runs.map((r, i) => ((i + 1 < runs.length ? (r.hi + runs[i + 1].lo) / 2 : 360) - (i ? (runs[i - 1].hi + r.lo) / 2 : 0)) / 360 * TW);
+      const pin = runs.map(() => false), ws = sp.slice();
+      for (let p = 0; p < 5; p++) { let pf = 0, pk = 0, ch = false;
+        runs.forEach((r, i) => { if (pin[i]) pf += mw[i]; else pk += sp[i]; });
+        runs.forEach((r, i) => { if (pin[i]) return; ws[i] = (TW - pf) * sp[i] / pk; if (ws[i] < mw[i] - 1e-9) { pin[i] = true; ws[i] = mw[i]; ch = true; } });
+        if (!ch) break; }
+      const box = (xa, xb, a) => poly([[xa, yb(xa)], [xb, yb(xb)], [xb, yb(xb) + Hh], [xa, yb(xa) + Hh], [xa, yb(xa)]], C_HULL, a);
+      let xc = T0; runs.forEach((r, i) => { const w = ws[i], xa = xc + 0.5, xb = xc + w - 1.5; box(xa, xb, 0.42); const xm = (xa + xb) / 2;
+        mic(r.k, xm - W_(r.k, LBL()) / 2, Math.round(yb(xm) + 8), { a: 0.8 }); xc += w; }); });
     dyn(() => { const pad = Math.max(0, (12 - (214 - 204)) / 2);   // the two rail labels keep 12 px between them, each slid toward its own rail end
       const n0 = lbD.length;   // str label above its rail, brg label below its rail
-      noseNB = [0, 1, 2, 3, 4].map(i => { const x = 214 + SH + 150 * i / 4, w = W_(["n", "e", "s", "w", "n"][i], LBL()), l = x + (i === 4 ? -3 - w : 3), y = ycL(x) + 6; return [l, l + w, y - 0.75 * LBL(), y + 0.22 * LBL()]; });
+      noseNB = [0, 1, 2, 3, 4].map(i => { const x = CL + CW * i / 4, w = W_(["n", "e", "s", "w", "n"][i], LBL()), l = x + (i === 4 ? -3 - w : 3), y = ycL(x) + 6; return [l, l + w, y - 0.75 * LBL(), y + 0.22 * LBL()]; });
       const n1 = lbD.length;
       const LB = 11, VL = 14;   // SKETCH v20b: locator rows: labels 11 px, values 14 px
-      let yR = Math.round(yT(220) + 38 - 6), SP = W_(" ", LB), sd = String(brgInt(b0)).padStart(3, "0"), wd = LF.width === "—" ? "" : LF.width;   // SKETCH v19c: one row under the tape "045 ±13°  ·  2nd 238", the range "1,440 m e" after it
-      let px = 216 + SH; const seg = (q, v) => { text(q, px, yR, v ? { size: VL, col: CREAM, a: BRIGHT } : { size: LB, col: PURL, a: 1 }); px += W_(q, v ? VL : LB) + SP; };
-      seg(sd, 1); if (wd) seg(wd, 1); if (b1 != null) { seg("2nd", 0); seg(String(brgInt(b1)).padStart(3, "0"), 1); }
-      noseNB.push([216 + SH, px - SP, yR - 0.75 * VL, yR + 0.22 * VL]);
+      let yR = Math.round(yT(220) + 38 - 6) + 14, SP = W_(" ", LB), sd = String(brgInt(b0)).padStart(3, "0"), wd = LF.width === "—" ? "" : LF.width;   // SKETCH v19c: one row under the tape "045 ±13°  ·  2nd 238", the range "1,440 m e" after it
+      const bq = [[sd, 1]]; if (wd) bq.push([wd, 1]); if (b1 != null) { bq.push(["2nd", 0]); bq.push([String(brgInt(b1)).padStart(3, "0"), 1]); }   // SKETCH v66b: the bearing row ends at the compass piece's right end (396), 2nd beside it
+      /* SKETCH v66c: the bearing row is two small right-aligned lines at 396, right of the locator's top arc: "045 +-13" then "2nd 238" (one line touched the arc / the vael box) */
+      const VLr = 11, LBr = LBL();
+      [[[["brg", 0]].concat(bq.filter((q, i) => i < (wd ? 2 : 1))), 767.5 /* SKETCH v69e: brg baseline 767.5 */], [bq.filter((q, i) => i >= (wd ? 2 : 1)), 825]].forEach(rw => { const qs = rw[0], y = rw[1]; if (!qs.length) return;   // SKETCH v69a: brg row up to baseline 768.5 (ink bottom 3.3 px over the compass marks), 2nd row down to 825 (top 4 px under the id boxes)
+        const x0 = 394 - qs.reduce((a, q) => a + W_(q[0], q[1] ? VLr : LBr) + SP, -SP); let px = x0;
+        qs.forEach(q => { text(q[0], px, y, q[1] ? { size: VLr, col: C_HULL_GLOW, a: BRIGHT } : { size: LBr, col: GREY, a: 1 }); px += W_(q[0], q[1] ? VLr : LBr) + SP; });
+        noseNB.push([x0, px - SP, y - 0.75 * VLr, y + 0.22 * VLr]); });
       if (0) { const xp = 214 + 150 * b1 / 360, s2 = ["2nd", String(brgInt(b1)).padStart(3, "0")], y0 = Math.round(yT(xp) + 26);   // slid down to the first free y, or skipped
         for (let dy = 0; dy <= 30; dy++) { if (nbHit(tripBox(s2, xp, y0 + dy, "center"))) continue; noseNB.push(trip(s2, xp, y0 + dy, "center")); break; } }
       if (blk === 1 && LF.rep) LF.rep.lab = { str: lbD.slice(n0, n1), brg: lbD.slice(n1) }; });
     /* nose resonance on the slope: log axis */
-    stat_(() => { [0.001, 0.01, 0.1, 1].forEach(d => { for (let m = 1; m <= (d === 1 ? 0 : 9); m++) tickAt(LS, 1, resF(d * m), m === 1 ? 7 : 3, C_NOSE, m === 1 ? 0.6 : 0.26); });
-       });
-    dyn(() => {
+    /* SKETCH v61: the log-axis ticks on the slope are gone; the res scale below carries one even minor set */
+    const NUDGE1 = 8;
+    stat_(() => {   // SKETCH v59: a res scale along the slope: 0, .50, 1.0 at the points the red reaches (foot up, res x length), ticks and numbers on the void side, cream
+      const E = footR(half(LS.concat([[HB0, FL]])), 1), Er = E.slice().reverse(), LE = len(E);
+      [[0, "0"], [0.5, ".50"], [1, "1.0"]].forEach(([v, s]) => { const q = at(Er, v * LE), ox = -q[3], oy = q[2];
+        if (!(v === 1 && (1 - Math.min(1, Math.max(0, LF.resNow))) * LE <= 5.5 + 0.5)) line(q[0] - ox, q[1] - oy, q[0] + ox * 8, q[1] + oy * 8, CREAM, NORMAL);   // SKETCH v62: no 1.0 tick where the marker's box (+2 px) covers it
+        const nd = v === 1 ? NUDGE1 : 0;   // SKETCH v61: "1.0" moves out along its tick so it clears the marker
+        mic(s, q[0] + ox * (17 + nd), q[1] + oy * (17 + nd) + 4, { align: "left", col: CREAM, a: NORMAL }); });
+      for (let m = 1; m <= 9; m++) { if (m === 5) continue; const q = at(Er, m / 10 * LE), ox = -q[3], oy = q[2]; line(q[0], q[1], q[0] + ox * 4, q[1] + oy * 4, CREAM, NORMAL); }   // SKETCH v61: a minor tick every 0.1 res, outer side, half the major's 8 px
+    });
+    dynF(() => {
       const rn = String(LF.resNow.toFixed(2));
       /* SKETCH v9: the slope is drawn red in full by the static layer, so no second red stroke here */
       /* SKETCH v8 blade edge: a dim hairline 3 px inside the slope, a notch every 12 px of slope length between the two */
       { const LL = LS.concat([[HB0, FL]]), d0 = FT * (1 - uR), d1 = len(LL) - 10, ip = d => { const q = at(LL, d); return [q[0] + q[3] * 4, q[1] - q[2] * 4]; }, inn = [];
         for (let d = d0; d < d1; d += 2) inn.push(ip(d)); inn.push(ip(d1)); poly(inn, GREY, 0.3);
-        for (let d = d0 + 12, n = 1; d < d1; d += 12, n++) { const q = at(LL, d), p = ip(d), e = n % 4 === 0 ? 1.5 : 0; line(q[0], q[1], p[0] + q[3] * e, p[1] - q[2] * e, GREY, 0.4); } }   // SKETCH v9: the notched scale is dim grey
+      }   // SKETCH v61: the notches on the plate side are gone (the scale's minor ticks replace them)
       if (!redEnd) return;
       const t = redEnd, x = t[0], y = t[1]; if (t[3] < 0.5) line(x + t[2], y + t[3], x + t[2] * 10, y + t[3] * 10, CREAM, BRIGHT);   // SKETCH r53: same tick as tickAt drew, now at the red's end; on the flat foot it would run into the lowest plate, so it is left out there
-      { const nx = -t[2], ny = -t[3]; c.fillStyle = rgba(GREY, 0.85); c.beginPath(); c.moveTo(x + nx * 8 + ny * 3.5, y + ny * 8 - nx * 3.5); c.lineTo(x + nx * 1.5, y + ny * 1.5); c.lineTo(x + nx * 8 - ny * 3.5, y + ny * 8 + nx * 3.5); c.closePath(); c.fill(); }   // SKETCH v9: a solid 7 px chevron on the void side, tip into the slope   // SKETCH v8: a 6 px chevron on the void side, tip into the slope
+      { const nx = -t[2], ny = -t[3], x = t[0] + t[3] * 3, y = t[1] - t[2] * 3; c.fillStyle = rgba(GREY, 0.85); c.beginPath(); c.moveTo(x + nx * 8 + ny * 3.5, y + ny * 8 - nx * 3.5); c.lineTo(x + nx * 1.5, y + ny * 1.5); c.lineTo(x + nx * 8 - ny * 3.5, y + ny * 8 + nx * 3.5); c.closePath(); c.fill(); }   // SKETCH v62: the triangle sits 3 px down the slope, off the rail's bevel corner   // SKETCH v9: a solid 7 px chevron on the void side, tip into the slope   // SKETCH v8: a 6 px chevron on the void side, tip into the slope
       dot(x, y, 2.5, CREAM, 1);   // SKETCH v3 item 6: the ">" chevron is gone, the dot stays
     });
     /* the lobe's spectrum on the wedge base */
@@ -333,81 +368,116 @@ window.HudC25 = (function () {
       if (b1 != null) { const s2 = String(Math.round(b1)).padStart(3, "0"); rv("2nd", s2, 152, 960, "left"); mic("faint", 152 + W_("2nd", LBL()) + 4 + W_(s2, 10) + 6, 960, { a: 0.6 }); }
     });
     /* lamp bank: two rows of 7 */
-    const LX0 = [168, 218, 268, 322, 372, 422, 468];
-    dyn(() => { const LX = [];   // each column starts 6 px past the widest word before it (tag 16 px right of the lamp, diamond 0.2 px left of it)
+        dyn(() => { const LX = [];   // each column starts 6 px past the widest word before it (tag 16 px right of the lamp, diamond 0.2 px left of it)
       const LL = LF.lampsL.filter(l => l[0] !== "rift");   // SKETCH v18b: "rift" can never light, so it is not drawn; the second row ends one lamp short
-      LX0.forEach((x0, i) => { LX.push(i ? Math.max(x0, LX[i - 1] + 16 + Math.max(W_(LL[i - 1][0], LABEL), LL[i + 6] ? W_(LL[i + 6][0], LABEL) : 0) + 6.2) : x0); });
-      LL.forEach((l, i) => lamp(LX[i % 7], i < 7 ? 975 : 989, l[0], l[1], "d", GOLD)); });
+      for (let i = 0; i < 7; i++) LX.push(170 + 56 * i);   // SKETCH v72b: a fixed 56 px pitch like the right
+      LL.forEach((l, i) => { const own = /^(nomic|chaos|unfrm|shear|flip|well)$/.test(l[0]) ? REDT : /^(cntc|bcn|sig|span)$/.test(l[0]) ? C_HULL_GLOW : C_TOP;   // SKETCH v73a: a lit lamp and its tag take the owner's hue (red nose, blue tech, white human); unlit stay white
+        lamp(LX[i % 7], i < 7 ? 973 : 993, l[0], l[1], "o", l[1] > 0 ? own : GOLD, l[1] > 0 ? own : undefined); }); });
     /* SKETCH v21a: the sound instrument is a fan (sector), apex low at (RX,RY) = the ship, opening up toward the locator tape. Left side -100.5 deg runs parallel to the nose slope, the flat side +3 deg parallel to the top edge (span 103.5 deg); the outer arc is the listening range SR; the sweep goes back and forth inside it; the 32 spectrum spikes and "str N" moved out (LF.spectrum, LF.str stay for the sound monitor) */
     /* SKETCH v21b: the sound monitor, bottom-left corner. Open frame: chamfered top-left, top line, right edge parallel to the nose slope (dx/dy 0.186) landing on the fan's left-side end (280, 931). Inside: the 28 signal bins as white bars on a baseline, the slow peak-hold ticks, "str N" over the peak bar, the nearest mark's voice (purple when a contact is the source), the live envelope, and 5 s of str along the bottom */
-    const SM = { x0: 26, x1: 222 + SH, base: 962, hmax: 56, hy0: 983, hy1: 992 };   // SKETCH v35: from the wing's left edge down to the diamond rows   // SKETCH v26: column A under the pad row: x 26-200, y 858-950
+    const SM = { x0: 24, x1: 124, base: 920, hmax: 36, hy0: 923, hy1: 930 }; /* SKETCH v74a: column A ends at 124; the sound block is 12 px higher (chart 868-932) */ /* SKETCH v70a: framed chart 24-130 x 880-944 with a head row; SKETCH v66c: the sound monitor in 24-130 x 850-940 */   // SKETCH v35: from the wing's left edge down to the diamond rows   // SKETCH v26: column A under the pad row: x 26-200, y 858-950
     stat_(() => { /* SKETCH v26: no frame, no dividers: columns are separated by spacing only */
-     line(SM.x0, SM.base, SM.x1, SM.base, GOLD, 0.3, 1); line(SM.x0, SM.hy1 + 1, 158, SM.hy1 + 1, GOLD, 0.14, 1); });   // SKETCH v35: right of x 158 the lamps start, so the floor steps up to 962
+     c.strokeStyle = rgba(GOLD, 0.5); c.lineWidth = HAIR; c.strokeRect(24.5, 868.5, 99, 63); line(SM.x0, SM.base, SM.x1, SM.base, GOLD, 0.3, 1); });   // SKETCH v70a: the frame (as the right's life boxes) and one base line; was two floor lines
     dyn(() => {
       const bars = LF.bars || [], pks = LF.peaks || [], n = bars.length || 1, pitch = (SM.x1 - SM.x0) / n, bw = Math.max(3, pitch - 3);
       let pk = 0; bars.forEach((v, i) => { if (v > bars[pk]) pk = i; });
       const vm = Math.max(0.02, ...bars, ...pks), hh = (v, i) => Math.min(1, v / vm) * SM.hmax;   // SKETCH v21c: the tallest bin or hold fills the monitor up to the 'str' label, the rest scale with it
       bars.forEach((v, i) => { const x = SM.x0 + i * pitch + (pitch - bw) / 2, h = Math.max(1, hh(v, i)); c.fillStyle = rgba(CREAM, 0.5); const bs = SM.base; c.fillRect(x, bs - h, bw, h);
-        const ph_ = hh(Math.max(v, pks[i] || 0), i); line(x, bs - ph_ - 2, x + bw, bs - ph_ - 2, CREAM, 0.85, 1); });
+        const ph_ = hh(Math.max(v, pks[i] || 0), i), pyk = Math.max(884, bs - ph_ - 2); /* SKETCH v70a: no tick above 896 (3 px under the env label, bottom 893; the spec said 895, which leaves 2.2) */ line(x, pyk, x + bw, pyk, CREAM, 0.85, 1); });
       const px = SM.x0 + pk * pitch + pitch / 2, pt_ = hh(Math.max(bars[pk] || 0, pks[pk] || 0), pk), sv = "str " + LF.str, sw = W_(sv, 11);
-      const sy = SM.base - Math.max(0, Math.min(1, LF.str / 100)) * SM.hmax; line(SM.x0, sy, SM.x1, sy, "255,255,255", 0.85, 1); text(sv, SM.x1 + 2 - sw, SM.base - SM.hmax - 7, { size: 11, col: CREAM, a: 0.85, align: "left" });   // SKETCH v45: str is the sound monitor's peak strength: a thin white level line at str/100 of hmax from the base, "str N" at its right end
+      const sy = SM.base - Math.max(0, Math.min(1, LF.str / 100)) * SM.hmax; line(SM.x0 + 1, sy, SM.x1 - 1, sy, CREAM, 0.85, 1); rd([["str", "m"], [String(LF.str), "n"]], 24, () => 855, 0, "left", C_TOP); head("sound", 124 - W_("sound", LBL()), 846, { a: 0.85, col: GREY });   // SKETCH v70a: head row: "str N" left, "sound" right, baseline 858; the old "str N" over the chart is gone   // SKETCH v45: str is the sound monitor's peak strength: a thin white level line at str/100 of hmax from the base, "str N" at its right end
       const nb = !!LF.blips[0], vc = LF.voice || "void";
-      text("voice " + vc, SM.x0, 876, { size: 9, col: nb ? "150,158,224" : GREY, a: nb ? 0.95 : 0.75, align: "left" });
-      if (LF.envName) text("env " + LF.envName, SM.x1, 876, { size: 9, col: GREY, a: 0.8, align: "right" });
+      mic("voice", SM.x0, 858, { align: "left" }); text(vc, SM.x0 + W_("voice ", LBL()), 858, { size: LBL(), col: nb ? C_HULL_GLOW : C_TOP, a: nb ? 0.95 : BRIGHT, align: "left" });   // SKETCH v73b: "voice" is a grey label, its word the accent
+      if (LF.envName) text("env " + LF.envName, 29, 879, { size: 9 /* SKETCH v72a2 */, col: GREY, a: 0.8, align: "left" });   // SKETCH v70a: inside the frame's top-left corner (was 867, outside)   // SKETCH v66c: env under voice
       const hs = LF.strH || [], hn = hs.length; if (hn > 1) { c.strokeStyle = rgba(CREAM, 0.7); c.lineWidth = 1; c.beginPath();
-        hs.forEach((v, i) => { const x = SM.x0 + i * (158 - SM.x0) / (hn - 1), y = SM.hy1 - Math.max(0, Math.min(1, v / 100)) * (SM.hy1 - SM.hy0); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); }
+        hs.forEach((v, i) => { const x = SM.x0 + i * (SM.x1 - SM.x0) / (hn - 1), y = SM.hy1 - Math.max(0, Math.min(1, v / 100)) * (SM.hy1 - SM.hy0); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); }
     });
     /* SKETCH v24a: the half-disc. Centre = the ship on the foot line, radius HR = the outer range ring. x = east-west offset (east right), height = the north offset (LF blips are [east, south], so height = -b[1]); contacts south of the ship sit on the base with a small tick down. Sweep covers 180 deg (-PI = west, 0 = east) */
-    stat_(() => { arc(CX, CY, HR, -PI, 0, GOLD, 0.45); line(CX - HR, CY, CX + HR, CY, GOLD, 0.45, 1); dot(CX, CY, 1.6, GOLD, 0.6); });
-    const cpos = b => { let ex = b[0] * HR, h = -b[1] * HR; const m = Math.hypot(ex, h); if (m > 0.94 * HR) { ex *= 0.94 * HR / m; h *= 0.94 * HR / m; } return { x: CX + ex, y: CY - Math.max(0, h), below: h < 0, ang: Math.atan2(-Math.max(0, h), ex) }; };
-    dyn(() => {
-      const sw = LF.sweep, TAU = 2 * PI, PUR = "150,158,224", b0 = LF.blips[0], f0 = -PI, f1 = 0;
+    stat_(() => { poly(shp(1), C_HULL, 0.45, 1, true); dot(CX, CY, 1.6, C_HULL, 0.6);   // SKETCH v67b: the hard-edged half shape (outline + base) and 11 ticks, one per 18 deg from W to E, 4 px out
+      shp(1).forEach((p, k) => { const a = (-180 + 18 * k) * PI / 180, ex = Math.cos(a) * LRX, ey = Math.sin(a) * LRY, l = Math.hypot(ex, ey) || 1; line(p[0], p[1], p[0] - ex / l * 4, p[1] - ey / l * 4, C_HULL, 0.6, 1); }); /* SKETCH v68a: ticks point in */ });
+    /* r55: the layout of every contact, once per frame (cached on LF). Side = west left / east right; elevation = the mark's own vertical place (oy: higher on screen = higher on the disc), 12 to 78 deg, fixed per contact; radius = an inner "here" ring (0.28 HR) + sqrt of the distance, so near ones spread; marks closer than 4 px are nudged apart along their arc */
+    const cposAll = () => {
+      if (LF._lay) return LF._lay;
+      const D2R = PI / 180, items = LF.blips.map((b, i) => ({ b, oy: (LF.belev || [])[i] })).concat((LF.more || []).map(m => ({ b: m.b, oy: m.oy })));
+      const out = items.map(it => { const b = it.b, east = b[0] >= 0, r = Math.min(1, Math.hypot(b[0], b[1])), el = it.oy == null ? Math.atan2(Math.max(0, -b[1]), Math.abs(b[0])) / D2R : 12 + 66 * (1 - Math.max(0, Math.min(1, it.oy)));
+        return { east, rr: (0.16 + 0.78 * Math.sqrt(r)) * HR /* SKETCH v67b: 0.16..0.94 of the shape (was 0.28..0.9) so the spread fills it */, el: Math.max(12, Math.min(78, el)), below: false }; });
+      const put = (p, el) => { p.el = el; p.ang = p.east ? -el * D2R : -PI + el * D2R; p.x = CX + Math.cos(p.ang) * p.rr * LRX / HR; p.y = CY + Math.sin(p.ang) * p.rr * LRY / HR; };   // SKETCH v67b: stretched to the shape (LRX x LRY)
+      const done = [];
+      out.map((p, i) => i).sort((i, j) => out[i].rr - out[j].rr || i - j).forEach(i => { const p = out[i], base = p.el, st = 4.5 / p.rr / D2R;
+        for (let k = 0; k < 40; k++) { put(p, Math.max(12, Math.min(78, base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * st))); if (!done.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 4)) break; }
+        done.push(p); });
+      return (LF._lay = out);
+    };
+    const cpos = (b, i) => cposAll()[i];
+    dynF(() => {
+      const sw = LF.sweep, TAU = 2 * PI, PUR = C_HULL_GLOW, b0 = LF.blips[0], f0 = -PI, f1 = 0;
       const sa = -PI / 2 + (PI / 2) * Math.sin(sw), dir = Math.cos(sw) >= 0 ? 1 : -1;   // the scan sweeps back and forth across the half-disc
-      const pt = (r, a) => [CX + Math.cos(a) * r, CY + Math.sin(a) * r];
-      for (let i = 0; i < 24; i++) { const a = Math.max(f0, Math.min(f1, sa - dir * i * (PI / 2) / 24)), q = pt(HR, a); line(CX, CY, q[0], q[1], GOLD, 0.22 * Math.pow(1 - i / 24, 1.6), 2.4); }   // the trail: 90 deg of fading wedge behind the sweep
-      { const q = pt(HR, sa); line(CX, CY, q[0], q[1], GOLD, NORMAL); }
-      if (b0) { const q = pt(HR, cpos(b0).ang); line(CX, CY, q[0], q[1], PUR, 0.22, 1); }   // faint purple spoke on the nearest source's bearing
-      LF.blips.forEach((b, i) => { const p = cpos(b), x = p.x, y = p.y, r = Math.min(0.94, Math.hypot(b[0], b[1])), ag = Math.abs(sa - p.ang), fade = Math.exp(-ag * 0.9), near = 1 - 0.6 * r;
-        if (ag < 0.5) arc(x, y, 3 + 20 * ag, 0, TAU, i ? GREY : PUR, 0.5 * (1 - ag / 0.5));   // the flare ring when the sweep passes
+      const pt = (r, a) => [CX + Math.cos(a) * r * LRX / HR, CY + Math.sin(a) * r * LRY / HR];   // SKETCH v67b: on the shape's stretch
+      c.save(); c.beginPath(); shp(1).forEach((p, k) => k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.clip();   // SKETCH v67b: the sweep is clipped to the shape (restored after the purple spoke)
+      { let tn = 0; for (let i = 0; i < 12; i++) { const a = Math.max(f0, Math.min(f1, sa - dir * i * (PI / 2) / 12)), q = pt(HR, a); line(CX, CY, q[0], q[1], C_HULL_GLOW, 0.35 * Math.pow(1 - i / 12, 1.6), HAIR); tn++; } }   /* SKETCH v72b: 12 hairlines, alpha 0.35 */   // the trail: 90 deg of fading wedge behind the sweep
+      { const q = pt(HR, sa); line(CX, CY, q[0], q[1], C_HULL_GLOW, NORMAL); }
+      if (b0) { const q = pt(HR, cpos(b0, 0).ang); line(CX, CY, q[0], q[1], PUR, 0.22, 1); }   // faint purple spoke on the nearest source's bearing
+      c.restore();   // SKETCH v67b
+      LF.blips.forEach((b, i) => { const p = cpos(b, i), x = p.x, y = p.y, r = Math.min(0.94, Math.hypot(b[0], b[1])), ag = Math.abs(sa - p.ang), fade = Math.exp(-ag * 0.9), near = 1 - 0.6 * r;
+        if (ag < 0.5) { const k = 3.2 + 2.6 * near + 2; c.beginPath(); c.moveTo(x, y - k); c.lineTo(x + k, y); c.lineTo(x, y + k); c.lineTo(x - k, y); c.closePath(); c.strokeStyle = rgba(i ? GREY : PUR, 0.5 * (1 - ag / 0.5)); c.lineWidth = 1; c.stroke(); }   // SKETCH v68a: the flare is the diamond's own outline 2 px larger, fading (no circle)
         if (p.below) line(x, y, x, y + 4, i ? GREY : PUR, 0.8, 1);
         if (i) { }   // the 2nd is drawn as a hollow diamond by the content block
-        else { const k = 3.2 + 2.6 * near; c.beginPath(); c.moveTo(x, y - k); c.lineTo(x + k, y); c.lineTo(x, y + k); c.lineTo(x - k, y); c.closePath(); c.fillStyle = rgba(PUR, Math.min(1, 0.5 + 0.5 * fade)); c.fill(); } });
+        else { const k = 3.2 + 2.6 * near; c.beginPath(); c.moveTo(x, y - k); c.lineTo(x + k, y); c.lineTo(x, y + k); c.lineTo(x - k, y); c.closePath(); c.fillStyle = rgba(CREAM, Math.min(1, 0.5 + 0.5 * fade)); c.fill(); } });
       if (LF.dz && LF.dz.radar) LF.dz.radar.forEach((r, j) => { const st = Math.floor(LF.sigT * r.pat[0] * 2), w = r.a * (0.15 + 0.85 * r.s), n = r.s > 0.5 ? 2 : 1;   // faint ghosts that hop at the pattern's rate
         for (let q = 0; q < n; q++) { const h = Math.sin(st * 12.9898 + q * 78.233 + j * 37.7) * 43758.5453, u = h - Math.floor(h), h2 = Math.sin(st * 4.1414 + q * 19.19 + j) * 24634.63, v = h2 - Math.floor(h2), rr = 8 + (HR - 14) * u, an = -PI + v * PI;
-          dot(CX + Math.cos(an) * rr, CY + Math.sin(an) * rr, 1.6, CREAM, Math.min(0.6, 0.1 + 0.5 * w) * (0.6 + 0.4 * Math.sin(LF.sigT * r.pat[0] * 6))); } });
+          dot(CX + Math.cos(an) * rr * LRX / HR, CY + Math.sin(an) * rr * LRY / HR, 1.6, CREAM, Math.min(0.6, 0.1 + 0.5 * w) * (0.6 + 0.4 * Math.sin(LF.sigT * r.pat[0] * 6))); } });
     });
     dyn(() => {   // range arcs (half circles) at nice distances, the outer one the smallest nice value that holds the nearest source; the 9 px labels sit on the base, right-aligned just inside each arc's east end
       const b0 = LF.blips[0], ru = b0 ? Math.hypot(b0[0], b0[1]) : 0, dm = parseFloat(String(String(LF.near).split(" ")[1] || "").replace(/,/g, "")), mpu = ru > 0.05 && dm > 0 ? dm / ru : 22000;
       let top = 500; [500, 1000, 2000, 5000, 10000, 20000].some(v => { top = v; return v >= (ru > 0.05 && dm > 0 ? dm : mpu * 0.5); }); nearTop = top; nearDm = dm > 0 ? dm : 0;
-      [top / 4, top / 2, top].forEach((v, i) => { const f = Math.min(0.86, v / mpu), lab = (v >= 1000 ? v / 1000 + "k" : String(v)) + (i === 2 ? " m" : ""), lr = HR * f;
-        arc(CX, CY, lr, -PI, 0, GOLD, i === 2 ? 0.2 : 0.14);
-        const prev = i ? HR * Math.min(0.86, [top / 4, top / 2][i - 1] / mpu) : 8, w = W_(lab, 9);   // the label needs 4 px before the next arc inward (the centre for the first), else it is dropped
-        if (CX + lr - 3 - w >= CX + prev + 4) text(lab, CX + lr - 3, CY - 3, { size: 9, col: GREY, a: 0.7, align: "right" }); });
-      text("W", CX - HR + 4, CY - 3, { size: 9, col: GREY, a: 0.7, align: "left" }); text("E", CX + HR - 4, CY - 3, { size: 9, col: GREY, a: 0.7, align: "right" });   // SKETCH v25: inside the base ends so the larger disc stays in column B
+      [top / 4, top / 2, top].forEach((v, i) => { const f = Math.min(0.86, v / mpu), lab = (v >= 1000 ? v / 1000 + "k" : String(v)) + (i === 2 ? " m" : ""), lr = LRX * f;   // SKETCH v67b: rings are the 10-sided shape at f, not arcs
+        poly(shp(f), C_HULL, i === 2 ? 0.2 : 0.14, 1, true);
+        const prev = i ? LRX * Math.min(0.86, [top / 4, top / 2][i - 1] / mpu) : 8, w = W_(lab, LBL());   // the label needs 4 px before the next arc inward (the centre for the first), else it is dropped
+        const nWE = LF.blips.concat((LF.more || []).map(m => m.b)).filter(b => b[0] < 0).length, nEE = LF.blips.length + (LF.more || []).length - nWE;   // SKETCH v69d: the W n / E n boxes (drawn in the shoulders block), a label within 4 px of one is dropped
+        const wwe = W_("W " + nWE, LBL()), wee = W_("E " + nEE, LBL()), lL = CX + lr - 3 - w, lR = CX + lr - 3;
+        const hitWE = lL - 4 < CX - LRX + 4 + wwe && lR + 4 > CX - LRX + 4 || lL - 4 < CX + LRX - 4 && lR + 4 > CX + LRX - 4 - wee;
+        if (CX + lr - 3 - w >= CX + prev + 4 && !hitWE) text(lab, CX + lr - 3, CY - 3, { size: LBL(), col: GREY, a: 0.7, align: "right" }); });
+      /* SKETCH v67b: the W / E labels (with their counts) are drawn by the shoulders block below, on the base ends inside the shape */
     });
-    dyn(() => {   // SKETCH v24a: the half-disc's content, all from LF: ticks every 30 deg, the spread wedge, the other contacts, the sites, the unread chevron
-      const PUR = "150,158,224", TAU = 2 * PI, pt = (r, a) => [CX + Math.cos(a) * r, CY + Math.sin(a) * r];
-      const placed = [];   // label boxes already used, so every id keeps 4 px from the next
+    dynF(() => {   // SKETCH v24a: the half-disc's content, all from LF: ticks every 30 deg, the spread wedge, the other contacts, the sites, the unread chevron
+      const PUR = C_HULL_GLOW, TAU = 2 * PI, pt = (r, a) => [CX + Math.cos(a) * r * LRX / HR, CY + Math.sin(a) * r * LRY / HR];   // SKETCH v67b: on the shape's stretch
       const b0 = LF.blips[0], wd = parseFloat(String(LF.width).replace(/[^0-9.]/g, "")) || 0;
-      for (let a = -150; a <= -30; a += 30) { const p = pt(HR, rad(a)), q = pt(HR - 4, rad(a)); line(p[0], p[1], q[0], q[1], GOLD, 0.6, 1); }   // a tick every 30 deg on the outer arc
-      if (b0 && wd > 0) { const t = cpos(b0).ang, a0 = Math.max(-PI, t - rad(wd)), a1 = Math.min(0, t + rad(wd)); if (a1 > a0) { c.beginPath(); c.moveTo(CX, CY); c.arc(CX, CY, HR, a0, a1); c.closePath(); c.fillStyle = rgba(PUR, 0.1); c.fill(); } }   // the nearest one's +- spread from the ship, the same number the tape prints
+      /* SKETCH v67b: the ticks are drawn with the outline (every 18 deg, pointing out) */
+      if (b0 && wd > 0) { const t = cpos(b0, 0).ang, a0 = Math.max(-PI, t - rad(wd)), a1 = Math.min(0, t + rad(wd)); if (a1 > a0) { c.save(); c.beginPath(); shp(1).forEach((p, k) => k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.clip(); c.beginPath(); c.moveTo(CX, CY); for (let k = 0; k <= 8; k++) { const q = pt(HR, a0 + (a1 - a0) * k / 8); c.lineTo(q[0], q[1]); } c.closePath(); c.fillStyle = rgba(PUR, 0.1); c.fill(); c.restore(); } }   // SKETCH v67b: straight fan, clipped to the shape   // the nearest one's +- spread from the ship, the same number the tape prints
       const sw = LF.sweep, sa = -PI / 2 + (PI / 2) * Math.sin(sw);
       const all = LF.blips.map((b, i) => ({ b, id: (LF.bid || [])[i], i })).concat((LF.more || []).map((m, j) => ({ b: m.b, id: m.id, i: 2 + j })));
-      all.forEach(m => { const p = cpos(m.b), x = p.x, y = p.y, r = Math.min(0.94, Math.hypot(m.b[0], m.b[1])), ag = Math.abs(sa - p.ang), fade = Math.exp(-ag * 0.9), near = 1 - 0.6 * r;
+      all.forEach(m => { const p = cpos(m.b, m.i), x = p.x, y = p.y, r = Math.min(0.94, Math.hypot(m.b[0], m.b[1])), ag = Math.abs(sa - p.ang), fade = Math.exp(-ag * 0.9), near = 1 - 0.6 * r;
         if (m.i === 1) { const k = 3.2 + 2.6 * near; c.beginPath(); c.moveTo(x, y - k); c.lineTo(x + k, y); c.lineTo(x, y + k); c.lineTo(x - k, y); c.closePath(); c.strokeStyle = rgba(PUR, 0.5 + 0.5 * fade); c.lineWidth = 1; c.stroke(); if (p.below) line(x, y + k, x, y + k + 4, PUR, 0.8, 1); }   // the 2nd is a hollow diamond, as on the tape
-        else if (m.i > 1) { if (ag < 0.5) arc(x, y, 2 + 14 * ag, 0, TAU, GREY, 0.4 * (1 - ag / 0.5)); dot(x, y, 1.2 + 2 * near, GREY, near * (0.25 + 0.65 * fade)); if (p.below) line(x, y, x, y + 4, GREY, 0.6, 1); }
-        if (m.id && m.i < 5) { const lw = W_(m.id, 9), lx = Math.hypot(x + 6 + lw / 2 - CX, y - CY) + lw / 2 > HR - 4 ? x - 6 - lw : x + 6, bx = [lx, y - 4, lx + lw, y + 5];   // labels sit right of the mark, left when they would leave the disc
-          if (!placed.some(q => bx[0] < q[2] + 4 && bx[2] > q[0] - 4 && bx[1] < q[3] + 4 && bx[3] > q[1] - 4)) { placed.push(bx); text(m.id, lx, y + 3, { size: 9, col: m.i < 2 ? PUR : GREY, a: m.i < 2 ? 0.95 : 0.8, align: "left" }); } } });
+        else if (m.i > 1) { if (ag < 0.5) { const k = 1.2 + 2 * near + 2; c.beginPath(); c.moveTo(x, y - k); c.lineTo(x + k, y); c.lineTo(x, y + k); c.lineTo(x - k, y); c.closePath(); c.strokeStyle = rgba(GREY, 0.4 * (1 - ag / 0.5)); c.lineWidth = 1; c.stroke(); } dot(x, y, 1.2 + 2 * near, GREY, near * (0.25 + 0.65 * fade)); if (p.below) line(x, y, x, y + 4, GREY, 0.6, 1); }
+      });
       (LF.sites || []).forEach(s => { const x = CX + Math.max(-0.94, Math.min(0.94, s.d)) * HR, y = CY - 4;   // a site is one-dimensional (east or west), so it sits on the base at its x; met = hollow, unvisited = filled
-        if (s.met) { c.strokeStyle = rgba(GOLD, 0.9); c.lineWidth = 1; c.strokeRect(x - 2.5, y - 2.5, 5, 5); } else { c.fillStyle = rgba(GOLD, 0.9); c.fillRect(x - 2.5, y - 2.5, 5, 5); } });
-      if (LF.ball) { const east = LF.ball[0] > 0, a = rad(east ? -20 : -160), q = pt(HR, a), d = east ? 1 : -1, tx = -Math.sin(a) * d, ty = Math.cos(a) * d, nx = Math.cos(a), ny = Math.sin(a);   // the unread pull: a purple chevron on the arc, pointing the way it pulls
-        const tip = [q[0] + tx * 5, q[1] + ty * 5]; line(tip[0], tip[1], q[0] - nx * 4, q[1] - ny * 4, PUR, 0.95, 1.2); line(tip[0], tip[1], q[0] + nx * 4, q[1] + ny * 4, PUR, 0.95, 1.2); }
+        /* SKETCH v67b: sites are small diamonds, on the shape's width */
+        const xs = CX + Math.max(-0.94, Math.min(0.94, s.d)) * LRX, k = 3.2; c.beginPath(); c.moveTo(xs, y - k); c.lineTo(xs + k, y); c.lineTo(xs, y + k); c.lineTo(xs - k, y); c.closePath();
+        if (s.met) { c.strokeStyle = rgba(C_HULL_GLOW, 0.9); c.lineWidth = 1; c.stroke(); } else { c.fillStyle = rgba(C_HULL_GLOW, 0.9); c.fill(); } });
+      if (b0 && nearDm > 0) { const p0 = cpos(b0, 0), cc = nearDm.toLocaleString("en-US") + " m", tl = 394 - W_(cc, 11) /* SKETCH v69c: the value alone */;   // SKETCH v67b: the leader from the locked contact to the near text (right of the shape, 396 right edge, mid-height 833)
+        { const kx = tl - 3.5, ky = 837 - 2.9;   // SKETCH v69e: no leader at all: a key diamond (half-size 3.0) 3.5 px left of the value (the locked contact's fill) is the only link to the filled diamond
+          c.beginPath(); c.moveTo(kx, ky - 3.0); c.lineTo(kx + 3.0, ky); c.lineTo(kx, ky + 3.0); c.lineTo(kx - 3.0, ky); c.closePath(); c.fillStyle = rgba(CREAM, BRIGHT); c.fill();   // same colour and alpha as the locked contact's fill on the tape (o.loc[1], BRIGHT)
+          LF.leader = null;
+          } } else LF.leader = null;
+      /* SKETCH v68a: the unread-pull chevron at E is deleted */
     });
     dyn(() => {   // SKETCH v26: the shoulders above the arc: contacts in range per side (west / east of the ship), purple, with a bar of n
-      const PUR = "150,158,224", all = LF.blips.concat((LF.more || []).map(m => m.b)), nW = all.filter(b => b[0] < 0).length, nE = all.length - nW;
-      [["W", nW, CX - HR, "left"], ["E", nE, CX + HR, "right"]].forEach(q => { const t = q[0] + " " + q[1], w = W_(t, 9), bw = Math.min(6, q[1]) * 3, bx = q[3] === "left" ? q[2] : q[2] - bw;
-        text(t, q[2], 889, { size: 9, col: PUR, a: 0.95, align: q[3] });
-        if (q[1]) { c.fillStyle = rgba("108,116,188", 0.9); c.fillRect(bx, 892, bw, 3); } });
+      const PUR = C_HULL_GLOW, all = LF.blips.concat((LF.more || []).map(m => m.b)), nW = all.filter(b => b[0] < 0).length, nE = all.length - nW;
+      /* SKETCH v63: E text and bar 4 px left (right end 418; the id column starts at 423) */
+      /* SKETCH v67b: W n / E n sit on the base ends inside the shape (text on the foot, bar just above it) */
+      [["W", nW, CX - LRX + 4, "left"], ["E", nE, CX + LRX - 4, "right"]].forEach(q => { const t = q[0] + " " + q[1], w = W_(t, LBL()), bw = Math.min(6, q[1]) * 3, bx = q[3] === "left" ? q[2] : q[2] - bw;
+        text(t, q[2], CY - 3, { size: LBL(), col: PUR, a: 0.95, align: q[3] }); });   // SKETCH v68a: the 3 x 3 count squares are deleted
+    });
+    dynF(() => {   // SKETCH v67c: the signal strip under the foot line, W..E: summed per-contact strength by bearing, peak dot, "lim" on the limit line
+      const SY0 = 938, SY1 = 959, SX0 = 134.5, SX1 = 390.5, LIM = 0.85, YL = 942, all = LF.blips.concat((LF.more || []).map(m => m.b)), amp = [];   // SKETCH v68b: the strip is 938-963 x 134.5-390.5, 25 px tall, the lim line at 942   // SKETCH v69a: strip 938-959 (21 px), lim line still 4 px under the top
+      line(SX0, SY1, SX1, SY1, C_HULL, 0.3, 1); dash([3, 3], () => line(SX0, YL, SX1, YL, C_HULL, 0.35, 1));
+      text("lim", SX1, YL - 2, { size: 10, col: GREY, a: 0.55, align: "right" });   // SKETCH v68b: "lim" 10 px at the E end
+      shape("sigstrip", SX0, SY0, SX1, SY1);
+      let pk = null;
+      for (let x = SX0; x <= SX1; x += 4) { let v = 0; all.forEach((b, i) => { const p = cpos(b, i); if (p) v += (1 - 0.6 * Math.min(1, Math.hypot(b[0], b[1]))) * Math.exp(-Math.pow((x - (CX + Math.cos(p.ang) * LRX)) / 14, 2)); });
+        const y = SY1 - Math.min(1, v / LIM) * (SY1 - YL); amp.push([x, y]); if (!pk || y < pk[1]) pk = [x, y]; }   // SKETCH v68b: the trace spans the strip's height, the peak reaches the lim line
+      poly(amp, C_HULL, 0.8, 1);
+      if (pk && pk[1] < SY1 - 0.5) dot(pk[0], pk[1], 2, CREAM, 1);
     });
     paintDrift();
     paintOutside();
@@ -415,31 +485,35 @@ window.HudC25 = (function () {
   }
 
   function paintDrift() {
+    
     const GOLD = C_TOP;
     const cx = 113, cy = 840, r = 11, xg = 202, yr = 812, yb = 868, M = 46, yH = x => cy + (x - cx) * 0.052, xV = y => cx + (y - cy) * 0.2;   // SKETCH v12: lat rail 24-202 (cap A's width), vert rail centred on it   // SKETCH v3: cross at (110,848), lat on H, vert on V
-    dyn(() => {
+    dynF(() => {
       const lat = LF.lat, vert = LF.vert;
       const mv = Math.hypot(lat, vert) * 5, mt = mv >= 9.95 ? "9.9+" : mv.toFixed(1);   // over the slot clamps to its max text
       const E = [];
-      { const dx = Math.max(-1, Math.min(1, lat)) * 14, dy = Math.max(-1, Math.min(1, vert)) * 14;   // SKETCH v23a: lat (x) and vert (y, up) as the ship's slip vector at the cone's apex
-        const px0 = 58, py0 = 806, pw_ = 70, ph_ = 44, pcx = px0 + pw_ / 2, pcy = py0 + ph_ / 2;   // SKETCH v26: the lat/vert pad on its own row under the numbers, 40 x 24, +-1 = pad edge
-        for (let gx = 0; gx <= pw_; gx += 6) for (let gy = 0; gy <= ph_; gy += 6) dot(px0 + gx, py0 + gy, 0.7, C_MID, 0.25);   // SKETCH v27: a faint dot grid, 6 px pitch
-        [[px0, py0, 1, 1], [px0 + pw_, py0, -1, 1], [px0, py0 + ph_, 1, -1], [px0 + pw_, py0 + ph_, -1, -1]].forEach(k => { line(k[0], k[1], k[0] + 4 * k[2], k[1], C_MID, 0.3, 1); line(k[0], k[1], k[0], k[1] + 4 * k[3], C_MID, 0.3, 1); });   // L marks at the four corners only
-        const sx_ = pcx + Math.max(-1, Math.min(1, lat)) * pw_ / 2, sy_ = pcy - Math.max(-1, Math.min(1, vert)) * ph_ / 2;
-        line(pcx, pcy, sx_, sy_, C_MID, 0.25, 1); dot(sx_, sy_, 4, C_MID, 0.25); dot(sx_, sy_, 2.2, C_MID, 1); }   // the slip dot (lat = x, vert = y up, +-1 = field edge) with a faint trail and halo
+      /* SKETCH v66c: the dotted pad is gone */
       { const hs = paintDrift.h || (paintDrift.h = { a: [], t: 0 }), now_ = performance.now() / 1000;   // SKETCH v29: the slip magnitude over the last 5 s as a continuous gold polyline, older fainter, the newest point a dot; the sketch's fake data wanders
         const smp = t => Math.min(1, Math.hypot(lat, vert) * (0.75 + 0.35 * Math.sin(t * 1.7) + 0.2 * Math.sin(t * 4.3 + 1)) / 0.6);
         if (!hs.a.length) for (let k = 49; k >= 0; k--) hs.a.push(smp(now_ - k * 0.1));
         if (now_ - hs.t >= 0.1) { hs.t = now_; hs.a.push(smp(now_)); if (hs.a.length > 50) hs.a.shift(); }
-        const gx0 = 138, gx1 = 222 + SH, gy0 = 806, gy1 = 850;
-        for (let gx = gx0; gx <= gx1; gx += 6) for (let gy = gy0; gy <= gy1; gy += 6) dot(gx, gy, 0.7, C_MID, 0.25);
-        const hn = hs.a.length, tx = i => gx1 - (hn - 1 - i) * (gx1 - gx0) / 49, ty = i => gy1 - hs.a[i] * (gy1 - gy0);
-        for (let i = 1; i < hn; i++) line(tx(i - 1), ty(i - 1), tx(i), ty(i), C_MID, 0.2 + 0.7 * i / hn, 1.3);
-        dot(tx(hn - 1), ty(hn - 1), 4, C_MID, 0.25); dot(tx(hn - 1), ty(hn - 1), 2.4, C_MID, 1); }
+        /* SKETCH v70b: the 5 s trace sits on the drift row, 61-gx1 x 991-999 (bottom on the line's top side); SKETCH v70c: its right end comes from the longest value "9.9+ m" (4 px gap, 2 px dot radius), computed once */
+        if (paintDrift.gx1 === undefined) paintDrift.gx1 = 124 - W_("9.9+", 11) - 4 - 2;
+        const gx0 = Math.round(24 + W_("drift", LBL())) + 4 /* SKETCH v72a: 4 px after the label's right end */, gx1 = paintDrift.gx1, gy0 = 989, gy1 = 999;
+        const hn = hs.a.length, tx = i => gx1 - (hn - 1 - i) * (gx1 - gx0) / 49, ty = i => gy1 - Math.max(0, Math.min(1, hs.a[i])) * (gy1 - gy0);   /* SKETCH v73a: absolute scale, 0 = no slip on the base line, band 989-999 */
+        for (let i = 1; i < hn; i++) line(tx(i - 1), ty(i - 1), tx(i), ty(i), C_MID, 0.45 + 0.5 * i / hn, 1.3);
+        dot(tx(hn - 1), ty(hn - 1), 2.0, C_MID, 1);
+        }
       const sgn = v => (v >= 0 ? "+" : "−") + (Math.abs(v) >= 9.995 ? "9.9+" : Math.abs(v).toFixed(2));
-      mic("vert", 26, 806 + 8, { size: 10, col: C_MID, a: 0.6 }); mic(sgn(vert), 26, 806 + 20, { size: 10, col: C_MID, a: 0.9 });   // SKETCH v35: the field's axes carry the numbers
-      mic("lat " + sgn(lat), 128, 862, { size: 10, col: C_MID, a: 0.9, align: "right" });
-      mic("drift " + mt + " m / 5 s", 222 + SH, 862, { size: 10, col: C_MID, a: 0.9, align: "right" });   // the trace's label, at its newest end
+      /* SKETCH v70b: lat / vert / drift as scale rows 20 px apart like the right's temp / p / rh: label, hair line 58-130 at +4.5, a +-1 scale (zero mark at 94, STRONG value tick), the value at the row's end */
+      [["lat", lat, 956], ["vert", vert, 976], ["drift", null, 996]].forEach(k => { const nm = k[0], v = k[1], y = k[2];
+        const lw = mic(nm, 24, y);   // SKETCH v73a: grey label   // SKETCH v72a2: drift has no unit
+        line(58, y + 4.5, 124, y + 4.5, C_MID, 0.3); line(123.5, y + 2.5, 123.5, y + 6.5, C_MID, 0.45);   /* SKETCH v74a: the line ends at 124 */   // SKETCH v72b: the end tick is a major (4 px, alpha 0.45)
+        if (v === null) { text(mt, 124, y, { size: 11, col: C_MID, a: BRIGHT, align: "right" }); return; }
+        line(91, y + 2.5, 91, y + 6.5, C_MID, 0.45);   // SKETCH v72b: the zero mark is a major
+        const x = 91 + Math.max(-1, Math.min(1, v)) * 32.5;
+        glow(C_MID, () => line(x, y + 2.5, x, y + 6.5, CREAM, BRIGHT, STRONG));
+        text(sgn(v), 124, y, { size: 11, col: C_MID, a: BRIGHT, align: "right" }); });
       const sg = v => (v >= 0 ? "+" : "\u2212") + (Math.abs(v) >= 9.995 ? "9.9+" : Math.abs(v).toFixed(2));
       if (blk === 1 && LF.rep) LF.rep.drift = { raw: 0, hits: 0 };   // SKETCH v3: no readout hole, the clip cuts nothing (raw 0, hits 0)
       if (blk === 1 && LF.rep) LF.rep.driftTxt = { main: mt, lat: sg(lat), vert: sg(vert) };
@@ -450,18 +524,18 @@ window.HudC25 = (function () {
   /* nose panel, inside the outline between the dial block and the resonance slope: an alert block, a vibration plot along the nose's ruler (a few hundred seeded entries, the env.sig contacts as marks), and a stream of tiny records with a climbing total of ids (LF.sig rows come from leftNow) */
   const NSN = 220, nsX = new Float32Array(NSN), nsY = new Float32Array(NSN), nsL = new Uint8Array(NSN), NSC = 6, nsRows = new Array(18).fill(""), nsBase = [-1, -1, -1];
   let nsK = -1, nsSd = -1, nsTot = -1, nsTotS = "", nsKk = -1, nsFnt = "", nsLsp = "", nsRw = 0, nsAlId = "", nsAlV = -1, nsAlS = "";
-  const NS_ALR = [[222, 858], [272, 858], [272, 918], [222, 918]], NS_GFX = [0, 0, 0, 0], NS_AL = [222, 272, 858, 918], NS_ST = [0, 0, 0, 0], NS_DIAL = [CX - HR - 2, CX + HR + 2, CY - HR - 4, CY + 5];
+  const NS_ALR = [[222, 858], [272, 858], [272, 918], [222, 918]], NS_GFX = [0, 0, 0, 0], NS_AL = [222, 272, 858, 918], NS_ST = [0, 0, 0, 0], NS_DIAL = [CX - LRX - 2, CX + LRX + 2, CY - LRY - 4, CY + 5];   // SKETCH v67b: the shape's box
   const nsH = (a, b, d) => { const h = Math.sin(a * 12.9898 + b * 78.233 + d * 37.719) * 43758.5453; return h - Math.floor(h); };
   const nsSeed = str => { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 9973; return h; };
   const BAR_AMB = "46,50,84", BAR_AMB_T = "70,76,120";   // the ambient bars' blue-purple (fill, outline): the two sails take it too
   function paintSig() {   /* SKETCH v1: force bars off the slope, dotted threshold curve, two sail gauges */
-    dyn(() => {
+    dynF(() => {
       ext.dial = NS_DIAL;
       const P = C_TOP, SL = LS.concat([[HB0, FL]]), fs = LBL(), T = 0.6, N = 8, GAP = 4;
       const sx = y => { for (let i = 1; i < SL.length; i++) { const a = SL[i - 1], b = SL[i]; if (y <= b[1] || i === SL.length - 1) { const u = Math.max(0, Math.min(1, (y - a[1]) / (b[1] - a[1]))); return a[0] + (b[0] - a[0]) * u; } } return SL[0][0]; };
       const lr = (LF.sig || []).filter(r => r.slot >= 0).sort((a, b) => b.s - a.s).slice(0, 3), m = lr.length;
       const LOAD = lr.reduce((a, r) => a + (r.on ? r.s : 0), 0), CONT = lr.filter(r => r.on).length, IDS = LF.ids || 0, RES = LF.resNow;
-      const kept = [{ s: "k:ruler+peak", l: 130, r: 255, t: 805, b: 872 }, { s: "k:drift", l: 25, r: 130, t: 795, b: 880 }, { s: "k:dialU", l: CX - HR - 8, r: CX + HR, t: CY - HR - 8, b: CY - 24 }, { s: "k:dial", l: CX - HR - 8, r: CX + HR, t: CY - 24, b: CY + 5 }, { s: "k:lamps", l: 162, r: 474, t: 970, b: 994 }];
+      const kept = [{ s: "k:ruler+peak", l: 130, r: 255, t: 805, b: 872 }, { s: "k:drift", l: 25, r: 130, t: 795, b: 880 }, { s: "k:dialU", l: CX - LRX - 8, r: CX + LRX, t: CY - LRY - 8, b: CY - 24 }, { s: "k:dial", l: CX - LRX - 8, r: CX + LRX, t: CY - 24, b: CY + 5 }   /* SKETCH v67b: the shape's box */, { s: "k:lamps", l: 162, r: 474, t: 970, b: 994 }];
       /* bars: one thickness (BH) at a fixed pitch PT from the floor line up to 4 px under the resonance dot; the row count follows the dot and the top row fades in and out;
          the strongest contacts take the top rows, every other row is ambient resonance (resNow x its own wandering noise); every length eases */
       const XB = 362 + BX, LB = 55, XG = 0.8, LT = LB * T, PT = 13, dotY = at(LS, len(LS) * (1 - resN(RES)))[1], sT = dotY + 4, sB = FL;   // SKETCH v10: the cap meter and pulse trace sit under cap C; the first bar row starts 8 px under them (pushed down only as far as that needs)
@@ -475,7 +549,11 @@ window.HudC25 = (function () {
       const edge = (y0, y1) => { const p = [[sx(y0), y0]]; SL.forEach(v => { if (v[1] > y0 && v[1] < y1) p.push(v); }); p.push([sx(y1), y1]); return p; };
       const FA = 0.12;
       LF.minPlate = PE;   // SKETCH v47: one plate's height, read by the slope's red in paintLeft
-      const GP = 2.45, CUT = 5.5, band = (y0, y1, col, xl) => { if (y1 <= y0) return; const e = edge(y0, y1); c.fillStyle = col; c.beginPath(); e.forEach((p, k) => k ? c.lineTo(p[0] - XG - GP, p[1]) : c.moveTo(p[0] - XG - GP, p[1]));
+      const DR = 1.3;   // SKETCH v63b: the plates meet the hard red's outer edge (2.5 px line, half = 1.25) and grow out of it, never under it.  SKETCH v63: DR = 0: the plates' right end follows the red's centre line exactly (no two points at one y with different x, so no sawtooth at the bend); was 6.  SKETCH v62: a plate's right end stops DR px (square to the slope / foot line) short of the red's centre: 0.5 shift + 1.25 stroke + glow, then 2 px clear
+      const oe = (y0, y1) => { const sg = y => { for (let i = 1; i < SL.length; i++) if (y <= SL[i][1] || i === SL.length - 1) return i; }, off = i => DR * Math.hypot(SL[i][0] - SL[i - 1][0], SL[i][1] - SL[i - 1][1]) / (SL[i][1] - SL[i - 1][1]);
+        const bS = i => (SL[i][0] - SL[i - 1][0]) / (SL[i][1] - SL[i - 1][1]);   // SKETCH v63b: at a knee the two pushed-in lines meet in ONE mitred point (no sawtooth)
+        const p = [[sx(y0) - off(sg(y0)), y0]]; SL.forEach((v, i) => { if (i > 0 && v[1] > y0 && v[1] < y1) { if (i + 1 >= SL.length) { p.push([v[0] - off(i), v[1]]); return; } const d = Math.max(y0 - v[1], Math.min(y1 - v[1], (off(i) - off(i + 1)) / (bS(i) - bS(i + 1)))); p.push([v[0] + bS(i) * d - off(i), v[1] + d]); } }); p.push([sx(y1) - off(sg(y1)), y1]); return p; };   // SKETCH v62: the plates' right edge: the slope polyline pushed in square (two points at each knee), so the shallow foot segment gets a long horizontal step
+      const GP = 2.45, CUT = 5.5, band = (y0, y1, col, xl) => { if (y1 <= y0) return; const e = oe(y0, y1); c.fillStyle = col; c.beginPath(); e.forEach((p, k) => k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]));
         c.lineTo(xl + CUT, y1); c.lineTo(xl, y0); c.closePath(); c.fill(); };   // SKETCH v8: the growing end leans like the slope
       let cand = null;
       const redY = (() => { const pts = half(LS.concat([[HB0, FL]])), n = pts.length, kk = pts[n - 1], pp = pts[n - 2], dx = kk[0] - pp[0], dy = kk[1] - pp[1], l = Math.hypot(dx, dy), A = [kk[0] - dx / l * 10, kk[1] - dy / l * 10], B = [kk[0] + 10, kk[1]], E = pts.slice(0, n - 1); E.push(A);
@@ -487,19 +565,20 @@ window.HudC25 = (function () {
           tg = con ? MINL + (LB - MINL) * f * (1 + 0.1 * (z - 0.5)) : MINL + (LB - MINL) * Math.min(1, RES) * (0.2 + 0.8 * z);
         const L = st.L[k] = st.L[k] == null ? tg : st.L[k] + (tg - st.L[k]) * ke, vis = i === 0 ? fr * fr * (3 - 2 * fr) : 1, lit = con && XG + L > LT,
           xr = sx(yb) - XG;
-        let xl = Math.min(sx(yt + BH / 2) - XG - Math.max(L, MINL), sx(yt) - XG - 0.5, xr - 0.5);
+        let xl = Math.min(sx(yt + BH / 2) - XG - LB, sx(yt) - XG - 0.5, xr - 0.5);
         xl = Math.max(xl, XB + 10 + (con ? W_(lr[i].id, 9) : W_(aid(k), 9)));   // SKETCH v31: the id lane: the labels stay right of X_B + 6, so a bar never starts under its own label
         noseNB.concat([pkNB]).forEach(o => { if (o[2] < yb + 1 && o[3] > yt - 1 && o[0] < xr && o[1] + 3 > xl) xl = Math.max(xl, o[1] + 3); });   // stop 3 px short of any text box the bar would cross
-        const hid = xl >= xr - 1, fc = lit ? "205,214,224" : con ? "108,116,188" : BAR_AMB, tc = lit ? "236,242,248" : con ? "150,158,224" : BAR_AMB_T;
+        const hid = xl >= xr - 1, fc = lit ? "205,214,224" : con ? C_HULL : BAR_AMB, tc = lit ? "236,242,248" : con ? C_HULL_GLOW : BAR_AMB_T;
         const KNM = { "vael-11": "k", "kth-04": "u", "orr-02": "n" }, kindOf = (id, cl, k) => KNM[id] || (cl ? (/^(well|swell|hush|glint)$/.test(cl) ? "n" : /^(rift|shear|fault|flare|furnace)$/.test(cl) ? "k" : "u") : (h => h < 0.3 ? "n" : h < 0.7 ? "k" : "u")(nsH(k, 13, 2)));   // SKETCH r38: nomic / known incoherent / unknown incoherent (col-b variant B)
-        const RED = "110,26,26", BLU = "108,116,188", BLT = "150,158,224", CRM = "239,230,204", ROL = "184,56,58", RFL = "163,40,42", RCO = "208,72,74", kd = kindOf(con ? lr[i].id : "", con ? lr[i].cls : "", k);
-        const drawBar = (kk, xs) => { kk = kk || kd; xs = xs == null ? xl : xs; const sr = sx(yt) - XG - GP, sb = sx(yb) - XG - GP;
-          const KC = { n: [ROL, RFL, CRM, 0.2, 0.8], k: [ROL, RFL, BLU, 0.2, 0.85], u: [ROL, RFL, "240,138,132", 0.2, 0.9] }[kk], fr2 = Math.max(0, Math.min(1, (L - MINL) / (LB - MINL))), cl = Math.max(3, Math.min(sr - xs - 2, fr2 * (sr - xs)));   // SKETCH r43: glass plate: dark tint, bright core from the slope end (length = the value), 1 px outline (dashed for unknown) shared between touching bars
+        const RED = "110,26,26", BLU = C_HULL, BLT = C_HULL_GLOW, CRM = "239,230,204", ROL = "200,48,47" /* SKETCH v63b: plate outline = the slope's hard red (was 184,56,58) */, RFL = "163,40,42", RCO = "208,72,74", kd = kindOf(con ? lr[i].id : "", con ? lr[i].cls : "", k);
+        const drawBar = (kk, xs) => { kk = kk || kd; xs = xs == null ? xl : xs; const oo = oe(yt, yb), sr = oo[0][0];
+          const KC = { n: [ROL, RFL, CRM, 0.2, 0.8], k: [ROL, RFL, BLU, 0.2, 0.85], u: [ROL, RFL, "200,48,47", 0.2, 1] /* SKETCH v64: the slope's hard red (was pink 240,138,132) */ }[kk], fr2 = Math.max(0, Math.min(1, (L - MINL) / (LB - MINL))), cl = Math.max(3, Math.min(sr - xs - 2, fr2 * (sr - xs)));   // SKETCH r43: glass plate: dark tint, bright core from the slope end (length = the value), 1 px outline (dashed for unknown) shared between touching bars
           band(yt, yb, rgba(KC[1], vis * KC[3]), xs); band(yt + 0.2 * BH, yb - 0.2 * BH, rgba(KC[2], vis * KC[4]), Math.max(xs + 1, sr - cl));
-          c.save(); c.strokeStyle = rgba(KC[0], vis * 0.9); c.lineWidth = 1; if (kk === "u") c.setLineDash([3, 2]); c.beginPath(); c.moveTo(xs, yt); c.lineTo(sr, yt); c.lineTo(sb, yb); c.lineTo(xs + CUT, yb); c.closePath(); c.stroke(); c.restore(); };
+          c.save(); c.strokeStyle = rgba(KC[0], vis * 0.9); c.lineWidth = 1; if (kk === "u") c.setLineDash([3, 2]); c.beginPath(); c.moveTo(xs, yt); c.lineTo(sr, yt); oo.slice(1).forEach(p => c.lineTo(p[0], p[1])); c.lineTo(xs + CUT, yb); c.closePath(); c.stroke(); c.restore(); };
         const bar = { kd, s: "bar" + k, xl, xr: sx(yb) - XG, yt, h: BH, l: xl, r: sx(yb) - XG, t: yt, b: yb, L, lit, con }; bars.push(bar);
         rowsL.push({ kd, k, id: con ? lr[i].id : aid(k), xl, yt, con, lit, f, vis, hid, drawBar, bar, sl: sx(yt) - XG });
         if (con && vis > 0.5 && !(cand && cand.lit && !lit)) cand = { id: lr[i].id, f, xl, yt, lit }; }
+      if (LF.redPoly && nShow > 0) poly(LF.redPoly, "200,48,47", 1, 2.5);   // SKETCH v63: the plates now end on the red's centre line and paint after it: the red line on top so it reads continuous over them
       /* sails: leech from a straight diagonal (g 0) to a full round (g 1) */
       const sail = (T0, M, B, g) => { const k = 0.5523 * g; c.beginPath(); c.moveTo(T0[0], T0[1]); c.lineTo(B[0], B[1]);
         c.bezierCurveTo(B[0] + k * (M[0] - T0[0]), B[1] + k * (M[1] - T0[1]), M[0] + k * (B[0] - T0[0]), M[1] + k * (B[1] - T0[1]), M[0], M[1]); c.closePath();
@@ -521,20 +600,26 @@ window.HudC25 = (function () {
       /* SKETCH v15c: load / contacts / near under the hero stack (rows 874 / 896 / 918, x = the hero's); load and contacts each end in one small bar (40 px at full, 6 px tall), 8 px after the value */
       const plB = (nm, x0, y0, room, f) => { const len = Math.max(8, Math.min(40, room - x0)), cl = Math.max(2, len * f), h = 7, sl = 0.2 * h, yt = y0 - 0.5, yb = yt + h;   // SKETCH v45: column B's glass plate (as the nose's): 1 px outline, tint 0.2, bright core = the value, ends slanted the mirrored way (it grows rightwards)
         const pg = (a, b) => { c.beginPath(); c.moveTo(x0 + sl, yt); c.lineTo(x0 + a + sl, yt); c.lineTo(x0 + a, yb); c.lineTo(x0, yb); c.closePath(); };
-        pg(len); c.fillStyle = rgba("108,116,188", 0.2); c.fill(); const ci = 1.4; c.beginPath(); c.moveTo(x0 + sl + 1, yt + 1.4); c.lineTo(x0 + cl + sl - ci, yt + 1.4); c.lineTo(x0 + cl - ci, yb - 1.4); c.lineTo(x0 + 1, yb - 1.4); c.closePath(); c.fillStyle = rgba("150,158,224", 0.85); c.fill();
-        pg(len); c.strokeStyle = rgba("150,158,224", 0.9); c.lineWidth = 1; c.stroke();
+        pg(len); c.fillStyle = rgba(C_HULL, 0.2); c.fill(); const ci = 1.4; c.beginPath(); c.moveTo(x0 + sl + 1, yt + 1.4); c.lineTo(x0 + cl + sl - ci, yt + 1.4); c.lineTo(x0 + cl - ci, yb - 1.4); c.lineTo(x0 + 1, yb - 1.4); c.closePath(); c.fillStyle = rgba(C_HULL_GLOW, 0.85); c.fill();
+        pg(len); c.strokeStyle = rgba(C_HULL_GLOW, 0.9); c.lineWidth = 1; c.stroke();
         SB.push({ s: nm, l: x0 - 0.5, r: x0 + len + sl + 0.5, t: yt - 0.5, b: yb + 0.5 }); };
-      const rowB = (nm, y, p, f) => { const bx = trip(p, 216 + BX, y, "left", 14, ["108,116,188", "150,158,224", 1, 0.75], 11); SB.push({ s: nm + "text", l: bx[0], r: bx[1], t: bx[2], b: bx[3] });
+      const rowB = (nm, y, p, f) => { const bx = trip(p, 216 + BX, y, "left", 14, [C_HULL, C_HULL_GLOW, 1, 0.75], 11); SB.push({ s: nm + "text", l: bx[0], r: bx[1], t: bx[2], b: bx[3] });
         plB(nm, bx[1] + 8, y - 6, XB - 4, f); };
-      const RY = Math.round(yT(220) + 32) + 17.5 - 833.8;   // SKETCH v33: with unread gone the three rows close up under the bearing row (ring top 4 px under its box), same pitch
-      rowB("sailA", 833.8 + RY, ["ring", LOAD.toFixed(2)], Math.min(1, LOAD / 4));   // SKETCH v17: the rows use the force bars' contact blue-purple
-      rowB("sailB", 850.3 + RY, ["sites", String(CONT), "· met", String(IDS)], Math.min(1, CONT / 8));
-      { const nq = String(LF.near).split(" "), bx = trip(nq[1] ? ["near", nq[1], "m", nq[0]] : ["near", "none"], 216 + BX, 866.8 + RY, "left", 14, ["108,116,188", "150,158,224", 1, 0.75], 11); SB.push({ s: "nearText", l: bx[0], r: bx[1], t: bx[2], b: bx[3] });
-        if (nq[1] && nearDm > 0) { plB("nearBar", bx[1] + 8, 860.8 + RY, XB - 4, Math.min(1, nearDm / nearTop)); } }   // SKETCH v22b: near on the fan's 0..outer-ring scale (40 px = the outer ring)   // SKETCH v20b: the range joins the purple column
+      const RY = Math.round(yT(220) + 32) + 17.5 - 833.8 + 14;   // SKETCH v33: with unread gone the three rows close up under the bearing row (ring top 4 px under its box), same pitch
+      /* SKETCH v66b: the blue rows are gone; their values sit on the locator: ring 1.85 on a ring inside it, "3 sites · 3 met" just above it, near at its top right */
+      /* SKETCH v67b: the load ring is the 10-sided shape at LOAD/4 of the outline; its label sits on its top; the sites text sits on top of the outline */
+      { const lf = Math.min(0.94, LOAD / 4); if (LOAD >= 0.02) poly(shp(lf), C_HULL, 0.5, 1, true); const bx = trip(["ring", LOAD.toFixed(2)], CX, CY - LRY * Math.max(lf, 0.30) - 3 /* SKETCH v69e: never on the base */, "center", 11, [GREY, C_HULL_GLOW, NORMAL, BRIGHT], LBL()); SB.push({ s: "ringText", l: bx[0], r: bx[1], t: bx[2], b: bx[3] }); }
+      { const bx = trip(["sites", String(CONT), "· met", String(IDS)], 134, 816, "left", 11, [GREY, C_HULL_GLOW, NORMAL, BRIGHT], LBL()); SB.push({ s: "sitesText", l: bx[0], r: bx[1], t: bx[2], b: bx[3] }); }   // SKETCH v69a: baseline 816: top 4 px under the id boxes (was 814)
+      { const nq = String(LF.near).split(" "), cc = [GREY, C_HULL_GLOW, NORMAL, BRIGHT];   /* SKETCH v66c: near in two lines right of the arc, right-aligned at 396: "near e" over "1,440 m"; sites moved inside the arc (was above it, over the compass boxes) */
+        /* SKETCH v67b: one line "near 1,440 m" in the corner right of the shape, hung on a leader from the locked contact (drawn with the contact) */
+        const vt = nearDm > 0 ? nearDm.toLocaleString("en-US") + " m" : null, b1 = vt ? (() => { const w1 = W_(vt, 11); text(vt, 394 - w1, 837, { size: 11, col: cc[1], a: cc[2] }); return [394 - w1, 394, 837 - 0.75 * 11, 837 + 0.22 * 11]; })() : trip(["none"], 394, 837, "right", 11, cc, LBL());   /* SKETCH v69c: no "near" word: the value alone (clears the outline's NE edge), "none" in the label colour */ SB.push({ s: "nearText", l: b1[0], r: b1[1], t: b1[2], b: b1[3] }); }   // SKETCH v69a: near baseline 837 (was 826), under the 2nd row, clear of the id boxes
       /* one id label per bar row, right-aligned 4 px left of the bar's left end and centred on it: a contact shows its id (the lit, else the strongest, with its ".86" value, bright), an ambient row its fixed pseudo-id;
          never slid: the other things make room, and report() flags a label that meets other text or a sail */
       const ovl = (bx, o) => Math.min(bx[1], o.r) - Math.max(bx[0], o.l) > -1 && Math.min(bx[3], o.b) - Math.max(bx[2], o.t) > -1;
-      const obsL = noseNB.map(o => ({ l: o[0], r: o[1], t: o[2], b: o[3] })).concat([{ l: pkNB[0], r: pkNB[1], t: pkNB[2], b: pkNB[3] }], SB, kept);
+      const LWB = W_(RES.toFixed(2), HERO), LX0 = 474 - LWB, LVB = yT(474) + 8.5 + 3 + 0.75 * HERO   /* SKETCH v71b: the number sits under the seven unread cells (their lowest bottom is at the right end), as the right wing's "100 %" sits under its volts cells */;
+      const nU = Math.min(7, spanNow().unread.length), UC = [0, 1, 2, 3, 4, 5, 6].map(i => { const xb = 474 - 9 * i, xa = xb - 6; return [xa, xb, yT(xa) + 2.5, yT(xb) + 8.5]; });   // SKETCH v71b: 6 wide at pitch 9, inside the cap;  cell i (0 = next to the slope): [xa, xb, top at xa, bottom at xb]
+      const UCB = { l: 413.5, r: 474.5, t: UC[6][2] - 0.5, b: UC[0][3] + 0.5 };
+      const obsL = noseNB.map(o => ({ l: o[0], r: o[1], t: o[2], b: o[3] })).concat([{ l: pkNB[0], r: pkNB[1], t: pkNB[2], b: pkNB[3] }, { l: LX0, r: LX0 + LWB, t: LVB - 0.75 * HERO, b: LVB + 1 }, UCB], SB, kept);   // SKETCH v71a: the number's box ends 1 px under its baseline; the cells are one obstacle
       const taken = new Set(); let nxt = 0;   // SKETCH v34b: a label pushed lower pushes every label after it down one row too (order kept); labels pushed past the last row are dropped
       rowsL.forEach(r => { r.bar.xl = r.bar.l = r.bar.xr; });   // every bar starts hidden; the placed ones are restored below
       const used = new Set();   // SKETCH v35b: a label that does not fit the row it would take lets the next label try that row first (one swap), so no row beside the disc's "E n" stays empty
@@ -542,9 +627,9 @@ window.HudC25 = (function () {
         const isC = cand && r0.con && r0.yt === cand.yt, bright = isC && r0.lit,
           v = isC ? { s: r0.id + " " + (r0.f >= 1 ? "1.00" : r0.f.toFixed(2).slice(1)), fs } : { s: r0.id, fs };
         const al = (r0.con ? BRIGHT : 0.85) , by = (f2 => r.yt + BH / 2 + 0.265 * f2);
-        const w = W_(v.s, v.fs), yy = by(v.fs), eX = (yy + 0.22 * v.fs > 879 && yy - 0.75 * v.fs < 894) ? CX + HR + 5 : XB + 7, tx = r.hid ? r.sl - 3 : Math.max(r.xl - 4, eX + w), bx = [tx - w, tx, yy - 0.75 * v.fs, yy + 0.22 * v.fs];   // SKETCH v34: per-row clamp: on rows level with the disc's "E n" label the id stays 3 px right of it
+        const w = W_(v.s, v.fs), yy = by(v.fs), eX = (yy + 0.22 * v.fs > 879 && yy - 0.75 * v.fs < 894) ? CX + HR + 1 /* SKETCH v63: E n moved 4 px left, so the clamp follows (ids stay in one column, 5 px clear) */ : XB + 7, tx = r.hid ? r.sl - 3 : Math.max(r.xl - 4, eX + w, 423 + w /* SKETCH v67a: a row whose bar starts left of the others keeps the id column (left edge 423), so its id is not refused */), bx = [tx - w, tx, yy - 0.75 * v.fs, yy + 0.22 * v.fs];   // SKETCH v34: per-row clamp: on rows level with the disc's "E n" label the id stays 3 px right of it
         if (r.hid || r.vis < 1 || obsL.concat(lbl).some(o => ovl(bx, o)) || nbHit(bx) || tx > r.sl - 3 || (!r.hid && r.bar.r - Math.max(r.xl, tx + 4) < MINL) || bx[0] < 423) return false;   // a row whose bar the slope already hides takes its label alone
-        const dr0 = () => { const kc = !r0.con ? "216,106,102" : r0.kd === "n" ? "239,230,204" : r0.kd === "k" ? "150,158,224" : "208,72,74"; if (isC) { const vs = v.s.slice(r0.id.length + 1); text(vs, tx, by(v.fs), { size: v.fs, col: C_TOP, a: BRIGHT, align: "right" }); text(r0.id, tx - W_(" " + vs, v.fs), by(v.fs), { size: v.fs, col: kc, a: al, align: "right" }); } else text(v.s, tx, by(v.fs), { size: v.fs, col: kc, a: al, align: "right" }); };   // SKETCH r43: real contacts bright, ambient one dim step, the value white
+        const dr0 = () => { const kc = !r0.con ? "216,106,102" : r0.kd === "n" ? "239,230,204" : r0.kd === "k" ? C_HULL_GLOW : "208,72,74"; if (isC) { const vs = v.s.slice(r0.id.length + 1); text(vs, tx, by(v.fs), { size: v.fs, col: C_TOP, a: BRIGHT, align: "right" }); text(r0.id, tx - W_(" " + vs, v.fs), by(v.fs), { size: v.fs, col: kc, a: al, align: "right" }); } else text(v.s, tx, by(v.fs), { size: v.fs, col: kc, a: al, align: "right" }); };   // SKETCH r43: real contacts bright, ambient one dim step, the value white
         taken.add(j); nxt = j + 1; if (!r.hid) r.bar.xl = r.bar.l = Math.min(Math.max(r.xl, tx + 4), r.bar.r);   // a clamped label shortens its bar to start 4 px right of it
         if (!r.hid) r.drawBar(r0.kd, r.bar.xl); if (bright) glow(P, dr0); else dr0();
         lbl.push({ s: "id:" + r0.id, l: bx[0], r: bx[1], t: bx[2], b: bx[3], ok: true }); return true; };
@@ -558,29 +643,32 @@ window.HudC25 = (function () {
       /* SKETCH v10: cap info under cap C, following its slope: row 1 a 10-segment resonance meter (tiny label above its left end, the big value at its right end), row 2 the strongest contact's id and a live pulse trace from its pat; no boxes */
       { const g0 = lr[0], nr = [], yc = x => yT(x), X0 = 376 + SH, VS = 11, LS9 = 11, wv = W_(RES.toFixed(2), VS), X1 = 478 - wv - 5, n = 10, gp = 1, sw = (X1 - X0 - gp * (n - 1)) / n, fill = Math.min(1, Math.max(0, RES)) * n;
         const bx = (l, r, t, b) => nr.push({ l, r, t, b });
-        c.save(); c.translate(X0, yc(X0) + 4 + 0.75 * LS9); c.rotate(Math.atan(KS)); { const k = ts / s; setF(`500 ${LS9 * k}px "IBM Plex Mono", monospace`, (0.8 * k) + "px"); c.textAlign = "left"; c.textBaseline = "alphabetic"; c.fillStyle = rgba("216,106,102", 0.85); c.fillText("res", 0, 0); } c.restore();   // the label tilts with the cap slope
-        bx(X0, X0 + W_("res", LS9), yc(X0) + 4, yc(X0 + W_("res", LS9)) + 4 + 0.97 * LS9);
-        { const tw = W_("unread", 10), x0 = X0, y0 = yc(X0) + 4 + 0.97 * LS9 + 3 + 0.75 * 10 + 6, d = LF.ball && LF.ball[0] > 0 ? 1 : -1;   // SKETCH v33: unread takes the res bar's space, under "res", left-aligned with it
-          if (LF.ball) { const east = d > 0, xa = east ? x0 + tw + 4 + 8 : x0, xt = east ? x0 : x0 + 8 + 4, ay = y0 - 3.5;
-            text("unread", xt, y0, { size: 10, align: "left", col: "216,106,102", a: 0.85 });
-            c.beginPath(); c.moveTo(xa, ay); c.lineTo(xa - d * 8, ay - 3.5); c.lineTo(xa - d * 8, ay + 3.5); c.closePath(); c.fillStyle = rgba("216,106,102", 0.85); c.fill();
-            bx(x0, x0 + tw + 12, y0 - 0.75 * 10, y0 + 0.22 * 10); } }
-        const vy = yc(478) + 4 + 0.75 * VS; text(RES.toFixed(2), 478 - wv, vy, { size: VS, col: C_HULL_GLOW, a: BRIGHT }); bx(478 - wv, 478, vy - 0.75 * VS, vy + 0.22 * VS);
+        const wb = LWB, vb = LVB;   // SKETCH v55: the one big lead number: the resonance at the right wing's "100 %" size, just inside the edge, "res" / "unread" under it as "fuel" / "full" are
+        text(RES.toFixed(2), LX0, vb, { size: HERO, col: "200,48,47" /* SKETCH v64: the slope's red */, a: BRIGHT }); bx(LX0, LX0 + wb, vb - 0.75 * HERO, vb + 1);   // SKETCH v63: the digits sit on vb (no descenders): box bottom vb + 1, so it ends above the ledge (vb + 3) and the unread row
+        /* SKETCH v71a: seven unread cells under the nose cap, as the right wing's volts cells (lit = unread, up to 7), and the count above the cap where the right shows its volts */
+        UC.forEach(([xa, xb, ty, by_], i) => { const y = x => yT(x) + 2.5, on = i < nU;
+          poly([[xa + 0.5, y(xa) + 6], [xa + 0.5, y(xa)], [xb + 0.5, y(xb)], [xb + 0.5, y(xb) + 6], [xa + 0.5, y(xa) + 6]], on ? CREAM : C_NOSE, on ? BRIGHT : 0.55);   // SKETCH v73b: unlit cells are nose red
+          if (on) { c.fillStyle = rgba("200,48,47", 1); c.beginPath(); c.moveTo(xa + 1.5, y(xa + 1.5) + 1); c.lineTo(xb - 0.5, y(xb - 0.5) + 1); c.lineTo(xb - 0.5, y(xb - 0.5) + 5); c.lineTo(xa + 1.5, y(xa + 1.5) + 5); c.closePath(); c.fill(); } });   // the fill follows the sloped top
+        bx(UCB.l, UCB.r, UCB.t, UCB.b);
+        { const nt = String(nU), wn = W_(nt, 10), wu = W_("unread", LBL()), tw = wn + 4 + wu, yb = Math.round(yT(476) - 4), al = nU ? 1 : 0.5;
+          text(nt, 474 - tw, yb, { size: 10, col: CREAM, a: BRIGHT * al }); mic("unread", 474 - tw + wn + 4, yb, { a: 0.8 * al });
+          bx(474 - tw, 474, yb - 0.75 * 10, yb + 0.22 * 10); }
         const tb = bars[0], tr = rowsL[0], p = g0 ? g0.pat : null, per = p ? Math.max(0.2, p[0]) : 1;   // the pulse trace rides inside the top (strongest contact's) bar
         if (blk === 1 && LF.rep) LF.rep.nose = nr; }
     });
   }
   function paintOutside() {
+    
     const GOLD = C_TOP;
     const yF = FL + 1, LY = 987, lv = (k, v, cx) => { mic(k, cx, LY, { align: "center" }); text(v, cx, LY + 13, { size: 10, col: CREAM, a: BRIGHT, align: "center" }); };
-    stat_(() => lab("outside", 572 - (ts > s + 1e-6 ? 12 : 0), LY, { col: CREAM, a: 0.7, size: LBL() }));
+    stat_(() => lab("outside", 572 - (ts > s + 1e-6 ? 12 : 0), LY, { a: 0.7, size: LBL() }));
     { const cx = 642, cy = 965.5, ri = 2, ro = 6;
       stat_(() => { [270 - 60, 270 + 60, 90].forEach(m => { c.beginPath(); c.arc(cx, cy, ro, rad(m - 30), rad(m + 30)); c.arc(cx, cy, ri, rad(m + 30), rad(m - 30), true); c.closePath();
           c.strokeStyle = rgba(GOLD, NORMAL); c.lineWidth = HAIR; c.lineJoin = "round"; c.stroke(); }); arc(cx, cy, 6.8, 0, 2 * PI, GOLD, 0.12, 1, [1, 2]); });
       dyn(() => { dot(cx, cy, 1.2, CREAM, 0.9); arc(cx, cy, 9, rad(-90), rad(-90 + Math.min(1, Math.max(0, +LF.dose) / 0.1) * 360), CREAM, 0.85, 1); lv("rad", LF.dz && LF.dz.rad ? LF.dose.slice(0, -1) + (((+LF.dose.slice(-1) + Math.round(LF.dz.rad * 6)) % 10) + 10) % 10 : LF.dose, cx); }); }
     { const cx = 698, cy = 968.5, r = 5.5, a = Math.max(-8, Math.min(8, Math.min(8, Math.abs(+LF.g) * 13) * (+LF.g < 0 ? 1 : -1) + (LF.dz ? LF.dz.g * 3.5 : 0)));
       stat_(() => { line(cx + 0.5, yF, cx + 0.5, cy - r - 2, GOLD, 0.3); arc(cx, cy, r, 0, 2 * PI, GOLD, 0.3); arc(cx, cy, r + 2, 0, 2 * PI, GOLD, 0.12, 1, [1, 2]); });
-      dyn(() => {
+      dynF(() => {
         glow(GOLD, () => arc(cx, cy, r + 2, rad(-90), rad(-90 + LF.gFlip * 360), GOLD, NORMAL, STRONG));
         glow(CREAM, () => { line(cx + 0.5, cy, cx + 0.5, cy - a, CREAM, 1, STRONG); poly([[cx - 3, cy - a + 3], [cx + 0.5, cy - a - 1], [cx + 4, cy - a + 3]], CREAM, 1, HAIR); });
         dash([1, 2], () => { line(cx + 0.5, cy, cx + 0.5, cy + a, GOLD, QUIET); poly([[cx - 3, cy + a - 3], [cx + 0.5, cy + a + 1], [cx + 4, cy + a - 3]], GOLD, QUIET); });
@@ -597,7 +685,7 @@ window.HudC25 = (function () {
   }
 
   /* ======================= RIGHT WING ======================= */
-  function paintRight() {
+  function paintRight() { 
     const RT = len(RS), x0f = 2000 - HB0;
     stat_(() => {
       poly(half([[x0f, FL]].concat(RS.slice().reverse())), GOLD, STRUCT);
@@ -648,7 +736,7 @@ window.HudC25 = (function () {
         for (let i = 0; i <= 6; i++) { const x = Math.round(xa + (xb - xa) * i / 6) + 0.5; line(x, yB + 1, x, yB + (i % 3 ? 2.5 : 4), C_TOP, i % 3 ? 0.2 : 0.45); }
         dash([1, 2], () => line(xa, Math.round(Y(21)) + 0.5, xb, Math.round(Y(21)) + 0.5, C_TOP, 0.35));
         line(xb + 1, Math.round(Y(21)) + 0.5, xb + 5, Math.round(Y(21)) + 0.5, CREAM, 0.9); mic("30m", xa - (ts > s + 1e-6 ? 6 : 0), yB + 13, { a: 0.7 }); });
-      dyn(() => { const raw = RF.cabTrace, n = raw.length - 1, pts = raw.map((v, i) => { let a = 0, m = 0; for (let j = Math.max(0, i - 7); j <= Math.min(n, i + 7); j++) { a += raw[j]; m++; } return a / m; });   /* 15-sample mean: the 30 s samples read as a slow wave, not a zigzag */
+      dynF(() => { const raw = RF.cabTrace, n = raw.length - 1, pts = raw.map((v, i) => { let a = 0, m = 0; for (let j = Math.max(0, i - 7); j <= Math.min(n, i + 7); j++) { a += raw[j]; m++; } return a / m; });   /* 15-sample mean: the 30 s samples read as a slow wave, not a zigzag */
         glow(C_TOP, () => poly(pts.map((v, i) => [xa + (xb - xa) * i / n, Y(v)]), C_TOP, NORMAL, 1));
         dot(xb, Y(pts[n]), 1.6, CREAM, 1); mic("set " + RF.cabSet.toFixed(1), xb + (ts > s + 1e-6 ? 6 : 0), yB + 13, { align: "right", a: 0.7 }); }); }
     /* fuel on the slope */
@@ -922,8 +1010,9 @@ window.HudC25 = (function () {
     o.speed = speedBuf; o.speedAt = st.speedN;
     o.contacts = ct.n;
     o.blips = [ct.nearest, ct.second].filter(Boolean).map(x => { const a = HM.blipAngle(x.mark, B.camX), r = x.dist / HM.RANGE; return [Math.cos(a) * r, Math.sin(a) * r]; });
+    o.belev = [ct.nearest, ct.second].filter(Boolean).map(x => x.mark.oy);
     o.bid = [ct.nearest, ct.second].filter(Boolean).map(x => String(x.mark.id));   // SKETCH v23b: the ids of the first two, every other mark in range, and the sites in range
-    o.more = marks.filter(m => Math.abs(m.cam - B.camX) < HM.RANGE && (!ct.nearest || m !== ct.nearest.mark) && (!ct.second || m !== ct.second.mark)).sort((p, q) => Math.abs(p.cam - B.camX) - Math.abs(q.cam - B.camX)).map(m => { const a = HM.blipAngle(m, B.camX), r = Math.abs(m.cam - B.camX) / HM.RANGE; return { b: [Math.cos(a) * r, Math.sin(a) * r], id: String(m.id) }; });
+    o.more = marks.filter(m => Math.abs(m.cam - B.camX) < HM.RANGE && (!ct.nearest || m !== ct.nearest.mark) && (!ct.second || m !== ct.second.mark)).sort((p, q) => Math.abs(p.cam - B.camX) - Math.abs(q.cam - B.camX)).map(m => { const a = HM.blipAngle(m, B.camX), r = Math.abs(m.cam - B.camX) / HM.RANGE; return { b: [Math.cos(a) * r, Math.sin(a) * r], id: String(m.id), oy: m.oy }; });
     o.sites = (window.BridgeSites ? BridgeSites.SITES : []).filter(t => (!t.gate || (window.depthAlpha && depthAlpha(t.gate) > 0.5)) && Math.abs(t.x - B.camX) < HM.RANGE).map(t => { let h = 2166136261; for (let i = 0; i < t.id.length; i++) h = Math.imul(h ^ t.id.charCodeAt(i), 16777619) >>> 0; return { d: (t.x - B.camX) / HM.RANGE, met: sigMet.has("sg-" + String(h % 10000).padStart(4, "0")) }; });
     o.brg = ct.nearest ? ct.nearest.bearing : 0;
     o.near = ct.nearest ? (ct.nearest.mark.cam > B.camX ? "e " : "w ") + Math.round(ct.nearest.dist * mpu).toLocaleString("en-US") : "none";
@@ -1104,7 +1193,7 @@ window.HudC25 = (function () {
     at_(W / 2 - 1000 * s, H - 1009 * s - (wk > 1 ? 50 * s - 13 * sB : 0), paintLog);   // grown wings carry their floor line and readouts into the log's columns: the log rises above them
     s = s0; ts = ts0;
     at_(W / 2 - 1000 * s, spanY - 88.5 * s, paintSpan);
-    if (ph === "d") paintMarks();
+    if (ph === "d" && lay === "s") paintMarks();
   }
   /* ---- wing size: one SIZE - + stepper above the left wing's top-left, in screen px ---- */
   const wingOk = v => { const q = Math.min(W / 2000, H / 1009); return XL * q * v + 12 <= W / 2; };   // the left wing's inner edge (its floor line and readouts end at XL) keeps 12 px of the centre; the right wing mirrors it
@@ -1133,6 +1222,7 @@ window.HudC25 = (function () {
   function stepWing(d) { const v = WSTEPS[WSTEPS.indexOf(wk) + d]; if (v == null || (d > 0 && !wingOk(v))) return; wsv = wk = v; Util.write(localStorage, Util.KEYS.HUD_WING, String(v)); dirty = true; }
   function mount(canvas) {
     cv = canvas; c = cv.getContext("2d"); if (!D) D = sampleData();
+    cvF = document.createElement("canvas"); cvF.id = "bhud-fast"; cvF.setAttribute("aria-hidden", "true"); cv.parentNode.insertBefore(cvF, cv.nextSibling); cF = cvF.getContext("2d");   // the moving parts: stacked over #bhud, repainted every frame
     if (!LF) LF = leftSample();
     if (!RF) RF = rightSample();
     document.addEventListener("xp:award", () => { dirty = true; });
@@ -1146,12 +1236,13 @@ window.HudC25 = (function () {
     sB = Math.min(W / 2000, H / 1009); s = Math.min(1, sB); ts = Math.max(s, 0.9);
     document.documentElement.style.setProperty("--hud-k", +(Math.max(1, sB) * wk).toFixed(4));   // the DOM parts' size factor, written on resize / step only
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + "px"; cv.style.height = H + "px";
+    cvF.width = cv.width; cvF.height = cv.height; cvF.style.width = W + "px"; cvF.style.height = H + "px"; lastSlow = -1e9;
     rebuildStat();
   }
   function rebuildStat() {
     const live = c; clearTx();
     stat =document.createElement("canvas"); stat.width = cv.width; stat.height = cv.height;
-    c = stat.getContext("2d"); bxS = []; lbS = []; rbS = []; txS = []; shS = []; ph = "s"; paintAll(); ph = "d"; c = live; dirty = false;
+    c = stat.getContext("2d"); bxS = []; lbS = []; rbS = []; txS = []; shS = []; ph = "s"; paintAll(); ph = "d"; c = live; dirty = false; fN = null;
   }
   function draw(env) {
     if (phone()) return;
@@ -1165,9 +1256,18 @@ window.HudC25 = (function () {
     paintLive(); painted = true;
   }
   function paintLive() {
-    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
-    if (stat) c.drawImage(stat, 0, 0);
-    ph = "d"; bxD = []; lbD = []; rbD = []; txD = []; shD = []; ext = {}; paintAll();
+    const t = performance.now(), slow = probe || !fN || t - lastSlow >= 50;   // slow canvas: text, lamps, static, ~20 Hz (a resize or a static rebuild zeroes lastSlow / fN)
+    ph = "d";
+    if (slow) { lastSlow = t; lay = "s";
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+      if (stat) c.drawImage(stat, 0, 0);
+      bxD = []; lbD = []; rbD = []; txD = []; shD = []; ext = {}; paintAll();
+      fN = [bxD.length, lbD.length, rbD.length, txD.length, shD.length]; fE = Object.assign({}, ext); }
+    else { bxD.length = fN[0]; lbD.length = fN[1]; rbD.length = fN[2]; txD.length = fN[3]; shD.length = fN[4]; ext = Object.assign({}, fE); }   // the fast pass adds to the slow pass's report lists
+    const live = c; lay = "f"; c = cF;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cvF.width, cvF.height);
+    paintAll();
+    c = live; lay = "s";
   }
   /* size checks in screen CSS px: smallest drawn/sketch font ratio, overlapping text pairs (other pairs closer than 4 * s, designed units only on overlap), text meeting the ship or a chevron, boxes and extents outside the canvas, the span line's box */
   function sizeChecks() {
@@ -1193,13 +1293,13 @@ window.HudC25 = (function () {
   }
   /* the left wing's label boxes and drawn extents against the sketch bounds: overlaps between text boxes, extents outside */
   function leftBoxes() {
-    const B_ = { x0: 0, x1: 800, y0: 760, y1: 1009 }, bx = lbS.concat(lbD), bad = [];
+    const B_ = { x0: 0, x1: 800, y0: 755 /* SKETCH v70a: the speed reading (baseline 763, 10 px) tops at 756 */, y1: 1009 }, bx = lbS.concat(lbD), bad = [];
     let overlaps = 0, outside = 0;
     for (let i = 0; i < bx.length; i++) {
       const a = bx[i]; if (a.l < B_.x0 || a.r > B_.x1 || a.t < B_.y0 || a.b > B_.y1) { outside++; bad.push("out:" + a.s); }
       for (let j = i + 1; j < bx.length; j++) { const b = bx[j]; if (Math.min(a.r, b.r) - Math.max(a.l, b.l) > 0.5 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 0.5) { overlaps++; bad.push(a.s + "|" + b.s); } }
     }
-    const lim = { str: [24, 204, 760, 1009], brg: [214, 486, 760, 1009], drift: [24, 205, 798, 893], nsGfx: [280, 466, 856, 930], nsAlert: [222, 272, 856, 920], nsStream: [222, 466, 928, 982], dial: [206, 426, 806, 955], g: [0, 800, 959, 985] };
+    const lim = { str: [24, 204, 760, 1009], brg: [214, 486, 758, 1009]   /* SKETCH v69e: top 758 */, drift: [24, 205, 798, 893], nsGfx: [280, 466, 856, 930], nsAlert: [222, 272, 856, 920], nsStream: [222, 466, 928, 982], dial: [133, 393, 814, 965], g: [0, 800, 959, 985] };
     Object.keys(ext).forEach(k => { const e = ext[k], l = lim[k]; if (!l) return;
       const out = k === "str" || k === "brg" ? e[0] < e[2] - 4.5 || e[1] > e[3] + 4.5 : e[0] < l[0] - 0.5 || e[1] > l[1] + 0.5 || e[2] < l[2] - 0.5 || e[3] > l[3] + 0.5;
       if (out) { outside++; bad.push("ext:" + k + ":" + e.map(v => Math.round(v)).join(",")); } });
@@ -1209,8 +1309,8 @@ window.HudC25 = (function () {
       if (nm.r > 127 && nm.b > 810) { overlaps++; bad.push("num:spectrum"); } }
     if (nd && nd.hdr) nd.hdr.forEach(r => { if (nd.tip[0] > r.l - 3 && nd.tip[0] < r.r + 3 && nd.tip[1] > r.t - 3 && nd.tip[1] < r.b + 3) { overlaps++; bad.push("needle:hdr"); } });
     const lab = LF && LF.rep && LF.rep.lab, ydr = LF && LF.rep && LF.rep.drift;
-    const strAbove = !!lab && lab.str.length > 0 && lab.str.every(b => b.b <= ycL(b.l) - 1 + 0.01);
-    const brgBelow = !!lab && lab.brg.length > 0 && lab.brg.every(b => b.t >= ycL(b.r) + 1 - 0.01);
+    const spT = lbD.filter(b => b.s === "speed" || / %$/.test(b.s)), strAbove = spT.length >= 2 && spT.every(b => b.b <= ycL(b.l) - 2 + 0.01);   // SKETCH v70a: 2 px clear above the rail (the rail is at off 0); was 834 // SKETCH v68b: "speed N %" sits above the speed trace's rail (835)
+    const brgBelow = !!lab && lab.brg.length > 0 && lab.brg.filter(b => b.t < 790).every(b => b.t >= 758 - 0.01 && b.b <= 772 + 0.01 && b.r <= 394 + 0.01);   // SKETCH v69e: top bound 758   // SKETCH v68b: brg sits on the compass rail, baseline 776 (the 2nd-contact row below it is not this rule's)   // SKETCH v69a: brg baseline 768.5
     if (lab && !strAbove) { overlaps++; bad.push("strAbove"); }
     if (lab && !brgBelow) { overlaps++; bad.push("brgBelow"); }
     if (nd && nd.north && nd.len > nd.inner + 0.01) { outside++; bad.push("needle:inner"); }
@@ -1226,7 +1326,7 @@ window.HudC25 = (function () {
     if (ydr && ydr.hits > 0) { overlaps++; bad.push("drift:hits"); }
     const sl = lbD.find(b => b.s === "/100"), bl = lbD.find(b => b.s === "brg");
     const railGap = sl && bl ? +(bl.l - sl.r).toFixed(1) : null;
-    return { overlaps, outside, strAbove, brgBelow, needle: nd ? { inner: nd.inner, len: nd.len } : null, drift: ydr || null, lobe: lobe || null, railGap, labels: bx.length, bad: bad.slice(0, 8) };
+    return { overlaps, outside, strAbove, brgBelow, needle: nd ? { inner: nd.inner, len: nd.len } : null, drift: ydr || null, lobe: lobe || null, railGap, labels: bx.length, all: bx.map(a => ({ s: a.s, l: a.l, r: a.r, t: a.t, b: a.b })) /* SKETCH v69e: for check_v69 */, bad: bad.slice(0, 8) };
   }
   /* the right wing's text boxes: pairs touching (1 px pad); boxes past the 2000 x 1009 frame, or the bus split row's labels past the rail end */
   function rightBoxes() {
@@ -1242,7 +1342,7 @@ window.HudC25 = (function () {
   function report() {
     if (c && LF && RF) { probe = true; try { paintLive(); } finally { probe = false; } }   // text boxes are recorded only here, never in a normal frame
     if (RF && RF.rep) RF.rep.boxes = rightBoxes();
-    if (LF && LF.rep) LF.rep.boxes = leftBoxes();
+    if (LF && LF.rep) { LF.rep.boxes = leftBoxes(); }
     const x0 = W / 2 - 1000 * s + 200.5 * s;
     const sc = sizeChecks();
     return { phone: phone(), painted, W, H, dpr, s, ts, barBottom: barB, span: Object.assign({ y: barB + 29.8 * s, x0, x1: x0 + 1600 * s }, lastSpan, { box: sc.spanBox }), log: lastLog, left: LF && LF.rep, right: RF && RF.rep, textMin: sc.textMin, textHits: sc.textHits, paint: sc.paint };

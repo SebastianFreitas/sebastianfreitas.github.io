@@ -41,10 +41,10 @@ html.genesis-on .bridge-line { display: none; }   /* the cutscene is colourless 
 }
 .bridge-hero.live .bridge-hud { opacity: 1; }
 /* HUD C25: one canvas over the bridge (no HUD on a phone, D25) */
-#bhud { display: block; position: absolute; left: 0; top: 0; z-index: 10; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
-.bridge-hero.live #bhud { opacity: 1; }
-.bridge-hero.is-cinematic #bhud { opacity: 0 !important; visibility: hidden !important; }
-@media (max-height: 520px) and (pointer: coarse) { #bhud { display: none; } }
+#bhud, #bhud-fast { display: block; position: absolute; left: 0; top: 0; z-index: 10; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
+.bridge-hero.live #bhud, .bridge-hero.live #bhud-fast { opacity: 1; }
+.bridge-hero.is-cinematic #bhud, .bridge-hero.is-cinematic #bhud-fast { opacity: 0 !important; visibility: hidden !important; }
+@media (max-height: 520px) and (pointer: coarse) { #bhud, #bhud-fast { display: none; } }
 /* HUD palette for the log and the navigation bar. The default is today's
    look; html[data-hud] (set by js/hud/instruments.js) swaps it. The canvas
    tiles have their own table there. */
