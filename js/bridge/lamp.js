@@ -24,7 +24,6 @@ window.Beacon = (function () {
      1 px hairlines, end ticks, a small white core; no glow blobs.
      Weights, alphas and the mono font follow js/hud/hud-c25.js. */
   const CREAM = "238,230,208";
-  const STRUCT = 0.42;
   const DASH = [3, 5], NODASH = [];
   const TAU = Math.PI * 2;
 
@@ -36,66 +35,103 @@ window.Beacon = (function () {
   function drawHud(ctx, x, y, o, A, t, blink) {
     const active = !!o.active, hover = !!o.hover, claimed = !!o.claimed;
     const k = (o.k || 1) * (hover ? 1.35 : 1) * (active ? 1.2 : 1);
-    const R = (o.cutscene ? 21 : 12) * k, g = 0.5;   // g: half-gap angle from vertical
+    // one size for every beacon; a scene beacon is told apart by its turning pips
+    const R = 16 * k, g = 0.5;   // g: half-gap angle from vertical
     const hot = hover || active;
     const ring = claimed ? CREAM : GOLD;
-    const aRing = claimed ? (hot ? 0.5 : 0.3) : (hot ? 0.95 : STRUCT);
+    const aRing = claimed ? (hot ? 1 : 0.85) : 1;
     const tickCol = claimed ? CREAM : (hover ? CORE : GOLD);
-    const aTick = claimed ? (hot ? 0.5 : 0.3) : (hover ? 0.95 : 0.5);
+    const aTick = aRing;
     ctx.lineWidth = 1;
     ctx.lineCap = "butt";
+    ctx.fillStyle = `rgba(4,6,10,${0.5 * A})`;   // a dark plate behind the whole beacon
+    ctx.beginPath(); ctx.arc(x, y, R + 6, 0, TAU); ctx.fill();
 
     // the frame: two arcs ( ), gaps top and bottom, each end closed by a tick;
-    // active closes to a full circle
+    // active closes to a full circle; plus the N / E / S / W ticks outside the ring
+    const frame = () => {
+      ctx.beginPath();
+      if (active) {
+        ctx.arc(x, y, R, 0, TAU);
+      } else {
+        ctx.arc(x, y, R, -Math.PI / 2 + g, Math.PI / 2 - g);
+        ctx.moveTo(x + Math.cos(Math.PI / 2 + g) * R, y + Math.sin(Math.PI / 2 + g) * R);
+        ctx.arc(x, y, R, Math.PI / 2 + g, 1.5 * Math.PI - g);
+        for (let i = 0; i < 4; i++)   // the four arc ends: -90°+g, 90°-g, 90°+g, 270°-g
+          tick(ctx, x, y, -Math.PI / 2 + Math.PI * ((i + 1) >> 1) + (i % 2 ? -g : g), R - 3, R + 3);
+      }
+      for (let i = 0; i < 4; i++) tick(ctx, x, y, i * Math.PI / 2, R + 4, R + 10);
+    };
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = `rgba(${ring},${(claimed ? 0.08 : 0.14) * A})`;   // cheap halo
+    ctx.lineWidth = 9; frame(); ctx.stroke();
+    ctx.strokeStyle = `rgba(4,6,10,${0.8 * A})`;   // dark under-stroke for contrast
+    ctx.lineWidth = 6; frame(); ctx.stroke();
     ctx.strokeStyle = `rgba(${ring},${aRing * A})`;
-    ctx.beginPath();
-    if (active) {
-      ctx.arc(x, y, R, 0, TAU);
-    } else {
-      ctx.arc(x, y, R, -Math.PI / 2 + g, Math.PI / 2 - g);
-      ctx.moveTo(x + Math.cos(Math.PI / 2 + g) * R, y + Math.sin(Math.PI / 2 + g) * R);
-      ctx.arc(x, y, R, Math.PI / 2 + g, 1.5 * Math.PI - g);
-      for (let i = 0; i < 4; i++)   // the four arc ends: -90°+g, 90°-g, 90°+g, 270°-g
-        tick(ctx, x, y, -Math.PI / 2 + Math.PI * ((i + 1) >> 1) + (i % 2 ? -g : g), R - 2.5, R + 2.5);
-    }
-    ctx.stroke();
-
-    // N / E / S / W ticks just outside the ring, clear of the core
+    ctx.lineWidth = 2.75; frame(); ctx.stroke();
     ctx.strokeStyle = `rgba(${tickCol},${aTick * A})`;
     ctx.beginPath();
-    for (let i = 0; i < 4; i++) tick(ctx, x, y, i * Math.PI / 2, R + 4, R + 8);
+    for (let i = 0; i < 4; i++) tick(ctx, x, y, i * Math.PI / 2, R + 4, R + 10);
     ctx.stroke();
+    ctx.strokeStyle = `rgba(${ring},${(claimed ? 0.4 : 0.55) * A})`;   // inner ring
+    ctx.lineWidth = 1.25;
+    ctx.beginPath(); ctx.arc(x, y, R - 5, 0, TAU); ctx.stroke();
+
+    // a scene beacon: four gold diamonds turning round it
+    if (o.cutscene) {
+      const spin = window.Bridge && Bridge.reduced ? 0 : t * 0.6, d = 4.5, pr = R + 15;
+      ctx.fillStyle = `rgba(${GOLD},${(claimed ? 0.8 : 1) * A})`;
+      ctx.strokeStyle = `rgba(4,6,10,${0.8 * A})`; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = spin + Math.PI / 4 + i * Math.PI / 2;
+        const px = x + Math.cos(a) * pr, py = y + Math.sin(a) * pr;
+        ctx.moveTo(px + d, py); ctx.lineTo(px, py + d); ctx.lineTo(px - d, py); ctx.lineTo(px, py - d); ctx.closePath();
+      }
+      ctx.stroke(); ctx.fill();
+    }
+    ctx.lineWidth = 1.5;
 
     // active: a thin outer ring of dashes, turning slowly (still under reduced motion)
     if (active) {
-      ctx.strokeStyle = `rgba(${GOLD},${0.55 * A})`;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = `rgba(${GOLD},${0.85 * A})`;
       ctx.setLineDash(DASH);
       ctx.lineDashOffset = window.Bridge && Bridge.reduced ? 0 : -t * 5;
-      ctx.beginPath(); ctx.arc(x, y, R + 11, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, R + 22, 0, TAU); ctx.stroke();
       ctx.setLineDash(NODASH); ctx.lineDashOffset = 0;
     }
 
     // the core: only it pulses
     if (claimed) {
-      ctx.strokeStyle = `rgba(${CORE},${0.5 * A})`;
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = `rgba(${CORE},${0.85 * A})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, TAU); ctx.stroke();
     } else {
       const ca = active ? 1 : 0.75 + 0.25 * blink;
-      ctx.fillStyle = `rgba(${CORE},${0.16 * ca * A})`;
-      ctx.beginPath(); ctx.arc(x, y, 3.6, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(${CORE},${0.35 * ca * A})`;
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill();
       ctx.fillStyle = `rgba(${CORE},${ca * A})`;
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 3.5, 0, TAU); ctx.fill();
     }
 
-    // its name, on a short gold hairline lead from the frame
+    // its name, on a short gold lead from the frame
     if (o.label && (hover || !claimed)) {
-      ctx.strokeStyle = `rgba(${GOLD},${STRUCT * A})`;
-      ctx.beginPath(); ctx.moveTo(x, y + R + 11.5); ctx.lineTo(x, y + R + 17.5); ctx.stroke();
-      ctx.font = `500 9.5px "IBM Plex Mono", monospace`;
-      ctx.letterSpacing = "0.8px";
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = `rgba(${GOLD},${0.9 * A})`;
+      ctx.beginPath(); ctx.moveTo(x, y + R + 12); ctx.lineTo(x, y + R + 18); ctx.stroke();
+      const txt = o.label.toUpperCase();
+      ctx.font = `700 12px "IBM Plex Mono", monospace`;
+      ctx.letterSpacing = "1px";
       ctx.textAlign = "center"; ctx.textBaseline = "top";
-      ctx.fillStyle = `rgba(${CREAM},${(hover ? 0.9 : 0.5) * A})`;
-      ctx.fillText(o.label.toUpperCase(), x, y + R + 19);
+      const pw = ctx.measureText(txt).width + 20, px0 = x - pw / 2, py0 = y + R + 18;
+      ctx.fillStyle = `rgba(4,6,10,${0.72 * A})`;
+      ctx.fillRect(px0, py0, pw, 17);
+      ctx.fillStyle = `rgba(${GOLD},${A})`;
+      ctx.fillRect(px0, py0, 2, 17);
+      ctx.fillStyle = `rgba(${CREAM},${(hover ? 1 : 0.95) * A})`;
+      ctx.fillText(txt, x, py0 + 2.5);
+      ctx.lineJoin = "miter"; ctx.lineCap = "butt";
       ctx.letterSpacing = "0px";
       ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
     }
@@ -108,6 +144,7 @@ window.Beacon = (function () {
       for (let i = 0; i < 8; i++) tick(ctx, x, y, i * Math.PI / 4 + Math.PI / 8, r0, r0 + 6);
       ctx.stroke();
     }
+    ctx.lineCap = "butt"; ctx.lineJoin = "miter"; ctx.lineWidth = 1;
   }
 
   /* ---------- canvas ----------------------------------------
