@@ -4,7 +4,7 @@
    hands); each part is cut into courses and blocks once at load, then drawn as flat lit/shade
    quads. Positions are in units of h from the foot line (y up is negative), x mirrored by o.face. */
 window.GenDuo = (function () {
-  const { flatGlow, mixHex } = GenPaint;
+  const { mixHex } = GenPaint;
   const { litShade } = Paint;
   const TAU = Math.PI * 2;
 
@@ -468,7 +468,6 @@ window.GenDuo = (function () {
   function venomSeams(s, brk, j, nr, ml) {
     cC.save();
     cC.strokeStyle = VCORE; cC.lineWidth = 1.25; cC.lineJoin = "miter"; cC.lineCap = "butt";
-    cC.shadowColor = "rgba(232,84,78,0.95)"; cC.shadowBlur = 4;
     venomCrack(s, brk, nr, ml, 0);
     if (VWIDE[s.n]) venomCrack(s, brk, nr, ml, 1);
     cC.restore();
@@ -560,7 +559,7 @@ window.GenDuo = (function () {
   const traceDisc = () => { cC.beginPath(); cC.arc(dX, dY, dR, 0, TAU); };
   function drawHead(ctx, hx, hy, h, rot, glowA) {
     const r = HEAD_R * h;
-    if (glowA > 0) flatGlow(ctx, hx, hy, 0.15 * h, REX.glow, 0.9 * glowA);
+    if (glowA > 0.02) { ctx.fillStyle = REX.lit; ctx.beginPath(); ctx.arc(hx, hy, r * 1.3 * glowA, 0, TAU); ctx.fill(); } // flat hard-edged band behind the head, no glow
     for (let k = 0; k < 7; k++) {
       const ang = -Math.PI / 2 - (200 * Math.PI / 180) / 2 + (200 * Math.PI / 180) * (k / 6) + rot;
       const ca = Math.cos(ang), sa = Math.sin(ang), len = SPIKES[k] * SPIKE_K * h, pw = 0.007 * h;
@@ -694,6 +693,22 @@ window.GenDuo = (function () {
     drawHead(ctx, cX + cF * (hxh - LEAN * hyh) * cH, cY + hyh * cH, cH, hp[2] * cF, cPal.glowA);
     if (cClip) ctx.restore();
   }
+  // the stone parts of the body drawRex(ctx, x, y, h, o) would draw, back to front, as bands for the void Rex's plates: out[i] = { x0, y0, x1, y1 (the axis ends), wa, wb (half widths), lit, shade (one block's colours) } (px, facing as drawn); returns the count
+  function rexPlates(x, y, h, o, out) {
+    o = o || {};
+    setup(null, x, y, h, o);
+    const ord = ORD[cMix >= 0.5 ? cP2 : cPose]; let n = 0;
+    for (let i = 0; i < ord.length; i++) {
+      if (!cHead && ord[i] === "collar") continue;
+      if (cFist > 0 && ord[i].startsWith("fin1")) continue;
+      const s = PARTS[IDX[ord[i]]], q = out[n] || (out[n] = {}), b = s.base + s.rb0[s.rt0.length >> 1];
+      axes(s);
+      put(0, 0, 0.5, 0); q.x0 = Q[0][0]; q.y0 = Q[0][1];
+      put(0, 1, 0.5, 1); q.x1 = Q[0][0]; q.y1 = Q[0][1];
+      q.wa = 0.25 * (W0 + WM) * cH; q.wb = 0.25 * (WM + W1) * cH; q.lit = cPal.lit[b]; q.shade = cPal.shade[b]; n++;
+    }
+    return n;
+  }
   // meltSink: nothing is drawn below the level melt line
   function meltClip() {
     cC.save(); cC.beginPath(); cC.rect(cX - 3 * cH, cFlo - 6 * cH, 6 * cH, 6 * cH); cC.clip();
@@ -782,7 +797,7 @@ window.GenDuo = (function () {
   // ---- Obrokxus form 1: the centipede creature ----
   // Everything is laid along a spine (tail tip first, neck last) cut into ONN nodes at fixed
   // fractions of its length: 30 tail plates, 7 torso bands, a neck, a head dome.
-  const OB = { shell: "#2a080b", hi: "#a4272d", hi2: "#861f25", dim: "#8a2025", eye: "#ff4a3c", glow: "200,24,30", burn: "232,84,78" };
+  const OB = { shell: "#2a080b", hi: "#a4272d", hi2: "#861f25", dim: "#8a2025", eye: "#ff4a3c", rim: "#e0383a", glow: "200,24,30", burn: "232,84,78" };
   const OTN = 30, OBB = 7, ONN = OTN + OBB + 3;
   const OU = new Float64Array(ONN), OW = new Float64Array(ONN);
   const PSMAX = 1024;
@@ -926,6 +941,8 @@ window.GenDuo = (function () {
         ctx.quadraticCurveTo(bx + cx * cs - cy * sn, by + cx * sn + cy * cs, bx + ex * cs - ey * sn, by + ex * sn + ey * cs);
       }
     }
+    const rim = o.glow > 0 ? (o.rimK !== undefined ? lw * o.rimK : lw * 2 * (o.glow > 0.66 ? 4 : o.glow > 0.33 ? 3 : 2)) : 0;   // o.rimK (optional): the rim in lw units, 0 for none // he burns: a flat bright red band round the whole silhouette, 3 held widths
+    if (rim) { ctx.strokeStyle = OB.rim; ctx.lineWidth = lw + rim; ctx.stroke(); ctx.strokeStyle = OB.dim; ctx.lineWidth = lw; }
     ctx.stroke();
     // shell silhouette to the neck
     const ne = ONN - 1;
@@ -933,6 +950,17 @@ window.GenDuo = (function () {
     ctx.beginPath();
     for (let k = 0; k <= ne; k++) { const w = OW[k] * s; k ? ctx.lineTo(ONX[k] + OLX[k] * w, ONY[k] + OLY[k] * w) : ctx.moveTo(ONX[k] + OLX[k] * w, ONY[k] + OLY[k] * w); }
     for (let k = ne; k >= 0; k--) { const w = OW[k] * s; ctx.lineTo(ONX[k] - OLX[k] * w, ONY[k] - OLY[k] * w); }
+    if (rim) {
+      ctx.save(); ctx.closePath(); ctx.strokeStyle = OB.rim; ctx.lineWidth = rim * 2;
+      ctx.stroke();
+      const hr0 = 0.034 * s;
+      ctx.fillStyle = OB.rim; ctx.beginPath();
+      ctx.ellipse(ONX[ne] + OTX[ne] * hr0 * 0.3, ONY[ne] + OTY[ne] * hr0 * 0.3, hr0 * 1.1 + rim, hr0 * 0.9 + rim, Math.atan2(OTY[ne], OTX[ne]), 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      for (let k = 0; k <= ne; k++) { const w = OW[k] * s; k ? ctx.lineTo(ONX[k] + OLX[k] * w, ONY[k] + OLY[k] * w) : ctx.moveTo(ONX[k] + OLX[k] * w, ONY[k] + OLY[k] * w); }
+      for (let k = ne; k >= 0; k--) { const w = OW[k] * s; ctx.lineTo(ONX[k] - OLX[k] * w, ONY[k] - OLY[k] * w); }
+    }
     ctx.fill();
     // plate highlights on the lit side, one band per segment, two reds alternating
     for (let pass = 0; pass < 2; pass++) {
@@ -970,26 +998,8 @@ window.GenDuo = (function () {
     whip(ctx, hx + OTX[hk] * hr * 0.4, hy + OTY[hk] * hr * 0.4, -OLX[hk] * 0.8 + OTX[hk] * 0.6, -OLY[hk] * 0.8 + OTY[hk] * 0.6, -1, s);
     const rx = ONX[sk] + OLX[sk] * OS[sk] * sw, ry = ONY[sk] + OLY[sk] * OS[sk] * sw;
     arm(ctx, rx, ry, rx - f * 0.075 * s, ry + 0.01 * s, rx - f * 0.1 * s, ry - 0.065 * s, f, 3, s);
-    if (o.glow > 0) { // he burns: his red lightened, added over the body and the stones round him, a soft falloff reaching about one body width (0.08 s) from the spine and no edge
-      const g = Math.min(1, o.glow), br = 0.09 * s, cr = 0.03 * s;
-      ctx.globalCompositeOperation = "lighter";
-      for (let k = 2; k < ONN; k += 3) {
-        const gr = ctx.createRadialGradient(ONX[k], ONY[k], 0, ONX[k], ONY[k], br);
-        gr.addColorStop(0, `rgba(${OB.burn},${Math.max(g, 0.5) * 0.4})`); gr.addColorStop(1, `rgba(${OB.burn},0)`);
-        ctx.fillStyle = gr;
-        ctx.fillRect(ONX[k] - br, ONY[k] - br, br * 2, br * 2);
-      }
-      for (let k = 0; k < ONN; k++) { // the brighter core along the spine, kept in the close frames where the wide bloom is turned down
-        const gr = ctx.createRadialGradient(ONX[k], ONY[k], 0, ONX[k], ONY[k], cr);
-        gr.addColorStop(0, `rgba(255,120,96,${0.3 + 0.2 * g})`); gr.addColorStop(1, "rgba(255,120,96,0)");
-        ctx.fillStyle = gr;
-        ctx.fillRect(ONX[k] - cr, ONY[k] - cr, cr * 2, cr * 2);
-      }
-      ctx.globalCompositeOperation = "source-over";
-    }
     if (o.eye !== false) {
       const ex = hx + OTX[hk] * hr * 0.3, ey = hy + OTY[hk] * hr * 0.3;
-      flatGlow(ctx, ex, ey, 0.03 * s, OB.glow, 0.5);
       ctx.fillStyle = OB.eye;
       ctx.beginPath(); ctx.arc(ex, ey, Math.max(1.2, 0.007 * s), 0, TAU); ctx.fill();
     }
@@ -1004,5 +1014,5 @@ window.GenDuo = (function () {
   }
   // where a hand sits from the pose's origin (a: 0 far hand, 1 near hand; units of h, face 1): the beat keeps the planted hand fixed in the world by placing the body at hand - handOff
   function rexHandOff(pose, a) { const q = rexAnchors(0, 0, 1, { pose, face: 1 }, {})[a ? "handF" : "handB"]; return { x: q.x, y: q.y }; }
-  return { drawRex, drawRexFingers, rexAnchors, rexHandOff, drawObrok1, rexJoints };
+  return { drawRex, rexPlates, drawRexFingers, rexAnchors, rexHandOff, drawObrok1, rexJoints };
 })();

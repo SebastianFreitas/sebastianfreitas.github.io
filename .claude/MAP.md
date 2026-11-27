@@ -357,7 +357,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 
 | File | Purpose | Publishes |
 |---|---|---|
-| `genesis-state.js` | `BEATS` (34 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex burst–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
+| `genesis-state.js` | `BEATS` (35 beats; `rex` birth beat archived as a comment), `SCENES` + `SCENE_ORDER` (birth point–walk, root root–corrupt, rex burst–land, valkhar gods–stalemate, mainland firstlock–now), `sceneSpan/sceneOf/sceneT`, `?gscene=<id>` (`?gseg` alias) | `window.Gen` |
 | `genesis-paint.js` | flat-art helpers `flatGlow flatSphere mixHex fillRidge gridXs rexLandHeight mainHeight mainDome eastJag mainSurfY standY` | `window.GenPaint` |
 | `genesis-eldpal.js` | the eldritch palette: 21 named tokens as `{lit, mid, shade}`, tier-3 sky steps, `SEA` (five sea families, read by genesis-elements.js); `tone report contrast swatchSheet` | `window.GenEldPal` |
 | `genesis-ceilkinds.js` | registry of ceiling hanging objects; draws sprout, tuft, fin | `window.GenCeilKinds` (`add list pick deck palette hues`) |
@@ -378,7 +378,7 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-circle.js` | `circle` beat inside | `window.GenCircle` |
 | `genesis-chains.js` | `chains` beat inside: the P8 disc snaps to a ring, linked rings snap out along a chain with the rose thread, then 3 held zoom-outs to hex chain-mail fields (levels 2-3 stamped from offscreen tiles), magic rings carry a pale chip: `draw` | `window.GenChains` |
 | `genesis-corrupt.js` | `corrupt` beat inside: a level-1 ring field, 3 rings turn red in held arc steps, a dark blade cuts each loose, a dark crescent (mothers) folds it to grey dust, one red dot per ring rises in steps into a lumpy red layer at the roof: `draw` | `window.GenCorrupt` |
-| `genesis-rexout.js` | beats `burst`, `duel`, `drop` and `land`: Obrokxus peeks out, Rex barges out flying, is poisoned, curls round him and dies in the hole; the dead body stays in the womb as the gate | `window.GenRexOut` |
+| `genesis-rexout.js` | beats `burst` to `land`: void Obrokxus peeks out in `burst`; void Rex barges out from `shed`, is poisoned, curls round him and dies in the hole; in `drop` his body heats to orange and flows into the land ramp; it stays in the womb as the gate | `window.GenRexOut` |
 | `genesis-elements.js` | wave one after the break | `window.GenElem {seaRise, seaLevel, seaLine, seaLineRest, airFront, airStart, airLift, seaRiseDone, draw, drawResidue, drawSea, paintSea, drawAirDrift, rage, layerBegin, layerEnd, dimK}` |
 | `genesis-sky.js` | ARCHIVED, OFF (GLASS_ON = false): the cracked-glass sky: fractures and shards burst from the split point over the air half | `window.GenesisSky {draw}` (glass shatter from the flash to the end of birth) |
 | `genesis-insects.js` | wave two | `window.GenInsects {LIST, move, colors, drawBody, drawShards, rng}`: the 8 eldritch insect kinds, roster (190 objects), movements and tint drift, pure in t; drawn through `GenSwarm` |
@@ -392,7 +392,8 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-attire.js` | the attire kit (plan phase 7) | `window.GenAttire` |
 | `genesis-figures.js` | flat silhouette cast | `window.GenFig` |
 | `genesis-titans.js` | adds `drawTitan` (`"rex"`: stand/lunge/grapple/fall, `cool`; `"obrokxus"` = his first form, the blob: stand/lunge/climb/flee; `"centihorse"`/`"worm"` dispatch to genesis-obrok.js) and `drawHound` | extends `window.GenFig` |
-| `genesis-duo.js` | Rex Immotus (stone blocks) and Obrokxus form 1 (centipede), drawn by `genesis-rexout.js` | `GenDuo.drawRex`, `drawRexFingers`, `rexAnchors`, `drawObrok1` |
+| `genesis-duo.js` | Rex Immotus (stone blocks) and Obrokxus form 1 (centipede), drawn by `genesis-rexout.js` | `GenDuo.drawRex`, `rexPlates`, `drawRexFingers`, `rexAnchors`, `rexJoints`, `drawObrok1` |
+| `genesis-voidforms.js` | Void Rex and Obrokxus (bullets) | `GenVoidForms` (exports: see bullets below; `growK(t0, t1, t)` is the pulsed 0..1 growth) |
 | `genesis-obrok.js` | Obrokxus's later forms | extends `window.GenFig` |
 | `genesis-gods.js` | the five gods, one painter each, registered in `GenFig.GOD_PAINT` and picked by `drawGod` on `o.kind` | extends `window.GenFig {GOD_PAINT, godHand, almurSweep}` |
 | `genesis-hosts.js` | the war's figures, flat and lit from the left | `window.GenHosts {ABOM, ABOM_PAL}` |
@@ -409,6 +410,29 @@ All share `window.Gen` (`G`). Values that change per frame are read as
 | `genesis-saga.js` | The saga painter and live world | extends `window.GenSaga` |
 | `genesis.js` | Cutscene conductor: DOM, transport (`play`, `playScene` = `playSegment`, `segmentSeen`, `skip`, `seek`, `seaming`); full play veil-fades at each scene seam, camera, draw; `warm` pre-paints beat starts offscreen | `window.Genesis` |
 
+- `genesis-state.js`: beat `shed` sits after `burst` (the void Rex's change); its caption and `duel`'s sit in a right column (`css/bridge.css`, `.genesis-copy` by `data-beat`).
+- `genesis-voidforms.js` exports: `drawPlateBreak`, `plateRevealClip`, `drawRexVoid`, `rexVoidPolys`, `rexVoidTable`, `rexVoidAnchors`, `drawRexChange`, `drawRexRubble`, `rexChangeAnchor`, `growK`, `drawObrokVoid`, `voidErodeClip`, `drawVoidErode`, `rexErodeParts`, `VPOSE`.
+- `growK(t0, t1, t)`: pulsed 0..1 (three heaves); `o.g0` makes `drawRexChange` swell womb size to full.
+- `genesis-voidforms.js`: void Rex is tall, thin and headless: a stepped stone stele on the near shoulder, a slanted slab on the far one, blade forearms, a keel pelvis, plinth feet, moss and algae crusts, and vine strands that hang by gravity in every pose and stop at the ground.
+- `genesis-voidforms.js`: void Obrokxus is the pre-chaos form, a simpler flat purple centipede (lilac eye, no red) in form 1's coil; `o.chaos` 0..1 cracks and drops his plates head first to reveal `GenDuo.drawObrok1`, which is drawn whole at 1.
+- `genesis-voidforms.js`: the `shed` argument of `drawRexVoid` is unused; lowercase table tones hang (vines and moss strands).
+- `genesis-state.js` / `genesis.js`: `shed` has `capEnd` (5.15 s): the caption starts fading out that many seconds into the beat (`genesis.js` reads `BEATS[G.beat].capEnd`).
+- `genesis-voidforms.js`: exports `voidErodeClip(ctx, parts, o)` (evenodd clip: real bites out of a body) and `drawVoidErode(ctx, parts, o)` (cut lines and drifting chips): the shared void effect, any creature, colours in `o.old` / `o.neu`.
+- `genesis-voidforms.js`: `VPOSE` (exported) holds the void Rex's own joint poses; `rexVoidAnchors` and the pose mix read it first and fall back to `GenDuo.rexJoints`. In `duel` and `drop` the pose mix turns bones at their own length (`DU.rot` in `genesis-rexout.js`, passed to `lerpJ`).
+- `genesis-voidforms.js`: `drawRexChange(ctx, x, y, h, o, c)` (c 0..1) is the change in the air, Obrokxus's plate break: each womb Rex part (`GenDuo.rexPlates`, posed at chg0) rides its nearest void bone, then cracks and falls (`drawPlateBreak`, `plChips`) from the grip hand along the body.
+- `genesis-voidforms.js`: `o.chg` gives the change its pivot path, ground and duration. `drawRexRubble` keeps the loose and fallen shards drawn after c passes 1; `rexChangeAnchor` pins a body point to a path.
+- `genesis-voidforms.js`: the poison (`o.venom` 0..1) seeps along slab seams with a hashed uneven width and short angular branches, pools at each join, and its front (`seamFront`) pauses at wrist, elbow, shoulder, chest and hip; all full at 1.0.
+- `genesis-voidforms.js`: `drawPlateBreak(ctx, plate, t, o)` and `plateRevealClip` are the shared crack-and-fall of a stone plate and the clip showing the body where plates have gone (Obrokxus and Rex).
+- `genesis-duo.js`: `rexPlates(x, y, h, o, out)` writes womb Rex's posed parts as bands (axis ends, half widths, lit and shade colours) in draw order, the same placement as `drawRex`.
+- `genesis-voidforms.js`: `rexErodeParts` turns Rex's change bones into erode parts (with `tl`, the time its plate breaks off) so `genesis-rexout.js` (`rexErode`, `RXP`, `RXO`) runs the shared erode on Rex from the barge until the change ends.
+- `genesis-voidforms.js`: seam tables: `SEAMJ` lists the joins (top slab, slab under it, start, span), `SEAMHAND` the line across the forearm's lower end, `SEAMK` the ridge cracks inside a slab.
+- `genesis-rexout.js`: order of `burst` (BS table, seconds): peek 1.4, slip 2.5 (purple Obrokxus slips free), fly west to WEST 4.0, his change ob0 4.6 to ob1 7.4 (red held to calm 7.9), camera back at 1x by pull 8.3, the womb Rex barges at 8.55, then changes in the air.
+- `genesis-rexout.js`: from ob1 7.4 Obrokxus tries his new body (`tryMove`: stretch, two darts, a test strike, ready sway) until the barge; every BS time from pull on is +`TRY` (31/12 s), and the `burst` beat's `dur` too. The times in the next line are before that shift.
+- `genesis-rexout.js`: Rex's change runs 8.9 to 10.4 s (the first 1.5 s of `shed`); the void Rex makes the catch (grab 10.6 s), lands, rises and sets; `shed` holds the change, its rubble and the void Rex standing; his poses come from `VPOSE`.
+- `genesis-rexout.js`: from barge on every clock that feeds a drawing runs on its old phase (`PH` = 5.0 s shift), so the frames match the shorter cutscene.
+- `genesis-rexout.js`: the emergence helpers: `emCam` (the camera from the cut's opening to `BS.pull`, sets `G.zoom`), `obPose`/`obPeekBlend` (his path through the coil and back), `COILA` (the coil's angles), `gaitAt` (his leg clock) and `wph` (his body-wave phase).
+- `genesis-rexout.js` callees: `GenDuo.drawObrok1` takes optional `o.rimK` (rim width, 2 in the cutscene); `GenVoidForms.drawObrokVoid` takes optional `o.fall` (how far his pieces fall).
+- `genesis-voidforms.js`: the void Rex table also takes moss tones `M N O`, algae tones `G H`, flower tones `F E` and an optional `PAL` colour override.
 - `genesis-titanbodies.js`: statue ported, hollow/slime/changer stubs; the Slime is rigid (its outline never changes shape): it slides to the Hollow in three steps with a bob, and its top opens on a hinge as a lid (`part` "jaw"/"lid").
 - `genesis-rocktitans.js`: in the lash the Hollow's arms drop (`drop`) and he sinks into the jaw while the lid shuts (`cover`); draw order Hollow, jaw, lid, with the Slime on the reused `slimeC` buffer.
 - `genesis-titanfight.js`: the swallow (slide + lid) is lash 8.6 to 11.6, stone 11.6 to 12.4, cracks 12.4 to 13.2, burst 13.2; `ADD` moves everything after the old 1.6 s burst later.
@@ -561,6 +585,8 @@ Data read by both the bridge and a case page. No drawing, no state.
 | `tools/pagecheck.py` | Lighthouse stand-in: `py -3 tools/pagecheck.py <page> [--phone] [--reduced-motion]` prints bytes by type, LCP/CLS/long tasks, sideways scroll, hidden, clipped, bare text, tilted `::before`; exit 1 on scroll/hidden/clipped/bare |
 | `tools/hudshot.py` | Bridge HUD shots into `snapshots/<run>/`, prints `HudC25.report()`: `--c25` (no-op), `--size WxH`, `--at <mark>`, `--x`, `--site`, `--claimed`, `--read`, `--burn`, `--touch` (prints `phone:`, `canvas:`, `painted:`); exits 1 on a console error |
 | `tools/gframes.py` | Tiles genesis beat frames for review into `snapshots/frames/<run>/<beat>.png`; imports `tools/snap.py` |
+| `tools/gwebm.py` | Records a real-time webm of genesis beats: `py -3 tools/gwebm.py <out_dir> <first_beat> [<last_beat>] [--size 1280x720]`; writes `<out_dir>/genesis-<first>[-<last>].webm` (opens with the loading gate), exits 1 on a console error |
+| `tools/voidsheet.py` | Void forms sketch sheet: `<out_dir> [--webm]` writes `voidforms.png` (womb vs void forms, a 16:9 mock, the chaos change row), `voidposes.png` (void Rex, 19 poses), `rex-change.png`, `obrok-void-x8.png`; `--webm` records `obrok-change.webm` and `rex-change.webm` |
 | `tools/cshot.py` | One cutscene round capture by arguments: frame sheet, closeup, data dump and webm into `snapshots/cshot/<scene>/r<round>/`; imports `tools/snap.py` |
 | `tools/rexsheet.py` | Rex pose sheet: `<run> [--mix a,b] [--venom N] [--cool N]` draws every pose of `genesis-duo.js` to `snapshots/rexsheet/<run>/poses.png` and prints limb bone-length ratios to `stand` plus `MAX LENGTH DEVIATION` |
 | `tools/banner-lab.html` | Banner lab page (`py -3 serve.py`, `/tools/banner-lab.html`): loads `js/site/shapes.js`, `js/site/banner.js` and `banner-lab.js`; dark tool page; `?sheet=N&seed=S[&set=k:v,..]` renders only the sheet onto `#cv` |

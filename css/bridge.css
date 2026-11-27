@@ -537,6 +537,10 @@ html.bar-peek .topbar { transform: none; pointer-events: auto; z-index: 99; tran
   transform: translateY(10px);
   transition: opacity 1.15s ease, transform 1.15s cubic-bezier(.2,.8,.3,1);
 }
+/* shed and duel: the caption sits in a narrow column at the right, over the womb, clear of the void Rex */
+.genesis[data-beat="shed"] .genesis-copy, .genesis[data-beat="duel"] .genesis-copy {
+  width: min(25vw, 23rem); max-width: none; align-self: flex-end; margin-right: calc(2.5vw - 1.5rem);
+}
 .genesis-copy.on { opacity: 1; transform: none; }
 .genesis-copy.out { opacity: 0; transform: translateY(-8px); transition-duration: 0.4s, 0.4s; }
 

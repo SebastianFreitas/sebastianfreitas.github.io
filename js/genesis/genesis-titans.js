@@ -169,7 +169,6 @@ window.GenFig = window.GenFig || {};
       fillPoly(ctx, [[ex - 0.09 * h, ey], [ex, ey - 0.012 * h], [ex + 0.09 * h, ey], [ex, ey + 0.012 * h]], OBR.shade);
       return;
     }
-    flatGlow(ctx, ex, ey, 0.36 * h, OBR.glow, 0.9);
     circle(ctx, ex, ey, 0.10 * h, OBR.iris);
     const look = o.look || { x: ex + f, y: ey };
     const ldx = look.x - ex, ldy = look.y - ey, llen = Math.hypot(ldx, ldy) || 1;

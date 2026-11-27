@@ -158,9 +158,9 @@ window.GenRex = (function () {
     const bottom = floorY != null ? Math.min(G.H * 2.5, floorY) : G.H * 2.5;
     const baseY = G.H * 1.16;
     const step = 6;
-    const clipped = cg && !G.reduced && lin < 0.6;   // nothing shows below the floor line yet (let down over the first 0.35), nor west of the wedge's west end until the reveal (0.35-0.6) runs it out to the frame edge
+    const clipped = cg && !G.reduced && lin < 0.35;   // nothing shows below the floor line yet (let down over the first 0.35)
     if (clipped) {
-      const cx0 = mix(wxb - 0.40 * G.W, -80, smooth(clamp((lin - 0.35) / 0.25, 0, 1)));
+      const cx0 = -80;
       ctx.save(); ctx.beginPath(); ctx.rect(cx0, -G.H, G.W + 80 - cx0, fy0 + G.H + (1.1 * G.H - fy0) * smooth(clamp(lin / 0.35, 0, 1))); ctx.clip();
     }
     for (let bi = 0; bi < REX_BANDS.length; bi++) {
@@ -171,7 +171,9 @@ window.GenRex = (function () {
       const right = Math.min(G.W + 80, sx(REX_EAST + 0.22 + widen * 0.15) + 10);
       for (const [px, wu] of gridXs(left, right, step)) {
         const h = rexLandHeight(wu, b);
-        pts.push([px, mix(early(px, bi), mix(yC, baseY - h * G.H, rise), grow)]);
+        const yB = baseY - h * G.H;
+        /* with the cut it opens on drop's ramp (band 0's line) for every band; the strata sink out of it to their own */
+        pts.push([px, cg ? mix(Math.min(fy0, baseY - rexLandHeight(wu, REX_BANDS[0]) * G.H), yB, smooth(clamp(lin / 0.45, 0, 1))) : mix(early(px, bi), mix(yC, yB, rise), grow)]);
       }
       if (pts.length < 2) continue;
       const last = pts[pts.length - 1];
@@ -190,7 +192,7 @@ window.GenRex = (function () {
       }
       const lit = cool >= 1 ? b.lit : mixHex("#c9581f", b.lit, cool);
       const shade = cool >= 1 ? b.shade : mixHex("#8a3512", b.shade, cool);
-      ctx.globalAlpha = Math.max(rise, clamp(lin / 0.15, 0, 1));
+      ctx.globalAlpha = cg ? 1 : Math.max(rise, clamp(lin / 0.15, 0, 1));
       fillRidge(ctx, pts, bottom, lit, shade);
       ctx.globalAlpha = 1;
     }
@@ -286,10 +288,7 @@ window.GenRex = (function () {
   function drawRexGrip(ctx, x, y, amt, R) {
     if (amt < 0.02) return;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
     ctx.lineCap = "round";
-
-    flatGlow(ctx, x, y, R * 1.6, "245,138,52", amt);
 
     for (let k = 0; k < 5; k++) {
       const a0 = k * 1.2566 + G.t * 0.35;
@@ -318,10 +317,6 @@ window.GenRex = (function () {
     const x = sx(BURY_U), y = rexSurfY(BURY_U) + G.H * 0.10;
     const R = Math.min(G.W, G.H) * 0.16 * (1 + 0.12 * Math.sin(G.t * 3.2));
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    flatGlow(ctx, x, y, R, "200,36,40", amt);
-
-    ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = `rgba(150,18,24,${0.75 * amt})`;
     ctx.beginPath(); ctx.arc(x, y, 0.030 * G.H, 0, 6.283); ctx.fill();
     ctx.fillStyle = `rgba(8,1,2,${0.9 * amt})`;

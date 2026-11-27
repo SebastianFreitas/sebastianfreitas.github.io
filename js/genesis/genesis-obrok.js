@@ -45,7 +45,6 @@ window.GenFig = window.GenFig || {};
     ctx.restore();
   }
   function mainEye(ctx, ex, ey, h, glowR, look) {
-    flatGlow(ctx, ex, ey, glowR, OBR.glow, 0.9);
     circle(ctx, ex, ey, 0.055 * h, OBR.iris);
     const l = look || { x: ex + 1, y: ey };
     const dx = l.x - ex, dy = l.y - ey, len = Math.hypot(dx, dy) || 1;

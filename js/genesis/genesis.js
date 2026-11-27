@@ -82,10 +82,11 @@ window.Genesis = (function () {
       requestAnimationFrame(() => copyEl.classList.add("on"));
     };
     const fading = copyEl.classList.contains("out") && tagEl && tagEl.textContent;   // an old line is still fading out (the elements beat lasts no time): wait for it, no instant swap
-    if (immediate || !(copyEl.classList.contains("on") || fading)) { show(); return; }
+    const wait = b.capAt && G.local < b.capAt ? (b.capAt - G.local) * 1000 : 0;   // a beat's capAt holds its caption back until that many seconds into the beat
+    if (!wait && (immediate || !(copyEl.classList.contains("on") || fading))) { show(); return; }
     copyEl.classList.remove("on");
     copyEl.classList.add("out");
-    copyTimer = setTimeout(show, 420);
+    copyTimer = setTimeout(show, Math.max(420, wait));
   }
 
   function paintTicks() {
@@ -490,7 +491,7 @@ window.Genesis = (function () {
     elements: [1.05, 0.97], matter: [0.97, 1.00], trade: [1.00, 1.30], walk: [1.30, 1.02],
     root: [1.02, 1.06], enter: [1.06, 1.09],
     soup: [1.09, 1.09], eye: [1.09, 1.09], roles: [1.09, 1.09], circle: [1.09, 1.09], chains: [1.09, 1.09], corrupt: [1.09, 1.09],
-    burst: [1.06, 1.06], duel: [1.06, 1.06], drop: [1.06, 1.06],
+    burst: [1.06, 1.06], shed: [1.06, 1.06], duel: [1.06, 1.06], drop: [1.06, 1.06],
     land: [1.00, 1.00], gods: [1.00, 1.00], calm: [1.00, 1.00], deep: [0.95, 1.00],
     slip: [1.00, 1.05], flee: [1.05, 1.00], war: [1.00, 1.06], stalemate: [1.06, 1.02],
     firstlock: [1.02, 1.08], cadmus: [1.08, 1.10], aelius: [1.10, 1.06], velindra: [1.06, 1.10],
@@ -605,6 +606,8 @@ window.Genesis = (function () {
     if (G.paused) return true;            // clock held; the loop still draws the frame
     G.t += dt;
     G.local += dt;
+    const ce = BEATS[G.beat] && BEATS[G.beat].capEnd;   // a beat's capEnd starts its caption's fade-out that many seconds into the beat
+    if (ce && G.local >= ce && copyEl && copyEl.classList.contains("on")) { clearTimeout(copyTimer); copyEl.classList.remove("on"); copyEl.classList.add("out"); }
     G.tickAcc += dt;
     G.tick60 = G.tickAcc >= TICK_STEP - TICK_SLACK;
     if (G.tick60) {
@@ -780,7 +783,8 @@ window.Genesis = (function () {
       const pain = 0.4 + uRoot * 0.2 + uSwarm * 1.15 * (1 - uWomb) + uWomb * 0.12;
       const approaching = clamp((G.cam - (ROOT_U - 0.95)) / 0.55, 0, 1);
       const fleshVis = approaching * (1 - uLand * 0.28);
-      const sB = G.secs("burst"), tD = clamp((sB - 3.4) / (G.BEAT_START[idxOf("land") + 1] - G.BEAT_START[idxOf("burst")] - 3.4), 0, 1);   // burst's barge to the end of land
+      const shedD = G.BEATS[idxOf("shed")].dur, sB0 = G.secs("burst"), sB = sB0 >= G.BEATS[idxOf("burst")].dur ? Math.max(G.BEATS[idxOf("burst")].dur, sB0 - shedD) : sB0;   // the shed beat holds the fight's clock
+      const tD = clamp((sB - 9.15) / 21.75, 0, 1);   // 0.6 s after burst barge (8.55), reaching 1 at the end of land as before (it was 3.4 s over 27.6 s on the old, longer timeline)
       G.wombDeflate = smooth(Math.pow(tD, 1.6));   // slow at first, most of the height goes in drop and land
       const geom = GenFlesh.fleshGeom(uWomb);
       const sealAmt = clamp(uWomb * 1.2, 0, 1) * (G.beat < idxOf("land") ? 1 : 0);
@@ -833,7 +837,7 @@ window.Genesis = (function () {
     if (G.beat === G.idxOf("chains") && window.GenChains) GenChains.draw(ctx, G.W, G.H, G.local, G.reduced);
     if (G.beat === G.idxOf("corrupt") && window.GenCorrupt) GenCorrupt.draw(ctx, G.W, G.H, G.local, G.reduced);
 
-    if (L && L.die > 0.02 && L.die < 0.55) {
+    if (L && L.die > 0.02 && L.die < 0.55 && G.beat !== idxOf("land")) {   // the dark red wash of the old fight-to-land cut; land follows drop now, so it opened on a full-frame step
       const p = 1 - Math.abs(L.die - 0.22) / 0.22;
       if (p > 0) {
         ctx.fillStyle = `rgba(40,4,8,${0.22 * p})`;
