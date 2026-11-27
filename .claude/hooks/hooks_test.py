@@ -971,6 +971,30 @@ for _label, _path, _branch, _want in (
     check("go-check: " + _label, _go_case)
 
 
+for _label, _text in (
+    ("hand-back quoting the placeholder pattern prints nothing",
+     "[Subagent hand-back] Report: Checkout <path> on branch <branch>, worktree mode."),
+    ("task notification with a wrong path prints nothing",
+     "<task-notification>Checkout C:/nowhere/else on branch other, done.</task-notification>"),
+    ("literal %s format prints nothing", "go: x. Checkout %s on branch %s, worktree mode."),
+):
+    def _go_quiet(c, _text=_text):
+        out = prompt(c, "go-check.py", _text)
+        return out[1].strip() == "", out[1]
+    check("go-check: " + _label, _go_quiet)
+
+for _label, _branch, _want in (
+    ("cross-session wrapped go prompt still checked: ok", "feature", "GO CHECK: ok"),
+    ("cross-session wrapped go prompt still checked: wrong branch", "other", "GO CHECK: MISMATCH on branch"),
+):
+    def _go_wrapped(c, _branch=_branch, _want=_want):
+        text = ('<cross-session-message from="x">Another Claude session sent a message: go: x. '
+                'Checkout %s on branch %s, worktree mode.</cross-session-message>' % (c.proj.replace("\\", "/"), _branch))
+        out = prompt(c, "go-check.py", text)
+        return _want in out[1], out[1]
+    check("go-check: " + _label, _go_wrapped)
+
+
 # context-watch.py (the line is 150,000; 120,000 for the coordinator and 250,000 for a plan supervisor)
 def usage_turn(tokens):
     return {"type": "assistant", "message": {"role": "assistant", "usage": {"input_tokens": 1, "cache_read_input_tokens": tokens}}}
@@ -1372,6 +1396,74 @@ def _ordinary(c):
 def _missing(c):
     _board_row(c, added=1)
     return _submit(c, "go: the task", 50_000) == "" and _submit(c, "coordinator: go", 50_000) != "", ""
+
+
+START_TOOLS = ("mcp__ccd_session__start_session", "mcp__ccd_session__hand_off_to_session")
+
+
+def _start_calls(c, **extra):
+    """Both chat-start tools through the dispatcher: (denied count, outputs)."""
+    outs = [c.run("hooks.py", c.payload(t, {"prompt": "x"}, **extra))[1] for t in START_TOOLS]
+    return sum("permissionDecision" in o and "never starts another chat" in o for o in outs), "".join(outs)
+
+
+def _start_added(c):
+    _procedures(c)
+    _board_row(c, added=1)
+    _submit(c, "go: the task", 50_000)
+    n, out = _start_calls(c)
+    m, out2 = _start_calls(c, agent_id="a1", agent_type="implementer")
+    return n == 2 and m == 2, out + out2
+
+
+def _start_hook_row(c):
+    _procedures(c)
+    _board_row(c)
+    _submit(c, "go: the task", 50_000)
+    return _start_calls(c)[0] == 0, ""
+
+
+def _start_no_board(c):
+    _procedures(c)
+    _submit(c, "go: the task", 50_000)
+    return _start_calls(c)[0] == 0, ""
+
+
+def _start_coordinator(c):
+    _procedures(c)
+    _board_row(c, added=1)
+    _submit(c, "coordinator: go", 50_000)
+    return _start_calls(c)[0] == 0, ""
+
+
+def _start_other_tool(c):
+    _procedures(c)
+    _board_row(c, added=1)
+    _submit(c, "go: the task", 50_000)
+    out = c.run("hooks.py", c.payload("Bash", {"command": "git status"}))[1]
+    return "permissionDecision" not in out, out
+
+
+def _sub_warning(c):
+    _procedures(c)
+    _board_row(c, added=1)
+    out = _submit(c, "go: the task", 228_000)
+    return "GO PROMPT BELOW:" in out and "The coordinator clears this same chat" in out, out
+
+
+def _ordinary_warning(c):
+    _procedures(c)
+    out = _submit(c, "fix the bug", 228_000)
+    return ("GO PROMPT BELOW" not in out and "end the turn with the go prompt. Start no new step." in out), out
+
+
+check("context-watch: a coordinator-added chat is refused both chat-start tools, subagent too", _start_added)
+check("context-watch: a hook-made row's chat may start a chat", _start_hook_row)
+check("context-watch: a window with no board may start a chat", _start_no_board)
+check("context-watch: a coordinator window on an added row's branch may start a chat", _start_coordinator)
+check("context-watch: another tool in a coordinator-added chat is untouched", _start_other_tool)
+check("context-watch: a coordinator-added chat's warning names GO PROMPT BELOW:", _sub_warning)
+check("context-watch: an ordinary window's warning is unchanged", _ordinary_warning)
 
 
 def _small_enough(c):

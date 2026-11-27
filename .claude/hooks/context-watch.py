@@ -297,7 +297,7 @@ def main_line(d, state):
     return LIMIT, ""
 
 
-def main_message(used, limit, tier, kind):
+def main_message(used, limit, tier, kind, sub=False):
     pct = used * 100 // limit
     if tier == 2:
         if kind == "supervisor":
@@ -322,6 +322,15 @@ def main_message(used, limit, tier, kind):
                     f"the line of {limit:,}). Finish this round, then end the "
                     "turn telling the owner to type /clear and then "
                     "coordinator. Write no handoff.")
+        if sub and kind == "":
+            return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of "
+                    f"the line of {limit:,}). Finish the current step, "
+                    "commit, write .claude/handoff.md (handoff skill), wait "
+                    "for or stop every helper still running, then end the "
+                    "turn with GO PROMPT BELOW: and the go prompt as the "
+                    "last fenced block, and send the coordinator that first "
+                    "line. The coordinator clears this same chat: start no "
+                    "new chat and no new step.")
         return (f"CONTEXT WATCH: {used:,} tokens in context ({pct}% of the "
                 f"line of {limit:,}). Finish the current step, commit, write "
                 ".claude/handoff.md (handoff skill) and end the turn with the "
@@ -575,7 +584,11 @@ def on_main(d, ev, path):
             # speaks only when a threshold is crossed, on a prompt or a call
             # past the line it repeats on every owner prompt
             if tier > last or (tier == 2 and ev == "UserPromptSubmit"):
-                m = main_message(used, limit, tier, kind)
+                try:
+                    sub = kind == "" and coordinator_added(d)
+                except Exception:
+                    sub = False
+                m = main_message(used, limit, tier, kind, sub)
                 if m:
                     parts.append(m)
                 if tier and not state["main"].get("warned"):
@@ -605,6 +618,34 @@ def on_main(d, ev, path):
         print(msg)
 
 
+START_TOOLS = ("mcp__ccd_session__start_session",
+               "mcp__ccd_session__hand_off_to_session")
+
+
+def deny_start(d, path):
+    """Deny a chat start from a chat the coordinator started; True if denied."""
+    if d.get("tool_name") not in START_TOOLS or not path:
+        return False
+    try:
+        if read_state(path)["main"].get("run") == "coordinator":
+            return False
+        if not coordinator_added(d):
+            return False
+    except Exception:
+        return False
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "A chat the coordinator started never starts another chat "
+            "(.claude/project/sub-chat.md): the coordinator cannot clear a "
+            "chat you start. Run the work as a helper agent (Agent tool) "
+            "inside this chat, or end the turn with QUESTION: asking the "
+            "coordinator for a second chat. Context full: write the handoff "
+            "and end with GO PROMPT BELOW:.")}}))
+    return True
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -622,6 +663,8 @@ def main():
             note_review_start(d)
         except Exception:
             pass
+    if ev == "PreToolUse" and deny_start(d, path):
+        return
     if d.get("agent_id"):
         if ev in ("PreToolUse", "PostToolUse"):
             on_subagent_tool(d, ev)

@@ -6,6 +6,11 @@ Owner, 2026-11-21: "you put subchats doing it, so that you can write handoff and
 
 One window for the owner. I start, clear, feed and land the sub-chats, and I route: I never design, judge a look, read source or rewrite his words. The thinking happens in the sub-chats.
 
+## One chat per task
+- A task keeps one chat from its start until it is archived after landing. Owner, 2026-11-27: "i dont like how it keep making new chats". Before any `start_session` read the board: his words about a row that exists go to that row's chat by `SendMessage`, verbatim, whatever its state (`done` and `landed` too: the branch carries on). Unsure if it is the same task: ask him in one line.
+- Never start a chat because one is full, busy, on his screen or refused a clear: a full chat is cleared (Clearing).
+- Only I start chats. A row's chat that started its own (`list_sessions` linked, `startedBy`) broke `sub-chat.md`: tell him.
+
 ## The board is my memory
 - Everything I need to know is on the board (`tools/board.py`), fed by a hook each time a worktree chat gets a prompt or ends a turn. I keep nothing in this conversation that the board or a memory file does not hold.
 - **Every turn starts with `py -3 tools/board.py`** (one call). It prints `ACT` lines (what is new since my last look and what to do), then one row per chat, and writes `.claude/board.md`.
@@ -19,7 +24,7 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 - A bare `coordinator` prompt: run the board, then report in at most five lines (Status).
 
 ## Start
-- One sub-chat per task: `start_session` user_asked, fresh, `use_worktree: true`. Only a read-only check shares my checkout.
+- A task with no row gets one sub-chat: `start_session` user_asked, fresh, `use_worktree: true`. Only a read-only check shares my checkout.
 - **How many at once:** the cap in the board's first line (3; 1 when the week's usage is ahead of pace). Count the rows `working` or `waiting`. Tasks that touch the same files never run together. A task over the cap or blocked by a same-file task waits: `py -3 tools/board.py add <name> --task "<his words>" --state queued`, and start it when a slot opens, telling him in one line.
 - Model: every build and look chat runs on Opus medium (pass `model` and `effort: "medium"` in the `start_session` call itself; never set them with a later call). Fable only in a chat his own message names for a plan or research.
 - Right after the start: `get_session` for its branch (not the folder name: the app reuses archived folders), then `py -3 tools/board.py add <name> --branch <branch> --session <local id> --task "<his words, short>"`.
@@ -43,8 +48,10 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 - Relay each round's pictures and clips with SendUserFile and the sub-chat's one line, unopened; open one only when the owner asks what I think. The owner judges every look, even a weak sheet. His verdict goes back verbatim.
 
 ## Clearing
-- `ACT go`: `clear_session`, then `SendMessage` the output of `py -3 tools/board.py go <name>` unchanged. Never resend.
-- Clear is refused for a chat on the owner's screen, pinned, with background work or a queued message: never message a chat just before clearing it. Refused, or the chat was not started by this window: start a new chat in that chat's worktree folder (`start_session`, its folder as `cwd`, `use_worktree: false`) with the same go prompt, archive the old one, update the board row (`board.py add`/`drop`), and tell the owner in one line. Only if that also fails, `redo` it and tell him it is his step.
+- `ACT go`: `clear_session`, then `SendMessage` the output of `py -3 tools/board.py go <name>` unchanged. The send usually answers "Not confirmed": normal, never resend; the row turns `working` on the next board run.
+- `go` prints "no go prompt stored": do not clear; `SendMessage` the chat once to end its turn again with `GO PROMPT BELOW:` and the go block last.
+- A refused clear never becomes a new chat. `py -3 tools/board.py redo <name>`, then by the refusal: "still working" or "live work" (its turn or a helper has not ended): end the turn, clear on the next wake. "open on screen" or pinned: tell him in one line to switch to this window or unpin it, clear on his next message. Never message a chat just before clearing it.
+- "only ... one this session started" (an older coordinator window's chat): ask him. On his yes `archive_session` the old chat first, and only when that worked start one chat in its folder (`start_session`, its folder as `cwd`, `use_worktree: false`) with the same go prompt, then `board.py add` its new session id. Never two live chats on one branch.
 - `archive_session`: the first call is refused by the hook label; reissue it alone with exactly the quoted input. A chat with live work cannot be archived. After archiving: `py -3 tools/board.py drop <name>`.
 
 ## Saving

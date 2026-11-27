@@ -20,6 +20,11 @@ import re
 import subprocess
 import sys
 
+# Text the owner never typed. The cross-session wrapper is absent on purpose:
+# the coordinator's go prompt to a sub-chat arrives in it and is still checked.
+NOT_OWNER = ("[Subagent hand-back]", "<task-notification>",
+             "[SYSTEM NOTIFICATION", "<side-sessions-event>",
+             "<ci-monitor-event>")
 CLAUSE = re.compile(r"checkout\s+(\S+?)\s+on\s+branch\s+(\S+?)(?=[\s,.;]|$)",
                     re.IGNORECASE)
 
@@ -46,11 +51,15 @@ def main():
         pass
     d = json.load(sys.stdin)
     prompt = d.get("prompt") or ""
+    if any(k in prompt for k in NOT_OWNER):
+        return
     m = CLAUSE.search(prompt)
     if not m:
         return
     want_path = m.group(1).strip("`'\"").rstrip(",.;")
     want_branch = m.group(2).strip("`'\"").rstrip(",.;")
+    if re.search(r"[<>%]", want_path + want_branch):
+        return
     root = d.get("cwd") or os.getcwd()
     try:
         os.chdir(root)
