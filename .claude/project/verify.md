@@ -3,6 +3,9 @@
 - A sketch round (rule: workflow.md Run step 5) shoots only the thing drawn:
   one `snap.py capture <run> --only <scene>`, `toyshot.py`, `jscheck.py
   --shot` or `gframes.py`. Everything below is for the landing round.
+- A cutscene round (`js/genesis/`): `.claude/project/cutscene.md` first.
+  It shoots with `py -3 tools/cshot.py`, in the real scene, and a new
+  beat starts with a rough pass of stills before any motion build.
 - Test only the flows you touched: `py -3 tools/nav-flows.test.py <flow>`
   (`--list` names them). Run the full suite only before a commit that
   touches navigation, the gate or storage.

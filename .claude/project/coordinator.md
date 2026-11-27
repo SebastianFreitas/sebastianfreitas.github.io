@@ -45,7 +45,7 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 - A go-check MISMATCH in my window on "checkout X on branch Y" text is not the owner's go prompt.
 
 ## Looks
-- Relay each round's pictures and clips with SendUserFile and the sub-chat's one line, unopened; open one only when the owner asks what I think. The owner judges every look, even a weak sheet. His verdict goes back verbatim.
+- Relay each round's pictures and clips with SendUserFile and the sub-chat's one line, unopened; open one only when the owner asks what I think. The owner judges every look, even a weak sheet. His verdict goes back verbatim, with no reading of mine added (two Rex rounds were lost to my reading, 2026-11-22); words I cannot place: ask him before sending.
 
 ## Clearing
 - `ACT go`: `clear_session`, then `SendMessage` the output of `py -3 tools/board.py go <name>` unchanged. The send usually answers "Not confirmed": normal, never resend; the row turns `working` on the next board run.
@@ -63,6 +63,7 @@ One window for the owner. I start, clear, feed and land the sub-chats, and I rou
 ## Landing
 - `ACT done`: `py -3 <main checkout>/tools/try.py <branch> --commit --dry-run`, then tell him `READY: land <name>` or what blocks it.
 - Land only on the owner's typed "land <name>" in this window (a click or an earlier window's go-ahead does not count). It stands: git-guard accepts it for that branch even after he types other messages, until the branch has landed (a later round needs a new order). Steps: playbook "Landing from the coordinator". After each `LANDED:` `SendMessage` that sub-chat once that its branch landed (it does playbook "Landed"), then `py -3 tools/board.py set <name> --state landed`. A forwarded "land it" to a sub-chat never passes; a go prompt says review only.
+- Cutscene work lands per approved beat (`.claude/project/cutscene.md`, owner 2026-11-27): a cutscene chat's "Beat <beat id> is approved: land it now?" goes to him as one line that names the board row, "Beat <beat id> of <name> is approved: type `land <name>` to land it" (a "yes" or "land beat 3" lands nothing); on "land <name>" it lands like any branch, and the chat is not done: it carries on with the next beat on the same branch, so skip the `--state landed` step above until the chat says its last beat landed.
 - Review: review-guard passes a branch over 150 lines or three files when a `reviewer` or `reviewer-light` ran on its tip in any window (merges of `main` since are fine). If it refuses, the sub-chat runs the reviewer on its branch; I never review.
 
 ## Usage

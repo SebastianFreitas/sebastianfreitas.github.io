@@ -17,6 +17,14 @@ Local tools run with `py -3`; the cloud container has only `python3`.
 - **Cutscene frames:** `py -3 tools/gframes.py <run> [beat ...]` writes
   `snapshots/frames/<run>/<beat>.png`; `--scene <id>` takes that scene's
   beats and writes `<scene>-<beat>.png`.
+- **Cutscene round shots:** `py -3 tools/cshot.py <scene> <round> --beat <id>
+  [--t a,b --fps 12 | --at t1,t2] [--also beat:t] [--crop/--closeup x0,y0,x1,y1]
+  [--dump "<js>"] [--eval "<js>"] [--clip] [--root <checkout>]` steps the page
+  and writes `snapshots/cshot/<scene>/r<round>/` (`sheet.png`, `closeup.png`,
+  `data.json`, `clip.webm`, `frames/`); `--help` lists all options.
+  Times count from the start of `--beat` and may run into later beats;
+  stepping costs about 10 s per cutscene second, so start from the
+  nearest beat. Rules for a round: `.claude/project/cutscene.md`.
 - **Cutscene end-state baseline:** `py -3 tools/gframes.py --full
   5.5,9,12.4,13.4 <dir>` shoots 2000x1009 PNGs into `snapshots/<dir>/` at
   those `secs("break")` times (shake off; the sea settles at 9.49, the
